@@ -12,7 +12,7 @@ algorithm.
 Public Announcement & Discussion
 --------------------------------
 
-Steem was announced on [Bitcointalk](https://bitcointalk.org/index.php?board=159.0) prior to
+Steem was announced on [Bitcointalk](https://bitcointalk.org/index.php?topic=1408726) prior to
 any the start of any mining.  
 
 No Support & No Warranty 
