@@ -29,7 +29,7 @@ Code is Documentation
 ---------------------
 
 Rather than attempt to describe the rules of the blockchain, it is up to
-each individual to inspect the code to understand the rules consensus rules.  
+each individual to inspect the code to understand the consensus rules.  
 
 How to Mine
 -----------
