@@ -23,7 +23,6 @@ programs/js_operation_serializer/js_operation_serializer
 programs/steemd/steemd
 programs/steemd/test
 programs/delayed_node
-programs/build_helpers
 
 tests/app_test
 tests/chain_bench
