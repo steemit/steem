@@ -4,23 +4,21 @@ The following license applies to code contained within this repository that
 is created by Steemit, Inc. Other copy right holders have licensed dependencis such
 as Graphene, FC, and Boost under their own individual licenses. 
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
 
-1. The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+	1. Redistributions of source code must retain the above copyright
+  	notice, this list of conditions and the following disclaimer.
+	2. Redistributions in binary form must reproduce the above copyright
+  	notice, this list of conditions and the following disclaimer in the
+  	documentation and/or other materials provided with the distribution.
+  3. The currency symbols, 'STEEM' and 'SBD' are not changed and no new currency symbols are added.
 
-2. The currency symbols, 'STEEM' and 'SBD' are not changed and no new currency symbols are added.
-
-3. The STEEMIT_INIT_PUBLIC_KEY_STR is not changed from STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX,
+  4. The STEEMIT_INIT_PUBLIC_KEY_STR is not changed from STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX,
 and the software is not modified in any way that would bypass the need for the coresponding private to start
 a new blockchain.
 
-4. The software is not used with any forks of the Steem blockchain that are not recognized by
+  5. The software is not used with any forks of the Steem blockchain that are not recognized by
 Steemit, Inc in writing.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
