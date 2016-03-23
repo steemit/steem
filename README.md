@@ -15,7 +15,7 @@ Public Announcement & Discussion
 Steem was announced on [Bitcointalk](https://bitcointalk.org/index.php?board=159.0) prior to
 any the start of any mining.  
 
-No Support & No Warenty 
+No Support & No Warranty 
 ------------------------
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
