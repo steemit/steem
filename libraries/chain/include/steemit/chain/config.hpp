@@ -13,7 +13,8 @@
 
 
 #define STEEMIT_ADDRESS_PREFIX                  "STM"
-#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458838800))
+#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
+#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
 #define STEEMIT_BLOCK_INTERVAL                  3 
 #define STEEMIT_BLOCKS_PER_YEAR                 (365*24*60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_BLOCKS_PER_DAY                  (24*60*60/STEEMIT_BLOCK_INTERVAL)

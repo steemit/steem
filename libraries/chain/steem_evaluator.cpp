@@ -364,6 +364,7 @@ void custom_evaluator::do_apply( const custom_operation& o ){
 
 void pow_evaluator::do_apply( const pow_operation& o ) {
    const auto& dgp = db().get_dynamic_global_properties();
+   FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
    const auto& accounts_by_name = db().get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.worker_account);
