@@ -24,9 +24,7 @@ namespace steemit { namespace chain {
 
          asset       virtual_supply             = asset( 0, STEEM_SYMBOL );
          asset       current_supply             = asset( 0, STEEM_SYMBOL );
-         asset       confidential_supply        = asset( 0, STEEM_SYMBOL ); ///< total asset held in confidential balances
          asset       current_sbd_supply         = asset( 0, SBD_SYMBOL );
-         asset       confidential_sbd_supply    = asset( 0, SBD_SYMBOL ); ///< total asset held in confidential balances
          asset       total_vesting_fund_steem   = asset( 0, STEEM_SYMBOL );
          asset       total_vesting_shares       = asset( 0, VESTS_SYMBOL );
          asset       total_reward_fund_steem    = asset( 0, STEEM_SYMBOL);
@@ -67,9 +65,7 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (num_pow_witnesses)
                     (virtual_supply)
                     (current_supply)
-                    (confidential_supply)
                     (current_sbd_supply)
-                    (confidential_sbd_supply)
                     (total_vesting_fund_steem)
                     (total_vesting_shares)
                     (total_reward_fund_steem)

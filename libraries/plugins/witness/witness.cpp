@@ -338,7 +338,20 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
   if( !_mining_threads || _miners.size() == 0 ) return;
   chain::database& db = database();
 
-  ilog( "hash rate: ${x} hps", ("x", (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count()));
+   ilog( "hash rate: ${x} hps", ("x", (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count()));
+   const auto& dgp = db.get_dynamic_global_properties();
+   double hps   = (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count();
+   auto bits    = (dgp.num_pow_witnesses/4) + 4;
+   auto hashes  = 1 << bits;
+   auto seconds = hashes/hps;
+   auto minutes = seconds / 60.0;
+
+
+   auto target = db.get_pow_target();
+   ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
+           ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
+       );
+
 
   _head_block_num = b.block_num();
   /// save these variables to be captured by worker lambda
@@ -419,7 +432,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                mainthread->async( [this,miner,trx](){
                   try {
                      database().push_transaction( trx );
-                  //   ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
+                     ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
                      p2p_node().broadcast( graphene::net::trx_message(trx) );
                   } catch ( const fc::exception& e ) {
                   //   wdump((e.to_detail_string()));

@@ -82,7 +82,13 @@ void comment_evaluator::do_apply( const comment_operation& o )
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
-   db().get_account( o.author ); /// prove it exists
+   const auto& auth = db().get_account( o.author ); /// prove it exists
+
+   auto now = db().head_block_time();
+   FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
+   db().modify( auth, [&]( account_object& a ) {
+      a.last_post = now;
+   });
 
    comment_id_type id;
 
@@ -385,7 +391,7 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
    FC_ASSERT( o.work.work < target, "work lacks sufficient difficulty" );
 
    db().modify( dgp, [&]( dynamic_global_property_object& p ){
-      p.total_pow += (1 << p.num_pow_witnesses);
+      p.total_pow += p.num_pow_witnesses;
       p.num_pow_witnesses++;
    });
 

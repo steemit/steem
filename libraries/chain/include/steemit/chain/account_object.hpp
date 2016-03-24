@@ -57,6 +57,7 @@ namespace steemit { namespace chain {
 
          uint64_t        average_market_bandwidth  = 0;
          time_point_sec  last_market_bandwidth_update;
+         time_point_sec  last_post;
 
 
          account_id_type get_id()const { return id; }
@@ -122,5 +123,5 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)
                     (proxied_vsf_votes)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
-                    (average_market_bandwidth)(last_market_bandwidth_update)
+                    (average_market_bandwidth)(last_market_bandwidth_update)(last_post)
                   )
