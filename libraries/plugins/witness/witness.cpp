@@ -338,7 +338,6 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
   if( !_mining_threads || _miners.size() == 0 ) return;
   chain::database& db = database();
 
-   ilog( "hash rate: ${x} hps", ("x", (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count()));
    const auto& dgp = db.get_dynamic_global_properties();
    double hps   = (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count();
    auto bits    = (dgp.num_pow_witnesses/4) + 4;
