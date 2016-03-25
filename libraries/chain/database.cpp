@@ -536,9 +536,10 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
    try {
       set_producing( true );
       detail::with_skip_flags( *this, skip, [&]() { _push_transaction( trx ); } );
-   } catch ( ... ) {
-      throw;
       set_producing(false);
+   } catch ( ... ) {
+      set_producing(false);
+      throw;
    }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
