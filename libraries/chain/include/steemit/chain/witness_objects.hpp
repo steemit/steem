@@ -40,6 +40,8 @@ namespace steemit { namespace chain {
          fc::uint128     virtual_position;
          fc::uint128     virtual_scheduled_time;
 
+         digest_type     last_work;
+
          witness_id_type get_id()const { return id; }
    };
 
@@ -70,6 +72,7 @@ namespace steemit { namespace chain {
    struct by_vote_name;
    struct by_name;
    struct by_pow;
+   struct by_work;
    /**
     * @ingroup object_index
     */
@@ -78,6 +81,7 @@ namespace steemit { namespace chain {
       indexed_by<
          ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
          ordered_unique< tag<by_name>, member<witness_object, string, &witness_object::owner> >,
+         ordered_non_unique< tag<by_work>, member<witness_object, digest_type, &witness_object::last_work> >,
          ordered_non_unique< tag<by_pow>, member<witness_object, uint64_t, &witness_object::pow_worker> >,
          ordered_unique< tag<by_vote_name>,
             composite_key< witness_object,
@@ -123,7 +127,8 @@ FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
                     (url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
                     (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
                     (props)
-                    (sbd_exchange_rate)(last_sbd_exchange_update)
+                    (sbd_exchange_rate)(last_sbd_exchange_update) 
+                    (last_work)
                   )
 FC_REFLECT_DERIVED( steemit::chain::witness_vote_object, (graphene::db::object), (witness)(account) )
 

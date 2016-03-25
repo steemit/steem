@@ -25,6 +25,10 @@ namespace steemit { namespace chain {
       public:
          //////////////////// db_management.cpp ////////////////////
 
+         bool is_producing()const { return _is_producing; }
+         void set_producing( bool p ) { _is_producing = p;  } 
+         bool _is_producing = false;
+
          database();
          ~database();
 

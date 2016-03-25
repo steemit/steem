@@ -533,7 +533,13 @@ bool database::_push_block(const signed_block& new_block)
  */
 void database::push_transaction( const signed_transaction& trx, uint32_t skip )
 { try {
-   detail::with_skip_flags( *this, skip, [&]() { _push_transaction( trx ); } );
+   try {
+      set_producing( true );
+      detail::with_skip_flags( *this, skip, [&]() { _push_transaction( trx ); } );
+   } catch ( ... ) {
+      throw;
+      set_producing(false);
+   }
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::_push_transaction( const signed_transaction& trx )
@@ -567,11 +573,13 @@ signed_block database::generate_block(
    uint32_t skip /* = 0 */
    )
 {
+   set_producing( true );
    signed_block result;
    detail::with_skip_flags( *this, skip, [&]()
    {
       result = _generate_block( when, witness_owner, block_signing_private_key );
    } );
+   set_producing( false );
    return result;
 }
 

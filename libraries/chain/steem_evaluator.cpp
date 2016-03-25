@@ -366,6 +366,16 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
    const auto& dgp = db().get_dynamic_global_properties();
    FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
+   if( db().is_producing() )  {
+      const auto& witness_by_work = db().get_index_type<witness_index>().indices().get<by_work>();
+      auto work_itr = witness_by_work.find( o.work.work );
+      if( work_itr != witness_by_work.end() ) {
+          FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
+      }
+   }
+   else
+      wdump((o.worker_account)(o.work.work));
+
    const auto& accounts_by_name = db().get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.worker_account);
    if(itr == accounts_by_name.end()) {
@@ -403,6 +413,7 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
       db().modify(*cur_witness, [&]( witness_object& w ){
           w.props             = o.props;
           w.pow_worker        = dgp.total_pow;
+          w.last_work         = o.work.work;
       });
    } else {
       db().create<witness_object>( [&]( witness_object& w ) {
@@ -410,6 +421,7 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
           w.props             = o.props;
           w.signing_key       = o.work.worker;
           w.pow_worker        = dgp.total_pow;
+          w.last_work         = o.work.work;
       });
    }
    /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
