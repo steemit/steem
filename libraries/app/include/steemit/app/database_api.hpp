@@ -87,6 +87,9 @@ class database_api
       vector<category_object> get_active_categories( string after, uint32_t limit )const;
       vector<category_object> get_recent_categories( string after, uint32_t limit )const;
 
+      vector<string> get_active_witnesses()const;
+      vector<string> get_miner_queue()const;
+
       /////////////////////////////
       // Blocks and transactions //
       /////////////////////////////
@@ -337,5 +340,8 @@ FC_API(steemit::app::database_api,
    (get_discussions_in_category_by_total_pending_payout)
    (get_discussions_by_last_update)
    (get_discussions_in_category_by_last_update)
+
+   (get_active_witnesses)
+   (get_miner_queue)
 )
 

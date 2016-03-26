@@ -116,6 +116,9 @@ class wallet_api
 
       feed_history_object                 get_feed_history()const;
 
+      vector<string>                      get_active_witnesses()const;
+      vector<string>                      get_miner_queue()const;
+
       /**
        * Returns the state info associated with the URL
        */
@@ -546,4 +549,7 @@ FC_API( steemit::wallet::wallet_api,
 
         (network_add_nodes)
         (network_get_connected_peers)
+
+         (get_active_witnesses)
+         (get_miner_queue)
       )
