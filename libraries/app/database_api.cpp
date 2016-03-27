@@ -838,6 +838,24 @@ void database_api::recursively_fetch_content( state& _state, discussion& root, s
   }
 }
 
+vector<string> database_api::get_miner_queue()const {
+   vector<string> result;
+   const auto& pow_idx = my->_db.get_index_type<witness_index>().indices().get<by_pow>();
+
+   auto itr = pow_idx.upper_bound(0);
+   while( itr != pow_idx.end() ) {
+      if( itr->pow_worker )
+         result.push_back( itr->owner );
+      ++itr;
+   }
+   return result;
+}
+
+vector<string> database_api::get_active_witnesses()const {
+   const auto& wso = my->_db.get_witness_schedule_object();
+   return wso.current_shuffled_witnesses;
+}
+
 state database_api::get_state( string path )const
 {
    if( path.size() && path[0] == '/' )

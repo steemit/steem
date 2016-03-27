@@ -687,6 +687,30 @@ public:
          return result.get_string();
       };
 
+      m["list_my_accounts"] = [](variant result, const fc::variants& a ) {
+         std::stringstream out;
+
+         auto accounts = result.as<vector<account_object>>();
+         asset total_steem;
+         asset total_vest(0, VESTS_SYMBOL );
+         asset total_sbd(0, SBD_SYMBOL );
+         for( const auto& a : accounts ) {
+            total_steem += a.balance;
+            total_vest  += a.vesting_shares;
+            total_sbd  += a.sbd_balance;
+            out << std::left << std::setw( 17 ) << a.name 
+                << std::right << std::setw(20) << fc::variant(a.balance).as_string() <<" "
+                << std::right << std::setw(20) << fc::variant(a.vesting_shares).as_string() <<" "
+                << std::right << std::setw(20) << fc::variant(a.sbd_balance).as_string() <<"\n";
+         }
+         out << "-------------------------------------------------------------------------\n";
+            out << std::left << std::setw( 17 ) << "TOTAL" 
+                << std::right << std::setw(20) << fc::variant(total_steem).as_string() <<" "
+                << std::right << std::setw(20) << fc::variant(total_vest).as_string() <<" "
+                << std::right << std::setw(20) << fc::variant(total_sbd).as_string() <<"\n";
+         return out.str();
+      };
+
       return m;
    }
 
@@ -808,6 +832,13 @@ vector<account_object> wallet_api::list_my_accounts()
 set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
 {
    return my->_remote_db->lookup_accounts(lowerbound, limit);
+}
+
+vector<string> wallet_api::get_miner_queue()const {
+   return my->_remote_db->get_miner_queue();
+}
+vector<string> wallet_api::get_active_witnesses()const {
+   return my->_remote_db->get_active_witnesses();
 }
 
 brain_key_info wallet_api::suggest_brain_key()const
