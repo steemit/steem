@@ -111,7 +111,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    if( options.count("mining-threads") )
    {
-      _mining_threads = std::min( options["mining-threads"].as<uint32_t>(), uint32_t(32) );
+      _mining_threads = std::min( options["mining-threads"].as<uint32_t>(), uint32_t(64) );
       _thread_pool.resize( _mining_threads );
       for( uint32_t i = 0; i < _mining_threads; ++i )
          _thread_pool[i] = std::make_shared<fc::thread>();
@@ -221,7 +221,7 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
          // ilog("Not producing block because slot has not yet arrived");
          break;
       case block_production_condition::no_private_key:
-         ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
+         ilog("Not producing block for ${w} because I don't have the private key for ${scheduled_key}", (capture) );
          break;
       case block_production_condition::low_participation:
          elog("Not producing block because node appears to be on a minority fork with only ${pct}% witness participation", (capture) );
@@ -378,6 +378,8 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
 void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk, 
                             const string& miner, const steemit::chain::signed_block& b ) {
 
+    static uint64_t seed = fc::time_point::now().time_since_epoch().count();
+    static uint64_t start = fc::city_hash64( (const char*)&seed, sizeof(seed) );
     chain::database& db = database();
 
     auto head_block_num  = b.block_num();
@@ -401,7 +403,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
           op.block_id = block_id;
           op.worker_account = miner;
           op.work.worker = pub;
-          op.nonce = thread_num;
+          op.nonce = start + thread_num;
           while( true )
           {
           //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
