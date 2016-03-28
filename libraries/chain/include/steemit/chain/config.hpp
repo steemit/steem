@@ -21,6 +21,8 @@
 #define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec())
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 
+#define STEEMIT_MIN_ACCOUNT_CREATION_FEE        0
+
 
 #else // IS LIVE STEEM NETWORK
 
@@ -37,6 +39,8 @@
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
 #define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1467590400))  /// July 4th
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24)  /// 1 day
+
+#define STEEMIT_MIN_ACCOUNT_CREATION_FEE        100000
 
 #endif
 
@@ -64,7 +68,6 @@
 
 #define STEEMIT_MINER_PAY_PERCENT               (STEEMIT_1_PERCENT) // 1%
 #define STEEMIT_MIN_RATION                      100000
-#define STEEMIT_MIN_ACCOUNT_CREATION_FEE        100000
 #define STEEMIT_MAX_RATION_DECAY_RATE           (1000000)
 #define STEEMIT_FREE_TRANSACTIONS_WITH_NEW_ACCOUNT 100
 

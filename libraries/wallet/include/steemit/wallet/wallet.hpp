@@ -107,16 +107,38 @@ class wallet_api
        */
       string                              help()const;
 
+      /**
+       * Returns info about the current state of the blockchain
+       */
       variant                             info();
+
       /** Returns info such as client version, git version of graphene/fc, version of boost, openssl.
        * @returns compile time info and client and dependencies versions
        */
       variant_object                      about() const;
+
+      /** Returns the information about a block
+       *
+       * @param num Block num
+       *
+       * @returns Public block data on the blockchain
+       */
       optional<signed_block_with_info>    get_block( uint32_t num );
 
+      /** Return the current price feed history
+       *
+       * #returns Price feed history data on the blockchain
+       */
       feed_history_object                 get_feed_history()const;
 
+      /**
+       * Returns the list of witnesses producing blocks in the current round (21 Blocks)
+       */
       vector<string>                      get_active_witnesses()const;
+
+      /**
+       * Returns the queue of pow miners waiting to produce blocks.
+       */
       vector<string>                      get_miner_queue()const;
 
       /**
@@ -153,7 +175,7 @@ class wallet_api
 
       /** Returns information about the given account.
        *
-       * @param account_name_or_id the name or id of the account to provide information about
+       * @param account_name the name of the account to provide information about
        * @returns the public account data stored in the blockchain
        */
       account_object                    get_account( string account_name ) const;
@@ -173,6 +195,9 @@ class wallet_api
        */
       string                            get_private_key( public_key_type pubkey )const;
 
+      /**
+       * Returns transaction by ID.
+       */
       annotated_signed_transaction      get_transaction( transaction_id_type trx_id )const;
 
       /** Checks whether the wallet has just been created and has not yet had a password set.
@@ -283,6 +308,12 @@ class wallet_api
        */
       string serialize_transaction(signed_transaction tx) const;
 
+      /** Imports a WIF Private Key into the wallet to be used to sign transactions by an account.
+       *
+       * example: import_key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+       *
+       * @param wif_key the WIF Private Key to import
+       */
       bool import_key( string wif_key );
 
       /** Transforms a brain key to reduce the chance of errors when re-entering the key from memory.
@@ -298,7 +329,17 @@ class wallet_api
       /**
        * This method is used by faucets to create new accounts for other users which must
        * provide their desired keys. The resulting account may not be controllable by this
-       * wallet.
+       * wallet. There is a fee associated with account creation that is paid by the creator.
+       * The current account creation fee can be found with the 'info' wallet command.
+       *
+       * @param creator The account creating the new account
+       * @param newname The name of the new account
+       * @param json_meta JSON Metadata associated with the new account
+       * @param owner public owner key of the new account
+       * @param active public active key of the new account
+       * @param posting public posting key of the new account
+       * @param memo public memo key of the new account
+       * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction create_account_with_keys( string creator,
                                             string newname,
@@ -309,6 +350,17 @@ class wallet_api
                                             public_key_type memo,
                                             bool broadcast )const;
 
+      /**
+       * This method updates the keys of an existing account.
+       *
+       * @param accountname The name of the account
+       * @param json_meta New JSON Metadata to be associated with the account
+       * @param owner New public owner key for the account
+       * @param active New public active key for the account
+       * @param posting New public posting key for the account
+       * @param memo New public memo key for the account
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction update_account( string accountname,
                                          string json_meta,
                                          public_key_type owner,
@@ -319,16 +371,21 @@ class wallet_api
 
       /**
        *  This method will genrate new owner, active, and memo keys for the new account which
-       *  will be controlable by this wallet.
+       *  will be controlable by this wallet. There is a fee associated with account creation
+       *  that is paid by the creator. The current account creation fee can be found with the
+       *  'info' wallet command.
+       *
+       *  @param creator The account creating the new account
+       *  @param new_account_name The name of the new account
+       *  @param json_meta JSON Metadata associated with the new account
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
 
-
       /**
-       *  This method is used to convert a JSON transaction to its transactin ID.
+       *  This method is used to convert a JSON transaction to its transaction ID.
        */
       transaction_id_type get_transaction_id( const signed_transaction& trx )const { return trx.id(); }
-
 
       /** Lists all witnesses registered in the blockchain.
        * This returns a list of all account names that own witnesses, and the associated witness id,
@@ -351,6 +408,12 @@ class wallet_api
        */
       optional< witness_object > get_witness(string owner_account);
 
+      /** Returns conversion requests by an account
+       *
+       * @param owner Account name of the account owning the requests
+       *
+       * @returns All pending conversion requests by account
+       */
       vector<convert_request_object> get_conversion_requests( string owner );
 
 
@@ -360,6 +423,7 @@ class wallet_api
        * @param witness The name of the witness's owner account.  Also accepts the ID of the owner account or the ID of the witness.
        * @param url Same as for create_witness.  The empty string makes it remain the same.
        * @param block_signing_key The new block signing public key.  The empty string makes it remain the same.
+       * @param chain_properties The chain properties the witness is voting on.
        * @param broadcast true if you wish to broadcast the transaction.
        */
       annotated_signed_transaction update_witness(string witness_name,
@@ -391,21 +455,73 @@ class wallet_api
                                           string proxy,
                                           bool broadcast = false);
 
+      /**
+       * Vote for a witness to become a block producer. By default an account has not voted
+       * positively or negatively for a witness. The account can either vote for with positively
+       * votes or against with negative votes. The vote will remain until updated with another
+       * vote. Vote strength is determined by the accounts vesting shares.
+       *
+       * @param account_to_vote_with The account voting for a witness
+       * @param witness_to_vote_for The witness that is being voted for
+       * @param approve true if the account is voting for the account to be able to producer
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction vote_for_witness(string account_to_vote_with,
                                           string witness_to_vote_for,
                                           bool approve = true,
                                           bool broadcast = false);
 
+      /**
+       * Transfer funds from one account to another. STEEM and SBD can be transferred.
+       *
+       * @param from The account the funds are coming from
+       * @param to The account the funds are going to
+       * @param amount The funds being transferred. i.e. "100.000 STEEM"
+       * @param memo A memo for the transactionm, encrypted with the to account's public memo key
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction transfer(string from, string to, asset amount, string memo, bool broadcast = false);
+
+      /**
+       * Transfer STEEM into a vesting fund represented by vesting shares (VESTS). VESTS are required to vesting
+       * for a minimum of one coin year and can be withdrawn once a week over a two year withdraw period.
+       * VESTS are protected against dilution up until 90% of STEEM is vesting.
+       *
+       * @param from The account the STEEM is coming from
+       * @param to The account getting the VESTS
+       * @param amount The amount of STEEM to vest i.e. "100.00 STEEM"
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction transfer_to_vesting(string from, string to, asset amount, bool broadcast = false);
+
+      /**
+       * Set up a vesting withdraw request. The request is fulfilled once a week over the next two year (104 weeks).
+       *
+       * @param from The account the VESTS are withdrawn from
+       * @param asset The amount of VESTS to withdraw over the next two years. Each week (amount/104) shares are
+       *    withdrawn and depositted back as STEEM. i.e. "10.000000 VESTS"
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );
 
       /**
-       *  This method will convert STEEM to SBD or SBD to STEEM at the current_median_history price one
+       *  This method will convert SBD to STEEM at the current_median_history price one
        *  week from the time it is executed. This method depends upon there being a valid price feed.
+       *
+       *  @param from The account requesting conversion of its SBD i.e. "1.000 SBD"
+       *  @param asset The amount of SBD to convert
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
 
+      /**
+       * A witness can public a price feed for the STEEM:SBD market. The median price feed is used
+       * to process conversion requests from SBD to STEEM.
+       *
+       * @param witness The witness publishing the price feed
+       * @param exchange_rate The desired exchange rate
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction publish_feed(string witness, price exchange_rate, bool broadcast );
 
       /** Signs a transaction.
@@ -439,13 +555,13 @@ class wallet_api
       void network_add_nodes( const vector<string>& nodes );
       vector< variant > network_get_connected_peers();
 
-
       /**
        *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
        *
        *  @param order_id is a unique identifier assigned by the creator of the order, it can be reused after the order has been filled
        */
       annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
+
       /**
        * Cancel an order created with create_order
        */
@@ -454,22 +570,33 @@ class wallet_api
       /**
        *  Post or update a comment.
        *
+       *  @param author the name of the account authoring the comment
+       *  @param permlink the accountwide unique permlink for the comment
        *  @param parent_author can be null if this is a top level comment
        *  @param parent_permlink becomes category if parent_author is ""
+       *  @param title the title of the comment
+       *  @param body the body of the comment
+       *  @param json the json metadata of the comment
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
+
+      /**
+       * Vote on a comment to be paid STEEM
+       *
+       * @param voter The account voting
+       */
       annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
 
       /**
        *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
        *  returns operations in the range [from-limit, from]
        *
+       *  @param account - account whose history will be returned
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
       map<uint32_t,operation_object> get_account_history( string account, uint32_t from, uint32_t limit );
-
-
 
 
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
