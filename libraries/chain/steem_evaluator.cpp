@@ -44,6 +44,13 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
+   if( db().is_producing() )  {
+      const witness_schedule_object& wso = db().get_witness_schedule_object(); 
+      FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided", 
+                 ("f", wso.median_props.account_creation_fee) 
+                 ("p", o.fee) );
+   }
+
    db().modify( creator, [&]( account_object& c ){
       c.balance -= o.fee;
    });
