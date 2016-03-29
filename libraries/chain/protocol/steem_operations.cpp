@@ -101,12 +101,12 @@ namespace steemit { namespace chain {
 
    void transfer_operation::validate() const
    { try {
-      FC_ASSERT( is_valid_account_name( from ) );
-      FC_ASSERT( is_valid_account_name( to ) );
-      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ) || is_asset_type( amount, SBD_SYMBOL ) );
-      FC_ASSERT( amount.amount > 0);
-      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE );
-      FC_ASSERT( fc::is_utf8( memo ) );
+      FC_ASSERT( is_valid_account_name( from ), "Invalid 'from' account name" );
+      FC_ASSERT( is_valid_account_name( to ), "Invalid 'to' account name" );
+      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ) || is_asset_type( amount, SBD_SYMBOL ), "Must transfer SBD or STEEM" );
+      FC_ASSERT( amount.amount > 0, "Cannot transfer a negative amount (aka: stealing)" );
+      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
+      FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
    } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
    void transfer_to_vesting_operation::validate() const
@@ -190,8 +190,8 @@ namespace steemit { namespace chain {
    void feed_publish_operation::validate()const
    {
       FC_ASSERT( is_valid_account_name( publisher ) );
-      FC_ASSERT( is_asset_type( exchange_rate.base, STEEM_SYMBOL ) );
-      FC_ASSERT( is_asset_type( exchange_rate.quote, SBD_SYMBOL ) );
+      FC_ASSERT( ( is_asset_type( exchange_rate.base, STEEM_SYMBOL ) && is_asset_type( exchange_rate.quote, SBD_SYMBOL ) )
+         || ( is_asset_type( exchange_rate.base, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) ) );
       exchange_rate.validate();
    }
 
