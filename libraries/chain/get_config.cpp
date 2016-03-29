@@ -1,4 +1,3 @@
-
 #include <steemit/chain/get_config.hpp>
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/protocol/types.hpp>

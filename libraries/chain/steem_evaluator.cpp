@@ -90,6 +90,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       a.last_post = now;
    });
 
+
    comment_id_type id;
 
 
@@ -364,9 +365,10 @@ void custom_evaluator::do_apply( const custom_operation& o ){
 
 void pow_evaluator::do_apply( const pow_operation& o ) {
    const auto& dgp = db().get_dynamic_global_properties();
+
    FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
-   if( db().is_producing() )  {
+   if( db().is_producing() )  { /// TODO: make this a hard fork in the future
       const auto& witness_by_work = db().get_index_type<witness_index>().indices().get<by_work>();
       auto work_itr = witness_by_work.find( o.work.work );
       if( work_itr != witness_by_work.end() ) {

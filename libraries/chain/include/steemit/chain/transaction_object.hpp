@@ -16,7 +16,11 @@ namespace steemit { namespace chain {
    using namespace graphene::db;
    using boost::multi_index_container;
    using namespace boost::multi_index;
-
+   /**
+    * The purpose of this object is to enable the detection of duplicate transactions. When a transaction is included
+    * in a block a transaction_object is added. At the end of block processing all transaction_objects that have
+    * expired can be removed from the index.
+    */
    class transaction_object : public abstract_object<transaction_object>
    {
       public:

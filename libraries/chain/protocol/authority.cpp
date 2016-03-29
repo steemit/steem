@@ -1,4 +1,3 @@
-
 #include <steemit/chain/protocol/authority.hpp>
 
 namespace steemit { namespace chain {

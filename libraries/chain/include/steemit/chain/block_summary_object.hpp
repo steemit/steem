@@ -4,6 +4,15 @@
 namespace steemit { namespace chain {
    using namespace graphene::db;
 
+   /**
+    *  @brief tracks minimal information about past blocks to implement TaPOS
+    *  @ingroup object
+    *
+    *  When attempting to calculate the validity of a transaction we need to
+    *  lookup a past block and check its block hash and the time it occurred
+    *  so we can calculate whether the current transaction is valid and at
+    *  what time it should expire.
+    */
    class block_summary_object : public abstract_object<block_summary_object>
    {
       public:

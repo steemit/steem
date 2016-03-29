@@ -7,6 +7,11 @@
 
 namespace steemit { namespace chain {
 
+   bool inline is_asset_type( asset asset, asset_symbol_type symbol )
+   {
+      return asset.symbol == symbol;
+   }
+
    void inline validate_permlink( string permlink )
    {
       FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
@@ -38,7 +43,8 @@ namespace steemit { namespace chain {
 
    void account_create_operation::validate() const
    {
-      FC_ASSERT(is_valid_account_name( new_account_name ));
+      FC_ASSERT( is_valid_account_name( new_account_name ) );
+      FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ) );
       owner.validate();
       active.validate();
 
@@ -97,6 +103,7 @@ namespace steemit { namespace chain {
    { try {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ) || is_asset_type( amount, SBD_SYMBOL ) );
       FC_ASSERT( amount.amount > 0);
       FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE );
       FC_ASSERT( fc::is_utf8( memo ) );
@@ -105,6 +112,7 @@ namespace steemit { namespace chain {
    void transfer_to_vesting_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ) );
       if ( !to.empty() ) FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( amount > asset( 0, STEEM_SYMBOL ) );
    }
@@ -113,6 +121,7 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( account ) );
       FC_ASSERT( vesting_shares.amount > 0 );
+      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL ) );
    }
 
    void witness_update_operation::validate() const
@@ -129,6 +138,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( account ) );
       FC_ASSERT( is_valid_account_name( witness ) );
    }
+
    void account_witness_proxy_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( account ) );
@@ -148,6 +158,7 @@ namespace steemit { namespace chain {
       hash._hash[0] = nonce;
       return fc::sha256::hash( hash );
    }
+
    void pow_operation::validate()const
    {
       props.validate();
@@ -176,19 +187,24 @@ namespace steemit { namespace chain {
       FC_ASSERT( work == fc::sha256::hash(recover) );
    }
 
-   void feed_publish_operation::validate()const {
+   void feed_publish_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( publisher ) );
-      FC_ASSERT( exchange_rate.base.symbol == STEEM_SYMBOL );
-      FC_ASSERT( exchange_rate.quote.symbol == SBD_SYMBOL );
+      FC_ASSERT( is_asset_type( exchange_rate.base, STEEM_SYMBOL ) );
+      FC_ASSERT( is_asset_type( exchange_rate.quote, SBD_SYMBOL ) );
       exchange_rate.validate();
    }
 
-   void limit_order_create_operation::validate()const {
+   void limit_order_create_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( owner ) );
+      FC_ASSERT( ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( min_to_receive, SBD_SYMBOL ) )
+         || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) ) );
       (amount_to_sell / min_to_receive).validate();
    }
 
-   void limit_order_cancel_operation::validate()const {
+   void limit_order_cancel_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( owner ) );
    }
 
@@ -196,7 +212,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( owner ) );
       /// only allow conversion from SBD to STEEM, allowing the opposite can enable traders to abuse
       /// market fluxuations through converting large quantities without moving the price.
-      FC_ASSERT( /*amount.symbol == STEEM_SYMBOL ||*/ amount.symbol == SBD_SYMBOL );
+      FC_ASSERT( is_asset_type( amount, SBD_SYMBOL ) );
       FC_ASSERT( amount.amount > 0 );
    }
 
