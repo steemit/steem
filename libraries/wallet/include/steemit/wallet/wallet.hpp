@@ -173,6 +173,8 @@ class wallet_api
        */
       string                            get_private_key( public_key_type pubkey )const;
 
+      annotated_signed_transaction      get_transaction( transaction_id_type trx_id )const;
+
       /** Checks whether the wallet has just been created and has not yet had a password set.
        *
        * Calling \c set_password will transition the wallet to the locked state.
@@ -298,7 +300,7 @@ class wallet_api
        * provide their desired keys. The resulting account may not be controllable by this
        * wallet.
        */
-      signed_transaction create_account_with_keys( string creator,
+      annotated_signed_transaction create_account_with_keys( string creator,
                                             string newname,
                                             string json_meta,
                                             public_key_type owner,
@@ -307,7 +309,7 @@ class wallet_api
                                             public_key_type memo,
                                             bool broadcast )const;
 
-      signed_transaction update_account( string accountname,
+      annotated_signed_transaction update_account( string accountname,
                                          string json_meta,
                                          public_key_type owner,
                                          public_key_type active,
@@ -319,7 +321,7 @@ class wallet_api
        *  This method will genrate new owner, active, and memo keys for the new account which
        *  will be controlable by this wallet.
        */
-      signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+      annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
 
 
       /**
@@ -360,7 +362,7 @@ class wallet_api
        * @param block_signing_key The new block signing public key.  The empty string makes it remain the same.
        * @param broadcast true if you wish to broadcast the transaction.
        */
-      signed_transaction update_witness(string witness_name,
+      annotated_signed_transaction update_witness(string witness_name,
                                         string url,
                                         public_key_type block_signing_key,
                                         const chain_properties& props,
@@ -385,26 +387,26 @@ class wallet_api
        * @param broadcast true if you wish to broadcast the transaction
        * @return the signed transaction changing your vote proxy settings
        */
-      signed_transaction set_voting_proxy(string account_to_modify,
+      annotated_signed_transaction set_voting_proxy(string account_to_modify,
                                           string proxy,
                                           bool broadcast = false);
 
-      signed_transaction vote_for_witness(string account_to_vote_with,
+      annotated_signed_transaction vote_for_witness(string account_to_vote_with,
                                           string witness_to_vote_for,
                                           bool approve = true,
                                           bool broadcast = false);
 
-      signed_transaction transfer(string from, string to, asset amount, string memo, bool broadcast = false);
-      signed_transaction transfer_to_vesting(string from, string to, asset amount, bool broadcast = false);
-      signed_transaction withdraw_vesting( string from, share_type vesting_shares, bool broadcast = false );
+      annotated_signed_transaction transfer(string from, string to, asset amount, string memo, bool broadcast = false);
+      annotated_signed_transaction transfer_to_vesting(string from, string to, asset amount, bool broadcast = false);
+      annotated_signed_transaction withdraw_vesting( string from, share_type vesting_shares, bool broadcast = false );
 
       /**
        *  This method will convert STEEM to SBD or SBD to STEEM at the current_median_history price one
        *  week from the time it is executed. This method depends upon there being a valid price feed.
        */
-      signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
+      annotated_signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
 
-      signed_transaction publish_feed(string witness, price exchange_rate, bool broadcast );
+      annotated_signed_transaction publish_feed(string witness, price exchange_rate, bool broadcast );
 
       /** Signs a transaction.
        *
@@ -414,7 +416,7 @@ class wallet_api
        * @param broadcast true if you wish to broadcast the transaction
        * @return the signed version of the transaction
        */
-      signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
+      annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false);
 
       /** Returns an uninitialized object representing a given blockchain operation.
        *
@@ -443,11 +445,11 @@ class wallet_api
        *
        *  @param order_id is a unique identifier assigned by the creator of the order, it can be reused after the order has been filled
        */
-      signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
+      annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
       /**
        * Cancel an order created with create_order
        */
-      signed_transaction cancel_order( string owner, uint32_t orderid, bool broadcast );
+      annotated_signed_transaction cancel_order( string owner, uint32_t orderid, bool broadcast );
 
       /**
        *  Post or update a comment.
@@ -455,8 +457,8 @@ class wallet_api
        *  @param parent_author can be null if this is a top level comment
        *  @param parent_permlink becomes category if parent_author is ""
        */
-      signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
-      signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
+      annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
+      annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
 
       /**
        *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
@@ -550,6 +552,8 @@ FC_API( steemit::wallet::wallet_api,
         (network_add_nodes)
         (network_get_connected_peers)
 
-         (get_active_witnesses)
-         (get_miner_queue)
+        (get_active_witnesses)
+        (get_miner_queue)
+        (get_transaction)
       )
+

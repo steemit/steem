@@ -1042,4 +1042,19 @@ state database_api::get_state( string path )const
    return _state;
 }
 
+annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const {
+   const auto& idx = my->_db.get_index_type<operation_index>().indices().get<by_transaction_id>();
+   auto itr = idx.lower_bound( id );
+   if( itr != idx.end() && itr->trx_id == id ) {
+      auto blk = my->_db.fetch_block_by_number( itr->block );
+      FC_ASSERT( blk.valid() );
+      FC_ASSERT( blk->transactions.size() > itr->trx_in_block );
+      annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
+      result.block_num       = itr->block;
+      result.transaction_num = itr->trx_in_block;
+      return result;
+   }
+   FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
+}
+
 } } // steemit::app

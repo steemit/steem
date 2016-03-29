@@ -203,7 +203,8 @@ class database_api
       ////////////////////////////
 
       /// @brief Get a hexdump of the serialized binary form of a transaction
-      std::string get_transaction_hex(const signed_transaction& trx)const;
+      std::string                   get_transaction_hex(const signed_transaction& trx)const;
+      annotated_signed_transaction  get_transaction( transaction_id_type trx_id )const;
 
       /**
        *  This API will take a partially signed transaction and a set of public keys that the owner has the ability to sign for
@@ -325,6 +326,7 @@ FC_API(steemit::app::database_api,
 
    // Authority / validation
    (get_transaction_hex)
+   (get_transaction)
    (get_required_signatures)
    (get_potential_signatures)
    (verify_authority)
