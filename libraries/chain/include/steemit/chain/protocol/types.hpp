@@ -181,9 +181,8 @@ namespace steemit { namespace chain {
        friend bool operator == ( const public_key_type& p1, const public_key_type& p2);
        friend bool operator < ( const public_key_type& p1, const public_key_type& p2) { return p1.key_data < p2.key_data; }
        friend bool operator != ( const public_key_type& p1, const public_key_type& p2);
-       // TODO: This is temporary for testing
-       bool is_valid_v1( const std::string& base58str );
    };
+
 #define STEEMIT_INIT_PUBLIC_KEY (steemit::chain::public_key_type(STEEMIT_INIT_PUBLIC_KEY_STR))
 
    struct extended_public_key_type

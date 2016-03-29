@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
    fc::oexception unhandled_exception;
    try {
 
-#if IS_TEST_NET 
+#ifdef IS_TEST_NET 
       std::cerr << "------------------------------------------------------\n\n";
       std::cerr << "            STARTING TEST NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
@@ -53,9 +53,7 @@ int main(int argc, char** argv) {
       std::cerr << "------------------------------------------------------\n\n";
       std::cerr << "            STARTING STEEM NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
-      auto initminer_private_key = graphene::utilities::key_to_wif( STEEMIT_INIT_PRIVATE_KEY );
       std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
-      std::cerr << "initminer private key: " << initminer_private_key << "\n";
       std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #endif
@@ -180,7 +178,7 @@ int main(int argc, char** argv) {
 
       ilog("Started witness node on a chain with ${h} blocks.", ("h", node->chain_database()->head_block_num()));
 
-      int signal = exit_promise->wait();
+      exit_promise->wait();
       node->shutdown_plugins();
       node->shutdown();
       delete node;

@@ -22,16 +22,6 @@ namespace steemit { namespace chain {
       //        to make public_key_type API more similar to address API
        std::string prefix( STEEMIT_ADDRESS_PREFIX );
 
-       // TODO: This is temporary for testing
-       try
-       {
-           if( is_valid_v1( base58str ) )
-               prefix = std::string( "BTS" );
-       }
-       catch( ... )
-       {
-       }
-
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
        FC_ASSERT( base58str.substr( 0, prefix_len ) ==  prefix , "", ("base58str", base58str) );
@@ -41,19 +31,6 @@ namespace steemit { namespace chain {
        FC_ASSERT( fc::ripemd160::hash( key_data.data, key_data.size() )._hash[0] == bin_key.check );
     };
 
-    // TODO: This is temporary for testing
-    bool public_key_type::is_valid_v1( const std::string& base58str )
-    {
-       std::string prefix( "BTS" );
-       const size_t prefix_len = prefix.size();
-       FC_ASSERT( base58str.size() > prefix_len );
-       FC_ASSERT( base58str.substr( 0, prefix_len ) ==  prefix , "", ("base58str", base58str) );
-       auto bin = fc::from_base58( base58str.substr( prefix_len ) );
-       auto bin_key = fc::raw::unpack<binary_key>(bin);
-       fc::ecc::public_key_data key_data = bin_key.data;
-       FC_ASSERT( fc::ripemd160::hash( key_data.data, key_data.size() )._hash[0] == bin_key.check );
-       return true;
-    }
 
     public_key_type::operator fc::ecc::public_key_data() const
     {
