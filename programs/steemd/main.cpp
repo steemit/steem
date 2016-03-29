@@ -1,26 +1,3 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #include <steemit/app/application.hpp>
 
 #include <steemit/witness/witness.hpp>
@@ -50,6 +27,7 @@
 #else
 # include <csignal>
 #endif
+#include <graphene/utilities/key_conversion.hpp>
 
 using namespace steemit;
 namespace bpo = boost::program_options;
@@ -61,8 +39,29 @@ int main(int argc, char** argv) {
    app::application* node = new app::application();
    fc::oexception unhandled_exception;
    try {
-      bpo::options_description app_options("CLOUT Witness Node");
-      bpo::options_description cfg_options("CLOUT Witness Node");
+
+#if IS_TEST_NET 
+      std::cerr << "------------------------------------------------------\n\n";
+      std::cerr << "            STARTING TEST NETWORK\n\n";
+      std::cerr << "------------------------------------------------------\n";
+      auto initminer_private_key = graphene::utilities::key_to_wif( STEEMIT_INIT_PRIVATE_KEY );
+      std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
+      std::cerr << "initminer private key: " << initminer_private_key << "\n";
+      std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
+      std::cerr << "------------------------------------------------------\n";
+#else
+      std::cerr << "------------------------------------------------------\n\n";
+      std::cerr << "            STARTING STEEM NETWORK\n\n";
+      std::cerr << "------------------------------------------------------\n";
+      auto initminer_private_key = graphene::utilities::key_to_wif( STEEMIT_INIT_PRIVATE_KEY );
+      std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
+      std::cerr << "initminer private key: " << initminer_private_key << "\n";
+      std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
+      std::cerr << "------------------------------------------------------\n";
+#endif
+
+      bpo::options_description app_options("Steem Daemon");
+      bpo::options_description cfg_options("Steem Daemon");
       app_options.add_options()
             ("help,h", "Print this help message and exit.")
             ("data-dir,d", bpo::value<boost::filesystem::path>()->default_value("witness_node_data_dir"), "Directory containing databases, configuration file, etc.")
