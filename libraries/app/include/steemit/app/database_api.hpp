@@ -230,7 +230,7 @@ class database_api
        */
       bool           verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
 
-      vector<comment_vote_object> get_active_votes( comment_id_type cid )const;
+      vector<vote_state> get_active_votes( string author, string permlink )const;
 
       discussion           get_content( string author, string permlink )const;
       vector<discussion>   get_content_replies( string parent, string parent_permlink )const;

@@ -604,18 +604,22 @@ discussion database_api::get_content( string author, string permlink )const {
    return discussion();
 }
 
-vector<comment_vote_object> database_api::get_active_votes( comment_id_type cid )const {
-   vector<comment_vote_object> result;
+vector<vote_state> database_api::get_active_votes( string author, string permlink )const
+{
+   vector<vote_state> result;
+   const auto& comment = my->_db.get_comment( author, permlink );
    const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_comment_voter >();
+   comment_id_type cid(comment.id);
    auto itr = idx.lower_bound( cid );
    while( itr != idx.end() && itr->comment == cid )
    {
-      result.push_back(*itr);
+      const auto& vo = itr->voter(my->_db);
+      result.push_back(vote_state{vo.name,itr->weight});
       ++itr;
    }
    return result;
-}
 
+}
 
 void database_api::set_pending_payout( discussion& d )const
 {
@@ -1044,7 +1048,7 @@ state database_api::get_state( string path )const
       _state.accounts[a] = my->_db.get_account( a );
    }
    for( auto& d : _state.content ) {
-      d.second.active_votes = get_active_votes( d.second.id );
+      d.second.active_votes = get_active_votes( d.second.author, d.second.permlink );
    }
 
    _state.witnesses = my->_db.get_witness_schedule_object();
