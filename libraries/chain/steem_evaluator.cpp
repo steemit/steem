@@ -377,8 +377,6 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
           FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
       }
    }
-   else
-      wdump((o.worker_account)(o.work.work));
 
    const auto& accounts_by_name = db().get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.worker_account);
