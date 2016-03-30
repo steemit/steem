@@ -121,7 +121,7 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( account ), "Account name invalid" );
       FC_ASSERT( vesting_shares.amount > 0, "Must withdraw a nonzero amount" );
-      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL, "Amount must be VESTS ) );
+      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
    }
 
    void witness_update_operation::validate() const
@@ -131,14 +131,11 @@ namespace steemit { namespace chain {
       FC_ASSERT( fc::is_utf8( url ) );
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ) );
       props.validate();
-      // TODO: Add this in the next hard fork
-      if ( db.is_pruducing() )
-         FC_ASSERT( url.size() <= 2048 );
    }
 
    void account_witness_vote_operation::validate() const
    {
-      FC_ASSERT( is_valid_account_name( account ), "Account  );
+      FC_ASSERT( is_valid_account_name( account ), "Account ${a}", ("a",account)  );
       FC_ASSERT( is_valid_account_name( witness ) );
    }
 

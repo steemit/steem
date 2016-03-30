@@ -12,6 +12,8 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
 
+   if ( db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 ); /// TODO: Enforce at next Hardfork
+
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
    if( wit_itr != by_witness_name_idx.end() )
