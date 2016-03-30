@@ -926,13 +926,13 @@ bool wallet_api::import_key(string wif_key)
    fc::optional<fc::ecc::private_key> optional_private_key = wif_to_key(wif_key);
    if (!optional_private_key)
       FC_THROW("Invalid private key");
-   string shorthash = detail::pubkey_to_shorthash( optional_private_key->get_public_key() );
-   copy_wallet_file( "before-import-key-" + shorthash );
+//   string shorthash = detail::pubkey_to_shorthash( optional_private_key->get_public_key() );
+//   copy_wallet_file( "before-import-key-" + shorthash );
 
    if( my->import_key(wif_key) )
    {
       save_wallet_file();
-      copy_wallet_file( "after-import-key-" + shorthash );
+ //     copy_wallet_file( "after-import-key-" + shorthash );
       return true;
    }
    return false;
