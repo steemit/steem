@@ -829,7 +829,7 @@ try {
 
 } FC_LOG_AND_RETHROW() }
 */
-
+/*
 BOOST_FIXTURE_TEST_CASE( pow_block, database_fixture )
 {
    try

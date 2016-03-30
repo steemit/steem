@@ -79,7 +79,7 @@ class database_api
 
       /**
        *  This API is a short-cut for returning all of the state required for a particular URL
-       *  with a single query.  
+       *  with a single query.
        */
       state get_state( string path )const;
       vector<category_object> get_trending_categories( string after, uint32_t limit )const;
@@ -121,6 +121,7 @@ class database_api
        * @brief Retrieve the current @ref dynamic_global_property_object
        */
       dynamic_global_property_object get_dynamic_global_properties()const;
+      chain_properties               get_chain_properties()const;
       price                          get_current_median_history_price()const;
       feed_history_object            get_feed_history()const;
 
@@ -229,7 +230,7 @@ class database_api
        */
       bool           verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
 
-      vector<comment_vote_object> get_active_votes( comment_id_type cid )const; 
+      vector<comment_vote_object> get_active_votes( comment_id_type cid )const;
 
       discussion           get_content( string author, string permlink )const;
       vector<discussion>   get_content_replies( string parent, string parent_permlink )const;
@@ -239,21 +240,21 @@ class database_api
        *     Get root content...
        *     Get any content...
        *     Get root content in category..
-       *     Get any content in category... 
+       *     Get any content in category...
        *
        *  Return discussions
        *     Total Discussion Pending Payout
-       *     Last Discussion Update (or reply)... think 
+       *     Last Discussion Update (or reply)... think
        *     Top Discussions by Total Payout
-       *  
+       *
        *  Return content (comments)
-       *     Pending Payout Amount 
+       *     Pending Payout Amount
        *     Pending Payout Time
        *     Creation Date
-       *  
+       *
        */
       ///@{
-      
+
       /**
        *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
        *  pending payout means the pending payout of all children as well.
@@ -303,6 +304,7 @@ FC_API(steemit::app::database_api,
    // Globals
    (get_config)
    (get_dynamic_global_properties)
+   (get_chain_properties)
    (get_feed_history)
    (get_current_median_history_price)
 

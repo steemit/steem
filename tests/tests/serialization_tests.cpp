@@ -87,32 +87,32 @@ BOOST_AUTO_TEST_CASE( asset_test )
    try
    {
       BOOST_CHECK_EQUAL( asset().decimals(), 3 );
-      BOOST_CHECK_EQUAL( asset().symbol_name(), "STEEM" );
-      BOOST_CHECK_EQUAL( asset().to_string(), "0.000 STEEM" );
+      BOOST_CHECK_EQUAL( asset().symbol_name(), "TESTS" );
+      BOOST_CHECK_EQUAL( asset().to_string(), "0.000 TESTS" );
 
       BOOST_TEST_MESSAGE( "Asset Test" );
-      asset steem = asset::from_string( "123.456 STEEM" );
-      asset sbd = asset::from_string( "654.321 SBD" );
-      asset tmp = asset::from_string( "0.456 STEEM" );
+      asset steem = asset::from_string( "123.456 TESTS" );
+      asset sbd = asset::from_string( "654.321 TBD" );
+      asset tmp = asset::from_string( "0.456 TESTS" );
       BOOST_CHECK_EQUAL( tmp.amount.value, 456 );
-      tmp = asset::from_string( "0.056 STEEM" );
+      tmp = asset::from_string( "0.056 TESTS" );
       BOOST_CHECK_EQUAL( tmp.amount.value, 56 );
 
       BOOST_CHECK( std::abs( steem.to_real() - 123.456 ) < 0.0005 );
       BOOST_CHECK_EQUAL( steem.decimals(), 3 );
-      BOOST_CHECK_EQUAL( steem.symbol_name(), "STEEM" );
-      BOOST_CHECK_EQUAL( steem.to_string(), "123.456 STEEM" );
+      BOOST_CHECK_EQUAL( steem.symbol_name(), "TESTS" );
+      BOOST_CHECK_EQUAL( steem.to_string(), "123.456 TESTS" );
       BOOST_CHECK_EQUAL( steem.symbol, STEEM_SYMBOL);
-      BOOST_CHECK_EQUAL( asset(50, STEEM_SYMBOL).to_string(), "0.050 STEEM" );
-      BOOST_CHECK_EQUAL( asset(50000, STEEM_SYMBOL).to_string(), "50.000 STEEM" );
+      BOOST_CHECK_EQUAL( asset(50, STEEM_SYMBOL).to_string(), "0.050 TESTS" );
+      BOOST_CHECK_EQUAL( asset(50000, STEEM_SYMBOL).to_string(), "50.000 TESTS" );
 
       BOOST_CHECK( std::abs( sbd.to_real() - 654.321 ) < 0.0005 );
       BOOST_CHECK_EQUAL( sbd.decimals(), 3 );
-      BOOST_CHECK_EQUAL( sbd.symbol_name(), "SBD" );
-      BOOST_CHECK_EQUAL( sbd.to_string(), "654.321 SBD" );
+      BOOST_CHECK_EQUAL( sbd.symbol_name(), "TBD" );
+      BOOST_CHECK_EQUAL( sbd.to_string(), "654.321 TBD" );
       BOOST_CHECK_EQUAL( sbd.symbol, SBD_SYMBOL);
-      BOOST_CHECK_EQUAL( asset(50, SBD_SYMBOL).to_string(), "0.050 SBD" );
-      BOOST_CHECK_EQUAL( asset(50000, SBD_SYMBOL).to_string(), "50.000 SBD" );
+      BOOST_CHECK_EQUAL( asset(50, SBD_SYMBOL).to_string(), "0.050 TBD" );
+      BOOST_CHECK_EQUAL( asset(50000, SBD_SYMBOL).to_string(), "50.000 TBD" );
    }
    FC_LOG_AND_RETHROW()
 }

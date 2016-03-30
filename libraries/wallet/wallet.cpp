@@ -501,6 +501,7 @@ public:
 
          account_create_op.creator = creator_account_name;
          account_create_op.new_account_name = account_name;
+         account_create_op.fee = _remote_db->get_chain_properties().account_creation_fee;
          account_create_op.owner = authority(1, owner_pubkey, 1);
          account_create_op.active = authority(1, active_pubkey, 1);
          account_create_op.memo_key = memo_pubkey;
@@ -668,8 +669,8 @@ public:
       }
 
       if( broadcast ) {
-         try { 
-            auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx ); 
+         try {
+            auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx );
             annotated_signed_transaction rtrx(tx);
             idump((result));
             rtrx.block_num = result.get_object()["block_num"].as_uint64();
@@ -709,13 +710,13 @@ public:
             total_steem += a.balance;
             total_vest  += a.vesting_shares;
             total_sbd  += a.sbd_balance;
-            out << std::left << std::setw( 17 ) << a.name 
+            out << std::left << std::setw( 17 ) << a.name
                 << std::right << std::setw(20) << fc::variant(a.balance).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.vesting_shares).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.sbd_balance).as_string() <<"\n";
          }
          out << "-------------------------------------------------------------------------\n";
-            out << std::left << std::setw( 17 ) << "TOTAL" 
+            out << std::left << std::setw( 17 ) << "TOTAL"
                 << std::right << std::setw(20) << fc::variant(total_steem).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(total_vest).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(total_sbd).as_string() <<"\n";
@@ -1019,16 +1020,8 @@ string wallet_api::gethelp(const string& method)const
 
    if( method == "import_key" )
    {
-      ss << "usage: import_key ACCOUNT_NAME_OR_ID  WIF_PRIVATE_KEY\n\n";
-      ss << "example: import_key \"1.3.11\" 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\n";
-      ss << "example: import_key \"usera\" 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\n";
-   }
-   else if( method == "register_account" )
-   {
-      ss << "usage: register_account ACCOUNT_NAME OWNER_PUBLIC_KEY ACTIVE_PUBLIC_KEY REGISTRAR REFERRER REFERRER_PERCENT BROADCAST\n\n";
-      ss << "example: register_account \"newaccount\" \"CORE6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\" \"CORE6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\" \"1.3.11\" \"1.3.11\" 50 true\n";
-      ss << "\n";
-      ss << "Use this method to register an account for which you do not know the private keys.";
+      ss << "usage: import_key WIF_PRIVATE_KEY\n\n";
+      ss << "example: import_key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\n";
    }
    else
    {
@@ -1149,6 +1142,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
    op.posting = authority( 1, posting, 1 );
    op.memo_key = memo;
    op.json_metadata = json_meta;
+   op.fee = my->_remote_db->get_chain_properties().account_creation_fee;
 
    signed_transaction tx;
    tx.operations.push_back(op);
@@ -1156,7 +1150,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta)(owner)(active)(memo)(broadcast) ) }
 
-annotated_signed_transaction wallet_api::update_account( 
+annotated_signed_transaction wallet_api::update_account(
                                       string account_name,
                                       string json_meta,
                                       public_key_type owner,
@@ -1262,7 +1256,7 @@ annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string
 
    return my->sign_transaction( tx, broadcast );
 }
-annotated_signed_transaction wallet_api::withdraw_vesting(string from, share_type vesting_shares, bool broadcast )
+annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset vesting_shares, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
     withdraw_vesting_operation op;
