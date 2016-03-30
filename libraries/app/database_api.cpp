@@ -602,7 +602,10 @@ vector<comment_vote_object> database_api::get_active_votes( comment_id_type cid 
    const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_comment_voter >();
    auto itr = idx.lower_bound( cid );
    while( itr != idx.end() && itr->comment == cid )
+   {
       result.push_back(*itr);
+      ++itr;
+   }
    return result;
 }
 
