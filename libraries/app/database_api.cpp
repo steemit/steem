@@ -236,9 +236,16 @@ dynamic_global_property_object database_api::get_dynamic_global_properties()cons
 {
    return my->get_dynamic_global_properties();
 }
+
+chain_properties database_api::get_chain_properties()const
+{
+   return my->_db.get_witness_schedule_object().median_props;
+}
+
 feed_history_object database_api::get_feed_history()const {
    return my->_db.get_feed_history();
 }
+
 price database_api::get_current_median_history_price()const {
    return my->_db.get_feed_history().current_median_history;
 }

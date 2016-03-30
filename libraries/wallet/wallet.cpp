@@ -501,7 +501,7 @@ public:
 
          account_create_op.creator = creator_account_name;
          account_create_op.new_account_name = account_name;
-         //account_create_op.fee = _remote_db.get_witness_schedule_object().median_props.account_creation_fee;
+         account_create_op.fee = _remote_db->get_chain_properties().account_creation_fee;
          account_create_op.owner = authority(1, owner_pubkey, 1);
          account_create_op.active = authority(1, active_pubkey, 1);
          account_create_op.memo_key = memo_pubkey;
@@ -1142,6 +1142,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
    op.posting = authority( 1, posting, 1 );
    op.memo_key = memo;
    op.json_metadata = json_meta;
+   op.fee = my->_remote_db->get_chain_properties().account_creation_fee;
 
    signed_transaction tx;
    tx.operations.push_back(op);
