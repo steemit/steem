@@ -115,7 +115,7 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_comment_vote_object_type;
          account_id_type voter;
          comment_id_type comment;
-         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc.
+         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote.
    };
 
    struct by_comment_voter;
