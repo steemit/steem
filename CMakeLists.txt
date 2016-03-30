@@ -54,7 +54,7 @@ MESSAGE(  STATUS "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" )
 if( BUILD_STEEM_TESTNET  )
   MESSAGE( STATUS "     " )
   MESSAGE( STATUS "             CONFIGURING FOR TEST NET             " )
-  MESSAGE( STATUS "     " ) 
+  MESSAGE( STATUS "     " )
   SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIS_TEST_NET" )
   SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIS_TEST_NET" )
 endif()
@@ -159,7 +159,10 @@ endif()
 
 add_subdirectory( libraries )
 add_subdirectory( programs )
-add_subdirectory( tests )
+
+if( BUILD_STEEM_TESTNET  )
+   add_subdirectory( tests )
+endif()
 
 
 if (ENABLE_INSTALLER)
