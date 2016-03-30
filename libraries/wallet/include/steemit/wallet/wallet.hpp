@@ -398,7 +398,7 @@ class wallet_api
 
       annotated_signed_transaction transfer(string from, string to, asset amount, string memo, bool broadcast = false);
       annotated_signed_transaction transfer_to_vesting(string from, string to, asset amount, bool broadcast = false);
-      annotated_signed_transaction withdraw_vesting( string from, share_type vesting_shares, bool broadcast = false );
+      annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );
 
       /**
        *  This method will convert STEEM to SBD or SBD to STEEM at the current_median_history price one
