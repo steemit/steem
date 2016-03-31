@@ -772,7 +772,7 @@ vector<discussion> database_api::get_discussions_in_category_by_total_pending_pa
 }
 
 map<uint32_t,operation_object> database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
-   FC_ASSERT( limit <= 1000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
+   FC_ASSERT( limit <= 2000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
    FC_ASSERT( from >= limit, "From must be greater than limit" );
    idump((account)(from)(limit));
    const auto& idx = my->_db.get_index_type<account_history_index>().indices().get<by_account>();
