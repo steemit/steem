@@ -101,9 +101,21 @@ namespace steemit { namespace chain {
                           const flat_set<string>& posting_approvals = flat_set<string>());
 
 
+   struct annotated_signed_transaction : public signed_transaction {
+      annotated_signed_transaction(){}
+      annotated_signed_transaction( const signed_transaction& trx )
+      :signed_transaction(trx),transaction_id(trx.id()){}
+
+      transaction_id_type transaction_id;
+      uint32_t            block_num = 0;
+      uint32_t            transaction_num = 0;
+   };
+
+
    /// @} transactions group
 
 } } // steemit::chain
 
 FC_REFLECT( steemit::chain::transaction, (ref_block_num)(ref_block_prefix)(expiration)(operations)(extensions) )
 FC_REFLECT_DERIVED( steemit::chain::signed_transaction, (steemit::chain::transaction), (signatures) )
+FC_REFLECT_DERIVED( steemit::chain::annotated_signed_transaction, (steemit::chain::signed_transaction), (transaction_id)(block_num)(transaction_num) );

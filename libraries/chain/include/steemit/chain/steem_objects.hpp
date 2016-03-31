@@ -15,18 +15,32 @@ namespace steemit { namespace chain {
 
    using namespace graphene::db;
 
+   /**
+    *  This object is used to track pending requests to convert sbd to steem
+    */
    class convert_request_object : public abstract_object<convert_request_object> {
       public:
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_convert_request_object_type;
 
          string         owner;
-         uint32_t       requestid = 0; 
+         uint32_t       requestid = 0; ///< id set by owner, the owner,requestid pair must be unique
          asset          amount;
-         time_point_sec conversion_date; 
+         time_point_sec conversion_date; ///< at this time the feed_history_median_price * amount
    };
 
 
+   /**
+    *  If last_update is greater than 1 week, then volume gets reset to 0
+    *
+    *  When a user is a maker, their volume increases
+    *  When a user is a taker, their volume decreases
+    *
+    *  Every 1000 blocks, the account that has the highest volume_weight() is paid the maximum of
+    *  1000 STEEM or 1000 * virtual_supply / (100*blocks_per_year) aka 10 * virtual_supply / blocks_per_year
+    *
+    *  After being paid volume gets reset to 0
+    */
    class liquidity_reward_balance_object : public abstract_object<liquidity_reward_balance_object> {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -36,23 +50,36 @@ namespace steemit { namespace chain {
          int64_t         steem_volume = 0;
          int64_t         sbd_volume = 0;
 
+         /// this is the sort index
          uint128_t volume_weight()const { return steem_volume * sbd_volume * is_positive(); }
 
          inline int is_positive()const { return ( steem_volume > 0 && sbd_volume > 0 ) ? 1 : 0; }
 
-         time_point_sec last_update = fc::time_point_sec::min(); 
+         time_point_sec last_update = fc::time_point_sec::min(); /// used to decay negative liquidity balances. block num
    };
 
+   /**
+    *  This object gets updated once per hour, on the hour
+    */
    class feed_history_object  : public abstract_object<feed_history_object> {
       public:
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_feed_history_object_type;
 
-         price               current_median_history;
-         std::deque<price>   price_history; 
+         price               current_median_history; ///< the current median of the price history, used as the base for convert operations
+         std::deque<price>   price_history; ///< tracks this last week of median_feed one per hour
    };
 
 
+
+   /**
+    *  @brief an offer to sell a amount of a asset at a specified exchange rate by a certain time
+    *  @ingroup object
+    *  @ingroup protocol
+    *  @ingroup market
+    *
+    *  This limit_order_objects are indexed by @ref expiration and is automatically deleted on the first block after expiration.
+    */
    class limit_order_object : public abstract_object<limit_order_object>
    {
       public:
@@ -63,7 +90,7 @@ namespace steemit { namespace chain {
          time_point_sec   expiration;
          string           seller;
          uint32_t         orderid;
-         share_type       for_sale;
+         share_type       for_sale; ///< asset id is sell_price.base.symbol
          price            sell_price;
 
          pair<asset_symbol_type,asset_symbol_type> get_market()const
@@ -146,6 +173,9 @@ namespace steemit { namespace chain {
       >
    > liquidity_reward_balance_index_type;
 
+   /**
+    * @ingroup object_index
+    */
    typedef generic_index< convert_request_object,           convert_request_index_type >           convert_index;
    typedef generic_index< limit_order_object,               limit_order_multi_index_type >         limit_order_index;
    typedef generic_index< liquidity_reward_balance_object,  liquidity_reward_balance_index_type >  liquidity_reward_index;

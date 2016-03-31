@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
+ */
 #pragma once
 #include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/global_property_object.hpp>
@@ -20,17 +23,19 @@ namespace steemit { namespace chain {
    using graphene::db::abstract_object;
    using graphene::db::object;
 
+   /**
+    *   @class database
+    *   @brief tracks the blockchain state in an extensible manner
+    */
    class database : public graphene::db::object_database
    {
       public:
-         //////////////////// db_management.cpp ////////////////////
-
-         bool is_producing()const { return _is_producing; }
-         void set_producing( bool p ) { _is_producing = p;  } 
-         bool _is_producing = false;
-
          database();
          ~database();
+
+         bool is_producing()const { return _is_producing; }
+         void set_producing( bool p ) { _is_producing = p;  }
+         bool _is_producing = false;
 
          enum validation_steps
          {

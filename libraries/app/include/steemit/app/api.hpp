@@ -79,6 +79,11 @@ namespace steemit { namespace app {
           */
          void broadcast_transaction_with_callback( confirmation_callback cb, const signed_transaction& trx);
 
+         /**
+          * This call will not return until the transaction is included in a block.
+          */
+         fc::variant broadcast_transaction_synchronous( const signed_transaction& trx);
+
          void broadcast_block( const signed_block& block );
 
          /**
@@ -190,6 +195,7 @@ FC_REFLECT( steemit::app::network_broadcast_api::transaction_confirmation,
 FC_API(steemit::app::network_broadcast_api,
        (broadcast_transaction)
        (broadcast_transaction_with_callback)
+       (broadcast_transaction_synchronous)
        (broadcast_block)
      )
 FC_API(steemit::app::network_node_api,

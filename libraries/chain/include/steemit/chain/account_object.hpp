@@ -19,9 +19,9 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_account_object_type;
 
          string          name;
-         authority       owner; 
-         authority       active; 
-         authority       posting; 
+         authority       owner; ///< used for backup control, can set owner or active
+         authority       active; ///< used for all monetary operations, can set active or posting
+         authority       posting; ///< used for voting and posting
          public_key_type memo_key;
          string          json_metadata;
          string          proxy;
@@ -30,27 +30,51 @@ namespace steemit { namespace chain {
          uint32_t        comment_count = 0;
          uint32_t        lifetime_vote_count = 0;
 
-         uint16_t        voting_power = STEEMIT_100_PERCENT;   
-         time_point_sec  last_vote_time; 
+         uint16_t        voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
+         time_point_sec  last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
 
-         asset           balance = asset( 0, STEEM_SYMBOL );  
+         asset           balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
 
+         /**
+          *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
+          *  fields is to track the total (time * sbd_balance) that it is held. Then at the appointed time
+          *  interest can be paid using the following equation:
+          *
+          *  interest = interest_rate * sbd_seconds / seconds_per_year
+          *
+          *  Every time the sbd_balance is updated the sbd_seconds is also updated. If at least
+          *  STEEMIT_MIN_COMPOUNDING_INTERVAL_SECONDS has past since sbd_last_interest_payment then
+          *  interest is added to sbd_balance.
+          *
+          *  @defgroup sbd_data sbd Balance Data
+          */
          ///@{
-         asset              sbd_balance = asset( 0, SBD_SYMBOL ); 
-         fc::uint128_t      sbd_seconds; 
-         fc::time_point_sec sbd_seconds_last_update; 
-         fc::time_point_sec sbd_last_interest_payment; 
+         asset              sbd_balance = asset( 0, SBD_SYMBOL ); /// total sbd balance
+         fc::uint128_t      sbd_seconds; ///< total sbd * how long it has been hel
+         fc::time_point_sec sbd_seconds_last_update; ///< the last time the sbd_seconds was updated
+         fc::time_point_sec sbd_last_interest_payment; ///< used to pay interest at most once per month
          ///@}
 
 
-         asset           vesting_shares = asset( 0, VESTS_SYMBOL ); 
-         asset           vesting_withdraw_rate = asset( 0, VESTS_SYMBOL ); 
-         time_point_sec  next_vesting_withdrawal = fc::time_point_sec::maximum(); 
-         share_type      withdrawn = 0; 
-         share_type      to_withdraw = 0;
+         asset           vesting_shares = asset( 0, VESTS_SYMBOL ); ///< total vesting shares held by this account, controls its voting power
+         asset           vesting_withdraw_rate = asset( 0, VESTS_SYMBOL ); ///< at the time this is updated it can be at most vesting_shares/104
+         time_point_sec  next_vesting_withdrawal = fc::time_point_sec::maximum(); ///< after every withdrawal this is incremented by 1 week
+         share_type      withdrawn = 0; /// Track how many shares have been withdrawn
+         share_type      to_withdraw = 0; /// Might be able to look this up with operation history.
 
-         share_type      proxied_vsf_votes; 
+         share_type      proxied_vsf_votes; ///< the total VFS votes proxied to this account
 
+         /**
+          *  This field tracks the average bandwidth consumed by this account and gets updated every time a transaction
+          *  is produced by this account using the following equation. It has units of micro-bytes-per-second.
+          *
+          *  W = STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS = 1 week in seconds
+          *  S = now - last_bandwidth_update
+          *  N = fc::raw::packsize( transaction ) * 1,000,000
+          *
+          *  average_bandwidth = MIN(0,average_bandwidth * (W-S) / W) +  N * S / W
+          *  last_bandwidth_update = T + S
+          */
          uint64_t        average_bandwidth  = 0;
          uint64_t        lifetime_bandwidth = 0;
          time_point_sec  last_bandwidth_update;
@@ -64,6 +88,10 @@ namespace steemit { namespace chain {
          share_type      witness_vote_weight()const { return vesting_shares.amount + proxied_vsf_votes; }
    };
 
+   /**
+    *  @brief This secondary index will allow a reverse lookup of all accounts that a particular key or account
+    *  is an potential signing authority.
+    */
    class account_member_index : public secondary_index
    {
       public:
@@ -72,6 +100,7 @@ namespace steemit { namespace chain {
          virtual void about_to_modify( const object& before ) override;
          virtual void object_modified( const object& after  ) override;
 
+         /** given an account or key, map it to the set of accounts that reference it in an active or owner authority */
          map< string, set<string> >          account_to_account_memberships;
          map< public_key_type, set<string> > account_to_key_memberships;
 
@@ -123,5 +152,6 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)
                     (proxied_vsf_votes)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
-                    (average_market_bandwidth)(last_market_bandwidth_update)(last_post)
+                    (average_market_bandwidth)(last_market_bandwidth_update)
+                    (last_post)
                   )

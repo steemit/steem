@@ -236,9 +236,16 @@ dynamic_global_property_object database_api::get_dynamic_global_properties()cons
 {
    return my->get_dynamic_global_properties();
 }
+
+chain_properties database_api::get_chain_properties()const
+{
+   return my->_db.get_witness_schedule_object().median_props;
+}
+
 feed_history_object database_api::get_feed_history()const {
    return my->_db.get_feed_history();
 }
+
 price database_api::get_current_median_history_price()const {
    return my->_db.get_feed_history().current_median_history;
 }
@@ -597,15 +604,22 @@ discussion database_api::get_content( string author, string permlink )const {
    return discussion();
 }
 
-vector<comment_vote_object> database_api::get_active_votes( comment_id_type cid )const {
-   vector<comment_vote_object> result;
+vector<vote_state> database_api::get_active_votes( string author, string permlink )const
+{
+   vector<vote_state> result;
+   const auto& comment = my->_db.get_comment( author, permlink );
    const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_comment_voter >();
+   comment_id_type cid(comment.id);
    auto itr = idx.lower_bound( cid );
    while( itr != idx.end() && itr->comment == cid )
-      result.push_back(*itr);
+   {
+      const auto& vo = itr->voter(my->_db);
+      result.push_back(vote_state{vo.name,itr->weight});
+      ++itr;
+   }
    return result;
-}
 
+}
 
 void database_api::set_pending_payout( discussion& d )const
 {
@@ -1034,12 +1048,27 @@ state database_api::get_state( string path )const
       _state.accounts[a] = my->_db.get_account( a );
    }
    for( auto& d : _state.content ) {
-      d.second.active_votes = get_active_votes( d.second.id );
+      d.second.active_votes = get_active_votes( d.second.author, d.second.permlink );
    }
 
    _state.witnesses = my->_db.get_witness_schedule_object();
 
    return _state;
+}
+
+annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const {
+   const auto& idx = my->_db.get_index_type<operation_index>().indices().get<by_transaction_id>();
+   auto itr = idx.lower_bound( id );
+   if( itr != idx.end() && itr->trx_id == id ) {
+      auto blk = my->_db.fetch_block_by_number( itr->block );
+      FC_ASSERT( blk.valid() );
+      FC_ASSERT( blk->transactions.size() > itr->trx_in_block );
+      annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
+      result.block_num       = itr->block;
+      result.transaction_num = itr->trx_in_block;
+      return result;
+   }
+   FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
 }
 
 } } // steemit::app

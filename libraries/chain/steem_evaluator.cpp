@@ -12,6 +12,8 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
 
+   if ( db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 ); /// TODO: Enforce at next Hardfork
+
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
    if( wit_itr != by_witness_name_idx.end() )
@@ -96,6 +98,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    db().modify( auth, [&]( account_object& a ) {
       a.last_post = now;
    });
+
 
    comment_id_type id;
 
@@ -371,17 +374,16 @@ void custom_evaluator::do_apply( const custom_operation& o ){
 
 void pow_evaluator::do_apply( const pow_operation& o ) {
    const auto& dgp = db().get_dynamic_global_properties();
+
    FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
-   if( db().is_producing() )  {
+   if( db().is_producing() )  { /// TODO: make this a hard fork in the future
       const auto& witness_by_work = db().get_index_type<witness_index>().indices().get<by_work>();
       auto work_itr = witness_by_work.find( o.work.work );
       if( work_itr != witness_by_work.end() ) {
           FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
       }
    }
-   else
-      wdump((o.worker_account)(o.work.work));
 
    const auto& accounts_by_name = db().get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.worker_account);

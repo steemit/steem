@@ -22,6 +22,10 @@ namespace steemit { namespace app {
       vector<string> recent; /// recently created
       vector<string> best; /// total lifetime payout
    };
+   struct vote_state {
+      string   voter;
+      uint64_t weight;
+   };
 
    struct  discussion : public comment_object {
       discussion( const comment_object& o ):comment_object(o){}
@@ -29,7 +33,7 @@ namespace steemit { namespace app {
 
       asset                       pending_payout_value; ///< sbd
       asset                       total_pending_payout_value; ///< sbd including replies
-      vector<comment_vote_object> active_votes;
+      vector<vote_state>          active_votes;
       vector<string>              replies; ///< author/slug mapping
    };
 
@@ -127,6 +131,7 @@ FC_REFLECT_DERIVED( steemit::app::extended_account,
                    (transfer_history)(market_history)(post_history)(vote_history)(other_history)(posts) )
 
 
+FC_REFLECT( steemit::app::vote_state, (voter)(weight) );
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(maturing)(best) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )

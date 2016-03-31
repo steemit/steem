@@ -14,6 +14,9 @@ namespace steemit { namespace chain {
 
    using namespace graphene::db;
 
+   /**
+    *  Used to track the trending categories
+    */
    class category_object : public abstract_object<category_object> {
       public:
          static const uint8_t space_id = implementation_ids;
@@ -78,21 +81,33 @@ namespace steemit { namespace chain {
          time_point_sec    last_update;
          time_point_sec    created;
 
-         uint8_t           depth = 0; 
-         uint32_t          children = 0; 
+         uint8_t           depth = 0; ///< used to track max nested depth
+         uint32_t          children = 0; ///< used to track the total number of children, grandchildren, etc...
 
+         /**
+          *  Used to track the total rshares^2 of all children, this is used for indexing purposes. A discussion
+          *  that has a nested comment of high value should promote the entire discussion so that the comment can
+          *  be reviewed.
+          */
          fc::uint128_t     children_rshares2;
 
 
-         share_type        net_rshares; 
-         share_type        abs_rshares; 
-         time_point_sec    cashout_time;
-         uint64_t          total_vote_weight = 0; 
+         /// index on pending_payout for "things happning now... needs moderation"
+         /// TRENDING = UNCLAIMED + PENDING
+         share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
+         share_type        abs_rshares; /// this is used to track the total abs(weight) of votes for the purpose of calculating cashout_time
+         time_point_sec    cashout_time; /// 24 hours from the weighted average of vote time
+         uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
 
+         /** tracks the total payout this comment has received over time, measured in SBD */
          asset             total_payout_value = asset(0, SBD_SYMBOL);
    };
 
 
+   /**
+    * This index maintains the set of voter/comment pairs that have been used, voters cannot
+    * vote on the same comment more than once per payout period.
+    */
    class comment_vote_object : public abstract_object<comment_vote_object>
    {
       public:
@@ -100,7 +115,7 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_comment_vote_object_type;
          account_id_type voter;
          comment_id_type comment;
-         uint64_t        weight = 0; 
+         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote.
    };
 
    struct by_comment_voter;

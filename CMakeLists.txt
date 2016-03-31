@@ -49,6 +49,16 @@ LIST(APPEND BOOST_COMPONENTS thread
                              locale)
 SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 
+OPTION( BUILD_STEEM_TESTNET "Build source for test network (ON OR OFF)" OFF )
+MESSAGE(  STATUS "BUILD_STEEM_TESTNET: ${BUILD_STEEM_TESTNET}" )
+if( BUILD_STEEM_TESTNET  )
+  MESSAGE( STATUS "     " )
+  MESSAGE( STATUS "             CONFIGURING FOR TEST NET             " )
+  MESSAGE( STATUS "     " )
+  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIS_TEST_NET" )
+  SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIS_TEST_NET" )
+endif()
+
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
   set(Boost_USE_MULTITHREADED ON)
@@ -150,6 +160,10 @@ endif()
 add_subdirectory( libraries )
 add_subdirectory( programs )
 
+if( BUILD_STEEM_TESTNET  )
+   add_subdirectory( tests )
+endif()
+
 
 if (ENABLE_INSTALLER)
 
@@ -199,3 +213,11 @@ endif(LINUX)
 
  include(CPack)
 endif(ENABLE_INSTALLER)
+
+if( BUILD_STEEM_TESTNET )
+  MESSAGE( STATUS "\n\n             CONFIGURED FOR TEST NETWORK             \n\n" )
+else()
+  MESSAGE( STATUS "\n\n             CONFIGURED FOR STEEM NETWORK             \n\n" )
+endif()
+
+

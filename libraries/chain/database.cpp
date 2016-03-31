@@ -83,7 +83,6 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply )
                          ("last_block->block_num()",last_block->block_num())( "head_block_num", head_block_num()) );
          }
       }
-      //idump((head_block_id())(head_block_num()));
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
@@ -164,7 +163,6 @@ void database::close(bool rewind)
       try
       {
          uint32_t cutoff = get_dynamic_global_properties().last_irreversible_block_num;
-         //idump((head_block_num()));
          //ilog( "rewinding to last irreversible block number ${c}", ("c",cutoff) );
 
          clear_pending();
@@ -355,6 +353,7 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
              fc::uint128 account_average_bandwidth( acnt.average_bandwidth );
              fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
 
+             // account_vshares / total_vshares  > account_average_bandwidth / max_virtual_bandwidth
              FC_ASSERT( (account_vshares * max_virtual_bandwidth) > (account_average_bandwidth * total_vshares),
                         "account exceeded maximum allowed bandwidth per vesting share",
                         ("account_vshares",account_vshares)
@@ -396,6 +395,8 @@ void database::update_account_market_bandwidth( const account_object& a, uint32_
 
              fc::uint128 account_average_bandwidth( acnt.average_market_bandwidth );
              fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth / 10 ); /// only 10% of bandwidth can be market
+
+             // account_vshares / total_vshares  > account_average_bandwidth / max_virtual_bandwidth
              FC_ASSERT( (account_vshares * max_virtual_bandwidth) > (account_average_bandwidth * total_vshares),
                         "account exceeded maximum allowed market bandwidth per vesting share",
                         ("account_vshares",account_vshares)
@@ -430,6 +431,12 @@ bool database::before_last_checkpoint()const
    return (_checkpoints.size() > 0) && (_checkpoints.rbegin()->first >= head_block_num());
 }
 
+/**
+ * Push block "may fail" in which case every partial change is unwound.  After
+ * push block is successful the block is appended to the chain database on disk.
+ *
+ * @return true if we switched forks as a result of this push.
+ */
 bool database::push_block(const signed_block& new_block, uint32_t skip)
 {
    bool result;
@@ -574,13 +581,11 @@ signed_block database::generate_block(
    uint32_t skip /* = 0 */
    )
 {
-   set_producing( true );
    signed_block result;
    detail::with_skip_flags( *this, skip, [&]()
    {
       result = _generate_block( when, witness_owner, block_signing_private_key );
    } );
-   set_producing( false );
    return result;
 }
 
@@ -844,9 +849,8 @@ fc::sha256 database::get_pow_target()const {
  */
 void database::update_witness_schedule()
 {
-      const auto& props = get_dynamic_global_properties();
+   const auto& props = get_dynamic_global_properties();
    const witness_schedule_object& wso = witness_schedule_id_type()(*this);
-   //idump((wso.next_shuffle_block_num)(props.num_pow_witnesses) );
    if( (head_block_num() % STEEMIT_MAX_MINERS) == 0 ) //wso.next_shuffle_block_num )
    {
       vector<string> active_witnesses;
@@ -1019,6 +1023,10 @@ void database::clear_witness_votes( const account_object& a ) {
   }
 }
 
+/**
+ * This method recursively tallies children_rshares2 for this post plus all of its parents,
+ * TODO: this method can be skipped for validation-only nodes
+ */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 ) {
 
    modify( c, [&](comment_object& comment ){
@@ -1039,6 +1047,13 @@ void database::process_vesting_withdrawals() {
    while( current != widx.end() && current->next_vesting_withdrawal <= head_block_time() ) {
       const auto& cur = *current; ++current;
 
+      /**
+      *  Let T = total tokens in vesting fund
+      *  Let V = total vesting shares
+      *  Let v = total vesting shares being cashed out
+      *
+      *  The user may withdraw  vT / V tokens
+      */
       share_type withdrawn_vesting;
       if ( cur.to_withdraw - cur.withdrawn < cur.vesting_withdraw_rate.amount )
          withdrawn_vesting = std::min( cur.vesting_shares.amount, cur.to_withdraw % cur.vesting_withdraw_rate.amount ).value;
@@ -1083,6 +1098,7 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
       if( c.total_payout_value.symbol == sbd_created.symbol )
          c.total_payout_value += sbd_created;
    });
+   /// TODO: potentially modify author's total payout numbers as well
 }
 
 /**
@@ -1103,32 +1119,44 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
       auto sbd_created  = create_sbd( author, sbd_reward );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
 
+      /// push virtual operation for this reward payout
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
 
+      /// only recurse if the SBD created is more than $0.02, this should stop recursion quickly for
+      /// small payouts.
       if( sbd_created > asset( 20, SBD_SYMBOL ) )
       {
          const auto& parent = get_comment( cur.parent_author, cur.parent_permlink );
-         sbd_created.amount *= 2; 
+         sbd_created.amount *= 2; /// 50/50 VESTING SBD means total value is 2x
 
          cashout_comment_helper( parent, origin, parent_vesting_steem_reward, parent_sbd_reward );
-      } else { 
+      } else { /// parent gets the full change, recursion stops
 
          const auto& parent_author = get_account(cur.parent_author);
          vest_created = create_vesting( parent_author, vesting_steem_reward );
          sbd_created  = create_sbd( parent_author, sbd_reward );
 
+         /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
          push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
          adjust_total_payout( get_comment( cur.parent_author, cur.parent_permlink ), sbd_created + to_sbd( vesting_steem_reward ) );
       }
-   } else { 
+   } else { /// no parent, everything goes to the post
       auto vest_created = create_vesting( author, vesting_steem_reward );
       auto sbd_created  = create_sbd( author, sbd_reward );
 
+      /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
+      /// push virtual operation for this reward payout
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
    }
 }
 
+/**
+ *  This method will iterate through all comment_vote_objects and give them
+ *  (max_rewards * weight) / c.total_vote_weight.
+ *
+ *  @returns unclaimed rewards.
+ */
 share_type database::pay_curators( const comment_object& c, share_type max_rewards )
 {
    u256 total_weight( c.total_vote_weight );
@@ -1155,6 +1183,9 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
 }
 
 void database::process_comment_cashout() {
+   /// don't allow any content to get paid out until the website is ready to launch
+   /// and people have had a week to start posting.  The first cashout will be the biggest because it
+   /// will represent 2+ months of rewards.
    if( head_block_time() < STEEMIT_FIRST_CASHOUT_TIME )
       return;
 
@@ -1199,6 +1230,10 @@ void database::process_comment_cashout() {
 
 
       modify( cur, [&]( comment_object& c ) {
+         /**
+          * A payout is only made for positive rshares, negative rshares hang around
+          * for the next time this post might get an upvote.
+          */
          if( c.net_rshares > 0 )
              c.net_rshares = 0;
          c.abs_rshares  = 0;
@@ -1215,6 +1250,16 @@ void database::process_comment_cashout() {
    }
 }
 
+/**
+ *  Overall the network has an inflation rate of 102% of virtual steem per year
+ *  90% of inflation is directed to vesting shares
+ *  10% of inflation is directed to subjective proof of work voting
+ *  1% of inflation is directed to liquidity providers
+ *  1% of inflation is directed to block producers
+ *
+ *  This method pays out vesting and reward shares every block, and liquidity shares once per day.
+ *  This method does not pay out witnesses.
+ */
 void database::process_funds() {
    const auto& props = get_dynamic_global_properties();
 
@@ -1304,6 +1349,11 @@ void database::pay_liquidity_reward() {
    }
 }
 
+/**
+ *  Iterates over all conversion requests with a conversion date before
+ *  the head block time and then converts them to/from steem/sbd at the
+ *  current median price feed history price times the premium
+ */
 void database::process_conversions() {
    auto now = head_block_time();
    const auto& request_by_date = get_index_type<convert_index>().indices().get<by_conversion_date>();
@@ -1358,6 +1408,10 @@ asset database::to_steem( const asset& sbd )const {
    return sbd * feed_history.current_median_history;
 }
 
+/**
+ *  This method reduces the rshare^2 supply and returns the number of tokens are
+ *  redeemed.
+ */
 share_type database::claim_rshare_reward( share_type rshares ) {
    FC_ASSERT( rshares > 0 );
 
@@ -1777,6 +1831,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       ++_current_op_in_trx;
    }
 
+
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
@@ -1859,11 +1914,27 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.current_aslot += missed_blocks+1;
       dgp.average_block_size =  (99 * dgp.average_block_size + block_size)/100;
 
+      /**
+       *  About once per minute the average network use is consulted and used to
+       *  adjust the reserve ratio. Anything above 50% usage reduces the ratio by
+       *  half which should instantly bring the network from 50% to 25% use unless
+       *  the demand comes from users who have surplus capacity. In other words,
+       *  a 50% reduction in reserve ratio does not result in a 50% reduction in usage,
+       *  it will only impact users who where attempting to use more than 50% of their
+       *  capacity.
+       *
+       *  When the reserve ratio is at its max (10,000) a 50% reduction will take 3 to
+       *  4 days to return back to maximum.  When it is at its minimum it will return
+       *  back to its prior level in just a few minutes.
+       *
+       *  If the network reserve ratio falls under 100 then it is probably time to
+       *  increase the capacity of the network.
+       */
       if( dgp.head_block_number % 20 == 0 ) {
          if( dgp.average_block_size > dgp.maximum_block_size/2 )
          {
-           dgp.current_reserve_ratio /= 2; 
-         } else { 
+           dgp.current_reserve_ratio /= 2; /// exponential back up
+         } else { /// linear growth... not much fine grain control near full capacity
            dgp.current_reserve_ratio++;
          }
       }
