@@ -313,6 +313,7 @@ public:
                                                                           " old");
       result["participation"] = (100*dynamic_props.recent_slots_filled.popcount()) / 128.0;
       result["median_sbd_price"] = _remote_db->get_current_median_history_price();
+      result["account_creation_fee"] = _remote_db->get_chain_properties().account_creation_fee;
       return result;
    }
 
@@ -327,8 +328,8 @@ public:
       //result["blockchain_name"]        = BLOCKCHAIN_NAME;
       //result["blockchain_description"] = BTS_BLOCKCHAIN_DESCRIPTION;
       result["client_version"]           = client_version;
-      result["graphene_revision"]        = graphene::utilities::git_revision_sha;
-      result["graphene_revision_age"]    = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
+      result["steem_revision"]           = graphene::utilities::git_revision_sha;
+      result["steem_revision_age"]       = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
       result["fc_revision"]              = fc::git_revision_sha;
       result["fc_revision_age"]          = fc::get_approximate_relative_time_string( fc::time_point_sec( fc::git_revision_unix_timestamp ) );
       result["compile_date"]             = "compiled on " __DATE__ " at " __TIME__;
@@ -1018,19 +1019,11 @@ string wallet_api::gethelp(const string& method)const
    std::stringstream ss;
    ss << "\n";
 
-   if( method == "import_key" )
-   {
-      ss << "usage: import_key WIF_PRIVATE_KEY\n\n";
-      ss << "example: import_key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\n";
-   }
+   std::string doxygenHelpString = my->method_documentation.get_detailed_description(method);
+   if (!doxygenHelpString.empty())
+      ss << doxygenHelpString;
    else
-   {
-      std::string doxygenHelpString = my->method_documentation.get_detailed_description(method);
-      if (!doxygenHelpString.empty())
-         ss << doxygenHelpString;
-      else
-         ss << "No help defined for method " << method << "\n";
-   }
+      ss << "No help defined for method " << method << "\n";
 
    return ss.str();
 }
