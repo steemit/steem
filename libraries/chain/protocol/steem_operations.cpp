@@ -168,12 +168,11 @@ namespace steemit { namespace chain {
    }
 
    void pow::create( const fc::ecc::private_key& w, const digest_type& i ) {
-      worker = w.get_public_key();
       input  = i;
-      signature = w.sign_compact(input);
+      signature = w.sign_compact(input,false);
 
       auto sig_hash            = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
 
       work = fc::sha256::hash(recover);
    }

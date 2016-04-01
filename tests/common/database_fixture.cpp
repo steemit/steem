@@ -50,6 +50,10 @@ database_fixture::database_fixture()
    // app.initialize();
    ahplugin->plugin_set_app( &app );
    ahplugin->plugin_initialize( options );
+
+   // Set account create fee to a smaller amount
+   const auto& init_miner = db.get_witness( STEEMIT_INIT_MINER_NAME );
+
    generate_block();
    vest( "initminer", 10000 );
 
@@ -212,7 +216,7 @@ const witness_object& database_fixture::witness_create(
       op.owner = owner;
       op.url = url;
       op.block_signing_key = signing_key;
-      op.fee = fee;
+      op.fee = asset( fee, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
       trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
@@ -328,7 +332,8 @@ void database_fixture::set_price_feed( const price& new_price )
          catch ( fc::assert_exception e )
          {
             account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-            witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, 0 );
+            fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
+            witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
          }
 
          feed_publish_operation op;
