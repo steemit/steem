@@ -510,6 +510,7 @@ public:
          signed_transaction tx;
 
          tx.operations.push_back( account_create_op );
+         tx.validate();
 
          if( save_wallet )
             save_wallet_file();
@@ -534,9 +535,6 @@ public:
 
       return sign_transaction( tx, broadcast );
    } FC_CAPTURE_AND_RETHROW( (account_to_modify)(proxy)(broadcast) ) }
-
-
-
 
    optional< witness_object > get_witness( string owner_account )
    {
@@ -742,6 +740,23 @@ public:
             ss << std::left << std::setw(50) << fc::json::to_string(opop[1]) << "\n ";
          }
          return ss.str();
+      };
+      m["get_order_book"] = []( variant result, const fc::variants& a ) {
+         auto orders = result.as< order_book >();
+         std::stringstream ss;
+         asset bid_sum = asset( 0, SBD_SYMBOL );
+         asset ask_sum = asset( 0, STEEM_SYMBOL );
+         int spacing = 20;
+
+         ss << "   Bids" << setw( ( spacing * 4 ) + 9 ) << "Asks\n"
+            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing ) << "STEEM" << ' ' << setw( spacing )
+            << "SBD" << setw( spacing ) << "Sum(SBD)"
+            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing ) << "STEEM" << ' ' << setw( spacing )
+            << "SBD" << setw( spacing ) << "Sum(STEEM)"
+            << "\n====================================================================================="
+            << "|=====================================================================================\n";
+
+            return ss.str();
       };
 
       return m;
@@ -974,14 +989,12 @@ optional< witness_object > wallet_api::get_witness(string owner_account)
 annotated_signed_transaction wallet_api::set_voting_proxy(string account_to_modify, string voting_account, bool broadcast /* = false */)
 { return my->set_voting_proxy(account_to_modify, voting_account, broadcast); }
 
-
 void wallet_api::set_wallet_filename(string wallet_filename) { my->_wallet_filename = wallet_filename; }
 
 annotated_signed_transaction wallet_api::sign_transaction(signed_transaction tx, bool broadcast /* = false */)
 { try {
    return my->sign_transaction( tx, broadcast);
 } FC_CAPTURE_AND_RETHROW( (tx) ) }
-
 
 operation wallet_api::get_prototype_operation(string operation_name) {
    return my->get_prototype_operation( operation_name );
@@ -1139,6 +1152,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
 
    signed_transaction tx;
    tx.operations.push_back(op);
+   tx.validate();
 
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta)(owner)(active)(memo)(broadcast) ) }
@@ -1162,9 +1176,245 @@ annotated_signed_transaction wallet_api::update_account(
 
    signed_transaction tx;
    tx.operations.push_back(op);
+   tx.validate();
 
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (account_name)(json_meta)(owner)(active)(memo)(broadcast) ) }
+
+annotated_signed_transaction wallet_api::update_account_auth_key( string account_name, authority_type type, public_key_type key, weight_type weight, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   auto accounts = my->_remote_db->get_accounts( { account_name } );
+   FC_ASSERT( accounts.size() == 1, "Account does not exist" );
+   FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
+
+   account_update_operation op;
+   op.account = account_name;
+   op.memo_key = accounts[0].memo_key;
+   op.json_metadata = accounts[0].json_metadata;
+
+   authority new_auth;
+
+   switch( type )
+   {
+      case( owner ):
+         new_auth = accounts[0].owner;
+         break;
+      case( active ):
+         new_auth = accounts[0].active;
+         break;
+      case( posting ):
+         new_auth = accounts[0].posting;
+         break;
+   }
+
+   if( weight == 0 ) // Remove the key
+   {
+      new_auth.key_auths.erase( key );
+   }
+   else
+   {
+      new_auth.add_authority( key, weight );
+   }
+
+   if( new_auth.is_impossible() )
+   {
+      if ( type == owner )
+      {
+         FC_ASSERT( false, "Owner authority change would render account irrecoverable." );
+      }
+
+      wlog( "Authority is now impossible." );
+   }
+
+   switch( type )
+   {
+      case( owner ):
+         op.owner = new_auth;
+         break;
+      case( active ):
+         op.active = new_auth;
+         break;
+      case( posting ):
+         op.posting = new_auth;
+         break;
+   }
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::update_account_auth_account( string account_name, authority_type type, string auth_account, weight_type weight, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   auto accounts = my->_remote_db->get_accounts( { account_name } );
+   FC_ASSERT( accounts.size() == 1, "Account does not exist" );
+   FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
+
+   account_update_operation op;
+   op.account = account_name;
+   op.memo_key = accounts[0].memo_key;
+   op.json_metadata = accounts[0].json_metadata;
+
+   authority new_auth;
+
+   switch( type )
+   {
+      case( owner ):
+         new_auth = accounts[0].owner;
+         break;
+      case( active ):
+         new_auth = accounts[0].active;
+         break;
+      case( posting ):
+         new_auth = accounts[0].posting;
+         break;
+   }
+
+   if( weight == 0 ) // Remove the key
+   {
+      new_auth.account_auths.erase( auth_account );
+   }
+   else
+   {
+      new_auth.add_authority( auth_account, weight );
+   }
+
+   if( new_auth.is_impossible() )
+   {
+      if ( type == owner )
+      {
+         FC_ASSERT( false, "Owner authority change would render account irrecoverable." );
+      }
+
+      wlog( "Authority is now impossible." );
+   }
+
+   switch( type )
+   {
+      case( owner ):
+         op.owner = new_auth;
+         break;
+      case( active ):
+         op.active = new_auth;
+         break;
+      case( posting ):
+         op.posting = new_auth;
+         break;
+   }
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::update_account_auth_threshold( string account_name, authority_type type, uint32_t threshold, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   auto accounts = my->_remote_db->get_accounts( { account_name } );
+   FC_ASSERT( accounts.size() == 1, "Account does not exist" );
+   FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
+   FC_ASSERT( threshold != 0, "Authority is implicitly satisfied" );
+
+   account_update_operation op;
+   op.account = account_name;
+   op.memo_key = accounts[0].memo_key;
+   op.json_metadata = accounts[0].json_metadata;
+
+   authority new_auth;
+
+   switch( type )
+   {
+      case( owner ):
+         new_auth = accounts[0].owner;
+         break;
+      case( active ):
+         new_auth = accounts[0].active;
+         break;
+      case( posting ):
+         new_auth = accounts[0].posting;
+         break;
+   }
+
+   new_auth.weight_threshold = threshold;
+
+   if( new_auth.is_impossible() )
+   {
+      if ( type == owner )
+      {
+         FC_ASSERT( false, "Owner authority change would render account irrecoverable." );
+      }
+
+      wlog( "Authority is now impossible." );
+   }
+
+   switch( type )
+   {
+      case( owner ):
+         op.owner = new_auth;
+         break;
+      case( active ):
+         op.active = new_auth;
+         break;
+      case( posting ):
+         op.posting = new_auth;
+         break;
+   }
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::update_account_meta( string account_name, string json_meta, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   auto accounts = my->_remote_db->get_accounts( { account_name } );
+   FC_ASSERT( accounts.size() == 1, "Account does not exist" );
+   FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
+
+   account_update_operation op;
+   op.account = account_name;
+   op.memo_key = accounts[0].memo_key;
+   op.json_metadata = json_meta;
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::update_account_memo_key( string account_name, public_key_type key, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   auto accounts = my->_remote_db->get_accounts( { account_name } );
+   FC_ASSERT( accounts.size() == 1, "Account does not exist" );
+   FC_ASSERT( account_name == accounts[0].name, "Account name doesn't match?" );
+
+   account_update_operation op;
+   op.account = account_name;
+   op.memo_key = key;
+   op.json_metadata = accounts[0].json_metadata;
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
 
 /**
  *  This method will genrate new owner, active, and memo keys for the new account which
@@ -1200,6 +1450,7 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
 
    signed_transaction tx;
    tx.operations.push_back(op);
+   tx.validate();
 
    return my->sign_transaction( tx, broadcast );
 }
@@ -1305,6 +1556,11 @@ app::state wallet_api::get_state( string url ) {
    return my->_remote_db->get_state(url);
 }
 
+order_book wallet_api::get_order_book( uint32_t limit )
+{
+   FC_ASSERT( limit <= 1000 );
+   return my->_remote_db->get_order_book( limit );
+}
 
 annotated_signed_transaction wallet_api::create_order(  string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast )
 {

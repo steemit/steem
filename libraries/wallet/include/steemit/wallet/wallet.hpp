@@ -75,6 +75,13 @@ struct signed_block_with_info : public signed_block
    vector< transaction_id_type > transaction_ids;
 };
 
+enum authority_type
+{
+   owner,
+   active,
+   posting
+};
+
 namespace detail {
 class wallet_api_impl;
 }
@@ -127,7 +134,7 @@ class wallet_api
 
       /** Return the current price feed history
        *
-       * #returns Price feed history data on the blockchain
+       * @returns Price feed history data on the blockchain
        */
       feed_history_object                 get_feed_history()const;
 
@@ -327,6 +334,19 @@ class wallet_api
       string normalize_brain_key(string s) const;
 
       /**
+       *  This method will genrate new owner, active, and memo keys for the new account which
+       *  will be controlable by this wallet. There is a fee associated with account creation
+       *  that is paid by the creator. The current account creation fee can be found with the
+       *  'info' wallet command.
+       *
+       *  @param creator The account creating the new account
+       *  @param new_account_name The name of the new account
+       *  @param json_meta JSON Metadata associated with the new account
+       *  @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+
+      /**
        * This method is used by faucets to create new accounts for other users which must
        * provide their desired keys. The resulting account may not be controllable by this
        * wallet. There is a fee associated with account creation that is paid by the creator.
@@ -370,17 +390,64 @@ class wallet_api
                                          bool broadcast )const;
 
       /**
-       *  This method will genrate new owner, active, and memo keys for the new account which
-       *  will be controlable by this wallet. There is a fee associated with account creation
-       *  that is paid by the creator. The current account creation fee can be found with the
-       *  'info' wallet command.
+       * This method updates the key of an authority for an exisiting account.
+       * Warning: You can create impossible authorities using this method. The method
+       * will fail if you create an impossible owner authority, but will allow impossible
+       * active and posting authorities.
        *
-       *  @param creator The account creating the new account
-       *  @param new_account_name The name of the new account
-       *  @param json_meta JSON Metadata associated with the new account
-       *  @param broadcast true if you wish to broadcast the transaction
+       * @param account_name The name of the account whose authority you wish to update
+       * @param type The authority type. e.g. owner, active, or posting
+       * @param key The public key to add to the authority
+       * @param weight The weight the key should have in the authority. A weight of 0 indicates the removal of the key.
+       * @param broadcast true if you wish to broadcast the transaction.
        */
-      annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+      annotated_signed_transaction update_account_auth_key( string account_name, authority_type type, public_key_type key, weight_type weight, bool broadcast );
+
+      /**
+       * This method updates the account of an authority for an exisiting account.
+       * Warning: You can create impossible authorities using this method. The method
+       * will fail if you create an impossible owner authority, but will allow impossible
+       * active and posting authorities.
+       *
+       * @param account_name The name of the account whose authority you wish to update
+       * @param type The authority type. e.g. owner, active, or posting
+       * @param auth_account The account to add the the authority
+       * @param weight The weight the account should have in the authority. A weight of 0 indicates the removal of the account.
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      annotated_signed_transaction update_account_auth_account( string account_name, authority_type type, string auth_account, weight_type weight, bool broadcast );
+
+      /**
+       * This method updates the weight threshold of an authority for an account.
+       * Warning: You can create impossible authorities using this method as well
+       * as implicitly met authorities. The method will fail if you create an implicitly
+       * true authority and if you create an impossible owner authoroty, but will allow
+       * impossible active and posting authorities.
+       *
+       * @param account_name The name of the account whose authority you wish to update
+       * @param type The authority type. e.g. owner, active, or posting
+       * @param threshold The weight threshold required for the authority to be met
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction update_account_auth_threshold( string account_name, authority_type type, uint32_t threshold, bool broadcast );
+
+      /**
+       * This method updates the account JSON metadata
+       *
+       * @param account_name The name of the account you wish to update
+       * @param json_meta The new JSON metadata for the account. This overrides existing metadata
+       * @param broadcast ture if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction update_account_meta( string account_name, string json_meta, bool broadcast );
+
+      /**
+       * This method updates the memo key of an account
+       *
+       * @param account_name The name of the account you wish to update
+       * @param key The new memo public key
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction update_account_memo_key( string account_name, public_key_type key, bool broadcast );
 
       /**
        *  This method is used to convert a JSON transaction to its transaction ID.
@@ -420,10 +487,10 @@ class wallet_api
       /**
        * Update a witness object owned by the given account.
        *
-       * @param witness The name of the witness's owner account.  Also accepts the ID of the owner account or the ID of the witness.
+       * @param witness_name The name of the witness's owner account.  Also accepts the ID of the owner account or the ID of the witness.
        * @param url Same as for create_witness.  The empty string makes it remain the same.
        * @param block_signing_key The new block signing public key.  The empty string makes it remain the same.
-       * @param chain_properties The chain properties the witness is voting on.
+       * @param props The chain properties the witness is voting on.
        * @param broadcast true if you wish to broadcast the transaction.
        */
       annotated_signed_transaction update_witness(string witness_name,
@@ -431,7 +498,6 @@ class wallet_api
                                         public_key_type block_signing_key,
                                         const chain_properties& props,
                                         bool broadcast = false);
-
 
       /** Set the voting proxy for an account.
        *
@@ -446,10 +512,7 @@ class wallet_api
        *
        * @param account_to_modify the name or id of the account to update
        * @param proxy the name of account that should proxy to, or empty string to have no proxy
-       * @param approve true if you support the witness, false otherwise
-       *
        * @param broadcast true if you wish to broadcast the transaction
-       * @return the signed transaction changing your vote proxy settings
        */
       annotated_signed_transaction set_voting_proxy(string account_to_modify,
                                           string proxy,
@@ -463,7 +526,7 @@ class wallet_api
        *
        * @param account_to_vote_with The account voting for a witness
        * @param witness_to_vote_for The witness that is being voted for
-       * @param approve true if the account is voting for the account to be able to producer
+       * @param approve true if the account is voting for the account to be able to be a block produce
        * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction vote_for_witness(string account_to_vote_with,
@@ -498,7 +561,7 @@ class wallet_api
        * Set up a vesting withdraw request. The request is fulfilled once a week over the next two year (104 weeks).
        *
        * @param from The account the VESTS are withdrawn from
-       * @param asset The amount of VESTS to withdraw over the next two years. Each week (amount/104) shares are
+       * @param vesting_shares The amount of VESTS to withdraw over the next two years. Each week (amount/104) shares are
        *    withdrawn and depositted back as STEEM. i.e. "10.000000 VESTS"
        * @param broadcast true if you wish to broadcast the transaction
        */
@@ -509,7 +572,7 @@ class wallet_api
        *  week from the time it is executed. This method depends upon there being a valid price feed.
        *
        *  @param from The account requesting conversion of its SBD i.e. "1.000 SBD"
-       *  @param asset The amount of SBD to convert
+       *  @param amount The amount of SBD to convert
        *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction convert_sbd( string from, asset amount, bool broadcast = false );
@@ -556,14 +619,31 @@ class wallet_api
       vector< variant > network_get_connected_peers();
 
       /**
+       * Gets the current order book for STEEM:SBD
+       *
+       * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
+       */
+      order_book  get_order_book( uint32_t limit = 1000 );
+
+      /**
        *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
        *
+       *  @param owner The name of the account creating the order
        *  @param order_id is a unique identifier assigned by the creator of the order, it can be reused after the order has been filled
+       *  @param amount_to_sell The amount of either SBD or STEEM you wish to sell
+       *  @param min_to_receive The amount of the other asset you will receive at a minimum
+       *  @param fill_or_kill true if you want the order to be killed if it cannot immediately be filled
+       *  @param expiration the time the order should expire if it has not been filled
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction create_order( string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration, bool broadcast );
 
       /**
        * Cancel an order created with create_order
+       *
+       * @param owner The name of the account owning the order to cancel_order
+       * @param orderid The unique identifier assigned to the order by its creator
+       * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction cancel_order( string owner, uint32_t orderid, bool broadcast );
 
@@ -585,6 +665,10 @@ class wallet_api
        * Vote on a comment to be paid STEEM
        *
        * @param voter The account voting
+       * @param author The author of the comment to be voted on
+       * @param permlink The permlink of the comment to be voted on. (author, permlink) is a unique pair
+       * @param weight The weight [-100,100] of the vote
+       * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
 
@@ -628,6 +712,8 @@ FC_REFLECT_DERIVED( steemit::wallet::signed_block_with_info, (steemit::chain::si
 FC_REFLECT( steemit::wallet::operation_detail, (memo)(description)(op) )
 FC_REFLECT( steemit::wallet::plain_keys, (checksum)(keys) )
 
+FC_REFLECT_ENUM( steemit::wallet::authority_type, (owner)(active)(posting) )
+
 FC_API( steemit::wallet::wallet_api,
         /// wallet api
         (help)(gethelp)
@@ -658,6 +744,11 @@ FC_API( steemit::wallet::wallet_api,
         (create_account)
         (create_account_with_keys)
         (update_account)
+        (update_account_auth_key)
+        (update_account_auth_account)
+        (update_account_auth_threshold)
+        (update_account_meta)
+        (update_account_memo_key)
         (update_witness)
         (set_voting_proxy)
         (vote_for_witness)
@@ -666,6 +757,7 @@ FC_API( steemit::wallet::wallet_api,
         (withdraw_vesting)
         (convert_sbd)
         (publish_feed)
+        (get_order_book)
         (create_order)
         (cancel_order)
         (post_comment)
