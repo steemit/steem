@@ -48,7 +48,7 @@ using namespace steemit::chain;
 using namespace std;
 
 class database_api_impl;
-
+class application;
 
 /**
  * @brief The database_api class implements the RPC API for the chain database.
@@ -61,6 +61,7 @@ class database_api
 {
    public:
       database_api(steemit::chain::database& db);
+      database_api(steemit::app::application& app);
       ~database_api();
 
       ///////////////////

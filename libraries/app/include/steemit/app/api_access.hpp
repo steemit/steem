@@ -33,6 +33,7 @@ namespace steemit { namespace app {
 
 struct api_access_info
 {
+   std::string username;
    std::string password_hash_b64;
    std::string password_salt_b64;
    std::vector< std::string > allowed_apis;
@@ -46,6 +47,7 @@ struct api_access
 } } // steemit::app
 
 FC_REFLECT( steemit::app::api_access_info,
+    (username)
     (password_hash_b64)
     (password_salt_b64)
     (allowed_apis)

@@ -28,6 +28,8 @@
 
 #include <graphene/net/node.hpp>
 
+#include <fc/api.hpp>
+
 #include <boost/program_options.hpp>
 
 namespace steemit { namespace app {
@@ -35,6 +37,7 @@ namespace steemit { namespace app {
    using std::string;
 
    class abstract_plugin;
+   class application;
 
    class application
    {
@@ -86,6 +89,31 @@ namespace steemit { namespace app {
          void set_api_access_info(const string& username, api_access_info&& permissions);
 
          bool is_finished_syncing()const;
+
+         /**
+          * Register a way to instantiate the named API with the application.
+          */
+         void register_api_factory( const string& name, std::function< fc::api_ptr() > factory );
+
+         /**
+          * Convenience method to build an API factory from a type which only requires a reference to the application.
+          */
+         template< typename Api >
+         void register_api_factory( const string& name )
+         {
+            register_api_factory( name, [this]() -> fc::api_ptr
+            {
+               // apparently the compiler is smart enough to downcast shared_ptr< api<Api> > to shared_ptr< api_base > automatically
+               // see http://en.cppreference.com/w/cpp/memory/shared_ptr/pointer_cast for example
+               return std::make_shared< fc::api< Api > >( std::make_shared< Api >( *this ) );
+            } );
+         }
+
+         /**
+          * Instantiate the named API.  Currently this simply calls the previously registered factory method.
+          */
+         fc::api_ptr create_api_by_name( const string& name );
+
          /// Emitted when syncing finishes (is_finished_syncing will return true)
          boost::signals2::signal<void()> syncing_finished;
 

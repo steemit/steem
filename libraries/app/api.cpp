@@ -66,25 +66,13 @@ namespace steemit { namespace app {
        }
 
        for( const std::string& api_name : acc->allowed_apis )
-          enable_api( api_name );
+       {
+          auto it = _api_map.find( api_name );
+          if( it != _api_map.end() )
+             continue;
+          _api_map[ api_name ] = _app.create_api_by_name( api_name );
+       }
        return true;
-    }
-
-    void login_api::enable_api( const std::string& api_name )
-    {
-       if( api_name == "database_api" )
-       {
-          _database_api = std::make_shared< database_api >( std::ref( *_app.chain_database() ) );
-       }
-       else if( api_name == "network_broadcast_api" )
-       {
-          _network_broadcast_api = std::make_shared< network_broadcast_api >( std::ref( _app ) );
-       }
-       else if( api_name == "network_node_api" )
-       {
-          _network_node_api = std::make_shared< network_node_api >( std::ref(_app) );
-       }
-       return;
     }
 
     network_broadcast_api::network_broadcast_api(application& a):_app(a)
@@ -176,24 +164,6 @@ namespace steemit { namespace app {
     void network_node_api::set_advanced_node_parameters(const fc::variant_object& params)
     {
        return _app.p2p_node()->set_advanced_node_parameters(params);
-    }
-
-    fc::api<network_broadcast_api> login_api::network_broadcast()const
-    {
-       FC_ASSERT(_network_broadcast_api);
-       return *_network_broadcast_api;
-    }
-
-    fc::api<network_node_api> login_api::network_node()const
-    {
-       FC_ASSERT(_network_node_api);
-       return *_network_node_api;
-    }
-
-    fc::api<database_api> login_api::database()const
-    {
-       FC_ASSERT(_database_api);
-       return *_database_api;
     }
 
     vector< string > get_relevant_accounts( const object* obj )

@@ -87,6 +87,7 @@ class abstract_plugin
          boost::program_options::options_description& command_line_options,
          boost::program_options::options_description& config_file_options
          ) = 0;
+
 };
 
 /**

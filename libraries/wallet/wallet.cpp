@@ -240,8 +240,8 @@ public:
    wallet_api_impl( wallet_api& s, const wallet_data& initial_data, fc::api<login_api> rapi )
       : self( s ),
         _remote_api( rapi ),
-        _remote_db( rapi->database() ),
-        _remote_net_broadcast( rapi->network_broadcast() )
+        _remote_db( rapi->get_api_by_name("database_api")->as< database_api >() ),
+        _remote_net_broadcast( rapi->get_api_by_name("network_broadcast_api")->as< network_broadcast_api >() )
    {
       init_prototype_ops();
 
@@ -753,7 +753,7 @@ public:
          return;
       try
       {
-         _remote_net_node = _remote_api->network_node();
+         _remote_net_node = _remote_api->get_api_by_name("network_node_api")->as< network_node_api >();
       }
       catch( const fc::exception& e )
       {

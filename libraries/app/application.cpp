@@ -43,6 +43,7 @@
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/network/resolve.hpp>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/signals2.hpp>
 #include <boost/range/algorithm/reverse.hpp>
@@ -151,10 +152,16 @@ namespace detail {
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            auto login = std::make_shared<steemit::app::login_api>( std::ref(*_self) );
-            auto db_api = std::make_shared<steemit::app::database_api>( std::ref(*_self->chain_database()) );
-            wsc->register_api(fc::api<steemit::app::database_api>(db_api));
-            wsc->register_api(fc::api<steemit::app::login_api>(login));
+            for( const std::string& name : _public_apis )
+            {
+               fc::api_ptr api = create_api_by_name( name );
+               if( !api )
+               {
+                  elog( "Couldn't create API ${name}", ("name", name) );
+                  continue;
+               }
+               api->register_api( *wsc );
+            }
             c->set_session_data( wsc );
          });
          ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
@@ -178,10 +185,16 @@ namespace detail {
 
          _websocket_tls_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
             auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            auto login = std::make_shared<steemit::app::login_api>( std::ref(*_self) );
-            auto db_api = std::make_shared<steemit::app::database_api>( std::ref(*_self->chain_database()) );
-            wsc->register_api(fc::api<steemit::app::database_api>(db_api));
-            wsc->register_api(fc::api<steemit::app::login_api>(login));
+            for( const std::string& name : _public_apis )
+            {
+               fc::api_ptr api = create_api_by_name( name );
+               if( !api )
+               {
+                  elog( "Couldn't create API ${name}", ("name", name) );
+                  continue;
+               }
+               api->register_api( *wsc );
+            }
             c->set_session_data( wsc );
          });
          ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
@@ -200,10 +213,20 @@ namespace detail {
          fc::remove_all(_data_dir / "blockchain/dblock");
       }
 
+      void register_builtin_apis()
+      {
+         _self->register_api_factory< login_api >( "login_api" );
+         _self->register_api_factory< database_api >( "database_api" );
+         _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
+         _self->register_api_factory< network_node_api >( "network_node_api" );
+      }
+
       void startup()
       { try {
          bool clean = !fc::exists(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "blockchain/dblock");
+
+         register_builtin_apis();
 
          if( _options->count("resync-blockchain") )
             _chain_db->wipe(_data_dir / "blockchain", true);
@@ -278,15 +301,22 @@ namespace detail {
 
          graphene::time::now();
 
-         if( _options->count("api-access") )
-            _apiaccess = fc::json::from_file( _options->at("api-access").as<boost::filesystem::path>() )
-               .as<api_access>();
+         if( _options->count("api-user") )
+         {
+            for( const std::string& api_access_str : _options->at("api-user").as< std::vector<std::string> >() )
+            {
+               api_access_info info = fc::json::from_string( api_access_str ).as<api_access_info>();
+               FC_ASSERT( info.username != "" );
+               _apiaccess.permission_map[info.username] = info;
+            }
+         }
          else
          {
             // TODO:  Remove this generous default access policy
             // when the UI logs in properly
             _apiaccess = api_access();
             api_access_info wild_access;
+            wild_access.username = "*";
             wild_access.password_hash_b64 = "*";
             wild_access.password_salt_b64 = "*";
             wild_access.allowed_apis.push_back( "database_api" );
@@ -294,6 +324,17 @@ namespace detail {
             wild_access.allowed_apis.push_back( "history_api" );
             wild_access.allowed_apis.push_back( "crypto_api" );
             _apiaccess.permission_map["*"] = wild_access;
+         }
+
+         for( const std::string& arg : _options->at("public-api").as< std::vector< std::string > >() )
+         {
+            vector<string> names;
+            boost::split(names, arg, boost::is_any_of(" \t,"));
+            for( const std::string& name : names )
+            {
+               ilog( "API ${name} enabled publicly", ("name", name) );
+               _public_apis.push_back( name );
+            }
          }
 
          reset_p2p_node(_data_dir);
@@ -317,6 +358,19 @@ namespace detail {
       void set_api_access_info(const string& username, api_access_info&& permissions)
       {
          _apiaccess.permission_map.insert(std::make_pair(username, std::move(permissions)));
+      }
+
+      void register_api_factory( const string& name, std::function< fc::api_ptr() > factory )
+      {
+         _api_factories_by_name[name] = factory;
+      }
+
+      fc::api_ptr create_api_by_name( const string& name )
+      {
+         auto it = _api_factories_by_name.find(name);
+         if( it == _api_factories_by_name.end() )
+            return nullptr;
+         return it->second();
       }
 
       /**
@@ -730,6 +784,8 @@ namespace detail {
       std::shared_ptr<fc::http::websocket_tls_server>  _websocket_tls_server;
 
       std::map<string, std::shared_ptr<abstract_plugin>> _plugins;
+      flat_map< std::string, std::function< fc::api_ptr() > >          _api_factories_by_name;
+      std::vector< std::string >                       _public_apis;
 
       bool _is_finished_syncing = false;
    };
@@ -756,6 +812,16 @@ application::~application()
 void application::set_program_options(boost::program_options::options_description& command_line_options,
                                       boost::program_options::options_description& configuration_file_options) const
 {
+   std::vector< std::string > default_apis;
+   default_apis.push_back( "database_api" );
+   default_apis.push_back( "login_api" );
+   std::string str_default_apis = boost::algorithm::join( default_apis, " " );
+
+   std::vector< std::string > default_plugins;
+   default_plugins.push_back( "witness" );
+   default_plugins.push_back( "account_history" );
+   std::string str_default_plugins = boost::algorithm::join( default_plugins, " " );
+
    configuration_file_options.add_options()
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
@@ -765,7 +831,9 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
          ("dbg-init-key", bpo::value<string>(), "Block signing key to use for init witnesses, overrides genesis file")
-         ("api-access", bpo::value<boost::filesystem::path>(), "JSON file specifying API permissions")
+         ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
+         ("public-api", bpo::value< vector<string> >()->composing()->multitoken()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
+         ("enable-plugin", bpo::value< vector<string> >()->composing()->multitoken()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
@@ -829,6 +897,16 @@ void application::set_api_access_info(const string& username, api_access_info&& 
 bool application::is_finished_syncing() const
 {
    return my->_is_finished_syncing;
+}
+
+void application::register_api_factory( const string& name, std::function< fc::api_ptr() > factory )
+{
+   return my->register_api_factory( name, factory );
+}
+
+fc::api_ptr application::create_api_by_name( const string& name )
+{
+   return my->create_api_by_name( name );
 }
 
 void steemit::app::application::add_plugin(const string& name, std::shared_ptr<steemit::app::abstract_plugin> p)
