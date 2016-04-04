@@ -13,7 +13,6 @@
 #define SBD_SYMBOL    (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< Test Backed Dollars with 3 digits of precision
 
 #define STEEMIT_SYMBOL                          "TEST"
-#define DEFAULT_ASSET_SYMBOL                    STEEM_SYMBOL
 #define STEEMIT_ADDRESS_PREFIX                  "TST"
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec())
@@ -32,7 +31,6 @@
 #define STEEM_SYMBOL  (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('E') << 24) | (uint64_t('E') << 32) | (uint64_t('M') << 40)) ///< STEEM with 3 digits of precision
 #define SBD_SYMBOL    (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< STEEM Backed Dollars with 3 digits of precision
 #define STEEMIT_SYMBOL                          "STEEM"
-#define DEFAULT_ASSET_SYMBOL                    STEEM_SYMBOL
 #define STEEMIT_ADDRESS_PREFIX                  "STM"
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
@@ -132,19 +130,6 @@
 #define STEEMIT_MAX_AUTHORITY_MEMBERSHIP        10
 #define STEEMIT_MAX_ASSET_WHITELIST_AUTHORITIES 10
 #define STEEMIT_MAX_URL_LENGTH                  127
-
-// counter initialization values used to derive near and far future seeds for shuffling witnesses
-// we use the fractional bits of sqrt(2) in hex
-#define STEEMIT_NEAR_SCHEDULE_CTR_IV            ( (uint64_t( 0x6a09 ) << 0x30)    \
-                                                 | (uint64_t( 0xe667 ) << 0x20)    \
-                                                 | (uint64_t( 0xf3bc ) << 0x10)    \
-                                                 | (uint64_t( 0xc908 )        ) )
-
-// and the fractional bits of sqrt(3) in hex
-#define STEEMIT_FAR_SCHEDULE_CTR_IV             ( (uint64_t( 0xbb67 ) << 0x30)    \
-                                                 | (uint64_t( 0xae85 ) << 0x20)    \
-                                                 | (uint64_t( 0x84ca ) << 0x10)    \
-                                                 | (uint64_t( 0xa73b )        ) )
 
 /**
  * every second, the fraction of burned core asset which cycles is
