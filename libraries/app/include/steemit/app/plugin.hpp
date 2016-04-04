@@ -28,6 +28,8 @@
 #include <boost/program_options.hpp>
 #include <fc/io/json.hpp>
 
+#include <memory>
+
 namespace steemit { namespace app {
 
 class abstract_plugin
@@ -136,3 +138,9 @@ if( options.count(name) ) { \
 /// @}
 
 } } //steemit::app
+
+#define STEEMIT_DEFINE_PLUGIN( plugin_name, plugin_class ) \
+   namespace steemit { namespace plugin { \
+   std::shared_ptr< steemit::app::abstract_plugin > create_ ## plugin_name ## _plugin()  \
+   { return std::make_shared< plugin_class >(); } \
+   } }

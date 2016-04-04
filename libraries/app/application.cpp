@@ -783,7 +783,8 @@ namespace detail {
       std::shared_ptr<fc::http::websocket_server>      _websocket_server;
       std::shared_ptr<fc::http::websocket_tls_server>  _websocket_tls_server;
 
-      std::map<string, std::shared_ptr<abstract_plugin>> _plugins;
+      std::map<string, std::shared_ptr<abstract_plugin> > _plugins_available;
+      std::map<string, std::shared_ptr<abstract_plugin> > _plugins_enabled;
       flat_map< std::string, std::function< fc::api_ptr() > >          _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
 
@@ -832,8 +833,8 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
          ("dbg-init-key", bpo::value<string>(), "Block signing key to use for init witnesses, overrides genesis file")
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
-         ("public-api", bpo::value< vector<string> >()->composing()->multitoken()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
-         ("enable-plugin", bpo::value< vector<string> >()->composing()->multitoken()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
+         ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
+         ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
@@ -866,7 +867,7 @@ void application::startup()
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
 {
-   return my->_plugins[name];
+   return my->_plugins_enabled[name];
 }
 
 graphene::net::node_ptr application::p2p_node()
@@ -909,14 +910,9 @@ fc::api_ptr application::create_api_by_name( const string& name )
    return my->create_api_by_name( name );
 }
 
-void steemit::app::application::add_plugin(const string& name, std::shared_ptr<steemit::app::abstract_plugin> p)
-{
-   my->_plugins[name] = p;
-}
-
 void application::shutdown_plugins()
 {
-   for( auto& entry : my->_plugins )
+   for( auto& entry : my->_plugins_enabled )
       entry.second->plugin_shutdown();
    return;
 }
@@ -928,16 +924,56 @@ void application::shutdown()
       my->_chain_db->close();
 }
 
+void application::register_abstract_plugin( std::shared_ptr< abstract_plugin > plug )
+{
+   plug->plugin_set_app(this);
+
+   boost::program_options::options_description plugin_cli_options("Options for plugin " + plug->plugin_name()), plugin_cfg_options;
+   plug->plugin_set_program_options(plugin_cli_options, plugin_cfg_options);
+   if( !plugin_cli_options.options().empty() )
+      _cli_options.add(plugin_cli_options);
+   if( !plugin_cfg_options.options().empty() )
+      _cfg_options.add(plugin_cfg_options);
+
+   my->_plugins_available[plug->plugin_name()] = plug;
+}
+
+void application::enable_plugin( const std::string& name )
+{
+   auto it = my->_plugins_available.find(name);
+   if( it == my->_plugins_available.end() )
+   {
+      elog( "can't enable plugin ${name}", ("name", name) );
+   }
+   FC_ASSERT( it != my->_plugins_available.end() );
+   my->_plugins_enabled[name] = it->second;
+}
+
 void application::initialize_plugins( const boost::program_options::variables_map& options )
 {
-   for( auto& entry : my->_plugins )
+   if( options.count("enable-plugin") > 0 )
+   {
+      for( auto& arg : options.at("enable-plugin").as< std::vector< std::string > >() )
+      {
+         vector<string> names;
+         boost::split(names, arg, boost::is_any_of(" \t,"));
+         for( const std::string& name : names )
+         {
+            enable_plugin( name );
+         }
+      }
+   }
+   for( auto& entry : my->_plugins_enabled )
+   {
+      ilog( "Initializing plugin ${name}", ("name", entry.first) );
       entry.second->plugin_initialize( options );
+   }
    return;
 }
 
 void application::startup_plugins()
 {
-   for( auto& entry : my->_plugins )
+   for( auto& entry : my->_plugins_enabled )
       entry.second->plugin_startup();
    return;
 }
