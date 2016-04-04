@@ -95,7 +95,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    edump((_witnesses));
 
    if( options.count("miner") ) {
-      
+
       const vector<string> miner_to_wif_pair_strings = options["miner"].as<vector<string>>();
       for( auto p : miner_to_wif_pair_strings )
       {
@@ -149,17 +149,28 @@ void witness_plugin::plugin_startup()
          _production_skip_flags |= steemit::chain::database::skip_undo_history_check;
       }
       schedule_production_loop();
-      d.applied_block.connect( [this]( const chain::signed_block& b ){ this->on_applied_block(b); } );
    } else
-      elog("No witnesses configured! Please add witness IDs and private keys to configuration.");
+      elog("No witnesses configured! Please add witness names and private keys to configuration.");
+   if( !_miners.empty() )
+   {
+      ilog("Starting mining...");
+      d.applied_block.connect( [this]( const chain::signed_block& b ){ this->on_applied_block(b); } );
+   }
+   else
+   {
+      elog("No miners configured! Please add miner names and private keys to configuration.");
+   }
    ilog("witness plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
 
 void witness_plugin::plugin_shutdown()
 {
    graphene::time::shutdown_ntp_time();
-   ilog( "shutting downing mining threads" );
-   _thread_pool.clear();
+   if( !_miners.empty() )
+   {
+      ilog( "shutting downing mining threads" );
+      _thread_pool.clear();
+   }
    return;
 }
 
@@ -333,7 +344,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
  * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
  * and therefore do not even attempt work that cannot be delivered on time.
  */
-void witness_plugin::on_applied_block( const chain::signed_block& b ) 
+void witness_plugin::on_applied_block( const chain::signed_block& b )
 { try {
   if( !_mining_threads || _miners.size() == 0 ) return;
   chain::database& db = database();
@@ -347,9 +358,10 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
 
 
    auto target = db.get_pow_target();
-   ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
-           ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
-       );
+   if( uint64_t(hps) > 0 )
+      ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
+              ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
+         );
 
 
   _head_block_num = b.block_num();
@@ -372,10 +384,10 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
     }
   } // for miner in miners
 
-} catch ( const fc::exception& e ) { ilog( "exception thrown while attempting to mine" ); } 
+} catch ( const fc::exception& e ) { ilog( "exception thrown while attempting to mine" ); }
 }
 
-void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk, 
+void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk,
                             const string& miner, const steemit::chain::signed_block& b ) {
 
     static uint64_t seed = fc::time_point::now().time_since_epoch().count();
