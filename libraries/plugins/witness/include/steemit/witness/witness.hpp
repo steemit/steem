@@ -78,7 +78,7 @@ public:
 
 private:
    void on_applied_block( const chain::signed_block& b );
-   void start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk, 
+   void start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk,
                       const string& name, const steemit::chain::signed_block& b );
 
 
@@ -101,6 +101,7 @@ private:
    std::map<public_key_type, fc::ecc::private_key> _private_keys;
    std::set<string>                                _witnesses;
    std::map<string,public_key_type>                _miners;
+   chain::chain_properties                         _miner_prop_vote;
    fc::future<void>                                _block_production_task;
 };
 

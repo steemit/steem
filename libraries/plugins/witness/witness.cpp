@@ -74,6 +74,9 @@ void witness_plugin::plugin_set_program_options(
          ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )" )
          ("mining-threads,t", bpo::value<uint32_t>(),"Number of threads to use for proof of work mining" )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
+         ("miner-account-creation-fee", bpo::value<uint64_t>(),"Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
+         ("miner-maximum-block-size", bpo::value<uint32_t>(),"Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB (131072)")
+         ("miner-sbd-interest-rate", bpo::value<uint32_t>(),"SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)")
          ;
    config_file_options.add(command_line_options);
 }
@@ -126,6 +129,36 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
          FC_ASSERT( private_key.valid(), "unable to parse private key" );
          _private_keys[private_key->get_public_key()] = *private_key;
       }
+   }
+
+   if( options.count("miner-account-creation-fee") )
+   {
+      const uint64_t account_creation_fee = options["miner-account-creation-fee"].as<uint64_t>();
+
+      if( account_creation_fee < STEEMIT_MIN_ACCOUNT_CREATION_FEE )
+         elog( "miner-account-creation-fee is below the minimum fee, using minimum instead" );
+      else
+         _miner_prop_vote.account_creation_fee.amount = account_creation_fee;
+   }
+
+   if( options.count( "miner-maximum-block-size" ) )
+   {
+      const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
+
+      if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT )
+         elog( "miner-maximum-block-size is below the minimum block size limit, using minimum of 128 KB instead" );
+      else if ( maximum_block_size > STEEMIT_MAX_BLOCK_SIZE )
+      {
+         elog( "miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead" );
+         _miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
+      }
+      else
+         _miner_prop_vote.maximum_block_size = maximum_block_size;
+   }
+
+   if( options.count( "miner-sbd-interest-rate" ) )
+   {
+      _miner_prop_vote.sbd_interest_rate = options["miner-sbd-interest-rate"].as<uint32_t>();
    }
 
    ilog("witness plugin:  plugin_initialize() end");
@@ -416,6 +449,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
           op.worker_account = miner;
           op.work.worker = pub;
           op.nonce = start + thread_num;
+          op.props = _miner_prop_vote;
           while( true )
           {
           //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
