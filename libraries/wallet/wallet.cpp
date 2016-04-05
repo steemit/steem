@@ -745,18 +745,53 @@ public:
          auto orders = result.as< order_book >();
          std::stringstream ss;
          asset bid_sum = asset( 0, SBD_SYMBOL );
-         asset ask_sum = asset( 0, STEEM_SYMBOL );
-         int spacing = 20;
+         asset ask_sum = asset( 0, SBD_SYMBOL );
+         int spacing = 24;
 
-         ss << "   Bids" << setw( ( spacing * 4 ) + 9 ) << "Asks\n"
-            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing ) << "STEEM" << ' ' << setw( spacing )
-            << "SBD" << setw( spacing ) << "Sum(SBD)"
-            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing ) << "STEEM" << ' ' << setw( spacing )
-            << "SBD" << setw( spacing ) << "Sum(STEEM)"
-            << "\n====================================================================================="
-            << "|=====================================================================================\n";
+         ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
 
-            return ss.str();
+         ss << ' ' << setw( ( spacing * 4 ) + 6 ) << "Bids" << "Asks\n"
+            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing + 1 ) << "STEEM"
+            << setw( spacing + 1) << "SBD" << setw( spacing + 3 ) << "Sum(SBD)"
+            << setw( spacing + 1 ) << "Price" << setw( spacing + 1 ) << "STEEM "
+            << setw( spacing + 1 ) << "SBD " << "Sum(SBD)"
+            << "\n====================================================================================================="
+            << "|=====================================================================================================\n";
+
+         for( int i = 0; i < orders.bids.size() || i < orders.asks.size(); i++ )
+         {
+            if ( i < orders.bids.size() )
+            {
+               bid_sum += asset( orders.bids[i].sbd, SBD_SYMBOL );
+               ss << ' ' << setw( spacing ) << orders.bids[i].order_price.to_real()
+                  << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << asset( orders.bids[i].sbd, SBD_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << bid_sum.to_string();
+            }
+            else
+            {
+               ss << setw( (spacing * 4 ) + 5 ) << ' ';
+            }
+
+            ss << " |";
+
+            if ( i < orders.asks.size() )
+            {
+               ask_sum += asset( orders.asks[i].sbd, SBD_SYMBOL );
+               ss << ' ' << setw( spacing ) << orders.asks[i].order_price.to_real()
+                  << ' ' << setw( spacing ) << asset( orders.asks[i].steem, STEEM_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << asset( orders.asks[i].sbd, SBD_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << ask_sum.to_string();
+            }
+
+            ss << endl;
+         }
+
+         ss << endl
+            << "Bid Total: " << bid_sum.to_string() << endl
+            << "Ask Total: " << ask_sum.to_string() << endl;
+
+         return ss.str();
       };
 
       return m;

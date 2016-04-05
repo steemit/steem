@@ -473,7 +473,6 @@ uint64_t database_api_impl::get_witness_count()const
 
 order_book database_api::get_order_book( uint32_t limit )const
 {
-   FC_ASSERT( false, "API Call NYI" );
    return my->get_order_book( limit );
 }
 
@@ -489,8 +488,9 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
    {
       order cur;
       cur.order_price = itr->sell_price;
-      cur.sbd = asset( itr->for_sale, SBD_SYMBOL );
-      cur.steem = cur.sbd * cur.order_price;
+      cur.sbd = itr->for_sale;
+      cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
+      cur.created = itr->created;
       result.bids.push_back( cur );
 
       itr--;
@@ -503,8 +503,9 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
    {
       order cur;
       cur.order_price = itr->sell_price;
-      cur.steem = asset( itr->for_sale, STEEM_SYMBOL );
-      cur.sbd = cur.steem * cur.order_price;
+      cur.steem = itr->for_sale;
+      cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
+      cur.created = itr->created;
       result.asks.push_back( cur );
 
       itr--;

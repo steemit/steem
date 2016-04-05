@@ -51,15 +51,16 @@ class database_api_impl;
 
 struct order
 {
-   price    order_price;
-   asset    steem;
-   asset    sbd;
+   price                order_price;
+   share_type           steem;
+   share_type           sbd;
+   fc::time_point_sec   created;
 };
 
 struct order_book
 {
-   vector< order >   asks;
-   vector< order >   bids;
+   vector< order >      asks;
+   vector< order >      bids;
 };
 
 /**
@@ -308,7 +309,7 @@ class database_api
 
 } }
 
-FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd) );
+FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd)(created) );
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
 
 FC_API(steemit::app::database_api,
