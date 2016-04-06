@@ -74,9 +74,9 @@ void witness_plugin::plugin_set_program_options(
          ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )" )
          ("mining-threads,t", bpo::value<uint32_t>(),"Number of threads to use for proof of work mining" )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
-         ("miner-account-creation-fee", bpo::value<uint64_t>(),"Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
-         ("miner-maximum-block-size", bpo::value<uint32_t>(),"Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB (131072)")
-         ("miner-sbd-interest-rate", bpo::value<uint32_t>(),"SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)")
+         ("miner-account-creation-fee", bpo::value<uint64_t>()->implicit_value(100000),"Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
+         ("miner-maximum-block-size", bpo::value<uint32_t>()->implicit_value(131072),"Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB")
+         ("miner-sbd-interest-rate", bpo::value<uint32_t>()->implicit_value(1000),"SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)")
          ;
    config_file_options.add(command_line_options);
 }

@@ -4,7 +4,6 @@ add_library( steemit_app
              database_api.cpp
              api.cpp
              application.cpp
-             comment_api.cpp
              impacted.cpp
              plugin.cpp
              ${HEADERS}
