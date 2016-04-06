@@ -397,16 +397,6 @@ namespace detail {
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         /*static fc::time_point last_call;
-         static int trx_count = 0;
-         ++trx_count;
-         auto now = fc::time_point::now();
-         if( now - last_call > fc::seconds(1) ) {
-            ilog("Got ${c} transactions from network", ("c",trx_count) );
-            last_call = now;
-            trx_count = 0;
-         }*/
-
          _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
