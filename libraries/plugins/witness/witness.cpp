@@ -492,3 +492,5 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
        ++thread_num;
     }
 }
+
+STEEMIT_DEFINE_PLUGIN( witness, steemit::witness_plugin::witness_plugin )

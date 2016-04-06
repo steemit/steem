@@ -2,6 +2,7 @@
 
 #include <steemit/witness/witness.hpp>
 #include <steemit/account_history/account_history_plugin.hpp>
+#include <steemit/manifest/plugins.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -36,6 +37,7 @@ void write_default_logging_config_to_stream(std::ostream& out);
 fc::optional<fc::logging_config> load_logging_config_from_ini_file(const fc::path& config_ini_filename);
 
 int main(int argc, char** argv) {
+   steemit::plugin::initialize_plugin_factories();
    app::application* node = new app::application();
    fc::oexception unhandled_exception;
    try {
@@ -67,8 +69,8 @@ int main(int argc, char** argv) {
 
       bpo::variables_map options;
 
-      auto witness_plug = node->register_plugin<witness_plugin::witness_plugin>();
-      auto history_plug = node->register_plugin<account_history::account_history_plugin>();
+      for( const std::string& plugin_name : steemit::plugin::get_available_plugins() )
+         node->register_abstract_plugin( steemit::plugin::create_plugin( plugin_name ) );
 
       try
       {

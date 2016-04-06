@@ -48,6 +48,7 @@ using namespace steemit::chain;
 using namespace std;
 
 class database_api_impl;
+class application;
 
 struct order
 {
@@ -74,6 +75,7 @@ class database_api
 {
    public:
       database_api(steemit::chain::database& db);
+      database_api(steemit::app::application& app);
       ~database_api();
 
       ///////////////////
