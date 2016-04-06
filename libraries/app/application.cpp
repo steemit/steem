@@ -106,6 +106,16 @@ namespace detail {
             _p2p_network->listen_on_endpoint(fc::ip::endpoint::from_string(_options->at("p2p-endpoint").as<string>()), true);
          else
             _p2p_network->listen_on_port(0, false);
+
+         if( _options->count("p2p-max-connections") )
+         {
+            fc::variant_object node_param = fc::variant_object(
+               "maximum_number_of_connections",
+               fc::variant( _options->at("p2p-max-connections").as<uint32_t>() ) );
+            _p2p_network->set_advanced_node_parameters( node_param );
+            ilog("Setting p2p max connections to ${n}", ("n", node_param["maximum_number_of_connections"]));
+         }
+
          _p2p_network->listen_to_p2p_network();
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
@@ -348,7 +358,6 @@ namespace detail {
 
          if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
          {
-            auto last_irr = _chain_db->get_dynamic_global_properties().last_irreversible_block_num;
             ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
                  ("t",blk_msg.block.timestamp)
                  ("n", blk_msg.block.block_num()) );
@@ -760,6 +769,7 @@ void application::set_program_options(boost::program_options::options_descriptio
 {
    configuration_file_options.add_options()
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
+         ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
