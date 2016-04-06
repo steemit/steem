@@ -346,16 +346,12 @@ namespace detail {
                                 std::vector<fc::uint160_t>& contained_transaction_message_ids) override
       { try {
 
-         auto latency = graphene::time::now() - blk_msg.block.timestamp;
          if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
          {
             auto last_irr = _chain_db->get_dynamic_global_properties().last_irreversible_block_num;
-            ilog("Syncing Blockchain --- Got block: #${n} time: ${t} latency: ${l} ms from: ${w}  irreversible: ${i} (-${d})",
+            ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
                  ("t",blk_msg.block.timestamp)
-                 ("n", blk_msg.block.block_num())
-                 ("l", (latency.count()/1000))
-                 ("w", blk_msg.block.witness)
-                 ("i",last_irr)("d",blk_msg.block.block_num()-last_irr) );
+                 ("n", blk_msg.block.block_num()) );
          }
 
          try {
@@ -364,6 +360,13 @@ namespace detail {
             // when the net code sees that, it will stop trying to push blocks from that chain, but
             // leave that peer connected so that they can get sync blocks from us
             bool result = _chain_db->push_block(blk_msg.block, (_is_block_producer | _force_validate) ? database::skip_nothing : database::skip_transaction_signatures);
+
+            if( !sync_mode && blk_msg.block.transactions.size() )
+            {
+               ilog( "Got ${t} transactions from network on block ${b}",
+                  ("t", blk_msg.block.transactions.size())
+                  ("b", blk_msg.block.block_num()) );
+            }
 
             return result;
          } catch ( const steemit::chain::unlinkable_block_exception& e ) {
@@ -375,6 +378,7 @@ namespace detail {
             throw;
          }
 
+
          if( !_is_finished_syncing && !sync_mode )
          {
             _is_finished_syncing = true;
@@ -384,7 +388,7 @@ namespace detail {
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         static fc::time_point last_call;
+         /*static fc::time_point last_call;
          static int trx_count = 0;
          ++trx_count;
          auto now = fc::time_point::now();
@@ -392,7 +396,7 @@ namespace detail {
             ilog("Got ${c} transactions from network", ("c",trx_count) );
             last_call = now;
             trx_count = 0;
-         }
+         }*/
 
          _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
