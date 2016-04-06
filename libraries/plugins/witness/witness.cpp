@@ -136,7 +136,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       const uint64_t account_creation_fee = options["miner-account-creation-fee"].as<uint64_t>();
 
       if( account_creation_fee < STEEMIT_MIN_ACCOUNT_CREATION_FEE )
-         elog( "miner-account-creation-fee is below the minimum fee, using minimum instead" );
+         wlog( "miner-account-creation-fee is below the minimum fee, using minimum instead" );
       else
          _miner_prop_vote.account_creation_fee.amount = account_creation_fee;
    }
@@ -146,10 +146,10 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
 
       if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT )
-         elog( "miner-maximum-block-size is below the minimum block size limit, using minimum of 128 KB instead" );
+         wlog( "miner-maximum-block-size is below the minimum block size limit, using minimum of 128 KB instead" );
       else if ( maximum_block_size > STEEMIT_MAX_BLOCK_SIZE )
       {
-         elog( "miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead" );
+         wlog( "miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead" );
          _miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
       }
       else
