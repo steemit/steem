@@ -150,6 +150,12 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE_EQUAL( acct.balance.amount.value, ASSET( "0.000 TESTS" ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
 
+      #ifndef IS_LOW_MEM
+         BOOST_REQUIRE_EQUAL( acct.json_metadata, op.json_metadata );
+      #else
+         BOOST_REQUIRE_EQUAL( acct.json_metadata, "" );
+      #endif
+
       /// because init_witness has created vesting shares and blocks have been produced, 100 STEEM is worth less than 100 vesting shares due to rounding
       BOOST_REQUIRE_EQUAL( acct.vesting_shares.amount.value, ( op.fee * ( vest_shares / vests ) ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_withdraw_rate.amount.value, ASSET( "0.000000 VESTS" ).amount.value );
@@ -314,7 +320,13 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       BOOST_REQUIRE( acct.owner == authority( 1, new_private_key.get_public_key(), 1 ) );
       BOOST_REQUIRE( acct.active == authority( 2, new_private_key.get_public_key(), 2 ) );
       BOOST_REQUIRE( acct.memo_key == new_private_key.get_public_key() );
-      BOOST_REQUIRE_EQUAL( acct.json_metadata, "{\"bar\":\"foo\"}" );
+
+      #ifndef IS_LOW_MEM
+         BOOST_REQUIRE_EQUAL( acct.json_metadata, "{\"bar\":\"foo\"}" );
+      #else
+         BOOST_REQUIRE_EQUAL( acct.json_metadata, "" );
+      #endif
+
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when updating a non-existent account" );
@@ -421,14 +433,22 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE_EQUAL( alice_comment.author, op.author );
       BOOST_REQUIRE_EQUAL( alice_comment.permlink, op.permlink );
       BOOST_REQUIRE_EQUAL( alice_comment.parent_permlink, op.parent_permlink );
-      BOOST_REQUIRE_EQUAL( alice_comment.title, op.title );
-      BOOST_REQUIRE_EQUAL( alice_comment.body, op.body );
-      BOOST_REQUIRE_EQUAL( alice_comment.json_metadata, op.json_metadata );
       BOOST_REQUIRE( alice_comment.last_update == db.head_block_time() );
       BOOST_REQUIRE( alice_comment.created == db.head_block_time() );
       BOOST_REQUIRE_EQUAL( alice_comment.net_rshares.value, 0 );
       BOOST_REQUIRE_EQUAL( alice_comment.abs_rshares.value, 0 );
       BOOST_REQUIRE( alice_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
+
+      #ifndef IS_LOW_MEM
+         BOOST_REQUIRE_EQUAL( alice_comment.title, op.title );
+         BOOST_REQUIRE_EQUAL( alice_comment.body, op.body );
+         BOOST_REQUIRE_EQUAL( alice_comment.json_metadata, op.json_metadata );
+      #else
+         BOOST_REQUIRE_EQUAL( alice_comment.title, "" );
+         BOOST_REQUIRE_EQUAL( alice_comment.body, "" );
+         BOOST_REQUIRE_EQUAL( alice_comment.json_metadata, "" );
+      #endif
+
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test Bob posting a comment on a non-existent comment" );
@@ -458,9 +478,6 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE_EQUAL( bob_comment.permlink, op.permlink );
       BOOST_REQUIRE_EQUAL( bob_comment.parent_author, op.parent_author );
       BOOST_REQUIRE_EQUAL( bob_comment.parent_permlink, op.parent_permlink );
-      BOOST_REQUIRE_EQUAL( bob_comment.title, op.title );
-      BOOST_REQUIRE_EQUAL( bob_comment.body, op.body );
-      BOOST_REQUIRE_EQUAL( bob_comment.json_metadata, op.json_metadata );
       BOOST_REQUIRE( bob_comment.last_update == db.head_block_time() );
       BOOST_REQUIRE( bob_comment.created == db.head_block_time() );
       BOOST_REQUIRE_EQUAL( bob_comment.net_rshares.value, 0 );
@@ -487,9 +504,6 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE_EQUAL( sam_comment.permlink, op.permlink );
       BOOST_REQUIRE_EQUAL( sam_comment.parent_author, op.parent_author );
       BOOST_REQUIRE_EQUAL( sam_comment.parent_permlink, op.parent_permlink );
-      BOOST_REQUIRE_EQUAL( sam_comment.title, op.title );
-      BOOST_REQUIRE_EQUAL( sam_comment.body, op.body );
-      BOOST_REQUIRE_EQUAL( sam_comment.json_metadata, op.json_metadata );
       BOOST_REQUIRE( sam_comment.last_update == db.head_block_time() );
       BOOST_REQUIRE( sam_comment.created == db.head_block_time() );
       BOOST_REQUIRE_EQUAL( sam_comment.net_rshares.value, 0 );
@@ -523,9 +537,6 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE_EQUAL( mod_sam_comment.permlink, op.permlink );
       BOOST_REQUIRE_EQUAL( mod_sam_comment.parent_author, op.parent_author );
       BOOST_REQUIRE_EQUAL( mod_sam_comment.parent_permlink, op.parent_permlink );
-      BOOST_REQUIRE_EQUAL( mod_sam_comment.title, op.title );
-      BOOST_REQUIRE_EQUAL( mod_sam_comment.body, op.body );
-      BOOST_REQUIRE_EQUAL( mod_sam_comment.json_metadata, op.json_metadata );
       BOOST_REQUIRE( mod_sam_comment.last_update == db.head_block_time() );
       BOOST_REQUIRE( mod_sam_comment.created == created );
       BOOST_REQUIRE_EQUAL( mod_sam_comment.net_rshares.value, 0 );

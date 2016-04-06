@@ -23,7 +23,7 @@ namespace steemit { namespace chain {
          authority       active; ///< used for all monetary operations, can set active or posting
          authority       posting; ///< used for voting and posting
          public_key_type memo_key;
-         string          json_metadata;
+         string          json_metadata = "";
          string          proxy;
 
          time_point_sec  created;
