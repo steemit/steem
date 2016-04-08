@@ -47,6 +47,8 @@ namespace steemit { namespace chain {
                                      vector<authority>& other )const;
    };
 
+   typedef std::function<const authority*(string)> authority_getter;
+
    struct signed_transaction : public transaction
    {
       signed_transaction( const transaction& trx = transaction() )
@@ -59,25 +61,25 @@ namespace steemit { namespace chain {
       set<public_key_type> get_required_signatures(
          const chain_id_type& chain_id,
          const flat_set<public_key_type>& available_keys,
-         const std::function<const authority*(string)>& get_active,
-         const std::function<const authority*(string)>& get_owner,
-         const std::function<const authority*(string)>& get_posting,
+         const authority_getter& get_active,
+         const authority_getter& get_owner,
+         const authority_getter& get_posting,
          uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
          )const;
 
       void verify_authority(
          const chain_id_type& chain_id,
-         const std::function<const authority*(string)>& get_active,
-         const std::function<const authority*(string)>& get_owner,
-         const std::function<const authority*(string)>& get_posting,
+         const authority_getter& get_active,
+         const authority_getter& get_owner,
+         const authority_getter& get_posting,
          uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH )const;
 
       set<public_key_type> minimize_required_signatures(
          const chain_id_type& chain_id,
          const flat_set<public_key_type>& available_keys,
-         const std::function<const authority*(string)>& get_active,
-         const std::function<const authority*(string)>& get_owner,
-         const std::function<const authority*(string)>& get_posting,
+         const authority_getter& get_active,
+         const authority_getter& get_owner,
+         const authority_getter& get_posting,
          uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
          ) const;
 
@@ -91,9 +93,9 @@ namespace steemit { namespace chain {
    };
 
    void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
-                          const std::function<const authority*(string)>& get_active,
-                          const std::function<const authority*(string)>& get_owner,
-                          const std::function<const authority*(string)>& get_posting,
+                          const authority_getter& get_active,
+                          const authority_getter& get_owner,
+                          const authority_getter& get_posting,
                           uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH,
                           bool allow_committe = false,
                           const flat_set<string>& active_aprovals = flat_set<string>(),

@@ -163,7 +163,7 @@ struct sign_state
       }
 
       sign_state( const flat_set<public_key_type>& sigs,
-                  const std::function<const authority*(string)>& a,
+                  const authority_getter& a,
                   const flat_set<public_key_type>& keys = flat_set<public_key_type>() )
       :get_active(a),available_keys(keys)
       {
@@ -172,7 +172,7 @@ struct sign_state
          approved_by.insert( "temp"  );
       }
 
-      const std::function<const authority*(string)>& get_active;
+      const authority_getter& get_active;
       const flat_set<public_key_type>&                        available_keys;
 
       flat_map<public_key_type,bool>   provided_signatures;
@@ -182,9 +182,9 @@ struct sign_state
 
 
 void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
-                       const std::function<const authority*(string)>& get_active,
-                       const std::function<const authority*(string)>& get_owner,
-                       const std::function<const authority*(string)>& get_posting,
+                       const authority_getter& get_active,
+                       const authority_getter& get_owner,
+                       const authority_getter& get_posting,
                        uint32_t max_recursion_depth,
                        bool  allow_committe,
                        const flat_set<string>& active_aprovals,
@@ -289,9 +289,9 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
 set<public_key_type> signed_transaction::get_required_signatures(
    const chain_id_type& chain_id,
    const flat_set<public_key_type>& available_keys,
-   const std::function<const authority*(string)>& get_active,
-   const std::function<const authority*(string)>& get_owner,
-   const std::function<const authority*(string)>& get_posting,
+   const authority_getter& get_active,
+   const authority_getter& get_owner,
+   const authority_getter& get_posting,
    uint32_t max_recursion_depth )const
 {
    flat_set<string> required_active;
@@ -346,9 +346,9 @@ set<public_key_type> signed_transaction::get_required_signatures(
 set<public_key_type> signed_transaction::minimize_required_signatures(
    const chain_id_type& chain_id,
    const flat_set<public_key_type>& available_keys,
-   const std::function<const authority*(string)>& get_active,
-   const std::function<const authority*(string)>& get_owner,
-   const std::function<const authority*(string)>& get_posting,
+   const authority_getter& get_active,
+   const authority_getter& get_owner,
+   const authority_getter& get_posting,
    uint32_t max_recursion
    ) const
 {
@@ -373,9 +373,9 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
 
 void signed_transaction::verify_authority(
    const chain_id_type& chain_id,
-   const std::function<const authority*(string)>& get_active,
-   const std::function<const authority*(string)>& get_owner,
-   const std::function<const authority*(string)>& get_posting,
+   const authority_getter& get_active,
+   const authority_getter& get_owner,
+   const authority_getter& get_posting,
    uint32_t max_recursion )const
 { try {
    steemit::chain::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
