@@ -590,6 +590,12 @@ public:
          approving_account_lut[ approving_acct->name ] =  *approving_acct;
          i++;
       }
+      auto get_account_from_lut = [&]( const std::string& name ) -> const account_object&
+      {
+         auto it = approving_account_lut.find( name );
+         FC_ASSERT( it != approving_account_lut.end() );
+         return it->second;
+      };
 
       flat_set<public_key_type> approving_key_set;
       for( string& acct_name : req_active_approvals )
@@ -650,7 +656,9 @@ public:
       tx.set_expiration( dyn_props.time + fc::seconds(30) );
       tx.signatures.clear();
 
-      idump((_keys));
+      //idump((_keys));
+      flat_set< public_key_type > available_keys;
+      flat_map< public_key_type, fc::ecc::private_key > available_private_keys;
       for( const public_key_type& key : approving_key_set )
       {
          auto it = _keys.find(key);
@@ -658,13 +666,28 @@ public:
          {
             fc::optional<fc::ecc::private_key> privkey = wif_to_key( it->second );
             FC_ASSERT( privkey.valid(), "Malformed private key in _keys" );
-
-            tx.sign( *privkey, STEEMIT_CHAIN_ID );
+            available_keys.insert(key);
+            available_private_keys[key] = *privkey;
          }
-         /// TODO: if transaction has enough signatures to be "valid" don't add any more,
-         /// there are cases where the wallet may have more keys than strictly necessary and
-         /// the transaction will be rejected if the transaction validates without requiring
-         /// all signatures provided
+      }
+
+      auto minimal_signing_keys = tx.minimize_required_signatures(
+         STEEMIT_CHAIN_ID,
+         available_keys,
+         [&]( const string& account_name ) -> const authority*
+         { return &(get_account_from_lut( account_name ).active); },
+         [&]( const string& account_name ) -> const authority*
+         { return &(get_account_from_lut( account_name ).owner); },
+         [&]( const string& account_name ) -> const authority*
+         { return &(get_account_from_lut( account_name ).posting); },
+         STEEMIT_MAX_SIG_CHECK_DEPTH
+         );
+
+      for( const public_key_type& k : minimal_signing_keys )
+      {
+         auto it = available_private_keys.find(k);
+         FC_ASSERT( it != available_private_keys.end() );
+         tx.sign( it->second, STEEMIT_CHAIN_ID );
       }
 
       if( broadcast ) {
