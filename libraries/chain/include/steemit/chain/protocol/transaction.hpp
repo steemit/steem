@@ -47,7 +47,7 @@ namespace steemit { namespace chain {
                                      vector<authority>& other )const;
    };
 
-   typedef std::function<const authority*(string)> authority_getter;
+   typedef std::function<const authority*(const string&)> authority_getter;
 
    struct signed_transaction : public transaction
    {
