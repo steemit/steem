@@ -106,6 +106,16 @@ namespace detail {
             _p2p_network->listen_on_endpoint(fc::ip::endpoint::from_string(_options->at("p2p-endpoint").as<string>()), true);
          else
             _p2p_network->listen_on_port(0, false);
+
+         if( _options->count("p2p-max-connections") )
+         {
+            fc::variant_object node_param = fc::variant_object(
+               "maximum_number_of_connections",
+               fc::variant( _options->at("p2p-max-connections").as<uint32_t>() ) );
+            _p2p_network->set_advanced_node_parameters( node_param );
+            ilog("Setting p2p max connections to ${n}", ("n", node_param["maximum_number_of_connections"]));
+         }
+
          _p2p_network->listen_to_p2p_network();
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
@@ -346,19 +356,12 @@ namespace detail {
                                 std::vector<fc::uint160_t>& contained_transaction_message_ids) override
       { try {
 
-         /*auto latency = graphene::time::now() - blk_msg.block.timestamp;
-         if (!sync_mode || blk_msg.block.block_num() % 10000 == 0)
+         if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
          {
-            const auto& witness = blk_msg.block.witness(*_chain_db);
-            const auto& witness_account = witness.witness_account(*_chain_db);
-            auto last_irr = _chain_db->get_dynamic_global_properties().last_irreversible_block_num;
-            ilog("Got block: #${n} time: ${t} latency: ${l} ms from: ${w}  irreversible: ${i} (-${d})",
+            ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
                  ("t",blk_msg.block.timestamp)
-                 ("n", blk_msg.block.block_num())
-                 ("l", (latency.count()/1000))
-                 ("w",witness_account.name)
-                 ("i",last_irr)("d",blk_msg.block.block_num()-last_irr) );
-         }*/
+                 ("n", blk_msg.block.block_num()) );
+         }
 
          try {
             // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
@@ -366,6 +369,13 @@ namespace detail {
             // when the net code sees that, it will stop trying to push blocks from that chain, but
             // leave that peer connected so that they can get sync blocks from us
             bool result = _chain_db->push_block(blk_msg.block, (_is_block_producer | _force_validate) ? database::skip_nothing : database::skip_transaction_signatures);
+
+            if( !sync_mode && blk_msg.block.transactions.size() )
+            {
+               ilog( "Got ${t} transactions from network on block ${b}",
+                  ("t", blk_msg.block.transactions.size())
+                  ("b", blk_msg.block.block_num()) );
+            }
 
             return result;
          } catch ( const steemit::chain::unlinkable_block_exception& e ) {
@@ -377,6 +387,7 @@ namespace detail {
             throw;
          }
 
+
          if( !_is_finished_syncing && !sync_mode )
          {
             _is_finished_syncing = true;
@@ -386,16 +397,6 @@ namespace detail {
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         static fc::time_point last_call;
-         static int trx_count = 0;
-         ++trx_count;
-         auto now = fc::time_point::now();
-         if( now - last_call > fc::seconds(1) ) {
-            ilog("Got ${c} transactions from network", ("c",trx_count) );
-            last_call = now;
-            trx_count = 0;
-         }
-
          _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
@@ -657,7 +658,7 @@ namespace detail {
           }
           while (low_block_num <= high_block_num);
 
-          idump((synopsis));
+          //idump((synopsis));
           return synopsis;
       } FC_CAPTURE_AND_RETHROW() }
 
@@ -758,6 +759,7 @@ void application::set_program_options(boost::program_options::options_descriptio
 {
    configuration_file_options.add_options()
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
+         ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")

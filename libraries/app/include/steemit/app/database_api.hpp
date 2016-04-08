@@ -49,6 +49,19 @@ using namespace std;
 
 class database_api_impl;
 
+struct order
+{
+   price                order_price;
+   share_type           steem;
+   share_type           sbd;
+   fc::time_point_sec   created;
+};
+
+struct order_book
+{
+   vector< order >      asks;
+   vector< order >      bids;
+};
 
 /**
  * @brief The database_api class implements the RPC API for the chain database.
@@ -199,6 +212,17 @@ class database_api
        */
       uint64_t get_witness_count()const;
 
+      ////////////
+      // Market //
+      ////////////
+
+      /**
+       * @breif Gets the current order book for STEEM:SBD market
+       * @param limit Maximum number of orders for each side of the spread to return -- Must not exceed 1000
+       */
+      order_book get_order_book( uint32_t limit = 1000 )const;
+
+
       ////////////////////////////
       // Authority / validation //
       ////////////////////////////
@@ -285,6 +309,9 @@ class database_api
 
 } }
 
+FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd)(created) );
+FC_REFLECT( steemit::app::order_book, (asks)(bids) );
+
 FC_API(steemit::app::database_api,
    // Subscriptions
    (set_subscribe_callback)
@@ -325,6 +352,9 @@ FC_API(steemit::app::database_api,
    (get_witness_by_account)
    (lookup_witness_accounts)
    (get_witness_count)
+
+   // Market
+   (get_order_book)
 
    // Authority / validation
    (get_transaction_hex)

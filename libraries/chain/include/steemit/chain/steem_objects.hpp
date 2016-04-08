@@ -98,10 +98,6 @@ namespace steemit { namespace chain {
             return sell_price.base.symbol < sell_price.quote.symbol ?
                 std::make_pair(sell_price.base.symbol, sell_price.quote.symbol) :
                 std::make_pair(sell_price.quote.symbol, sell_price.base.symbol);
-
-            auto tmp = std::make_pair( sell_price.base.symbol, sell_price.quote.symbol );
-            if( tmp.first > tmp.second ) std::swap( tmp.first, tmp.second );
-            return tmp;
          }
 
          asset amount_for_sale()const   { return asset( for_sale, sell_price.base.symbol ); }

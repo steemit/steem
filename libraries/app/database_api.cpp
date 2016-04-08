@@ -84,6 +84,9 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       set<string> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_witness_count()const;
 
+      // Market
+      order_book get_order_book( uint32_t limit )const;
+
       // Authority / validation
       std::string get_transaction_hex(const signed_transaction& trx)const;
       set<public_key_type> get_required_signatures( const signed_transaction& trx, const flat_set<public_key_type>& available_keys )const;
@@ -460,6 +463,55 @@ uint64_t database_api::get_witness_count()const
 uint64_t database_api_impl::get_witness_count()const
 {
    return _db.get_index_type<witness_index>().indices().size();
+}
+
+//////////////////////////////////////////////////////////////////////
+//                                                                  //
+// Market                                                           //
+//                                                                  //
+//////////////////////////////////////////////////////////////////////
+
+order_book database_api::get_order_book( uint32_t limit )const
+{
+   return my->get_order_book( limit );
+}
+
+order_book database_api_impl::get_order_book( uint32_t limit )const
+{
+   FC_ASSERT( limit <= 1000 );
+   order_book result;
+   const auto& order_idx = _db.get_index_type< limit_order_index >().indices().get< by_price >();
+   auto end = order_idx.lower_bound( std::make_tuple( price( asset( 0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
+   auto itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
+
+   while( itr != end && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
+   {
+      order cur;
+      cur.order_price = itr->sell_price;
+      cur.sbd = itr->for_sale;
+      cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
+      cur.created = itr->created;
+      result.bids.push_back( cur );
+
+      itr--;
+   }
+
+   end = order_idx.lower_bound( std::make_tuple( price( asset( 0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
+   itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
+
+   while( itr != end && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
+   {
+      order cur;
+      cur.order_price = itr->sell_price;
+      cur.steem = itr->for_sale;
+      cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
+      cur.created = itr->created;
+      result.asks.push_back( cur );
+
+      itr--;
+   }
+
+   return result;
 }
 
 //////////////////////////////////////////////////////////////////////

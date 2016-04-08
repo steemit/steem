@@ -74,6 +74,9 @@ void witness_plugin::plugin_set_program_options(
          ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )" )
          ("mining-threads,t", bpo::value<uint32_t>(),"Number of threads to use for proof of work mining" )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
+         ("miner-account-creation-fee", bpo::value<uint64_t>()->implicit_value(100000),"Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
+         ("miner-maximum-block-size", bpo::value<uint32_t>()->implicit_value(131072),"Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB")
+         ("miner-sbd-interest-rate", bpo::value<uint32_t>()->implicit_value(1000),"SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)")
          ;
    config_file_options.add(command_line_options);
 }
@@ -95,7 +98,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    edump((_witnesses));
 
    if( options.count("miner") ) {
-      
+
       const vector<string> miner_to_wif_pair_strings = options["miner"].as<vector<string>>();
       for( auto p : miner_to_wif_pair_strings )
       {
@@ -128,6 +131,36 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       }
    }
 
+   if( options.count("miner-account-creation-fee") )
+   {
+      const uint64_t account_creation_fee = options["miner-account-creation-fee"].as<uint64_t>();
+
+      if( account_creation_fee < STEEMIT_MIN_ACCOUNT_CREATION_FEE )
+         wlog( "miner-account-creation-fee is below the minimum fee, using minimum instead" );
+      else
+         _miner_prop_vote.account_creation_fee.amount = account_creation_fee;
+   }
+
+   if( options.count( "miner-maximum-block-size" ) )
+   {
+      const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
+
+      if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT )
+         wlog( "miner-maximum-block-size is below the minimum block size limit, using minimum of 128 KB instead" );
+      else if ( maximum_block_size > STEEMIT_MAX_BLOCK_SIZE )
+      {
+         wlog( "miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead" );
+         _miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
+      }
+      else
+         _miner_prop_vote.maximum_block_size = maximum_block_size;
+   }
+
+   if( options.count( "miner-sbd-interest-rate" ) )
+   {
+      _miner_prop_vote.sbd_interest_rate = options["miner-sbd-interest-rate"].as<uint32_t>();
+   }
+
    ilog("witness plugin:  plugin_initialize() end");
 } FC_LOG_AND_RETHROW() }
 
@@ -149,17 +182,28 @@ void witness_plugin::plugin_startup()
          _production_skip_flags |= steemit::chain::database::skip_undo_history_check;
       }
       schedule_production_loop();
-      d.applied_block.connect( [this]( const chain::signed_block& b ){ this->on_applied_block(b); } );
    } else
-      elog("No witnesses configured! Please add witness IDs and private keys to configuration.");
+      elog("No witnesses configured! Please add witness names and private keys to configuration.");
+   if( !_miners.empty() )
+   {
+      ilog("Starting mining...");
+      d.applied_block.connect( [this]( const chain::signed_block& b ){ this->on_applied_block(b); } );
+   }
+   else
+   {
+      elog("No miners configured! Please add miner names and private keys to configuration.");
+   }
    ilog("witness plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
 
 void witness_plugin::plugin_shutdown()
 {
    graphene::time::shutdown_ntp_time();
-   ilog( "shutting downing mining threads" );
-   _thread_pool.clear();
+   if( !_miners.empty() )
+   {
+      ilog( "shutting downing mining threads" );
+      _thread_pool.clear();
+   }
    return;
 }
 
@@ -212,7 +256,7 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
          ilog("Generated block #${n} with timestamp ${t} at time ${c} by ${w}", (capture));
          break;
       case block_production_condition::not_synced:
-         ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
+         //ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
          break;
       case block_production_condition::not_my_turn:
          //ilog("Not producing block because it isn't my turn");
@@ -333,7 +377,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
  * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
  * and therefore do not even attempt work that cannot be delivered on time.
  */
-void witness_plugin::on_applied_block( const chain::signed_block& b ) 
+void witness_plugin::on_applied_block( const chain::signed_block& b )
 { try {
   if( !_mining_threads || _miners.size() == 0 ) return;
   chain::database& db = database();
@@ -347,9 +391,10 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
 
 
    auto target = db.get_pow_target();
-   ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
-           ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
-       );
+   if( uint64_t(hps) > 0 )
+      ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
+              ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
+         );
 
 
   _head_block_num = b.block_num();
@@ -372,10 +417,10 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
     }
   } // for miner in miners
 
-} catch ( const fc::exception& e ) { ilog( "exception thrown while attempting to mine" ); } 
+} catch ( const fc::exception& e ) { ilog( "exception thrown while attempting to mine" ); }
 }
 
-void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk, 
+void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc::private_key& pk,
                             const string& miner, const steemit::chain::signed_block& b ) {
 
     static uint64_t seed = fc::time_point::now().time_since_epoch().count();
@@ -404,6 +449,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
           op.worker_account = miner;
           op.work.worker = pub;
           op.nonce = start + thread_num;
+          op.props = _miner_prop_vote;
           while( true )
           {
           //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));

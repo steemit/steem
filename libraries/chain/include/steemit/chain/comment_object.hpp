@@ -75,9 +75,9 @@ namespace steemit { namespace chain {
          string            author;
          string            permlink;
 
-         string            title;
-         string            body;
-         string            json_metadata;
+         string            title = "";
+         string            body = "";
+         string            json_metadata = "";
          time_point_sec    last_update;
          time_point_sec    created;
 

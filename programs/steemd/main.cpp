@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
    fc::oexception unhandled_exception;
    try {
 
-#ifdef IS_TEST_NET 
+#ifdef IS_TEST_NET
       std::cerr << "------------------------------------------------------\n\n";
       std::cerr << "            STARTING TEST NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
@@ -218,11 +218,11 @@ void write_default_logging_config_to_stream(std::ostream& out)
           "# route any messages logged to the default logger to the \"stderr\" logger we\n"
           "# declared above, if they are info level are higher\n"
           "[logger.default]\n"
-          "level=info\n"
+          "level=warn\n"
           "appenders=stderr\n\n"
           "# route messages sent to the \"p2p\" logger to the p2p appender declared above\n"
           "[logger.p2p]\n"
-          "level=debug\n"
+          "level=warn\n"
           "appenders=p2p\n\n";
 }
 

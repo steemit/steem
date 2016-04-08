@@ -67,9 +67,12 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.active = o.active;
       acc.posting = o.posting;
       acc.memo_key = o.memo_key;
-      acc.json_metadata = o.json_metadata;
       acc.created = props.time;
       acc.last_vote_time = props.time;
+
+      #ifndef IS_LOW_MEM
+         acc.json_metadata = o.json_metadata;
+      #endif
    });
 
    if( o.fee.amount > 0 )
@@ -85,7 +88,10 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       if( o.active ) acc.active = *o.active;
       if( o.posting ) acc.posting = *o.posting;
       acc.memo_key = o.memo_key;
-      acc.json_metadata = o.json_metadata;
+
+      #ifndef IS_LOW_MEM
+         acc.json_metadata = o.json_metadata;
+      #endif
    });
 }
 
@@ -132,12 +138,15 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          com.author = o.author;
          com.permlink = o.permlink;
-         com.title = o.title;
-         com.body = o.body;
-         com.json_metadata = o.json_metadata;
          com.last_update = db().head_block_time();
          com.created = com.last_update;
          com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+
+         #ifndef IS_LOW_MEM
+            com.title = o.title;
+            com.body = o.body;
+            com.json_metadata = o.json_metadata;
+         #endif
       });
       const category_object* cat = db().find_category( new_comment.category );
       if( !cat ) {
@@ -181,13 +190,16 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( com.parent_permlink == o.parent_permlink );
          }
 
-         com.title = o.title;
-         com.body = o.body;
-         com.json_metadata = o.json_metadata;
          com.last_update   = db().head_block_time();
          com.net_rshares   = std::min( com.net_rshares, share_type(0) );
          com.abs_rshares   = 0;
          com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+
+         #ifndef IS_LOW_MEM
+            com.title = o.title;
+            com.body = o.body;
+            com.json_metadata = o.json_metadata;
+         #endif
       });
    }
 
