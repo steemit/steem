@@ -81,8 +81,11 @@ int main( int argc, char** argv )
          ("rpc-http-endpoint,H", bpo::value<string>()->implicit_value("127.0.0.1:8093"), "Endpoint for wallet HTTP RPC to listen on")
          ("rpc-http-gui-endpoint,G", bpo::value<string>()->implicit_value("127.0.0.1:8094"), "Endpoint for wallet HTTP GUI to listen on")
          ("daemon,d", "Run the wallet in daemon mode" )
+         ("rpc-http-allowip", bpo::value<vector<string>>()->multitoken(), "Allows only specified IPs to connect to the HTTP endpoint" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
          ("chain-id", bpo::value<string>(), "chain ID to connect to");
+
+      vector<string> allowed_ips;
 
       bpo::variables_map options;
 
@@ -92,6 +95,10 @@ int main( int argc, char** argv )
       {
          std::cout << opts << "\n";
          return 0;
+      }
+      if( options.count("rpc-http-allowip") && options.count("rpc-http-endpoint") ) {
+         allowed_ips = options["rpc-http-allowip"].as<vector<string>>();
+         wdump((allowed_ips));
       }
 
       fc::path data_dir;
@@ -212,17 +219,28 @@ int main( int argc, char** argv )
          _websocket_tls_server->start_accept();
       }
 
+      set<fc::ip::address> allowed_ip_set;
+
       auto _http_server = std::make_shared<fc::http::server>();
       if( options.count("rpc-http-endpoint" ) )
       {
          ilog( "Listening for incoming HTTP RPC requests on ${p}", ("p", options.at("rpc-http-endpoint").as<string>() ) );
+         for( const auto& ip : allowed_ips )
+            allowed_ip_set.insert(fc::ip::address(ip));
+
          _http_server->listen( fc::ip::endpoint::from_string( options.at( "rpc-http-endpoint" ).as<string>() ) );
          //
          // due to implementation, on_request() must come AFTER listen()
          //
          _http_server->on_request(
             [&]( const fc::http::request& req, const fc::http::server::response& resp )
-            {
+            { 
+               auto itr = allowed_ip_set.find( fc::ip::endpoint::from_string(req.remote_endpoint).get_address() );
+               if( itr == allowed_ip_set.end() ) {
+                  elog("rejected connection from ${ip} because it isn't in allowed set ${s}", ("ip",req.remote_endpoint)("s",allowed_ip_set) );
+                  resp.set_status( fc::http::reply::NotAuthorized );
+                  return;
+               }
                std::shared_ptr< fc::rpc::http_api_connection > conn =
                   std::make_shared< fc::rpc::http_api_connection>();
                conn->register_api( wapi );
