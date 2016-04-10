@@ -1645,7 +1645,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   validate();
+   //validate();
    return;
 }
 
