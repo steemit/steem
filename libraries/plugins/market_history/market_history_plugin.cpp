@@ -3,7 +3,7 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/history_object.hpp>
 
-namespace steemit { namespace plugin { namespace market_history {
+namespace steemit { namespace market_history {
 
 namespace detail {
 
@@ -160,6 +160,6 @@ void market_history_plugin::plugin_initialize( const bood::program_options::vari
 
 void market_history_plugin::plugin_startup() {}
 
-} } } // steemit::plugin::market_history
+} } // steemit::market_history
 
-STEEMIT_DEFINE_PLUGIN( market_history, steemit::plugin::market_history::market_history_plugin )
+STEEMIT_DEFINE_PLUGIN( market_history, steemit::market_history::market_history_plugin )

@@ -1,6 +1,6 @@
 #include <teemit/app/plugin.hpp>
 
-namespace steemit { namespace plugin { namespace market_history {
+namespace steemit { namespace market_history {
 
 using namespace chain;
 
@@ -111,17 +111,17 @@ typedef mutli_index_container<
 typedef generic_index< bucket_object, bucket_object_multi_index_type >        bucket_index;
 typedef generic_index< order_history_object, order_history_multi_index_type > order_history_index;
 
-} } } // steemit::plugin::market_history
+} } // steemit::market_history
 
-FC_REFLECT( steemit::plugin::market_history::bucket_key, (seconds)(open) )
-FC_REFLECT_DERIVED( steemit::plugin::market_history::bucket_object, (graphene::db::object),
+FC_REFLECT( steemit::market_history::bucket_key, (seconds)(open) )
+FC_REFLECT_DERIVED( steemit::market_history::bucket_object, (graphene::db::object),
                      (key)
                      (high_base)(high_quote)
                      (low_base)(low_quote)
                      (open_base)(open_quote)
                      (close_base)(close_quote)
                      (base_volume)(quote_volume) )
-FC_REFLECT_DERIVED( steemit::plugin::market_history::order_history_object, (graphene::db::object),
+FC_REFLECT_DERIVED( steemit::market_history::order_history_object, (graphene::db::object),
                      (sequence)
                      (time)
                      (op) )
