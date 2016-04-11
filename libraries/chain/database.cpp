@@ -632,6 +632,12 @@ signed_block database::_generate_block(
    // pop pending state (reset to head block state)
    for( const signed_transaction& tx : _pending_tx )
    {
+      // Only include transactions that have not expired yet for currently generating block,
+      // this should clear problem transactions and allow block production to continue
+
+      if( tx.expiration < when )
+         continue;
+
       size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
       // postpone transaction if it would make block too big
@@ -1645,7 +1651,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   validate();
+   if( !( skip & skip_validate ) )
+      validate();
    return;
 }
 
@@ -1755,7 +1762,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
 
-   if( true || !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
+   if( !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
       trx.validate();
 
    auto& trx_idx = get_mutable_index_type<transaction_index>();

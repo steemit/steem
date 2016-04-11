@@ -124,7 +124,7 @@ void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_i
 {
    if( miss_intermediate_blocks )
    {
-      //generate_block();
+      generate_block();
       auto slots_to_miss = db.get_slot_at_time(timestamp);
       if( slots_to_miss <= 1 )
          return;

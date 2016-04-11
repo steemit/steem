@@ -526,8 +526,10 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
 
    db().modify( reporter, [&]( account_object& a ){
        a.vesting_shares += violator.vesting_shares;
+       db().adjust_witness_votes( a, violator.vesting_shares.amount, 0 );
    });
    db().modify( violator, [&]( account_object& a ){
+       db().adjust_witness_votes( a, -a.vesting_shares.amount, 0 );
        a.vesting_shares.amount = 0;
    });
 }
