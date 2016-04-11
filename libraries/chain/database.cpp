@@ -134,7 +134,8 @@ void database::reindex(fc::path data_dir )
                           skip_transaction_dupe_check |
                           skip_tapos_check |
                           skip_witness_schedule_check |
-                          skip_authority_check);
+                          skip_authority_check |
+                          skip_validate_invariants );
    }
 
    _undo_db.enable();
@@ -1651,8 +1652,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   if( !( skip & skip_validate ) )
-      validate();
+   if( !( skip & skip_validate_invariants ) )
+      validate_invariants();
    return;
 }
 
@@ -2282,7 +2283,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 /**
  * Verifies all supply invariantes check out
  */
-void database::validate( )const
+void database::validate_invariants()const
 {
    const auto& db = *this;
    try

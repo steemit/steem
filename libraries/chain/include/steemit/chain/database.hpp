@@ -50,8 +50,9 @@ namespace steemit { namespace chain {
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
             skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
             skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_witness_schedule_check = 1 << 10,  ///< used while reindexing
-            skip_validate               = 1 << 11 ///< used prior to checkpoint, skips validate() call on transaction
+            skip_witness_schedule_check = 1 << 10, ///< used while reindexing
+            skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
+            skip_validate_invariants    = 1 << 12  ///< used to skip database invariant check on block application
          };
 
          /**
@@ -374,7 +375,7 @@ namespace steemit { namespace chain {
 
          node_property_object              _node_property_object;
 
-         void validate()const;
+         void validate_invariants()const;
    };
 
 
