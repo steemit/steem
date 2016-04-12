@@ -356,12 +356,11 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
 
              // account_vshares / total_vshares  > account_average_bandwidth / max_virtual_bandwidth
              FC_ASSERT( (account_vshares * max_virtual_bandwidth) > (account_average_bandwidth * total_vshares),
-                        "account exceeded maximum allowed bandwidth per vesting share",
+                        "account exceeded maximum allowed bandwidth per vesting share account_vshares: ${account_vshares} account_average_bandwidth: ${account_average_bandwidth} max_virtual_bandwidth: ${max_virtual_bandwidth} total_vesting_shares: ${total_vesting_shares}",
                         ("account_vshares",account_vshares)
                         ("account_average_bandwidth",account_average_bandwidth)
                         ("max_virtual_bandwidth",max_virtual_bandwidth)
                         ("total_vshares",total_vshares) );
-
           }
           acnt.last_bandwidth_update = now;
       });
@@ -399,7 +398,7 @@ void database::update_account_market_bandwidth( const account_object& a, uint32_
 
              // account_vshares / total_vshares  > account_average_bandwidth / max_virtual_bandwidth
              FC_ASSERT( (account_vshares * max_virtual_bandwidth) > (account_average_bandwidth * total_vshares),
-                        "account exceeded maximum allowed market bandwidth per vesting share",
+                        "account exceeded maximum allowed bandwidth per vesting share account_vshares: ${account_vshares} account_average_bandwidth: ${account_average_bandwidth} max_virtual_bandwidth: ${max_virtual_bandwidth} total_vesting_shares: ${total_vesting_shares}",
                         ("account_vshares",account_vshares)
                         ("account_average_bandwidth",account_average_bandwidth)
                         ("max_virtual_bandwidth",max_virtual_bandwidth)
