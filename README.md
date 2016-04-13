@@ -33,9 +33,11 @@ each individual to inspect the code to understand the consensus rules.
 
 Seed Nodes
 ----------
+
     steemit    52.38.66.234:2001
     xeldal     45.55.217.111:12150 
     ihashfury  104.168.154.160:40696
+    lafona     52.4.250.181:39705
 
 
 How to Mine
