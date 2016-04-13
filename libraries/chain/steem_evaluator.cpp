@@ -8,6 +8,26 @@
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
+void inline validate_permlink( string permlink )
+{
+   FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
+
+   for( auto c : permlink )
+   {
+      switch( c )
+      {
+         case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i':
+         case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
+         case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z': case '0':
+         case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+         case '-':
+            break;
+         default:
+            FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
+      }
+   }
+}
+
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
@@ -108,9 +128,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       a.last_post = now;
    });
 
-
    comment_id_type id;
-
 
    const comment_object* parent = nullptr;
    if( o.parent_author.size() != 0 ) {
@@ -122,6 +140,12 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
+         if( db().is_producing() )
+         {
+            validate_permlink( o.parent_permlink );
+            validate_permlink( o.permlink );
+         }
+
          if ( o.parent_author.size() == 0 )
          {
             com.parent_author = "";

@@ -12,7 +12,7 @@ namespace steemit { namespace chain {
       return asset.symbol == symbol;
    }
 
-   void inline validate_permlink( string permlink )
+   void inline validate_permlink_deprecated( string permlink )
    {
       FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
       FC_ASSERT( fc::is_utf8( permlink ) );
@@ -80,9 +80,9 @@ namespace steemit { namespace chain {
 
       FC_ASSERT( !parent_author.size() || is_valid_account_name( parent_author ), "Parent author name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author name invalid" );
-      validate_permlink( permlink );
+      validate_permlink_deprecated( permlink );
       if ( parent_author.size() > 0 )
-         validate_permlink( parent_permlink );
+         validate_permlink_deprecated( parent_permlink );
 
       if( json_metadata.size() > 0 )
       {
@@ -94,7 +94,7 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );
-      validate_permlink( permlink );
+      validate_permlink_deprecated( permlink );
       FC_ASSERT( abs(weight) <= STEEMIT_100_PERCENT, "Weight is not a STEEMIT percentage" );
       FC_ASSERT( weight != 0, "Vote weight is 0" );
    }
