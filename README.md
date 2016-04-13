@@ -31,6 +31,13 @@ Code is Documentation
 Rather than attempt to describe the rules of the blockchain, it is up to
 each individual to inspect the code to understand the consensus rules.  
 
+Seed Nodes
+----------
+    steemit    52.38.66.234:2001
+    xeldal     45.55.217.111:12150 
+    ihashfury  104.168.154.160:40696
+
+
 How to Mine
 -----------
 

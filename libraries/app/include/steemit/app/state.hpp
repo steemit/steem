@@ -124,8 +124,8 @@ namespace steemit { namespace app {
          * The list of miners who are queued to produce work
          */
         vector<string>                pow_queue;
-        witness_schedule_object       witnesses;
-
+        map<string, witness_object>   witnesses;
+        witness_schedule_object       witness_schedule;
    };
 
 } }
@@ -141,5 +141,5 @@ FC_REFLECT( steemit::app::account_vote, (authorperm)(weight) );
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(maturing)(best) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
-FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx) )
+FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )

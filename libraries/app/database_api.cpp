@@ -426,6 +426,8 @@ vector< witness_object > database_api::get_witnesses_by_vote( string from, uint3
    FC_ASSERT( limit <= 100 );
 
    vector<witness_object> result;
+   result.reserve(limit);
+
    const auto& name_idx = my->_db.get_index_type< witness_index >().indices().get< by_name >();
    const auto& vote_idx = my->_db.get_index_type< witness_index >().indices().get< by_vote_name >();
 
@@ -434,10 +436,11 @@ vector< witness_object > database_api::get_witnesses_by_vote( string from, uint3
       auto nameitr = name_idx.find( from );
       FC_ASSERT( nameitr != name_idx.end(), "invalid witness name ${n}", ("n",from) );
       itr = vote_idx.iterator_to( *nameitr );
-      while( itr != vote_idx.end() && result.size() < limit ) {
-         result.push_back(*itr);
-         ++itr;
-      }
+   } 
+
+   while( itr != vote_idx.end() && result.size() < limit ) {
+      result.push_back(*itr);
+      ++itr;
    }
    return result;
 }
@@ -718,13 +721,11 @@ void database_api::set_pending_payout( discussion& d )const
    asset pot = props.total_reward_fund_steem;
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
 
-   idump((pot)(props.total_reward_shares2));
    if( props.total_reward_shares2 > 0 ){
       fc::uint128_t r2(d.net_rshares.value);
       r2 *= r2;
       r2 *= pot.amount.value;
       r2 /= props.total_reward_shares2;
-      idump((props.total_reward_shares2)(r2));
 
       auto tpp = d.children_rshares2;
       tpp *= pot.amount.value;
@@ -1069,6 +1070,13 @@ state database_api::get_state( string path )const
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
    }
+   else if( part[0] == "~witnesses" ) {
+      auto wits = get_witnesses_by_vote( "", 50 );
+      for( const auto& w : wits ) {
+         _state.witnesses[w.owner] = w;
+      }
+      _state.pow_queue = get_miner_queue();
+   }
    else if( part[0] == "trending" && part[1].size() ) {
       auto trending_disc = get_discussions_in_category_by_total_pending_payout( part[1], "", "", 20 );
 
@@ -1141,7 +1149,7 @@ state database_api::get_state( string path )const
       d.second.active_votes = get_active_votes( d.second.author, d.second.permlink );
    }
 
-   _state.witnesses = my->_db.get_witness_schedule_object();
+   _state.witness_schedule = my->_db.get_witness_schedule_object();
 
    return _state;
 }
