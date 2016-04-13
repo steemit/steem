@@ -421,6 +421,27 @@ fc::optional<witness_object> database_api::get_witness_by_account( string accoun
    return my->get_witness_by_account( account_name );
 }
 
+vector< witness_object > database_api::get_witnesses_by_vote( string from, uint32_t limit )const
+{
+   FC_ASSERT( limit <= 100 );
+
+   vector<witness_object> result;
+   const auto& name_idx = my->_db.get_index_type< witness_index >().indices().get< by_name >();
+   const auto& vote_idx = my->_db.get_index_type< witness_index >().indices().get< by_vote_name >();
+
+   auto itr = vote_idx.begin();
+   if( from.size() ) {
+      auto nameitr = name_idx.find( from );
+      FC_ASSERT( nameitr != name_idx.end(), "invalid witness name ${n}", ("n",from) );
+      itr = vote_idx.iterator_to( *nameitr );
+      while( itr != vote_idx.end() && result.size() < limit ) {
+         result.push_back(*itr);
+         ++itr;
+      }
+   }
+   return result;
+}
+
 fc::optional<witness_object> database_api_impl::get_witness_by_account( string account_name ) const
 {
    const auto& idx = _db.get_index_type< witness_index >().indices().get< by_name >();

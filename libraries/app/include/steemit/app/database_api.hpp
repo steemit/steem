@@ -200,6 +200,13 @@ class database_api
       fc::optional< witness_object > get_witness_by_account( string account_name )const;
 
       /**
+       *  This method is used to fetch witnesses with pagination.
+       *
+       *  @return an array of `count` witnesses sorted by total votes after witness `from` with at most `limit' results.
+       */
+      vector< witness_object > get_witnesses_by_vote( string from, uint32_t limit )const;
+
+      /**
        * @brief Get names and IDs for registered witnesses
        * @param lower_bound_name Lower bound of the first name to return
        * @param limit Maximum number of results to return -- must not exceed 1000
@@ -352,12 +359,6 @@ FC_API(steemit::app::database_api,
    (get_conversion_requests)
    (get_account_history)
 
-   // Witnesses
-   (get_witnesses)
-   (get_witness_by_account)
-   (lookup_witness_accounts)
-   (get_witness_count)
-
    // Market
    (get_order_book)
 
@@ -381,6 +382,12 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_last_update)
    (get_discussions_in_category_by_last_update)
 
+   // Witnesses
+   (get_witnesses)
+   (get_witness_by_account)
+   (get_witnesses_by_vote)
+   (lookup_witness_accounts)
+   (get_witness_count)
    (get_active_witnesses)
    (get_miner_queue)
 )
