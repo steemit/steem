@@ -670,7 +670,23 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
       ++itr;
    }
    return result;
+}
+vector<account_vote> database_api::get_account_votes( string voter )const {
+   vector<account_vote> result;
+      
+   const auto& voter_acnt = my->_db.get_account(voter);
+   const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_voter_comment >();
 
+   account_id_type aid(voter_acnt.id);
+   auto itr = idx.lower_bound( aid );
+   auto end = idx.upper_bound( aid );
+   while( itr != end )
+   {
+      const auto& vo = itr->comment(my->_db);
+      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->weight});
+      ++itr;
+   }
+   return result;
 }
 
 void database_api::set_pending_payout( discussion& d )const

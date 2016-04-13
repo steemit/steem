@@ -254,7 +254,12 @@ class database_api
        */
       bool           verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
 
+      /**
+       *  if permlink is "" then it will return all votes for author
+       */
       vector<vote_state> get_active_votes( string author, string permlink )const;
+      vector<account_vote> get_account_votes( string voter )const;
+
 
       discussion           get_content( string author, string permlink )const;
       vector<discussion>   get_content_replies( string parent, string parent_permlink )const;
@@ -366,6 +371,7 @@ FC_API(steemit::app::database_api,
 
    // votes
    (get_active_votes)
+   (get_account_votes)
 
    // content
    (get_content)

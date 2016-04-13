@@ -27,6 +27,11 @@ namespace steemit { namespace app {
       uint64_t weight;
    };
 
+   struct account_vote {
+      string   authorperm;
+      uint64_t weight;
+   };
+
    struct  discussion : public comment_object {
       discussion( const comment_object& o ):comment_object(o){}
       discussion(){}
@@ -132,6 +137,7 @@ FC_REFLECT_DERIVED( steemit::app::extended_account,
 
 
 FC_REFLECT( steemit::app::vote_state, (voter)(weight) );
+FC_REFLECT( steemit::app::account_vote, (authorperm)(weight) );
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(maturing)(best) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
