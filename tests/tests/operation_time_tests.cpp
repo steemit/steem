@@ -44,6 +44,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       comment_operation com;
       com.author = "alice";
       com.permlink = "test";
+      com.parent_permlink = "test";
       com.title = "foo";
       com.body = "bar";
       tx.operations.push_back( com );
@@ -346,6 +347,7 @@ BOOST_AUTO_TEST_CASE( nested_comments )
       comment_operation comment_op;
       comment_op.author = "alice";
       comment_op.permlink = "test";
+      comment_op.parent_permlink = "test";
       comment_op.title = "foo";
       comment_op.body = "bar";
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
@@ -873,6 +875,7 @@ BOOST_AUTO_TEST_CASE( convert_delay )
       comment.title = "foo";
       comment.body = "bar";
       comment.permlink = "test";
+      comment.parent_permlink = "test";
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -1138,6 +1141,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       comment.title = "foo";
       comment.body = "bar";
       comment.permlink = "test";
+      comment.parent_permlink = "test";
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -1234,6 +1238,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       comment_operation comment;
       comment.author = "alice";
       comment.permlink = "test";
+      comment.parent_permlink = "test";
       comment.title = "foo";
       comment.body = "bar";
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
