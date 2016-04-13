@@ -651,6 +651,7 @@ discussion database_api::get_content( string author, string permlink )const {
    {
       discussion result(*itr);
       set_pending_payout(result);
+      result.active_votes = get_active_votes( author, permlink );
       return result;
    }
    return discussion();
