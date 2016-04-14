@@ -21,7 +21,7 @@ namespace steemit { namespace chain {
 
       uint8_t     decimals()const;
       std::string symbol_name()const;
-      uint64_t    precision()const;
+      int64_t     precision()const;
       void        set_decimals(uint8_t d);
 
       static asset from_string( const string& from );
