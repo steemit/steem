@@ -43,6 +43,7 @@ Seed Nodes
     cyrano.witness   81.89.101.133:2001                        (Jena, Germany)
     kushed           40.76.37.6:2001         steem.kushed.com  (Azure)
     nextgencrypto    104.207.152.44:2201     steemwitness.com  (Los Angeles, USA)
+    steempty         109.74.206.93:2001
 
 
 How to Mine
