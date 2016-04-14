@@ -38,12 +38,11 @@ Seed Nodes
     xeldal           45.55.217.111:12150                       (USA)
     ihashfury        104.168.154.160:40696                    
     lafona           52.4.250.181:39705                       
-    steempty         109.74.206.93:2001                        (Israel)
+    steempty         109.74.206.93:2001      steem.clawmap.com (UK)
     steem-id         45.114.118.146:2001                       (Indonesia)
     cyrano.witness   81.89.101.133:2001                        (Jena, Germany)
     kushed           40.76.37.6:2001         steem.kushed.com  (Azure)
     nextgencrypto    104.207.152.44:2201     steemwitness.com  (Los Angeles, USA)
-    steempty         109.74.206.93:2001
 
 
 How to Mine
