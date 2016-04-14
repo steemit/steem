@@ -14,9 +14,6 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 
    if ( db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 ); /// TODO: Enforce at next Hardfork
 
-   // TODO: Should be in next hardfork
-   if ( db().is_producing() ) FC_ASSERT( o.fee >= std::max( asset( (STEEMIT_PRODUCER_APR * db().get_dynamic_global_properties().virtual_supply.amount.value) / (100*STEEMIT_BLOCKS_PER_YEAR), STEEM_SYMBOL), STEEMIT_MIN_PRODUCER_REWARD ) );
-
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
    if( wit_itr != by_witness_name_idx.end() )
@@ -29,6 +26,9 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
    else
    {
+      // TODO: Should be in next hardfork
+      if ( db().is_producing() ) FC_ASSERT( o.fee >= std::max( asset( (STEEMIT_PRODUCER_APR * db().get_dynamic_global_properties().virtual_supply.amount.value) / (100*STEEMIT_BLOCKS_PER_YEAR), STEEM_SYMBOL), STEEMIT_MIN_PRODUCER_REWARD ) );
+
       db().pay_fee( witness_account, o.fee );
 
       db().create< witness_object >( [&]( witness_object& w ) {
