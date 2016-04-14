@@ -174,6 +174,8 @@ namespace steemit { namespace chain {
    struct by_last_update_in_category;
    struct by_cashout_time;
    struct by_cashout_time_in_category;
+   struct by_blog; /// author, parent, parent_author (aka topic), created (greater), permlink
+   struct by_blog_category; /// author, parent, parent_author (aka topic), created (greater), permlink
    /**
     * @ingroup object_index
     */
@@ -208,6 +210,25 @@ namespace steemit { namespace chain {
                member< comment_object, string, &comment_object::parent_permlink >,
                member< object, object_id_type, &object::id >
             >
+         >,
+         ordered_unique< tag< by_blog >,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::author >,
+               member< comment_object, string, &comment_object::parent_author >,
+               member< comment_object, time_point_sec, &comment_object::created >,
+               member< comment_object, string, &comment_object::permlink >
+            >,
+            composite_key_compare< std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<string> >
+         >,
+         ordered_unique< tag< by_blog_category >,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::author >,
+               member< comment_object, string, &comment_object::parent_author >,
+               member< comment_object, string, &comment_object::parent_permlink >,
+               member< comment_object, time_point_sec, &comment_object::created >,
+               member< comment_object, string, &comment_object::permlink >
+            >,
+            composite_key_compare< std::less< string >, std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<string> >
          >,
          ordered_unique< tag< by_parent_created >,
             composite_key< comment_object,
