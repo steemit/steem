@@ -37,7 +37,7 @@
 
 using namespace steemit::chain;
 
-BOOST_FIXTURE_TEST_SUITE( serialization_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( serialization_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( serialization_raw_test )
 {

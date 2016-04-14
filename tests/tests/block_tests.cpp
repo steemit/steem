@@ -436,7 +436,7 @@ BOOST_AUTO_TEST_CASE( tapos )
    }
 }
 
-BOOST_FIXTURE_TEST_CASE( optional_tapos, database_fixture )
+BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
 {
    try
    {
@@ -505,7 +505,7 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, database_fixture )
    }
 }
 
-BOOST_FIXTURE_TEST_CASE( double_sign_check, database_fixture )
+BOOST_FIXTURE_TEST_CASE( double_sign_check, clean_database_fixture )
 { try {
    generate_block();
    ACTOR(bob);
@@ -548,7 +548,7 @@ BOOST_FIXTURE_TEST_CASE( double_sign_check, database_fixture )
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
+BOOST_FIXTURE_TEST_CASE( pop_block_twice, clean_database_fixture )
 {
    try
    {
@@ -588,7 +588,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
    }
 }
 
-BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, database_fixture )
+BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, clean_database_fixture )
 {
    try
    {
@@ -722,7 +722,7 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, database_fixture )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_FIXTURE_TEST_CASE( skip_block, database_fixture )
+BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
 {
    try
    {
@@ -763,7 +763,7 @@ BOOST_FIXTURE_TEST_CASE( skip_block, database_fixture )
  *  this wouldn't happen.
  */
 /*
-BOOST_FIXTURE_TEST_CASE( pow_blocks, database_fixture ) {
+BOOST_FIXTURE_TEST_CASE( pow_blocks, clean_database_fixture ) {
 try {
    ACTOR(bob1);
    ACTOR(bob2);
@@ -830,7 +830,7 @@ try {
 } FC_LOG_AND_RETHROW() }
 */
 /*
-BOOST_FIXTURE_TEST_CASE( pow_block, database_fixture )
+BOOST_FIXTURE_TEST_CASE( pow_block, clean_database_fixture )
 {
    try
    {

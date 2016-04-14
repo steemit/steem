@@ -2344,6 +2344,86 @@ void database::validate_invariants()const
    FC_LOG_AND_RETHROW();
 }
 
+void database::perform_vests_stock_split( uint32_t magnitude )
+{
+   // Need to update all VESTS in accounts and the total VESTS in the dgpo
+   const auto& acc_idx = get_index_type< account_index >().indices().get< by_name >();
+   auto itr = acc_idx.begin();
+
+   while( itr != acc_idx.end() )
+   {
+      modify( *itr, [&]( account_object& a )
+      {
+         a.vesting_shares.amount *= magnitude;
+         a.withdrawn             *= magnitude;
+         a.to_withdraw           *= magnitude;
+         a.vesting_withdraw_rate  = asset( a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+      });
+
+      itr++;
+   }
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object d )
+   {
+      d.total_vesting_shares.amount *= magnitude;
+   });
+
+   const auto& com_idx = get_index_type< comment_index >().indices().get< by_created >();
+   auto com_itr = com_idx.begin();
+
+   uint128_t new_rshares2 = 0;
+
+   while( com_itr != com_idx.end() )
+   {
+      modify( *com_itr, [&]( comment_object& c )
+      {
+         c.net_rshares       *= magnitude;
+         c.abs_rshares       *= magnitude;
+         c.total_vote_weight *= magnitude * magnitude;
+         c.children_rshares2  = 0;
+      });
+
+      com_itr++;
+   }
+
+   com_itr = com_idx.begin();
+
+   while( com_itr != com_idx.end() )
+   {
+      adjust_rshares2( *com_itr, 0, fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value );
+
+      com_itr++;
+   }
+
+   // Update vote weights
+   const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+   auto vote_itr = vote_idx.begin();
+
+   while( vote_itr != vote_idx.end() )
+   {
+      modify( *vote_itr, [&]( comment_vote_object cv )
+      {
+         cv.weight *= magnitude * magnitude;
+      });
+
+      vote_itr++;
+   }
+
+   // Update category rshares
+   const auto& cat_idx = get_index_type< category_index >().indices().get< by_name >();
+   auto cat_itr = cat_idx.begin();
+
+   while( cat_itr != cat_idx.end() )
+   {
+      modify( *cat_itr, [&]( category_object c )
+      {
+         c.abs_rshares *= magnitude;
+      });
+
+      cat_itr++;
+   }
+}
+
 const category_object* database::find_category( const string& name )const
 {
    const auto& idx = get_index_type<category_index>().indices().get<by_name>();

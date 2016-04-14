@@ -141,8 +141,8 @@ struct database_fixture {
    bool skip_key_index_test = false;
    uint32_t anon_acct_count;
 
-   database_fixture();
-   ~database_fixture();
+   database_fixture(): app(), db( *app.chain_database() ) {}
+   ~database_fixture() {}
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
    string generate_anon_acct_name();
@@ -205,6 +205,22 @@ struct database_fixture {
    vector< operation > get_last_operations( uint32_t ops );
 
    void validate_database( void );
+};
+
+struct clean_database_fixture : public database_fixture
+{
+   clean_database_fixture();
+   ~clean_database_fixture();
+};
+
+struct live_database_fixture : public database_fixture
+{
+   live_database_fixture();
+   ~live_database_fixture();
+
+   void validate_database();
+
+   fc::path _chain_dir;
 };
 
 namespace test

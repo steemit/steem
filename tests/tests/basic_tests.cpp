@@ -41,7 +41,7 @@
 using namespace steemit::chain;
 using namespace graphene::db;
 
-BOOST_FIXTURE_TEST_SUITE( basic_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( basic_tests, clean_database_fixture )
 
 /**
  * Verify that names are RFC-1035 compliant https://tools.ietf.org/html/rfc1035

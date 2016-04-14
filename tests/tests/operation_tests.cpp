@@ -16,7 +16,7 @@
 using namespace steemit::chain;
 using namespace steemit::chain::test;
 
-BOOST_FIXTURE_TEST_SUITE( operation_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( operation_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( account_create_validate )
 {

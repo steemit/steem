@@ -376,6 +376,8 @@ namespace steemit { namespace chain {
          node_property_object              _node_property_object;
 
          void validate_invariants()const;
+
+         void perform_vests_stock_split( uint32_t magnitude );
    };
 
 
