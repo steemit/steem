@@ -51,6 +51,9 @@
 #define STEEMIT_START_VESTING_BLOCK             (STEEMIT_BLOCKS_PER_DAY * 7)
 #define STEEMIT_START_MINER_VOTING_BLOCK        (STEEMIT_BLOCKS_PER_DAY * 30)
 
+#define STEEMIT_HARDFORK_1_BLOCK                (STEEMIT_BLOCKS_PER_DAY * 31)
+
+
 #define STEEMIT_INIT_MINER_NAME                 "initminer"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
