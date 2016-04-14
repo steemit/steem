@@ -120,7 +120,7 @@ namespace steemit { namespace chain {
    void withdraw_vesting_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( account ), "Account name invalid" );
-      FC_ASSERT( vesting_shares.amount > 0, "Must withdraw a nonzero amount" );
+      FC_ASSERT( vesting_shares.amount >= 0, "Must withdraw a positive amount" );
       FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
    }
 
