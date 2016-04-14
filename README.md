@@ -34,12 +34,13 @@ each individual to inspect the code to understand the consensus rules.
 Seed Nodes
 ----------
 
-    steemit    52.38.66.234:2001      (Oregon, USA)
-    xeldal     45.55.217.111:12150    (USA)
-    ihashfury  104.168.154.160:40696
-    lafona     52.4.250.181:39705
-    steempty   109.74.206.93:2001     (Israel)
-    steem-id   45.114.118.146:2001    (Indonesia)
+    steemit          52.38.66.234:2001       (Oregon, USA)
+    xeldal           45.55.217.111:12150     (USA)
+    ihashfury        104.168.154.160:40696  
+    lafona           52.4.250.181:39705     
+    steempty         109.74.206.93:2001      (Israel)
+    steem-id         45.114.118.146:2001     (Indonesia)
+    cyrano.witness   81.89.101.133:2001      (Jena, Germany)
 
 
 How to Mine
