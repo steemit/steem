@@ -733,6 +733,13 @@ void database_api::set_pending_payout( discussion& d )const
 
       d.pending_payout_value = asset( r2.to_uint64(), pot.symbol );
       d.total_pending_payout_value = asset( tpp.to_uint64(), pot.symbol );
+
+      if( d.net_rshares.value < 0 )
+      {
+         d.pending_payout_value.amount.value *= -1;
+ //        idump((d.pending_payout_value)(d.pending_payout_value.amount.value)(d.pending_payout_value.amount));
+ //        d.pending_payout_value.amount.value = 0;
+      }
    }
 }
 
