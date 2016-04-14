@@ -46,9 +46,6 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
    else
    {
-      // TODO: Should be in next hardfork
-      if ( db().is_producing() ) FC_ASSERT( o.fee >= std::max( asset( (STEEMIT_PRODUCER_APR * db().get_dynamic_global_properties().virtual_supply.amount.value) / (100*STEEMIT_BLOCKS_PER_YEAR), STEEM_SYMBOL), STEEMIT_MIN_PRODUCER_REWARD ) );
-
       db().pay_fee( witness_account, o.fee );
 
       db().create< witness_object >( [&]( witness_object& w ) {
