@@ -365,6 +365,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       }
       catch( const tx_missing_owner_auth& e ) {}
       catch( const tx_missing_active_auth& e ) {}
+      catch( const tx_missing_posting_auth& e ) {}
       catch( const tx_missing_other_auth& e ) {}
       result.insert( k );
    }
