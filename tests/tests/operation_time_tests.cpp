@@ -1,3 +1,4 @@
+#ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/chain/database.hpp>
@@ -1864,3 +1865,4 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif

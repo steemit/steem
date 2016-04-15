@@ -317,6 +317,8 @@ namespace steemit { namespace chain {
          void cancel_order( const limit_order_object& obj );
          int  match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
 
+         void perform_vesting_share_split( uint32_t magnitude );
+
          /**
           * @}
           */
@@ -376,8 +378,6 @@ namespace steemit { namespace chain {
          node_property_object              _node_property_object;
 
          void validate_invariants()const;
-
-         void perform_vests_stock_split( uint32_t magnitude );
    };
 
 

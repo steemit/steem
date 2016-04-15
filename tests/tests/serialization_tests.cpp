@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
+#ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/chain/steem_objects.hpp>
@@ -166,3 +166,4 @@ BOOST_AUTO_TEST_CASE( extended_public_key_type_test )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif

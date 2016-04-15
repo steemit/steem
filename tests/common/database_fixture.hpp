@@ -218,8 +218,6 @@ struct live_database_fixture : public database_fixture
    live_database_fixture();
    ~live_database_fixture();
 
-   void validate_database();
-
    fc::path _chain_dir;
 };
 

@@ -2344,7 +2344,7 @@ void database::validate_invariants()const
    FC_LOG_AND_RETHROW();
 }
 
-void database::perform_vests_stock_split( uint32_t magnitude )
+void database::perform_vesting_share_split( uint32_t magnitude )
 {
    // Need to update all VESTS in accounts and the total VESTS in the dgpo
    const auto& acc_idx = get_index_type< account_index >().indices().get< by_name >();

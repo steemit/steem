@@ -170,9 +170,7 @@ endif()
 add_subdirectory( libraries )
 add_subdirectory( programs )
 
-if( BUILD_STEEM_TESTNET  )
-   add_subdirectory( tests )
-endif()
+add_subdirectory( tests )
 
 
 if (ENABLE_INSTALLER)

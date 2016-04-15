@@ -85,6 +85,7 @@ live_database_fixture::live_database_fixture()
 {
    try
    {
+      ilog( "Loading saved chain" );
       _chain_dir = fc::current_path() / "test_blockchain";
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
@@ -98,6 +99,8 @@ live_database_fixture::live_database_fixture()
       idump( (db.get_dynamic_global_properties()) );
 
       validate_database();
+
+      ilog( "Done loading saved chain" );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -114,74 +117,9 @@ live_database_fixture::~live_database_fixture()
       }
 
       db.close();
-
+      return;
    }
    FC_LOG_AND_RETHROW()
-}
-
-#define STEEM_SYMBOL_LIVE (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('E') << 24) | (uint64_t('E') << 32) | (uint64_t('M') << 40))
-#define SBD_SYMBOL_LIVE   (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) )
-#define VESTS_SYMBOL_LIVE (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40))
-
-void live_database_fixture::validate_database()
-{
-   try
-   {
-      const auto& account_idx = db.get_index_type< account_index >().indices().get< by_id >();
-      asset total_supply = asset( 0, STEEM_SYMBOL_LIVE );
-      asset total_sbd = asset( 0, SBD_SYMBOL_LIVE );
-      asset total_vesting = asset( 0, VESTS_SYMBOL_LIVE );
-      share_type total_vsf_votes = share_type( 0 );
-
-      for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
-      {
-         total_supply += itr->balance;
-         total_sbd += itr->sbd_balance;
-         total_vesting += itr->vesting_shares;
-         total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
-      }
-
-      const auto& convert_request_idx = db.get_index_type< convert_index >().indices().get< by_id >();
-
-      for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); itr++ )
-      {
-         if( itr->amount.symbol == STEEM_SYMBOL_LIVE )
-            total_supply += itr->amount;
-         else if( itr->amount.symbol == SBD_SYMBOL_LIVE )
-            total_sbd += itr->amount;
-         else
-            BOOST_CHECK( !"Encountered illegal symbol in convert_request_object" );
-      }
-
-      const auto& limit_order_idx = db.get_index_type< limit_order_index >().indices().get< by_id >();
-
-      for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); itr++ )
-      {
-         if( itr->sell_price.base.symbol == STEEM_SYMBOL_LIVE )
-         {
-            total_supply += asset( itr->for_sale, STEEM_SYMBOL_LIVE );
-         }
-         else if ( itr->sell_price.base.symbol == SBD_SYMBOL_LIVE )
-         {
-            total_sbd += asset( itr->for_sale, SBD_SYMBOL_LIVE );
-         }
-      }
-
-      auto gpo = db.get_dynamic_global_properties();
-
-      total_supply += gpo.total_vesting_fund_steem
-         + gpo.total_reward_fund_steem;
-
-      BOOST_REQUIRE_EQUAL( gpo.current_supply.amount.value, total_supply.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.current_sbd_supply.amount.value, total_sbd.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vesting.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vsf_votes.value );
-      BOOST_REQUIRE( gpo.virtual_supply >= gpo.current_supply );
-      if ( !db.get_feed_history().current_median_history.is_null() )
-         BOOST_REQUIRE( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
-            == gpo.virtual_supply );
-   }
-   FC_LOG_AND_RETHROW();
 }
 
 fc::ecc::private_key database_fixture::generate_private_key(string seed)
