@@ -16,9 +16,9 @@
 #define DEFAULT_ASSET_SYMBOL                    STEEM_SYMBOL
 #define STEEMIT_ADDRESS_PREFIX                  "TST"
 
-#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec())
-#define STEEMIT_MINING_TIME                     (fc::time_point_sec())
-#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec())
+#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1451606400))
+#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
+#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE        0

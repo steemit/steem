@@ -110,7 +110,8 @@ namespace steemit { namespace chain {
       impl_liquidity_reward_balance_object_type,
       impl_operation_object_type,
       impl_account_history_object_type,
-      impl_category_object_type
+      impl_category_object_type,
+      impl_hardfork_property_object_type
    };
 
    class operation_object;
@@ -132,6 +133,7 @@ namespace steemit { namespace chain {
    class account_object;
    class witness_object;
    class liquidity_reward_balance_object;
+   class hardfork_property_object;
 
    typedef object_id< implementation_ids, impl_operation_object_type,         operation_object>                         operation_id_type;
    typedef object_id< implementation_ids, impl_account_history_object_type,   account_history_object>                   account_history_id_type;
@@ -151,6 +153,7 @@ namespace steemit { namespace chain {
    typedef object_id< implementation_ids, impl_chain_property_object_type,   chain_property_object>                     chain_property_id_type;
    typedef object_id< implementation_ids, impl_witness_schedule_object_type, witness_schedule_object>                   witness_schedule_id_type;
    typedef object_id< implementation_ids, impl_liquidity_reward_balance_object_type, liquidity_reward_balance_object >  liquidity_reward_balance_id_type;
+   typedef object_id< implementation_ids, impl_hardfork_property_object_type, hardfork_property_object >                 hardfork_property_id_type;
 
    typedef fc::ripemd160                                        block_id_type;
    typedef fc::ripemd160                                        checksum_type;
@@ -272,6 +275,7 @@ FC_REFLECT_ENUM( steemit::chain::impl_object_type,
                  (impl_liquidity_reward_balance_object_type)
                  (impl_operation_object_type)
                  (impl_account_history_object_type)
+                 (impl_hardfork_property_object_type)
                )
 
 FC_REFLECT_TYPENAME( steemit::chain::share_type )
@@ -285,4 +289,5 @@ FC_REFLECT_TYPENAME( steemit::chain::dynamic_global_property_id_type )
 FC_REFLECT_TYPENAME( steemit::chain::transaction_obj_id_type )
 FC_REFLECT_TYPENAME( steemit::chain::block_summary_id_type )
 FC_REFLECT_TYPENAME( steemit::chain::account_history_id_type )
+FC_REFLECT_TYPENAME( steemit::chain::hardfork_property_id_type )
 FC_REFLECT( steemit::chain::void_t, )

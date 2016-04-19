@@ -972,4 +972,30 @@ BOOST_FIXTURE_TEST_CASE( overproduction_test )
 }
 //*/
 
+BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Check hardfork not applied at genesis" );
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( !db.has_hardfork( STEEMIT_HARDFORK_1 ) );
+
+      BOOST_TEST_MESSAGE( "Generate blocks up to the hardfork time and check hardfork still not applied" );
+      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME - STEEMIT_BLOCK_INTERVAL ), true );
+
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( !db.has_hardfork( STEEMIT_HARDFORK_1 ) );
+
+      BOOST_TEST_MESSAGE( "Generate a block and check hardfork is applied" );
+      generate_block();
+
+      string op_msg = "Testnet: Hardfork applied";
+
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_1 ) );
+      BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -8,11 +8,9 @@
 #include <steemit/chain/db_with.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/global_property_object.hpp>
-#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/transaction_evaluation_state.hpp>
 #include <steemit/chain/transaction_object.hpp>
-
 
 #include <graphene/db/flat_index.hpp>
 
@@ -71,6 +69,8 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply )
 
       if( !find(dynamic_global_property_id_type()) )
          init_genesis( initial_supply );
+
+      init_hardforks();
 
       fc::optional<signed_block> last_block = _block_id_to_block.last();
       if( last_block.valid() )
@@ -1526,6 +1526,7 @@ void database::initialize_indexes()
    add_index< primary_index<simple_index<feed_history_object  >> >();
    add_index< primary_index<flat_index<  block_summary_object            >> >();
    add_index< primary_index<simple_index<witness_schedule_object        > > >();
+   add_index< primary_index<simple_index<hardfork_property_object       > > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -1594,6 +1595,10 @@ void database::init_genesis( uint64_t init_supply )
    // Nothing to do
    create<feed_history_object>([&](feed_history_object& o) {});
    create<block_summary_object>([&](block_summary_object&) {});
+   create<hardfork_property_object>([&](hardfork_property_object& hpo)
+   {
+      hpo.processed_hardforks.push_back( STEEMIT_GENESIS_TIME );
+   });
 
    // Create witness scheduler
    create<witness_schedule_object>([&]( witness_schedule_object& wso )
@@ -1703,6 +1708,8 @@ void database::_apply_block( const signed_block& next_block )
    process_comment_cashout();
    process_vesting_withdrawals();
    pay_liquidity_reward();
+
+   process_hardforks();
 
    // notify observers that the block has been applied
    applied_block( next_block ); //emit
@@ -1901,7 +1908,7 @@ void database::update_global_dynamic_data( const signed_block& b )
          const auto& witness_missed = get_witness( get_scheduled_witness( i+1 ) );
          if(  witness_missed.owner != b.witness ) {
             modify( witness_missed, [&]( witness_object& w ) {
-              w.total_missed++;
+               w.total_missed++;
             });
          }
       }
@@ -2276,6 +2283,69 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       default:
          FC_ASSERT( !"invalid symbol" );
    }
+}
+
+void database::init_hardforks()
+{
+   _hardfork_times[ 0 ] = fc::time_point_sec( STEEMIT_GENESIS_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_1 == 1, "Invalid hardfork confugration" );
+   _hardfork_times[ STEEMIT_HARDFORK_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_1_TIME );
+
+   const auto& hardforks = hardfork_property_id_type()( *this );
+   FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration" );
+   if( hardforks.last_hardfork >= 0 )
+      FC_ASSERT( _hardfork_times[ hardforks.last_hardfork - 1 ] <= head_block_time(), "Configuration has future hardfork set that chain has already applied." );
+   if( hardforks.last_hardfork + 1 < STEEMIT_NUM_HARDFORKS )
+      FC_ASSERT( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time(), "Next hardfork takes place prior to head block time" );
+
+   for( int i = 0; i <= hardforks.last_hardfork; i++ )
+   {
+      FC_ASSERT( hardforks.processed_hardforks[ i ] == _hardfork_times[ i ], "Time of processed hardfork does not match hardfork configuration time" );
+   }
+}
+
+void database::process_hardforks()
+{
+   // If there are upcoming hardforks and the next one is later, do nothing
+   const auto& hardforks = hardfork_property_id_type()( *this );
+
+   // If we have applied the last known hardfork
+   if( hardforks.last_hardfork == STEEMIT_NUM_HARDFORKS )
+      return;
+
+   // If the next hardfork time is in the future
+   if( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time() )
+      return;
+
+   switch( hardforks.last_hardfork + 1 )
+   {
+      case STEEMIT_HARDFORK_1:
+      #ifdef IS_TEST_NET
+         {
+            custom_operation test_op;
+            string op_msg = "Testnet: Hardfork applied";
+            test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
+            test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
+            push_applied_operation( test_op );
+         }
+         break;
+      #endif
+      default:
+         break;
+   }
+
+   modify( hardforks, [&]( hardfork_property_object& hfp )
+   {
+      FC_ASSERT( hfp.processed_hardforks.size() == hfp.last_hardfork + 1, "Hardfork being applied out of order" );
+      hfp.processed_hardforks.push_back( _hardfork_times[ hfp.last_hardfork + 1 ] );
+      hfp.last_hardfork++;
+      FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
+   });
+}
+
+bool database::has_hardfork( uint32_t hardfork )
+{
+   return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
 }
 
 /**
