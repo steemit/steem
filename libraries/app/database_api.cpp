@@ -888,7 +888,7 @@ map<uint32_t,operation_object> database_api::get_account_history( string account
 }
 
 vector<category_object> database_api::get_trending_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
 
    const auto& nidx = my->_db.get_index_type<chain::category_index>().indices().get<by_name>();
@@ -910,19 +910,19 @@ vector<category_object> database_api::get_trending_categories( string after, uin
 }
 
 vector<category_object> database_api::get_best_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
    return result;
 }
 
 vector<category_object> database_api::get_active_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
    return result;
 }
 
 vector<category_object> database_api::get_recent_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
    return result;
 }
@@ -981,7 +981,7 @@ state database_api::get_state( string path )const
    _state.current_route = path;
 
    /// FETCH CATEGORY STATE
-   auto trending_cat = get_trending_categories( "", 20 );
+   auto trending_cat = get_trending_categories( "", 100 );
    for( const auto& c : trending_cat )
    {
       _state.category_idx.trending.push_back(c.name);
@@ -1059,10 +1059,33 @@ state database_api::get_state( string path )const
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
         while( itr != pidx.end() && itr->author == acnt && count < 100 ) {
            eacnt.posts.push_back(itr->permlink);
+           _state.content[acnt+"/"+itr->permlink] = *itr;
            ++itr;
            ++count;
         }
-        _state.content[acnt+"/"+itr->permlink] = *itr;
+      } else if( part[1].size() == 0 || part[1] == "blog" ) {
+        if( part[2].size() ) {
+           int count = 0;
+           const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog_category>();
+           auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), part[2], time_point_sec::maximum() ) );
+           while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() )  {
+              eacnt.blog_category[part[2]].push_back(itr->permlink);
+              _state.content[acnt+"/"+itr->permlink] = *itr;
+              ++itr;
+              ++count;
+           }
+        }
+        else {
+           int count = 0;
+           const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
+           auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
+           while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() ) {
+              eacnt.blog.push_back(itr->permlink);
+              _state.content[acnt+"/"+itr->permlink] = *itr;
+              ++itr;
+              ++count;
+           }
+        }
       }
    }
    /// pull a complete discussion
