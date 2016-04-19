@@ -32,7 +32,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
 
-   if ( db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 ); /// TODO: Enforce at next Hardfork
+   if ( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 );
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -46,7 +46,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
    else
    {
-      db().pay_fee( witness_account, o.fee );
+      if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) ) db().pay_fee( witness_account, o.fee );
 
       db().create< witness_object >( [&]( witness_object& w ) {
          w.owner              = o.owner;
