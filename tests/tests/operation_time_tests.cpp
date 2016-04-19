@@ -1410,8 +1410,6 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       bob_reward_last_update = db.head_block_time();
       ops = get_last_operations( 5 );
 
-      idump( (ops) );
-
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().owner, "bob" );
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().orderid, 4 );
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().pays.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );

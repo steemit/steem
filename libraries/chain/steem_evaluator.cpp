@@ -249,20 +249,21 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
 void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
     const auto& account = db().get_account( o.account );
+
+    if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
+
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
 
-    if( db().head_block_num() > STEEMIT_HARDFORK_1_BLOCK && o.vesting_shares.amount == 0 ) {
+    if( o.vesting_shares.amount == 0 ) {
        db().modify( account, [&]( account_object& a ) {
          a.vesting_withdraw_rate = asset( 0, VESTS_SYMBOL );
-         a.next_vesting_withdrawal = time_point_sec();
+         a.next_vesting_withdrawal = time_point_sec::maximum();
          a.to_withdraw = 0;
          a.withdrawn = 0;
        });
     }
     else {
-       FC_ASSERT( o.vesting_shares.amount > 0 ); /// TODO: this can be removed after STEEMIT_HARDFORK_1_BLOCK
-
        db().modify( account, [&]( account_object& a ) {
          a.vesting_withdraw_rate = asset( o.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
          if( a.vesting_withdraw_rate.amount == 0 )

@@ -26,8 +26,8 @@
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/exceptions.hpp>
-
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/history_object.hpp>
 
 #include <graphene/utilities/tempdir.hpp>
 
@@ -990,10 +990,24 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       generate_block();
 
       string op_msg = "Testnet: Hardfork applied";
+      auto itr = db.get_index_type< account_history_index >().indices().get< by_id >().end();
+      itr--;
 
       BOOST_REQUIRE( db.has_hardfork( 0 ) );
       BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_1 ) );
       BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
+      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() );
+
+      BOOST_TEST_MESSAGE( "Testing hardfork is only applied once" );
+      generate_block();
+
+      itr = db.get_index_type< account_history_index >().indices().get< by_id >().end();
+      itr--;
+
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_1 ) );
+      BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
+      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() - STEEMIT_BLOCK_INTERVAL );
    }
    FC_LOG_AND_RETHROW()
 }
