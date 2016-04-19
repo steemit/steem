@@ -2329,6 +2329,14 @@ void database::process_hardforks()
             push_applied_operation( test_op );
          }
          break;
+      #else
+         // Just in case someone changes the temp account auth between now and the hardfork
+         // *in best Captain Kirk voice* TROLLLLLLSSS!!!! *shakes fist*
+         modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
+         {
+            a.owner.weight_threshold = 0;
+            a.active.weight_threshold = 0;
+         });
       #endif
       default:
          break;
