@@ -3,7 +3,7 @@
 #include <steemit/chain/steem_objects.hpp>
 
 #include <fc/uint128.hpp>
-
+#include <fc/utf8.hpp>
 
 namespace steemit { namespace chain {
    using fc::uint128_t;
@@ -27,6 +27,35 @@ void inline validate_permlink( string permlink )
       }
    }
 }
+
+void inline validate_permlink_deprecated( string permlink )
+   {
+      FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
+      FC_ASSERT( fc::is_utf8( permlink ) );
+      FC_ASSERT( fc::to_lower( permlink ) == permlink );
+      FC_ASSERT( fc::trim_and_normalize_spaces( permlink ) == permlink );
+
+      for ( auto c : permlink )
+      {
+         FC_ASSERT( c > 0 );
+         switch( c )
+         {
+            case ' ':
+            case '\t':
+            case '\n':
+            case ':':
+            case '#':
+            case '/':
+            case '\\':
+            case '%':
+            case '=':
+            case '@':
+            case '~':
+            case '.':
+               FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
+         }
+      }
+   }
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
@@ -133,11 +162,19 @@ void comment_evaluator::do_apply( const comment_operation& o )
       FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
 
+   if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+   {
+      validate_permlink_deprecated( o.permlink );
+
+      if( o.parent_author.size() > 0 )
+         validate_permlink_deprecated( o.parent_permlink );
+   }
+
    if ( itr == by_permlink_idx.end() )
    {
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().is_producing() )
+         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_1 ) )
          {
             validate_permlink( o.parent_permlink );
             validate_permlink( o.permlink );
@@ -347,7 +384,6 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
 void vote_evaluator::do_apply( const vote_operation& o ) {
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
-
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
    auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
