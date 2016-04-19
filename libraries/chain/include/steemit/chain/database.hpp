@@ -4,6 +4,7 @@
 #pragma once
 #include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/global_property_object.hpp>
+#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
 #include <steemit/chain/fork_database.hpp>
 #include <steemit/chain/block_database.hpp>
@@ -317,6 +318,8 @@ namespace steemit { namespace chain {
          void cancel_order( const limit_order_object& obj );
          int  match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
 
+         bool has_hardfork( uint32_t hardfork );
+
          /**
           * @}
           */
@@ -349,10 +352,14 @@ namespace steemit { namespace chain {
          void clear_expired_transactions();
          void clear_expired_orders();
 
+         void init_hardforks();
+         void process_hardforks();
+
          ///@}
 
-         vector< signed_transaction >        _pending_tx;
-         fork_database                       _fork_db;
+         vector< signed_transaction >  _pending_tx;
+         fork_database                 _fork_db;
+         fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
 
          /**
           *  Note: we can probably store blocks by block num rather than

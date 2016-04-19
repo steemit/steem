@@ -163,7 +163,11 @@ struct get_impacted_account_visitor
       _impacted.insert( op.account );
    }
 
-   void operator()( const custom_operation& op ) {}
+   void operator()( const custom_operation& op )
+   {
+      for( auto s: op.required_auths )
+         _impacted.insert( s );
+   }
 
    //void operator()( const operation& op ){}
 };

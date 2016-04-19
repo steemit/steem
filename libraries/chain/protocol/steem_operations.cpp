@@ -3,42 +3,11 @@
 
 #include <locale>
 
-#include <fc/utf8.hpp>
-
 namespace steemit { namespace chain {
 
    bool inline is_asset_type( asset asset, asset_symbol_type symbol )
    {
       return asset.symbol == symbol;
-   }
-
-   void inline validate_permlink_deprecated( string permlink )
-   {
-      FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
-      FC_ASSERT( fc::is_utf8( permlink ) );
-      FC_ASSERT( fc::to_lower( permlink ) == permlink );
-      FC_ASSERT( fc::trim_and_normalize_spaces( permlink ) == permlink );
-
-      for ( auto c : permlink )
-      {
-         FC_ASSERT( c > 0 );
-         switch( c )
-         {
-            case ' ':
-            case '\t':
-            case '\n':
-            case ':':
-            case '#':
-            case '/':
-            case '\\':
-            case '%':
-            case '=':
-            case '@':
-            case '~':
-            case '.':
-               FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
-         }
-      }
    }
 
    void account_create_operation::validate() const
@@ -80,9 +49,6 @@ namespace steemit { namespace chain {
 
       FC_ASSERT( !parent_author.size() || is_valid_account_name( parent_author ), "Parent author name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author name invalid" );
-      validate_permlink_deprecated( permlink );
-      if ( parent_author.size() > 0 )
-         validate_permlink_deprecated( parent_permlink );
 
       if( json_metadata.size() > 0 )
       {
@@ -93,8 +59,7 @@ namespace steemit { namespace chain {
    void vote_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );
-      FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );
-      validate_permlink_deprecated( permlink );
+      FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );\
       FC_ASSERT( abs(weight) <= STEEMIT_100_PERCENT, "Weight is not a STEEMIT percentage" );
       FC_ASSERT( weight != 0, "Vote weight is 0" );
    }
@@ -119,7 +84,6 @@ namespace steemit { namespace chain {
    void withdraw_vesting_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( account ), "Account name invalid" );
-      FC_ASSERT( vesting_shares.amount >= 0, "Must withdraw a positive amount" );
       FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
    }
 

@@ -16,9 +16,9 @@
 #define DEFAULT_ASSET_SYMBOL                    STEEM_SYMBOL
 #define STEEMIT_ADDRESS_PREFIX                  "TST"
 
-#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec())
-#define STEEMIT_MINING_TIME                     (fc::time_point_sec())
-#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec())
+#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1451606400))
+#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
+#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE        0
@@ -50,9 +50,6 @@
 #define STEEMIT_BLOCKS_PER_DAY                  (24*60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_START_VESTING_BLOCK             (STEEMIT_BLOCKS_PER_DAY * 7)
 #define STEEMIT_START_MINER_VOTING_BLOCK        (STEEMIT_BLOCKS_PER_DAY * 30)
-
-#define STEEMIT_HARDFORK_1_BLOCK                (STEEMIT_BLOCKS_PER_DAY * 31)
-
 
 #define STEEMIT_INIT_MINER_NAME                 "initminer"
 #define STEEMIT_NUM_INIT_MINERS                 1

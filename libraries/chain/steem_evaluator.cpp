@@ -3,7 +3,7 @@
 #include <steemit/chain/steem_objects.hpp>
 
 #include <fc/uint128.hpp>
-
+#include <fc/utf8.hpp>
 
 namespace steemit { namespace chain {
    using fc::uint128_t;
@@ -28,11 +28,40 @@ void inline validate_permlink( string permlink )
    }
 }
 
+void inline validate_permlink_deprecated( string permlink )
+   {
+      FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
+      FC_ASSERT( fc::is_utf8( permlink ) );
+      FC_ASSERT( fc::to_lower( permlink ) == permlink );
+      FC_ASSERT( fc::trim_and_normalize_spaces( permlink ) == permlink );
+
+      for ( auto c : permlink )
+      {
+         FC_ASSERT( c > 0 );
+         switch( c )
+         {
+            case ' ':
+            case '\t':
+            case '\n':
+            case ':':
+            case '#':
+            case '/':
+            case '\\':
+            case '%':
+            case '=':
+            case '@':
+            case '~':
+            case '.':
+               FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
+         }
+      }
+   }
+
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
 
-   if ( db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 ); /// TODO: Enforce at next Hardfork
+   if ( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 );
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -46,7 +75,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
    else
    {
-      db().pay_fee( witness_account, o.fee );
+      if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) ) db().pay_fee( witness_account, o.fee );
 
       db().create< witness_object >( [&]( witness_object& w ) {
          w.owner              = o.owner;
@@ -66,7 +95,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( db().is_producing() )  {
+   if( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() )  {
       const witness_schedule_object& wso = db().get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided",
                  ("f", wso.median_props.account_creation_fee)
@@ -101,13 +130,42 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
-      if( o.owner ) acc.owner = *o.owner;
-      if( o.active ) acc.active = *o.active;
-      if( o.posting ) acc.posting = *o.posting;
-      acc.memo_key = o.memo_key;
+      if( o.owner )
+      {
+         acc.owner = *o.owner;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
+      }
+      if( o.active )
+      {
+         acc.active = *o.active;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
+      }
+      if( o.posting )
+      {
+         acc.posting = *o.posting;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
+      }
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+      {
+         if( o.memo_key != public_key_type() )
+            acc.memo_key = o.memo_key;
+      }
+      else
+      {
+         acc.memo_key = o.memo_key;
+      }
 
       #ifndef IS_LOW_MEM
-         acc.json_metadata = o.json_metadata;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+         {
+            if ( o.json_metadata.size() > 0 )
+               acc.json_metadata = o.json_metadata;
+         }
+         else
+         {
+            acc.json_metadata = o.json_metadata;
+         }
       #endif
    });
 }
@@ -133,11 +191,19 @@ void comment_evaluator::do_apply( const comment_operation& o )
       FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
 
+   if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+   {
+      validate_permlink_deprecated( o.permlink );
+
+      if( o.parent_author.size() > 0 )
+         validate_permlink_deprecated( o.parent_permlink );
+   }
+
    if ( itr == by_permlink_idx.end() )
    {
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().is_producing() )
+         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_1 ) )
          {
             validate_permlink( o.parent_permlink );
             validate_permlink( o.permlink );
@@ -269,20 +335,21 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
 void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
     const auto& account = db().get_account( o.account );
+
+    if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
+
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
 
-    if( db().head_block_num() > STEEMIT_HARDFORK_1_BLOCK && o.vesting_shares.amount == 0 ) {
+    if( o.vesting_shares.amount == 0 ) {
        db().modify( account, [&]( account_object& a ) {
          a.vesting_withdraw_rate = asset( 0, VESTS_SYMBOL );
-         a.next_vesting_withdrawal = time_point_sec();
+         a.next_vesting_withdrawal = time_point_sec::maximum();
          a.to_withdraw = 0;
          a.withdrawn = 0;
        });
     }
     else {
-       FC_ASSERT( o.vesting_shares.amount > 0 ); /// TODO: this can be removed after STEEMIT_HARDFORK_1_BLOCK
-
        db().modify( account, [&]( account_object& a ) {
          a.vesting_withdraw_rate = asset( o.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
          if( a.vesting_withdraw_rate.amount == 0 )
@@ -366,7 +433,6 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
 void vote_evaluator::do_apply( const vote_operation& o ) {
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
-
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
    auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
