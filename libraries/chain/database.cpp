@@ -2356,6 +2356,21 @@ bool database::has_hardfork( uint32_t hardfork )
    return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
 }
 
+#ifdef IS_TEST_NET
+void database::set_hardfork( uint32_t hardfork )
+{
+   FC_ASSERT( hardfork <= STEEMIT_NUM_HARDFORKS );
+
+   auto const& hardforks = hardfork_property_id_type()( *this );
+
+   while( hardforks.last_hardfork < hardfork )
+   {
+      _hardfork_times[ hardforks.last_hardfork ] = head_block_time();
+      process_hardforks();
+   }
+}
+#endif
+
 /**
  * Verifies all supply invariantes check out
  */
