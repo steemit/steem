@@ -3,8 +3,6 @@
 
 #include <locale>
 
-#include <fc/utf8.hpp>
-
 namespace steemit { namespace chain {
 
    bool inline is_asset_type( asset asset, asset_symbol_type symbol )

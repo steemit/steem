@@ -95,7 +95,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( db().is_producing() )  {
+   if( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() )  {
       const witness_schedule_object& wso = db().get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided",
                  ("f", wso.median_props.account_creation_fee)
@@ -130,13 +130,42 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
-      if( o.owner ) acc.owner = *o.owner;
-      if( o.active ) acc.active = *o.active;
-      if( o.posting ) acc.posting = *o.posting;
-      acc.memo_key = o.memo_key;
+      if( o.owner )
+      {
+         acc.owner = *o.owner;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
+      }
+      if( o.active )
+      {
+         acc.active = *o.active;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
+      }
+      if( o.posting )
+      {
+         acc.posting = *o.posting;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
+      }
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+      {
+         if( o.memo_key != public_key_type() )
+            acc.memo_key = o.memo_key;
+      }
+      else
+      {
+         acc.memo_key = o.memo_key;
+      }
 
       #ifndef IS_LOW_MEM
-         acc.json_metadata = o.json_metadata;
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+         {
+            if ( o.json_metadata.size() > 0 )
+               acc.json_metadata = o.json_metadata;
+         }
+         else
+         {
+            acc.json_metadata = o.json_metadata;
+         }
       #endif
    });
 }

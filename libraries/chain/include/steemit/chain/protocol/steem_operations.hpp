@@ -3,10 +3,12 @@
 #include <steemit/chain/protocol/block_header.hpp>
 #include <steemit/chain/protocol/asset.hpp>
 
+#include <fc/utf8.hpp>
+
 namespace steemit { namespace chain {
    struct account_create_operation : public base_operation
    {
-      asset             fee; 
+      asset             fee;
       string            creator;
       string            new_account_name;
       authority         owner;
@@ -59,7 +61,7 @@ namespace steemit { namespace chain {
       string    voter;
       string    author;
       string    permlink;
-      int16_t   weight = 0; 
+      int16_t   weight = 0;
 
       void validate()const;
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(voter); }
