@@ -303,7 +303,7 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       db().adjust_balance( to_account, o.amount );
    } else {
       /// TODO: this line can be removed after hard fork
-      FC_ASSERT( db().head_block_num() >= STEEMIT_HARDFORK_1_BLOCK, "transferring of VESTS not allowed before hardfork" );
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_1 ), "transferring of VESTS not allowed before hardfork" );
 
       /** allow transfer of vesting balance if the full balance is transferred to a new account
        *  This will allow combining of VESTS but not division of VESTS
