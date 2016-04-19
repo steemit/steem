@@ -653,21 +653,25 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
       fund( "alice", 100000 );
       vest( "alice", 100000 );
 
+      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME ), true ); // Get past the test hardfork time
+
+      const auto& new_alice = db.get_account( "alice" );
+
       BOOST_TEST_MESSAGE( "Setting up withdrawal" );
 
       signed_transaction tx;
       withdraw_vesting_operation op;
       op.account = "alice";
-      op.vesting_shares = asset( alice.vesting_shares.amount / 2, VESTS_SYMBOL );
+      op.vesting_shares = asset( new_alice.vesting_shares.amount / 2, VESTS_SYMBOL );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
       auto next_withdrawal = db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS;
-      asset vesting_shares = alice.vesting_shares;
+      asset vesting_shares = new_alice.vesting_shares;
       asset original_vesting = vesting_shares;
-      asset withdraw_rate = alice.vesting_withdraw_rate;
+      asset withdraw_rate = new_alice.vesting_withdraw_rate;
 
       BOOST_TEST_MESSAGE( "Generating block up to first withdrawal" );
       generate_blocks( next_withdrawal - ( STEEMIT_BLOCK_INTERVAL / 2 ), true);
@@ -1229,6 +1233,8 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
    {
       ACTORS( (alice)(bob)(sam)(dave) )
 
+      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME ), true );
+
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 
       auto exchange_rate = price( ASSET( "1.250 TESTS" ), ASSET( "1.000 TBD" ) );
@@ -1402,24 +1408,26 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       sam_reward_last_update = db.head_block_time();
       bob_sbd_volume += ( alice_sbd.amount.value / 10 ) * 3 - ( alice_sbd.amount.value / 20 );
       bob_reward_last_update = db.head_block_time();
-      ops = get_last_operations( 4 );
+      ops = get_last_operations( 5 );
+
+      idump( (ops) );
 
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().owner, "bob" );
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().orderid, 4 );
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().pays.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
       BOOST_CHECK_EQUAL( ops[0].get< fill_order_operation >().receives.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
-      BOOST_CHECK_EQUAL( ops[1].get< fill_order_operation >().owner, "alice" );
-      BOOST_CHECK_EQUAL( ops[1].get< fill_order_operation >().orderid, 5 );
-      BOOST_CHECK_EQUAL( ops[1].get< fill_order_operation >().pays.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
-      BOOST_CHECK_EQUAL( ops[1].get< fill_order_operation >().receives.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
-      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().owner, "sam" );
-      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().orderid, 3 );
-      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().pays.amount.value, asset( alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
-      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().receives.amount.value, asset( alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
-      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().owner, "alice" );
-      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().orderid, 5 );
-      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().pays.amount.value, asset( alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
-      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().receives.amount.value, asset( alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
+      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().owner, "alice" );
+      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().orderid, 5 );
+      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().pays.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
+      BOOST_CHECK_EQUAL( ops[2].get< fill_order_operation >().receives.amount.value, asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
+      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().owner, "sam" );
+      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().orderid, 3 );
+      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().pays.amount.value, asset( alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
+      BOOST_CHECK_EQUAL( ops[3].get< fill_order_operation >().receives.amount.value, asset( alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
+      BOOST_CHECK_EQUAL( ops[4].get< fill_order_operation >().owner, "alice" );
+      BOOST_CHECK_EQUAL( ops[4].get< fill_order_operation >().orderid, 5 );
+      BOOST_CHECK_EQUAL( ops[4].get< fill_order_operation >().pays.amount.value, asset( alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
+      BOOST_CHECK_EQUAL( ops[4].get< fill_order_operation >().receives.amount.value, asset( alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
 
       reward = liquidity_idx.find( db.get_account( "alice" ).id );
       BOOST_REQUIRE( reward != liquidity_idx.end() );
