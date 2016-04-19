@@ -103,7 +103,6 @@ namespace steemit { namespace chain {
    { try {
       FC_ASSERT( is_valid_account_name( from ), "Invalid 'from' account name" );
       FC_ASSERT( is_valid_account_name( to ), "Invalid 'to' account name" );
-      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ) || is_asset_type( amount, SBD_SYMBOL ), "Must transfer SBD or STEEM" );
       FC_ASSERT( amount.amount > 0, "Cannot transfer a negative amount (aka: stealing)" );
       FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
       FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );

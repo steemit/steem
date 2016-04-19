@@ -231,9 +231,29 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
    const auto& from_account = db().get_account(o.from);
    const auto& to_account = db().get_account(o.to);
 
-   FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount );
-   db().adjust_balance( from_account, -o.amount );
-   db().adjust_balance( to_account, o.amount );
+   if( o.amount.symbol != VESTS_SYMBOL ) {
+      FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount );
+      db().adjust_balance( from_account, -o.amount );
+      db().adjust_balance( to_account, o.amount );
+   } else {
+      /// TODO: this line can be removed after hard fork
+      FC_ASSERT( db().head_block_num() >= STEEMIT_HARDFORK_1_BLOCK, "transferring of VESTS not allowed before hardfork" );
+
+      /** allow transfer of vesting balance if the full balance is transferred to a new account
+       *  This will allow combining of VESTS but not division of VESTS
+       **/
+      FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) == o.amount );
+
+      db().modify( to_account, [&]( account_object& a ){
+          a.vesting_shares += o.amount;
+          db().adjust_witness_votes( a, o.amount.amount, 0 );
+      });
+
+      db().modify( from_account, [&]( account_object& a ){
+          db().adjust_witness_votes( a, -o.amount.amount, 0 );
+          a.vesting_shares -= o.amount;
+      });
+   }
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
