@@ -401,10 +401,14 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
 
    const auto& dgp = db.get_dynamic_global_properties();
    double hps   = (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count();
-   auto bits    = (dgp.num_pow_witnesses/4) + 4;
-   auto hashes  = 1 << bits;
-   auto seconds = hashes/hps;
-   auto minutes = seconds / 60.0;
+   int64_t bits    = (dgp.num_pow_witnesses/4) + 4;
+   fc::uint128 hashes  = fc::uint128(1) << bits;
+   hashes *= 1000000;
+   hps += 1;
+   hashes /= int64_t(hps*1000000);
+   auto seconds = hashes.to_uint64();
+   //double seconds = hashes/hps;
+   auto minutes = uint64_t(seconds / 60.0);
 
 
    auto target = db.get_pow_target();
