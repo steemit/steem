@@ -100,6 +100,9 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided",
                  ("f", wso.median_props.account_creation_fee)
                  ("p", o.fee) );
+   } else {
+      /// TODO: this can be removed after HARDFORK_1, this is required because of changes to validate()
+      FC_ASSERT( o.fee.amount >= STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE );
    }
 
    db().modify( creator, [&]( account_object& c ){
