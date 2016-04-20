@@ -94,11 +94,40 @@
 #define STEEMIT_MIN_PRODUCER_REWARD             STEEMIT_MINING_REWARD
 #define STEEMIT_MIN_POW_REWARD                  STEEMIT_MINING_REWARD
 
-#define STEEMIT_CURATE_APR                      5
-#define STEEMIT_CONTENT_APR                     5
-#define STEEMIT_LIQUIDITY_APR                   1
-#define STEEMIT_PRODUCER_APR                    1
-#define STEEMIT_POW_APR                         1
+// 5ccc e802 de5f
+// int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)
+// we use 100000 here instead of 10000 because we end up creating an additional 9x for vesting
+#define STEEMIT_APR_PERCENT_MULTIPLY_PER_BLOCK          ( (uint64_t( 0x5ccc ) << 0x20) \
+                                                        | (uint64_t( 0xe802 ) << 0x10) \
+                                                        | (uint64_t( 0xde5f )        ) \
+                                                        )
+// chosen to be the maximal value such that STEEMIT_APR_PERCENT_MULTIPLY_PER_BLOCK * 2**64 * 100000 < 2**128
+#define STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK             87
+
+#define STEEMIT_APR_PERCENT_MULTIPLY_PER_ROUND          ( (uint64_t( 0x79cc ) << 0x20 ) \
+                                                        | (uint64_t( 0xf5c7 ) << 0x10 ) \
+                                                        | (uint64_t( 0x3480 )         ) \
+                                                        )
+
+#define STEEMIT_APR_PERCENT_SHIFT_PER_ROUND             83
+
+// We have different constants for hourly rewards
+// i.e. hex(int(math.expm1( math.log1p( 1 ) / HOURS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_HOUR / 100000 + 0.5))
+#define STEEMIT_APR_PERCENT_MULTIPLY_PER_HOUR           ( (uint64_t( 0x6cc1 ) << 0x20) \
+                                                        | (uint64_t( 0x39a1 ) << 0x10) \
+                                                        | (uint64_t( 0x5cbd )        ) \
+                                                        )
+
+// chosen to be the maximal value such that STEEMIT_APR_PERCENT_MULTIPLY_PER_HOUR * 2**64 * 100000 < 2**128
+#define STEEMIT_APR_PERCENT_SHIFT_PER_HOUR              77
+
+// These constants add up to GRAPHENE_100_PERCENT.  Each GRAPHENE_1_PERCENT is equivalent to 1% per year APY
+// *including the corresponding 9x vesting rewards*
+#define STEEMIT_CURATE_APR_PERCENT              3875
+#define STEEMIT_CONTENT_APR_PERCENT             3875
+#define STEEMIT_LIQUIDITY_APR_PERCENT            750
+#define STEEMIT_PRODUCER_APR_PERCENT             750
+#define STEEMIT_POW_APR_PERCENT                  750
 
 #define STEEMIT_MIN_PAYOUT_SBD                  (asset(20,SBD_SYMBOL))
 
@@ -139,26 +168,6 @@
 #define STEEMIT_MAX_AUTHORITY_MEMBERSHIP        10
 #define STEEMIT_MAX_ASSET_WHITELIST_AUTHORITIES 10
 #define STEEMIT_MAX_URL_LENGTH                  127
-
-// counter initialization values used to derive near and far future seeds for shuffling witnesses
-// we use the fractional bits of sqrt(2) in hex
-#define STEEMIT_NEAR_SCHEDULE_CTR_IV            ( (uint64_t( 0x6a09 ) << 0x30)    \
-                                                 | (uint64_t( 0xe667 ) << 0x20)    \
-                                                 | (uint64_t( 0xf3bc ) << 0x10)    \
-                                                 | (uint64_t( 0xc908 )        ) )
-
-// and the fractional bits of sqrt(3) in hex
-#define STEEMIT_FAR_SCHEDULE_CTR_IV             ( (uint64_t( 0xbb67 ) << 0x30)    \
-                                                 | (uint64_t( 0xae85 ) << 0x20)    \
-                                                 | (uint64_t( 0x84ca ) << 0x10)    \
-                                                 | (uint64_t( 0xa73b )        ) )
-
-/**
- * every second, the fraction of burned core asset which cycles is
- * STEEMIT_CORE_ASSET_CYCLE_RATE / (1 << STEEMIT_CORE_ASSET_CYCLE_RATE_BITS)
- */
-#define STEEMIT_CORE_ASSET_CYCLE_RATE           17
-#define STEEMIT_CORE_ASSET_CYCLE_RATE_BITS      32
 
 #define GRAPHENE_CURRENT_DB_VERSION             "GPH2.4"
 
