@@ -120,6 +120,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.memo_key = o.memo_key;
       acc.created = props.time;
       acc.last_vote_time = props.time;
+      acc.mined = false;
 
       #ifndef IS_LOW_MEM
          acc.json_metadata = o.json_metadata;
@@ -308,8 +309,8 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       db().adjust_balance( to_account, o.amount );
    } else {
       /// TODO: this line can be removed after hard fork
-      FC_ASSERT( false , "transferring of VESTS not allowed" );
-
+      FC_ASSERT( false , "transferring of Steem Power (STMP) is not allowed." );
+#if 0
       /** allow transfer of vesting balance if the full balance is transferred to a new account
        *  This will allow combining of VESTS but not division of VESTS
        **/
@@ -320,9 +321,9 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
           a.voting_power = std::min( to_account.voting_power, from_account.voting_power );
 
           // Update to_account bandwidth. from_account bandwidth is already updated as a result of the transfer op
+          /*
           auto now = db().head_block_time();
           auto delta_time = (now - a.last_bandwidth_update).to_seconds();
-          /*
           uint64_t N = trx_size * STEEMIT_BANDWIDTH_PRECISION;
           if( delta_time >= STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
              a.average_bandwidth = N;
@@ -344,6 +345,7 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
           db().adjust_witness_votes( a, -o.amount.amount, 0 );
           a.vesting_shares -= o.amount;
       });
+#endif
    }
 }
 
@@ -365,6 +367,17 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
+
+    if( !account.mined && db().has_hardfork( STEEMIT_HARDFORK_1 ) ) {
+      const auto& props = db().get_dynamic_global_properties();
+      const witness_schedule_object& wso = db().get_witness_schedule_object();
+
+      asset min_vests = wso.median_props.account_creation_fee * props.get_vesting_share_price();
+      min_vests.amount.value *= 10;
+
+      FC_ASSERT( account.vesting_shares > min_vests, 
+                 "Account registered by another account requires 10x account creation fee worth of Steem Power before it can power down" );
+    }
 
     if( o.vesting_shares.amount == 0 ) {
        db().modify( account, [&]( account_object& a ) {
