@@ -308,7 +308,7 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       db().adjust_balance( to_account, o.amount );
    } else {
       /// TODO: this line can be removed after hard fork
-      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_1 ), "transferring of VESTS not allowed before hardfork" );
+      FC_ASSERT( false ), "transferring of VESTS not allowed" );
 
       /** allow transfer of vesting balance if the full balance is transferred to a new account
        *  This will allow combining of VESTS but not division of VESTS
@@ -317,6 +317,24 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
 
       db().modify( to_account, [&]( account_object& a ){
           a.vesting_shares += o.amount;
+          a.voting_power = std::min( to_account.voting_power, from_account.voting_power );
+
+          // Update to_account bandwidth. from_account bandwidth is already updated as a result of the transfer op
+          auto now = head_block_time();
+          auto delta_time = (now - a.last_bandwidth_update).to_seconds();
+          uint64_t N = trx_size * STEEMIT_BANDWIDTH_PRECISION;
+          if( delta_time >= STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
+             a.average_bandwidth = N;
+          else
+          {
+             auto old_weight = a.average_bandwidth * (STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time);
+             auto new_weight = delta_time * N;
+             a.average_bandwidth =  (old_weight + new_weight) / (STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS);
+          }
+
+          a.average_bandwidth += from_account.average_bandwidth;
+          a.last_bandwidth_update = now;
+
           db().adjust_witness_votes( a, o.amount.amount, 0 );
       });
 
