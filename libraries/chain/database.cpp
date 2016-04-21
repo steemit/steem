@@ -2330,28 +2330,29 @@ void database::validate_invariants()const
       fc::uint128_t total_rshares2;
 
       const auto& comment_idx = db.get_index_type< comment_index >().indices();
+      auto gpo = db.get_dynamic_global_properties();
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
-         total_rshares2 = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+         if( itr->net_rshares.value > 0 ) {
+            auto delta = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+            total_rshares2 += delta;
+         }
       }
 
-      auto gpo = db.get_dynamic_global_properties();
-
-      total_supply += gpo.total_vesting_fund_steem
-         + gpo.total_reward_fund_steem;
+      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
 
       FC_ASSERT( gpo.current_supply.amount.value == total_supply.amount.value );
       FC_ASSERT( gpo.current_sbd_supply.amount.value == total_sbd.amount.value );
       FC_ASSERT( gpo.total_vesting_shares == total_vesting );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes );
-      //FC_ASSERT( gpo.total_reward_shares2 == total_rshares2 );
+      FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
       if ( !db.get_feed_history().current_median_history.is_null() )
          FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply );
    }
-   FC_LOG_AND_RETHROW();
+   FC_CAPTURE_LOG_AND_RETHROW( (db.head_block_num()) );
 }
 
 void database::perform_vesting_share_split( uint32_t magnitude )
