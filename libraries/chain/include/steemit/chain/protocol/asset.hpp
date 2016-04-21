@@ -9,7 +9,7 @@ namespace steemit { namespace chain {
 
    struct asset
    {
-      asset( share_type a = 0, asset_symbol_type id = DEFAULT_ASSET_SYMBOL )
+      asset( share_type a = 0, asset_symbol_type id = STEEM_SYMBOL )
       :amount(a),symbol(id){}
 
       share_type        amount;

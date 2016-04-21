@@ -28,6 +28,9 @@
 
 #include <graphene/net/node.hpp>
 
+#include <fc/api.hpp>
+#include <fc/rpc/api_connection.hpp>
+
 #include <boost/program_options.hpp>
 
 namespace steemit { namespace app {
@@ -35,6 +38,7 @@ namespace steemit { namespace app {
    using std::string;
 
    class abstract_plugin;
+   class application;
 
    class application
    {
@@ -55,18 +59,12 @@ namespace steemit { namespace app {
          std::shared_ptr<PluginType> register_plugin()
          {
             auto plug = std::make_shared<PluginType>();
-            plug->plugin_set_app(this);
-
-            boost::program_options::options_description plugin_cli_options("Options for plugin " + plug->plugin_name()), plugin_cfg_options;
-            plug->plugin_set_program_options(plugin_cli_options, plugin_cfg_options);
-            if( !plugin_cli_options.options().empty() )
-               _cli_options.add(plugin_cli_options);
-            if( !plugin_cfg_options.options().empty() )
-               _cfg_options.add(plugin_cfg_options);
-
-            add_plugin( plug->plugin_name(), plug );
+            register_abstract_plugin( plug );
             return plug;
          }
+
+         void register_abstract_plugin( std::shared_ptr< abstract_plugin > plug );
+         void enable_plugin( const std::string& name );
          std::shared_ptr<abstract_plugin> get_plugin( const string& name )const;
 
          template<typename PluginType>
@@ -86,11 +84,35 @@ namespace steemit { namespace app {
          void set_api_access_info(const string& username, api_access_info&& permissions);
 
          bool is_finished_syncing()const;
+
+         /**
+          * Register a way to instantiate the named API with the application.
+          */
+         void register_api_factory( const string& name, std::function< fc::api_ptr() > factory );
+
+         /**
+          * Convenience method to build an API factory from a type which only requires a reference to the application.
+          */
+         template< typename Api >
+         void register_api_factory( const string& name )
+         {
+            register_api_factory( name, [this]() -> fc::api_ptr
+            {
+               // apparently the compiler is smart enough to downcast shared_ptr< api<Api> > to shared_ptr< api_base > automatically
+               // see http://en.cppreference.com/w/cpp/memory/shared_ptr/pointer_cast for example
+               return std::make_shared< fc::api< Api > >( std::make_shared< Api >( *this ) );
+            } );
+         }
+
+         /**
+          * Instantiate the named API.  Currently this simply calls the previously registered factory method.
+          */
+         fc::api_ptr create_api_by_name( const string& name );
+
          /// Emitted when syncing finishes (is_finished_syncing will return true)
          boost::signals2::signal<void()> syncing_finished;
 
       private:
-         void add_plugin( const string& name, std::shared_ptr<abstract_plugin> p );
          std::shared_ptr<detail::application_impl> my;
 
          boost::program_options::options_description _cli_options;

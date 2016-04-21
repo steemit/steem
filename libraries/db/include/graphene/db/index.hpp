@@ -130,6 +130,8 @@ namespace graphene { namespace db {
          virtual fc::uint128        hash()const = 0;
          virtual void               add_observer( const shared_ptr<index_observer>& ) = 0;
 
+         virtual void               object_from_variant( const fc::variant& var, object& obj )const = 0;
+         virtual void               object_default( object& obj )const = 0;
    };
 
    class secondary_index
@@ -296,6 +298,24 @@ namespace graphene { namespace db {
          virtual void add_observer( const shared_ptr<index_observer>& o ) override
          {
             _observers.emplace_back( o );
+         }
+
+         virtual void object_from_variant( const fc::variant& var, object& obj )const override
+         {
+            object_id_type id = obj.id;
+            object_type* result = dynamic_cast<object_type*>( &obj );
+            FC_ASSERT( result != nullptr );
+            fc::from_variant( var, *result );
+            obj.id = id;
+         }
+
+         virtual void object_default( object& obj )const override
+         {
+            object_id_type id = obj.id;
+            object_type* result = dynamic_cast<object_type*>( &obj );
+            FC_ASSERT( result != nullptr );
+            (*result) = object_type();
+            obj.id = id;
          }
 
       private:
