@@ -1,4 +1,3 @@
-
 #include <boost/container/flat_map.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 

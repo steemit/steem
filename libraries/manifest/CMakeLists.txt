@@ -40,6 +40,7 @@ add_library( steemit_mf_plugins
    ${CMAKE_CURRENT_BINARY_DIR}/inc/mf_internal_plugins.inc
    ${CMAKE_CURRENT_BINARY_DIR}/inc/mf_external_plugins.inc
    )
+target_link_libraries( steemit_mf_plugins fc )
 
 target_include_directories( steemit_mf_plugins
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
