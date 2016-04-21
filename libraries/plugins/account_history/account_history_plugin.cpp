@@ -148,3 +148,5 @@ flat_map<string,string> account_history_plugin::tracked_accounts() const
 }
 
 } }
+
+STEEMIT_DEFINE_PLUGIN( account_history, steemit::account_history::account_history_plugin )

@@ -97,6 +97,7 @@ void database::reindex(fc::path data_dir )
    ilog( "reindexing blockchain" );
    wipe(data_dir, false);
    open(data_dir);
+   _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
    auto start = fc::time_point::now();
    auto last_block = _block_id_to_block.last();
@@ -106,17 +107,18 @@ void database::reindex(fc::path data_dir )
       return;
    }
 
-   const auto last_block_num = last_block->block_num();
-
    ilog( "Replaying blocks..." );
    _undo_db.disable();
 
-   for( uint32_t i = 1; i <= last_block_num; ++i )
+   auto reindex_range = [&]( uint32_t start_block_num, uint32_t last_block_num, uint32_t skip, bool do_push )
+   {
+   for( uint32_t i = start_block_num; i <= last_block_num; ++i )
    {
       if( i % 100000 == 0 ) std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
       fc::optional< signed_block > block = _block_id_to_block.fetch_by_number(i);
       if( !block.valid() )
       {
+         // TODO gap handling may not properly init fork db
          wlog( "Reindexing terminated due to gap:  Block ${i} does not exist!", ("i", i) );
          uint32_t dropped_count = 0;
          while( true )
@@ -134,16 +136,40 @@ void database::reindex(fc::path data_dir )
          wlog( "Dropped ${n} blocks from after the gap", ("n", dropped_count) );
          break;
       }
-      apply_block(*block, skip_witness_signature |
-                          skip_transaction_signatures |
-                          skip_transaction_dupe_check |
-                          skip_tapos_check |
-                          skip_witness_schedule_check |
-                          skip_authority_check |
-                          skip_validate_invariants );
+      if( do_push )
+         push_block( *block, skip );
+      else
+         apply_block( *block, skip );
    }
+   };
 
+   const uint32_t last_block_num_in_file = last_block->block_num();
+   const uint32_t initial_undo_blocks = 100;
+
+   uint32_t first = 1;
+
+   if( last_block_num_in_file > initial_undo_blocks )
+   {
+      uint32_t last = last_block_num_in_file - initial_undo_blocks;
+      reindex_range( 1, last,
+         skip_witness_signature |
+         skip_transaction_signatures |
+         skip_transaction_dupe_check |
+         skip_tapos_check |
+         skip_witness_schedule_check |
+         skip_authority_check |
+         skip_validate_invariants, false );
+      first = last+1;
+      _fork_db.start_block( *_block_id_to_block.fetch_by_number( last ) );
+   }
+   else
+   {
+      _fork_db.start_block( *_block_id_to_block.fetch_by_number( last_block_num_in_file ) );
+   }
    _undo_db.enable();
+
+   reindex_range( first, last_block_num_in_file, skip_nothing, true );
+
    auto end = fc::time_point::now();
    ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }

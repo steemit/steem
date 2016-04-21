@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 
+#include <steemit/app/application.hpp>
 #include <steemit/app/database_api.hpp>
 #include <steemit/chain/get_config.hpp>
 #include <steemit/chain/steem_objects.hpp>
@@ -177,6 +178,9 @@ void database_api_impl::cancel_all_subscriptions()
 
 database_api::database_api( steemit::chain::database& db )
    : my( new database_api_impl( db ) ) {}
+
+database_api::database_api( steemit::app::application& app )
+   : database_api( *app.chain_database() ) {}
 
 database_api::~database_api() {}
 

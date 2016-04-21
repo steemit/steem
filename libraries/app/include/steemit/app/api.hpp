@@ -156,7 +156,7 @@ namespace steemit { namespace app {
    {
       public:
          login_api(application& a);
-         ~login_api();
+         virtual ~login_api();
 
          /**
           * @brief Authenticate to the RPC server
@@ -168,21 +168,19 @@ namespace steemit { namespace app {
           * has sucessfully authenticated.
           */
          bool login(const string& user, const string& password);
-         /// @brief Retrieve the network broadcast API
-         fc::api<network_broadcast_api> network_broadcast()const;
-         /// @brief Retrieve the database API
-         fc::api<database_api> database()const;
-         /// @brief Retrieve the network node API
-         fc::api<network_node_api> network_node()const;
+
+         fc::api_ptr get_api_by_name( const string& api_name )const
+         {
+            auto it = _api_map.find( api_name );
+            if( it == _api_map.end() )
+               return fc::api_ptr();
+            FC_ASSERT( it->second != nullptr );
+            return it->second;
+         }
 
       private:
-         /// @brief Called to enable an API, not reflected.
-         void enable_api( const string& api_name );
-
          application& _app;
-         optional< fc::api<database_api> > _database_api;
-         optional< fc::api<network_broadcast_api> > _network_broadcast_api;
-         optional< fc::api<network_node_api> > _network_node_api;
+         flat_map< std::string, fc::api_ptr > _api_map;
    };
 
 }}  // steemit::app
@@ -208,7 +206,5 @@ FC_API(steemit::app::network_node_api,
      )
 FC_API(steemit::app::login_api,
        (login)
-       (network_broadcast)
-       (database)
-       (network_node)
+       (get_api_by_name)
      )
