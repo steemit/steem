@@ -15,7 +15,7 @@ Steem OS X Build Instructions
 
 4. Install dependencies:
    ```
-   brew install boost cmake git openssl autoconf automake 
+   brew install boost cmake git openssl autoconf automake qt5
    brew link --force openssl 
    ```
 
@@ -41,3 +41,17 @@ Steem OS X Build Instructions
    cmake .
    make
    ```
+
+Low Memory Mode
+---------------
+
+This mode reduces the amount of RAM it takes to build a validating node
+
+cmake -DLOW_MEMORY_NODE=ON .
+
+Content Patching
+----------------
+
+If you do not need an API server or to see the result of patching content then you can use this flag. This will also remove the dependency on Qt5
+
+cmake -DENABLE_CONTENT_PATCHING=OFF .
