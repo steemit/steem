@@ -772,6 +772,7 @@ vector<discussion> database_api::get_discussions_by_last_update( string start_au
    while( itr != last_update_idx.end() && result.size() < limit && !itr->parent_author.size() ) {
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
@@ -790,6 +791,7 @@ vector<discussion> database_api::get_discussions_by_cashout_time( string start_a
       idump((*itr));
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
@@ -809,6 +811,7 @@ vector<discussion> database_api::get_discussions_in_category_by_cashout_time( st
    {
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
@@ -830,6 +833,7 @@ vector<discussion> database_api::get_discussions_in_category_by_last_update( str
    {
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
@@ -847,6 +851,7 @@ vector<discussion> database_api::get_discussions_by_total_pending_payout( string
    while( itr != total_pending_payout_idx.end() && result.size() < limit && !itr->parent_author.size() ) {
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
@@ -868,6 +873,7 @@ vector<discussion> database_api::get_discussions_in_category_by_total_pending_pa
    {
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
