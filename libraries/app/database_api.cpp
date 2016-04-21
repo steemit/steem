@@ -1100,7 +1100,7 @@ state database_api::get_state( string path )const
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
    }
-   else if( part[0] == "~witnesses" ) {
+   else if( part[0] == "witnesses" ) {
       auto wits = get_witnesses_by_vote( "", 50 );
       for( const auto& w : wits ) {
          _state.witnesses[w.owner] = w;

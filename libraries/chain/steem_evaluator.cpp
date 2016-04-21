@@ -2,6 +2,10 @@
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
+#ifdef STEEM_DIFF_MATCH_PATCH 
+#include <diff_match_patch.h>
+#endif
+
 #include <fc/uint128.hpp>
 #include <fc/utf8.hpp>
 
@@ -257,7 +261,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       id = new_comment.id;
 
-      /// TODO: this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
+/// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
+#ifndef IS_LOW_MEM 
       while( parent ) {
          db().modify( *parent, [&]( comment_object& p ){
             p.children++;
@@ -267,6 +272,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
          else
             parent = nullptr;
       }
+#endif
+
    }
    else
    {
@@ -289,9 +296,29 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
 
          #ifndef IS_LOW_MEM
-            com.title = o.title;
+           com.title         = o.title;
+           com.json_metadata = o.json_metadata;
+           #ifdef STEEM_DIFF_MATCH_PATCH 
+           try {
+            diff_match_patch dmp;
+            auto patch = dmp.patch_fromText( QString::fromStdString(o.body) );
+            if( patch.size() ) {
+               auto first = QString::fromStdString( com.body );
+               auto result = dmp.patch_apply( patch, first );
+               com.body = result.first.toStdString();
+            }
+            else { // replace
+               com.body = o.body;
+            }
+           } catch ( const QString& err ) {
+               //wlog( "exception thrown while applying patch: \n   ${e}", ("e",err.toStdString()) );
+               com.body = o.body;
+           } catch ( ... ) {
+               com.body = o.body;
+           }
+           #else
             com.body = o.body;
-            com.json_metadata = o.json_metadata;
+           #endif
          #endif
       });
    }
