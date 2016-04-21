@@ -101,8 +101,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          com_itr++;
       }
 
-
-      db.generate_block();
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }

@@ -2358,15 +2358,11 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          a.withdrawn             *= magnitude;
          a.to_withdraw           *= magnitude;
          a.vesting_withdraw_rate  = asset( a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+         a.proxied_vsf_votes     *= magnitude;
       });
 
       itr++;
    }
-
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object d )
-   {
-      d.total_vesting_shares.amount *= magnitude;
-   });
 
    const auto& com_idx = get_index_type< comment_index >().indices().get< by_created >();
    auto com_itr = com_idx.begin();
@@ -2381,6 +2377,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          c.abs_rshares       *= magnitude;
          c.total_vote_weight *= magnitude * magnitude;
          c.children_rshares2  = 0;
+         new_rshares2 += fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value;
       });
 
       com_itr++;
@@ -2401,7 +2398,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
 
    while( vote_itr != vote_idx.end() )
    {
-      modify( *vote_itr, [&]( comment_vote_object cv )
+      modify( *vote_itr, [&]( comment_vote_object& cv )
       {
          cv.weight *= magnitude * magnitude;
       });
@@ -2415,13 +2412,19 @@ void database::perform_vesting_share_split( uint32_t magnitude )
 
    while( cat_itr != cat_idx.end() )
    {
-      modify( *cat_itr, [&]( category_object c )
+      modify( *cat_itr, [&]( category_object& c )
       {
          c.abs_rshares *= magnitude;
       });
 
       cat_itr++;
    }
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
+   {
+      d.total_vesting_shares.amount *= magnitude;
+      d.total_reward_shares2 = new_rshares2;
+   });
 }
 
 const category_object* database::find_category( const string& name )const

@@ -99,6 +99,7 @@ live_database_fixture::live_database_fixture()
       idump( (db.get_dynamic_global_properties()) );
 
       validate_database();
+      generate_block();
 
       ilog( "Done loading saved chain" );
    }
@@ -116,6 +117,7 @@ live_database_fixture::~live_database_fixture()
          BOOST_CHECK( db.get_node_properties().skip_flags == database::skip_nothing );
       }
 
+      db.pop_block();
       db.close();
       return;
    }
@@ -458,6 +460,7 @@ void database_fixture::validate_database( void )
             total_sbd += asset( itr->for_sale, SBD_SYMBOL );
          }
       }
+
 
       auto gpo = db.get_dynamic_global_properties();
 
