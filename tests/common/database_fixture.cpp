@@ -461,6 +461,14 @@ void database_fixture::validate_database( void )
          }
       }
 
+      fc::uint128_t total_rshares2;
+
+      const auto& comment_idx = db.get_index_type< comment_index >().indices().get< by_id >();
+
+      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
+      {
+         total_rshares2 = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+      }
 
       auto gpo = db.get_dynamic_global_properties();
 
@@ -471,6 +479,7 @@ void database_fixture::validate_database( void )
       BOOST_REQUIRE_EQUAL( gpo.current_sbd_supply.amount.value, total_sbd.amount.value );
       BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vesting.amount.value );
       BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vsf_votes.value );
+      BOOST_REQUIRE( gpo.total_reward_shares2 == total_rshares2 );
       BOOST_REQUIRE( gpo.virtual_supply >= gpo.current_supply );
       if ( !db.get_feed_history().current_median_history.is_null() )
          BOOST_REQUIRE( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply

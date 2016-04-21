@@ -337,6 +337,7 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
+   idump( (db().get_dynamic_global_properties().total_reward_shares2 ) );
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
    auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
@@ -364,13 +365,15 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
 
    FC_ASSERT( abs_rshares > 0 );
 
+   idump( (comment.net_rshares)(abs_rshares) );
+
    db().modify( comment, [&]( comment_object& c ){
       c.net_rshares += rshares;
       c.abs_rshares += abs_rshares;
       c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
    });
 
-   fc::uint128_t new_rshares = std::max(comment.net_rshares.value, int64_t(0));
+   fc::uint128_t new_rshares = std::max( db().get_comment( o.author, o.permlink ).net_rshares.value, int64_t(0));
 
    /// square it
    new_rshares *= new_rshares;
@@ -381,6 +384,8 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
       p.total_reward_shares2 -= old_rshares;
       p.total_reward_shares2 += new_rshares;
    });
+
+   idump( (db().get_dynamic_global_properties().total_reward_shares2) );
 
    const auto& cat = db().get_category( comment.category );
    db().modify( cat, [&]( category_object& c ){
@@ -395,7 +400,7 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
        if( rshares > 0 ) {
           u256 rshare256(rshares);
           u256 total256( comment.abs_rshares.value );
-          cv.weight  = static_cast<uint64_t>((rshare256 * rshare256 * rshare256) / total256);
+          cv.weight  = static_cast<uint64_t>(( rshare256 * rshare256) / total256);
        }
    });
 

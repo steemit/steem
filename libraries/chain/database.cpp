@@ -2327,6 +2327,15 @@ void database::validate_invariants()const
          }
       }
 
+      fc::uint128_t total_rshares2;
+
+      const auto& comment_idx = db.get_index_type< comment_index >().indices();
+
+      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
+      {
+         total_rshares2 = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+      }
+
       auto gpo = db.get_dynamic_global_properties();
 
       total_supply += gpo.total_vesting_fund_steem
@@ -2336,6 +2345,7 @@ void database::validate_invariants()const
       FC_ASSERT( gpo.current_sbd_supply.amount.value == total_sbd.amount.value );
       FC_ASSERT( gpo.total_vesting_shares == total_vesting );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes );
+      //FC_ASSERT( gpo.total_reward_shares2 == total_rshares2 );
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
       if ( !db.get_feed_history().current_median_history.is_null() )
          FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
@@ -2375,9 +2385,8 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       {
          c.net_rshares       *= magnitude;
          c.abs_rshares       *= magnitude;
-         c.total_vote_weight *= magnitude * magnitude;
+         c.total_vote_weight *= magnitude;
          c.children_rshares2  = 0;
-         new_rshares2 += fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value;
       });
 
       com_itr++;
@@ -2400,7 +2409,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
    {
       modify( *vote_itr, [&]( comment_vote_object& cv )
       {
-         cv.weight *= magnitude * magnitude;
+         cv.weight *= magnitude;
       });
 
       vote_itr++;
@@ -2409,7 +2418,6 @@ void database::perform_vesting_share_split( uint32_t magnitude )
    // Update category rshares
    const auto& cat_idx = get_index_type< category_index >().indices().get< by_name >();
    auto cat_itr = cat_idx.begin();
-
    while( cat_itr != cat_idx.end() )
    {
       modify( *cat_itr, [&]( category_object& c )
@@ -2423,7 +2431,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
    modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
    {
       d.total_vesting_shares.amount *= magnitude;
-      d.total_reward_shares2 = new_rshares2;
+      d.total_reward_shares2 = ( d.total_reward_shares2 * magnitude ) * magnitude;
    });
 }
 

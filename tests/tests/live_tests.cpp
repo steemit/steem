@@ -26,6 +26,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       uint32_t magnitude = 1000000;
 
       flat_map< string, share_type > account_vests;
+      flat_map< string, share_type > account_vsf_votes;
       const auto& acnt_idx = db.get_index_type< account_index >().indices().get< by_name >();
       auto acnt_itr = acnt_idx.begin();
 
@@ -36,6 +37,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       while( acnt_itr != acnt_idx.end() )
       {
          account_vests[acnt_itr->name] = acnt_itr->vesting_shares.amount;
+         account_vsf_votes[acnt_itr->name] = acnt_itr->proxied_vsf_votes;
          acnt_itr++;
       }
 
@@ -44,13 +46,17 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       auto old_vesting_fund = db.get_dynamic_global_properties().total_vesting_fund_steem;
       auto old_vesting_shares = db.get_dynamic_global_properties().total_vesting_shares;
       auto old_rshares2 = db.get_dynamic_global_properties().total_reward_shares2;
+      fc::uint128_t rshares2 = 0;
 
       flat_map< std::tuple< string, string >, share_type > comment_net_rshares;
       flat_map< std::tuple< string, string >, share_type > comment_abs_rshares;
-      flat_map< std::tuple< string, string >, uint64_t > total_vote_weights;
+      flat_map< comment_id_type, uint64_t > total_vote_weights;
+      flat_map< comment_id_type, uint64_t > orig_vote_weight;
+      flat_map< comment_id_type, uint64_t > expected_reward;
       fc::uint128_t total_rshares2 = 0;
       const auto& com_idx = db.get_index_type< comment_index >().indices().get< by_permlink >();
       auto com_itr = com_idx.begin();
+      auto gpo = db.get_dynamic_global_properties();
 
       BOOST_TEST_MESSAGE( "Saving comment rshare values" );
 
@@ -58,8 +64,14 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       {
          comment_net_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->net_rshares;
          comment_abs_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->abs_rshares;
-         total_vote_weights[ std::make_tuple( com_itr->author, com_itr->permlink ) ] = 0;
+         total_vote_weights[ com_itr->id ] = 0;
+         orig_vote_weight[ com_itr->id ] = com_itr->total_vote_weight;
+         rshares2 += com_itr->net_rshares.value * com_itr->net_rshares.value;
          total_rshares2 += fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value * magnitude * magnitude;
+         fc::uint128_t rs( com_itr->net_rshares.value );
+         fc::uint128_t rf( gpo.total_reward_fund_steem.amount.value );
+         auto rs2 = rs * rs;
+         expected_reward[ com_itr->id ] = ( rf * rs2 / gpo.total_reward_shares2 ).to_uint64();
          com_itr++;
       }
 
@@ -72,6 +84,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       while( vote_itr != vote_idx.end() )
       {
          comment_vote_weights[ std::make_tuple( vote_itr->comment, vote_itr->voter ) ] = vote_itr->weight;
+         total_vote_weights[ vote_itr->comment ] += vote_itr->weight * magnitude;
          vote_itr++;
       }
 
@@ -84,22 +97,46 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       BOOST_REQUIRE( db.get_dynamic_global_properties().virtual_supply == old_virtual_supply );
       BOOST_REQUIRE( db.get_dynamic_global_properties().total_vesting_fund_steem == old_vesting_fund );
       BOOST_REQUIRE( db.get_dynamic_global_properties().total_vesting_shares.amount == old_vesting_shares.amount * magnitude );
+      idump( (db.get_dynamic_global_properties().total_reward_shares2)( total_rshares2)(old_rshares2)(rshares2) );
       BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_shares2 == total_rshares2 );
 
+      BOOST_TEST_MESSAGE( "Check accounts were updated" );
       acnt_itr = acnt_idx.begin();
       while( acnt_itr != acnt_idx.end() )
       {
          BOOST_REQUIRE( acnt_itr->vesting_shares.amount == account_vests[ acnt_itr->name ] * magnitude );
+         BOOST_REQUIRE( acnt_itr->proxied_vsf_votes.value == account_vsf_votes[ acnt_itr->name ] * magnitude );
          acnt_itr++;
       }
+
+      vote_itr = vote_idx.begin();
+      while( vote_itr != vote_idx.end() )
+      {
+         BOOST_REQUIRE( vote_itr->weight == comment_vote_weights[ std::make_tuple( vote_itr->comment, vote_itr->voter ) ] * magnitude );
+         vote_itr++;
+      }
+
+      share_type rewards = 0;
+      gpo = db.get_dynamic_global_properties();
 
       com_itr = com_idx.begin();
       while( com_itr != com_idx.end() )
       {
          BOOST_REQUIRE( com_itr->net_rshares == comment_net_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
          BOOST_REQUIRE( com_itr->abs_rshares == comment_abs_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
+         BOOST_REQUIRE( com_itr->total_vote_weight == total_vote_weights[ com_itr->id ] );
+         fc::uint128_t rs( com_itr->net_rshares.value );
+         fc::uint128_t rf( gpo.total_reward_fund_steem.amount.value );
+         auto rs2 = rs * rs;
+         auto diff = expected_reward[ com_itr->id] - ( rf * rs2 / total_rshares2 ).to_uint64();
+         rewards += ( rf * rs2 / total_rshares2 ).to_uint64();
+         idump( (diff) );
+         //idump( (( rf * rs2 / total_rshares2 ).to_uint64())(expected_reward[ com_itr->id]) );
+         BOOST_CHECK( ( rf * rs2 / total_rshares2 ).to_uint64() == expected_reward[ com_itr->id] );
          com_itr++;
       }
+
+      idump( (rewards)(gpo.total_reward_fund_steem.amount) );
 
       validate_database();
    }
