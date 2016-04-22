@@ -134,8 +134,8 @@ void database::reindex(fc::path data_dir )
                           skip_transaction_dupe_check |
                           skip_tapos_check |
                           skip_witness_schedule_check |
-                          skip_authority_check |
-                          skip_validate_invariants );
+                          skip_authority_check /*|
+                          skip_validate_invariants*/ );
    }
 
    _undo_db.enable();
@@ -1423,12 +1423,14 @@ share_type database::claim_rshare_reward( share_type rshares ) {
 
    const auto& props = get_dynamic_global_properties();
 
-   fc::uint128 rs(rshares.value);
-   fc::uint128 rf(props.total_reward_fund_steem.amount.value);
+   u256 rs(rshares.value);
+   u256 rf(props.total_reward_fund_steem.amount.value);
+   u256 total_rshares2 = props.total_reward_shares2.hi;
+   total_rshares2 = ( total_rshares2 << 64 ) + props.total_reward_shares2.lo;
 
    auto rs2 = rs*rs;
 
-   auto payout = (rf * rs2 / props.total_reward_shares2).to_uint64();
+   auto payout = static_cast< uint64_t >( ( rf * rs2 ) / total_rshares2);
 
    asset sbd_payout_value = to_sbd( asset(payout, STEEM_SYMBOL) );
 
@@ -1436,7 +1438,7 @@ share_type database::claim_rshare_reward( share_type rshares ) {
       payout = 0;
 
    modify( props, [&]( dynamic_global_property_object& p ){
-     p.total_reward_shares2 -= rs2;
+     p.total_reward_shares2 -= fc::uint128_t( rshares.value ) * rshares.value;
      p.total_reward_fund_steem.amount -= payout;
    });
 
@@ -2377,8 +2379,6 @@ void database::perform_vesting_share_split( uint32_t magnitude )
 
    const auto& com_idx = get_index_type< comment_index >().indices().get< by_created >();
    auto com_itr = com_idx.begin();
-
-   uint128_t new_rshares2 = 0;
 
    while( com_itr != com_idx.end() )
    {

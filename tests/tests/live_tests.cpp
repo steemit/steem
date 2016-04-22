@@ -10,6 +10,8 @@
 
 #include "../common/database_fixture.hpp"
 
+#include <iostream>
+
 using namespace steemit::chain;
 using namespace steemit::chain::test;
 
@@ -30,8 +32,6 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       const auto& acnt_idx = db.get_index_type< account_index >().indices().get< by_name >();
       auto acnt_itr = acnt_idx.begin();
 
-      idump( (acnt_idx.begin()->name)(acnt_idx.end()->name) );
-
       BOOST_TEST_MESSAGE( "Saving account vesting shares" );
 
       while( acnt_itr != acnt_idx.end() )
@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       auto old_vesting_fund = db.get_dynamic_global_properties().total_vesting_fund_steem;
       auto old_vesting_shares = db.get_dynamic_global_properties().total_vesting_shares;
       auto old_rshares2 = db.get_dynamic_global_properties().total_reward_shares2;
-      fc::uint128_t rshares2 = 0;
+      auto old_reward_fund = db.get_dynamic_global_properties().total_reward_fund_steem;
 
       flat_map< std::tuple< string, string >, share_type > comment_net_rshares;
       flat_map< std::tuple< string, string >, share_type > comment_abs_rshares;
@@ -66,12 +66,18 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          comment_abs_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] = com_itr->abs_rshares;
          total_vote_weights[ com_itr->id ] = 0;
          orig_vote_weight[ com_itr->id ] = com_itr->total_vote_weight;
-         rshares2 += com_itr->net_rshares.value * com_itr->net_rshares.value;
-         total_rshares2 += fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value * magnitude * magnitude;
-         fc::uint128_t rs( com_itr->net_rshares.value );
-         fc::uint128_t rf( gpo.total_reward_fund_steem.amount.value );
-         auto rs2 = rs * rs;
-         expected_reward[ com_itr->id ] = ( rf * rs2 / gpo.total_reward_shares2 ).to_uint64();
+
+         if( com_itr->net_rshares.value > 0 )
+         {
+            total_rshares2 += com_itr->net_rshares.value > 0 ? fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value * magnitude * magnitude : 0;
+            u256 rs( com_itr->net_rshares.value );
+            u256 rf( gpo.total_reward_fund_steem.amount.value );
+            auto rs2 = rs * rs;
+            u256 rshares2 = old_rshares2.hi;
+            rshares2 = rshares2 << 64;
+            rshares2 += old_rshares2.lo;
+            expected_reward[ com_itr->id ] = static_cast< uint64_t >( rf * rs2 / rshares2 );
+         }
          com_itr++;
       }
 
@@ -88,8 +94,21 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          vote_itr++;
       }
 
+      BOOST_TEST_MESSAGE( "Saving category rshares" );
+
+      const auto& cat_idx = db.get_index_type< category_index >().indices();
+      flat_map< category_id_type, share_type > category_rshares;
+
+      for( auto cat_itr = cat_idx.begin(); cat_itr != cat_idx.end(); cat_itr++ )
+      {
+         category_rshares[ cat_itr->id ] = cat_itr->abs_rshares;
+      }
+
       BOOST_TEST_MESSAGE( "Perform split" );
+      fc::time_point start = fc::time_point::now();
       db.perform_vesting_share_split( magnitude );
+      fc::time_point end = fc::time_point::now();
+      ilog( "Vesting split execution time: ${t} um", ("t",end - start) );
 
       BOOST_TEST_MESSAGE( "Verify split took place correctly" );
 
@@ -97,8 +116,8 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       BOOST_REQUIRE( db.get_dynamic_global_properties().virtual_supply == old_virtual_supply );
       BOOST_REQUIRE( db.get_dynamic_global_properties().total_vesting_fund_steem == old_vesting_fund );
       BOOST_REQUIRE( db.get_dynamic_global_properties().total_vesting_shares.amount == old_vesting_shares.amount * magnitude );
-      idump( (db.get_dynamic_global_properties().total_reward_shares2)( total_rshares2)(old_rshares2)(rshares2) );
       BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_shares2 == total_rshares2 );
+      BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_fund_steem == old_reward_fund );
 
       BOOST_TEST_MESSAGE( "Check accounts were updated" );
       acnt_itr = acnt_idx.begin();
@@ -116,7 +135,6 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          vote_itr++;
       }
 
-      share_type rewards = 0;
       gpo = db.get_dynamic_global_properties();
 
       com_itr = com_idx.begin();
@@ -125,18 +143,24 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          BOOST_REQUIRE( com_itr->net_rshares == comment_net_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
          BOOST_REQUIRE( com_itr->abs_rshares == comment_abs_rshares[ std::make_tuple( com_itr->author, com_itr->permlink ) ] * magnitude );
          BOOST_REQUIRE( com_itr->total_vote_weight == total_vote_weights[ com_itr->id ] );
-         fc::uint128_t rs( com_itr->net_rshares.value );
-         fc::uint128_t rf( gpo.total_reward_fund_steem.amount.value );
-         auto rs2 = rs * rs;
-         auto diff = expected_reward[ com_itr->id] - ( rf * rs2 / total_rshares2 ).to_uint64();
-         rewards += ( rf * rs2 / total_rshares2 ).to_uint64();
-         idump( (diff) );
-         //idump( (( rf * rs2 / total_rshares2 ).to_uint64())(expected_reward[ com_itr->id]) );
-         BOOST_CHECK( ( rf * rs2 / total_rshares2 ).to_uint64() == expected_reward[ com_itr->id] );
+
+         if( com_itr->net_rshares.value > 0 )
+         {
+            u256 rs( com_itr->net_rshares.value );
+            u256 rf( gpo.total_reward_fund_steem.amount.value );
+            u256 rshares2 = total_rshares2.hi;
+            rshares2 = ( rshares2 << 64 ) + total_rshares2.lo;
+            auto rs2 = rs * rs;
+
+            BOOST_REQUIRE( static_cast< uint64_t >( ( rf * rs2 ) / rshares2 ) == expected_reward[ com_itr->id] );
+         }
          com_itr++;
       }
 
-      idump( (rewards)(gpo.total_reward_fund_steem.amount) );
+      for( auto cat_itr = cat_idx.begin(); cat_itr != cat_idx.end(); cat_itr++ )
+      {
+         BOOST_REQUIRE( cat_itr->abs_rshares.value == category_rshares[ cat_itr->id ].value * magnitude );
+      }
 
       validate_database();
    }

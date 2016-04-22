@@ -51,9 +51,6 @@ clean_database_fixture::clean_database_fixture()
    ahplugin->plugin_set_app( &app );
    ahplugin->plugin_initialize( options );
 
-   // Set account create fee to a smaller amount
-   const auto& init_miner = db.get_witness( STEEMIT_INIT_MINER_NAME );
-
    generate_block();
    vest( "initminer", 10000 );
 
@@ -95,8 +92,6 @@ live_database_fixture::live_database_fixture()
       auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
       ahplugin->plugin_set_app( &app );
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
-
-      idump( (db.get_dynamic_global_properties()) );
 
       validate_database();
       generate_block();
@@ -467,7 +462,8 @@ void database_fixture::validate_database( void )
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
-         total_rshares2 = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+         if( itr->net_rshares.value > 0 )
+            total_rshares2 += fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
       }
 
       auto gpo = db.get_dynamic_global_properties();
