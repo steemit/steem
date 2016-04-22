@@ -195,17 +195,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
       parent = &db().get_comment( o.parent_author, o.parent_permlink );
       FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
+   auto now = db().head_block_time();
 
    /// TODO: this section can be removed after hardfork
    if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
    {
-      auto now = db().head_block_time();
-      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
-      db().modify( auth, [&]( account_object& a ) {
-         a.last_post = now;
-      });
-
-
       validate_permlink_deprecated( o.permlink );
 
       if( o.parent_author.size() > 0 )
@@ -214,7 +208,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      auto now = db().head_block_time();
       FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
       db().modify( auth, [&]( account_object& a ) {
          a.last_post = now;
@@ -286,6 +279,16 @@ void comment_evaluator::do_apply( const comment_operation& o )
    }
    else
    {
+
+      /// TODO: this section can be removed after hardfork
+      if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+      {
+         FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
+         db().modify( auth, [&]( account_object& a ) {
+            a.last_post = now;
+         });
+      }
+
       /// update the global rshares2 number
       if( itr->net_rshares > 0 ) {
          db().modify( db().get_dynamic_global_properties(), [&]( dynamic_global_property_object& props ){
