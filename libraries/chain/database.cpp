@@ -134,8 +134,8 @@ void database::reindex(fc::path data_dir )
                           skip_transaction_dupe_check |
                           skip_tapos_check |
                           skip_witness_schedule_check |
-                          skip_authority_check /*|
-                          skip_validate_invariants*/ );
+                          skip_authority_check |
+                          skip_validate_invariants );
    }
 
    _undo_db.enable();

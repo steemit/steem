@@ -500,6 +500,11 @@ BOOST_AUTO_TEST_CASE( comment_apply )
          com.abs_rshares = 10;
       });
 
+      db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
+      {
+         o.total_reward_shares2 = 100;
+      });
+
       tx.signatures.clear();
       tx.operations.clear();
       op.title = "foo";
