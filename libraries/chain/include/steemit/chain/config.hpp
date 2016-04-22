@@ -21,7 +21,7 @@
 #define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 
-#define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE 0 
+#define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE 0
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE          0
 
 
@@ -134,6 +134,7 @@
 
 #define STEEMIT_MIN_PERMLINK_LENGTH             0
 #define STEEMIT_MAX_PERMLINK_LENGTH             256
+#define STEEMIT_MAX_WITNESS_URL_LENGTH          2048
 
 #define STEEMIT_INIT_SUPPLY                     int64_t(0)
 #define STEEMIT_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)

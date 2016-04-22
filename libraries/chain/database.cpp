@@ -902,7 +902,7 @@ void database::update_witness_schedule()
 
          for( auto itr = widx.begin(); itr != widx.end(); ++itr ) {
             if( itr->pow_worker ) continue;
-            if( active_witnesses.size() == STEEMIT_MAX_MINERS )
+            if( active_witnesses.size() == STEEMIT_MAX_MINERS - 2 )
             {
                new_virtual_time = itr->virtual_scheduled_time;
                active_witnesses.push_back(itr->owner);
@@ -2502,7 +2502,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          a.vesting_shares.amount *= magnitude;
          a.withdrawn             *= magnitude;
          a.to_withdraw           *= magnitude;
-         a.vesting_withdraw_rate  = asset( a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+         a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
          a.proxied_vsf_votes     *= magnitude;
       });
 
@@ -2538,11 +2538,12 @@ void database::perform_vesting_share_split( uint32_t magnitude )
    const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto vote_itr = vote_idx.begin();
 
+   // Consider removing this for low mem mode
    while( vote_itr != vote_idx.end() )
    {
       modify( *vote_itr, [&]( comment_vote_object& cv )
       {
-         cv.weight *= magnitude;
+         cv.weight = ( cv.weight * magnitude ) * magnitude;
       });
 
       vote_itr++;

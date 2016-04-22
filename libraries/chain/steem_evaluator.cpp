@@ -2,7 +2,7 @@
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
-#ifdef STEEM_DIFF_MATCH_PATCH 
+#ifdef STEEM_DIFF_MATCH_PATCH
 #include <diff_match_patch.h>
 #endif
 
@@ -65,7 +65,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
 
-   if ( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() ) FC_ASSERT( o.url.size() <= 2048 );
+   if ( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -79,6 +79,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
    else
    {
+      // TODO: Remove this after the hardfork? Assuming no witnesses were created this way
       if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) ) db().pay_fee( witness_account, o.fee );
 
       db().create< witness_object >( [&]( witness_object& w ) {
@@ -138,44 +139,20 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 void account_update_evaluator::do_apply( const account_update_operation& o )
 {
+   if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
+
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
-      if( o.owner )
-      {
-         acc.owner = *o.owner;
-         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
-      }
-      if( o.active )
-      {
-         acc.active = *o.active;
-         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
-      }
-      if( o.posting )
-      {
-         acc.posting = *o.posting;
-         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( acc.name != STEEMIT_TEMP_ACCOUNT );
-      }
+      if( o.owner ) acc.owner = *o.owner;
+      if( o.active ) acc.active = *o.active;
+      if( o.posting ) acc.posting = *o.posting;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
-      {
-         if( o.memo_key != public_key_type() )
+      if( o.memo_key != public_key_type() )
             acc.memo_key = o.memo_key;
-      }
-      else
-      {
-         acc.memo_key = o.memo_key;
-      }
 
       #ifndef IS_LOW_MEM
-         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
-         {
-            if ( o.json_metadata.size() > 0 )
-               acc.json_metadata = o.json_metadata;
-         }
-         else
-         {
+        if ( o.json_metadata.size() > 0 )
             acc.json_metadata = o.json_metadata;
-         }
       #endif
    });
 }
@@ -264,7 +241,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       id = new_comment.id;
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
-#ifndef IS_LOW_MEM 
+#ifndef IS_LOW_MEM
       while( parent ) {
          db().modify( *parent, [&]( comment_object& p ){
             p.children++;
@@ -317,7 +294,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          #ifndef IS_LOW_MEM
            com.title         = o.title;
            com.json_metadata = o.json_metadata;
-           #ifdef STEEM_DIFF_MATCH_PATCH 
+           #ifdef STEEM_DIFF_MATCH_PATCH
            try {
             diff_match_patch dmp;
             auto patch = dmp.patch_fromText( QString::fromStdString(o.body) );
@@ -421,7 +398,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       asset min_vests = wso.median_props.account_creation_fee * props.get_vesting_share_price();
       min_vests.amount.value *= 10;
 
-      FC_ASSERT( account.vesting_shares > min_vests, 
+      FC_ASSERT( account.vesting_shares > min_vests,
                  "Account registered by another account requires 10x account creation fee worth of Steem Power before it can power down" );
     }
 
@@ -586,7 +563,7 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
        if( rshares > 0 ) {
           u256 rshare256(rshares);
           u256 total256( comment.abs_rshares.value );
-          cv.weight  = static_cast<uint64_t>(( rshare256 * rshare256) / total256);
+          cv.weight  = static_cast<uint64_t>( ( ( rshare256 * rshare256 ) / total256 ) * rshare256 );
        }
    });
 
