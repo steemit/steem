@@ -1,5 +1,3 @@
-find_package(Qt5Core REQUIRED)
-
 add_library( google_patch_diff_merge 
              diff_match_patch.cpp
              diff_match_patch.h
