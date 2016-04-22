@@ -82,21 +82,41 @@ namespace steemit { namespace app {
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
     {
+       int32_t block_num = int32_t(b.block_num());
        if( _callbacks.size() )
        {
           /// we need to ensure the database_api is not deleted for the life of the async operation
           auto capture_this = shared_from_this();
-          for( uint32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
+          for( int32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
           {
              const auto& trx = b.transactions[trx_num];
              auto id = trx.id();
              auto itr = _callbacks.find(id);
              if( itr != _callbacks.end() )
              {
-                auto block_num = b.block_num();
-                auto& callback = _callbacks.find(id)->second;
-                fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num}) ); } );
+                const auto& callback = _callbacks.find(id)->second;
+                fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
+                _callbacks.erase( itr );// safe becaues callback is copied by lambda
              }
+          }
+       }
+
+       /// clear all expirations
+       if( _callbacks_expirations.size() ) {
+          auto end = _callbacks_expirations.upper_bound( b.timestamp );
+          auto itr = _callbacks_expirations.begin();
+          while( itr != end ) {
+             for( const auto trx_id : itr->second ) {
+               auto cb_itr = _callbacks.find( trx_id );
+               if( cb_itr != _callbacks.end() ) {
+                   auto capture_this = shared_from_this();
+                   const auto& callback = _callbacks.find(trx_id)->second; 
+                   fc::async( [capture_this,this,block_num,trx_id,callback](){ callback( fc::variant(transaction_confirmation{ trx_id, block_num, -1, true}) ); } );
+                   _callbacks.erase( cb_itr ); // safe becaues callback is copied by lambda
+               }
+             }
+             _callbacks_expirations.erase( itr );
+             itr = _callbacks_expirations.begin();
           }
        }
     }
@@ -126,6 +146,8 @@ namespace steemit { namespace app {
     {
        trx.validate();
        _callbacks[trx.id()] = cb;
+       _callbacks_expirations[trx.expiration].push_back(trx.id());
+
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }

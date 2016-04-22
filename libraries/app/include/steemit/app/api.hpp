@@ -58,8 +58,9 @@ namespace steemit { namespace app {
          struct transaction_confirmation
          {
             transaction_id_type   id;
-            uint32_t              block_num;
-            uint32_t              trx_num;
+            int32_t               block_num;
+            int32_t               trx_num;
+            bool                  expired;
          };
 
          typedef std::function<void(variant/*transaction_confirmation*/)> confirmation_callback;
@@ -97,7 +98,10 @@ namespace steemit { namespace app {
          void on_applied_block( const signed_block& b );
       private:
          boost::signals2::scoped_connection             _applied_block_connection;
-         map<transaction_id_type,confirmation_callback> _callbacks;
+
+         map<transaction_id_type,confirmation_callback>     _callbacks;
+         map<time_point_sec, vector<transaction_id_type> >  _callbacks_expirations;
+
          application&                                   _app;
    };
 
@@ -186,7 +190,7 @@ namespace steemit { namespace app {
 }}  // steemit::app
 
 FC_REFLECT( steemit::app::network_broadcast_api::transaction_confirmation,
-        (id)(block_num)(trx_num) )
+        (id)(block_num)(trx_num)(expired) )
 //FC_REFLECT_TYPENAME( fc::ecc::compact_signature );
 //FC_REFLECT_TYPENAME( fc::ecc::commitment_type );
 
