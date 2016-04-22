@@ -286,6 +286,13 @@ void comment_evaluator::do_apply( const comment_operation& o )
    }
    else
    {
+      /// update the global rshares2 number
+      if( itr->net_rshares > 0 ) {
+         db().modify( db().get_dynamic_global_properties(), [&]( dynamic_global_property_object& props ){
+             props.total_reward_shares2 -= (fc::uint128( itr->net_rshares.value ) * itr->net_rshares.value);
+         });
+      }
+
       db().modify( *itr, [&]( comment_object& com )
       {
          if( !parent )
@@ -518,13 +525,17 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
    used_power /= 20; /// a 100% vote means use 5% of voting power which should force users to spread their votes around over 20+ posts
 
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / STEEMIT_100_PERCENT).to_uint64();
-   int64_t rshares = o.weight < 0 ? -abs_rshares : abs_rshares;
+
+   /// this is the rshares voting for or against the post
+   int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
+
 
    db().modify( voter, [&]( account_object& a ){
       a.voting_power = current_power - used_power;
       a.last_vote_time = db().head_block_time();
    });
 
+   /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
    fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
    auto old_abs_rshares = comment.abs_rshares.value;
 
@@ -534,23 +545,30 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
 
    FC_ASSERT( abs_rshares > 0 );
 
+//   idump( (db().get_dynamic_global_properties().total_reward_shares2 )(comment.net_rshares)(abs_rshares)(o.weight)(rshares) );
+
    db().modify( comment, [&]( comment_object& c ){
       c.net_rshares += rshares;
       c.abs_rshares += abs_rshares;
       c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
    });
 
-   fc::uint128_t new_rshares = std::max(comment.net_rshares.value, int64_t(0));
+   fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
    /// square it
    new_rshares *= new_rshares;
    old_rshares *= old_rshares;
 
    const auto& cprops = db().get_dynamic_global_properties();
+   auto orig_total = cprops.total_reward_shares2;
    db().modify( cprops, [&]( dynamic_global_property_object& p ){
-      p.total_reward_shares2 -= old_rshares;
+ //     idump( (old_rshares)(new_rshares)(comment.author)(comment.permlink) );
       p.total_reward_shares2 += new_rshares;
+      p.total_reward_shares2 -= old_rshares;
+  //    idump((p.total_reward_shares2 - orig_total));
    });
+ //  idump((new_rshares - old_rshares));
+ //  idump( (db().get_dynamic_global_properties().total_reward_shares2)(comment.net_rshares) );
 
    const auto& cat = db().get_category( comment.category );
    db().modify( cat, [&]( category_object& c ){
@@ -565,7 +583,7 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
        if( rshares > 0 ) {
           u256 rshare256(rshares);
           u256 total256( comment.abs_rshares.value );
-          cv.weight  = static_cast<uint64_t>((rshare256 * rshare256 * rshare256) / total256);
+          cv.weight  = static_cast<uint64_t>(( rshare256 * rshare256) / total256);
        }
    });
 

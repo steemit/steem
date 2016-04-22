@@ -318,6 +318,8 @@ namespace steemit { namespace chain {
          void cancel_order( const limit_order_object& obj );
          int  match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
 
+         void perform_vesting_share_split( uint32_t magnitude );
+
          bool has_hardfork( uint32_t hardfork );
 
          #ifdef IS_TEST_NET

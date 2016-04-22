@@ -1,3 +1,4 @@
+#ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/chain/database.hpp>
@@ -16,7 +17,7 @@
 using namespace steemit::chain;
 using namespace steemit::chain::test;
 
-BOOST_FIXTURE_TEST_SUITE( operation_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( operation_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( account_create_validate )
 {
@@ -497,6 +498,11 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       {
          com.net_rshares = 10;
          com.abs_rshares = 10;
+      });
+
+      db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
+      {
+         o.total_reward_shares2 = 100;
       });
 
       tx.signatures.clear();
@@ -2497,3 +2503,4 @@ BOOST_AUTO_TEST_CASE( pow_apply )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif

@@ -1460,12 +1460,14 @@ share_type database::claim_rshare_reward( share_type rshares ) {
 
    const auto& props = get_dynamic_global_properties();
 
-   fc::uint128 rs(rshares.value);
-   fc::uint128 rf(props.total_reward_fund_steem.amount.value);
+   u256 rs(rshares.value);
+   u256 rf(props.total_reward_fund_steem.amount.value);
+   u256 total_rshares2 = props.total_reward_shares2.hi;
+   total_rshares2 = ( total_rshares2 << 64 ) + props.total_reward_shares2.lo;
 
    auto rs2 = rs*rs;
 
-   auto payout = (rf * rs2 / props.total_reward_shares2).to_uint64();
+   auto payout = static_cast< uint64_t >( ( rf * rs2 ) / total_rshares2);
 
    asset sbd_payout_value = to_sbd( asset(payout, STEEM_SYMBOL) );
 
@@ -1473,7 +1475,7 @@ share_type database::claim_rshare_reward( share_type rshares ) {
       payout = 0;
 
    modify( props, [&]( dynamic_global_property_object& p ){
-     p.total_reward_shares2 -= rs2;
+     p.total_reward_shares2 -= fc::uint128_t( rshares.value ) * rshares.value;
      p.total_reward_fund_steem.amount -= payout;
    });
 
@@ -2357,6 +2359,8 @@ void database::process_hardforks()
    switch( hardforks.last_hardfork + 1 )
    {
       case STEEMIT_HARDFORK_1:
+        perform_vesting_share_split( 1000000 );
+        break;
       #ifdef IS_TEST_NET
          {
             custom_operation test_op;
@@ -2457,21 +2461,111 @@ void database::validate_invariants()const
          }
       }
 
+      fc::uint128_t total_rshares2;
+
+      const auto& comment_idx = db.get_index_type< comment_index >().indices();
       auto gpo = db.get_dynamic_global_properties();
 
-      total_supply += gpo.total_vesting_fund_steem
-         + gpo.total_reward_fund_steem;
+      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
+      {
+         if( itr->net_rshares.value > 0 ) {
+            auto delta = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+            total_rshares2 += delta;
+         }
+      }
+
+      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
 
       FC_ASSERT( gpo.current_supply.amount.value == total_supply.amount.value );
       FC_ASSERT( gpo.current_sbd_supply.amount.value == total_sbd.amount.value );
       FC_ASSERT( gpo.total_vesting_shares == total_vesting );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes );
+      FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
       if ( !db.get_feed_history().current_median_history.is_null() )
          FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply );
    }
-   FC_LOG_AND_RETHROW();
+   FC_CAPTURE_LOG_AND_RETHROW( (db.head_block_num()) );
+}
+
+void database::perform_vesting_share_split( uint32_t magnitude )
+{
+   // Need to update all VESTS in accounts and the total VESTS in the dgpo
+   const auto& acc_idx = get_index_type< account_index >().indices().get< by_name >();
+   auto itr = acc_idx.begin();
+
+   while( itr != acc_idx.end() )
+   {
+      modify( *itr, [&]( account_object& a )
+      {
+         a.vesting_shares.amount *= magnitude;
+         a.withdrawn             *= magnitude;
+         a.to_withdraw           *= magnitude;
+         a.vesting_withdraw_rate  = asset( a.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+         a.proxied_vsf_votes     *= magnitude;
+      });
+
+      itr++;
+   }
+
+   const auto& com_idx = get_index_type< comment_index >().indices().get< by_created >();
+   auto com_itr = com_idx.begin();
+
+   while( com_itr != com_idx.end() )
+   {
+      modify( *com_itr, [&]( comment_object& c )
+      {
+         c.net_rshares       *= magnitude;
+         c.abs_rshares       *= magnitude;
+         c.total_vote_weight *= magnitude;
+         c.children_rshares2  = 0;
+      });
+
+      com_itr++;
+   }
+
+   com_itr = com_idx.begin();
+
+   while( com_itr != com_idx.end() )
+   {
+      adjust_rshares2( *com_itr, 0, fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value );
+
+      com_itr++;
+   }
+
+   // Update vote weights
+   const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+   auto vote_itr = vote_idx.begin();
+
+   while( vote_itr != vote_idx.end() )
+   {
+      modify( *vote_itr, [&]( comment_vote_object& cv )
+      {
+         cv.weight *= magnitude;
+      });
+
+      vote_itr++;
+   }
+
+   // Update category rshares
+   const auto& cat_idx = get_index_type< category_index >().indices().get< by_name >();
+   auto cat_itr = cat_idx.begin();
+   while( cat_itr != cat_idx.end() )
+   {
+      modify( *cat_itr, [&]( category_object& c )
+      {
+         c.abs_rshares *= magnitude;
+      });
+
+      cat_itr++;
+   }
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
+   {
+      d.total_vesting_shares.amount *= magnitude;
+      d.total_reward_shares2 = ( d.total_reward_shares2 * magnitude ) * magnitude;
+   });
 }
 
 const category_object* database::find_category( const string& name )const

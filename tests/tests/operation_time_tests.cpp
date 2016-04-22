@@ -1,3 +1,4 @@
+#ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/chain/database.hpp>
@@ -16,7 +17,7 @@
 using namespace steemit::chain;
 using namespace steemit::chain::test;
 
-BOOST_FIXTURE_TEST_SUITE( operation_time_tests, database_fixture )
+BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( comment_payout )
 {
@@ -1871,3 +1872,4 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
