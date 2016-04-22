@@ -187,11 +187,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    const auto& auth = db().get_account( o.author ); /// prove it exists
 
-   auto now = db().head_block_time();
-   FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
-   db().modify( auth, [&]( account_object& a ) {
-      a.last_post = now;
-   });
 
    comment_id_type id;
 
@@ -201,8 +196,16 @@ void comment_evaluator::do_apply( const comment_operation& o )
       FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
 
+   /// TODO: this section can be removed after hardfork
    if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
    {
+      auto now = db().head_block_time();
+      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
+      db().modify( auth, [&]( account_object& a ) {
+         a.last_post = now;
+      });
+
+
       validate_permlink_deprecated( o.permlink );
 
       if( o.parent_author.size() > 0 )
@@ -211,6 +214,12 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
+      auto now = db().head_block_time();
+      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
+      db().modify( auth, [&]( account_object& a ) {
+         a.last_post = now;
+      });
+
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
          if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_1 ) )
