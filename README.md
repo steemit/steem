@@ -41,6 +41,8 @@ Seed Nodes
     cyrano.witness   81.89.101.133:2001                        (Jena, Germany)
     kushed           40.76.37.6:2001         steem.kushed.com  (Azure)
     nextgencrypto    104.207.152.44:2201     steemwitness.com  (Los Angeles, USA)
+    bitcube          192.241.198.181:2201     steemseed.cubeconnex.com  (USA)
+
 
     52.38.66.234:2001
     52.37.169.52:2001
