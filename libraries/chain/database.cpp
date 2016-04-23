@@ -898,28 +898,33 @@ void database::update_witness_schedule()
       /// only use vote based scheduling after the first 1M STEEM is created or if there is no POW queued
       if( props.num_pow_witnesses == 0 || head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK )
       {
-         const auto& widx = get_index_type<witness_index>().indices().get<by_vote_name>();
+         const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
 
          for( auto itr = widx.begin(); itr != widx.end(); ++itr ) {
-            if( itr->pow_worker ) continue;
-            if( active_witnesses.size() == STEEMIT_MAX_MINERS - 2 )
-            {
-               new_virtual_time = itr->virtual_scheduled_time;
-               active_witnesses.push_back(itr->owner);
-               break;
-            }
+            if( itr->pow_worker ) 
+               continue;
+
             active_witnesses.push_back(itr->owner);
-         }
-
-         int count = 0;
-         for( auto itr = widx.begin(); itr != widx.end(); ++itr ) {
-            modify( *itr, [&]( witness_object& witness ){
-              witness.virtual_position        = fc::uint128();
-              witness.virtual_scheduled_time  = new_virtual_time + (fc::uint128(STEEMIT_MAX_SHARE_SUPPLY)*1000) / (witness.votes.value+1);
-            });
-            ++count;
-            if( count == active_witnesses.size() )
+            if( active_witnesses.size() == (STEEMIT_MAX_MINERS - 2) )
                break;
+            
+            /// don't consider the top 19 for the purpose of virtual time scheduling
+            modify( *itr, [&]( witness_object& wo ) { wo.virtual_scheduled_time = fc::uint128::max_value(); } ); 
+         } 
+
+         /// add the virtual scheduled witness, reseeting their position to 0 and their time to completion 
+         const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
+         auto sitr = schedule_idx.begin();
+         while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
+         
+         if( sitr != schedule_idx.end() ) {
+            active_witnesses.push_back(sitr->owner);
+            modify( *sitr, [&]( witness_object& wo ) {
+               wo.virtual_position = fc::uint128();
+               new_virtual_time = wo.virtual_scheduled_time; /// everyone advances to this time
+               /// this witness will produce again here
+               wo.virtual_scheduled_time += (fc::uint128(STEEMIT_MAX_SHARE_SUPPLY)*1000) / (wo.votes.value+1);
+            });
          }
       }
 
@@ -946,9 +951,7 @@ void database::update_witness_schedule()
        //  ilog( "scheduling miner ${m}", ("m",itr->owner) );
          active_witnesses.push_back( itr->owner );
 
-         /// after we hit 1M STEEM only include one miner per round
-         if( head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK ||
-             active_witnesses.size() >= STEEMIT_MAX_MINERS )
+         if( head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK || active_witnesses.size() >= STEEMIT_MAX_MINERS )
             break;
          ++itr;
       }

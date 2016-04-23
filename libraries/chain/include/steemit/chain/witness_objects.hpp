@@ -119,6 +119,7 @@ namespace steemit { namespace chain {
    struct by_name;
    struct by_pow;
    struct by_work;
+   struct by_schedule_time;
    /**
     * @ingroup object_index
     */
@@ -135,6 +136,12 @@ namespace steemit { namespace chain {
                member<witness_object, string, &witness_object::owner >
             >,
             composite_key_compare< std::greater< share_type >, std::less< string > >
+         >,
+         ordered_unique< tag<by_schedule_time>,
+            composite_key< witness_object,
+               member<witness_object, fc::uint128, &witness_object::virtual_scheduled_time >,
+               member<object, object_id_type, &object::id >
+            >
          >
       >
    > witness_multi_index_type;

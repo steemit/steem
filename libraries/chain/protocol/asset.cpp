@@ -127,14 +127,15 @@ namespace steemit { namespace chain {
          {
             FC_ASSERT( b.base.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.quote.amount.value)/b.base.amount.value;
-            FC_ASSERT( result <= STEEMIT_MAX_SHARE_SUPPLY );
+            FC_ASSERT( result <= uint64_t(-1) );
             return asset( result.to_uint64(), b.quote.symbol );
          }
          else if( a.symbol_name() == b.quote.symbol_name() )
          {
             FC_ASSERT( b.quote.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.base.amount.value)/b.quote.amount.value;
-            FC_ASSERT( result <= STEEMIT_MAX_SHARE_SUPPLY );
+            //FC_ASSERT( result <= STEEMIT_MAX_SHARE_SUPPLY, "${result}", ("result",result)("max",STEEMIT_MAX_SHARE_SUPPLY)("asset",a)("price",b) );
+            FC_ASSERT( result <= uint64_t(-1) );
             return asset( result.to_uint64(), b.base.symbol );
          }
          FC_THROW_EXCEPTION( fc::assert_exception, "invalid asset * price", ("asset",a)("price",b) );
