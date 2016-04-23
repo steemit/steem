@@ -442,7 +442,10 @@ vector< witness_object > database_api::get_witnesses_by_vote( string from, uint3
       itr = vote_idx.iterator_to( *nameitr );
    } 
 
-   while( itr != vote_idx.end() && result.size() < limit ) {
+   while( itr != vote_idx.end()  && 
+          result.size() < limit  && 
+          itr->votes > 0 ) 
+   {
       result.push_back(*itr);
       ++itr;
    }
