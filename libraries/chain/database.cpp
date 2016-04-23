@@ -27,6 +27,8 @@
 #include <functional>
 #include <iostream>
 
+#define VIRTUAL_SCHEDULE_LAP_LENGTH fc::uint128(uint64_t(-1))
+
 namespace steemit { namespace chain {
 
 using boost::container::flat_set;
@@ -922,8 +924,15 @@ void database::update_witness_schedule()
             modify( *sitr, [&]( witness_object& wo ) {
                wo.virtual_position = fc::uint128();
                new_virtual_time = wo.virtual_scheduled_time; /// everyone advances to this time
+
+               /// extra cautious sanity check... we should never end up here if witnesses are
+               /// properly voted on. TODO: remove this line if it is not triggered and therefore
+               /// the code path is unreachable.
+               if( new_virtual_time == fc::uint128::max_value() )
+                   new_virtual_time = fc::uint128();
+
                /// this witness will produce again here
-               wo.virtual_scheduled_time += (fc::uint128(STEEMIT_MAX_SHARE_SUPPLY)*1000) / (wo.votes.value+1);
+               wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
             });
          }
       }
@@ -1046,7 +1055,7 @@ void database::adjust_witness_votes( const account_object& a, share_type delta, 
           w.virtual_position += w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
           w.virtual_last_update = wso.current_virtual_time;
           w.votes += delta;
-          w.virtual_scheduled_time = w.virtual_last_update + (1000*STEEMIT_MAX_SHARE_SUPPLY - w.virtual_position)/(w.votes.value+1);
+          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
         });
         ++itr;
      }
