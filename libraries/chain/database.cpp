@@ -902,13 +902,10 @@ void database::update_witness_schedule()
       {
          const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
 
-         for( auto itr = widx.begin(); itr != widx.end(); ++itr ) {
-            if( itr->pow_worker ) 
-               continue;
+         for( auto itr = widx.begin(); itr != widx.end() && (active_witnesses.size() < (STEEMIT_MAX_MINERS-2)); ++itr ) {
+            if( itr->pow_worker ) continue;
 
             active_witnesses.push_back(itr->owner);
-            if( active_witnesses.size() == (STEEMIT_MAX_MINERS - 2) )
-               break;
             
             /// don't consider the top 19 for the purpose of virtual time scheduling
             modify( *itr, [&]( witness_object& wo ) { wo.virtual_scheduled_time = fc::uint128::max_value(); } ); 
