@@ -906,16 +906,16 @@ void database::update_witness_schedule()
             if( itr->pow_worker ) continue;
 
             active_witnesses.push_back(itr->owner);
-            
-            /// don't consider the top 19 for the purpose of virtual time scheduling
-            modify( *itr, [&]( witness_object& wo ) { wo.virtual_scheduled_time = fc::uint128::max_value(); } ); 
-         } 
 
-         /// add the virtual scheduled witness, reseeting their position to 0 and their time to completion 
+            /// don't consider the top 19 for the purpose of virtual time scheduling
+            modify( *itr, [&]( witness_object& wo ) { wo.virtual_scheduled_time = fc::uint128::max_value(); } );
+         }
+
+         /// add the virtual scheduled witness, reseeting their position to 0 and their time to completion
          const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
          auto sitr = schedule_idx.begin();
          while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
-         
+
          if( sitr != schedule_idx.end() ) {
             active_witnesses.push_back(sitr->owner);
             modify( *sitr, [&]( witness_object& wo ) {
@@ -2336,8 +2336,10 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEMIT_GENESIS_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_1 == 1, "Invalid hardfork confugration" );
+   FC_ASSERT( STEEMIT_HARDFORK_1 == 1, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_1_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_2 == 2, "Invlaid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_2 ] = fc::time_point_sec( STEEMIT_HARDFORK_2_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration" );
@@ -2388,6 +2390,8 @@ void database::process_hardforks()
             a.active.weight_threshold = 0;
          });
       #endif
+      case STEEMIT_HARDFORK_2:
+         break;
       default:
          break;
    }

@@ -474,6 +474,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
 
    if( itr == by_account_witness_idx.end() ) {
       FC_ASSERT( o.approve, "vote doesn't exist, user must be indicate a desire to approve witness" );
+      if ( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_2 ) ) FC_ASSERT( voter.witnesses_voted_for < STEEMIT_MAX_ACCOUNT_WITNESS_VOTES, "account has voted for too many witnesses" ); // TODO: Remove after hardfork 2
       db().create<witness_vote_object>( [&]( witness_vote_object& v ) {
           v.witness = witness.id;
           v.account = voter.id;
@@ -481,11 +482,18 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
       db().modify( witness, [&]( witness_object& w ) {
           w.votes += voter.witness_vote_weight();
       });
+      db().modify( voter, [&]( account_object& a ) {
+         a.witnesses_voted_for++;
+      });
+
    } else {
-      FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to approve witness" );
+      FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to reject witness" );
 
       db().modify( witness, [&]( witness_object& w ) {
           w.votes -= voter.witness_vote_weight();
+      });
+      db().modify( voter, [&]( account_object& a ) {
+         a.witnesses_voted_for--;
       });
       db().remove( *itr );
    }
