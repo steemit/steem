@@ -427,7 +427,7 @@ fc::optional<witness_object> database_api::get_witness_by_account( string accoun
 
 vector< witness_object > database_api::get_witnesses_by_vote( string from, uint32_t limit )const
 {
-   idump((from)(limit));
+   //idump((from)(limit));
    FC_ASSERT( limit <= 100 );
 
    vector<witness_object> result;
@@ -441,11 +441,11 @@ vector< witness_object > database_api::get_witnesses_by_vote( string from, uint3
       auto nameitr = name_idx.find( from );
       FC_ASSERT( nameitr != name_idx.end(), "invalid witness name ${n}", ("n",from) );
       itr = vote_idx.iterator_to( *nameitr );
-   } 
+   }
 
-   while( itr != vote_idx.end()  && 
-          result.size() < limit && 
-          itr->votes > 0 ) 
+   while( itr != vote_idx.end()  &&
+          result.size() < limit &&
+          itr->votes > 0 )
    {
       result.push_back(*itr);
       ++itr;
@@ -706,7 +706,7 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
 }
 vector<account_vote> database_api::get_account_votes( string voter )const {
    vector<account_vote> result;
-      
+
    const auto& voter_acnt = my->_db.get_account(voter);
    const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_voter_comment >();
 

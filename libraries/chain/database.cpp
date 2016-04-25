@@ -2595,18 +2595,16 @@ void database::retally_witness_votes()
       modify( *itr, [&]( witness_object& w )
       {
          w.votes = 0;
+         w.virtual_position = 0;
       });
    }
 
-   const auto& witness_vote_idx = get_index_type< witness_vote_index >().indices();
+   const auto& account_idx = get_index_type< account_index >().indices();
 
-   // Apply all existing votes
-   for( auto itr = witness_vote_idx.begin(); itr != witness_vote_idx.end(); itr++ )
+   // Apply all existing votes by account
+   for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
    {
-      modify( itr->witness( *this ), [&]( witness_object& w )
-      {
-         w.votes += itr->account( *this ).witness_vote_weight();
-      });
+      adjust_witness_votes( *itr, itr->witness_vote_weight() );
    }
 }
 
