@@ -64,6 +64,7 @@ namespace steemit { namespace chain {
          share_type      to_withdraw = 0; /// Might be able to look this up with operation history.
 
          share_type      proxied_vsf_votes; ///< the total VFS votes proxied to this account
+         uint16_t        witnesses_voted_for = 0;
 
          /**
           *  This field tracks the average bandwidth consumed by this account and gets updated every time a transaction
@@ -151,7 +152,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)
-                    (proxied_vsf_votes)
+                    (proxied_vsf_votes)(witnesses_voted_for)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)
