@@ -2340,6 +2340,8 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_1_TIME );
    FC_ASSERT( STEEMIT_HARDFORK_2 == 2, "Invlaid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_2 ] = fc::time_point_sec( STEEMIT_HARDFORK_2_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_3 == 3, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_3 ] = fc::time_point_sec( STEEMIT_HARDFORK_3_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration" );
@@ -2391,6 +2393,7 @@ void database::process_hardforks()
          });
       #endif
       case STEEMIT_HARDFORK_2:
+         retally_witness_votes();
          break;
       default:
          break;
@@ -2580,6 +2583,31 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       d.total_vesting_shares.amount *= magnitude;
       d.total_reward_shares2 = ( d.total_reward_shares2 * magnitude ) * magnitude;
    });
+}
+
+void database::retally_witness_votes()
+{
+   const auto& witness_idx = get_index_type< witness_index >().indices();
+
+   // Clear all witness votes
+   for( auto itr = witness_idx.begin(); itr != witness_idx.end(); itr++ )
+   {
+      modify( *itr, [&]( witness_object& w )
+      {
+         w.votes = 0;
+      });
+   }
+
+   const auto& witness_vote_idx = get_index_type< witness_vote_index >().indices();
+
+   // Apply all existing votes
+   for( auto itr = witness_vote_idx.begin(); itr != witness_vote_idx.end(); itr++ )
+   {
+      modify( itr->witness( *this ), [&]( witness_object& w )
+      {
+         w.votes += itr->account( *this ).witness_vote_weight();
+      });
+   }
 }
 
 const category_object* database::find_category( const string& name )const
