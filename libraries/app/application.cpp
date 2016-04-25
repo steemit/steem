@@ -417,6 +417,12 @@ namespace detail {
                  ("n", blk_msg.block.block_num()) );
          }
 
+         time_point_sec now = graphene::time::now();
+
+         uint64_t max_accept_time = now.sec_since_epoch();
+         max_accept_time += allow_future_time;
+         FC_ASSERT( blk_msg.block.timestamp.sec_since_epoch() <= max_accept_time );
+
          try {
             // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
             // you can help the network code out by throwing a block_older_than_undo_history exception.
@@ -790,6 +796,7 @@ namespace detail {
       std::vector< std::string >                       _public_apis;
 
       bool _is_finished_syncing = false;
+      uint32_t allow_future_time = 5;
    };
 
 }
