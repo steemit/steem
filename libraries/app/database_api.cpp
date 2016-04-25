@@ -427,6 +427,7 @@ fc::optional<witness_object> database_api::get_witness_by_account( string accoun
 
 vector< witness_object > database_api::get_witnesses_by_vote( string from, uint32_t limit )const
 {
+   idump((from)(limit));
    FC_ASSERT( limit <= 100 );
 
    vector<witness_object> result;
@@ -443,7 +444,7 @@ vector< witness_object > database_api::get_witnesses_by_vote( string from, uint3
    } 
 
    while( itr != vote_idx.end()  && 
-          result.size() < limit  && 
+          result.size() < limit && 
           itr->votes > 0 ) 
    {
       result.push_back(*itr);
@@ -1113,7 +1114,7 @@ state database_api::get_state( string path )const
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
    }
-   else if( part[0] == "witnesses" ) {
+   else if( part[0] == "witnesses" || part[0] == "~witnesses") {
       auto wits = get_witnesses_by_vote( "", 50 );
       for( const auto& w : wits ) {
          _state.witnesses[w.owner] = w;
