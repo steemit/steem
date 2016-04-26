@@ -1061,8 +1061,8 @@ void database::adjust_witness_votes( const account_object& a, share_type delta, 
      while( itr != vidx.end() && itr->account == a.get_id() ) {
         modify( itr->witness(*this), [&]( witness_object& w ){
 
-          if( wso.current_virtual_time < w.virtual_last_update )
-            edump((wso.current_virtual_time)(w.virtual_last_update));
+          //if( wso.current_virtual_time < w.virtual_last_update )
+          //  edump((wso.current_virtual_time)(w.virtual_last_update));
 
           auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
           w.virtual_position += delta_pos;
@@ -2628,10 +2628,6 @@ void database::retally_witness_votes()
    // Apply all existing votes by account
    for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
    {
-      //if( itr->proxied_vsf_votes > 0 )
-      //   adjust_witness_votes( *itr, itr->witness_vote_weight() );
-      //
-      //
      const witness_schedule_object& wso = witness_schedule_id_type()(*this);
      const auto& a = *itr;
 
@@ -2644,7 +2640,7 @@ void database::retally_witness_votes()
           w.virtual_position += delta_pos;
 
           w.virtual_last_update = wso.current_virtual_time;
-          w.votes += a.witness_vote_weight(); //delta;
+          w.votes += a.witness_vote_weight(); 
 
           w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
         });
