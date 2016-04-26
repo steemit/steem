@@ -2628,8 +2628,28 @@ void database::retally_witness_votes()
    // Apply all existing votes by account
    for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
    {
-      if( itr->proxied_vsf_votes > 0 )
-         adjust_witness_votes( *itr, itr->witness_vote_weight() );
+      //if( itr->proxied_vsf_votes > 0 )
+      //   adjust_witness_votes( *itr, itr->witness_vote_weight() );
+      //
+      //
+     const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+     const auto& a = *itr;
+
+     const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+     auto vitr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+     while( vitr != vidx.end() && vitr->account == a.get_id() ) {
+        modify( vitr->witness(*this), [&]( witness_object& w ){
+
+          auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
+          w.virtual_position += delta_pos;
+
+          w.virtual_last_update = wso.current_virtual_time;
+          w.votes += a.witness_vote_weight(); //delta;
+
+          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
+        });
+        ++vitr;
+     }
    }
 }
 
