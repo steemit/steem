@@ -484,7 +484,12 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
              v.account = voter.id;
          });
 
-         db().adjust_witness_votes( voter, voter.witness_vote_weight() );
+         if( db().has_hardfork( STEEMIT_HARDFORK_3 ) ) {
+            db().adjust_witness_vote( witness, voter.witness_vote_weight() );
+         }
+         else {
+            db().adjust_witness_votes( voter, voter.witness_vote_weight() );
+         }
 
       } else {
 
@@ -505,7 +510,10 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
       FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to reject witness" );
 
       if (  db().has_hardfork( STEEMIT_HARDFORK_2 ) ) {
-         db().adjust_witness_votes( voter, -voter.witness_vote_weight() );
+         if( db().has_hardfork( STEEMIT_HARDFORK_3 ) ) 
+            db().adjust_witness_vote( witness, -voter.witness_vote_weight() );
+         else
+            db().adjust_witness_votes( voter, -voter.witness_vote_weight() );
       } else  {
          db().modify( witness, [&]( witness_object& w ) {
              w.votes -= voter.witness_vote_weight();

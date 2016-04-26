@@ -1054,31 +1054,34 @@ void database::adjust_witness_votes( const account_object& a, share_type delta, 
 
      adjust_witness_votes( proxy, delta, depth + 1 );
   } else {
-     const witness_schedule_object& wso = witness_schedule_id_type()(*this);
 
      const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
      auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
      while( itr != vidx.end() && itr->account == a.get_id() ) {
-        modify( itr->witness(*this), [&]( witness_object& w ){
-
-          if( wso.current_virtual_time < w.virtual_last_update )
-            edump((wso.current_virtual_time)(w.virtual_last_update));
-
-          auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
-          w.virtual_position += delta_pos;
-
-          w.virtual_last_update = wso.current_virtual_time;
-          w.votes += delta;
-
-          if( has_hardfork( STEEMIT_HARDFORK_2 ) ) 
-             w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
-          else
-             w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
-        });
+        adjust_witness_vote( itr->witness(*this), delta );
         ++itr;
      }
   }
 }
+
+void database::adjust_witness_vote( const witness_object& witness, share_type delta ) {
+    const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+    modify( witness, [&]( witness_object& w ){
+
+      auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
+      w.virtual_position += delta_pos;
+
+      w.virtual_last_update = wso.current_virtual_time;
+      w.votes += delta;
+      FC_ASSERT( w.votes <= get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props",get_dynamic_global_properties().total_vesting_shares) );
+
+      if( has_hardfork( STEEMIT_HARDFORK_2 ) ) 
+         w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
+      else
+         w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
+    });
+}
+
 
 void database::clear_witness_votes( const account_object& a ) {
   const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
@@ -1725,7 +1728,8 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   if( !( skip & skip_validate_invariants ) )
+   //if( !( skip & skip_validate_invariants ) )
+   if( head_block_num() > 850000 )
       validate_invariants();
 }
 
@@ -2467,6 +2471,13 @@ void database::validate_invariants()const
       asset total_vesting = asset( 0, VESTS_SYMBOL );
       share_type total_vsf_votes = share_type( 0 );
 
+      auto gpo = db.get_dynamic_global_properties();
+
+      /// verify no witness has too many votes
+      const auto& witness_idx = get_index_type< witness_index >().indices();
+      for( auto itr = witness_idx.begin(); itr != witness_idx.end(); itr++ )
+         FC_ASSERT( itr->votes < gpo.total_vesting_shares.amount, "", ("itr",*itr) );
+
       for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
       {
          total_supply += itr->balance;
@@ -2504,7 +2515,6 @@ void database::validate_invariants()const
       fc::uint128_t total_rshares2;
 
       const auto& comment_idx = db.get_index_type< comment_index >().indices();
-      auto gpo = db.get_dynamic_global_properties();
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
