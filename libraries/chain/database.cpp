@@ -2421,6 +2421,7 @@ void database::process_hardforks()
          });
       #endif
       case STEEMIT_HARDFORK_2:
+      case STEEMIT_HARDFORK_3:
          retally_witness_votes();
          break;
       default:
