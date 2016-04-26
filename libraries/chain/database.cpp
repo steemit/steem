@@ -671,7 +671,7 @@ signed_block database::_generate_block(
       if( tx.expiration < when )
          continue;
 
-      size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
       // postpone transaction if it would make block too big
       if( new_total_size >= maximum_block_size )

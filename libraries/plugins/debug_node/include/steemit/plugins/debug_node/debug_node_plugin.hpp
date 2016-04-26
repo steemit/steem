@@ -9,12 +9,12 @@
 #include <fstream>
 
 namespace steemit { namespace chain {
-class signed_block;
+   struct signed_block;
 } }
 
 namespace graphene { namespace db {
-struct object_id_type;
-class object;
+   struct object_id_type;
+   class object;
 } }
 
 namespace steemit { namespace plugin { namespace debug_node {

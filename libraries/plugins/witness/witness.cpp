@@ -279,6 +279,8 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
       case block_production_condition::exception_producing_block:
          elog("Failure when producing block with no transactions");
          break;
+      case block_production_condition::wait_for_genesis:
+         break;
    }
 
    schedule_production_loop();
@@ -411,7 +413,6 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
    auto minutes = uint64_t(seconds / 60.0);
 
 
-   auto target = db.get_pow_target();
    if( uint64_t(hps) > 0 )
       ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
               ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)

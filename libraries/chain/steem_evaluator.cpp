@@ -567,15 +567,10 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
    old_rshares *= old_rshares;
 
    const auto& cprops = db().get_dynamic_global_properties();
-   auto orig_total = cprops.total_reward_shares2;
    db().modify( cprops, [&]( dynamic_global_property_object& p ){
- //     idump( (old_rshares)(new_rshares)(comment.author)(comment.permlink) );
       p.total_reward_shares2 += new_rshares;
       p.total_reward_shares2 -= old_rshares;
-  //    idump((p.total_reward_shares2 - orig_total));
    });
- //  idump((new_rshares - old_rshares));
- //  idump( (db().get_dynamic_global_properties().total_reward_shares2)(comment.net_rshares) );
 
    const auto& cat = db().get_category( comment.category );
    db().modify( cat, [&]( category_object& c ){
