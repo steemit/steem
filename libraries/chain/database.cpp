@@ -930,7 +930,10 @@ void database::update_witness_schedule()
                    new_virtual_time = fc::uint128();
 
                /// this witness will produce again here
-               wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
+               if( has_hardfork( STEEMIT_HARDFORK_2 ) )
+                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
+               else
+                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
             });
          }
 
@@ -1063,14 +1066,6 @@ void database::adjust_witness_votes( const account_object& a, share_type delta, 
 
           auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
           w.virtual_position += delta_pos;
-          /*
-          if( w.virtual_position.high_bits() ) {
-            edump(("overflow 64 bit" )(delta_pos));
-          }
-          */
-
-          if( has_hardfork( STEEMIT_HARDFORK_2 ) && w.virtual_position > VIRTUAL_SCHEDULE_LAP_LENGTH ) 
-            w.virtual_position = VIRTUAL_SCHEDULE_LAP_LENGTH;
 
           w.virtual_last_update = wso.current_virtual_time;
           w.votes += delta;
