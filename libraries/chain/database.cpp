@@ -1998,6 +1998,9 @@ void database::update_global_dynamic_data( const signed_block& b )
          } else { /// linear growth... not much fine grain control near full capacity
            dgp.current_reserve_ratio++;
          }
+
+         if( has_hardfork( STEEMIT_HARDFORK_3 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
+           dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
       }
       dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *
                                   STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) / STEEMIT_BLOCK_INTERVAL;
