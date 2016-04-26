@@ -464,6 +464,9 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
 
 void account_witness_vote_evaluator::do_apply( const account_witness_vote_operation& o )
 {
+   if( db().is_producing() )  /// TODO: remove this after HARDFORK3
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_3 ), "no new votes until hardfork 3" );
+
    const auto& voter = db().get_account( o.account );
    FC_ASSERT( voter.proxy.size() == 0, "A proxy is currently set, please clear the proxy before voting for a witness" );
 
