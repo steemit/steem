@@ -799,8 +799,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_net_rshares = new_bob_comment.net_rshares.value;
          auto old_abs_rshares = new_bob_comment.abs_rshares;
          auto old_vote_weights = new_bob_comment.total_vote_weight;
+         old_cashout_time = new_bob_comment.cashout_time;
          auto vote_rshares = alice_bob_vote->rshares;
          auto vote_weight = alice_bob_vote->weight;
+         auto alice_vote_power = db.get_account( "alice" ).voting_power;
 
          idump( (*alice_bob_vote) );
 
@@ -826,8 +828,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - vote_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares - vote_rshares );
          BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_vote_weights - vote_weight );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == old_cashout_time );
          BOOST_REQUIRE( alice_bob_vote->weight == 0 );
          BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
+         BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_vote_power );
 
          validate_database();
 
@@ -839,6 +843,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_vote_weights = new_bob_comment.total_vote_weight;
          vote_rshares = sam_bob_vote->rshares;
          vote_weight = sam_bob_vote->weight;
+         auto sam_vote_power = db.get_account( "sam" ).voting_power;
 
          op.voter = "sam";
          tx.operations.clear();
@@ -849,8 +854,10 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - vote_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + vote_rshares );
          BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_vote_weights - vote_weight );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == old_cashout_time );
          BOOST_REQUIRE( sam_bob_vote->weight == 0 );
          BOOST_REQUIRE( sam_bob_vote->rshares == 0 );
+         BOOST_REQUIRE( db.get_account( "sam" ).voting_power == sam_voting_power );
 
          validate_database();
       }
