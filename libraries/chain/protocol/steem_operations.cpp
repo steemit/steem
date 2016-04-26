@@ -61,7 +61,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );\
       FC_ASSERT( abs(weight) <= STEEMIT_100_PERCENT, "Weight is not a STEEMIT percentage" );
-      FC_ASSERT( weight != 0, "Vote weight is 0" );
+      //FC_ASSERT( weight != 0, "Vote weight is 0" );
    }
 
    void transfer_operation::validate() const

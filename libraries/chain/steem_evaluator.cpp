@@ -526,6 +526,7 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
 
    if( itr == comment_vote_idx.end() )
    {
+      FC_ASSERT( o.weight != 0, "Vote weight cannot be 0" );
       auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
       auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
       auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
@@ -608,6 +609,7 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
    else
    {
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_3 ), "Cannot undo votes until hardfork 3" );
+      FC_ASSERT( o.weight == 0, "vote can only be removed, not modifed" );
 
       db().modify( comment, [&]( comment_object& c )
       {

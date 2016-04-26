@@ -2375,8 +2375,8 @@ void database::process_hardforks()
    switch( hardforks.last_hardfork + 1 )
    {
       case STEEMIT_HARDFORK_1:
-        perform_vesting_share_split( 1000000 );
-        break;
+         perform_vesting_share_split( 1000000 );
+         break;
       #ifdef IS_TEST_NET
          {
             custom_operation test_op;
@@ -2386,17 +2386,11 @@ void database::process_hardforks()
             push_applied_operation( test_op );
          }
          break;
-      #else
-         // Just in case someone changes the temp account auth between now and the hardfork
-         // *in best Captain Kirk voice* TROLLLLLLSSS!!!! *shakes fist*
-         modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
-         {
-            a.owner.weight_threshold = 0;
-            a.active.weight_threshold = 0;
-         });
       #endif
       case STEEMIT_HARDFORK_2:
          retally_witness_votes();
+         break;
+      case STEEMIT_HARDFORK_3:
          break;
       default:
          break;
@@ -2423,9 +2417,10 @@ void database::set_hardfork( uint32_t hardfork )
 
    auto const& hardforks = hardfork_property_id_type()( *this );
 
-   while( hardforks.last_hardfork < hardfork )
+   while( hardforks.last_hardfork < hardfork
+      && hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS )
    {
-      _hardfork_times[ hardforks.last_hardfork ] = head_block_time();
+      _hardfork_times[ hardforks.last_hardfork + 1 ] = head_block_time();
       process_hardforks();
    }
 }
