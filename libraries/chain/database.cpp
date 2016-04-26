@@ -27,7 +27,8 @@
 #include <functional>
 #include <iostream>
 
-#define VIRTUAL_SCHEDULE_LAP_LENGTH fc::uint128(uint64_t(-1))
+#define VIRTUAL_SCHEDULE_LAP_LENGTH  fc::uint128(uint64_t(-1))
+#define VIRTUAL_SCHEDULE_LAP_LENGTH2 fc::uint128::max_value()
 
 namespace steemit { namespace chain {
 
@@ -932,6 +933,13 @@ void database::update_witness_schedule()
                wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
             });
          }
+
+         while( sitr != schedule_idx.end() && sitr->pow_worker ) {
+            modify( *sitr, [&]( witness_object& wo ) {
+                    wo.virtual_last_update = new_virtual_time;
+                    });
+            ++sitr;
+         }
       }
 
       /// Add the next POW witness to the active set if there is one...
@@ -1049,10 +1057,28 @@ void database::adjust_witness_votes( const account_object& a, share_type delta, 
      auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
      while( itr != vidx.end() && itr->account == a.get_id() ) {
         modify( itr->witness(*this), [&]( witness_object& w ){
-          w.virtual_position += w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
+
+          if( wso.current_virtual_time < w.virtual_last_update )
+            edump((wso.current_virtual_time)(w.virtual_last_update));
+
+          auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
+          w.virtual_position += delta_pos;
+          /*
+          if( w.virtual_position.high_bits() ) {
+            edump(("overflow 64 bit" )(delta_pos));
+          }
+          */
+
+          if( has_hardfork( STEEMIT_HARDFORK_2 ) && w.virtual_position > VIRTUAL_SCHEDULE_LAP_LENGTH ) 
+            w.virtual_position = VIRTUAL_SCHEDULE_LAP_LENGTH;
+
           w.virtual_last_update = wso.current_virtual_time;
           w.votes += delta;
-          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
+
+          if( has_hardfork( STEEMIT_HARDFORK_2 ) ) 
+             w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
+          else
+             w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
         });
         ++itr;
      }
@@ -2498,7 +2524,7 @@ void database::validate_invariants()const
       FC_ASSERT( gpo.current_supply.amount.value == total_supply.amount.value );
       FC_ASSERT( gpo.current_sbd_supply.amount.value == total_sbd.amount.value );
       FC_ASSERT( gpo.total_vesting_shares == total_vesting );
-      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes );
+      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vsf_votes",total_vsf_votes)("total_vesting_shares",gpo.total_vesting_shares) );
       FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
       if ( !db.get_feed_history().current_median_history.is_null() )
