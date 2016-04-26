@@ -2020,7 +2020,7 @@ void database::update_global_dynamic_data( const signed_block& b )
            dgp.current_reserve_ratio++;
          }
 
-         if( has_hardfork( STEEMIT_HARDFORK_3 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
+         if( has_hardfork( STEEMIT_HARDFORK_2 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
            dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
       }
       dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *

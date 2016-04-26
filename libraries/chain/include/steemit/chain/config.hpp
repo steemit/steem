@@ -79,7 +79,7 @@
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
 #define STEEMIT_MAX_COMMENT_DEPTH               6
 
-#define STEEMIT_MAX_RESERVE_RATIO   (10000)
+#define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
 
 #define STEEMIT_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )
