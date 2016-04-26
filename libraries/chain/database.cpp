@@ -2607,7 +2607,8 @@ void database::retally_witness_votes()
    // Apply all existing votes by account
    for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
    {
-      adjust_witness_votes( *itr, itr->witness_vote_weight() );
+      if( itr->proxied_vsf_votes > 0 )
+         adjust_witness_votes( *itr, itr->witness_vote_weight() );
    }
 }
 
