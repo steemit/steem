@@ -899,7 +899,7 @@ void database::update_witness_schedule4() {
          wit.pow_worker = 0;
       });
       modify( gprops, [&]( dynamic_global_property_object& obj ){
-          FC_ASSERT( obj.num_pow_witnesses > 1 );
+          FC_ASSERT( obj.num_pow_witnesses > 0 );
           obj.num_pow_witnesses--;
       });
    }
