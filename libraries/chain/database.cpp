@@ -939,7 +939,7 @@ void database::update_witness_schedule4() {
    const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
    for( auto itr = widx.begin(); itr != widx.end() && active_witnesses.size() < STEEMIT_MAX_MINERS; ++itr ) 
    {
-      if( active_witnesses.size() == 2 && itr->owner != active_witnesses[1] && itr->owner != active_witnesses[0] )
+      if( active_witnesses.size() >= 2 && itr->owner != active_witnesses[1] && itr->owner != active_witnesses[0] )
          active_witnesses.push_back(itr->owner);
       else if( active_witnesses.size() == 1 && itr->owner != active_witnesses[0] )
          active_witnesses.push_back(itr->owner);
@@ -2513,10 +2513,7 @@ void database::reset_virtual_schedule_time() {
      modify( witness, [&]( witness_object& wobj ) {
          wobj.virtual_position = fc::uint128();
          wobj.virtual_last_update = wso.current_virtual_time;
-         wobj.virtual_scheduled_time = wso.current_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
-
-         if( wobj.virtual_scheduled_time < wso.current_virtual_time )
-            wobj.virtual_scheduled_time = fc::uint128::max_value();
+         wobj.virtual_scheduled_time = VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
      });
    }
 }
