@@ -894,7 +894,7 @@ void database::update_witness_schedule4() {
    const auto& pow_idx = get_index_type<witness_index>().indices().get<by_pow>();
    auto itr = pow_idx.upper_bound(0);
    if( itr != pow_idx.end() ) {
-      if( gprops.num_pow_witnesses > 1 ) {
+      if( gprops.num_pow_witnesses ) {
          modify( *itr, [&](witness_object& wit ){
             wit.pow_worker = 0;
          });
@@ -910,7 +910,8 @@ void database::update_witness_schedule4() {
    
    const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
    auto sitr = schedule_idx.begin();
-   fc::uint128 new_virtual_time;
+
+   fc::uint128 new_virtual_time = wso.current_virtual_time;
 
    if( sitr != schedule_idx.end() ) {
       active_witnesses.push_back(sitr->owner);
@@ -926,6 +927,7 @@ void database::update_witness_schedule4() {
 
          /// this witness will produce again here
          wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
+         wo.virtual_last_update     = new_virtual_time;
 
          if( wo.virtual_scheduled_time < wso.current_virtual_time )
            wo.virtual_scheduled_time = fc::uint128::max_value();
@@ -938,7 +940,12 @@ void database::update_witness_schedule4() {
    for( auto itr = widx.begin(); 
         itr != widx.end() && active_witnesses.size() < STEEMIT_MAX_MINERS; 
         ++itr ) {
-      if( itr->owner != active_witnesses[0] && (active_witnesses.size()>1 && itr->owner != active_witnesses[1])  )
+
+      if( active_witnesses.size() == 2 && itr->owner != active_witnesses[1] && itr->owner != active_witnesses[0] )
+         active_witnesses.push_back(itr->owner);
+      else if( active_witnesses.size() == 1 && itr->owner != active_witnesses[0] )
+         active_witnesses.push_back(itr->owner);
+      else if( active_witnesses.size() == 0 )
          active_witnesses.push_back(itr->owner);
    }
 
