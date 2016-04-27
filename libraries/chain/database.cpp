@@ -905,7 +905,7 @@ void database::update_witness_schedule()
          const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
 
          for( auto itr = widx.begin(); itr != widx.end() && (active_witnesses.size() < (STEEMIT_MAX_MINERS-2)); ++itr ) {
-            if( itr->pow_worker ) continue;
+            if( !has_hardfork( STEEMIT_HARDFORK_4) && itr->pow_worker ) continue;
 
             active_witnesses.push_back(itr->owner);
 
@@ -914,9 +914,11 @@ void database::update_witness_schedule()
          }
 
          /// add the virtual scheduled witness, reseeting their position to 0 and their time to completion
+
          const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
          auto sitr = schedule_idx.begin();
-         while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
+         if( !has_hardfork( STEEMIT_HARDFORK_4 ) ) /// TODO: see if we can remove this after HF4
+            while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
 
          if( sitr != schedule_idx.end() ) {
             active_witnesses.push_back(sitr->owner);
@@ -944,12 +946,16 @@ void database::update_witness_schedule()
             });
          }
 
-         while( sitr != schedule_idx.end() && sitr->pow_worker ) {
-            modify( *sitr, [&]( witness_object& wo ) {
-                    wo.virtual_last_update = new_virtual_time;
-                    });
-            ++sitr;
+         /* TODO: delete this if we can reindex without it through HF4 */
+         if( !has_hardfork( STEEMIT_HARDFORK_4 ) ) {
+            while( sitr != schedule_idx.end() && sitr->pow_worker ) {
+               modify( *sitr, [&]( witness_object& wo ) {
+                       wo.virtual_last_update = new_virtual_time;
+                       });
+               ++sitr;
+            }
          }
+         
       }
 
       /// Add the next POW witness to the active set if there is one...
