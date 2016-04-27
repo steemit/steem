@@ -899,7 +899,6 @@ void database::update_witness_schedule4() {
          wit.pow_worker = 0;
       });
       modify( gprops, [&]( dynamic_global_property_object& obj ){
-          FC_ASSERT( obj.num_pow_witnesses > 0 );
           obj.num_pow_witnesses--;
       });
    }
@@ -916,12 +915,6 @@ void database::update_witness_schedule4() {
       modify( *sitr, [&]( witness_object& wo ) {
          wo.virtual_position = fc::uint128();
          new_virtual_time = wo.virtual_scheduled_time; /// everyone advances to this time
-
-         /// extra cautious sanity check... we should never end up here if witnesses are
-         /// properly voted on. TODO: remove this line if it is not triggered and therefore
-         /// the code path is unreachable.
-         if( new_virtual_time == fc::uint128::max_value() )
-             new_virtual_time = fc::uint128();
 
          /// this witness will produce again here
          wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
