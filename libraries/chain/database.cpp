@@ -937,6 +937,7 @@ void database::update_witness_schedule()
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
 
                if( has_hardfork( STEEMIT_HARDFORK_4 ) ) { // TODO: clean up and refactor
+                  wdump( ("virtual scheduled_witness")(wo.owner) );
                   if( wo.virtual_scheduled_time < wso.current_virtual_time )
                      wo.virtual_scheduled_time = fc::uint128::max_value();
                }
@@ -1741,7 +1742,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    /// check invariants
    //if( !( skip & skip_validate_invariants ) )
-   if( head_block_num() > 850000 )
+   if( head_block_num() > 900000 )
       validate_invariants();
 }
 
@@ -2409,7 +2410,7 @@ void database::reset_virtual_schedule_time() {
      modify( witness, [&]( witness_object& wobj ) {
          wobj.virtual_position = fc::uint128();
          wobj.virtual_last_update = wso.current_virtual_time;
-         wobj.virtual_scheduled_time = wso.current_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / wobj.votes.value;
+         wobj.virtual_scheduled_time = wso.current_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
 
          if( wobj.virtual_scheduled_time < wso.current_virtual_time )
             wobj.virtual_scheduled_time = fc::uint128::max_value();
