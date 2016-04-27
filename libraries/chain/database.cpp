@@ -883,6 +883,93 @@ fc::sha256 database::get_pow_target()const {
    return target;
 }
 
+void database::update_witness_schedule4() {
+
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+   vector<string> active_witnesses;
+   active_witnesses.reserve( STEEMIT_MAX_MINERS );
+
+   const auto& gprops = get_dynamic_global_properties();
+   /// POP TOP and SELECT NEXT POW TOP POW WORKER
+   const auto& pow_idx = get_index_type<witness_index>().indices().get<by_pow>();
+   auto itr = pow_idx.upper_bound(0);
+   if( itr != pow_idx.end() ) {
+      if( gprops.num_pow_witnesses > 1 ) {
+         modify( *itr, [&](witness_object& wit ){
+            wit.pow_worker = 0;
+         });
+         modify( gprops, [&]( dynamic_global_property_object& obj ){
+             obj.num_pow_witnesses--;
+         });
+         itr = pow_idx.upper_bound(0);
+      }
+      if( itr != pow_idx.end() ) /// should always be true if invariants hold
+         active_witnesses.push_back(itr->owner);
+   }
+   /// SELECT VIRTUAL WORKER
+   
+   const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
+   auto sitr = schedule_idx.begin();
+   fc::uint128 new_virtual_time;
+
+   if( sitr != schedule_idx.end() ) {
+      active_witnesses.push_back(sitr->owner);
+      modify( *sitr, [&]( witness_object& wo ) {
+         wo.virtual_position = fc::uint128();
+         new_virtual_time = wo.virtual_scheduled_time; /// everyone advances to this time
+
+         /// extra cautious sanity check... we should never end up here if witnesses are
+         /// properly voted on. TODO: remove this line if it is not triggered and therefore
+         /// the code path is unreachable.
+         if( new_virtual_time == fc::uint128::max_value() )
+             new_virtual_time = fc::uint128();
+
+         /// this witness will produce again here
+         wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
+
+         if( wo.virtual_scheduled_time < wso.current_virtual_time )
+           wo.virtual_scheduled_time = fc::uint128::max_value();
+      });
+
+   }
+   
+   /// SELECT TOP 19 by vote currently unscheduled
+   const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
+   for( auto itr = widx.begin(); 
+        itr != widx.end() && active_witnesses.size() < STEEMIT_MAX_MINERS; 
+        ++itr ) {
+      if( itr->owner != active_witnesses[0] && (active_witnesses.size()>1 && itr->owner != active_witnesses[1])  )
+         active_witnesses.push_back(itr->owner);
+   }
+
+   modify( wso, [&]( witness_schedule_object& _wso ) {
+      _wso.current_shuffled_witnesses = active_witnesses;
+
+      /// shuffle current shuffled witnesses
+      auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
+      for( uint32_t i = 0; i < _wso.current_shuffled_witnesses.size(); ++i )
+      {
+         /// High performance random generator
+         /// http://xorshift.di.unimi.it/
+         uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+         k ^= (k >> 12);
+         k ^= (k << 25);
+         k ^= (k >> 27);
+         k *= 2685821657736338717ULL;
+
+         uint32_t jmax = _wso.current_shuffled_witnesses.size() - i;
+         uint32_t j = i + k%jmax;
+         std::swap( _wso.current_shuffled_witnesses[i],
+                    _wso.current_shuffled_witnesses[j] );
+      }
+
+      _wso.current_virtual_time = new_virtual_time;
+      _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
+   });
+
+   update_median_witness_props();
+}
+
 
 /**
  *
@@ -890,6 +977,11 @@ fc::sha256 database::get_pow_target()const {
  */
 void database::update_witness_schedule()
 {
+   if( has_hardfork(STEEMIT_HARDFORK_4) ) {
+      update_witness_schedule4();
+      return;
+   }
+
    const auto& props = get_dynamic_global_properties();
    const witness_schedule_object& wso = witness_schedule_id_type()(*this);
    if( (head_block_num() % STEEMIT_MAX_MINERS) == 0 ) //wso.next_shuffle_block_num )
@@ -905,7 +997,7 @@ void database::update_witness_schedule()
          const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
 
          for( auto itr = widx.begin(); itr != widx.end() && (active_witnesses.size() < (STEEMIT_MAX_MINERS-2)); ++itr ) {
-            if( !has_hardfork( STEEMIT_HARDFORK_4) && itr->pow_worker ) continue;
+            if( itr->pow_worker ) continue;
 
             active_witnesses.push_back(itr->owner);
 
@@ -917,8 +1009,7 @@ void database::update_witness_schedule()
 
          const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
          auto sitr = schedule_idx.begin();
-         if( !has_hardfork( STEEMIT_HARDFORK_4 ) ) /// TODO: see if we can remove this after HF4
-            while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
+         while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
 
          if( sitr != schedule_idx.end() ) {
             active_witnesses.push_back(sitr->owner);
@@ -938,11 +1029,6 @@ void database::update_witness_schedule()
                else
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
 
-               if( has_hardfork( STEEMIT_HARDFORK_4 ) ) { // TODO: clean up and refactor
-                  wdump( ("virtual scheduled_witness")(wo.owner) );
-                  if( wo.virtual_scheduled_time < wso.current_virtual_time )
-                     wo.virtual_scheduled_time = fc::uint128::max_value();
-               }
             });
          }
 
@@ -1017,40 +1103,45 @@ void database::update_witness_schedule()
 
          _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
       });
-
-      /// fetch all witness objects
-      vector<const witness_object*> active; active.reserve( wso.current_shuffled_witnesses.size() );
-      for( const auto& wname : wso.current_shuffled_witnesses ) { active.push_back(&get_witness(wname)); }
-
-      /// sort them by account_creation_fee
-      std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
-                 return a->props.account_creation_fee.amount < b->props.account_creation_fee.amount;
-                 });
-
-      modify( wso, [&]( witness_schedule_object& _wso ) {
-        _wso.median_props.account_creation_fee = active[active.size()/2]->props.account_creation_fee;
-      });
-
-
-      /// sort them by maximum_block_size
-      std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
-                 return a->props.maximum_block_size < b->props.maximum_block_size;
-                 });
-
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
-            p.maximum_block_size = active[active.size()/2]->props.maximum_block_size;
-      });
-
-
-      /// sort them by sbd_interest_rate
-      std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
-                 return a->props.sbd_interest_rate < b->props.sbd_interest_rate;
-                 });
-
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
-            p.sbd_interest_rate = active[active.size()/2]->props.sbd_interest_rate;
-      });
+      update_median_witness_props();
    }
+}
+
+void database::update_median_witness_props() {
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+
+   /// fetch all witness objects
+   vector<const witness_object*> active; active.reserve( wso.current_shuffled_witnesses.size() );
+   for( const auto& wname : wso.current_shuffled_witnesses ) { active.push_back(&get_witness(wname)); }
+
+   /// sort them by account_creation_fee
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
+              return a->props.account_creation_fee.amount < b->props.account_creation_fee.amount;
+              });
+
+   modify( wso, [&]( witness_schedule_object& _wso ) {
+     _wso.median_props.account_creation_fee = active[active.size()/2]->props.account_creation_fee;
+   });
+
+
+   /// sort them by maximum_block_size
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
+              return a->props.maximum_block_size < b->props.maximum_block_size;
+              });
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
+         p.maximum_block_size = active[active.size()/2]->props.maximum_block_size;
+   });
+
+
+   /// sort them by sbd_interest_rate
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
+              return a->props.sbd_interest_rate < b->props.sbd_interest_rate;
+              });
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
+         p.sbd_interest_rate = active[active.size()/2]->props.sbd_interest_rate;
+   });
 }
 
 void database::adjust_witness_votes( const account_object& a, share_type delta, int depth ) {
@@ -1748,7 +1839,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    /// check invariants
    //if( !( skip & skip_validate_invariants ) )
-   if( head_block_num() > 900000 )
+   if( head_block_num() > 950000 )
       validate_invariants();
 }
 

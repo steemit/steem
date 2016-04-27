@@ -32,40 +32,11 @@ void inline validate_permlink( string permlink )
    }
 }
 
-void inline validate_permlink_deprecated( string permlink )
-   {
-      FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
-      FC_ASSERT( fc::is_utf8( permlink ) );
-      FC_ASSERT( fc::to_lower( permlink ) == permlink );
-      FC_ASSERT( fc::trim_and_normalize_spaces( permlink ) == permlink );
-
-      for ( auto c : permlink )
-      {
-         FC_ASSERT( c > 0 );
-         switch( c )
-         {
-            case ' ':
-            case '\t':
-            case '\n':
-            case ':':
-            case '#':
-            case '/':
-            case '\\':
-            case '%':
-            case '=':
-            case '@':
-            case '~':
-            case '.':
-               FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
-         }
-      }
-   }
-
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    const auto&  witness_account = db().get_account( o.owner );
 
-   if ( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
+   if ( db().has_hardfork( STEEMIT_HARDFORK_1 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -79,9 +50,6 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
    else
    {
-      // TODO: Remove this after the hardfork? Assuming no witnesses were created this way
-      if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) ) db().pay_fee( witness_account, o.fee );
-
       db().create< witness_object >( [&]( witness_object& w ) {
          w.owner              = o.owner;
          w.url                = o.url;
@@ -100,16 +68,11 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_1 ) || db().is_producing() )  {
+   if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )  {
       const witness_schedule_object& wso = db().get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided",
                  ("f", wso.median_props.account_creation_fee)
                  ("p", o.fee) );
-   } else {
-      /// TODO: this can be removed after HARDFORK_1, this is required because of changes to validate()
-      if( db().is_producing() ) {
-        FC_ASSERT( o.fee.amount >= STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE );
-      }
    }
 
    db().modify( creator, [&]( account_object& c ){
@@ -174,15 +137,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
    }
    auto now = db().head_block_time();
 
-   /// TODO: this section can be removed after hardfork
-   if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
-   {
-      validate_permlink_deprecated( o.permlink );
-
-      if( o.parent_author.size() > 0 )
-         validate_permlink_deprecated( o.parent_permlink );
-   }
-
    if ( itr == by_permlink_idx.end() )
    {
       FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
@@ -192,7 +146,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_1 ) )
+         if( db().has_hardfork( STEEMIT_HARDFORK_1 ) )
          {
             validate_permlink( o.parent_permlink );
             validate_permlink( o.permlink );
@@ -464,9 +418,6 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
 
 void account_witness_vote_evaluator::do_apply( const account_witness_vote_operation& o )
 {
-   if( db().is_producing() )  /// TODO: remove this after HARDFORK3
-      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_3 ), "no new votes until hardfork 3" );
-
    const auto& voter = db().get_account( o.account );
    FC_ASSERT( voter.proxy.size() == 0, "A proxy is currently set, please clear the proxy before voting for a witness" );
 
