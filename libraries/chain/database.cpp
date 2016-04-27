@@ -910,6 +910,7 @@ void database::update_witness_schedule4() {
 
    fc::uint128 new_virtual_time = wso.current_virtual_time;
 
+   bool reset_virtual_time = false;
    if( sitr != schedule_idx.end() ) {
       active_witnesses.push_back(sitr->owner);
       modify( *sitr, [&]( witness_object& wo ) {
@@ -921,9 +922,13 @@ void database::update_witness_schedule4() {
          wo.virtual_last_update     = new_virtual_time;
 
          if( wo.virtual_scheduled_time < wso.current_virtual_time )
-           wo.virtual_scheduled_time = fc::uint128::max_value();
+           reset_virtual_time = true;
       });
 
+   }
+   if( reset_virtual_time ) {
+      new_virtual_time = fc::uint128();
+      reset_virtual_schedule_time();
    }
 
    /// just in case POW worker == virtual schedule worker
