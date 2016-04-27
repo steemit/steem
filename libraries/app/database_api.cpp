@@ -721,6 +721,12 @@ vector<account_vote> database_api::get_account_votes( string voter )const {
    }
    return result;
 }
+u256 to256( const fc::uint128& t ) {
+   u256 result( t.high_bits() );
+   result <<= 65;
+   result += t.low_bits();
+   return result;
+}
 
 void database_api::set_pending_payout( discussion& d )const
 {
@@ -728,19 +734,23 @@ void database_api::set_pending_payout( discussion& d )const
    const auto& hist  = my->_db.get_feed_history();
    asset pot = props.total_reward_fund_steem;
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
+   idump( (pot) );
+
+   u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      fc::uint128_t r2(d.net_rshares.value);
+       
+      u256 r2 = to256(d.net_rshares.value);
       r2 *= r2;
       r2 *= pot.amount.value;
-      r2 /= props.total_reward_shares2;
+      r2 /= total_r2;
 
-      auto tpp = d.children_rshares2;
+      u256 tpp = to256(d.children_rshares2);
       tpp *= pot.amount.value;
-      tpp /= props.total_reward_shares2;
+      tpp /= total_r2;
 
-      d.pending_payout_value = asset( r2.to_uint64(), pot.symbol );
-      d.total_pending_payout_value = asset( tpp.to_uint64(), pot.symbol );
+      d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
+      d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
 
       if( d.net_rshares.value < 0 )
       {

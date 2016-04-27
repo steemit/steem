@@ -904,7 +904,6 @@ void database::update_witness_schedule4() {
    }
 
    /// SELECT VIRTUAL WORKER
-   
    const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
    auto sitr = schedule_idx.begin();
 
@@ -926,6 +925,8 @@ void database::update_witness_schedule4() {
       });
 
    }
+
+   /// check for wrapping of virtual schedule time
    if( reset_virtual_time ) {
       new_virtual_time = fc::uint128();
       reset_virtual_schedule_time();
