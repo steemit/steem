@@ -894,18 +894,16 @@ void database::update_witness_schedule4() {
    const auto& pow_idx = get_index_type<witness_index>().indices().get<by_pow>();
    auto itr = pow_idx.upper_bound(0);
    if( itr != pow_idx.end() ) {
-      if( gprops.num_pow_witnesses ) {
-         modify( *itr, [&](witness_object& wit ){
-            wit.pow_worker = 0;
-         });
-         modify( gprops, [&]( dynamic_global_property_object& obj ){
-             obj.num_pow_witnesses--;
-         });
-         itr = pow_idx.upper_bound(0);
-      }
-      if( itr != pow_idx.end() ) /// should always be true if invariants hold
-         active_witnesses.push_back(itr->owner);
+      active_witnesses.push_back(itr->owner);
+      modify( *itr, [&](witness_object& wit ){
+         wit.pow_worker = 0;
+      });
+      modify( gprops, [&]( dynamic_global_property_object& obj ){
+          FC_ASSERT( obj.num_pow_witnesses > 1 );
+          obj.num_pow_witnesses--;
+      });
    }
+
    /// SELECT VIRTUAL WORKER
    
    const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
@@ -934,13 +932,15 @@ void database::update_witness_schedule4() {
       });
 
    }
-   
-   /// SELECT TOP 19 by vote currently unscheduled
-   const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
-   for( auto itr = widx.begin(); 
-        itr != widx.end() && active_witnesses.size() < STEEMIT_MAX_MINERS; 
-        ++itr ) {
 
+   /// just in case POW worker == virtual schedule worker
+   if( active_witnesses.size() == 2 && active_witnesses[1] == active_witnesses[0] )
+     active_witnesses.pop_back();
+   
+   /// SELECT TOP 19 by vote that are currently unscheduled
+   const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
+   for( auto itr = widx.begin(); itr != widx.end() && active_witnesses.size() < STEEMIT_MAX_MINERS; ++itr ) 
+   {
       if( active_witnesses.size() == 2 && itr->owner != active_witnesses[1] && itr->owner != active_witnesses[0] )
          active_witnesses.push_back(itr->owner);
       else if( active_witnesses.size() == 1 && itr->owner != active_witnesses[0] )
@@ -984,15 +984,17 @@ void database::update_witness_schedule4() {
  */
 void database::update_witness_schedule()
 {
-   if( has_hardfork(STEEMIT_HARDFORK_4) ) {
-      update_witness_schedule4();
-      return;
-   }
-
-   const auto& props = get_dynamic_global_properties();
-   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
    if( (head_block_num() % STEEMIT_MAX_MINERS) == 0 ) //wso.next_shuffle_block_num )
    {
+      if( has_hardfork(STEEMIT_HARDFORK_4) ) {
+         update_witness_schedule4();
+         return;
+      }
+
+      const auto& props = get_dynamic_global_properties();
+      const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+
+
       vector<string> active_witnesses;
       active_witnesses.reserve( STEEMIT_MAX_MINERS );
 
@@ -1058,7 +1060,6 @@ void database::update_witness_schedule()
       /// if there is more than 1 POW witness, then pop the first one from the queue...
       if( props.num_pow_witnesses > STEEMIT_MAX_MINERS ) {
          if( itr != pow_idx.end() ) {
-         //   elog( "unscheduling miner ${m} at end of round", ("m",itr->owner) );
             modify( *itr, [&](witness_object& wit ){
                wit.pow_worker = 0;
             });
@@ -1071,22 +1072,23 @@ void database::update_witness_schedule()
       /// add all of the pow witnesses to the round until voting takes over, then only add one per round
       itr = pow_idx.upper_bound(0);
       while( itr != pow_idx.end() ) {
-       //  ilog( "scheduling miner ${m}", ("m",itr->owner) );
          active_witnesses.push_back( itr->owner );
 
          if( head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK || active_witnesses.size() >= STEEMIT_MAX_MINERS )
             break;
          ++itr;
       }
-      //wdump((active_witnesses));
 
       modify( wso, [&]( witness_schedule_object& _wso )
       {
+      /*
          _wso.current_shuffled_witnesses.clear();
          _wso.current_shuffled_witnesses.reserve( active_witnesses.size() );
 
          for( const string& w : active_witnesses )
             _wso.current_shuffled_witnesses.push_back( w );
+            */
+         _wso.current_shuffled_witnesses = active_witnesses;
 
          auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
          for( uint32_t i = 0; i < _wso.current_shuffled_witnesses.size(); ++i )
@@ -1977,7 +1979,6 @@ void database::_apply_transaction(const signed_transaction& trx)
       auto get_posting = [&]( const string& name ) { return &get_account(name).posting;  };
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
-
    }
    flat_set<string> required; vector<authority> other;
    trx.get_required_authorities( required, required, required, other );
