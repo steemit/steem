@@ -883,6 +883,7 @@ fc::sha256 database::get_pow_target()const {
    return target;
 }
 
+
 /**
  *
  *  See @ref witness_object::virtual_last_update
@@ -934,6 +935,11 @@ void database::update_witness_schedule()
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
                else
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
+
+               if( has_hardfork( STEEMIT_HARDFORK_4 ) ) { // TODO: clean up and refactor
+                  if( wo.virtual_scheduled_time < wso.current_virtual_time )
+                     wo.virtual_scheduled_time = fc::uint128::max_value();
+               }
             });
          }
 
@@ -1079,6 +1085,12 @@ void database::adjust_witness_vote( const witness_object& witness, share_type de
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
       else
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
+
+      /** witnesses with a low number of votes could overflow the time field and end up with a scheduled time in the past */
+      if( has_hardfork( STEEMIT_HARDFORK_4 ) ) {
+         if( w.virtual_scheduled_time < wso.current_virtual_time )
+            w.virtual_scheduled_time = fc::uint128::max_value();
+      }
     });
 }
 
@@ -2370,6 +2382,8 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_2 ] = fc::time_point_sec( STEEMIT_HARDFORK_2_TIME );
    FC_ASSERT( STEEMIT_HARDFORK_3 == 3, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_3 ] = fc::time_point_sec( STEEMIT_HARDFORK_3_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_4 == 4, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_4 ] = fc::time_point_sec( STEEMIT_HARDFORK_4_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration" );
@@ -2381,6 +2395,25 @@ void database::init_hardforks()
    for( int i = 0; i <= hardforks.last_hardfork; i++ )
    {
       FC_ASSERT( hardforks.processed_hardforks[ i ] == _hardfork_times[ i ], "Time of processed hardfork does not match hardfork configuration time" );
+   }
+}
+
+void database::reset_virtual_schedule_time() {
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+   modify( wso, [&](witness_schedule_object& o ) {
+       o.current_virtual_time = fc::uint128(); // reset it 0
+   });
+
+   const auto& idx = get_index_type<witness_index>().indices();
+   for( const auto& witness : idx ) {
+     modify( witness, [&]( witness_object& wobj ) {
+         wobj.virtual_position = fc::uint128();
+         wobj.virtual_last_update = wso.current_virtual_time;
+         wobj.virtual_scheduled_time = wso.current_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / wobj.votes.value;
+
+         if( wobj.virtual_scheduled_time < wso.current_virtual_time )
+            wobj.virtual_scheduled_time = fc::uint128::max_value();
+     });
    }
 }
 
@@ -2423,6 +2456,9 @@ void database::process_hardforks()
       case STEEMIT_HARDFORK_2:
       case STEEMIT_HARDFORK_3:
          retally_witness_votes();
+         break;
+      case STEEMIT_HARDFORK_4:
+         reset_virtual_schedule_time();
          break;
       default:
          break;

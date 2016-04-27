@@ -366,6 +366,8 @@ namespace steemit { namespace chain {
          void clear_expired_transactions();
          void clear_expired_orders();
 
+         void reset_virtual_schedule_time();
+
          void init_hardforks();
          void process_hardforks();
 
