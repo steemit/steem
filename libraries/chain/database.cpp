@@ -904,10 +904,10 @@ void database::update_witness_schedule4() {
    const auto& pow_idx      = get_index_type<witness_index>().indices().get<by_pow>();
    auto mitr = pow_idx.upper_bound(0);
    while( mitr != pow_idx.end() && selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES ) {
-      if( selected_voted.find(mitr->get_id()) != selected_voted.end() )
-         continue; /// Skip miners who are top voted witnesses
-      selected_miners.insert(mitr->get_id());
-      active_witnesses.push_back(mitr->owner);
+      if( selected_voted.find(mitr->get_id()) == selected_voted.end() ) { // Skip any miner who is a  top voted witness
+         selected_miners.insert(mitr->get_id());
+         active_witnesses.push_back(mitr->owner);
+      }
       auto itr = mitr;
       ++mitr;
       modify( *itr, [&](witness_object& wit ) {
