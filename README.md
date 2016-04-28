@@ -42,7 +42,8 @@ Seed Nodes
     kushed           40.76.37.6:2001          steem.kushed.com   (Azure)
     nextgencrypto    104.207.152.44:2201      steemwitness.com   (Los Angeles, USA)
     pharesim         78.46.32.4               steemd.pharesim.me (Falkenstein, German)
-
+    liondani         212.117.213.163:2016                        (Switzerland)
+  
     52.38.66.234:2001
     52.37.169.52:2001
     52.26.78.244:2001
