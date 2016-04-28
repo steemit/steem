@@ -2557,46 +2557,12 @@ void database::process_hardforks()
 
    while( _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
    {
-      case STEEMIT_HARDFORK_1:
-        elog( "HARDFORK 1" );
-        perform_vesting_share_split( 1000000 );
-        validate_invariants();
-      #ifdef IS_TEST_NET
-         {
-            custom_operation test_op;
-            string op_msg = "Testnet: Hardfork applied";
-            test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
-            test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            push_applied_operation( test_op );
-         }
-         break;
-      #else
-         // Just in case someone changes the temp account auth between now and the hardfork
-         // *in best Captain Kirk voice* TROLLLLLLSSS!!!! *shakes fist*
-         modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
-         {
-            a.owner.weight_threshold = 0;
-            a.active.weight_threshold = 0;
-         });
-      #endif
-         break;
-      case STEEMIT_HARDFORK_2:
-        elog( "HARDFORK 2" );
-        retally_witness_votes();
-        validate_invariants();
-        break;
-      case STEEMIT_HARDFORK_3:
-        elog( "HARDFORK 3" );
-         retally_witness_votes();
-         validate_invariants();
-         break;
-      case STEEMIT_HARDFORK_4:
-        elog( "HARDFORK 4" );
-         reset_virtual_schedule_time();
-         validate_invariants();
-         break;
-      default:
-         break;
+      switch( hardforks.last_hardfork + 1)
+      {
+         case STEEMIT_HARDFORK_1:
+            elog( "HARDFORK 1" );
+            perform_vesting_share_split( 1000000 );
+            validate_invariants();
          #ifdef IS_TEST_NET
             {
                custom_operation test_op;
@@ -2606,21 +2572,22 @@ void database::process_hardforks()
                push_applied_operation( test_op );
             }
             break;
-         #else
-            // Just in case someone changes the temp account auth between now and the hardfork
-            // *in best Captain Kirk voice* TROLLLLLLSSS!!!! *shakes fist*
-            modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
-            {
-               a.owner.weight_threshold = 0;
-               a.active.weight_threshold = 0;
-            });
          #endif
+            break;
          case STEEMIT_HARDFORK_2:
-         case STEEMIT_HARDFORK_3:
+            elog( "HARDFORK 2" );
             retally_witness_votes();
+            validate_invariants();
+            break;
+         case STEEMIT_HARDFORK_3:
+            elog( "HARDFORK 3" );
+            retally_witness_votes();
+            validate_invariants();
             break;
          case STEEMIT_HARDFORK_4:
+            elog( "HARDFORK 4" );
             reset_virtual_schedule_time();
+            validate_invariants();
             break;
          default:
             break;
@@ -2635,6 +2602,7 @@ void database::process_hardforks()
       });
    }
 }
+FC_CAPTURE_AND_RETHROW() }
 
 bool database::has_hardfork( uint32_t hardfork )
 {
