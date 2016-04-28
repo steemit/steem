@@ -229,6 +229,15 @@ namespace detail {
          _self->register_api_factory< database_api >( "database_api" );
          _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
          _self->register_api_factory< network_node_api >( "network_node_api" );
+         _self->register_api_factory( "network_broadcast_api", [this]() -> fc::api_ptr {
+
+               auto shared_api_ptr = std::make_shared< network_broadcast_api >( *_self );
+               shared_api_ptr->register_callbacks();
+
+               // apparently the compiler is smart enough to downcast shared_ptr< api<Api> > to shared_ptr< api_base > automatically
+               // see http://en.cppreference.com/w/cpp/memory/shared_ptr/pointer_cast for example
+               return std::make_shared< fc::api< network_broadcast_api > >( shared_api_ptr );
+         });
       }
 
       void startup()

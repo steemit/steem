@@ -77,7 +77,18 @@ namespace steemit { namespace app {
 
     network_broadcast_api::network_broadcast_api(application& a):_app(a)
     {
-       _applied_block_connection = _app.chain_database()->applied_block.connect([this](const signed_block& b){ on_applied_block(b); });
+       /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
+    }
+
+    void network_broadcast_api::register_callbacks() {
+       /// note cannot capture shared pointer here, because _applied_block_connection will never
+       /// be freed if the lambda holds a reference to it.
+       std::weak_ptr<network_broadcast_api> weak_this = shared_from_this();
+       _applied_block_connection = _app.chain_database()->applied_block.connect(
+            [weak_this](const signed_block& b){ 
+                auto shared_this = weak_this.lock();
+                if( shared_this ) shared_this->on_applied_block(b); 
+            });
     }
 
     void network_broadcast_api::on_applied_block( const signed_block& b )

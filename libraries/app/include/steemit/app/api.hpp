@@ -96,6 +96,10 @@ namespace steemit { namespace app {
           * to be notified when a particular txid is included in a block.
           */
          void on_applied_block( const signed_block& b );
+
+
+         /// internal method, not exposed via JSON RPC
+         void register_callbacks();
       private:
          boost::signals2::scoped_connection             _applied_block_connection;
 
