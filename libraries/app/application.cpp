@@ -227,7 +227,6 @@ namespace detail {
       {
          _self->register_api_factory< login_api >( "login_api" );
          _self->register_api_factory< database_api >( "database_api" );
-         _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
          _self->register_api_factory< network_node_api >( "network_node_api" );
          _self->register_api_factory( "network_broadcast_api", [this]() -> fc::api_ptr {
 
