@@ -36,6 +36,7 @@ namespace steemit { namespace app {
       discussion( const comment_object& o ):comment_object(o){}
       discussion(){}
 
+      string                      url; /// /category/@rootauthor/root_permlink#author/permlink
       asset                       pending_payout_value; ///< sbd
       asset                       total_pending_payout_value; ///< sbd including replies
       vector<vote_state>          active_votes;
@@ -49,7 +50,7 @@ namespace steemit { namespace app {
       extended_account(){}
       extended_account( const account_object& a ):account_object(a){}
 
-      asset                    vesting_balance; /// convert vesting_shares to vesting steem
+      asset                           vesting_balance; /// convert vesting_shares to vesting steem
       map<uint64_t,operation_object>  transfer_history; /// transfer to/from vesting
       map<uint64_t,operation_object>  market_history; /// limit order / cancel / fill
       map<uint64_t,operation_object>  post_history;
@@ -144,4 +145,4 @@ FC_REFLECT( steemit::app::account_vote, (authorperm)(weight) );
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(maturing)(best) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
 FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule) )
-FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
+FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
