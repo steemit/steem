@@ -44,7 +44,8 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
       db_action_create = 1,
       db_action_write = 2,
       db_action_update = 3,
-      db_action_delete = 4;
+      db_action_delete = 4,
+      db_action_set_hardfork = 5;
 
    wlog( "debug_apply_update:  ${o}", ("o", vo) );
 
@@ -80,6 +81,8 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
          action = db_action_update;
       else if( str_action == "delete" )
          action = db_action_delete;
+      else if( str_action == "set_hardfork" )
+         action = db_action_set_hardfork;
    }
 
    auto& idx = db.get_index( oid );
@@ -110,6 +113,13 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
          break;
       case db_action_delete:
          db.remove( db.get_object( oid ) );
+         break;
+      case db_action_set_hardfork:
+         {
+            uint32_t hardfork_id;
+            from_variant( vo[ "hardfork_id" ], hardfork_id );
+            db.set_hardfork( hardfork_id, false );
+         }
          break;
       default:
          FC_ASSERT( false );

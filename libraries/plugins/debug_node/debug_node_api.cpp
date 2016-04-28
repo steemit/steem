@@ -23,12 +23,13 @@ class debug_node_api_impl
    public:
       debug_node_api_impl( steemit::app::application& _app );
 
-      void debug_push_blocks( const std::string& src_filename, uint32_t count );
-      void debug_generate_blocks( const std::string& debug_key, uint32_t count );
+      uint32_t debug_push_blocks( const std::string& src_filename, uint32_t count );
+      uint32_t debug_generate_blocks( const std::string& debug_key, uint32_t count );
       void debug_update_object( const fc::variant_object& update );
       //void debug_save_db( std::string db_path );
       void debug_stream_json_objects( const std::string& filename );
       void debug_stream_json_objects_flush();
+      void debug_set_hardfork( uint32_t hardfork_id );
       std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > get_plugin();
 
       steemit::app::application& app;
@@ -38,10 +39,10 @@ debug_node_api_impl::debug_node_api_impl( steemit::app::application& _app ) : ap
 {}
 
 
-void debug_node_api_impl::debug_push_blocks( const std::string& src_filename, uint32_t count )
+uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename, uint32_t count )
 {
    if( count == 0 )
-      return;
+      return 0;
 
    std::shared_ptr< steemit::chain::database > db = app.chain_database();
    fc::path src_path = fc::path( src_filename );
@@ -57,7 +58,7 @@ void debug_node_api_impl::debug_push_blocks( const std::string& src_filename, ui
          if( !block.valid() )
          {
             wlog( "Block database ${fn} only contained ${i} of ${n} requested blocks", ("i", i)("n", count)("fn", src_filename) );
-            return;
+            return i;
          }
          try
          {
@@ -70,14 +71,14 @@ void debug_node_api_impl::debug_push_blocks( const std::string& src_filename, ui
          }
       }
       ilog( "Completed loading block_database successfully" );
-      return;
+      return count;
    }
 }
 
-void debug_node_api_impl::debug_generate_blocks( const std::string& debug_key, uint32_t count )
+uint32_t debug_node_api_impl::debug_generate_blocks( const std::string& debug_key, uint32_t count )
 {
    if( count == 0 )
-      return;
+      return 0;
 
    std::shared_ptr< debug_node_plugin > debug_plugin = get_plugin();
 
@@ -102,6 +103,8 @@ void debug_node_api_impl::debug_generate_blocks( const std::string& debug_key, u
       }
       db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
    }
+
+   return count;
 }
 
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
@@ -124,6 +127,19 @@ void debug_node_api_impl::debug_stream_json_objects_flush()
    get_plugin()->flush_json_object_stream();
 }
 
+void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
+{
+   using namespace steemit::chain;
+
+   if( hardfork_id > STEEMIT_NUM_HARDFORKS )
+      return;
+
+   fc::mutable_variant_object update;
+   auto hfp_id = steemit::chain::hardfork_property_id_type();
+   update( "_action", "set_hardfork" )( "id", hfp_id )( "hardfork_id", hardfork_id );
+   get_plugin()->debug_update( update );
+}
+
 } // detail
 
 debug_node_api::debug_node_api( steemit::app::application& app )
@@ -133,14 +149,14 @@ debug_node_api::debug_node_api( steemit::app::application& app )
 
 void debug_node_api::on_api_startup() {}
 
-void debug_node_api::debug_push_blocks( std::string source_filename, uint32_t count )
+uint32_t debug_node_api::debug_push_blocks( std::string source_filename, uint32_t count )
 {
-   my->debug_push_blocks( source_filename, count );
+   return my->debug_push_blocks( source_filename, count );
 }
 
-void debug_node_api::debug_generate_blocks( std::string debug_key, uint32_t count )
+uint32_t debug_node_api::debug_generate_blocks( std::string debug_key, uint32_t count )
 {
-   my->debug_generate_blocks( debug_key, count );
+   return my->debug_generate_blocks( debug_key, count );
 }
 
 void debug_node_api::debug_update_object( fc::variant_object update )
@@ -156,6 +172,11 @@ void debug_node_api::debug_stream_json_objects( std::string filename )
 void debug_node_api::debug_stream_json_objects_flush()
 {
    my->debug_stream_json_objects_flush();
+}
+
+void debug_node_api::debug_set_hardfork( uint32_t hardfork_id )
+{
+   my->debug_set_hardfork( hardfork_id );
 }
 
 } } } // steemit::plugin::debug_node

@@ -27,8 +27,8 @@
 #include <functional>
 #include <iostream>
 
-#define VIRTUAL_SCHEDULE_LAP_LENGTH  fc::uint128(uint64_t(-1))
-#define VIRTUAL_SCHEDULE_LAP_LENGTH2 fc::uint128::max_value()
+#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
+#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
 namespace steemit { namespace chain {
 
@@ -1062,7 +1062,7 @@ void database::update_witness_schedule()
                ++sitr;
             }
          }
-         
+
       }
 
       /// Add the next POW witness to the active set if there is one...
@@ -1200,7 +1200,7 @@ void database::adjust_witness_vote( const witness_object& witness, share_type de
       w.votes += delta;
       FC_ASSERT( w.votes <= get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props",get_dynamic_global_properties().total_vesting_shares) );
 
-      if( has_hardfork( STEEMIT_HARDFORK_2 ) ) 
+      if( has_hardfork( STEEMIT_HARDFORK_2 ) )
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
       else
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
@@ -2555,7 +2555,7 @@ void database::process_hardforks()
    if( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time() )
       return;
 
-   switch( hardforks.last_hardfork + 1 )
+   while( _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
    {
       case STEEMIT_HARDFORK_1:
         elog( "HARDFORK 1" );
@@ -2597,36 +2597,64 @@ void database::process_hardforks()
          break;
       default:
          break;
-   }
+         #ifdef IS_TEST_NET
+            {
+               custom_operation test_op;
+               string op_msg = "Testnet: Hardfork applied";
+               test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
+               test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
+               push_applied_operation( test_op );
+            }
+            break;
+         #else
+            // Just in case someone changes the temp account auth between now and the hardfork
+            // *in best Captain Kirk voice* TROLLLLLLSSS!!!! *shakes fist*
+            modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
+            {
+               a.owner.weight_threshold = 0;
+               a.active.weight_threshold = 0;
+            });
+         #endif
+         case STEEMIT_HARDFORK_2:
+         case STEEMIT_HARDFORK_3:
+            retally_witness_votes();
+            break;
+         case STEEMIT_HARDFORK_4:
+            reset_virtual_schedule_time();
+            break;
+         default:
+            break;
+      }
 
-   modify( hardforks, [&]( hardfork_property_object& hfp )
-   {
-      FC_ASSERT( hfp.processed_hardforks.size() == hfp.last_hardfork + 1, "Hardfork being applied out of order" );
-      hfp.processed_hardforks.push_back( _hardfork_times[ hfp.last_hardfork + 1 ] );
-      hfp.last_hardfork++;
-      FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
-   });
-} FC_CAPTURE_AND_RETHROW() }
+      modify( hardforks, [&]( hardfork_property_object& hfp )
+      {
+         FC_ASSERT( hfp.processed_hardforks.size() == hfp.last_hardfork + 1, "Hardfork being applied out of order" );
+         hfp.processed_hardforks.push_back( _hardfork_times[ hfp.last_hardfork + 1 ] );
+         hfp.last_hardfork++;
+         FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
+      });
+   }
+}
 
 bool database::has_hardfork( uint32_t hardfork )
 {
    return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
 }
 
-#ifdef IS_TEST_NET
-void database::set_hardfork( uint32_t hardfork )
+void database::set_hardfork( uint32_t hardfork, bool process_now )
 {
    FC_ASSERT( hardfork <= STEEMIT_NUM_HARDFORKS );
 
    auto const& hardforks = hardfork_property_id_type()( *this );
 
-   while( hardforks.last_hardfork < hardfork )
+   for( int i = hardforks.last_hardfork; i <= hardfork; i++ )
    {
-      _hardfork_times[ hardforks.last_hardfork ] = head_block_time();
-      process_hardforks();
+      _hardfork_times[i] = head_block_time();
    }
+
+   if( process_now )
+         process_hardforks();
 }
-#endif
 
 /**
  * Verifies all supply invariantes check out
@@ -2807,7 +2835,7 @@ void database::retally_witness_votes()
           w.virtual_position += delta_pos;
 
           w.virtual_last_update = wso.current_virtual_time;
-          w.votes += a.witness_vote_weight(); 
+          w.votes += a.witness_vote_weight();
 
           w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
         });

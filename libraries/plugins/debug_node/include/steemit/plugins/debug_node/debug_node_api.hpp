@@ -27,12 +27,12 @@ class debug_node_api
       /**
        * Push blocks from existing database.
        */
-      void debug_push_blocks( std::string src_filename, uint32_t count );
+      uint32_t debug_push_blocks( std::string src_filename, uint32_t count );
 
       /**
        * Generate blocks locally.
        */
-      void debug_generate_blocks( std::string debug_key, uint32_t count );
+      uint32_t debug_generate_blocks( std::string debug_key, uint32_t count );
 
       /**
        * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
@@ -62,6 +62,8 @@ class debug_node_api
        */
       void debug_stream_json_objects_flush();
 
+      void debug_set_hardfork( uint32_t hardfork_id );
+
       std::shared_ptr< detail::debug_node_api_impl > my;
 };
 
@@ -73,4 +75,5 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_update_object)
        (debug_stream_json_objects)
        (debug_stream_json_objects_flush)
+       (debug_set_hardfork)
      )
