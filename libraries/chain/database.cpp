@@ -1153,7 +1153,7 @@ void database::update_median_witness_props() {
 }
 
 void database::adjust_witness_votes( const account_object& a, share_type delta, int depth ) {
-  if( a.proxy.size() ) {
+  if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
      const auto& proxy = get_account( a.proxy );
 
      modify( proxy, [&]( account_object& a ) {
