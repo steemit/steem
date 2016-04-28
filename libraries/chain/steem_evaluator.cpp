@@ -121,7 +121,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 }
 
 void comment_evaluator::do_apply( const comment_operation& o )
-{ //try {
+{ try {
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
@@ -208,26 +208,17 @@ void comment_evaluator::do_apply( const comment_operation& o )
 #endif
 
    }
-   else
+   else // start edit case
    {
-
-      /// TODO: this section can be removed after hardfork
-      if( !db().has_hardfork( STEEMIT_HARDFORK_1 ) )
-      {
-         FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
-         db().modify( auth, [&]( account_object& a ) {
-            a.last_post = now;
-         });
-      }
-
+      const auto& comment = *itr;
       /// update the global rshares2 number
-      if( itr->net_rshares > 0 ) {
-         db().modify( db().get_dynamic_global_properties(), [&]( dynamic_global_property_object& props ){
-             props.total_reward_shares2 -= (fc::uint128( itr->net_rshares.value ) * itr->net_rshares.value);
-         });
+      if( comment.net_rshares > 0 ) {
+         auto old_rshares2 = (fc::uint128( comment.net_rshares.value ) * comment.net_rshares.value);
+         auto new_rshares2 = fc::uint128();
+         db().adjust_rshares2( comment, old_rshares2, new_rshares2 );
       }
 
-      db().modify( *itr, [&]( comment_object& com )
+      db().modify( comment, [&]( comment_object& com )
       {
          if( !parent )
          {
@@ -270,10 +261,12 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.body = o.body;
            #endif
          #endif
-      });
-   }
 
-} //FC_CAPTURE_LOG_AND_RETHROW( (o) ) }
+      });
+      db().validate_invariants();
+   } // end EDIT case
+
+} FC_CAPTURE_LOG_AND_RETHROW( (o) ) }
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
@@ -480,7 +473,9 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    }
 }
 
-void vote_evaluator::do_apply( const vote_operation& o ) {
+void vote_evaluator::do_apply( const vote_operation& o ) 
+{ try {
+
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
@@ -514,7 +509,6 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
 
    FC_ASSERT( abs_rshares > 0 );
 
-//   idump( (db().get_dynamic_global_properties().total_reward_shares2 )(comment.net_rshares)(abs_rshares)(o.weight)(rshares) );
 
    db().modify( comment, [&]( comment_object& c ){
       c.net_rshares += rshares;
@@ -527,12 +521,6 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
    /// square it
    new_rshares *= new_rshares;
    old_rshares *= old_rshares;
-
-   const auto& cprops = db().get_dynamic_global_properties();
-   db().modify( cprops, [&]( dynamic_global_property_object& p ){
-      p.total_reward_shares2 += new_rshares;
-      p.total_reward_shares2 -= old_rshares;
-   });
 
    const auto& cat = db().get_category( comment.category );
    db().modify( cat, [&]( category_object& c ){
@@ -555,8 +543,10 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
       c.total_vote_weight += cvo.weight;
    });
 
+
    db().adjust_rshares2( comment, old_rshares, new_rshares );
-}
+
+} FC_CAPTURE_LOG_AND_RETHROW( (o)) }
 
 void custom_evaluator::do_apply( const custom_operation& o ){
    /// TODO..... ??

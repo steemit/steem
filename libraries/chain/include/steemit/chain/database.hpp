@@ -334,6 +334,7 @@ namespace steemit { namespace chain {
          void set_hardfork( uint32_t hardfork );
          #endif
 
+         void validate_invariants()const;
          /**
           * @}
           */
@@ -401,7 +402,6 @@ namespace steemit { namespace chain {
 
          node_property_object              _node_property_object;
 
-         void validate_invariants()const;
    };
 
 

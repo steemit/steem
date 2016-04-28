@@ -1217,13 +1217,21 @@ void database::clear_witness_votes( const account_object& a ) {
  */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 ) {
 
+//   idump( ("before")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
    modify( c, [&](comment_object& comment ){
       comment.children_rshares2 -= old_rshares2;
       comment.children_rshares2 += new_rshares2;
    });
    if( c.depth ) {
       adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
+   } else {
+      const auto& cprops = get_dynamic_global_properties();
+      modify( cprops, [&]( dynamic_global_property_object& p ){
+         p.total_reward_shares2 -= old_rshares2;
+         p.total_reward_shares2 += new_rshares2;
+      });
    }
+//   wdump( ("after")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
 }
 
 void database::process_vesting_withdrawals() {
@@ -2029,9 +2037,11 @@ void database::_apply_transaction(const signed_transaction& trx)
    //Finally process the operations
    _current_op_in_trx = 0;
    for( const auto& op : trx.operations )
-   {
+   { try {
       apply_operation(eval_state, op);
+//      if( head_block_num() > 900000 ) validate_invariants();
       ++_current_op_in_trx;
+     } FC_CAPTURE_AND_RETHROW( (op) );
    }
 
 
@@ -2520,7 +2530,7 @@ void database::reset_virtual_schedule_time() {
 }
 
 void database::process_hardforks()
-{
+{ try {
    // If there are upcoming hardforks and the next one is later, do nothing
    const auto& hardforks = hardfork_property_id_type()( *this );
 
@@ -2535,8 +2545,9 @@ void database::process_hardforks()
    switch( hardforks.last_hardfork + 1 )
    {
       case STEEMIT_HARDFORK_1:
+        elog( "HARDFORK 1" );
         perform_vesting_share_split( 1000000 );
-        break;
+        validate_invariants();
       #ifdef IS_TEST_NET
          {
             custom_operation test_op;
@@ -2555,12 +2566,21 @@ void database::process_hardforks()
             a.active.weight_threshold = 0;
          });
       #endif
+         break;
       case STEEMIT_HARDFORK_2:
+        elog( "HARDFORK 2" );
+        retally_witness_votes();
+        validate_invariants();
+        break;
       case STEEMIT_HARDFORK_3:
+        elog( "HARDFORK 3" );
          retally_witness_votes();
+         validate_invariants();
          break;
       case STEEMIT_HARDFORK_4:
+        elog( "HARDFORK 4" );
          reset_virtual_schedule_time();
+         validate_invariants();
          break;
       default:
          break;
@@ -2573,7 +2593,7 @@ void database::process_hardforks()
       hfp.last_hardfork++;
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 bool database::has_hardfork( uint32_t hardfork )
 {
@@ -2652,6 +2672,7 @@ void database::validate_invariants()const
       }
 
       fc::uint128_t total_rshares2;
+      fc::uint128_t total_children_rshares2;
 
       const auto& comment_idx = db.get_index_type< comment_index >().indices();
 
@@ -2661,6 +2682,8 @@ void database::validate_invariants()const
             auto delta = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
             total_rshares2 += delta;
          }
+         if( itr->parent_author.size() == 0 )
+            total_children_rshares2 += itr->children_rshares2;
       }
 
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
@@ -2670,6 +2693,8 @@ void database::validate_invariants()const
       FC_ASSERT( gpo.total_vesting_shares == total_vesting );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vsf_votes",total_vsf_votes)("total_vesting_shares",gpo.total_vesting_shares) );
       FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
+      FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
+
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
       if ( !db.get_feed_history().current_median_history.is_null() )
          FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
@@ -2679,14 +2704,16 @@ void database::validate_invariants()const
 }
 
 void database::perform_vesting_share_split( uint32_t magnitude )
-{
-   // Need to update all VESTS in accounts and the total VESTS in the dgpo
-   const auto& acc_idx = get_index_type< account_index >().indices().get< by_name >();
-   auto itr = acc_idx.begin();
-
-   while( itr != acc_idx.end() )
+{ try {
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
    {
-      modify( *itr, [&]( account_object& a )
+      d.total_vesting_shares.amount *= magnitude;
+      d.total_reward_shares2 = 0;
+   });
+
+   // Need to update all VESTS in accounts and the total VESTS in the dgpo
+   for( const auto& account : get_index_type<account_index>().indices() ) {
+      modify( account, [&]( account_object& a )
       {
          a.vesting_shares.amount *= magnitude;
          a.withdrawn             *= magnitude;
@@ -2694,48 +2721,31 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
          a.proxied_vsf_votes     *= magnitude;
       });
-
-      itr++;
    }
 
-   const auto& com_idx = get_index_type< comment_index >().indices().get< by_created >();
-   auto com_itr = com_idx.begin();
-
-   while( com_itr != com_idx.end() )
-   {
-      modify( *com_itr, [&]( comment_object& c )
+   const auto& comments = get_index_type< comment_index >().indices();
+   for( const auto& comment : comments ) {
+      modify( comment, [&]( comment_object& c )
       {
          c.net_rshares       *= magnitude;
          c.abs_rshares       *= magnitude;
          c.total_vote_weight *= magnitude;
          c.children_rshares2  = 0;
       });
-
-      com_itr++;
    }
 
-   com_itr = com_idx.begin();
-
-   while( com_itr != com_idx.end() )
-   {
-      adjust_rshares2( *com_itr, 0, fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value );
-
-      com_itr++;
+   for( const auto& c : comments ) {
+      if( c.net_rshares.value > 0 )
+         adjust_rshares2( c, 0, fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value );
    }
 
    // Update vote weights
-   const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
-   auto vote_itr = vote_idx.begin();
-
-   // Consider removing this for low mem mode
-   while( vote_itr != vote_idx.end() )
-   {
-      modify( *vote_itr, [&]( comment_vote_object& cv )
+   const auto& vote_idx = get_index_type< comment_vote_index >().indices();
+   for( const auto& vote : vote_idx ) {
+      modify( vote, [&]( comment_vote_object& cv )
       {
          cv.weight = ( cv.weight * magnitude ) * magnitude;
       });
-
-      vote_itr++;
    }
 
    // Update category rshares
@@ -2751,12 +2761,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       cat_itr++;
    }
 
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
-   {
-      d.total_vesting_shares.amount *= magnitude;
-      d.total_reward_shares2 = ( d.total_reward_shares2 * magnitude ) * magnitude;
-   });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::retally_witness_votes()
 {
