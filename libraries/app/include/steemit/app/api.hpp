@@ -97,9 +97,8 @@ namespace steemit { namespace app {
           */
          void on_applied_block( const signed_block& b );
 
-
          /// internal method, not exposed via JSON RPC
-         void register_callbacks();
+         void on_api_startup();
       private:
          boost::signals2::scoped_connection             _applied_block_connection;
 
@@ -151,6 +150,8 @@ namespace steemit { namespace app {
           */
          std::vector<graphene::net::potential_peer_record> get_potential_peers() const;
 
+         /// internal method, not exposed via JSON RPC
+         void on_api_startup();
       private:
          application& _app;
    };
@@ -185,6 +186,9 @@ namespace steemit { namespace app {
             FC_ASSERT( it->second != nullptr );
             return it->second;
          }
+
+         /// internal method, not exposed via JSON RPC
+         void on_api_startup();
 
       private:
          application& _app;

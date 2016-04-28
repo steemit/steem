@@ -131,6 +131,8 @@ debug_node_api::debug_node_api( steemit::app::application& app )
    my = std::make_shared< detail::debug_node_api_impl >(app);
 }
 
+void debug_node_api::on_api_startup() {}
+
 void debug_node_api::debug_push_blocks( std::string source_filename, uint32_t count )
 {
    my->debug_push_blocks( source_filename, count );

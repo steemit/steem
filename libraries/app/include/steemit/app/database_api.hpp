@@ -326,6 +326,11 @@ class database_api
        */
       map<uint32_t,operation_object> get_account_history( string account, uint64_t from, uint32_t limit )const;
 
+      ////////////////////////////
+      // Handlers - not exposed //
+      ////////////////////////////
+      void on_api_startup();
+
    private:
       void set_pending_payout( discussion& d )const;
       void set_url( discussion& d )const;

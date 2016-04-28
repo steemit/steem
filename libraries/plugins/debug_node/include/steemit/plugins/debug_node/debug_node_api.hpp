@@ -22,6 +22,8 @@ class debug_node_api
    public:
       debug_node_api( steemit::app::application& app );
 
+      void on_api_startup();
+
       /**
        * Push blocks from existing database.
        */

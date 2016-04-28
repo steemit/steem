@@ -95,6 +95,9 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       bool verify_authority( const signed_transaction& trx )const;
       bool verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
 
+      // signal handlers
+      void on_applied_block( const chain::signed_block& b );
+
       mutable fc::bloom_filter                _subscribe_filter;
       std::function<void(const fc::variant&)> _subscribe_callback;
       std::function<void(const fc::variant&)> _pending_trx_callback;
@@ -150,14 +153,17 @@ void database_api_impl::set_pending_transaction_callback( std::function<void(con
 void database_api::set_block_applied_callback( std::function<void(const variant& block_id)> cb )
 {
    my->set_block_applied_callback( cb );
-   my->_block_applied_connection = my->_db.applied_block.connect( [&]( const chain::signed_block& b ) {
-    my->_block_applied_callback( fc::variant(signed_block_header(b) ) );
-   });
+}
+
+void database_api_impl::on_applied_block( const chain::signed_block& b )
+{
+   _block_applied_callback( fc::variant(signed_block_header(b) ) );
 }
 
 void database_api_impl::set_block_applied_callback( std::function<void(const variant& block_header)> cb )
 {
    _block_applied_callback = cb;
+   _block_applied_connection = connect_signal( _db.applied_block, *this, &database_api_impl::on_applied_block );
 }
 
 void database_api::cancel_all_subscriptions()
@@ -193,6 +199,8 @@ database_api_impl::~database_api_impl()
 {
    elog("freeing database api ${x}", ("x",int64_t(this)) );
 }
+
+void database_api::on_api_startup() {}
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //

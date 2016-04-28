@@ -48,6 +48,8 @@ namespace steemit { namespace app {
     {
     }
 
+    void login_api::on_api_startup() {}
+
     bool login_api::login(const string& user, const string& password)
     {
        optional< api_access_info > acc = _app.get_api_access_info( user );
@@ -80,15 +82,11 @@ namespace steemit { namespace app {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
     }
 
-    void network_broadcast_api::register_callbacks() {
+    void network_broadcast_api::on_api_startup()
+    {
        /// note cannot capture shared pointer here, because _applied_block_connection will never
        /// be freed if the lambda holds a reference to it.
-       std::weak_ptr<network_broadcast_api> weak_this = shared_from_this();
-       _applied_block_connection = _app.chain_database()->applied_block.connect(
-            [weak_this](const signed_block& b){ 
-                auto shared_this = weak_this.lock();
-                if( shared_this ) shared_this->on_applied_block(b); 
-            });
+       _applied_block_connection = connect_signal( _app.chain_database()->applied_block, *this, &network_broadcast_api::on_applied_block );
     }
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
@@ -166,6 +164,8 @@ namespace steemit { namespace app {
     network_node_api::network_node_api( application& a ) : _app( a )
     {
     }
+
+    void network_node_api::on_api_startup() {}
 
     fc::variant_object network_node_api::get_info() const
     {
