@@ -884,69 +884,82 @@ fc::sha256 database::get_pow_target()const {
 }
 
 void database::update_witness_schedule4() {
-
-   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
    vector<string> active_witnesses;
-   active_witnesses.reserve( STEEMIT_MAX_MINERS );
 
-   const auto& gprops = get_dynamic_global_properties();
-   /// POP TOP and SELECT NEXT POW TOP POW WORKER
-   const auto& pow_idx = get_index_type<witness_index>().indices().get<by_pow>();
-   auto itr = pow_idx.upper_bound(0);
-   if( itr != pow_idx.end() ) {
+   /// Add the highest voted witnesses
+   flat_set<witness_id_type> selected_voted;
+   selected_voted.reserve( STEEMIT_MAX_VOTED_WITNESSES );
+   const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
+   for( auto itr = widx.begin();
+        itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
+        ++itr ) {
+      selected_voted.insert(itr->get_id());
       active_witnesses.push_back(itr->owner);
-      modify( *itr, [&](witness_object& wit ){
+   }
+
+   /// Add miners from the top of the mining queue
+   flat_set<witness_id_type> selected_miners;
+   selected_miners.reserve( STEEMIT_MAX_MINER_WITNESSES );
+   const auto& gprops = get_dynamic_global_properties();
+   const auto& pow_idx      = get_index_type<witness_index>().indices().get<by_pow>();
+   auto mitr = pow_idx.upper_bound(0);
+   while( mitr != pow_idx.end() && selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES ) {
+      if( selected_voted.find(mitr->get_id()) != selected_voted.end() )
+         continue; /// Skip miners who are top voted witnesses
+      selected_miners.insert(mitr->get_id());
+      active_witnesses.push_back(mitr->owner);
+      auto itr = mitr;
+      ++mitr;
+      modify( *itr, [&](witness_object& wit ) {
          wit.pow_worker = 0;
       });
-      modify( gprops, [&]( dynamic_global_property_object& obj ){
-          obj.num_pow_witnesses--;
+      modify( gprops, [&]( dynamic_global_property_object& obj ) {
+         obj.num_pow_witnesses--;
       });
    }
 
-   /// SELECT VIRTUAL WORKER
+   /// Add the running witnesses in the lead
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+   fc::uint128 new_virtual_time = wso.current_virtual_time;
    const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
    auto sitr = schedule_idx.begin();
-
-   fc::uint128 new_virtual_time = wso.current_virtual_time;
-
-   bool reset_virtual_time = false;
-   if( sitr != schedule_idx.end() ) {
-      active_witnesses.push_back(sitr->owner);
-      modify( *sitr, [&]( witness_object& wo ) {
-         wo.virtual_position = fc::uint128();
-         new_virtual_time = wo.virtual_scheduled_time; /// everyone advances to this time
-
-         /// this witness will produce again here
-         wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
-         wo.virtual_last_update     = new_virtual_time;
-
-         if( wo.virtual_scheduled_time < wso.current_virtual_time )
-           reset_virtual_time = true;
-      });
-
+   vector<decltype(sitr)> processed_witnesses;
+   for( auto witness_count = selected_voted.size() + selected_miners.size();
+        sitr != schedule_idx.end() && witness_count < STEEMIT_MAX_MINERS;
+        ++sitr ) {
+      new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
+      processed_witnesses.push_back(sitr);
+      if( selected_miners.find(sitr->get_id()) == selected_miners.end()
+          && selected_voted.find(sitr->get_id()) == selected_voted.end() ) {
+         active_witnesses.push_back(sitr->owner);
+         ++witness_count;
+      }
    }
 
-   /// check for wrapping of virtual schedule time
-   if( reset_virtual_time ) {
+   /// Update virtual schedule of processed witnesses
+   bool reset_virtual_time = false;
+   for( auto itr = processed_witnesses.begin(); itr != processed_witnesses.end(); ++itr ) {
+      auto new_virtual_scheduled_time = new_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / ((*itr)->votes.value+1);
+      if( new_virtual_scheduled_time < new_virtual_time ) {
+         reset_virtual_time = true; /// overflow
+         break;
+      }
+      modify( *(*itr), [&]( witness_object& wo ) {
+         wo.virtual_position        = fc::uint128();
+         wo.virtual_last_update     = new_virtual_time;
+         wo.virtual_scheduled_time  = new_virtual_scheduled_time;
+      });
+   }
+   if( reset_virtual_time )
+   {
       new_virtual_time = fc::uint128();
       reset_virtual_schedule_time();
    }
 
-   /// just in case POW worker == virtual schedule worker
-   if( active_witnesses.size() == 2 && active_witnesses[1] == active_witnesses[0] )
-     active_witnesses.pop_back();
-   
-   /// SELECT TOP 19 by vote that are currently unscheduled
-   const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
-   for( auto itr = widx.begin(); itr != widx.end() && active_witnesses.size() < STEEMIT_MAX_MINERS; ++itr ) 
-   {
-      if( active_witnesses.size() >= 2 && itr->owner != active_witnesses[1] && itr->owner != active_witnesses[0] )
-         active_witnesses.push_back(itr->owner);
-      else if( active_witnesses.size() == 1 && itr->owner != active_witnesses[0] )
-         active_witnesses.push_back(itr->owner);
-      else if( active_witnesses.size() == 0 )
-         active_witnesses.push_back(itr->owner);
-   }
+   FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_MINERS, "number of active witnesses does not equal STEEMIT_MAX_MINERS",
+                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_MINERS",STEEMIT_MAX_MINERS) );
+
+
 
    modify( wso, [&]( witness_schedule_object& _wso ) {
       _wso.current_shuffled_witnesses = active_witnesses;
