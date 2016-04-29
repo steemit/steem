@@ -2697,10 +2697,10 @@ void database::validate_invariants()const
 
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
 
-      FC_ASSERT( gpo.current_supply.amount.value == total_supply.amount.value );
-      FC_ASSERT( gpo.current_sbd_supply.amount.value == total_sbd.amount.value );
-      FC_ASSERT( gpo.total_vesting_shares == total_vesting );
-      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vsf_votes",total_vsf_votes)("total_vesting_shares",gpo.total_vesting_shares) );
+      FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
+      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
+      FC_ASSERT( gpo.total_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
+      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
       FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
       FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
 

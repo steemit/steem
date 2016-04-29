@@ -139,7 +139,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute" );
+      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       db().modify( auth, [&]( account_object& a ) {
          a.last_post = now;
       });
@@ -422,7 +422,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    if( itr == by_account_witness_idx.end() ) {
       FC_ASSERT( o.approve, "vote doesn't exist, user must be indicate a desire to approve witness" );
 
-      if ( db().has_hardfork( STEEMIT_HARDFORK_2 ) ) 
+      if ( db().has_hardfork( STEEMIT_HARDFORK_2 ) )
       {
          FC_ASSERT( voter.witnesses_voted_for < STEEMIT_MAX_ACCOUNT_WITNESS_VOTES, "account has voted for too many witnesses" ); // TODO: Remove after hardfork 2
 
@@ -457,7 +457,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
       FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to reject witness" );
 
       if (  db().has_hardfork( STEEMIT_HARDFORK_2 ) ) {
-         if( db().has_hardfork( STEEMIT_HARDFORK_3 ) ) 
+         if( db().has_hardfork( STEEMIT_HARDFORK_3 ) )
             db().adjust_witness_vote( witness, -voter.witness_vote_weight() );
          else
             db().adjust_witness_votes( voter, -voter.witness_vote_weight() );
@@ -473,7 +473,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    }
 }
 
-void vote_evaluator::do_apply( const vote_operation& o ) 
+void vote_evaluator::do_apply( const vote_operation& o )
 { try {
 
    const auto& comment = db().get_comment( o.author, o.permlink );

@@ -52,7 +52,16 @@ clean_database_fixture::clean_database_fixture()
    ahplugin->plugin_initialize( options );
 
    generate_block();
+   db.set_hardfork( STEEMIT_NUM_HARDFORKS );
    vest( "initminer", 10000 );
+
+   // Fill up the rest of the required miners
+   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_MINERS; i++ )
+   {
+      account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+   }
 
    validate_database();
    } catch ( const fc::exception& e )
@@ -363,17 +372,6 @@ void database_fixture::set_price_feed( const price& new_price )
    {
       for ( int i = 1; i < 8; i++ )
       {
-         try
-         {
-            db.get_witness( "STEEMIT_INIT_MINER_NAME + fc::to_string( i )" );
-         }
-         catch ( fc::assert_exception e )
-         {
-            account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-            fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
-            witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
-         }
-
          feed_publish_operation op;
          op.publisher = STEEMIT_INIT_MINER_NAME + fc::to_string( i );
          op.exchange_rate = new_price;
