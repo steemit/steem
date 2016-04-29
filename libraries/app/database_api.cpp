@@ -777,7 +777,7 @@ void database_api::set_url( discussion& d )const {
 }
 
 vector<discussion> database_api::get_content_replies( string author, string permlink )const {
-   const auto& by_permlink_idx = my->_db.get_index_type< comment_index >().indices().get< by_parent >();
+   const auto& by_permlink_idx = my->_db.get_index_type< comment_index >().indices().get< by_parent_total_pending_payout >();
    auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
    vector<discussion> result;
    while( itr != by_permlink_idx.end() && itr->parent_author == author && itr->parent_permlink == permlink )
