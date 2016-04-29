@@ -1867,8 +1867,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   //if( !( skip & skip_validate_invariants ) )
-   if( head_block_num() > 950000 )
+   if( !( skip & skip_validate_invariants ) )
       validate_invariants();
 }
 
@@ -2562,7 +2561,6 @@ void database::process_hardforks()
          case STEEMIT_HARDFORK_1:
             elog( "HARDFORK 1" );
             perform_vesting_share_split( 1000000 );
-            validate_invariants();
          #ifdef IS_TEST_NET
             {
                custom_operation test_op;
@@ -2577,17 +2575,14 @@ void database::process_hardforks()
          case STEEMIT_HARDFORK_2:
             elog( "HARDFORK 2" );
             retally_witness_votes();
-            validate_invariants();
             break;
          case STEEMIT_HARDFORK_3:
             elog( "HARDFORK 3" );
             retally_witness_votes();
-            validate_invariants();
             break;
          case STEEMIT_HARDFORK_4:
             elog( "HARDFORK 4" );
             reset_virtual_schedule_time();
-            validate_invariants();
             break;
          default:
             break;

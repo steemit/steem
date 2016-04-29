@@ -263,7 +263,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          #endif
 
       });
-      db().validate_invariants();
    } // end EDIT case
 
 } FC_CAPTURE_LOG_AND_RETHROW( (o) ) }
@@ -703,8 +702,10 @@ void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation&
 }
 
 void report_over_production_evaluator::do_apply( const report_over_production_operation& o ) {
-   FC_ASSERT( false, "this operation is currently disabled" );
+   FC_ASSERT( !db().is_producing(), "this operation is currently disabled" );
+   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_4 ), "this operation is disabled after this hardfork" );
 
+   /*
    const auto& reporter = db().get_account( o.reporter );
    const auto& violator = db().get_account( o.first_block.witness );
    const auto& witness  = db().get_witness( o.first_block.witness );
@@ -721,6 +722,7 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
        db().adjust_witness_votes( a, -a.vesting_shares.amount, 0 );
        a.vesting_shares.amount = 0;
    });
+   */
 }
 
 } } // steemit::chain
