@@ -528,14 +528,35 @@ void vote_evaluator::do_apply( const vote_operation& o )
       c.last_update = db().head_block_time();
    });
 
-   /** this verifies uniqueness of voter */
+   /** this verifies uniqueness of voter
+    *   
+    *   voter_weight / new_total_weight ==> % of total vote weight provided by voter
+    *   percent^2 => used to create non-linear reward toward those who contribute a larger percentage
+    *
+    *   voter_weight * percent^2 ==> used to keep rewards proportional to vote_weight (small voters shouldn't get larger rewards simply for being first)
+    *
+    *   Simplify equation as:
+    *   vote_weight * (voter_weight/new_total_weight)^2 
+    *   vote_weight * (voter_weight^2 / new_total_weight^2)
+    *   vote_weight^3 / new_total_weight^2
+    *
+    *   Since we know vote_weight is a 64 bit number and we know voter_weight^2/new_total_weight^2 is less than 1.0,
+    *   we know the resulting number is a 64 bit number.
+    *
+    **/
    const auto& cvo = db().create<comment_vote_object>( [&]( comment_vote_object& cv ){
        cv.voter   = voter.id;
        cv.comment = comment.id;
        if( rshares > 0 ) {
-          u256 rshare256(rshares);
-          u256 total256( comment.abs_rshares.value );
-          cv.weight  = static_cast<uint64_t>( ( ( rshare256 * rshare256 ) / total256 ) * rshare256 );
+          u512 rshares3(rshares);
+          rshares3 = rshares3 * rshares3 * rshares3;
+
+          u256 total2( comment.abs_rshares.value );
+          total2 *= total2;
+
+          cv.weight = static_cast<uint64_t>( rshares3 / total2 );
+       } else {
+          cv.weight = 0;
        }
    });
 
