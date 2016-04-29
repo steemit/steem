@@ -184,6 +184,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( first_block.witness   == second_block.witness );
       FC_ASSERT( first_block.timestamp == second_block.timestamp );
       FC_ASSERT( first_block.signee()  == second_block.signee() );
+      FC_ASSERT( first_block.id() != second_block.id() );
    }
 
 

@@ -703,6 +703,8 @@ void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation&
 }
 
 void report_over_production_evaluator::do_apply( const report_over_production_operation& o ) {
+   FC_ASSERT( false, "this operation is currently disabled" );
+
    const auto& reporter = db().get_account( o.reporter );
    const auto& violator = db().get_account( o.first_block.witness );
    const auto& witness  = db().get_witness( o.first_block.witness );
