@@ -2513,7 +2513,7 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_4 ] = fc::time_point_sec( STEEMIT_HARDFORK_4_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
-   FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration" );
+   FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
    if( hardforks.last_hardfork >= 0 )
       FC_ASSERT( _hardfork_times[ hardforks.last_hardfork - 1 ] <= head_block_time(), "Configuration has future hardfork set that chain has already applied." );
    if( hardforks.last_hardfork + 1 < STEEMIT_NUM_HARDFORKS )
@@ -2546,15 +2546,8 @@ void database::process_hardforks()
    // If there are upcoming hardforks and the next one is later, do nothing
    const auto& hardforks = hardfork_property_id_type()( *this );
 
-   // If we have applied the last known hardfork
-   if( hardforks.last_hardfork == STEEMIT_NUM_HARDFORKS )
-      return;
-
-   // If the next hardfork time is in the future
-   if( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time() )
-      return;
-
-   while( _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
+   while( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS
+         && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
    {
       switch( hardforks.last_hardfork + 1)
       {
