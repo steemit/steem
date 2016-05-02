@@ -680,8 +680,6 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
       fund( "alice", 100000 );
       vest( "alice", 100000 );
 
-      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME ), true ); // Get past the test hardfork time
-
       const auto& new_alice = db.get_account( "alice" );
 
       BOOST_TEST_MESSAGE( "Setting up withdrawal" );
@@ -1260,8 +1258,6 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
    try
    {
       ACTORS( (alice)(bob)(sam)(dave) )
-
-      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME ), true );
 
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 

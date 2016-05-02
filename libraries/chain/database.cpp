@@ -998,7 +998,7 @@ void database::update_witness_schedule()
 {
    if( (head_block_num() % STEEMIT_MAX_MINERS) == 0 ) //wso.next_shuffle_block_num )
    {
-      if( has_hardfork(STEEMIT_HARDFORK_4) ) {
+      if( has_hardfork(STEEMIT_HARDFORK_0_4_0) ) {
          update_witness_schedule4();
          return;
       }
@@ -1045,7 +1045,7 @@ void database::update_witness_schedule()
                    new_virtual_time = fc::uint128();
 
                /// this witness will produce again here
-               if( has_hardfork( STEEMIT_HARDFORK_2 ) )
+               if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
                else
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
@@ -1054,7 +1054,7 @@ void database::update_witness_schedule()
          }
 
          /* TODO: delete this if we can reindex without it through HF4 */
-         if( !has_hardfork( STEEMIT_HARDFORK_4 ) ) {
+         if( !has_hardfork( STEEMIT_HARDFORK_0_4_0 ) ) {
             while( sitr != schedule_idx.end() && sitr->pow_worker ) {
                modify( *sitr, [&]( witness_object& wo ) {
                        wo.virtual_last_update = new_virtual_time;
@@ -1200,13 +1200,13 @@ void database::adjust_witness_vote( const witness_object& witness, share_type de
       w.votes += delta;
       FC_ASSERT( w.votes <= get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props",get_dynamic_global_properties().total_vesting_shares) );
 
-      if( has_hardfork( STEEMIT_HARDFORK_2 ) )
+      if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
       else
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
 
       /** witnesses with a low number of votes could overflow the time field and end up with a scheduled time in the past */
-      if( has_hardfork( STEEMIT_HARDFORK_4 ) ) {
+      if( has_hardfork( STEEMIT_HARDFORK_0_4_0 ) ) {
          if( w.virtual_scheduled_time < wso.current_virtual_time )
             w.virtual_scheduled_time = fc::uint128::max_value();
       }
@@ -1647,7 +1647,6 @@ share_type database::claim_rshare_reward( share_type rshares ) {
       payout = 0;
 
    modify( props, [&]( dynamic_global_property_object& p ){
-     p.total_reward_shares2 -= fc::uint128_t( rshares.value ) * rshares.value;
      p.total_reward_fund_steem.amount -= payout;
    });
 
@@ -2163,7 +2162,7 @@ void database::update_global_dynamic_data( const signed_block& b )
            dgp.current_reserve_ratio++;
          }
 
-         if( has_hardfork( STEEMIT_HARDFORK_2 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
+         if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
            dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
       }
       dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *
@@ -2503,14 +2502,14 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEMIT_GENESIS_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_1 == 1, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_1_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_2 == 2, "Invlaid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_2 ] = fc::time_point_sec( STEEMIT_HARDFORK_2_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_3 == 3, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_3 ] = fc::time_point_sec( STEEMIT_HARDFORK_3_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_4 == 4, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_4 ] = fc::time_point_sec( STEEMIT_HARDFORK_4_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_1_0 == 1, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_1_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_1_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_2_0 == 2, "Invlaid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_2_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_2_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_3_0 == 3, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -2551,7 +2550,7 @@ void database::process_hardforks()
    {
       switch( hardforks.last_hardfork + 1)
       {
-         case STEEMIT_HARDFORK_1:
+         case STEEMIT_HARDFORK_0_1_0:
             elog( "HARDFORK 1" );
             perform_vesting_share_split( 1000000 );
          #ifdef IS_TEST_NET
@@ -2565,15 +2564,15 @@ void database::process_hardforks()
             break;
          #endif
             break;
-         case STEEMIT_HARDFORK_2:
+         case STEEMIT_HARDFORK_0_2_0:
             elog( "HARDFORK 2" );
             retally_witness_votes();
             break;
-         case STEEMIT_HARDFORK_3:
+         case STEEMIT_HARDFORK_0_3_0:
             elog( "HARDFORK 3" );
             retally_witness_votes();
             break;
-         case STEEMIT_HARDFORK_4:
+         case STEEMIT_HARDFORK_0_4_0:
             elog( "HARDFORK 4" );
             reset_virtual_schedule_time();
             break;
