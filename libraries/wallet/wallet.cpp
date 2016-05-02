@@ -351,7 +351,7 @@ public:
       return result;
    }
 
-   account_object get_account( string account_name ) const
+   extended_account get_account( string account_name ) const
    {
       auto accounts = _remote_db->get_accounts( { account_name } );
       FC_ASSERT( !accounts.empty(), "Unknown account" );
@@ -569,8 +569,7 @@ public:
 
       /// TODO: fetch the accounts specified via other_auths as well.
 
-      vector< account_object > approving_account_objects =
-            _remote_db->get_accounts( v_approving_account_names );
+      auto approving_account_objects = _remote_db->get_accounts( v_approving_account_names );
 
       /// TODO: recursively check one layer deeper in the authority tree for keys
 
@@ -988,7 +987,7 @@ string wallet_api::get_wallet_filename() const
 }
 
 
-account_object wallet_api::get_account( string account_name ) const
+extended_account wallet_api::get_account( string account_name ) const
 {
    return my->get_account( account_name );
 }

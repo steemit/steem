@@ -185,7 +185,7 @@ class wallet_api
        * @param account_name the name of the account to provide information about
        * @returns the public account data stored in the blockchain
        */
-      account_object                    get_account( string account_name ) const;
+      extended_account                  get_account( string account_name ) const;
 
       /** Returns the current wallet filename.
        *

@@ -56,6 +56,7 @@ namespace steemit { namespace app {
       map<uint64_t,operation_object>  post_history;
       map<uint64_t,operation_object>  vote_history; 
       map<uint64_t,operation_object>  other_history; 
+      set<string>                     witness_votes;
       vector<string>                  posts; /// permlinks for this user
       vector<string>                  blog; /// blog posts for this user
       map<string,vector<string>>      blog_category; /// blog posts for this user
@@ -136,7 +137,7 @@ namespace steemit { namespace app {
 FC_REFLECT_DERIVED( steemit::app::extended_account, 
                    (steemit::chain::account_object), 
                    (vesting_balance)
-                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(posts)(blog)(blog_category) )
+                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(posts)(blog)(blog_category) )
 
 
 FC_REFLECT( steemit::app::vote_state, (voter)(weight) );

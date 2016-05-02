@@ -73,7 +73,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<set<string>> get_key_references( vector<public_key_type> key )const;
 
       // Accounts
-      vector< account_object > get_accounts( vector< string > names )const;
+      vector< extended_account > get_accounts( vector< string > names )const;
       vector<account_id_type> get_account_references( account_id_type account_id )const;
       vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
       set<string> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
@@ -314,21 +314,29 @@ vector<set<string>> database_api_impl::get_key_references( vector<public_key_typ
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-vector< account_object > database_api::get_accounts( vector< string > names )const
+vector< extended_account > database_api::get_accounts( vector< string > names )const
 {
    return my->get_accounts( names );
 }
 
-vector< account_object > database_api_impl::get_accounts( vector< string > names )const
+vector< extended_account > database_api_impl::get_accounts( vector< string > names )const
 {
-   const auto& idx = _db.get_index_type< account_index >().indices().get< by_name >();
-   vector< account_object > results;
+   const auto& idx  = _db.get_index_type< account_index >().indices().get< by_name >();
+   const auto& vidx = _db.get_index_type< witness_vote_index >().indices().get< by_account_witness >();
+   vector< extended_account > results;
 
    for( auto name: names )
    {
       auto itr = idx.find( name );
       if ( itr != idx.end() )
+      {
          results.push_back( *itr );
+         auto vitr = vidx.lower_bound( boost::make_tuple( itr->get_id(), witness_id_type() ) );
+         while( vitr != vidx.end() && vitr->account == itr->get_id() ) {
+            results.back().witness_votes.insert(vitr->witness(_db).owner);
+            ++vitr;
+         }
+      }
    }
 
    return results;
