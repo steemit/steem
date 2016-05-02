@@ -348,16 +348,6 @@ const comment_object& database::get_comment( const string& author, const string&
    return *itr;
 }
 
-void database::pay_fee( const account_object& account, asset fee )
-{
-   FC_ASSERT( fee.amount >= 0 ); /// NOTE if this fails then validate() on some operation is probably wrong
-   if( fee.amount == 0 ) return;
-
-   FC_ASSERT( account.balance >= fee );
-   adjust_balance( account, -fee );
-   adjust_supply( -fee );
-}
-
 void database::update_account_bandwidth( const account_object& a, uint32_t trx_size ) {
 
    const auto& props = get_dynamic_global_properties();
