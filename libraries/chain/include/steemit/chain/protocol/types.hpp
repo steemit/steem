@@ -102,6 +102,7 @@ namespace steemit { namespace chain {
       impl_chain_property_object_type,
       impl_witness_schedule_object_type,
       impl_comment_object_type,
+      impl_comment_stats_object_type,
       impl_comment_vote_object_type,
       impl_vote_object_type,
       impl_witness_vote_object_type,
@@ -120,6 +121,7 @@ namespace steemit { namespace chain {
    class comment_object;
    class category_object;
    class comment_vote_object;
+   class comment_stats_object;
    class vote_object;
    class witness_vote_object;
    class account_object;
@@ -139,6 +141,7 @@ namespace steemit { namespace chain {
    typedef object_id< implementation_ids, impl_operation_object_type,         operation_object>                         operation_id_type;
    typedef object_id< implementation_ids, impl_account_history_object_type,   account_history_object>                   account_history_id_type;
    typedef object_id< implementation_ids, impl_comment_object_type,           comment_object>                           comment_id_type;
+   typedef object_id< implementation_ids, impl_comment_stats_object_type,     comment_stats_object>                           comment_stats_id_type;
    typedef object_id< implementation_ids, impl_category_object_type,           category_object>                         category_id_type;
    typedef object_id< implementation_ids, impl_comment_vote_object_type,      comment_vote_object>                      comment_vote_id_type;
    typedef object_id< implementation_ids, impl_vote_object_type,              vote_object>                              vote_id_type;
@@ -266,6 +269,7 @@ FC_REFLECT_ENUM( steemit::chain::impl_object_type,
                  (impl_chain_property_object_type)
                  (impl_witness_schedule_object_type)
                  (impl_comment_object_type)
+                 (impl_comment_stats_object_type)
                  (impl_category_object_type)
                  (impl_comment_vote_object_type)
                  (impl_vote_object_type)
