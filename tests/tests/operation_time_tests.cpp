@@ -12,7 +12,6 @@
 #include "../common/database_fixture.hpp"
 
 #include <cmath>
-#include <iostream>
 
 using namespace steemit::chain;
 using namespace steemit::chain::test;
@@ -155,13 +154,11 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       auto dave_vest_shares = db.get_account( "dave" ).vesting_shares;
 
       auto bob_comment_payout = asset( ( ( uint128_t( bob_comment_rshares.value ) * bob_comment_rshares.value * reward_steem.amount.value ) / total_rshares2 ).to_uint64(), STEEM_SYMBOL );
-      idump( (reward_steem)(bob_comment_payout) );
       auto bob_comment_vote_rewards = asset( bob_comment_payout.amount / 2, STEEM_SYMBOL );
       bob_comment_payout -= bob_comment_vote_rewards;
       auto bob_comment_sbd_reward = asset( bob_comment_payout.amount / 2, STEEM_SYMBOL ) * exchange_rate;
       auto bob_comment_vesting_reward = ( bob_comment_payout - asset( bob_comment_payout.amount / 2, STEEM_SYMBOL ) ) * db.get_dynamic_global_properties().get_vesting_share_price();
       auto unclaimed_payments = bob_comment_vote_rewards;
-      idump( (unclaimed_payments) );
       auto alice_vote_reward = asset( static_cast< uint64_t >( ( u256( vote_idx.find( std::make_tuple( db.get_comment( "bob", "test" ).id, db.get_account( "alice" ).id ) )->weight ) * bob_comment_vote_rewards.amount.value ) / bob_comment_vote_total ), STEEM_SYMBOL );
       auto alice_vote_vesting = alice_vote_reward * db.get_dynamic_global_properties().get_vesting_share_price();
       auto bob_vote_reward = asset( static_cast< uint64_t >( ( u256( vote_idx.find( std::make_tuple( db.get_comment( "bob", "test" ).id, db.get_account( "bob" ).id ) )->weight ) * bob_comment_vote_rewards.amount.value ) / bob_comment_vote_total ), STEEM_SYMBOL );
@@ -172,12 +169,10 @@ BOOST_AUTO_TEST_CASE( comment_payout )
 
       BOOST_TEST_MESSAGE( "Generate one block to cause a payout" );
 
-      idump( (bob_comment_payout)(bob_comment_vote_rewards)(unclaimed_payments)(reward_steem) );
       generate_block();
 
       auto bob_comment_reward = get_last_operations( 1 )[0].get< comment_reward_operation >();
 
-      idump( (db.get_dynamic_global_properties().total_reward_fund_steem) );
       BOOST_REQUIRE_EQUAL( db.get_dynamic_global_properties().total_reward_fund_steem.amount.value, reward_steem.amount.value - ( bob_comment_payout + bob_comment_vote_rewards - unclaimed_payments ).amount.value );
       BOOST_REQUIRE_EQUAL( db.get_comment( "bob", "test" ).total_payout_value.amount.value, ( ( bob_comment_vesting_reward * db.get_dynamic_global_properties().get_vesting_share_price() ) + ( bob_comment_sbd_reward * exchange_rate ) ).amount.value );
       BOOST_REQUIRE_EQUAL( db.get_account( "bob" ).sbd_balance.amount.value, ( bob_sbd_balance + bob_comment_sbd_reward ).amount.value );
@@ -202,9 +197,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
 
       BOOST_TEST_MESSAGE( "Generating blocks up to next comment payout" );
 
-      idump( (db.get_dynamic_global_properties().total_reward_fund_steem) );
       generate_blocks( db.get_comment( "alice", "test" ).cashout_time - ( STEEMIT_BLOCK_INTERVAL / 2 ), true );
-      idump( (db.get_dynamic_global_properties().total_reward_fund_steem) );
 
       BOOST_REQUIRE( vote_idx.find( std::make_tuple( db.get_comment( "alice", "test" ).id, db.get_account( "alice" ).id ) ) != vote_idx.end() );
       BOOST_REQUIRE( vote_idx.find( std::make_tuple( db.get_comment( "alice", "test" ).id, db.get_account( "bob" ).id   ) ) != vote_idx.end() );
@@ -229,26 +222,13 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       sam_vest_shares = db.get_account( "sam" ).vesting_shares;
       dave_vest_shares = db.get_account( "dave" ).vesting_shares;
 
-      /*u256 rs( alice_comment_rshares.value );
-      auto rw2 = rs*rs;
-      u256 trs2( total_rshares2.hi );
-      trs2 = ( trs2 << 64 ) + total_rshares2.lo;
-      u256 rf( reward_steem.amount.value );
-
-      auto alice_comment_payout = asset( static_cast< uint64_t >( ( rs * rs * rf ) / trs2 ), STEEM_SYMBOL );*/
-      idump( (db.head_block_time())(reward_steem) );
-
       u256 rs( alice_comment_rshares.value );
       u256 rf( reward_steem.amount.value );
       u256 trs2 = total_rshares2.hi;
       trs2 = ( trs2 << 64 ) + total_rshares2.lo;
-
       auto rs2 = rs*rs;
 
-      std::cout << "rs: " << rs << "\trf: " << rf << "\ttrs2: " << trs2 << "\trs2: " << rs2 << "\n";
-
       auto alice_comment_payout = asset( static_cast< uint64_t >( ( rf * rs2 ) / trs2 ), STEEM_SYMBOL );
-      idump( (alice_comment_payout) );
       auto alice_comment_vote_rewards = asset( alice_comment_payout.amount / 2, STEEM_SYMBOL );
       alice_comment_payout -= alice_comment_vote_rewards;
       auto alice_comment_sbd_reward = asset( alice_comment_payout.amount / 2, STEEM_SYMBOL ) * exchange_rate;
@@ -264,9 +244,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       auto dave_vote_vesting = dave_vote_reward * db.get_dynamic_global_properties().get_vesting_share_price();
       unclaimed_payments -= ( alice_vote_reward + bob_vote_reward + sam_vote_reward + dave_vote_reward );
 
-      ilog( "Generating Block" );
       generate_block();
-      ilog( "Done" );
       auto alice_comment_reward = get_last_operations( 1 )[0].get< comment_reward_operation >();
 
       BOOST_REQUIRE_EQUAL( ( db.get_dynamic_global_properties().total_reward_fund_steem + alice_comment_payout + alice_comment_vote_rewards - unclaimed_payments ).amount.value, reward_steem.amount.value );
