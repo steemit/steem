@@ -1375,11 +1375,15 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    auto itr = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(-1), account_id_type() ) );
    auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
    while( itr != end ) {
+      // TODO: Add minimum curation pay limit
       u256 weight( itr->weight );
       auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
-      unclaimed_rewards -= claim;
-      auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-      push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+      if( claim > 1 ) // min_amt is non-zero satoshis
+      {
+         unclaimed_rewards -= claim;
+         auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
+         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+      }
       ++itr;
    }
    if( max_rewards.value - unclaimed_rewards.value )
@@ -1446,6 +1450,7 @@ void database::process_comment_cashout() {
          if( c.net_rshares > 0 )
              c.net_rshares = 0;
          c.abs_rshares  = 0;
+         c.total_vote_weight = 0;
          c.cashout_time = fc::time_point_sec::maximum();
       });
 
