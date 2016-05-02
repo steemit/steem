@@ -243,14 +243,14 @@ namespace steemit { namespace chain {
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
 
          /** this updates the votes for all witnesses as a result of account VESTS changing */
-         void adjust_witness_votes( const account_object& a, share_type delta, int depth = 0 );
+         void adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth = 0 );
 
          /** this updates the vote of a single witness as a result of a vote being added or removed*/
          void adjust_witness_vote( const witness_object& obj, share_type delta );
 
          /** clears all vote records for a particular account but does not update the
           * witness vote totals.  Vote totals should be updated first via a call to
-          * adjust_witness_votes( a, -a.witness_vote_weight() )
+          * adjust_proxied_witness_votes( a, -a.witness_vote_weight() )
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
