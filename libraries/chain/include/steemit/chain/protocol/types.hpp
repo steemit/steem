@@ -37,6 +37,7 @@ namespace steemit { namespace chain {
 
    using                                    fc::uint128_t;
    typedef boost::multiprecision::uint256_t u256;
+   typedef boost::multiprecision::uint512_t u512;
 
    using                               std::map;
    using                               std::vector;

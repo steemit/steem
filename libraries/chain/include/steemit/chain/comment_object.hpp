@@ -156,6 +156,7 @@ namespace steemit { namespace chain {
    struct by_created;
    struct by_created_in_category;
    struct by_parent_pending_payout;
+   struct by_parent_total_pending_payout;
    struct by_parent_payout;
    struct by_parent_date;
    struct by_author_pending_payout;
@@ -306,6 +307,15 @@ namespace steemit { namespace chain {
                member< object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less< string >, std::less< string >, std::greater<share_type>, std::less<object_id_type> >
+         >,
+         ordered_unique< tag< by_parent_total_pending_payout >,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::parent_author >,
+               member< comment_object, string, &comment_object::parent_permlink >,
+               member< comment_object, fc::uint128, &comment_object::children_rshares2 >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< string >, std::less< string >, std::greater<fc::uint128>, std::less<object_id_type> >
          >,
          ordered_unique< tag< by_payout >,
             composite_key< comment_object,
