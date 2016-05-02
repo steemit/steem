@@ -376,6 +376,7 @@ void database_fixture::set_price_feed( const price& new_price )
          op.publisher = STEEMIT_INIT_MINER_NAME + fc::to_string( i );
          op.exchange_rate = new_price;
          trx.operations.push_back( op );
+         trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
          db.push_transaction( trx, ~0 );
          trx.operations.clear();
       }
@@ -455,6 +456,7 @@ void database_fixture::validate_database( void )
       }
 
       fc::uint128_t total_rshares2;
+      fc::uint128_t total_children_rshares2;
 
       const auto& comment_idx = db.get_index_type< comment_index >().indices().get< by_id >();
 
@@ -462,6 +464,8 @@ void database_fixture::validate_database( void )
       {
          if( itr->net_rshares.value > 0 )
             total_rshares2 += fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+         if( itr->parent_author.size() == 0 )
+            total_children_rshares2 += itr->children_rshares2;
       }
 
       auto gpo = db.get_dynamic_global_properties();
@@ -469,12 +473,12 @@ void database_fixture::validate_database( void )
       total_supply += gpo.total_vesting_fund_steem
          + gpo.total_reward_fund_steem;
 
-      BOOST_REQUIRE_EQUAL( gpo.current_supply.amount.value, total_supply.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.current_sbd_supply.amount.value, total_sbd.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vesting.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vsf_votes.value );
-      BOOST_REQUIRE( gpo.total_reward_shares2 == total_rshares2 );
-      BOOST_REQUIRE( gpo.virtual_supply >= gpo.current_supply );
+      FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
+      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
+      FC_ASSERT( gpo.total_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
+      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
+      FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
+      FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
       if ( !db.get_feed_history().current_median_history.is_null() )
          BOOST_REQUIRE( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply );
