@@ -866,7 +866,7 @@ try {
        props.total_vesting_shares += new_vesting;
    });
 
-   adjust_witness_votes( to_account, new_vesting.amount );
+   adjust_proxied_witness_votes( to_account, new_vesting.amount );
 
    return new_vesting;
 } FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) ) }
@@ -1165,7 +1165,7 @@ void database::update_median_witness_props() {
    });
 }
 
-void database::adjust_witness_votes( const account_object& a, share_type delta, int depth ) {
+void database::adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth ) {
   if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
      const auto& proxy = get_account( a.proxy );
 
@@ -1177,7 +1177,7 @@ void database::adjust_witness_votes( const account_object& a, share_type delta, 
      if( depth > STEEMIT_MAX_PROXY_RECURSION_DEPTH )
         return;
 
-     adjust_witness_votes( proxy, delta, depth + 1 );
+     adjust_proxied_witness_votes( proxy, delta, depth + 1 );
   } else {
 
      const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
@@ -1297,7 +1297,7 @@ void database::process_vesting_withdrawals() {
      });
 
      if( withdrawn_vesting > 0 )
-        adjust_witness_votes( cur, -withdrawn_vesting );
+        adjust_proxied_witness_votes( cur, -withdrawn_vesting );
    }
 }
 
@@ -1375,11 +1375,15 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    auto itr = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(-1), account_id_type() ) );
    auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
    while( itr != end ) {
+      // TODO: Add minimum curation pay limit
       u256 weight( itr->weight );
       auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
-      unclaimed_rewards -= claim;
-      auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-      push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+      if( claim > 1 ) // min_amt is non-zero satoshis
+      {
+         unclaimed_rewards -= claim;
+         auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
+         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+      }
       ++itr;
    }
    if( max_rewards.value - unclaimed_rewards.value )
@@ -1446,6 +1450,7 @@ void database::process_comment_cashout() {
          if( c.net_rshares > 0 )
              c.net_rshares = 0;
          c.abs_rshares  = 0;
+         c.total_vote_weight = 0;
          c.cashout_time = fc::time_point_sec::maximum();
       });
 
@@ -1867,7 +1872,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   if( !( skip & skip_validate_invariants ) )
+   //if( !( skip & skip_validate_invariants ) )
       validate_invariants();
 }
 
@@ -2779,24 +2784,16 @@ void database::retally_witness_votes()
    // Apply all existing votes by account
    for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
    {
-     const witness_schedule_object& wso = witness_schedule_id_type()(*this);
-     const auto& a = *itr;
+      if( itr->proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) continue;
 
-     const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
-     auto vitr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
-     while( vitr != vidx.end() && vitr->account == a.get_id() ) {
-        modify( vitr->witness(*this), [&]( witness_object& w ){
+      const auto& a = *itr;
 
-          auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
-          w.virtual_position += delta_pos;
-
-          w.virtual_last_update = wso.current_virtual_time;
-          w.votes += a.witness_vote_weight();
-
-          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
-        });
-        ++vitr;
-     }
+      const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+      auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+      while( wit_itr != vidx.end() && wit_itr->account == a.get_id() ) {
+         adjust_witness_vote( wit_itr->witness(*this), a.witness_vote_weight() );
+         ++wit_itr;
+      }
    }
 }
 

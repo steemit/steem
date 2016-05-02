@@ -167,6 +167,34 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( retally_votes )
+{
+   try
+   {
+      flat_map< witness_id_type, share_type > expected_votes;
+
+      const auto& by_account_witness_idx = db.get_index_type< witness_vote_index >().indices();
+
+      for( auto vote: by_account_witness_idx )
+      {
+         if( expected_votes.find( vote.witness ) == expected_votes.end() )
+            expected_votes[ vote.witness ] = vote.account( db ).witness_vote_weight();
+         else
+            expected_votes[ vote.witness ] += vote.account( db ).witness_vote_weight();
+      }
+
+      db.retally_witness_votes();
+
+      const auto& witness_idx = db.get_index_type< witness_index >().indices();
+
+      for( auto witness: witness_idx )
+      {
+         BOOST_REQUIRE_EQUAL( witness.votes.value, expected_votes[ witness.id ].value );
+      }
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 #endif

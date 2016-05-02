@@ -244,9 +244,15 @@ void comment_evaluator::do_apply( const comment_operation& o )
          }
 
          com.last_update   = db().head_block_time();
-         com.net_rshares   = std::min( com.net_rshares, share_type(0) );
-         com.abs_rshares   = 0;
-         com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+
+         if( o.title.size() + o.body.size() )
+         {
+            if( com.net_rshares > 0 )
+               com.net_rshares = 0;
+            com.abs_rshares  = 0;
+            com.total_vote_weight = 0;
+            com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+         }
 
          #ifndef IS_LOW_MEM
            com.title         = o.title;
@@ -275,6 +281,17 @@ void comment_evaluator::do_apply( const comment_operation& o )
          #endif
 
       });
+
+      if( o.title.size() + o.body.size() )
+      {
+         const auto& vote_idx = db().get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
+         auto vote_itr = vote_idx.lower_bound( comment_id_type(comment.id) );
+         while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id ) {
+            const auto& cur_vote = *vote_itr;
+            ++vote_itr;
+            db().remove(cur_vote);
+         }
+      }
    } // end EDIT case
 
 } FC_CAPTURE_LOG_AND_RETHROW( (o) ) }
@@ -319,11 +336,11 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
           a.last_bandwidth_update = now;
           */
 
-          db().adjust_witness_votes( a, o.amount.amount, 0 );
+          db().adjust_proxied_witness_votes( a, o.amount.amount, 0 );
       });
 
       db().modify( from_account, [&]( account_object& a ){
-          db().adjust_witness_votes( a, -o.amount.amount, 0 );
+          db().adjust_proxied_witness_votes( a, -o.amount.amount, 0 );
           a.vesting_shares -= o.amount;
       });
 #endif
@@ -387,7 +404,7 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
    FC_ASSERT( account.proxy != o.proxy, "something must change" );
 
    /// remove all current votes
-   db().adjust_witness_votes( account, -account.witness_vote_weight() );
+   db().adjust_proxied_witness_votes( account, -account.witness_vote_weight() );
 
    if( o.proxy.size() ) {
       const auto& new_proxy = db().get_account( o.proxy );
@@ -411,7 +428,7 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
       });
 
       /// add all new votes
-      db().adjust_witness_votes( account, account.witness_vote_weight() );
+      db().adjust_proxied_witness_votes( account, account.witness_vote_weight() );
    } else { /// we are clearing the proxy which means we simply update the account
       db().modify( account, [&]( account_object& a ) {
           a.proxy = o.proxy;
@@ -446,7 +463,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
             db().adjust_witness_vote( witness, voter.witness_vote_weight() );
          }
          else {
-            db().adjust_witness_votes( voter, voter.witness_vote_weight() );
+            db().adjust_proxied_witness_votes( voter, voter.witness_vote_weight() );
          }
 
       } else {
@@ -471,7 +488,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
          if( db().has_hardfork( STEEMIT_HARDFORK_0_3_0 ) )
             db().adjust_witness_vote( witness, -voter.witness_vote_weight() );
          else
-            db().adjust_witness_votes( voter, -voter.witness_vote_weight() );
+            db().adjust_proxied_witness_votes( voter, -voter.witness_vote_weight() );
       } else  {
          db().modify( witness, [&]( witness_object& w ) {
              w.votes -= voter.witness_vote_weight();
@@ -728,10 +745,10 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
 
    db().modify( reporter, [&]( account_object& a ){
        a.vesting_shares += violator.vesting_shares;
-       db().adjust_witness_votes( a, violator.vesting_shares.amount, 0 );
+       db().adjust_proxied_witness_votes( a, violator.vesting_shares.amount, 0 );
    });
    db().modify( violator, [&]( account_object& a ){
-       db().adjust_witness_votes( a, -a.vesting_shares.amount, 0 );
+       db().adjust_proxied_witness_votes( a, -a.vesting_shares.amount, 0 );
        a.vesting_shares.amount = 0;
    });
    */
