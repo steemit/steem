@@ -1729,6 +1729,7 @@ void database::initialize_indexes()
    add_index< primary_index<convert_index> >();
    add_index< primary_index<liquidity_reward_index> >();
    add_index< primary_index<limit_order_index> >();
+   add_index< primary_index<comment_stats_index> >();
 
    //Implementation object indexes
    add_index< primary_index<transaction_index                             > >();

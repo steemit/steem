@@ -142,6 +142,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       db().modify( auth, [&]( account_object& a ) {
          a.last_post = now;
+         a.post_count++;
       });
 
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
@@ -178,6 +179,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.json_metadata = o.json_metadata;
          #endif
       });
+
       const category_object* cat = db().find_category( new_comment.category );
       if( !cat ) {
          cat = &db().create<category_object>( [&]( category_object& c ){
@@ -191,6 +193,16 @@ void comment_evaluator::do_apply( const comment_operation& o )
              c.last_update = db().head_block_time();
          });
       }
+
+      const auto& new_comment_stats = db().create<comment_stats_object>( [&]( comment_stats_object& cso ){
+          cso.comment_id  = new_comment.id;
+          if( parent ) 
+            cso.parent_comment_id = parent->id;
+          cso.category_id = cat->id;
+          cso.author_id   = auth.get_id();
+      });
+
+      db().modify( new_comment, [&]( comment_object& co ) { co.stats = new_comment_stats.id; } );
 
       id = new_comment.id;
 

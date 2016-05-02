@@ -101,6 +101,25 @@ namespace steemit { namespace chain {
 
          /** tracks the total payout this comment has received over time, measured in SBD */
          asset             total_payout_value = asset(0, SBD_SYMBOL);
+
+         /** ID of stats object used for additional indicies on comment */
+         comment_stats_id_type  stats;
+   };
+
+   /**
+    *  Because boost::multi_index has a limit on the number of simultainous indicies the comment
+    *  object has to move some indicies to this helper class.
+    */
+   class comment_stats_object : public abstract_object<comment_object> {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_comment_stats_object_type;
+
+         comment_id_type   comment_id;
+         comment_id_type   parent_comment_id;
+         category_id_type  category_id;
+         account_id_type   author_id;
+         int32_t           net_votes = 0;
    };
 
 
@@ -148,6 +167,36 @@ namespace steemit { namespace chain {
       >
    > comment_vote_multi_index_type;
 
+   struct by_comment_id;
+   struct by_net_votes;
+   struct by_net_votes_in_category;
+   typedef multi_index_container<
+      comment_stats_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_comment_id >, member< comment_stats_object, comment_id_type, &comment_stats_object::comment_id > >,
+         ordered_unique< tag< by_net_votes >,
+            composite_key< comment_stats_object,
+               member< comment_stats_object, comment_id_type, &comment_stats_object::parent_comment_id>,
+               member< comment_stats_object, int32_t, &comment_stats_object::net_votes>,
+               member< comment_stats_object, comment_id_type, &comment_stats_object::comment_id>
+            >,
+            composite_key_compare< std::less< comment_id_type >, std::greater< int32_t >, std::less<comment_id_type> >
+         >,
+         ordered_unique< tag< by_net_votes_in_category >,
+            composite_key< comment_stats_object,
+               member< comment_stats_object, category_id_type, &comment_stats_object::category_id>,
+               member< comment_stats_object, comment_id_type, &comment_stats_object::parent_comment_id>,
+               member< comment_stats_object, int32_t, &comment_stats_object::net_votes>,
+               member< comment_stats_object, comment_id_type, &comment_stats_object::comment_id>
+            >,
+            composite_key_compare< std::less<category_id_type>, std::less< comment_id_type >, std::greater< int32_t >, std::less<comment_id_type> >
+         >
+      >
+   > comment_stats_multi_index_type;
+
+
+
 
 
    struct by_permlink;
@@ -178,6 +227,7 @@ namespace steemit { namespace chain {
    struct by_cashout_time_in_category;
    struct by_blog; /// author, parent, parent_author (aka topic), created (greater), permlink
    struct by_blog_category; /// author, parent, parent_author (aka topic), created (greater), permlink
+
    /**
     * @ingroup object_index
     */
@@ -344,9 +394,10 @@ namespace steemit { namespace chain {
       >
    > comment_multi_index_type;
 
-   typedef generic_index< comment_object,      comment_multi_index_type >      comment_index;
-   typedef generic_index< comment_vote_object, comment_vote_multi_index_type > comment_vote_index;
-   typedef generic_index< category_object, category_multi_index_type >         category_index;
+   typedef generic_index< comment_object,      comment_multi_index_type >       comment_index;
+   typedef generic_index< comment_vote_object, comment_vote_multi_index_type >  comment_vote_index;
+   typedef generic_index< comment_stats_object,comment_stats_multi_index_type > comment_stats_index;
+   typedef generic_index< category_object, category_multi_index_type >          category_index;
 } } // steemit::chain
 
 FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
@@ -354,9 +405,17 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (category)(parent_author)(parent_permlink)
                     (title)(body)(json_metadata)(last_update)(created)
                     (depth)(children)(children_rshares2)
-                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value) )
+                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(stats) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
                     (voter)(comment)(weight) )
 
 FC_REFLECT_DERIVED( steemit::chain::category_object, (graphene::db::object), (name)(abs_rshares)(total_payouts)(discussions)(last_update) );
+
+FC_REFLECT_DERIVED( steemit::chain::comment_stats_object, (graphene::db::object),
+            (comment_id)
+            (parent_comment_id)
+            (category_id)
+            (author_id)
+            (net_votes)
+          )
