@@ -1900,7 +1900,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   //if( !( skip & skip_validate_invariants ) )
+   if( is_producing() || !( skip & skip_validate_invariants ) )
       validate_invariants();
 }
 
