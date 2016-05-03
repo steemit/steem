@@ -9,6 +9,7 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
+#include <numeric>
 
 namespace steemit { namespace chain {
 
