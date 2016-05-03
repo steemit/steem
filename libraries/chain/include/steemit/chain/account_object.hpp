@@ -64,7 +64,7 @@ namespace steemit { namespace chain {
          share_type      withdrawn = 0; /// Track how many shares have been withdrawn
          share_type      to_withdraw = 0; /// Might be able to look this up with operation history.
 
-         share_type      proxied_vsf_votes; ///< the total VFS votes proxied to this account
+         std::vector<share_type> proxied_vsf_votes = std::vector<share_type>( STEEMIT_MAX_PROXY_RECURSION_DEPTH, 0 ); ///< the total VFS votes proxied to this account
          uint16_t        witnesses_voted_for = 0;
 
          /**
@@ -88,7 +88,17 @@ namespace steemit { namespace chain {
 
 
          account_id_type get_id()const { return id; }
-         share_type      witness_vote_weight()const { return vesting_shares.amount + proxied_vsf_votes; }
+         /// This function should be used only when the account votes for a witness directly
+         share_type      witness_vote_weight()const {
+            return std::accumulate( proxied_vsf_votes.begin(),
+                                    proxied_vsf_votes.end(),
+                                    vesting_shares.amount );
+         }
+         share_type      proxied_vsf_votes_total()const {
+            return std::accumulate( proxied_vsf_votes.begin(),
+                                    proxied_vsf_votes.end(),
+                                    share_type() );
+         }
    };
 
    /**
