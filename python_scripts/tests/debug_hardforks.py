@@ -63,7 +63,7 @@ def run_steemd_tests( debug_node ):
 
    try:
       print( "Playing blockchain..." )
-      assert( debug_node.debug_push_blocks( 5000 ) == 5000 )
+      blocks = debug_node.debug_push_blocks( 0 )
 
       print( "Setting the hardfork now" ) # TODO: Grab most recent hardfork num from build directory
       sys.stdout.flush()
@@ -77,7 +77,7 @@ def run_steemd_tests( debug_node ):
       sys.stdout.flush()
       rpc = SteemNodeRPC( 'ws://127.0.0.1:8090', '', '' )
       block_producers = {}
-      for i in range( 5001, 10001 ):
+      for i in range( blocks + 1 , blocks + 5001 ):
          ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_block",[' + str( i ) + ']], "id":4}' ) )
          if( ret[ "witness" ] in block_producers ):
             block_producers[ ret[ "witness" ] ] += 1
