@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       /// because init_witness has created vesting shares and blocks have been produced, 100 STEEM is worth less than 100 vesting shares due to rounding
       BOOST_REQUIRE_EQUAL( acct.vesting_shares.amount.value, ( op.fee * ( vest_shares / vests ) ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_withdraw_rate.amount.value, ASSET( "0.000000 VESTS" ).amount.value );
-      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( ( init_starting_balance - ASSET( "0.100 TESTS" ) ).amount.value, init.balance.amount.value );
       validate_database();
 
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE_EQUAL( acct.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_shares.amount.value, ( op.fee * ( vest_shares / vests ) ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_withdraw_rate.amount.value, ASSET( "0.000000 VESTS" ).amount.value );
-      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( ( init_starting_balance - ASSET( "0.100 TESTS" ) ).amount.value, init.balance.amount.value );
       validate_database();
 
@@ -1494,7 +1494,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes + bob.vesting_shares.amount ) );
+      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1506,7 +1506,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 
-      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes + bob.vesting_shares.amount ) );
+      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1640,9 +1640,9 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "alice" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( alice.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( alice.proxied_vsf_votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( alice.proxied_vsf_votes_total() == bob.vesting_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test changing proxy" );
@@ -1657,10 +1657,10 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
-      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( sam.proxied_vsf_votes.value == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total().value == bob.vesting_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when changing proxy to existing proxy" );
@@ -1668,9 +1668,9 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.vesting_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandparent proxy" );
@@ -1686,11 +1686,11 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.vesting_shares.amount );
       BOOST_REQUIRE_EQUAL( dave.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes == ( sam.vesting_shares + bob.vesting_shares ).amount );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + bob.vesting_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandchild proxy" );
@@ -1707,13 +1707,13 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( alice.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == ( bob.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == ( bob.vesting_shares + alice.vesting_shares ).amount );
       BOOST_REQUIRE_EQUAL( dave.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes == ( sam.vesting_shares + bob.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + bob.vesting_shares + alice.vesting_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test removing a grandchild proxy" );
@@ -1729,13 +1729,13 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( alice.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( bob.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == alice.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == alice.vesting_shares.amount );
       BOOST_REQUIRE_EQUAL( dave.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes == ( sam.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + alice.vesting_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test votes are transferred when a proxy is added" );
