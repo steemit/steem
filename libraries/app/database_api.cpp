@@ -750,13 +750,13 @@ void database_api::set_pending_payout( discussion& d )const
    const auto& hist  = my->_db.get_feed_history();
    asset pot = props.total_reward_fund_steem;
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
-   idump( (pot) );
 
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
+      int64_t abs_net_rshares = llabs(d.net_rshares.value);
        
-      u256 r2 = to256(d.net_rshares.value);
+      u256 r2 = to256(abs_net_rshares);
       r2 *= r2;
       r2 *= pot.amount.value;
       r2 /= total_r2;
@@ -769,7 +769,7 @@ void database_api::set_pending_payout( discussion& d )const
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
 
       if( d.net_rshares.value < 0 ) {
-         d.pending_payout_value.amount.value = 0;
+         d.pending_payout_value.amount.value *= -1;
       }
    }
    set_url(d);
