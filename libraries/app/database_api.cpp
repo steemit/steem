@@ -769,7 +769,7 @@ void database_api::set_pending_payout( discussion& d )const
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
 
       if( d.net_rshares.value < 0 ) {
-         d.pending_payout_value.amount.value *= -1;
+         d.pending_payout_value.amount.value = 0;
       }
    }
    set_url(d);
