@@ -2544,6 +2544,8 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
    FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_5_0 == 5, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_5_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_0_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -2609,6 +2611,9 @@ void database::process_hardforks()
          case STEEMIT_HARDFORK_0_4_0:
             elog( "HARDFORK 4" );
             reset_virtual_schedule_time();
+            break;
+         case STEEMIT_HARDFORK_0_5_0:
+            elog( "HARDFORK 5" );
             break;
          default:
             break;
