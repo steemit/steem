@@ -47,7 +47,7 @@ def main( ):
    if( not data_dir.is_dir() ):
       print( 'Error: data_dir is not a directory' )
 
-   debug_node = DebugNode( str( steemd ), str( data_dir ) )
+   debug_node = DebugNode( str( steemd ), str( data_dir ), steemd_err=sys.stderr )
 
    with debug_node :
 
@@ -62,8 +62,13 @@ def run_steemd_tests( debug_node ):
    from steemapi.steemnoderpc import SteemNodeRPC
 
    try:
-      print( "Playing blockchain..." )
-      blocks = debug_node.debug_push_blocks( 0 )
+      print( 'Replaying blocks...', )
+      sys.stdout.flush()
+      total_blocks = 0
+      while( total_blocks % 100000 == 0 ):
+         total_blocks += debug_node.debug_push_blocks( 100000, skip_validate_invariants=True )
+         print( 'Blocks Replayed: ' + str( total_blocks ) )
+         sys.stdout.flush()
 
       print( "Setting the hardfork now" ) # TODO: Grab most recent hardfork num from build directory
       sys.stdout.flush()
@@ -77,7 +82,7 @@ def run_steemd_tests( debug_node ):
       sys.stdout.flush()
       rpc = SteemNodeRPC( 'ws://127.0.0.1:8090', '', '' )
       block_producers = {}
-      for i in range( blocks + 1 , blocks + 5001 ):
+      for i in range( total_blocks + 1 , total_blocks + 5001 ):
          ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_block",[' + str( i ) + ']], "id":4}' ) )
          if( ret[ "witness" ] in block_producers ):
             block_producers[ ret[ "witness" ] ] += 1

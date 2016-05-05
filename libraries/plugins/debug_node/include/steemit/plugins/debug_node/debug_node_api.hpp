@@ -27,7 +27,7 @@ class debug_node_api
       /**
        * Push blocks from existing database.
        */
-      uint32_t debug_push_blocks( std::string src_filename, uint32_t count );
+      uint32_t debug_push_blocks( std::string src_filename, uint32_t count, bool skip_validate_invariants = false );
 
       /**
        * Generate blocks locally.

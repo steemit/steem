@@ -1,5 +1,7 @@
-import datetime, json, logging
+import json, logging
 
+from datetime import datetime
+from datetime import timezone
 from os import devnull
 from pathlib import Path
 from signal import SIGINT, SIGTERM
@@ -13,7 +15,7 @@ from steemapi.steemnoderpc import SteemNodeRPC
 class DebugNode( object ):
    """ Wraps the steemd debug node plugin for easier automated testing of the Steem Network"""
 
-   def __init__( self, steemd, data_dir, plugins=[], apis=[], steemd_stdout=None, steemd_stderr=None ):
+   def __init__( self, steemd, data_dir, plugins=[], apis=[], steemd_out=None, steemd_err=None ):
       """ Creates a steemd debug node.
 
       It can be ran by using 'with debug_node:'
@@ -56,15 +58,15 @@ class DebugNode( object ):
       self.apis = apis
 
       self._FNULL = open( devnull, 'w' )
-      if( steemd_stdout != None ):
-         self.steemd_stdout = steemd_stdout
+      if( steemd_out != None ):
+         self.steemd_out = steemd_out
       else:
-         self.steemd_stdout = self._FNULL
+         self.steemd_out = self._FNULL
 
-      if( steemd_stderr != None ):
-         self.steemd_stderr = steemd_stderr
+      if( steemd_err != None ):
+         self.steemd_err = steemd_err
       else:
-         self.steemd_stderr = self._FNULL
+         self.steemd_err = self._FNULL
 
       self._debug_key = '5JHNbFNDg834SFj8CMArV6YW7td4zrPzXveqTfaShmYVuYNeK69'
       self._steemd_lock = Lock()
@@ -79,7 +81,7 @@ class DebugNode( object ):
       config.touch()
       config.write_text( self._get_config() )
 
-      self._steemd_process = Popen( [ str( self._steemd_bin ), '--data-dir="' + str( self._temp_data_dir.name ) + '"' ], stdout=self._FNULL, stderr=self._FNULL )
+      self._steemd_process = Popen( [ str( self._steemd_bin ), '--data-dir="' + str( self._temp_data_dir.name ) + '"' ], stdout=self.steemd_out, stderr=self.steemd_err )
       self._steemd_process.poll()
       sleep( 5 )
       if( not self._steemd_process.returncode ):
@@ -122,7 +124,7 @@ class DebugNode( object ):
           + "public-api = database_api login_api debug_node_api " + " ".join( self.apis ) + "\n"
 
 
-   def debug_push_blocks( self, count=0 ):
+   def debug_push_blocks( self, count=0, skip_validate_invariants=False ):
       """
       Push count blocks from an existing chain.
       There is no guarantee pushing blocks will work depending on set hardforks, or generated blocks
@@ -136,13 +138,17 @@ class DebugNode( object ):
          int: The number of blocks actually pushed.
       """
       num_blocks = 0
+      skip_validate_invariants_str = "false"
+      if( skip_validate_invariants ):
+         skip_validate_invariants_str = "true"
+
       if( count == 0 ):
          ret = 10000
          while( ret == 10000 ):
-            ret = self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_push_blocks",["' + str( self._block_dir ) + '", 10000]], "id": 1}' ) )
+            ret = self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_push_blocks",["' + str( self._block_dir ) + '", 10000,"' + skip_validate_invariants_str + '"]], "id": 1}' ) )
             num_blocks += ret
       else:
-         ret = self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_push_blocks",["' + str( self._block_dir ) + '",' + str( count ) + ']], "id": 1}' ) )
+         ret = self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_push_blocks",["' + str( self._block_dir ) + '",' + str( count ) + ',"' + skip_validate_invariants_str + '"]], "id": 1}' ) )
          num_blocks += ret
 
       return num_blocks
@@ -167,7 +173,7 @@ class DebugNode( object ):
       return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_generate_blocks",["' + self._debug_key + '",' + str( count ) + ']], "id": 1}' ) )
 
 
-   def debug_generate_blocks_until( self, time, generate_sparsely=True ):
+   def debug_generate_blocks_until( self, timestamp, generate_sparsely=True ):
       """
       Generate block up until a head block time rather than a specific number of blocks. As with
       `debug_generate_blocks` all blocks will be empty unless there were pending transactions.
@@ -177,7 +183,7 @@ class DebugNode( object ):
       `get_dev_key steem debug`. Do not use this key on the live chain for any reason.
 
       args:
-         time -- The desired new head block time. This is a UTC Timestmap.
+         time -- The desired new head block time. This is a POSIX Timestmap.
          generate_sparsely -- True if you wish to skip all intermediate blocks between the current
             head block time and the desired head block time. This is useful to trigger events, such
             as payouts and bandwidth updates, without generating blocks. However, many automatic chain
@@ -188,9 +194,19 @@ class DebugNode( object ):
          (time, int): A tuple including the new head block time and the number of blocks that were
             generated.
       """
-      if( not instance( time, datetime ) ):
-         raise ValueError( "Time must be a datetime object" )
-      self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_generate_blocks_until",["' + self._debug_key + '",' + str( time ) + ']], "id": 1}' ) )
+      if( not isinstance( timestamp, int ) ):
+         raise ValueError( "Time must be a int" )
+      generate_sparsely_str = "true"
+      if( not generate_sparsely ):
+         generate_sparsely_str = "false"
+
+      iso_string = datetime.fromtimestamp( timestamp, timezone.utc ).isoformat().split( '+' )[0].split( '-' )
+      if( len( iso_string ) == 4 ):
+         iso_string = iso_string[:-1]
+      iso_string = '-'.join( iso_string )
+
+      print( iso_string )
+      return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_generate_blocks_until",["' + self._debug_key + '","' + iso_string + '","' + generate_sparsely_str + '"]], "id": 1}' ) )
 
 
    def debug_set_hardfork( self, hardfork_id ):

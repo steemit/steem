@@ -9,6 +9,8 @@
 #include <fc/uint128.hpp>
 #include <fc/utf8.hpp>
 
+#include <cmath>
+
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
@@ -196,7 +198,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment_stats = db().create<comment_stats_object>( [&]( comment_stats_object& cso ){
           cso.comment_id  = new_comment.id;
-          if( parent ) 
+          if( parent )
             cso.parent_comment_id = parent->id;
           cso.category_id = cat->id;
           cso.author_id   = auth.get_id();
@@ -536,7 +538,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
    auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
 
    FC_ASSERT( abs_rshares > 0 );
-
 
    db().modify( comment, [&]( comment_object& c ){
       c.net_rshares += rshares;

@@ -23,7 +23,7 @@ class debug_node_api_impl
    public:
       debug_node_api_impl( steemit::app::application& _app );
 
-      uint32_t debug_push_blocks( const std::string& src_filename, uint32_t count );
+      uint32_t debug_push_blocks( const std::string& src_filename, uint32_t count, bool skip_validate_invariants );
       uint32_t debug_generate_blocks( const std::string& debug_key, uint32_t count );
       uint32_t debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely );
       void debug_update_object( const fc::variant_object& update );
@@ -40,7 +40,7 @@ debug_node_api_impl::debug_node_api_impl( steemit::app::application& _app ) : ap
 {}
 
 
-uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename, uint32_t count )
+uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename, uint32_t count, bool skip_validate_invariants )
 {
    if( count == 0 )
       return 0;
@@ -50,9 +50,16 @@ uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename
    if( fc::is_directory( src_path ) )
    {
       ilog( "Loading ${n} from block_database ${fn}", ("n", count)("fn", src_filename) );
+      idump( (src_filename)(count)(skip_validate_invariants) );
       steemit::chain::block_database bdb;
       bdb.open( src_path );
       uint32_t first_block = db->head_block_num()+1;
+      uint32_t skip_flags = steemit::chain::database::skip_nothing;
+      if( skip_validate_invariants )
+      {
+         skip_flags = skip_flags | steemit::chain::database::skip_validate_invariants;
+         ilog( "Skipping invariante check" );
+      }
       for( uint32_t i=0; i<count; i++ )
       {
          fc::optional< steemit::chain::signed_block > block = bdb.fetch_by_number( first_block+i );
@@ -63,7 +70,7 @@ uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename
          }
          try
          {
-            db->push_block( *block );
+            db->push_block( *block, skip_flags );
          }
          catch( const fc::exception& e )
          {
@@ -146,6 +153,8 @@ uint32_t debug_node_api_impl::debug_generate_blocks_until( const std::string& de
 
          db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
          new_blocks++;
+
+         FC_ASSERT( head_block_time.sec_since_epoch() - db->head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db->head_block_time()",db->head_block_time()) );
       }
    }
    else
@@ -199,9 +208,9 @@ debug_node_api::debug_node_api( steemit::app::application& app )
 
 void debug_node_api::on_api_startup() {}
 
-uint32_t debug_node_api::debug_push_blocks( std::string source_filename, uint32_t count )
+uint32_t debug_node_api::debug_push_blocks( std::string source_filename, uint32_t count, bool skip_validate_invariants )
 {
-   return my->debug_push_blocks( source_filename, count );
+   return my->debug_push_blocks( source_filename, count, skip_validate_invariants );
 }
 
 uint32_t debug_node_api::debug_generate_blocks( std::string debug_key, uint32_t count )

@@ -1314,6 +1314,8 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
  *  @recursively pays out parent posts
  */
 void database::cashout_comment_helper( const comment_object& cur, const comment_object& origin, asset vesting_steem_reward, asset sbd_reward ) {
+   try
+   {
    const auto& author = get_account( cur.author );
    if( cur.parent_author.size() ) {
       auto parent_vesting_steem_reward = vesting_steem_reward;
@@ -1358,6 +1360,7 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
    }
+   } FC_CAPTURE_LOG_AND_RETHROW( (cur) );
 }
 
 /**
@@ -1376,6 +1379,8 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
    while( itr != end ) {
       // TODO: Add minimum curation pay limit
+      try
+      {
       u256 weight( itr->weight );
       auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
       if( claim > 1 ) // min_amt is non-zero satoshis
@@ -1384,6 +1389,7 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
          auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
          push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
       }
+      } FC_CAPTURE_LOG_AND_RETHROW( (*itr) )
       ++itr;
    }
    if( max_rewards.value - unclaimed_rewards.value )
@@ -1408,6 +1414,8 @@ void database::process_comment_cashout() {
    auto current = cidx.begin();
    //auto end = cidx.lower_bound( head_block_time() );
    while( current != cidx.end() && current->cashout_time <= head_block_time() ) {
+      try
+      {
       const auto& cur = *current; ++current;
       asset sbd_created(0,SBD_SYMBOL);
       asset vest_created(0,VESTS_SYMBOL);
@@ -1461,6 +1469,7 @@ void database::process_comment_cashout() {
          ++vote_itr;
          remove(cur_vote);
       }
+   } FC_CAPTURE_LOG_AND_RETHROW( (*current) );
    }
 }
 
@@ -1633,6 +1642,8 @@ asset database::to_steem( const asset& sbd )const {
  *  redeemed.
  */
 share_type database::claim_rshare_reward( share_type rshares ) {
+   try
+   {
    FC_ASSERT( rshares > 0 );
 
    const auto& props = get_dynamic_global_properties();
@@ -1654,7 +1665,7 @@ share_type database::claim_rshare_reward( share_type rshares ) {
    modify( props, [&]( dynamic_global_property_object& p ){
      p.total_reward_fund_steem.amount -= payout;
    });
-
+   } FC_CAPTURE_LOG_AND_RETHROW( (rshares) )
    return payout;
 }
 
@@ -1872,7 +1883,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   //if( !( skip & skip_validate_invariants ) )
+   if( !( skip & skip_validate_invariants ) )
       validate_invariants();
 }
 
