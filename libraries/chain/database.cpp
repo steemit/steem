@@ -1374,10 +1374,23 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
 
+   /*
+   const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_comment_voter >();
+   comment_id_type cid(comment.id);
+   auto itr = idx.lower_bound( cid );
+   while( itr != idx.end() && itr->comment == cid )
+   {
+      const auto& vo = itr->voter(my->_db);
+      result.push_back(vote_state{vo.name,itr->weight});
+      ++itr;
+   }
+   */
+
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-   auto itr = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(-1), account_id_type() ) );
-   auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
-   while( itr != end ) {
+   auto itr = cvidx.lower_bound( c.id );
+   auto start = itr;
+   //auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
+   while( itr != cvidx.end() && itr->comment == c.id ) {
       // TODO: Add minimum curation pay limit
       try
       {
@@ -1389,7 +1402,7 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
          auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
          push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
       }
-      } FC_CAPTURE_LOG_AND_RETHROW( (*itr) )
+      } FC_CAPTURE_LOG_AND_RETHROW( (c)(*itr)(*start)/*(*end)*/ )
       ++itr;
    }
    if( max_rewards.value - unclaimed_rewards.value )
@@ -1665,8 +1678,9 @@ share_type database::claim_rshare_reward( share_type rshares ) {
    modify( props, [&]( dynamic_global_property_object& p ){
      p.total_reward_fund_steem.amount -= payout;
    });
-   } FC_CAPTURE_LOG_AND_RETHROW( (rshares) )
    return payout;
+   } FC_CAPTURE_LOG_AND_RETHROW( (rshares) )
+   return 0;
 }
 
 const dynamic_global_property_object&database::get_dynamic_global_properties() const

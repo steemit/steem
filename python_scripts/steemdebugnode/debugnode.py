@@ -85,7 +85,7 @@ class DebugNode( object ):
       self._steemd_process.poll()
       sleep( 5 )
       if( not self._steemd_process.returncode ):
-         self._rpc = SteemNodeRPC( 'ws://127.0.0.1:8090', '', '' )
+         self._rpc = SteemNodeRPC( 'ws://127.0.0.1:8095', '', '' )
       else:
          raise Exception( "steemd did not start properly..." )
 
@@ -119,7 +119,7 @@ class DebugNode( object ):
    def _get_config( self ):
       return "# no seed-node in config file or command line\n" \
           + "p2p-endpoint = 127.0.0.1:2001       # bind to localhost to prevent remote p2p nodes from connecting to us\n" \
-          + "rpc-endpoint = 127.0.0.1:8090       # bind to localhost to secure RPC API access\n" \
+          + "rpc-endpoint = 127.0.0.1:8095       # bind to localhost to secure RPC API access\n" \
           + "enable-plugin = witness debug_node " + " ".join( self.plugins ) + "\n" \
           + "public-api = database_api login_api debug_node_api " + " ".join( self.apis ) + "\n"
 
