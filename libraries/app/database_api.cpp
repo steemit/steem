@@ -780,6 +780,7 @@ void database_api::set_url( discussion& d )const {
       root = &my->_db.get_comment( root->parent_author, root->parent_permlink );
    }
    d.url = "/" + root->category + "/@" + root->author + "/" + root->permlink;
+   d.root_title = root->title;
    if( root != &d )
       d.url += "#@" + d.author + "/" + d.permlink;
 }
@@ -797,16 +798,24 @@ vector<discussion> database_api::get_content_replies( string author, string perm
    return result;
 }
 
+/**
+ *  This method can be used to fetch replies to start_auth
+ */
 vector<discussion> database_api::get_discussions_by_last_update( string start_auth, string start_permlink, uint32_t limit )const {
+
+   idump((start_auth)(start_permlink)(limit) );
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
    auto itr = last_update_idx.begin();
 
-   if( start_auth.size() )
+   if( start_permlink.size() )
       itr = last_update_idx.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
+   else if( start_auth.size() ) {
+      itr = last_update_idx.lower_bound( boost::make_tuple( start_auth, time_point_sec::maximum(), object_id_type() ) );
+   }
 
    vector<discussion> result;
-   while( itr != last_update_idx.end() && result.size() < limit && !itr->parent_author.size() ) {
+   while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == start_auth ) {
       result.push_back( *itr );
       set_pending_payout(result.back());
       result.back().active_votes = get_active_votes( itr->author, itr->permlink );
@@ -1086,6 +1095,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
      return result;
 } FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) ) }
 
+
 state database_api::get_state( string path )const
 {
    if( path.size() && path[0] == '/' )
@@ -1136,47 +1146,58 @@ state database_api::get_state( string path )const
       auto acnt = part[0].substr(1);
       _state.accounts[acnt] = my->_db.get_account(acnt);
       auto& eacnt = _state.accounts[acnt];
-      auto history = get_account_history( acnt, uint64_t(-1), 1000 );
-      for( auto& item : history ) {
-         switch( item.second.op.which() ) {
-            case operation::tag<transfer_to_vesting_operation>::value:
-            case operation::tag<withdraw_vesting_operation>::value:
-            case operation::tag<interest_operation>::value:
-            case operation::tag<transfer_operation>::value:
-            case operation::tag<liquidity_reward_operation>::value:
-            case operation::tag<comment_reward_operation>::value:
-            case operation::tag<curate_reward_operation>::value:
-               eacnt.transfer_history[item.first] =  item.second;
-               break;
-            case operation::tag<comment_operation>::value:
-               eacnt.post_history[item.first] =  item.second;
-               break;
-            case operation::tag<limit_order_create_operation>::value:
-            case operation::tag<limit_order_cancel_operation>::value:
-            case operation::tag<fill_convert_request_operation>::value:
-            case operation::tag<fill_order_operation>::value:
-               eacnt.market_history[item.first] =  item.second;
-               break;
-            case operation::tag<vote_operation>::value:
-            case operation::tag<account_witness_vote_operation>::value:
-            case operation::tag<account_witness_proxy_operation>::value:
-               eacnt.vote_history[item.first] =  item.second;
-               break;
-            case operation::tag<account_create_operation>::value:
-            case operation::tag<account_update_operation>::value:
-            case operation::tag<witness_update_operation>::value:
-            case operation::tag<pow_operation>::value:
-            case operation::tag<custom_operation>::value:
-            default:
-               eacnt.other_history[item.first] =  item.second;
+      if( part[1] == "transfers" ) {
+         auto history = get_account_history( acnt, uint64_t(-1), 1000 );
+         for( auto& item : history ) {
+            switch( item.second.op.which() ) {
+               case operation::tag<transfer_to_vesting_operation>::value:
+               case operation::tag<withdraw_vesting_operation>::value:
+               case operation::tag<interest_operation>::value:
+               case operation::tag<transfer_operation>::value:
+               case operation::tag<liquidity_reward_operation>::value:
+               case operation::tag<comment_reward_operation>::value:
+               case operation::tag<curate_reward_operation>::value:
+                  eacnt.transfer_history[item.first] =  item.second;
+                  break;
+               case operation::tag<comment_operation>::value:
+               //   eacnt.post_history[item.first] =  item.second;
+                  break;
+               case operation::tag<limit_order_create_operation>::value:
+               case operation::tag<limit_order_cancel_operation>::value:
+               case operation::tag<fill_convert_request_operation>::value:
+               case operation::tag<fill_order_operation>::value:
+               //   eacnt.market_history[item.first] =  item.second;
+                  break;
+               case operation::tag<vote_operation>::value:
+               case operation::tag<account_witness_vote_operation>::value:
+               case operation::tag<account_witness_proxy_operation>::value:
+               //   eacnt.vote_history[item.first] =  item.second;
+                  break;
+               case operation::tag<account_create_operation>::value:
+               case operation::tag<account_update_operation>::value:
+               case operation::tag<witness_update_operation>::value:
+               case operation::tag<pow_operation>::value:
+               case operation::tag<custom_operation>::value:
+               default:
+                  eacnt.other_history[item.first] =  item.second;
+            }
          }
-      }
-      if( part[1] == "posts" ) {
+      } else if( part[1] == "recent-replies" ) {
+        auto replies = get_discussions_by_last_update( acnt, "", 80 );
+        edump((replies));
+        eacnt.recent_replies = vector<string>();
+        for( const auto& reply : replies ) {
+           auto reply_ref = reply.author+"/"+reply.permlink;
+           _state.content[ reply_ref ] = reply;
+           eacnt.recent_replies->push_back( reply_ref );
+        }
+      } else if( part[1] == "posts" ) {
         int count = 0;
         const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_date>();
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
+        eacnt.posts = vector<string>();
         while( itr != pidx.end() && itr->author == acnt && count < 100 ) {
-           eacnt.posts.push_back(itr->permlink);
+           eacnt.posts->push_back(itr->permlink);
            _state.content[acnt+"/"+itr->permlink] = *itr;
            ++itr;
            ++count;
@@ -1197,8 +1218,9 @@ state database_api::get_state( string path )const
            int count = 0;
            const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
            auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
+           eacnt.blog = vector<string>();
            while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() ) {
-              eacnt.blog.push_back(itr->permlink);
+              eacnt.blog->push_back(itr->permlink);
               _state.content[acnt+"/"+itr->permlink] = *itr;
               ++itr;
               ++count;
