@@ -1210,6 +1210,7 @@ state database_api::get_state( string path )const
            while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() )  {
               eacnt.blog_category[part[2]].push_back(itr->permlink);
               _state.content[acnt+"/"+itr->permlink] = *itr;
+              set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
               ++itr;
               ++count;
            }
@@ -1222,6 +1223,7 @@ state database_api::get_state( string path )const
            while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() ) {
               eacnt.blog->push_back(itr->permlink);
               _state.content[acnt+"/"+itr->permlink] = *itr;
+              set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
               ++itr;
               ++count;
            }
