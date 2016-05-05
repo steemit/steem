@@ -801,21 +801,22 @@ vector<discussion> database_api::get_content_replies( string author, string perm
 /**
  *  This method can be used to fetch replies to start_auth
  */
-vector<discussion> database_api::get_discussions_by_last_update( string start_auth, string start_permlink, uint32_t limit )const {
+vector<discussion> database_api::get_discussions_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const {
 
-   idump((start_auth)(start_permlink)(limit) );
+   idump((start_parent_author)(start_permlink)(limit) );
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
    auto itr = last_update_idx.begin();
 
-   if( start_permlink.size() )
-      itr = last_update_idx.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-   else if( start_auth.size() ) {
-      itr = last_update_idx.lower_bound( boost::make_tuple( start_auth, time_point_sec::maximum(), object_id_type() ) );
+
+   if( start_permlink.size() ) 
+      itr = last_update_idx.iterator_to( my->_db.get_comment( start_parent_author, start_permlink ) );
+   else if( start_parent_author.size() ) {
+      itr = last_update_idx.lower_bound( boost::make_tuple( start_parent_author, time_point_sec::maximum(), object_id_type() ) );
    }
 
    vector<discussion> result;
-   while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == start_auth ) {
+   while( itr != last_update_idx.end() && result.size() < limit  ) {
       result.push_back( *itr );
       set_pending_payout(result.back());
       result.back().active_votes = get_active_votes( itr->author, itr->permlink );
