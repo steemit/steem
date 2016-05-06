@@ -165,8 +165,13 @@ class private_message_plugin : public steemit::app::plugin
 
 class private_message_api : public std::enable_shared_from_this<private_message_api> {
    public:
-      private_message_api(app::application& a):_app(a){}
-      void on_api_startup(){}
+      private_message_api(){};
+      private_message_api(app::application& a):_app(&a){
+         ilog( "creating private message api" );
+      }
+      void on_api_startup(){
+         wlog( "on private_message api startup" );
+      }
       
       /**
        *
@@ -175,7 +180,7 @@ class private_message_api : public std::enable_shared_from_this<private_message_
       vector<message_object> get_outbox( string from, time_point newest, uint16_t limit )const;
 
    private:
-      app::application& _app;
+      app::application* _app = nullptr;
 };
 
 

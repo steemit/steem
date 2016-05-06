@@ -48,10 +48,12 @@ namespace steemit { namespace app {
     {
     }
 
-    void login_api::on_api_startup() {}
+    void login_api::on_api_startup() {
+    }
 
     bool login_api::login(const string& user, const string& password)
     {
+       idump((user)(password));
        optional< api_access_info > acc = _app.get_api_access_info( user );
        if( !acc.valid() )
           return false;
@@ -67,11 +69,15 @@ namespace steemit { namespace app {
              return false;
        }
 
+       idump((acc->allowed_apis));
        for( const std::string& api_name : acc->allowed_apis )
        {
           auto it = _api_map.find( api_name );
-          if( it != _api_map.end() )
+          if( it != _api_map.end() ) {
+             wlog( "known api: ${api}", ("api",api_name) );
              continue;
+          }
+          idump((api_name));
           _api_map[ api_name ] = _app.create_api_by_name( api_name );
        }
        return true;

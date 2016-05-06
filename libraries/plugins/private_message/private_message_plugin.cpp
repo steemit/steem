@@ -158,7 +158,7 @@ void private_message_plugin::plugin_initialize(const boost::program_options::var
 vector<message_object> private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
    FC_ASSERT( limit <= 100 );
    vector<message_object> result;
-   const auto& idx = database().get_index_type<private_message_index>().indices().get<by_to_date>();
+   const auto& idx = _app->chain_database()->get_index_type<private_message_index>().indices().get<by_to_date>();
    auto itr = idx.lower_bound( std::make_tuple( to, newest ) );
    while( itr != idx.end() && limit && itr->to == to ) {
       result.push_back(*itr);
@@ -172,7 +172,7 @@ vector<message_object> private_message_api::get_inbox( string to, time_point new
 vector<message_object> private_message_api::get_outbox( string from, time_point newest, uint16_t limit )const {
    FC_ASSERT( limit <= 100 );
    vector<message_object> result;
-   const auto& idx = database().get_index_type<private_message_index>().indices().get<by_from_date>();
+   const auto& idx = _app->chain_database()->get_index_type<private_message_index>().indices().get<by_from_date>();
 
    auto itr = idx.lower_bound( std::make_tuple( from, newest ) );
    while( itr != idx.end() && limit && itr->from == from ) {
