@@ -826,7 +826,7 @@ try {
      adjust_balance( to_account, sbd );
      adjust_supply( -steem );
      adjust_supply( sbd );
-
+     validate_invariants();
      return sbd;
   } else {
      adjust_balance( to_account, steem );
@@ -1360,6 +1360,7 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
    }
+   validate_invariants();
    } FC_CAPTURE_LOG_AND_RETHROW( (cur) );
 }
 
@@ -1373,18 +1374,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
 {
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
-
-   /*
-   const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_comment_voter >();
-   comment_id_type cid(comment.id);
-   auto itr = idx.lower_bound( cid );
-   while( itr != idx.end() && itr->comment == cid )
-   {
-      const auto& vo = itr->voter(my->_db);
-      result.push_back(vote_state{vo.name,itr->weight});
-      ++itr;
-   }
-   */
 
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
    auto itr = cvidx.lower_bound( c.id );
@@ -1410,7 +1399,7 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       {
          p.total_reward_fund_steem += unclaimed_rewards;
       });
-
+   validate_invariants();
    return unclaimed_rewards;
 }
 
@@ -1482,6 +1471,8 @@ void database::process_comment_cashout() {
          ++vote_itr;
          remove(cur_vote);
       }
+
+      validate_invariants();
    } FC_CAPTURE_LOG_AND_RETHROW( (*current) );
    }
 }
@@ -2647,7 +2638,7 @@ void database::set_hardfork( uint32_t hardfork, bool process_now )
  */
 void database::validate_invariants()const
 {
-   const auto& db = *this;
+   //const auto& db = *this;
    try
    {
      // const auto& account_idx = get_index_type< account_index >().indices().get< by_id >();
@@ -2657,7 +2648,7 @@ void database::validate_invariants()const
       asset total_vesting = asset( 0, VESTS_SYMBOL );
       share_type total_vsf_votes = share_type( 0 );
 
-      auto gpo = db.get_dynamic_global_properties();
+      auto gpo = get_dynamic_global_properties();
 
       /// verify no witness has too many votes
       const auto& witness_idx = get_index_type< witness_index >().indices();
@@ -2672,7 +2663,7 @@ void database::validate_invariants()const
          total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
       }
 
-      const auto& convert_request_idx = db.get_index_type< convert_index >().indices();
+      const auto& convert_request_idx = get_index_type< convert_index >().indices();
 
       for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); itr++ )
       {
@@ -2684,7 +2675,7 @@ void database::validate_invariants()const
             FC_ASSERT( !"Encountered illegal symbol in convert_request_object" );
       }
 
-      const auto& limit_order_idx = db.get_index_type< limit_order_index >().indices();
+      const auto& limit_order_idx = get_index_type< limit_order_index >().indices();
 
       for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); itr++ )
       {
@@ -2701,7 +2692,7 @@ void database::validate_invariants()const
       fc::uint128_t total_rshares2;
       fc::uint128_t total_children_rshares2;
 
-      const auto& comment_idx = db.get_index_type< comment_index >().indices();
+      const auto& comment_idx = get_index_type< comment_index >().indices();
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
@@ -2723,11 +2714,11 @@ void database::validate_invariants()const
       FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
 
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
-      if ( !db.get_feed_history().current_median_history.is_null() )
-         FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
-            == gpo.virtual_supply );
+      /*if ( !get_feed_history().current_median_history.is_null() )
+         FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
+            == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );*/
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (db.head_block_num()) );
+   FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
 
 void database::perform_vesting_share_split( uint32_t magnitude )
@@ -2771,7 +2762,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
    for( const auto& vote : vote_idx ) {
       modify( vote, [&]( comment_vote_object& cv )
       {
-         cv.weight = ( cv.weight * magnitude ) * magnitude;
+         cv.weight = cv.weight * magnitude ;
       });
    }
 
