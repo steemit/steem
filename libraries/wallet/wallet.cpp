@@ -241,7 +241,8 @@ public:
       : self( s ),
         _remote_api( rapi ),
         _remote_db( rapi->get_api_by_name("database_api")->as< database_api >() ),
-        _remote_net_broadcast( rapi->get_api_by_name("network_broadcast_api")->as< network_broadcast_api >() )
+        _remote_net_broadcast( rapi->get_api_by_name("network_broadcast_api")->as< network_broadcast_api >() ),
+        _remote_message_api( rapi->get_api_by_name("private_message_api")->as< private_message_api >() )
    {
       init_prototype_ops();
 
@@ -877,6 +878,7 @@ public:
    fc::api<login_api>                      _remote_api;
    fc::api<database_api>                   _remote_db;
    fc::api<network_broadcast_api>          _remote_net_broadcast;
+   fc::api<private_message_api>            _remote_message_api;
    optional< fc::api<network_node_api> >   _remote_net_node;
 
    flat_map<string, operation>             _prototype_ops;
@@ -1688,6 +1690,98 @@ annotated_signed_transaction wallet_api::vote( string voter, string author, stri
 }
 annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
    return my->_remote_db->get_transaction( id );
+}
+
+annotated_signed_transaction      wallet_api::send_private_message( string from, string to, string subject, string body, bool broadcast ) {
+   FC_ASSERT( !is_locked(), "wallet must be unlocked to send a private message" );
+   auto from_account = get_account( from );
+   auto to_account   = get_account( to );
+
+   custom_operation op;
+   op.required_auths.insert(from);
+   op.id = STEEMIT_PRIVATE_MESSAGE_COP_ID;
+
+
+   private_message_operation pmo;
+   pmo.from          = from;
+   pmo.to            = to;
+   pmo.sent_time     = fc::time_point::now();
+   pmo.from_memo_key = from_account.memo_key;
+   pmo.to_memo_key   = to_account.memo_key;
+
+   message_body message;
+   message.subject = subject;
+   message.body    = body;
+
+   auto priv_key = wif_to_key( get_private_key( pmo.from_memo_key ) );
+   FC_ASSERT( priv_key, "unable to find private key for memo" );
+   auto shared_secret = priv_key->get_shared_secret( pmo.to_memo_key );
+   fc::sha512::encoder enc;
+   fc::raw::pack( enc, pmo.sent_time );
+   fc::raw::pack( enc, shared_secret );
+   auto encrypt_key = enc.result();
+   pmo.checksum = fc::sha256::hash( encrypt_key )._hash[0];
+
+   vector<char> plain_text = fc::raw::pack( message );
+   pmo.encrypted_message = fc::aes_encrypt( encrypt_key, plain_text );
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+message_body wallet_api::try_decrypt_message( const message_object& mo ) {
+   message_body result;
+
+   fc::sha512 shared_secret;
+
+   auto it = my->_keys.find(mo.from_memo_key);
+   if( it == my->_keys.end() )
+   {
+      it = my->_keys.find(mo.to_memo_key);
+      if( it == my->_keys.end() )
+         return result;
+      auto priv_key = wif_to_key( it->second );
+      if( priv_key ) return result;
+      shared_secret = priv_key->get_shared_secret( mo.from_memo_key );
+   } else {
+      auto priv_key = wif_to_key( it->second );
+      if( priv_key ) return result;
+      shared_secret = priv_key->get_shared_secret( mo.to_memo_key );
+   }
+
+   fc::sha512::encoder enc;
+   fc::raw::pack( enc, mo.sent_time );
+   fc::raw::pack( enc, shared_secret );
+   auto encrypt_key = enc.result();
+
+   if( mo.checksum != fc::sha256::hash( encrypt_key )._hash[0] )
+      return result;
+
+   auto decrypt_data = fc::aes_decrypt( encrypt_key, mo.encrypted_message );
+   try {
+      return fc::raw::unpack<message_body>( decrypt_data );
+   } catch ( ... ) {
+      return result;
+   }
+}
+
+vector<extended_message_object>   wallet_api::get_inbox( string account, fc::time_point newest, uint32_t limit ) {
+   FC_ASSERT( !is_locked() );
+   vector<extended_message_object> result;
+   auto remote_result = my->_remote_message_api->get_inbox( account, newest, limit );
+   for( const auto& item : remote_result ) {
+      result.emplace_back( item );
+      result.back().message = try_decrypt_message( item );
+   }
+   return result;
+}
+
+vector<extended_message_object>   wallet_api::get_outbox( string account, fc::time_point newest, uint32_t limit ) {
+   FC_ASSERT( !is_locked() );
+   vector<extended_message_object> result;
+   return result;
 }
 
 } } // steemit::wallet

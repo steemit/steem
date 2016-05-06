@@ -24,6 +24,7 @@
 #pragma once
 
 #include <steemit/app/api.hpp>
+#include <steemit/private_message/private_message_plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -38,6 +39,7 @@ using namespace std;
 namespace steemit { namespace wallet {
 
 using steemit::app::discussion;
+using namespace steemit::private_message;
 
 typedef uint16_t transaction_handle_type;
 
@@ -661,6 +663,11 @@ class wallet_api
        */
       annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
 
+      annotated_signed_transaction      send_private_message( string from, string to, string subject, string body, bool broadcast );
+      vector<extended_message_object>   get_inbox( string account, fc::time_point newest, uint32_t limit );
+      vector<extended_message_object>   get_outbox( string account, fc::time_point newest, uint32_t limit );
+      message_body try_decrypt_message( const message_object& mo );
+
       /**
        * Vote on a comment to be paid STEEM
        *
@@ -762,6 +769,11 @@ FC_API( steemit::wallet::wallet_api,
         (cancel_order)
         (post_comment)
         (vote)
+
+        // private message api
+        (send_private_message)
+        (get_inbox)
+        (get_outbox)
 
         /// helper api
         (get_prototype_operation)

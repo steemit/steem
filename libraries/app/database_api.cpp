@@ -1184,7 +1184,7 @@ state database_api::get_state( string path )const
             }
          }
       } else if( part[1] == "recent-replies" ) {
-        auto replies = get_discussions_by_last_update( acnt, "", 80 );
+        auto replies = get_discussions_by_last_update( acnt, "", 50 );
         edump((replies));
         eacnt.recent_replies = vector<string>();
         for( const auto& reply : replies ) {
@@ -1251,7 +1251,7 @@ state database_api::get_state( string path )const
       _state.pow_queue = get_miner_queue();
    }
    else if( part[0] == "trending" && part[1].size() ) {
-      auto trending_disc = get_discussions_in_category_by_total_pending_payout( part[1], "", "", 50 );
+      auto trending_disc = get_discussions_in_category_by_total_pending_payout( part[1], "", "", 20 );
 
       auto& didx = _state.discussion_idx[part[1]];
       for( const auto& d : trending_disc ) {
@@ -1262,7 +1262,7 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "trending" || part[0] == "") {
-      auto trending_disc = get_discussions_by_total_pending_payout( "", "", 50 );
+      auto trending_disc = get_discussions_by_total_pending_payout( "", "", 20 );
       auto& didx = _state.discussion_idx[""];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
@@ -1284,7 +1284,7 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "maturing" ) {
-      auto trending_disc = get_discussions_in_category_by_cashout_time( part[1], "", "", 50 );
+      auto trending_disc = get_discussions_in_category_by_cashout_time( part[1], "", "", 20 );
       auto& didx = _state.discussion_idx[part[1]];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
@@ -1294,7 +1294,7 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "recent" && part[1] == "") {
-      auto trending_disc = get_discussions_by_last_update( "", "", 50 );
+      auto trending_disc = get_discussions_by_last_update( "", "", 20 );
       auto& didx = _state.discussion_idx[""];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
@@ -1303,7 +1303,7 @@ state database_api::get_state( string path )const
          _state.content[key] = std::move(d);
       }
    } else if( part[0] == "recent" ) {
-      auto trending_disc = get_discussions_in_category_by_last_update( part[1], "", "", 50 );
+      auto trending_disc = get_discussions_in_category_by_last_update( part[1], "", "", 20 );
       auto& didx = _state.discussion_idx[part[1]];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;

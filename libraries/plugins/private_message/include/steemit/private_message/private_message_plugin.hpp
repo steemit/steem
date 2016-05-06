@@ -30,6 +30,7 @@
 #include <boost/multi_index/composite_key.hpp>
 
 #include <fc/thread/future.hpp>
+#include <fc/api.hpp>
 
 namespace steemit { namespace private_message {
 using namespace chain;
@@ -72,6 +73,7 @@ struct message_body {
 };
 
 
+
 class  message_object : public abstract_object<message_object> {
    public:
       static const uint8_t space_id = PRIVATE_MESSAGE_SPACE_ID;
@@ -82,8 +84,15 @@ class  message_object : public abstract_object<message_object> {
       public_key_type    from_memo_key;
       public_key_type    to_memo_key;
       fc::time_point     sent_time; /// used as seed to secret generation
+      fc::time_point_sec receive_time; /// time received by blockchain
       uint32_t           checksum = 0;
       vector<char>       encrypted_message;
+};
+
+struct extended_message_object : public message_object {
+   extended_message_object(){}
+   extended_message_object( const message_object& o ):message_object(o){}
+   message_body   message;
 };
 
 struct private_message_operation {
@@ -154,9 +163,30 @@ class private_message_plugin : public steemit::app::plugin
       std::unique_ptr<detail::private_message_plugin_impl> my;
 };
 
+class private_message_api : public std::enable_shared_from_this<private_message_api> {
+   public:
+      private_message_api(app::application& a):_app(a){}
+      void on_api_startup(){}
+      
+      /**
+       *
+       */
+      vector<message_object> get_inbox( string to, time_point newest, uint16_t limit )const;
+      vector<message_object> get_outbox( string from, time_point newest, uint16_t limit )const;
+
+   private:
+      app::application& _app;
+};
+
+
+
 } } //steemit::private_message
 
-FC_REFLECT_DERIVED( steemit::private_message::message_object, (graphene::db::object), (from)(to)(from_memo_key)(to_memo_key)(sent_time)(checksum)(encrypted_message) );
+FC_API( steemit::private_message::private_message_api, (get_inbox)(get_outbox) );
+
+FC_REFLECT( steemit::private_message::message_body, (thread_start)(subject)(body)(json_meta)(cc) );
+FC_REFLECT_DERIVED( steemit::private_message::message_object, (graphene::db::object), (from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
+FC_REFLECT_DERIVED( steemit::private_message::extended_message_object, (steemit::private_message::message_object), (message) );
 
 FC_REFLECT( steemit::private_message::private_message_operation, (from)(to)(from_memo_key)(to_memo_key)(sent_time)(checksum)(encrypted_message) );
 

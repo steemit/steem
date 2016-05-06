@@ -149,8 +149,38 @@ void private_message_plugin::plugin_initialize(const boost::program_options::var
    database().on_applied_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
    database().add_index< primary_index< private_message_index  > >();
 
+   app().register_api_factory<private_message_api>("private_message_api");
+
    typedef pair<string,string> pairstring;
    LOAD_VALUE_SET(options, "pm-accounts", my->_tracked_accounts, pairstring);
+}
+
+vector<message_object> private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
+   FC_ASSERT( limit <= 100 );
+   vector<message_object> result;
+   const auto& idx = database().get_index_type<private_message_index>().indices().get<by_to_date>();
+   auto itr = idx.lower_bound( std::make_tuple( to, newest ) );
+   while( itr != idx.end() && limit && itr->to == to ) {
+      result.push_back(*itr);
+      ++itr;
+      --limit;
+   }
+
+   return result;
+}
+
+vector<message_object> private_message_api::get_outbox( string from, time_point newest, uint16_t limit )const {
+   FC_ASSERT( limit <= 100 );
+   vector<message_object> result;
+   const auto& idx = database().get_index_type<private_message_index>().indices().get<by_from_date>();
+
+   auto itr = idx.lower_bound( std::make_tuple( from, newest ) );
+   while( itr != idx.end() && limit && itr->from == from ) {
+      result.push_back(*itr);
+      ++itr;
+      --limit;
+   }
+   return result;
 }
 
 void private_message_plugin::plugin_startup()
