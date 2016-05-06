@@ -614,8 +614,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
 } FC_CAPTURE_LOG_AND_RETHROW( (o)) }
 
-void custom_evaluator::do_apply( const custom_operation& o ){
-   /// TODO..... ??
+void custom_evaluator::do_apply( const custom_operation& o ){}
+
+void custom_json_evaluator::do_apply( const custom_json_operation& o ){
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) );
 }
 
 

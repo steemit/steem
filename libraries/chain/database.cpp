@@ -1736,6 +1736,7 @@ void database::initialize_evaluators()
     register_evaluator<account_witness_vote_evaluator>();
     register_evaluator<account_witness_proxy_evaluator>();
     register_evaluator<custom_evaluator>();
+    register_evaluator<custom_json_evaluator>();
     register_evaluator<pow_evaluator>();
     register_evaluator<report_over_production_evaluator>();
 
