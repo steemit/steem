@@ -361,14 +361,19 @@ public:
 
    string get_wallet_filename() const { return _wallet_filename; }
 
-   fc::ecc::private_key              get_private_key(const public_key_type& id)const
+   optional<fc::ecc::private_key>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
-      FC_ASSERT( it != _keys.end() );
+      if( it != _keys.end() ) 
+         return wif_to_key( it->second );
+      return optional<fc::ecc::private_key>();
+   }
 
-      fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
-      FC_ASSERT( privkey );
-      return *privkey;
+   fc::ecc::private_key              get_private_key(const public_key_type& id)const
+   {
+      auto has_key = try_get_private_key( id );
+      FC_ASSERT( has_key );
+      return *has_key;
    }
 
    fc::ecc::private_key get_private_key_for_account(const account_object& account)const
@@ -1531,7 +1536,31 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
     op.from = from;
     op.to = to;
     op.amount = amount;
-    op.memo = memo;
+
+    if( memo.size() > 0 && memo[0] == '#' ) {
+       memo_data m;
+       
+       auto from_account = get_account( from );
+       auto to_account   = get_account( to );
+
+       m.from            = from_account.memo_key;
+       m.to              = to_account.memo_key;
+       m.nonce = fc::time_point::now().time_since_epoch().count();
+
+       auto from_priv = my->get_private_key( m.from );
+       auto shared_secret = from_priv.get_shared_secret( m.to );
+       
+       fc::sha512::encoder enc;
+       fc::raw::pack( enc, m.nonce );
+       fc::raw::pack( enc, shared_secret );
+       auto encrypt_key = enc.result();
+
+       m.encrypted = fc::aes_encrypt( encrypt_key, fc::raw::pack(memo.substr(1)) );
+       m.check = fc::sha256::hash( encrypt_key )._hash[0];
+       op.memo = m;
+    } else {
+       op.memo = memo;
+    }
 
     signed_transaction tx;
     tx.operations.push_back( op );
@@ -1603,7 +1632,41 @@ vector< convert_request_object > wallet_api::get_conversion_requests( string own
 }
 
 map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
-   return my->_remote_db->get_account_history(account,from,limit);
+   auto result = my->_remote_db->get_account_history(account,from,limit);
+   if( !is_locked() ) {
+      for( auto& item : result ) {
+         if( item.second.op.which() == operation::tag<transfer_operation>::value ) {
+            auto& top = item.second.op.get<transfer_operation>();
+            if( top.memo.size() && top.memo[0] == '#' ) {
+               auto m = memo_data::from_string( top.memo );
+               if( m ) {
+                  fc::sha512 shared_secret;
+                  auto from_key = my->try_get_private_key( m->from );
+                  if( !from_key ) {
+                     auto to_key   = my->try_get_private_key( m->to );
+                     if( !to_key ) return result;
+                     shared_secret = to_key->get_shared_secret( m->from );
+                  } else {
+                     shared_secret = from_key->get_shared_secret( m->to );
+                  }
+                  fc::sha512::encoder enc;
+                  fc::raw::pack( enc, m->nonce );
+                  fc::raw::pack( enc, shared_secret );
+                  auto encryption_key = enc.result();
+
+                  uint32_t check = fc::sha256::hash( encryption_key )._hash[0];
+                  if( check != m->check ) return result;
+
+                  try {
+                     vector<char> decrypted = fc::aes_decrypt( encryption_key, m->encrypted );
+                     top.memo = fc::raw::unpack<std::string>( decrypted );
+                  } catch ( ... ){}
+               }
+            }
+         }
+      }
+   }
+   return result;
 }
 
 app::state wallet_api::get_state( string url ) {

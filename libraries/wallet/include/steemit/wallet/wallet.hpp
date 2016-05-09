@@ -30,6 +30,7 @@
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <fc/real128.hpp>
+#include <fc/crypto/base58.hpp>
 
 using namespace steemit::app;
 using namespace steemit::chain;
@@ -49,6 +50,34 @@ typedef uint16_t transaction_handle_type;
  */
 
 object* create_object( const variant& v );
+
+struct memo_data {
+
+   static optional<memo_data> from_string( string str ) {
+      try {
+         if( str.size() > sizeof(memo_data) && str[0] == '#') {
+            auto data = fc::from_base58( str.substr(1) );
+            auto m  = fc::raw::unpack<memo_data>( data );
+            FC_ASSERT( string(m) == str );
+            return m;
+         }
+      } catch ( ... ) {}
+      return optional<memo_data>();
+   }
+
+   public_key_type from;
+   public_key_type to;
+   uint64_t        nonce = 0;
+   uint32_t        check = 0;
+   vector<char>    encrypted;
+
+   operator string()const {
+      auto data = fc::raw::pack(*this);
+      auto base58 = fc::to_base58( data );
+      return '#'+base58;
+   }
+};
+
 
 
 struct brain_key_info
@@ -788,3 +817,4 @@ FC_API( steemit::wallet::wallet_api,
         (get_transaction)
       )
 
+FC_REFLECT( steemit::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) );
