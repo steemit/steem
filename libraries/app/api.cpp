@@ -103,9 +103,9 @@ namespace steemit { namespace app {
              auto itr = _callbacks.find(id);
              if( itr != _callbacks.end() )
              {
-                const auto& callback = _callbacks.find(id)->second;
+                auto callback = _callbacks.find(id)->second;
                 fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
-                //_callbacks.erase( itr );// safe becaues callback is copied by lambda
+                itr->second = []( const variant& ){};
              }
           }
        }
@@ -119,9 +119,9 @@ namespace steemit { namespace app {
                auto cb_itr = _callbacks.find( trx_id );
                if( cb_itr != _callbacks.end() ) {
                    auto capture_this = shared_from_this();
-                   const auto& callback = _callbacks.find(trx_id)->second; 
+                   auto callback = _callbacks.find(trx_id)->second; 
                    fc::async( [capture_this,this,block_num,trx_id,callback](){ callback( fc::variant(transaction_confirmation{ trx_id, block_num, -1, true}) ); } );
-                   // _callbacks.erase( cb_itr ); // safe becaues callback is copied by lambda
+                   _callbacks.erase(cb_itr);
                }
              }
              _callbacks_expirations.erase( itr );

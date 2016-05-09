@@ -128,34 +128,52 @@ uint32_t debug_node_api_impl::debug_generate_blocks_until( const std::string& de
    if( generate_sparsely )
    {
       auto new_slot = db->get_slot_at_time( head_block_time );
+
       if( new_slot <= 1 )
-         new_blocks += debug_generate_blocks( debug_key, 1 );
-      else
+         return debug_generate_blocks( debug_key, new_slot );
+
+      std::shared_ptr< debug_node_plugin > debug_plugin = get_plugin();
+      fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
+      FC_ASSERT( debug_private_key.valid() );
+      steemit::chain::public_key_type debug_public_key = debug_private_key->get_public_key();
+
+      std::string scheduled_witness_name = db->get_scheduled_witness( new_slot );
+      fc::time_point_sec scheduled_time = db->get_slot_time( new_slot );
+      const chain::witness_object& scheduled_witness = db->get_witness( scheduled_witness_name );
+      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
+
+      wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+
+      if( scheduled_key != debug_public_key )
       {
-         fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
-         FC_ASSERT( debug_private_key.valid() );
-         steemit::chain::public_key_type debug_public_key = debug_private_key->get_public_key();
-
-         auto scheduled_witness_name = db->get_scheduled_witness( new_slot );
-         auto scheduled_time = db->get_slot_time( new_slot );
-         const auto& scheduled_witness = db->get_witness( scheduled_witness_name );
-         steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-
-         wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
-
-         if( scheduled_key != debug_public_key )
-         {
-            wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-            fc::mutable_variant_object update;
-            update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-            get_plugin()->debug_update( update );
-         }
-
-         db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
-         new_blocks++;
-
-         FC_ASSERT( head_block_time.sec_since_epoch() - db->head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db->head_block_time()",db->head_block_time()) );
+         wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+         fc::mutable_variant_object update;
+         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
+         debug_plugin->debug_update( update );
       }
+
+      db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      new_blocks++;
+
+      /*scheduled_witness_name = db->get_scheduled_witness( 1 );
+      scheduled_time = db->get_slot_time( 1 );
+      const auto& next_scheduled_witness = db->get_witness( scheduled_witness_name );
+      scheduled_key = next_scheduled_witness.signing_key;
+
+      wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+
+      if( scheduled_key != debug_public_key )
+      {
+         wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+         fc::mutable_variant_object update;
+         update("_action", "update")("id", next_scheduled_witness.id)("signing_key", debug_public_key);
+         debug_plugin->debug_update( update );
+      }
+
+      db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      new_blocks++;*/
+
+      FC_ASSERT( head_block_time.sec_since_epoch() - db->head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db->head_block_time()",db->head_block_time()) );
    }
    else
    {

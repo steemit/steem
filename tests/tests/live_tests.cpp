@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       while( acnt_itr != acnt_idx.end() )
       {
          account_vests[acnt_itr->name] = acnt_itr->vesting_shares.amount;
-         account_vsf_votes[acnt_itr->name] = acnt_itr->proxied_vsf_votes;
+         account_vsf_votes[acnt_itr->name] = acnt_itr->proxied_vsf_votes_total().value;
          acnt_itr++;
       }
 
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       while( acnt_itr != acnt_idx.end() )
       {
          BOOST_REQUIRE( acnt_itr->vesting_shares.amount == account_vests[ acnt_itr->name ] * magnitude );
-         BOOST_REQUIRE( acnt_itr->proxied_vsf_votes.value == account_vsf_votes[ acnt_itr->name ] * magnitude );
+         BOOST_REQUIRE( acnt_itr->proxied_vsf_votes_total().value == account_vsf_votes[ acnt_itr->name ] * magnitude );
          acnt_itr++;
       }
 

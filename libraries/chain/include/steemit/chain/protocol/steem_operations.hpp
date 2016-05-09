@@ -37,7 +37,10 @@ namespace steemit { namespace chain {
       { if( owner ) a.insert( account ); }
 
       void get_required_active_authorities( flat_set<string>& a )const
-      { if( !owner ) a.insert( account ); }
+      { if( !owner /*&& active*/) a.insert( account ); }
+
+      //void get_required_posting_authorities( flat_set<string>& a )const
+      //{ if( !active && !owner && posting ) a.insert( account ); }
    };
 
    struct comment_operation : public base_operation

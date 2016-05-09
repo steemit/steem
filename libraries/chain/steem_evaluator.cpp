@@ -36,7 +36,7 @@ void inline validate_permlink( string permlink )
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
-   const auto&  witness_account = db().get_account( o.owner );
+   db().get_account( o.owner ); // verify owner exists
 
    if ( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
 
@@ -363,7 +363,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
     const auto& account = db().get_account( o.account );
 
-    if( !db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
+    // TODO: DELETE if( !db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
 
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
@@ -379,7 +379,12 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
                  "Account registered by another account requires 10x account creation fee worth of Steem Power before it can power down" );
     }
 
+
+
     if( o.vesting_shares.amount == 0 ) {
+       if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+          FC_ASSERT( account.vesting_withdraw_rate.amount  != 0, "this operation would not change the vesting withdraw rate" );
+
        db().modify( account, [&]( account_object& a ) {
          a.vesting_withdraw_rate = asset( 0, VESTS_SYMBOL );
          a.next_vesting_withdrawal = time_point_sec::maximum();
@@ -389,9 +394,15 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
     }
     else {
        db().modify( account, [&]( account_object& a ) {
-         a.vesting_withdraw_rate = asset( o.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
-         if( a.vesting_withdraw_rate.amount == 0 )
-            a.vesting_withdraw_rate.amount = 1;
+         auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+
+         if( new_vesting_withdraw_rate.amount == 0 )
+            new_vesting_withdraw_rate.amount = 1;
+
+         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) ) 
+            FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "this operation would not change the vesting withdraw rate" );
+
+         a.vesting_withdraw_rate = new_vesting_withdraw_rate;
 
          a.next_vesting_withdrawal = db().head_block_time() + fc::seconds(STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS);
          a.to_withdraw = o.vesting_shares.amount;
@@ -406,7 +417,11 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
    FC_ASSERT( account.proxy != o.proxy, "something must change" );
 
    /// remove all current votes
-   db().adjust_proxied_witness_votes( account, -account.witness_vote_weight() );
+   std::array<share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1> delta;
+   delta[0] = -account.vesting_shares.amount;
+   for( int i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
+      delta[i+1] = -account.proxied_vsf_votes[i];
+   db().adjust_proxied_witness_votes( account, delta );
 
    if( o.proxy.size() ) {
       const auto& new_proxy = db().get_account( o.proxy );
@@ -430,7 +445,9 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
       });
 
       /// add all new votes
-      db().adjust_proxied_witness_votes( account, account.witness_vote_weight() );
+      for( int i = 0; i <= STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
+         delta[i] = -delta[i];
+      db().adjust_proxied_witness_votes( account, delta );
    } else { /// we are clearing the proxy which means we simply update the account
       db().modify( account, [&]( account_object& a ) {
           a.proxy = o.proxy;

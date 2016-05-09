@@ -27,5 +27,5 @@ class hardfork_property_object : public abstract_object< hardfork_property_objec
 
 FC_REFLECT_DERIVED( steemit::chain::hardfork_property_object, (graphene::db::object), (processed_hardforks)(last_hardfork) )
 
-#define STEEMIT_NUM_HARDFORKS 4
+#define STEEMIT_NUM_HARDFORKS 5
 

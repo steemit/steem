@@ -826,13 +826,12 @@ try {
      adjust_balance( to_account, sbd );
      adjust_supply( -steem );
      adjust_supply( sbd );
-     validate_invariants();
      return sbd;
   } else {
      adjust_balance( to_account, steem );
      return steem;
   }
-} FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) ) }
+} FC_CAPTURE_LOG_AND_RETHROW( (to_account.name)(steem) ) }
 
 /**
  * @param to_account - the account to receive the new vesting shares
@@ -1165,28 +1164,56 @@ void database::update_median_witness_props() {
    });
 }
 
-void database::adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth ) {
+void database::adjust_proxied_witness_votes( const account_object& a,
+                                   const std::array< share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1 >& delta,
+                                   int depth ) {
   if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
+     /// nested proxies are not supported, vote will not propagate
+     if( depth >= STEEMIT_MAX_PROXY_RECURSION_DEPTH )
+        return;
+
      const auto& proxy = get_account( a.proxy );
 
      modify( proxy, [&]( account_object& a ) {
-        a.proxied_vsf_votes += delta;
+        for( int i = STEEMIT_MAX_PROXY_RECURSION_DEPTH - depth - 1; i >= 0; --i ) {
+           a.proxied_vsf_votes[i+depth] += delta[i];
+        }
      });
-
-     /// nested proxies are not supported, vote will not propagate
-     if( depth > STEEMIT_MAX_PROXY_RECURSION_DEPTH )
-        return;
 
      adjust_proxied_witness_votes( proxy, delta, depth + 1 );
   } else {
-
-     const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
-     auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
-     while( itr != vidx.end() && itr->account == a.get_id() ) {
-        adjust_witness_vote( itr->witness(*this), delta );
-        ++itr;
-     }
+     share_type total_delta = 0;
+     for( int i = STEEMIT_MAX_PROXY_RECURSION_DEPTH - depth; i >= 0; --i )
+        total_delta += delta[i];
+     adjust_witness_votes( a, total_delta );
   }
+}
+
+void database::adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth ) {
+  if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
+     /// nested proxies are not supported, vote will not propagate
+     if( depth >= STEEMIT_MAX_PROXY_RECURSION_DEPTH )
+        return;
+
+     const auto& proxy = get_account( a.proxy );
+
+     modify( proxy, [&]( account_object& a ) {
+        a.proxied_vsf_votes[depth] += delta;
+     });
+
+     adjust_proxied_witness_votes( proxy, delta, depth + 1 );
+  } else {
+     adjust_witness_votes( a, delta );
+  }
+}
+
+void database::adjust_witness_votes( const account_object& a, share_type delta ) {
+   const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+   auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+   while( itr != vidx.end() && itr->account == a.get_id() ) {
+      adjust_witness_vote( itr->witness(*this), delta );
+      ++itr;
+   }
 }
 
 void database::adjust_witness_vote( const witness_object& witness, share_type delta ) {
@@ -1314,8 +1341,6 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
  *  @recursively pays out parent posts
  */
 void database::cashout_comment_helper( const comment_object& cur, const comment_object& origin, asset vesting_steem_reward, asset sbd_reward ) {
-   try
-   {
    const auto& author = get_account( cur.author );
    if( cur.parent_author.size() ) {
       auto parent_vesting_steem_reward = vesting_steem_reward;
@@ -1331,6 +1356,7 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
 
       /// push virtual operation for this reward payout
+      //ilog( "Paying ${a}.${p} ${s} ${v}", ("a",cur.author)("p",cur.permlink)("s",sbd_reward)("v",vesting_steem_reward) );
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
 
       /// only recurse if the SBD created is more than $0.02, this should stop recursion quickly for
@@ -1341,13 +1367,15 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
          sbd_created.amount *= 2; /// 50/50 VESTING SBD means total value is 2x
 
          cashout_comment_helper( parent, origin, parent_vesting_steem_reward, parent_sbd_reward );
-      } else { /// parent gets the full change, recursion stops
-
-         const auto& parent_author = get_account(cur.parent_author);
-         vest_created = create_vesting( parent_author, vesting_steem_reward );
-         sbd_created  = create_sbd( parent_author, sbd_reward );
+      }
+      else /// parent gets the full change, recursion stops
+      {
+         const auto& parent_author = get_account( cur.parent_author );
+         vest_created = create_vesting( parent_author, parent_vesting_steem_reward );
+         sbd_created  = create_sbd( parent_author, parent_sbd_reward );
 
          /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
+         //ilog( "Paying ${a}.${p} ${s} ${v}", ("a",cur.parent_author)("p",cur.parent_permlink)("s",parent_sbd_reward)("v",parent_vesting_steem_reward) );
          push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
          adjust_total_payout( get_comment( cur.parent_author, cur.parent_permlink ), sbd_created + to_sbd( vesting_steem_reward ) );
       }
@@ -1357,11 +1385,10 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
 
       /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
       /// push virtual operation for this reward payout
+      //ilog( "Paying ${a}.${p} ${s} ${v}", ("a",cur.author)("p",cur.permlink)("s",sbd_reward)("v",vesting_steem_reward) );
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
    }
-   validate_invariants();
-   } FC_CAPTURE_LOG_AND_RETHROW( (cur) );
 }
 
 /**
@@ -1374,15 +1401,12 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
 {
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
-
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
    auto itr = cvidx.lower_bound( c.id );
    auto start = itr;
    //auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
    while( itr != cvidx.end() && itr->comment == c.id ) {
       // TODO: Add minimum curation pay limit
-      try
-      {
       u256 weight( itr->weight );
       auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
       if( claim > 1 ) // min_amt is non-zero satoshis
@@ -1391,7 +1415,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
          auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
          push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
       }
-      } FC_CAPTURE_LOG_AND_RETHROW( (c)(*itr)(*start)/*(*end)*/ )
       ++itr;
    }
    if( max_rewards.value - unclaimed_rewards.value )
@@ -1399,7 +1422,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       {
          p.total_reward_fund_steem += unclaimed_rewards;
       });
-   validate_invariants();
    return unclaimed_rewards;
 }
 
@@ -1410,15 +1432,20 @@ void database::process_comment_cashout() {
    if( head_block_time() < STEEMIT_FIRST_CASHOUT_TIME )
       return;
 
+   wdump( (head_block_time())(head_block_num())(get_dynamic_global_properties().total_reward_shares2)(get_dynamic_global_properties().total_reward_fund_steem) );
+
    const auto& median_price = get_feed_history().current_median_history;
 
    const auto& cidx = get_index_type<comment_index>().indices().get<by_cashout_time>();
    auto current = cidx.begin();
    //auto end = cidx.lower_bound( head_block_time() );
    while( current != cidx.end() && current->cashout_time <= head_block_time() ) {
+      share_type unclaimed;
+      const auto& cur = *current; ++current;
+      bool paid = true;
       try
       {
-      const auto& cur = *current; ++current;
+      //idump( (cur)(get_dynamic_global_properties().total_reward_shares2)(get_dynamic_global_properties().total_reward_fund_steem)(get_feed_history().current_median_history) );
       asset sbd_created(0,SBD_SYMBOL);
       asset vest_created(0,VESTS_SYMBOL);
 
@@ -1433,12 +1460,13 @@ void database::process_comment_cashout() {
             auto to_sbd     = reward_tokens / 2;
             auto to_vesting = reward_tokens - to_sbd;
 
-            modify( cat, [&]( category_object& c ) {
-               c.total_payouts += asset(reward_tokens,STEEM_SYMBOL) * median_price;
-            });
-
-            pay_curators( cur, curator_rewards );
+            unclaimed = pay_curators( cur, curator_rewards );
+            //idump( (to_sbd)(to_vesting)(unclaimed) );
             cashout_comment_helper( cur, cur, asset( to_vesting, STEEM_SYMBOL ), asset( to_sbd, STEEM_SYMBOL ) );
+
+            modify( cat, [&]( category_object& c ) {
+               c.total_payouts += asset(reward_tokens - unclaimed ,STEEM_SYMBOL) * median_price;
+            });
          }
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;
@@ -1472,9 +1500,11 @@ void database::process_comment_cashout() {
          remove(cur_vote);
       }
 
+      if( !paid ) idump( (cur) );
       validate_invariants();
-   } FC_CAPTURE_LOG_AND_RETHROW( (*current) );
+   } FC_CAPTURE_LOG_AND_RETHROW( (cur)(unclaimed) );
    }
+   wdump( (get_dynamic_global_properties().total_reward_shares2)(get_dynamic_global_properties().total_reward_fund_steem) );
 }
 
 /**
@@ -1669,6 +1699,8 @@ share_type database::claim_rshare_reward( share_type rshares ) {
    modify( props, [&]( dynamic_global_property_object& p ){
      p.total_reward_fund_steem.amount -= payout;
    });
+   //idump( (payout) );
+
    return payout;
    } FC_CAPTURE_LOG_AND_RETHROW( (rshares) )
    return 0;
@@ -2532,6 +2564,8 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
    FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_5_0 == 5, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_5_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_0_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -2598,6 +2632,9 @@ void database::process_hardforks()
             elog( "HARDFORK 4" );
             reset_virtual_schedule_time();
             break;
+         case STEEMIT_HARDFORK_0_5_0:
+            elog( "HARDFORK 5" );
+            break;
          default:
             break;
       }
@@ -2660,7 +2697,11 @@ void database::validate_invariants()const
          total_supply += itr->balance;
          total_sbd += itr->sbd_balance;
          total_vesting += itr->vesting_shares;
-         total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
+         total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
+                                 itr->witness_vote_weight() :
+                                 ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
+                                      itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
+                                      itr->vesting_shares.amount ) );
       }
 
       const auto& convert_request_idx = get_index_type< convert_index >().indices();
@@ -2737,7 +2778,8 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          a.withdrawn             *= magnitude;
          a.to_withdraw           *= magnitude;
          a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
-         a.proxied_vsf_votes     *= magnitude;
+         for( uint32_t i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
+            a.proxied_vsf_votes[i] *= magnitude;
       });
    }
 

@@ -426,7 +426,11 @@ void database_fixture::validate_database( void )
          total_supply += itr->balance;
          total_sbd += itr->sbd_balance;
          total_vesting += itr->vesting_shares;
-         total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
+         total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
+                                 itr->witness_vote_weight() :
+                                 ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
+                                      itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
+                                      itr->vesting_shares.amount ) );
       }
 
       const auto& convert_request_idx = db.get_index_type< convert_index >().indices().get< by_id >();
