@@ -519,7 +519,6 @@ public:
          {
             //_remote_net_broadcast->broadcast_transaction( tx );
             auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx );
-            idump((result));
          }
          return tx;
    } FC_CAPTURE_AND_RETHROW( (account_name)(creator_account_name)(broadcast) ) }
@@ -551,8 +550,6 @@ public:
 
       tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
 
-      idump((req_posting_approvals)(req_active_approvals));
-
       for( const auto& auth : other_auths )
          for( const auto& a : auth.account_auths )
             req_active_approvals.insert(a.first);
@@ -574,7 +571,7 @@ public:
 
       /// TODO: recursively check one layer deeper in the authority tree for keys
 
-      FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size() );
+      FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size(), "", ("aco.size:", approving_account_objects.size())("acn",v_approving_account_names.size()) );
 
       flat_map< string, account_object > approving_account_lut;
       size_t i = 0;
@@ -649,7 +646,6 @@ public:
             approving_key_set.insert( k.first );
          }
       }
-      idump((approving_key_set));
 
       auto dyn_props = _remote_db->get_dynamic_global_properties();
       tx.set_reference_block( dyn_props.head_block_id );
@@ -694,7 +690,6 @@ public:
          try {
             auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx );
             annotated_signed_transaction rtrx(tx);
-            idump((result));
             rtrx.block_num = result.get_object()["block_num"].as_uint64();
             rtrx.transaction_num = result.get_object()["trx_num"].as_uint64();
             return rtrx;
@@ -1705,7 +1700,7 @@ annotated_signed_transaction      wallet_api::send_private_message( string from,
    private_message_operation pmo;
    pmo.from          = from;
    pmo.to            = to;
-   pmo.sent_time     = fc::time_point::now();
+   pmo.sent_time     = fc::time_point::now().time_since_epoch().count();
    pmo.from_memo_key = from_account.memo_key;
    pmo.to_memo_key   = to_account.memo_key;
 
@@ -1720,10 +1715,21 @@ annotated_signed_transaction      wallet_api::send_private_message( string from,
    fc::raw::pack( enc, pmo.sent_time );
    fc::raw::pack( enc, shared_secret );
    auto encrypt_key = enc.result();
-   pmo.checksum = fc::sha256::hash( encrypt_key )._hash[0];
+   auto hash_encrypt_key = fc::sha256::hash( encrypt_key );
+   pmo.checksum = hash_encrypt_key._hash[0];
 
    vector<char> plain_text = fc::raw::pack( message );
    pmo.encrypted_message = fc::aes_encrypt( encrypt_key, plain_text );
+
+   message_object obj;
+   obj.to_memo_key   = pmo.to_memo_key;
+   obj.from_memo_key = pmo.from_memo_key;
+   obj.checksum = pmo.checksum;
+   obj.sent_time = pmo.sent_time;
+   obj.encrypted_message = pmo.encrypted_message;
+   auto decrypted = try_decrypt_message(obj);
+
+   op.data = fc::raw::pack( pmo );
 
    signed_transaction tx;
    tx.operations.push_back( op );
@@ -1741,22 +1747,28 @@ message_body wallet_api::try_decrypt_message( const message_object& mo ) {
    {
       it = my->_keys.find(mo.to_memo_key);
       if( it == my->_keys.end() )
+      {
+         wlog( "unable to find keys" );
          return result;
+      }
       auto priv_key = wif_to_key( it->second );
-      if( priv_key ) return result;
+      if( !priv_key ) return result;
       shared_secret = priv_key->get_shared_secret( mo.from_memo_key );
    } else {
       auto priv_key = wif_to_key( it->second );
-      if( priv_key ) return result;
+      if( !priv_key ) return result;
       shared_secret = priv_key->get_shared_secret( mo.to_memo_key );
    }
+
 
    fc::sha512::encoder enc;
    fc::raw::pack( enc, mo.sent_time );
    fc::raw::pack( enc, shared_secret );
    auto encrypt_key = enc.result();
 
-   if( mo.checksum != fc::sha256::hash( encrypt_key )._hash[0] )
+   uint32_t check = fc::sha256::hash( encrypt_key )._hash[0];
+
+   if( mo.checksum != check )
       return result;
 
    auto decrypt_data = fc::aes_decrypt( encrypt_key, mo.encrypted_message );
@@ -1781,6 +1793,11 @@ vector<extended_message_object>   wallet_api::get_inbox( string account, fc::tim
 vector<extended_message_object>   wallet_api::get_outbox( string account, fc::time_point newest, uint32_t limit ) {
    FC_ASSERT( !is_locked() );
    vector<extended_message_object> result;
+   auto remote_result = my->_remote_message_api->get_outbox( account, newest, limit );
+   for( const auto& item : remote_result ) {
+      result.emplace_back( item );
+      result.back().message = try_decrypt_message( item );
+   }
    return result;
 }
 

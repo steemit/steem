@@ -92,7 +92,7 @@ void private_message_plugin_impl::on_operation( const operation_object& op_obj )
 
          FC_ASSERT( pm.from != pm.to );
          FC_ASSERT( pm.from_memo_key != pm.to_memo_key );
-         FC_ASSERT( pm.sent_time != fc::time_point() );
+         FC_ASSERT( pm.sent_time != 0 );
          FC_ASSERT( pm.encrypted_message.size() >= 32 );
 
          if( !_tracked_accounts.size() ||
@@ -105,6 +105,8 @@ void private_message_plugin_impl::on_operation( const operation_object& op_obj )
                pmo.from_memo_key      = pm.from_memo_key;
                pmo.to_memo_key        = pm.to_memo_key;
                pmo.checksum           = pm.checksum;
+               pmo.sent_time          = pm.sent_time;
+               pmo.receive_time       = db.head_block_time();
                pmo.encrypted_message  = pm.encrypted_message;
             });
          }

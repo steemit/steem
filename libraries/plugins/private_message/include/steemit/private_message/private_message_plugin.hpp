@@ -83,7 +83,7 @@ class  message_object : public abstract_object<message_object> {
       string             to;
       public_key_type    from_memo_key;
       public_key_type    to_memo_key;
-      fc::time_point     sent_time; /// used as seed to secret generation
+      uint64_t           sent_time; /// used as seed to secret generation
       fc::time_point_sec receive_time; /// time received by blockchain
       uint32_t           checksum = 0;
       vector<char>       encrypted_message;
@@ -100,7 +100,7 @@ struct private_message_operation {
     string             to;
     public_key_type    from_memo_key;
     public_key_type    to_memo_key;
-    fc::time_point     sent_time; /// used as seed to secret generation
+    uint64_t           sent_time; /// used as seed to secret generation
     uint32_t           checksum = 0;
     vector<char>       encrypted_message;
 };
@@ -117,8 +117,8 @@ typedef multi_index_container<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_unique< tag< by_to_date >, 
             composite_key< message_object,
-               member< message_object, std::string, &message_object::to >,
-               member< message_object, fc::time_point, &message_object::sent_time >,
+               member< message_object, string, &message_object::to >,
+               member< message_object, time_point_sec, &message_object::receive_time >,
                member<object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
@@ -126,7 +126,7 @@ typedef multi_index_container<
       ordered_unique< tag< by_from_date >, 
             composite_key< message_object,
                member< message_object, string, &message_object::from >,
-               member< message_object, time_point, &message_object::sent_time >,
+               member< message_object, time_point_sec, &message_object::receive_time >,
                member<object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
