@@ -1,0 +1,37 @@
+
+#include <boost/multi_index_container.hpp>
+
+#include <fc/reflect/reflect.hpp>
+
+#include <graphene/db/generic_index.hpp>
+#include <graphene/db/object.hpp>
+
+${subobject_includes}
+
+namespace steemit { namespace chain {
+
+class ${object_name} : ${subobject_name_public_list}, public abstract_object< ${object_name} >
+{
+   public:
+      static const uint8_t space_id = implementation_ids;
+      static const uint8_t type_id  = impl_${object_name}_type;
+};
+
+${index_structs}
+
+typedef multi_index_container<
+   ${object_name},
+   indexed_by<
+      ${indexes}
+   >
+> ${object_basename}_multi_index_type;
+
+typedef generic_index< ${object_name}, ${object_basename}_multi_index_type > ${object_basename}_index;
+
+} }
+
+FC_REFLECT_DERIVED( steemit::chain::${object_name},
+${subobject_name_bubble_list}
+   (graphene::db::object),
+   BOOST_PP_SEQ_NIL
+)

@@ -14,12 +14,15 @@ ENDIF( ENABLE_CONTENT_PATCHING )
 add_subdirectory( fc )
 add_subdirectory( db )
 add_subdirectory( deterministic_openssl_rand )
+
+# plugins must be first because chain depends on plugins being enumerated
+add_subdirectory( plugins )
+
 add_subdirectory( chain )
 add_subdirectory( net )
 #add_subdirectory( p2p )
 add_subdirectory( time )
 add_subdirectory( utilities )
 add_subdirectory( app )
-add_subdirectory( plugins )
 add_subdirectory( wallet )
 add_subdirectory( manifest )

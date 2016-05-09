@@ -6,6 +6,23 @@ set_source_files_properties( "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/
 
 add_dependencies( build_hardfork_hpp cat-parts )
 
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/object_dirs.txt" "${CMAKE_CURRENT_SOURCE_DIR}/objects")
+
+foreach(object_dir $ENV{STEEMIT_EXTERNAL_PLUGIN_OBJECT_DIRS})
+   file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/object_dirs.txt" "${object_dir}\n")
+endforeach()
+
+foreach(object_dir $ENV{STEEMIT_INTERNAL_PLUGIN_OBJECT_DIRS})
+   file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/object_dirs.txt" "${object_dir}\n")
+endforeach()
+
+add_custom_target( build_objects
+                   COMMAND object_builder
+                   -o "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/object"
+                   -l "${CMAKE_CURRENT_BINARY_DIR}/object_dirs.txt"
+                   -t "${CMAKE_CURRENT_SOURCE_DIR}/object_hpp.template"
+                 )
+
 ## SORT .cpp by most likely to change / break compile
 add_library( steemit_chain
 
@@ -34,7 +51,7 @@ add_library( steemit_chain
              "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
            )
 
-add_dependencies( steemit_chain build_hardfork_hpp )
+add_dependencies( steemit_chain build_hardfork_hpp build_objects )
 target_link_libraries( steemit_chain fc graphene_db ${PATCH_MERGE_LIB} )
 target_include_directories( steemit_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )

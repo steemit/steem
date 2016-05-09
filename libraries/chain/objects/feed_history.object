@@ -1,0 +1,5 @@
+{
+ "name" : "steemit::chain::core::feed_history_object",
+ "hpp" : "steemit/chain/core/feed_history_object.hpp",
+ "indexes" : []
+}

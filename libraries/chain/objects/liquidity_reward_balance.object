@@ -1,0 +1,19 @@
+{
+ "name" : "steemit::chain::core::liquidity_reward_balance_object",
+ "hpp" : "steemit/chain/core/liquidity_reward_balance_object.hpp",
+ "indexes" :
+ [
+  ["by_owner",
+   """ordered_unique< tag< by_owner >, member< core::liquidity_reward_balance_object, account_id_type, &liquidity_reward_balance_object::owner > >"""
+  ],
+  ["by_volume_weight",
+   """ordered_unique< tag< by_volume_weight >,
+         composite_key< liquidity_reward_balance_object,
+             const_mem_fun< core::liquidity_reward_balance_object, fc::uint128, &liquidity_reward_balance_object::volume_weight >,
+             member< core::liquidity_reward_balance_object, account_id_type, &liquidity_reward_balance_object::owner >
+         >,
+         composite_key_compare< std::greater<fc::uint128>, std::less< account_id_type > >
+      >"""
+  ]
+ ]
+}

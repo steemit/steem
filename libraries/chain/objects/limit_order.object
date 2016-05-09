@@ -1,0 +1,27 @@
+{
+ "name" : "steemit::chain::core::limit_order_object",
+ "hpp" : "steemit/chain/core/limit_order_object.hpp",
+ "indexes" :
+ [
+  ["by_expiration",
+   """ordered_non_unique< tag<by_expiration>, member< core::limit_order_object, time_point_sec, &limit_order_object::expiration> >"""
+  ],
+  ["by_price",
+   """ordered_unique< tag<by_price>,
+         composite_key< limit_order_object,
+            member< core::limit_order_object, price, &limit_order_object::sell_price>,
+            member< object, object_id_type, &object::id>
+         >,
+         composite_key_compare< std::greater<price>, std::less<object_id_type> >
+      >"""
+  ],
+  ["by_account",
+   """ordered_unique< tag<by_account>,
+         composite_key< limit_order_object,
+            member< core::limit_order_object, string, &limit_order_object::seller>,
+            member< core::limit_order_object, uint32_t, &limit_order_object::orderid>
+         >
+      >"""
+  ]
+ ]
+}

@@ -9,8 +9,11 @@ compile_commands.json
 moc_*
 *.moc
 hardfork.hpp
+object_dirs.txt
 
 lcov
+
+libraries/chain/include/steemit/chain/object
 
 libraries/utilities/git_revision.cpp
 

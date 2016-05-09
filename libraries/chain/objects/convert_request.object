@@ -1,0 +1,23 @@
+{
+ "name" : "steemit::chain::core::convert_request_object",
+ "hpp" : "steemit/chain/core/convert_request_object.hpp",
+ "indexes" :
+ [
+  ["by_conversion_date",
+   """ordered_unique< tag< by_conversion_date >,
+         composite_key< convert_request_object,
+            member< core::convert_request_object, time_point_sec, &convert_request_object::conversion_date>,
+            member< object, object_id_type, &object::id >
+         >
+      >"""
+  ],
+  ["by_owner",
+   """ordered_unique< tag< by_owner >,
+         composite_key< convert_request_object,
+            member< core::convert_request_object, string, &convert_request_object::owner>,
+            member< core::convert_request_object, uint32_t, &convert_request_object::requestid >
+         >
+      >"""
+  ]
+ ]
+}
