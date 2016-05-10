@@ -1356,7 +1356,6 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
 
       /// push virtual operation for this reward payout
-      //ilog( "Paying ${a}.${p} ${s} ${v}", ("a",cur.author)("p",cur.permlink)("s",sbd_reward)("v",vesting_steem_reward) );
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
 
       /// only recurse if the SBD created is more than $0.02, this should stop recursion quickly for
@@ -1375,7 +1374,6 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
          sbd_created  = create_sbd( parent_author, parent_sbd_reward );
 
          /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
-         //ilog( "Paying ${a}.${p} ${s} ${v}", ("a",cur.parent_author)("p",cur.parent_permlink)("s",parent_sbd_reward)("v",parent_vesting_steem_reward) );
          push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
          adjust_total_payout( get_comment( cur.parent_author, cur.parent_permlink ), sbd_created + to_sbd( vesting_steem_reward ) );
       }
@@ -1385,7 +1383,6 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
 
       /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
       /// push virtual operation for this reward payout
-      //ilog( "Paying ${a}.${p} ${s} ${v}", ("a",cur.author)("p",cur.permlink)("s",sbd_reward)("v",vesting_steem_reward) );
       push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
    }
@@ -1432,8 +1429,6 @@ void database::process_comment_cashout() {
    if( head_block_time() < STEEMIT_FIRST_CASHOUT_TIME )
       return;
 
-   wdump( (head_block_time())(head_block_num())(get_dynamic_global_properties().total_reward_shares2)(get_dynamic_global_properties().total_reward_fund_steem) );
-
    const auto& median_price = get_feed_history().current_median_history;
 
    const auto& cidx = get_index_type<comment_index>().indices().get<by_cashout_time>();
@@ -1443,9 +1438,6 @@ void database::process_comment_cashout() {
       share_type unclaimed;
       const auto& cur = *current; ++current;
       bool paid = true;
-      try
-      {
-      //idump( (cur)(get_dynamic_global_properties().total_reward_shares2)(get_dynamic_global_properties().total_reward_fund_steem)(get_feed_history().current_median_history) );
       asset sbd_created(0,SBD_SYMBOL);
       asset vest_created(0,VESTS_SYMBOL);
 
@@ -1461,7 +1453,6 @@ void database::process_comment_cashout() {
             auto to_vesting = reward_tokens - to_sbd;
 
             unclaimed = pay_curators( cur, curator_rewards );
-            //idump( (to_sbd)(to_vesting)(unclaimed) );
             cashout_comment_helper( cur, cur, asset( to_vesting, STEEM_SYMBOL ), asset( to_sbd, STEEM_SYMBOL ) );
 
             modify( cat, [&]( category_object& c ) {
@@ -1499,12 +1490,7 @@ void database::process_comment_cashout() {
          ++vote_itr;
          remove(cur_vote);
       }
-
-      if( !paid ) idump( (cur) );
-      validate_invariants();
-   } FC_CAPTURE_LOG_AND_RETHROW( (cur)(unclaimed) );
    }
-   wdump( (get_dynamic_global_properties().total_reward_shares2)(get_dynamic_global_properties().total_reward_fund_steem) );
 }
 
 /**
