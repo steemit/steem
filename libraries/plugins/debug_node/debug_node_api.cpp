@@ -27,8 +27,8 @@ class debug_node_api_impl
       uint32_t debug_push_blocks( const std::string& src_filename, uint32_t count, bool skip_validate_invariants );
       uint32_t debug_generate_blocks( const std::string& debug_key, uint32_t count );
       uint32_t debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely );
-      chain::signed_block debug_pop_block();
-      void debug_push_block( const chain::signed_block& block );
+      fc::optional< steemit::chain::signed_block > debug_pop_block();
+      //void debug_push_block( const steemit::chain::signed_block& block );
       void debug_update_object( const fc::variant_object& update );
       //void debug_save_db( std::string db_path );
       void debug_stream_json_objects( const std::string& filename );
@@ -169,21 +169,16 @@ uint32_t debug_node_api_impl::debug_generate_blocks_until( const std::string& de
    return new_blocks;
 }
 
-chain::signed_block debug_node_api_impl::debug_pop_block()
+fc::optional< steemit::chain::signed_block > debug_node_api_impl::debug_pop_block()
 {
    std::shared_ptr< steemit::chain::database > db = app.chain_database();
-
-   fc::optional< chain::signed_block > head_block = db->fetch_block_by_id( db->head_block_id() );
-   FC_ASSERT( head_block.valid() );
-   db->pop_block();
-
-   return *head_block;
+   return db->fetch_block_by_number( db->head_block_num() );
 }
 
-void debug_node_api_impl::debug_push_block( const chain::signed_block& block )
+/*void debug_node_api_impl::debug_push_block( const steemit::chain::signed_block& block )
 {
    app.chain_database()->push_block( block );
-}
+}*/
 
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
 {
@@ -242,15 +237,15 @@ uint32_t debug_node_api::debug_generate_blocks_until( std::string debug_key, fc:
    return my->debug_generate_blocks_until( debug_key, head_block_time, generate_sparsely );
 }
 
-chain::signed_block debug_node_api::debug_pop_block()
+fc::optional< steemit::chain::signed_block > debug_node_api::debug_pop_block()
 {
    return my->debug_pop_block();
 }
 
-void debug_node_api::debug_push_block( chain::signed_block& block )
+/*void debug_node_api::debug_push_block( steemit::chain::signed_block& block )
 {
    my->debug_push_block( block );
-}
+}*/
 
 void debug_node_api::debug_update_object( fc::variant_object update )
 {
