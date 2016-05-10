@@ -122,8 +122,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) ) 
-      FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
+   FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
 
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
