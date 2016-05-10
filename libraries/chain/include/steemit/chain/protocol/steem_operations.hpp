@@ -466,7 +466,7 @@ FC_REFLECT( steemit::chain::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steemit::chain::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
 FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
-FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(id)(json) )
+FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::fill_order_operation, (owner)(orderid)(pays)(receives) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
