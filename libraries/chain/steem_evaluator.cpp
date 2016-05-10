@@ -246,13 +246,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.last_update   = db().head_block_time();
 
          if( o.title.size() + o.body.size() )
-         {
-            if( com.net_rshares > 0 )
-               com.net_rshares = 0;
-            com.abs_rshares  = 0;
-            com.total_vote_weight = 0;
             com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
-         }
 
          #ifndef IS_LOW_MEM
            com.title         = o.title;
@@ -282,16 +276,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       });
 
-      if( o.title.size() + o.body.size() )
-      {
-         const auto& vote_idx = db().get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
-         auto vote_itr = vote_idx.lower_bound( comment_id_type(comment.id) );
-         while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id ) {
-            const auto& cur_vote = *vote_itr;
-            ++vote_itr;
-            db().remove(cur_vote);
-         }
-      }
    } // end EDIT case
 
 } FC_CAPTURE_LOG_AND_RETHROW( (o) ) }
