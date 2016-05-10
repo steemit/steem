@@ -142,7 +142,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
+      if( !db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+         FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       db().modify( auth, [&]( account_object& a ) {
          a.last_post = now;
          a.post_count++;
