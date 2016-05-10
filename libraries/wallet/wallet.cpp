@@ -375,6 +375,7 @@ public:
       FC_ASSERT( has_key );
       return *has_key;
    }
+   
 
    fc::ecc::private_key get_private_key_for_account(const account_object& account)const
    {
@@ -1170,6 +1171,14 @@ map<public_key_type, string> wallet_api::list_keys()
 string wallet_api::get_private_key( public_key_type pubkey )const
 {
    return key_to_wif( my->get_private_key( pubkey ) );
+}
+
+pair<public_key_type,string> wallet_api::get_private_key_from_password( string account, string role, string password )const {
+   auto seed = account + role + password;
+   FC_ASSERT( seed.size() );
+   auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
+   auto priv = fc::ecc::private_key::regenerate( secret );
+   return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
 }
 
 signed_block_with_info::signed_block_with_info( const signed_block& block )

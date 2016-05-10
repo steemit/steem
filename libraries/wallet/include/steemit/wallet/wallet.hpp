@@ -234,6 +234,11 @@ class wallet_api
       string                            get_private_key( public_key_type pubkey )const;
 
       /**
+       *  @param role - active | owner | posting | memo
+       */
+      pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
+
+      /**
        * Returns transaction by ID.
        */
       annotated_signed_transaction      get_transaction( transaction_id_type trx_id )const;
@@ -761,6 +766,7 @@ FC_API( steemit::wallet::wallet_api,
         (suggest_brain_key)
         (list_keys)
         (get_private_key)
+        (get_private_key_from_password)
         (normalize_brain_key)
 
         /// query api
