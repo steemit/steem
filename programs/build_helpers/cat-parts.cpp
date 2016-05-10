@@ -61,9 +61,16 @@ int main( int argc, char** argv, char** envp )
          }
       }
 
+      auto opath_dir = opath.parent_path();
+      boost::filesystem::create_directories(opath_dir);
+
       {
          boost::filesystem::ofstream ofs(opath);
          ofs.write( new_data.c_str(), new_data.length() );
+         if( !ofs.good() ) {
+            std::cerr << "Could not write file " << opath << std::endl;
+            return 1;
+         }
       }
 
       std::cerr << "Built " << opath << " from .d directory" << std::endl;
