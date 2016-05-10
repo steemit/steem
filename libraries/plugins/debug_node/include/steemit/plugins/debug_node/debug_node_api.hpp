@@ -7,6 +7,8 @@
 #include <fc/api.hpp>
 #include <fc/variant_object.hpp>
 
+#include <steemit/chain/protocol/block.hpp>
+
 namespace steemit { namespace app {
 class application;
 } }
@@ -38,6 +40,16 @@ class debug_node_api
        * Generate blocks locally until a specified head block time. Can generate them sparsely.
        */
       uint32_t debug_generate_blocks_until( std::string debug_key, fc::time_point_sec head_block_time, bool generate_sparsely = true );
+
+      /*
+       * Pop a block from the blockchain, returning it
+       */
+      chain::signed_block debug_pop_block();
+
+      /*
+       * Push an already constructed block onto the blockchain. For use with pop_block to traverse state block by block.
+       */
+      void debug_push_block( chain::signed_block& block );
 
       /**
        * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
@@ -78,6 +90,8 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_push_blocks)
        (debug_generate_blocks)
        (debug_generate_blocks_until)
+       (debug_pop_block)
+       (debug_push_block)
        (debug_update_object)
        (debug_stream_json_objects)
        (debug_stream_json_objects_flush)
