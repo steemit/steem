@@ -223,12 +223,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
    else // start edit case
    {
       const auto& comment = *itr;
-      /// update the global rshares2 number
-      if( comment.net_rshares > 0 ) {
-         auto old_rshares2 = (fc::uint128( comment.net_rshares.value ) * comment.net_rshares.value);
-         auto new_rshares2 = fc::uint128();
-         db().adjust_rshares2( comment, old_rshares2, new_rshares2 );
-      }
 
       db().modify( comment, [&]( comment_object& com )
       {
