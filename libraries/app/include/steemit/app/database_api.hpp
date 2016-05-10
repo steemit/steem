@@ -150,7 +150,7 @@ class database_api
       // Accounts //
       //////////////
 
-      vector< account_object > get_accounts( vector< string > names ) const;
+      vector< extended_account > get_accounts( vector< string > names ) const;
 
       /**
        *  @return all accounts that referr to the key or account id in their owner or active authorities.

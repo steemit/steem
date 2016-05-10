@@ -181,8 +181,11 @@ namespace steemit { namespace app {
          fc::api_ptr get_api_by_name( const string& api_name )const
          {
             auto it = _api_map.find( api_name );
-            if( it == _api_map.end() )
+            if( it == _api_map.end() ) {
+               wlog( "unknown api: ${api}", ("api",api_name) );
                return fc::api_ptr();
+            }
+            if( it->second ) ilog( "found api: ${api}", ("api",api_name) );
             FC_ASSERT( it->second != nullptr );
             return it->second;
          }

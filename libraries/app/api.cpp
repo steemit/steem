@@ -48,10 +48,12 @@ namespace steemit { namespace app {
     {
     }
 
-    void login_api::on_api_startup() {}
+    void login_api::on_api_startup() {
+    }
 
     bool login_api::login(const string& user, const string& password)
     {
+       idump((user)(password));
        optional< api_access_info > acc = _app.get_api_access_info( user );
        if( !acc.valid() )
           return false;
@@ -67,11 +69,15 @@ namespace steemit { namespace app {
              return false;
        }
 
+       idump((acc->allowed_apis));
        for( const std::string& api_name : acc->allowed_apis )
        {
           auto it = _api_map.find( api_name );
-          if( it != _api_map.end() )
+          if( it != _api_map.end() ) {
+             wlog( "known api: ${api}", ("api",api_name) );
              continue;
+          }
+          idump((api_name));
           _api_map[ api_name ] = _app.create_api_by_name( api_name );
        }
        return true;
@@ -103,9 +109,9 @@ namespace steemit { namespace app {
              auto itr = _callbacks.find(id);
              if( itr != _callbacks.end() )
              {
-                const auto& callback = _callbacks.find(id)->second;
+                auto callback = _callbacks.find(id)->second;
                 fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
-                //_callbacks.erase( itr );// safe becaues callback is copied by lambda
+                itr->second = []( const variant& ){};
              }
           }
        }
@@ -119,9 +125,9 @@ namespace steemit { namespace app {
                auto cb_itr = _callbacks.find( trx_id );
                if( cb_itr != _callbacks.end() ) {
                    auto capture_this = shared_from_this();
-                   const auto& callback = _callbacks.find(trx_id)->second; 
+                   auto callback = _callbacks.find(trx_id)->second; 
                    fc::async( [capture_this,this,block_num,trx_id,callback](){ callback( fc::variant(transaction_confirmation{ trx_id, block_num, -1, true}) ); } );
-                   // _callbacks.erase( cb_itr ); // safe becaues callback is copied by lambda
+                   _callbacks.erase(cb_itr);
                }
              }
              _callbacks_expirations.erase( itr );

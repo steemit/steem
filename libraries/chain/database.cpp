@@ -1165,28 +1165,56 @@ void database::update_median_witness_props() {
    });
 }
 
-void database::adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth ) {
+void database::adjust_proxied_witness_votes( const account_object& a,
+                                   const std::array< share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1 >& delta,
+                                   int depth ) {
   if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
+     /// nested proxies are not supported, vote will not propagate
+     if( depth >= STEEMIT_MAX_PROXY_RECURSION_DEPTH )
+        return;
+
      const auto& proxy = get_account( a.proxy );
 
      modify( proxy, [&]( account_object& a ) {
-        a.proxied_vsf_votes += delta;
+        for( int i = STEEMIT_MAX_PROXY_RECURSION_DEPTH - depth - 1; i >= 0; --i ) {
+           a.proxied_vsf_votes[i+depth] += delta[i];
+        }
      });
-
-     /// nested proxies are not supported, vote will not propagate
-     if( depth > STEEMIT_MAX_PROXY_RECURSION_DEPTH )
-        return;
 
      adjust_proxied_witness_votes( proxy, delta, depth + 1 );
   } else {
-
-     const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
-     auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
-     while( itr != vidx.end() && itr->account == a.get_id() ) {
-        adjust_witness_vote( itr->witness(*this), delta );
-        ++itr;
-     }
+     share_type total_delta = 0;
+     for( int i = STEEMIT_MAX_PROXY_RECURSION_DEPTH - depth; i >= 0; --i )
+        total_delta += delta[i];
+     adjust_witness_votes( a, total_delta );
   }
+}
+
+void database::adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth ) {
+  if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
+     /// nested proxies are not supported, vote will not propagate
+     if( depth >= STEEMIT_MAX_PROXY_RECURSION_DEPTH )
+        return;
+
+     const auto& proxy = get_account( a.proxy );
+
+     modify( proxy, [&]( account_object& a ) {
+        a.proxied_vsf_votes[depth] += delta;
+     });
+
+     adjust_proxied_witness_votes( proxy, delta, depth + 1 );
+  } else {
+     adjust_witness_votes( a, delta );
+  }
+}
+
+void database::adjust_witness_votes( const account_object& a, share_type delta ) {
+   const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+   auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+   while( itr != vidx.end() && itr->account == a.get_id() ) {
+      adjust_witness_vote( itr->witness(*this), delta );
+      ++itr;
+   }
 }
 
 void database::adjust_witness_vote( const witness_object& witness, share_type delta ) {
@@ -1708,6 +1736,7 @@ void database::initialize_evaluators()
     register_evaluator<account_witness_vote_evaluator>();
     register_evaluator<account_witness_proxy_evaluator>();
     register_evaluator<custom_evaluator>();
+    register_evaluator<custom_json_evaluator>();
     register_evaluator<pow_evaluator>();
     register_evaluator<report_over_production_evaluator>();
 
@@ -1872,7 +1901,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   //if( !( skip & skip_validate_invariants ) )
+   if( is_producing() || !( skip & skip_validate_invariants ) )
       validate_invariants();
 }
 
@@ -2516,6 +2545,8 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
    FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_5_0 == 5, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_5_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_0_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -2582,6 +2613,9 @@ void database::process_hardforks()
             elog( "HARDFORK 4" );
             reset_virtual_schedule_time();
             break;
+         case STEEMIT_HARDFORK_0_5_0:
+            elog( "HARDFORK 5" );
+            break;
          default:
             break;
       }
@@ -2644,7 +2678,11 @@ void database::validate_invariants()const
          total_supply += itr->balance;
          total_sbd += itr->sbd_balance;
          total_vesting += itr->vesting_shares;
-         total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
+         total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
+                                 itr->witness_vote_weight() :
+                                 ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
+                                      itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
+                                      itr->vesting_shares.amount ) );
       }
 
       const auto& convert_request_idx = db.get_index_type< convert_index >().indices();
@@ -2721,7 +2759,8 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          a.withdrawn             *= magnitude;
          a.to_withdraw           *= magnitude;
          a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
-         a.proxied_vsf_votes     *= magnitude;
+         for( uint32_t i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
+            a.proxied_vsf_votes[i] *= magnitude;
       });
    }
 

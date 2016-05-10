@@ -22,6 +22,7 @@ namespace steemit { namespace chain {
    };
 
 
+
    struct account_update_operation : public base_operation
    {
       string                        account;
@@ -37,7 +38,10 @@ namespace steemit { namespace chain {
       { if( owner ) a.insert( account ); }
 
       void get_required_active_authorities( flat_set<string>& a )const
-      { if( !owner ) a.insert( account ); }
+      { if( !owner /*&& active*/) a.insert( account ); }
+
+      //void get_required_posting_authorities( flat_set<string>& a )const
+      //{ if( !active && !owner && posting ) a.insert( account ); }
    };
 
    struct comment_operation : public base_operation
@@ -290,6 +294,20 @@ namespace steemit { namespace chain {
       void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
    };
 
+   /** serves the same purpose as custom_operation but also supports required posting authorities. Unlike custom_operation,
+    * this operation is designed to be human readable/developer friendly. 
+    **/
+   struct custom_json_operation : public base_operation {
+      flat_set<string>  required_auths;
+      flat_set<string>  required_posting_auths;
+      string            id; ///< must be less than 32 characters long
+      string            json; ///< must be proper utf8 / JSON string.
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+   };
+
    /**
     *  Feeds can only be published by the top N witnesses which are included in every round and are
     *  used to define the exchange rate between steem and the dollar.
@@ -448,6 +466,7 @@ FC_REFLECT( steemit::chain::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steemit::chain::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
 FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
+FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(id)(json) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::fill_order_operation, (owner)(orderid)(pays)(receives) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
