@@ -331,6 +331,7 @@ namespace detail {
             wild_access.password_salt_b64 = "*";
             wild_access.allowed_apis.push_back( "database_api" );
             wild_access.allowed_apis.push_back( "network_broadcast_api" );
+            wild_access.allowed_apis.push_back( "network_node_api" );
             wild_access.allowed_apis.push_back( "history_api" );
             wild_access.allowed_apis.push_back( "crypto_api" );
             wild_access.allowed_apis.push_back( "private_message_api" );
