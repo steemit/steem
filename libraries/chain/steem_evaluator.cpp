@@ -122,6 +122,9 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) ) 
+      FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
+
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
@@ -239,33 +242,36 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          com.last_update   = db().head_block_time();
 
-         if( o.title.size() + o.body.size() )
-            com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+
+         com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
 
          #ifndef IS_LOW_MEM
-           com.title         = o.title;
-           com.json_metadata = o.json_metadata;
-           #ifdef STEEM_DIFF_MATCH_PATCH
-           try {
-            diff_match_patch dmp;
-            auto patch = dmp.patch_fromText( QString::fromStdString(o.body) );
-            if( patch.size() ) {
-               auto first = QString::fromStdString( com.body );
-               auto result = dmp.patch_apply( patch, first );
-               com.body = result.first.toStdString();
-            }
-            else { // replace
+           if( o.title.size() )         com.title         = o.title;
+           if( o.json_metadata.size() ) com.json_metadata = o.json_metadata;
+
+           if( o.body.size() ) {
+              #ifdef STEEM_DIFF_MATCH_PATCH
+              try {
+               diff_match_patch dmp;
+               auto patch = dmp.patch_fromText( QString::fromStdString(o.body) );
+               if( patch.size() ) {
+                  auto first = QString::fromStdString( com.body );
+                  auto result = dmp.patch_apply( patch, first );
+                  com.body = result.first.toStdString();
+               }
+               else { // replace
+                  com.body = o.body;
+               }
+              } catch ( const QString& err ) {
+                  //wlog( "exception thrown while applying patch: \n   ${e}", ("e",err.toStdString()) );
+                  com.body = o.body;
+              } catch ( ... ) {
+                  com.body = o.body;
+              }
+              #else
                com.body = o.body;
-            }
-           } catch ( const QString& err ) {
-               //wlog( "exception thrown while applying patch: \n   ${e}", ("e",err.toStdString()) );
-               com.body = o.body;
-           } catch ( ... ) {
-               com.body = o.body;
+              #endif
            }
-           #else
-            com.body = o.body;
-           #endif
          #endif
 
       });
