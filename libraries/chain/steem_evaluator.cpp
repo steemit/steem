@@ -122,7 +122,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) ) 
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
 
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
@@ -199,7 +199,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment_stats = db().create<comment_stats_object>( [&]( comment_stats_object& cso ){
           cso.comment_id  = new_comment.id;
-          if( parent ) 
+          if( parent )
             cso.parent_comment_id = parent->id;
           cso.category_id = cat->id;
           cso.author_id   = auth.get_id();
@@ -381,7 +381,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          if( new_vesting_withdraw_rate.amount == 0 )
             new_vesting_withdraw_rate.amount = 1;
 
-         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) ) 
+         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
             FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "this operation would not change the vesting withdraw rate" );
 
          a.vesting_withdraw_rate = new_vesting_withdraw_rate;
@@ -537,7 +537,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
    auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
 
    FC_ASSERT( abs_rshares > 0 );
-
 
    db().modify( comment, [&]( comment_object& c ){
       c.net_rshares += rshares;

@@ -826,13 +826,12 @@ try {
      adjust_balance( to_account, sbd );
      adjust_supply( -steem );
      adjust_supply( sbd );
-
      return sbd;
   } else {
      adjust_balance( to_account, steem );
      return steem;
   }
-} FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) ) }
+} FC_CAPTURE_LOG_AND_RETHROW( (to_account.name)(steem) ) }
 
 /**
  * @param to_account - the account to receive the new vesting shares
@@ -1367,11 +1366,12 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
          sbd_created.amount *= 2; /// 50/50 VESTING SBD means total value is 2x
 
          cashout_comment_helper( parent, origin, parent_vesting_steem_reward, parent_sbd_reward );
-      } else { /// parent gets the full change, recursion stops
-
-         const auto& parent_author = get_account(cur.parent_author);
-         vest_created = create_vesting( parent_author, vesting_steem_reward );
-         sbd_created  = create_sbd( parent_author, sbd_reward );
+      }
+      else /// parent gets the full change, recursion stops
+      {
+         const auto& parent_author = get_account( cur.parent_author );
+         vest_created = create_vesting( parent_author, parent_vesting_steem_reward );
+         sbd_created  = create_sbd( parent_author, parent_sbd_reward );
 
          /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
          push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
@@ -1398,11 +1398,10 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
 {
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
-
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-   auto itr = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(-1), account_id_type() ) );
-   auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
-   while( itr != end ) {
+   auto itr = cvidx.lower_bound( c.id );
+   auto start = itr;
+   while( itr != cvidx.end() && itr->comment == c.id ) {
       // TODO: Add minimum curation pay limit
       u256 weight( itr->weight );
       auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
@@ -1419,7 +1418,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       {
          p.total_reward_fund_steem += unclaimed_rewards;
       });
-
    return unclaimed_rewards;
 }
 
@@ -1434,8 +1432,8 @@ void database::process_comment_cashout() {
 
    const auto& cidx = get_index_type<comment_index>().indices().get<by_cashout_time>();
    auto current = cidx.begin();
-   //auto end = cidx.lower_bound( head_block_time() );
    while( current != cidx.end() && current->cashout_time <= head_block_time() ) {
+      share_type unclaimed;
       const auto& cur = *current; ++current;
       asset sbd_created(0,SBD_SYMBOL);
       asset vest_created(0,VESTS_SYMBOL);
@@ -1451,12 +1449,12 @@ void database::process_comment_cashout() {
             auto to_sbd     = reward_tokens / 2;
             auto to_vesting = reward_tokens - to_sbd;
 
-            modify( cat, [&]( category_object& c ) {
-               c.total_payouts += asset(reward_tokens,STEEM_SYMBOL) * median_price;
-            });
-
-            pay_curators( cur, curator_rewards );
+            unclaimed = pay_curators( cur, curator_rewards );
             cashout_comment_helper( cur, cur, asset( to_vesting, STEEM_SYMBOL ), asset( to_sbd, STEEM_SYMBOL ) );
+
+            modify( cat, [&]( category_object& c ) {
+               c.total_payouts += asset(reward_tokens - unclaimed ,STEEM_SYMBOL) * median_price;
+            });
          }
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;
@@ -2085,7 +2083,6 @@ void database::_apply_transaction(const signed_transaction& trx)
    for( const auto& op : trx.operations )
    { try {
       apply_operation(eval_state, op);
-//      if( head_block_num() > 900000 ) validate_invariants();
       ++_current_op_in_trx;
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
@@ -2512,7 +2509,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting ) {
          }
          case SBD_SYMBOL:
             props.current_sbd_supply += delta;
-            props.virtual_supply += delta * get_feed_history().current_median_history;
+            props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
             assert( props.current_sbd_supply.amount.value >= 0 );
             break;
          default:
@@ -2656,17 +2653,15 @@ void database::set_hardfork( uint32_t hardfork, bool process_now )
  */
 void database::validate_invariants()const
 {
-   const auto& db = *this;
    try
    {
-     // const auto& account_idx = get_index_type< account_index >().indices().get< by_id >();
       const auto& account_idx = get_index_type<account_index>().indices().get<by_name>();
       asset total_supply = asset( 0, STEEM_SYMBOL );
       asset total_sbd = asset( 0, SBD_SYMBOL );
       asset total_vesting = asset( 0, VESTS_SYMBOL );
       share_type total_vsf_votes = share_type( 0 );
 
-      auto gpo = db.get_dynamic_global_properties();
+      auto gpo = get_dynamic_global_properties();
 
       /// verify no witness has too many votes
       const auto& witness_idx = get_index_type< witness_index >().indices();
@@ -2685,7 +2680,7 @@ void database::validate_invariants()const
                                       itr->vesting_shares.amount ) );
       }
 
-      const auto& convert_request_idx = db.get_index_type< convert_index >().indices();
+      const auto& convert_request_idx = get_index_type< convert_index >().indices();
 
       for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); itr++ )
       {
@@ -2697,7 +2692,7 @@ void database::validate_invariants()const
             FC_ASSERT( !"Encountered illegal symbol in convert_request_object" );
       }
 
-      const auto& limit_order_idx = db.get_index_type< limit_order_index >().indices();
+      const auto& limit_order_idx = get_index_type< limit_order_index >().indices();
 
       for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); itr++ )
       {
@@ -2714,7 +2709,7 @@ void database::validate_invariants()const
       fc::uint128_t total_rshares2;
       fc::uint128_t total_children_rshares2;
 
-      const auto& comment_idx = db.get_index_type< comment_index >().indices();
+      const auto& comment_idx = get_index_type< comment_index >().indices();
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
@@ -2736,11 +2731,11 @@ void database::validate_invariants()const
       FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
 
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
-      if ( !db.get_feed_history().current_median_history.is_null() )
-         FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
-            == gpo.virtual_supply );
+      if ( !get_feed_history().current_median_history.is_null() )
+         FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
+            == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (db.head_block_num()) );
+   FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
 
 void database::perform_vesting_share_split( uint32_t magnitude )
@@ -2785,7 +2780,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
    for( const auto& vote : vote_idx ) {
       modify( vote, [&]( comment_vote_object& cv )
       {
-         cv.weight = ( cv.weight * magnitude ) * magnitude;
+         cv.weight = cv.weight * magnitude ;
       });
    }
 
