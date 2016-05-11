@@ -1437,6 +1437,7 @@ void database::process_comment_cashout() {
    while( current != cidx.end() && current->cashout_time <= head_block_time() ) {
       share_type unclaimed;
       const auto& cur = *current; ++current;
+      try{
       bool paid = true;
       asset sbd_created(0,SBD_SYMBOL);
       asset vest_created(0,VESTS_SYMBOL);
@@ -1490,6 +1491,8 @@ void database::process_comment_cashout() {
          ++vote_itr;
          remove(cur_vote);
       }
+      validate_invariants();
+      } FC_CAPTURE_LOG_AND_RETHROW( (cur) );
    }
 }
 
@@ -2517,7 +2520,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting ) {
          }
          case SBD_SYMBOL:
             props.current_sbd_supply += delta;
-            props.virtual_supply += delta * get_feed_history().current_median_history;
+            props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
             assert( props.current_sbd_supply.amount.value >= 0 );
             break;
          default:
@@ -2741,9 +2744,9 @@ void database::validate_invariants()const
       FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
 
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
-      /*if ( !get_feed_history().current_median_history.is_null() )
+      if ( !get_feed_history().current_median_history.is_null() )
          FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
-            == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );*/
+            == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
