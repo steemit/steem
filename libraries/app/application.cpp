@@ -160,20 +160,7 @@ namespace detail {
 
          _websocket_server = std::make_shared<fc::http::websocket_server>();
 
-         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
-            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            for( const std::string& name : _public_apis )
-            {
-               fc::api_ptr api = create_api_by_name( name );
-               if( !api )
-               {
-                  elog( "Couldn't create API ${name}", ("name", name) );
-                  continue;
-               }
-               api->register_api( *wsc );
-            }
-            c->set_session_data( wsc );
-         });
+         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
          ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
          _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
          _websocket_server->start_accept();
@@ -193,24 +180,27 @@ namespace detail {
          string password = _options->count("server-pem-password") ? _options->at("server-pem-password").as<string>() : "";
          _websocket_tls_server = std::make_shared<fc::http::websocket_tls_server>( _options->at("server-pem").as<string>(), password );
 
-         _websocket_tls_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
-            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            for( const std::string& name : _public_apis )
-            {
-               fc::api_ptr api = create_api_by_name( name );
-               if( !api )
-               {
-                  elog( "Couldn't create API ${name}", ("name", name) );
-                  continue;
-               }
-               api->register_api( *wsc );
-            }
-            c->set_session_data( wsc );
-         });
+         _websocket_tls_server->on_connection([this]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
          ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
          _websocket_tls_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-tls-endpoint").as<string>()) );
          _websocket_tls_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
+
+      void on_connection( const fc::http::websocket_connection_ptr& c )
+      {
+         auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+         for( const std::string& name : _public_apis )
+         {
+            fc::api_ptr api = create_api_by_name( name );
+            if( !api )
+            {
+               elog( "Couldn't create API ${name}", ("name", name) );
+               continue;
+            }
+            api->register_api( *wsc );
+         }
+         c->set_session_data( wsc );
+      }
 
       application_impl(application* self)
          : _self(self),
