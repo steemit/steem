@@ -593,6 +593,8 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
          cv.voter   = voter.id;
          cv.comment = comment.id;
          cv.rshares = rshares;
+         cv.vote_percent = o.weight;
+         cv.last_update = db().head_block_time();
          if( rshares > 0 ) {
             u256 rshare256(rshares);
             u256 total256( comment.abs_rshares.value );
@@ -609,13 +611,12 @@ void vote_evaluator::do_apply( const vote_operation& o ) {
    else
    {
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_3 ), "Cannot undo votes until hardfork 3" );
-      FC_ASSERT( o.weight == 0, "vote can only be removed, not modifed" );
 
       db().modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
          c.net_rshares -= itr->rshares;
-         c.abs_rshares -= ( itr->rshares > 0 ? itr->rshares : -itr->rshares );
+         c.total_vote_weight -= itr->weight;
       });
 
       db().modify( *itr, [&]( comment_vote_object& cv )

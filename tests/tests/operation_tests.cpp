@@ -857,7 +857,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.cashout_time == old_cashout_time );
          BOOST_REQUIRE( sam_bob_vote->weight == 0 );
          BOOST_REQUIRE( sam_bob_vote->rshares == 0 );
-         BOOST_REQUIRE( db.get_account( "sam" ).voting_power == sam_voting_power );
+         BOOST_REQUIRE( db.get_account( "sam" ).voting_power == sam_vote_power );
 
          validate_database();
       }

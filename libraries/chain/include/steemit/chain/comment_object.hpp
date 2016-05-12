@@ -115,8 +115,10 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_comment_vote_object_type;
          account_id_type voter;
          comment_id_type comment;
-         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote.
+         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
          int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
+         uint16_t        vote_percent = 0; ///< The percent weight of the vote
+         time_point_sec  last_update; ///< The time of the last update of the vote
    };
 
    struct by_comment_voter;
@@ -338,6 +340,6 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
-                    (voter)(comment)(weight)(rshares) )
+                    (voter)(comment)(weight)(rshares)(vote_percent)(last_update) )
 
 FC_REFLECT_DERIVED( steemit::chain::category_object, (graphene::db::object), (name)(abs_rshares)(total_payouts)(discussions)(last_update) );
