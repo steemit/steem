@@ -871,6 +871,43 @@ vector<discussion> database_api::get_discussions_by_last_active( string start_pa
    return result;
 }
 
+vector<discussion> database_api::get_discussions_by_votes( string start_parent_author, string start_permlink, uint32_t limit )const {
+
+   vector<discussion> result;
+   idump((start_parent_author)(start_permlink)(limit) );
+   /*
+   const auto& last_activity_idx = my->_db.get_index_type< comment_stats_index >().indices().get< by_net_votes >();
+
+   auto itr = last_activity_idx.begin();
+
+
+   if( start_permlink.size() ) {
+      const auto& start_comment = my->_db.get_comment( start_parent_author, start_permlink );
+      itr = last_activity_idx.iterator_to( start_comment.stats(my->_db) );
+   }
+   else if( start_parent_author.size() ) {
+      const auto& start_author = my->_db.get_account( start_parent_author );
+      itr = last_activity_idx.lower_bound( boost::make_tuple( start_author.get_id(), std::numeric_limits<int32_t>::max(), object_id_type() ) );
+   }
+
+   while( itr != last_activity_idx.end() && result.size() < limit  ) {
+      const auto& c = itr->comment_id(my->_db);
+      result.push_back( c );
+      set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( c.author, c.permlink );
+      ++itr;
+   }
+   */
+   return result;
+}
+
+
+vector<discussion> database_api::get_discussions_in_category_by_votes( string category, string start_auth, string start_permlink, uint32_t limit )const {
+
+   vector<discussion> result;
+   return result;
+}
+
 vector<discussion> database_api::get_discussions_in_category_by_last_active( string category, string start_auth, string start_permlink, uint32_t limit )const {
    const auto& last_activity_in_category = my->_db.get_index_type< comment_index >().indices().get< by_active_in_category >();
 

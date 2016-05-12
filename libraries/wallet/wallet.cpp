@@ -241,14 +241,19 @@ public:
       : self( s ),
         _remote_api( rapi ),
         _remote_db( rapi->get_api_by_name("database_api")->as< database_api >() ),
-        _remote_net_broadcast( rapi->get_api_by_name("network_broadcast_api")->as< network_broadcast_api >() ),
-        _remote_message_api( rapi->get_api_by_name("private_message_api")->as< private_message_api >() )
+        _remote_net_broadcast( rapi->get_api_by_name("network_broadcast_api")->as< network_broadcast_api >() )
    {
       init_prototype_ops();
 
       _wallet.ws_server = initial_data.ws_server;
       _wallet.ws_user = initial_data.ws_user;
       _wallet.ws_password = initial_data.ws_password;
+
+      try {
+        _remote_message_api =  rapi->get_api_by_name("private_message_api")->as< private_message_api >();
+      } catch ( const fc::exception& e ) {
+         wlog( "error fetching private_message_api" );
+      }
    }
    virtual ~wallet_api_impl()
    {}
