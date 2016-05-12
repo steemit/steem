@@ -178,17 +178,7 @@ namespace steemit { namespace app {
           */
          bool login(const string& user, const string& password);
 
-         fc::api_ptr get_api_by_name( const string& api_name )const
-         {
-            auto it = _api_map.find( api_name );
-            if( it == _api_map.end() ) {
-               wlog( "unknown api: ${api}", ("api",api_name) );
-               return fc::api_ptr();
-            }
-            if( it->second ) ilog( "found api: ${api}", ("api",api_name) );
-            FC_ASSERT( it->second != nullptr );
-            return it->second;
-         }
+         fc::api_ptr get_api_by_name( const string& api_name )const;
 
          /// internal method, not exposed via JSON RPC
          void on_api_startup();

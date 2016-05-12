@@ -83,6 +83,22 @@ namespace steemit { namespace app {
        return true;
     }
 
+    fc::api_ptr login_api::get_api_by_name( const string& api_name )const
+    {
+       auto it = _api_map.find( api_name );
+       if( it == _api_map.end() )
+       {
+          wlog( "unknown api: ${api}", ("api",api_name) );
+          return fc::api_ptr();
+       }
+       if( it->second )
+       {
+          ilog( "found api: ${api}", ("api",api_name) );
+       }
+       FC_ASSERT( it->second != nullptr );
+       return it->second;
+    }
+
     network_broadcast_api::network_broadcast_api(application& a):_app(a)
     {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
