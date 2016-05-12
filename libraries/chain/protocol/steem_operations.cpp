@@ -114,6 +114,13 @@ namespace steemit { namespace chain {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( required_auths.size() > 0, "at least on account must be specified" );
    }
+   void custom_json_operation::validate() const {
+      /// required auth accounts are the ones whose bandwidth is consumed
+      FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least on account must be specified" );
+      FC_ASSERT( id.size() <= 32 );
+      FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
+      FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
+   }
 
    fc::sha256 pow_operation::work_input()const
    {
@@ -184,6 +191,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( first_block.witness   == second_block.witness );
       FC_ASSERT( first_block.timestamp == second_block.timestamp );
       FC_ASSERT( first_block.signee()  == second_block.signee() );
+      FC_ASSERT( first_block.id() != second_block.id() );
    }
 
 

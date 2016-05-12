@@ -242,10 +242,23 @@ namespace steemit { namespace chain {
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
 
-         void adjust_witness_votes( const account_object& a, share_type delta, int depth = 0 );
+         /** this updates the votes for witnesses as a result of account voting proxy changing */
+         void adjust_proxied_witness_votes( const account_object& a,
+                                            const std::array< share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1 >& delta,
+                                            int depth = 0 );
+
+         /** this updates the votes for all witnesses as a result of account VESTS changing */
+         void adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth = 0 );
+
+         /** this is called by `adjust_proxied_witness_votes` when account proxy to self */
+         void adjust_witness_votes( const account_object& a, share_type delta );
+
+         /** this updates the vote of a single witness as a result of a vote being added or removed*/
+         void adjust_witness_vote( const witness_object& obj, share_type delta );
+
          /** clears all vote records for a particular account but does not update the
           * witness vote totals.  Vote totals should be updated first via a call to
-          * adjust_witness_votes( a, -a.witness_vote_weight() )
+          * adjust_proxied_witness_votes( a, -a.witness_vote_weight() )
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
@@ -321,14 +334,13 @@ namespace steemit { namespace chain {
          void perform_vesting_share_split( uint32_t magnitude );
          void retally_witness_votes();
 
-         bool has_hardfork( uint32_t hardfork );
+         bool has_hardfork( uint32_t hardfork )const;
 
-         #ifdef IS_TEST_NET
          /* For testing and debugging only. Given a hardfork
             with id N, applies all hardforks with id <= N */
-         void set_hardfork( uint32_t hardfork );
-         #endif
+         void set_hardfork( uint32_t hardfork, bool process_now = true );
 
+         void validate_invariants()const;
          /**
           * @}
           */
@@ -355,11 +367,16 @@ namespace steemit { namespace chain {
          const witness_object& validate_block_header( uint32_t skip, const signed_block& next_block )const;
          void create_block_summary(const signed_block& next_block);
 
+         void update_witness_schedule4();
+         void update_median_witness_props();
+
          void update_global_dynamic_data( const signed_block& b );
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
          void clear_expired_orders();
+
+         void reset_virtual_schedule_time();
 
          void init_hardforks();
          void process_hardforks();
@@ -391,7 +408,6 @@ namespace steemit { namespace chain {
 
          node_property_object              _node_property_object;
 
-         void validate_invariants()const;
    };
 
 

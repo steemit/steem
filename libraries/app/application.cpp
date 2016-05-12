@@ -227,8 +227,8 @@ namespace detail {
       {
          _self->register_api_factory< login_api >( "login_api" );
          _self->register_api_factory< database_api >( "database_api" );
-         _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
          _self->register_api_factory< network_node_api >( "network_node_api" );
+         _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
       }
 
       void startup()
@@ -333,6 +333,7 @@ namespace detail {
             wild_access.allowed_apis.push_back( "network_broadcast_api" );
             wild_access.allowed_apis.push_back( "history_api" );
             wild_access.allowed_apis.push_back( "crypto_api" );
+            wild_access.allowed_apis.push_back( "private_message_api" );
             _apiaccess.permission_map["*"] = wild_access;
          }
 
@@ -379,7 +380,10 @@ namespace detail {
       {
          auto it = _api_factories_by_name.find(name);
          if( it == _api_factories_by_name.end() )
+         {
+            wlog( "unknown api: ${api}", ("api",name) );
             return nullptr;
+         }
          return it->second();
       }
 

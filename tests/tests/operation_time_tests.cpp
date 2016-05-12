@@ -12,7 +12,6 @@
 #include "../common/database_fixture.hpp"
 
 #include <cmath>
-#include <iostream>
 
 using namespace steemit::chain;
 using namespace steemit::chain::test;
@@ -174,7 +173,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
 
       auto bob_comment_reward = get_last_operations( 1 )[0].get< comment_reward_operation >();
 
-      BOOST_REQUIRE_EQUAL( ( db.get_dynamic_global_properties().total_reward_fund_steem + bob_comment_payout + bob_comment_vote_rewards - unclaimed_payments ).amount.value, reward_steem.amount.value );
+      BOOST_REQUIRE_EQUAL( db.get_dynamic_global_properties().total_reward_fund_steem.amount.value, reward_steem.amount.value - ( bob_comment_payout + bob_comment_vote_rewards - unclaimed_payments ).amount.value );
       BOOST_REQUIRE_EQUAL( db.get_comment( "bob", "test" ).total_payout_value.amount.value, ( ( bob_comment_vesting_reward * db.get_dynamic_global_properties().get_vesting_share_price() ) + ( bob_comment_sbd_reward * exchange_rate ) ).amount.value );
       BOOST_REQUIRE_EQUAL( db.get_account( "bob" ).sbd_balance.amount.value, ( bob_sbd_balance + bob_comment_sbd_reward ).amount.value );
       BOOST_REQUIRE( db.get_comment( "alice", "test" ).net_rshares.value > 0 );
@@ -223,7 +222,13 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       sam_vest_shares = db.get_account( "sam" ).vesting_shares;
       dave_vest_shares = db.get_account( "dave" ).vesting_shares;
 
-      auto alice_comment_payout = asset( ( ( uint128_t( alice_comment_rshares.value ) * alice_comment_rshares.value * reward_steem.amount.value ) / total_rshares2 ).to_uint64(), STEEM_SYMBOL );
+      u256 rs( alice_comment_rshares.value );
+      u256 rf( reward_steem.amount.value );
+      u256 trs2 = total_rshares2.hi;
+      trs2 = ( trs2 << 64 ) + total_rshares2.lo;
+      auto rs2 = rs*rs;
+
+      auto alice_comment_payout = asset( static_cast< uint64_t >( ( rf * rs2 ) / trs2 ), STEEM_SYMBOL );
       auto alice_comment_vote_rewards = asset( alice_comment_payout.amount / 2, STEEM_SYMBOL );
       alice_comment_payout -= alice_comment_vote_rewards;
       auto alice_comment_sbd_reward = asset( alice_comment_payout.amount / 2, STEEM_SYMBOL ) * exchange_rate;
@@ -240,7 +245,6 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       unclaimed_payments -= ( alice_vote_reward + bob_vote_reward + sam_vote_reward + dave_vote_reward );
 
       generate_block();
-
       auto alice_comment_reward = get_last_operations( 1 )[0].get< comment_reward_operation >();
 
       BOOST_REQUIRE_EQUAL( ( db.get_dynamic_global_properties().total_reward_fund_steem + alice_comment_payout + alice_comment_vote_rewards - unclaimed_payments ).amount.value, reward_steem.amount.value );
@@ -653,8 +657,6 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
       ACTORS( (alice) )
       fund( "alice", 100000 );
       vest( "alice", 100000 );
-
-      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME ), true ); // Get past the test hardfork time
 
       const auto& new_alice = db.get_account( "alice" );
 
@@ -1234,8 +1236,6 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
    try
    {
       ACTORS( (alice)(bob)(sam)(dave) )
-
-      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_1_TIME ), true );
 
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 

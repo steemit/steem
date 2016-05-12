@@ -27,7 +27,8 @@
 #include <functional>
 #include <iostream>
 
-#define VIRTUAL_SCHEDULE_LAP_LENGTH fc::uint128(uint64_t(-1))
+#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
+#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
 namespace steemit { namespace chain {
 
@@ -671,7 +672,7 @@ signed_block database::_generate_block(
       if( tx.expiration < when )
          continue;
 
-      size_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
 
       // postpone transaction if it would make block too big
       if( new_total_size >= maximum_block_size )
@@ -825,13 +826,12 @@ try {
      adjust_balance( to_account, sbd );
      adjust_supply( -steem );
      adjust_supply( sbd );
-
      return sbd;
   } else {
      adjust_balance( to_account, steem );
      return steem;
   }
-} FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) ) }
+} FC_CAPTURE_LOG_AND_RETHROW( (to_account.name)(steem) ) }
 
 /**
  * @param to_account - the account to receive the new vesting shares
@@ -865,7 +865,7 @@ try {
        props.total_vesting_shares += new_vesting;
    });
 
-   adjust_witness_votes( to_account, new_vesting.amount );
+   adjust_proxied_witness_votes( to_account, new_vesting.amount );
 
    return new_vesting;
 } FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) ) }
@@ -882,16 +882,130 @@ fc::sha256 database::get_pow_target()const {
    return target;
 }
 
+void database::update_witness_schedule4() {
+   vector<string> active_witnesses;
+
+   /// Add the highest voted witnesses
+   flat_set<witness_id_type> selected_voted;
+   selected_voted.reserve( STEEMIT_MAX_VOTED_WITNESSES );
+   const auto& widx         = get_index_type<witness_index>().indices().get<by_vote_name>();
+   for( auto itr = widx.begin();
+        itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
+        ++itr ) {
+      selected_voted.insert(itr->get_id());
+      active_witnesses.push_back(itr->owner);
+   }
+
+   /// Add miners from the top of the mining queue
+   flat_set<witness_id_type> selected_miners;
+   selected_miners.reserve( STEEMIT_MAX_MINER_WITNESSES );
+   const auto& gprops = get_dynamic_global_properties();
+   const auto& pow_idx      = get_index_type<witness_index>().indices().get<by_pow>();
+   auto mitr = pow_idx.upper_bound(0);
+   while( mitr != pow_idx.end() && selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES ) {
+      if( selected_voted.find(mitr->get_id()) == selected_voted.end() ) { // Skip any miner who is a  top voted witness
+         selected_miners.insert(mitr->get_id());
+         active_witnesses.push_back(mitr->owner);
+      }
+      auto itr = mitr;
+      ++mitr;
+      modify( *itr, [&](witness_object& wit ) {
+         wit.pow_worker = 0;
+      });
+      modify( gprops, [&]( dynamic_global_property_object& obj ) {
+         obj.num_pow_witnesses--;
+      });
+   }
+
+   /// Add the running witnesses in the lead
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+   fc::uint128 new_virtual_time = wso.current_virtual_time;
+   const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
+   auto sitr = schedule_idx.begin();
+   vector<decltype(sitr)> processed_witnesses;
+   for( auto witness_count = selected_voted.size() + selected_miners.size();
+        sitr != schedule_idx.end() && witness_count < STEEMIT_MAX_MINERS;
+        ++sitr ) {
+      new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
+      processed_witnesses.push_back(sitr);
+      if( selected_miners.find(sitr->get_id()) == selected_miners.end()
+          && selected_voted.find(sitr->get_id()) == selected_voted.end() ) {
+         active_witnesses.push_back(sitr->owner);
+         ++witness_count;
+      }
+   }
+
+   /// Update virtual schedule of processed witnesses
+   bool reset_virtual_time = false;
+   for( auto itr = processed_witnesses.begin(); itr != processed_witnesses.end(); ++itr ) {
+      auto new_virtual_scheduled_time = new_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / ((*itr)->votes.value+1);
+      if( new_virtual_scheduled_time < new_virtual_time ) {
+         reset_virtual_time = true; /// overflow
+         break;
+      }
+      modify( *(*itr), [&]( witness_object& wo ) {
+         wo.virtual_position        = fc::uint128();
+         wo.virtual_last_update     = new_virtual_time;
+         wo.virtual_scheduled_time  = new_virtual_scheduled_time;
+      });
+   }
+   if( reset_virtual_time )
+   {
+      new_virtual_time = fc::uint128();
+      reset_virtual_schedule_time();
+   }
+
+   FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_MINERS, "number of active witnesses does not equal STEEMIT_MAX_MINERS",
+                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_MINERS",STEEMIT_MAX_MINERS) );
+
+
+
+   modify( wso, [&]( witness_schedule_object& _wso ) {
+      _wso.current_shuffled_witnesses = active_witnesses;
+
+      /// shuffle current shuffled witnesses
+      auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
+      for( uint32_t i = 0; i < _wso.current_shuffled_witnesses.size(); ++i )
+      {
+         /// High performance random generator
+         /// http://xorshift.di.unimi.it/
+         uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+         k ^= (k >> 12);
+         k ^= (k << 25);
+         k ^= (k >> 27);
+         k *= 2685821657736338717ULL;
+
+         uint32_t jmax = _wso.current_shuffled_witnesses.size() - i;
+         uint32_t j = i + k%jmax;
+         std::swap( _wso.current_shuffled_witnesses[i],
+                    _wso.current_shuffled_witnesses[j] );
+      }
+
+      _wso.current_virtual_time = new_virtual_time;
+      _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
+   });
+
+   update_median_witness_props();
+}
+
+
 /**
  *
  *  See @ref witness_object::virtual_last_update
  */
 void database::update_witness_schedule()
 {
-   const auto& props = get_dynamic_global_properties();
-   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
    if( (head_block_num() % STEEMIT_MAX_MINERS) == 0 ) //wso.next_shuffle_block_num )
    {
+      if( has_hardfork(STEEMIT_HARDFORK_0_4_0) ) {
+         update_witness_schedule4();
+         return;
+      }
+
+      const auto& props = get_dynamic_global_properties();
+      const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+
+
       vector<string> active_witnesses;
       active_witnesses.reserve( STEEMIT_MAX_MINERS );
 
@@ -912,6 +1026,7 @@ void database::update_witness_schedule()
          }
 
          /// add the virtual scheduled witness, reseeting their position to 0 and their time to completion
+
          const auto& schedule_idx = get_index_type<witness_index>().indices().get<by_schedule_time>();
          auto sitr = schedule_idx.begin();
          while( sitr != schedule_idx.end() && sitr->pow_worker ) ++sitr;
@@ -929,9 +1044,24 @@ void database::update_witness_schedule()
                    new_virtual_time = fc::uint128();
 
                /// this witness will produce again here
-               wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
+               if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
+                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
+               else
+                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
+
             });
          }
+
+         /* TODO: delete this if we can reindex without it through HF4 */
+         if( !has_hardfork( STEEMIT_HARDFORK_0_4_0 ) ) {
+            while( sitr != schedule_idx.end() && sitr->pow_worker ) {
+               modify( *sitr, [&]( witness_object& wo ) {
+                       wo.virtual_last_update = new_virtual_time;
+                       });
+               ++sitr;
+            }
+         }
+
       }
 
       /// Add the next POW witness to the active set if there is one...
@@ -941,7 +1071,6 @@ void database::update_witness_schedule()
       /// if there is more than 1 POW witness, then pop the first one from the queue...
       if( props.num_pow_witnesses > STEEMIT_MAX_MINERS ) {
          if( itr != pow_idx.end() ) {
-         //   elog( "unscheduling miner ${m} at end of round", ("m",itr->owner) );
             modify( *itr, [&](witness_object& wit ){
                wit.pow_worker = 0;
             });
@@ -954,22 +1083,23 @@ void database::update_witness_schedule()
       /// add all of the pow witnesses to the round until voting takes over, then only add one per round
       itr = pow_idx.upper_bound(0);
       while( itr != pow_idx.end() ) {
-       //  ilog( "scheduling miner ${m}", ("m",itr->owner) );
          active_witnesses.push_back( itr->owner );
 
          if( head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK || active_witnesses.size() >= STEEMIT_MAX_MINERS )
             break;
          ++itr;
       }
-      //wdump((active_witnesses));
 
       modify( wso, [&]( witness_schedule_object& _wso )
       {
+      /*
          _wso.current_shuffled_witnesses.clear();
          _wso.current_shuffled_witnesses.reserve( active_witnesses.size() );
 
          for( const string& w : active_witnesses )
             _wso.current_shuffled_witnesses.push_back( w );
+            */
+         _wso.current_shuffled_witnesses = active_witnesses;
 
          auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
          for( uint32_t i = 0; i < _wso.current_shuffled_witnesses.size(); ++i )
@@ -993,71 +1123,123 @@ void database::update_witness_schedule()
 
          _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
       });
-
-      /// fetch all witness objects
-      vector<const witness_object*> active; active.reserve( wso.current_shuffled_witnesses.size() );
-      for( const auto& wname : wso.current_shuffled_witnesses ) { active.push_back(&get_witness(wname)); }
-
-      /// sort them by account_creation_fee
-      std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
-                 return a->props.account_creation_fee.amount < b->props.account_creation_fee.amount;
-                 });
-
-      modify( wso, [&]( witness_schedule_object& _wso ) {
-        _wso.median_props.account_creation_fee = active[active.size()/2]->props.account_creation_fee;
-      });
-
-
-      /// sort them by maximum_block_size
-      std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
-                 return a->props.maximum_block_size < b->props.maximum_block_size;
-                 });
-
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
-            p.maximum_block_size = active[active.size()/2]->props.maximum_block_size;
-      });
-
-
-      /// sort them by sbd_interest_rate
-      std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
-                 return a->props.sbd_interest_rate < b->props.sbd_interest_rate;
-                 });
-
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
-            p.sbd_interest_rate = active[active.size()/2]->props.sbd_interest_rate;
-      });
+      update_median_witness_props();
    }
 }
 
-void database::adjust_witness_votes( const account_object& a, share_type delta, int depth ) {
-  if( a.proxy.size() ) {
+void database::update_median_witness_props() {
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+
+   /// fetch all witness objects
+   vector<const witness_object*> active; active.reserve( wso.current_shuffled_witnesses.size() );
+   for( const auto& wname : wso.current_shuffled_witnesses ) { active.push_back(&get_witness(wname)); }
+
+   /// sort them by account_creation_fee
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
+              return a->props.account_creation_fee.amount < b->props.account_creation_fee.amount;
+              });
+
+   modify( wso, [&]( witness_schedule_object& _wso ) {
+     _wso.median_props.account_creation_fee = active[active.size()/2]->props.account_creation_fee;
+   });
+
+
+   /// sort them by maximum_block_size
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
+              return a->props.maximum_block_size < b->props.maximum_block_size;
+              });
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
+         p.maximum_block_size = active[active.size()/2]->props.maximum_block_size;
+   });
+
+
+   /// sort them by sbd_interest_rate
+   std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b ){
+              return a->props.sbd_interest_rate < b->props.sbd_interest_rate;
+              });
+
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p ){
+         p.sbd_interest_rate = active[active.size()/2]->props.sbd_interest_rate;
+   });
+}
+
+void database::adjust_proxied_witness_votes( const account_object& a,
+                                   const std::array< share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1 >& delta,
+                                   int depth ) {
+  if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
+     /// nested proxies are not supported, vote will not propagate
+     if( depth >= STEEMIT_MAX_PROXY_RECURSION_DEPTH )
+        return;
+
      const auto& proxy = get_account( a.proxy );
 
      modify( proxy, [&]( account_object& a ) {
-        a.proxied_vsf_votes += delta;
+        for( int i = STEEMIT_MAX_PROXY_RECURSION_DEPTH - depth - 1; i >= 0; --i ) {
+           a.proxied_vsf_votes[i+depth] += delta[i];
+        }
      });
 
-     /// nested proxies are not supported, vote will not propagate
-     if( depth > STEEMIT_MAX_PROXY_RECURSION_DEPTH )
-        return;
-
-     adjust_witness_votes( proxy, delta, depth + 1 );
+     adjust_proxied_witness_votes( proxy, delta, depth + 1 );
   } else {
-     const witness_schedule_object& wso = witness_schedule_id_type()(*this);
-
-     const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
-     auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
-     while( itr != vidx.end() && itr->account == a.get_id() ) {
-        modify( itr->witness(*this), [&]( witness_object& w ){
-          w.virtual_position += w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
-          w.virtual_last_update = wso.current_virtual_time;
-          w.votes += delta;
-          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
-        });
-        ++itr;
-     }
+     share_type total_delta = 0;
+     for( int i = STEEMIT_MAX_PROXY_RECURSION_DEPTH - depth; i >= 0; --i )
+        total_delta += delta[i];
+     adjust_witness_votes( a, total_delta );
   }
 }
+
+void database::adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth ) {
+  if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) {
+     /// nested proxies are not supported, vote will not propagate
+     if( depth >= STEEMIT_MAX_PROXY_RECURSION_DEPTH )
+        return;
+
+     const auto& proxy = get_account( a.proxy );
+
+     modify( proxy, [&]( account_object& a ) {
+        a.proxied_vsf_votes[depth] += delta;
+     });
+
+     adjust_proxied_witness_votes( proxy, delta, depth + 1 );
+  } else {
+     adjust_witness_votes( a, delta );
+  }
+}
+
+void database::adjust_witness_votes( const account_object& a, share_type delta ) {
+   const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+   auto itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+   while( itr != vidx.end() && itr->account == a.get_id() ) {
+      adjust_witness_vote( itr->witness(*this), delta );
+      ++itr;
+   }
+}
+
+void database::adjust_witness_vote( const witness_object& witness, share_type delta ) {
+    const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+    modify( witness, [&]( witness_object& w ){
+
+      auto delta_pos = w.votes.value * (wso.current_virtual_time - w.virtual_last_update);
+      w.virtual_position += delta_pos;
+
+      w.virtual_last_update = wso.current_virtual_time;
+      w.votes += delta;
+      FC_ASSERT( w.votes <= get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props",get_dynamic_global_properties().total_vesting_shares) );
+
+      if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
+         w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
+      else
+         w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
+
+      /** witnesses with a low number of votes could overflow the time field and end up with a scheduled time in the past */
+      if( has_hardfork( STEEMIT_HARDFORK_0_4_0 ) ) {
+         if( w.virtual_scheduled_time < wso.current_virtual_time )
+            w.virtual_scheduled_time = fc::uint128::max_value();
+      }
+    });
+}
+
 
 void database::clear_witness_votes( const account_object& a ) {
   const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
@@ -1075,13 +1257,23 @@ void database::clear_witness_votes( const account_object& a ) {
  */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 ) {
 
+//   idump( ("before")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
    modify( c, [&](comment_object& comment ){
       comment.children_rshares2 -= old_rshares2;
       comment.children_rshares2 += new_rshares2;
+      if( new_rshares2 > old_rshares2 ) /// down't update active index for down votes
+         comment.active = head_block_time();
    });
    if( c.depth ) {
       adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
+   } else {
+      const auto& cprops = get_dynamic_global_properties();
+      modify( cprops, [&]( dynamic_global_property_object& p ){
+         p.total_reward_shares2 -= old_rshares2;
+         p.total_reward_shares2 += new_rshares2;
+      });
    }
+//   wdump( ("after")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
 }
 
 void database::process_vesting_withdrawals() {
@@ -1134,7 +1326,7 @@ void database::process_vesting_withdrawals() {
      });
 
      if( withdrawn_vesting > 0 )
-        adjust_witness_votes( cur, -withdrawn_vesting );
+        adjust_proxied_witness_votes( cur, -withdrawn_vesting );
    }
 }
 
@@ -1176,11 +1368,12 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
          sbd_created.amount *= 2; /// 50/50 VESTING SBD means total value is 2x
 
          cashout_comment_helper( parent, origin, parent_vesting_steem_reward, parent_sbd_reward );
-      } else { /// parent gets the full change, recursion stops
-
-         const auto& parent_author = get_account(cur.parent_author);
-         vest_created = create_vesting( parent_author, vesting_steem_reward );
-         sbd_created  = create_sbd( parent_author, sbd_reward );
+      }
+      else /// parent gets the full change, recursion stops
+      {
+         const auto& parent_author = get_account( cur.parent_author );
+         vest_created = create_vesting( parent_author, parent_vesting_steem_reward );
+         sbd_created  = create_sbd( parent_author, parent_sbd_reward );
 
          /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
          push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
@@ -1207,15 +1400,15 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
 {
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
-
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-   auto itr = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(-1), account_id_type() ) );
-   auto end = cvidx.lower_bound( boost::make_tuple( c.id, uint64_t(0), account_id_type() ) );
-   while( itr != end ) {
-      if( itr->weight > 0 )
+   auto itr = cvidx.lower_bound( c.id );
+   auto start = itr;
+   while( itr != cvidx.end() && itr->comment == c.id ) {
+      // TODO: Add minimum curation pay limit
+      u256 weight( itr->weight );
+      auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
+      if( claim > 1 ) // min_amt is non-zero satoshis
       {
-         u256 weight( itr->weight );
-         auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
          unclaimed_rewards -= claim;
          auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
          push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
@@ -1227,7 +1420,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       {
          p.total_reward_fund_steem += unclaimed_rewards;
       });
-
    return unclaimed_rewards;
 }
 
@@ -1242,8 +1434,8 @@ void database::process_comment_cashout() {
 
    const auto& cidx = get_index_type<comment_index>().indices().get<by_cashout_time>();
    auto current = cidx.begin();
-   //auto end = cidx.lower_bound( head_block_time() );
    while( current != cidx.end() && current->cashout_time <= head_block_time() ) {
+      share_type unclaimed;
       const auto& cur = *current; ++current;
       asset sbd_created(0,SBD_SYMBOL);
       asset vest_created(0,VESTS_SYMBOL);
@@ -1259,12 +1451,12 @@ void database::process_comment_cashout() {
             auto to_sbd     = reward_tokens / 2;
             auto to_vesting = reward_tokens - to_sbd;
 
-            modify( cat, [&]( category_object& c ) {
-               c.total_payouts += asset(reward_tokens,STEEM_SYMBOL) * median_price;
-            });
-
-            pay_curators( cur, curator_rewards );
+            unclaimed = pay_curators( cur, curator_rewards );
             cashout_comment_helper( cur, cur, asset( to_vesting, STEEM_SYMBOL ), asset( to_sbd, STEEM_SYMBOL ) );
+
+            modify( cat, [&]( category_object& c ) {
+               c.total_payouts += asset(reward_tokens - unclaimed ,STEEM_SYMBOL) * median_price;
+            });
          }
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;
@@ -1286,6 +1478,7 @@ void database::process_comment_cashout() {
          if( c.net_rshares > 0 )
              c.net_rshares = 0;
          c.abs_rshares  = 0;
+         c.total_vote_weight = 0;
          c.cashout_time = fc::time_point_sec::maximum();
       });
 
@@ -1487,7 +1680,6 @@ share_type database::claim_rshare_reward( share_type rshares ) {
       payout = 0;
 
    modify( props, [&]( dynamic_global_property_object& p ){
-     p.total_reward_shares2 -= fc::uint128_t( rshares.value ) * rshares.value;
      p.total_reward_fund_steem.amount -= payout;
    });
 
@@ -1544,6 +1736,7 @@ void database::initialize_evaluators()
     register_evaluator<account_witness_vote_evaluator>();
     register_evaluator<account_witness_proxy_evaluator>();
     register_evaluator<custom_evaluator>();
+    register_evaluator<custom_json_evaluator>();
     register_evaluator<pow_evaluator>();
     register_evaluator<report_over_production_evaluator>();
 
@@ -1570,6 +1763,7 @@ void database::initialize_indexes()
    add_index< primary_index<convert_index> >();
    add_index< primary_index<liquidity_reward_index> >();
    add_index< primary_index<limit_order_index> >();
+   add_index< primary_index<comment_stats_index> >();
 
    //Implementation object indexes
    add_index< primary_index<transaction_index                             > >();
@@ -1707,7 +1901,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
    } );
 
    /// check invariants
-   if( !( skip & skip_validate_invariants ) )
+   if( is_producing() || !( skip & skip_validate_invariants ) )
       validate_invariants();
 }
 
@@ -1838,7 +2032,6 @@ void database::_apply_transaction(const signed_transaction& trx)
       auto get_posting = [&]( const string& name ) { return &get_account(name).posting;  };
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
-
    }
    flat_set<string> required; vector<authority> other;
    trx.get_required_authorities( required, required, required, other );
@@ -1890,9 +2083,10 @@ void database::_apply_transaction(const signed_transaction& trx)
    //Finally process the operations
    _current_op_in_trx = 0;
    for( const auto& op : trx.operations )
-   {
+   { try {
       apply_operation(eval_state, op);
       ++_current_op_in_trx;
+     } FC_CAPTURE_AND_RETHROW( (op) );
    }
 
 
@@ -2001,6 +2195,9 @@ void database::update_global_dynamic_data( const signed_block& b )
          } else { /// linear growth... not much fine grain control near full capacity
            dgp.current_reserve_ratio++;
          }
+
+         if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
+           dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
       }
       dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *
                                   STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) / STEEMIT_BLOCK_INTERVAL;
@@ -2314,7 +2511,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting ) {
          }
          case SBD_SYMBOL:
             props.current_sbd_supply += delta;
-            props.virtual_supply += delta * get_feed_history().current_median_history;
+            props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
             assert( props.current_sbd_supply.amount.value >= 0 );
             break;
          default:
@@ -2339,15 +2536,19 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEMIT_GENESIS_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_1 == 1, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_1_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_2 == 2, "Invlaid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_2 ] = fc::time_point_sec( STEEMIT_HARDFORK_2_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_3 == 3, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_3 ] = fc::time_point_sec( STEEMIT_HARDFORK_3_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_1_0 == 1, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_1_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_1_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_2_0 == 2, "Invlaid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_2_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_2_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_3_0 == 3, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_5_0 == 5, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_5_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_0_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
-   FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration" );
+   FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
    if( hardforks.last_hardfork >= 0 )
       FC_ASSERT( _hardfork_times[ hardforks.last_hardfork - 1 ] <= head_block_time(), "Configuration has future hardfork set that chain has already applied." );
    if( hardforks.last_hardfork + 1 < STEEMIT_NUM_HARDFORKS )
@@ -2359,97 +2560,129 @@ void database::init_hardforks()
    }
 }
 
+void database::reset_virtual_schedule_time() {
+   const witness_schedule_object& wso = witness_schedule_id_type()(*this);
+   modify( wso, [&](witness_schedule_object& o ) {
+       o.current_virtual_time = fc::uint128(); // reset it 0
+   });
+
+   const auto& idx = get_index_type<witness_index>().indices();
+   for( const auto& witness : idx ) {
+     modify( witness, [&]( witness_object& wobj ) {
+         wobj.virtual_position = fc::uint128();
+         wobj.virtual_last_update = wso.current_virtual_time;
+         wobj.virtual_scheduled_time = VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
+     });
+   }
+}
+
 void database::process_hardforks()
-{
+{ try {
    // If there are upcoming hardforks and the next one is later, do nothing
    const auto& hardforks = hardfork_property_id_type()( *this );
 
-   // If we have applied the last known hardfork
-   if( hardforks.last_hardfork == STEEMIT_NUM_HARDFORKS )
-      return;
-
-   // If the next hardfork time is in the future
-   if( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time() )
-      return;
-
-   switch( hardforks.last_hardfork + 1 )
+   while( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS
+         && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
    {
-      case STEEMIT_HARDFORK_1:
-         perform_vesting_share_split( 1000000 );
-         break;
-      #ifdef IS_TEST_NET
-         {
-            custom_operation test_op;
-            string op_msg = "Testnet: Hardfork applied";
-            test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
-            test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            push_applied_operation( test_op );
-         }
-         break;
-      #endif
-      case STEEMIT_HARDFORK_2:
-         retally_witness_votes();
-         break;
-      case STEEMIT_HARDFORK_3:
-         break;
-      default:
-         break;
+      switch( hardforks.last_hardfork + 1)
+      {
+         case STEEMIT_HARDFORK_0_1_0:
+            elog( "HARDFORK 1" );
+            perform_vesting_share_split( 1000000 );
+         #ifdef IS_TEST_NET
+            {
+               custom_operation test_op;
+               string op_msg = "Testnet: Hardfork applied";
+               test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
+               test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
+               push_applied_operation( test_op );
+            }
+            break;
+         #endif
+            break;
+         case STEEMIT_HARDFORK_0_2_0:
+            elog( "HARDFORK 2" );
+            retally_witness_votes();
+            break;
+         case STEEMIT_HARDFORK_0_3_0:
+            elog( "HARDFORK 3" );
+            retally_witness_votes();
+            break;
+         case STEEMIT_HARDFORK_0_4_0:
+            elog( "HARDFORK 4" );
+            reset_virtual_schedule_time();
+            break;
+         case STEEMIT_HARDFORK_0_5_0:
+            elog( "HARDFORK 5" );
+            break;
+         default:
+            break;
+      }
+
+      modify( hardforks, [&]( hardfork_property_object& hfp )
+      {
+         FC_ASSERT( hfp.processed_hardforks.size() == hfp.last_hardfork + 1, "Hardfork being applied out of order" );
+         hfp.processed_hardforks.push_back( _hardfork_times[ hfp.last_hardfork + 1 ] );
+         hfp.last_hardfork++;
+         FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
+      });
    }
-
-   modify( hardforks, [&]( hardfork_property_object& hfp )
-   {
-      FC_ASSERT( hfp.processed_hardforks.size() == hfp.last_hardfork + 1, "Hardfork being applied out of order" );
-      hfp.processed_hardforks.push_back( _hardfork_times[ hfp.last_hardfork + 1 ] );
-      hfp.last_hardfork++;
-      FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
-   });
 }
+FC_CAPTURE_AND_RETHROW() }
 
-bool database::has_hardfork( uint32_t hardfork )
+bool database::has_hardfork( uint32_t hardfork )const
 {
    return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
 }
 
-#ifdef IS_TEST_NET
-void database::set_hardfork( uint32_t hardfork )
+void database::set_hardfork( uint32_t hardfork, bool process_now )
 {
    FC_ASSERT( hardfork <= STEEMIT_NUM_HARDFORKS );
 
    auto const& hardforks = hardfork_property_id_type()( *this );
 
-   while( hardforks.last_hardfork < hardfork
-      && hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS )
+   for( int i = hardforks.last_hardfork; i <= hardfork; i++ )
    {
-      _hardfork_times[ hardforks.last_hardfork + 1 ] = head_block_time();
-      process_hardforks();
+      _hardfork_times[i] = head_block_time();
    }
+
+   if( process_now )
+         process_hardforks();
 }
-#endif
 
 /**
  * Verifies all supply invariantes check out
  */
 void database::validate_invariants()const
 {
-   const auto& db = *this;
    try
    {
-     // const auto& account_idx = get_index_type< account_index >().indices().get< by_id >();
       const auto& account_idx = get_index_type<account_index>().indices().get<by_name>();
       asset total_supply = asset( 0, STEEM_SYMBOL );
       asset total_sbd = asset( 0, SBD_SYMBOL );
       asset total_vesting = asset( 0, VESTS_SYMBOL );
       share_type total_vsf_votes = share_type( 0 );
 
+      auto gpo = get_dynamic_global_properties();
+
+      /// verify no witness has too many votes
+      const auto& witness_idx = get_index_type< witness_index >().indices();
+      for( auto itr = witness_idx.begin(); itr != witness_idx.end(); itr++ )
+         FC_ASSERT( itr->votes < gpo.total_vesting_shares.amount, "", ("itr",*itr) );
+
       for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
       {
          total_supply += itr->balance;
          total_sbd += itr->sbd_balance;
          total_vesting += itr->vesting_shares;
-         total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
+         total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
+                                 itr->witness_vote_weight() :
+                                 ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
+                                      itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
+                                      itr->vesting_shares.amount ) );
       }
 
-      const auto& convert_request_idx = db.get_index_type< convert_index >().indices();
+      const auto& convert_request_idx = get_index_type< convert_index >().indices();
 
       for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); itr++ )
       {
@@ -2461,7 +2694,7 @@ void database::validate_invariants()const
             FC_ASSERT( !"Encountered illegal symbol in convert_request_object" );
       }
 
-      const auto& limit_order_idx = db.get_index_type< limit_order_index >().indices();
+      const auto& limit_order_idx = get_index_type< limit_order_index >().indices();
 
       for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); itr++ )
       {
@@ -2476,9 +2709,9 @@ void database::validate_invariants()const
       }
 
       fc::uint128_t total_rshares2;
+      fc::uint128_t total_children_rshares2;
 
-      const auto& comment_idx = db.get_index_type< comment_index >().indices();
-      auto gpo = db.get_dynamic_global_properties();
+      const auto& comment_idx = get_index_type< comment_index >().indices();
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
@@ -2486,81 +2719,71 @@ void database::validate_invariants()const
             auto delta = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
             total_rshares2 += delta;
          }
+         if( itr->parent_author.size() == 0 )
+            total_children_rshares2 += itr->children_rshares2;
       }
 
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
 
-      FC_ASSERT( gpo.current_supply.amount.value == total_supply.amount.value );
-      FC_ASSERT( gpo.current_sbd_supply.amount.value == total_sbd.amount.value );
-      FC_ASSERT( gpo.total_vesting_shares == total_vesting );
-      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes );
+      FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
+      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
+      FC_ASSERT( gpo.total_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
+      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
       FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
+      FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
+
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
-      if ( !db.get_feed_history().current_median_history.is_null() )
-         FC_ASSERT( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
-            == gpo.virtual_supply );
+      if ( !get_feed_history().current_median_history.is_null() )
+         FC_ASSERT( gpo.current_sbd_supply * get_feed_history().current_median_history + gpo.current_supply
+            == gpo.virtual_supply, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("get_feed_history().current_median_history",get_feed_history().current_median_history)("gpo.current_supply",gpo.current_supply)("gpo.virtual_supply",gpo.virtual_supply) );
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (db.head_block_num()) );
+   FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
 
 void database::perform_vesting_share_split( uint32_t magnitude )
-{
-   // Need to update all VESTS in accounts and the total VESTS in the dgpo
-   const auto& acc_idx = get_index_type< account_index >().indices().get< by_name >();
-   auto itr = acc_idx.begin();
-
-   while( itr != acc_idx.end() )
+{ try {
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
    {
-      modify( *itr, [&]( account_object& a )
+      d.total_vesting_shares.amount *= magnitude;
+      d.total_reward_shares2 = 0;
+   });
+
+   // Need to update all VESTS in accounts and the total VESTS in the dgpo
+   for( const auto& account : get_index_type<account_index>().indices() ) {
+      modify( account, [&]( account_object& a )
       {
          a.vesting_shares.amount *= magnitude;
          a.withdrawn             *= magnitude;
          a.to_withdraw           *= magnitude;
          a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
-         a.proxied_vsf_votes     *= magnitude;
+         for( uint32_t i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
+            a.proxied_vsf_votes[i] *= magnitude;
       });
-
-      itr++;
    }
 
-   const auto& com_idx = get_index_type< comment_index >().indices().get< by_created >();
-   auto com_itr = com_idx.begin();
-
-   while( com_itr != com_idx.end() )
-   {
-      modify( *com_itr, [&]( comment_object& c )
+   const auto& comments = get_index_type< comment_index >().indices();
+   for( const auto& comment : comments ) {
+      modify( comment, [&]( comment_object& c )
       {
          c.net_rshares       *= magnitude;
          c.abs_rshares       *= magnitude;
          c.total_vote_weight *= magnitude;
          c.children_rshares2  = 0;
       });
-
-      com_itr++;
    }
 
-   com_itr = com_idx.begin();
-
-   while( com_itr != com_idx.end() )
-   {
-      adjust_rshares2( *com_itr, 0, fc::uint128_t( com_itr->net_rshares.value ) * com_itr->net_rshares.value );
-
-      com_itr++;
+   for( const auto& c : comments ) {
+      if( c.net_rshares.value > 0 )
+         adjust_rshares2( c, 0, fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value );
    }
 
    // Update vote weights
-   const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
-   auto vote_itr = vote_idx.begin();
-
-   // Consider removing this for low mem mode
-   while( vote_itr != vote_idx.end() )
-   {
-      modify( *vote_itr, [&]( comment_vote_object& cv )
+   const auto& vote_idx = get_index_type< comment_vote_index >().indices();
+   for( const auto& vote : vote_idx ) {
+      modify( vote, [&]( comment_vote_object& cv )
       {
-         cv.weight = ( cv.weight * magnitude ) * magnitude;
+         cv.weight = cv.weight * magnitude ;
       });
-
-      vote_itr++;
    }
 
    // Update category rshares
@@ -2576,12 +2799,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       cat_itr++;
    }
 
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
-   {
-      d.total_vesting_shares.amount *= magnitude;
-      d.total_reward_shares2 = ( d.total_reward_shares2 * magnitude ) * magnitude;
-   });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::retally_witness_votes()
 {
@@ -2602,7 +2820,16 @@ void database::retally_witness_votes()
    // Apply all existing votes by account
    for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
    {
-      adjust_witness_votes( *itr, itr->witness_vote_weight() );
+      if( itr->proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) continue;
+
+      const auto& a = *itr;
+
+      const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+      auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+      while( wit_itr != vidx.end() && wit_itr->account == a.get_id() ) {
+         adjust_witness_vote( wit_itr->witness(*this), a.witness_vote_weight() );
+         ++wit_itr;
+      }
    }
 }
 

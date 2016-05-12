@@ -58,7 +58,10 @@
 #define STEEMIT_INIT_MINER_NAME                 "initminer"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
-#define STEEMIT_MAX_MINERS                      21 /// 21 is more than enough
+#define STEEMIT_MAX_VOTED_WITNESSES             19
+#define STEEMIT_MAX_MINER_WITNESSES             1
+#define STEEMIT_MAX_RUNNER_WITNESSES            1
+#define STEEMIT_MAX_MINERS                      (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
 #define STEEMIT_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define STEEMIT_MAX_MEMO_SIZE                   2048
 #define STEEMIT_MAX_PROXY_RECURSION_DEPTH       4
@@ -81,7 +84,7 @@
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
 #define STEEMIT_MAX_COMMENT_DEPTH               6
 
-#define STEEMIT_MAX_RESERVE_RATIO   (10000)
+#define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
 
 #define STEEMIT_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )

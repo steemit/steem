@@ -5,7 +5,10 @@
 #include <string>
 
 #include <fc/api.hpp>
+#include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
+
+#include <steemit/chain/protocol/block.hpp>
 
 namespace steemit { namespace app {
 class application;
@@ -22,15 +25,32 @@ class debug_node_api
    public:
       debug_node_api( steemit::app::application& app );
 
+      void on_api_startup();
+
       /**
        * Push blocks from existing database.
        */
-      void debug_push_blocks( std::string src_filename, uint32_t count );
+      uint32_t debug_push_blocks( std::string src_filename, uint32_t count, bool skip_validate_invariants = false );
 
       /**
        * Generate blocks locally.
        */
-      void debug_generate_blocks( std::string debug_key, uint32_t count );
+      uint32_t debug_generate_blocks( std::string debug_key, uint32_t count );
+
+      /*
+       * Generate blocks locally until a specified head block time. Can generate them sparsely.
+       */
+      uint32_t debug_generate_blocks_until( std::string debug_key, fc::time_point_sec head_block_time, bool generate_sparsely = true );
+
+      /*
+       * Pop a block from the blockchain, returning it
+       */
+      fc::optional< steemit::chain::signed_block > debug_pop_block();
+
+      /*
+       * Push an already constructed block onto the blockchain. For use with pop_block to traverse state block by block.
+       */
+      //void debug_push_block( steemit::chain::signed_block& block );
 
       /**
        * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
@@ -60,6 +80,8 @@ class debug_node_api
        */
       void debug_stream_json_objects_flush();
 
+      void debug_set_hardfork( uint32_t hardfork_id );
+
       std::shared_ptr< detail::debug_node_api_impl > my;
 };
 
@@ -68,7 +90,11 @@ class debug_node_api
 FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_push_blocks)
        (debug_generate_blocks)
+       (debug_generate_blocks_until)
+       (debug_pop_block)
+       //(debug_push_block)
        (debug_update_object)
        (debug_stream_json_objects)
        (debug_stream_json_objects_flush)
+       (debug_set_hardfork)
      )

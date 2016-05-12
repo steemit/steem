@@ -13,6 +13,7 @@ namespace steemit { namespace app {
       vector<string> trending; /// pending lifetime payout
       vector<string> recent; /// creation date
       vector<string> active; /// last update or reply
+      vector<string> votes; /// last update or reply
       vector<string> maturing; /// about to be paid out
       vector<string> best; /// total lifetime payout
    };
@@ -36,6 +37,8 @@ namespace steemit { namespace app {
       discussion( const comment_object& o ):comment_object(o){}
       discussion(){}
 
+      string                      url; /// /category/@rootauthor/root_permlink#author/permlink
+      string                      root_title;
       asset                       pending_payout_value; ///< sbd
       asset                       total_pending_payout_value; ///< sbd including replies
       vector<vote_state>          active_votes;
@@ -49,14 +52,16 @@ namespace steemit { namespace app {
       extended_account(){}
       extended_account( const account_object& a ):account_object(a){}
 
-      asset                    vesting_balance; /// convert vesting_shares to vesting steem
+      asset                           vesting_balance; /// convert vesting_shares to vesting steem
       map<uint64_t,operation_object>  transfer_history; /// transfer to/from vesting
       map<uint64_t,operation_object>  market_history; /// limit order / cancel / fill
       map<uint64_t,operation_object>  post_history;
       map<uint64_t,operation_object>  vote_history; 
       map<uint64_t,operation_object>  other_history; 
-      vector<string>                  posts; /// permlinks for this user
-      vector<string>                  blog; /// blog posts for this user
+      set<string>                     witness_votes;
+      optional<vector<string>>        posts; /// permlinks for this user
+      optional<vector<string>>        blog; /// blog posts for this user
+      optional<vector<string>>        recent_replies; /// blog posts for this user
       map<string,vector<string>>      blog_category; /// blog posts for this user
    };
 
@@ -128,6 +133,7 @@ namespace steemit { namespace app {
         vector<string>                pow_queue;
         map<string, witness_object>   witnesses;
         witness_schedule_object       witness_schedule;
+      string                          error;
    };
 
 } }
@@ -135,13 +141,14 @@ namespace steemit { namespace app {
 FC_REFLECT_DERIVED( steemit::app::extended_account, 
                    (steemit::chain::account_object), 
                    (vesting_balance)
-                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(posts)(blog)(blog_category) )
+                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(posts)(blog)(recent_replies)(blog_category) )
 
 
 FC_REFLECT( steemit::app::vote_state, (voter)(weight) );
 FC_REFLECT( steemit::app::account_vote, (authorperm)(weight) );
 
-FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(maturing)(best) )
+FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(votes)(maturing)(best) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
-FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule) )
-FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
+FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
+
+FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(error) )

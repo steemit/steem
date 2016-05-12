@@ -48,8 +48,12 @@ namespace steemit { namespace app {
     {
     }
 
+    void login_api::on_api_startup() {
+    }
+
     bool login_api::login(const string& user, const string& password)
     {
+       idump((user)(password));
        optional< api_access_info > acc = _app.get_api_access_info( user );
        if( !acc.valid() )
           return false;
@@ -65,11 +69,15 @@ namespace steemit { namespace app {
              return false;
        }
 
+       idump((acc->allowed_apis));
        for( const std::string& api_name : acc->allowed_apis )
        {
           auto it = _api_map.find( api_name );
-          if( it != _api_map.end() )
+          if( it != _api_map.end() ) {
+             wlog( "known api: ${api}", ("api",api_name) );
              continue;
+          }
+          idump((api_name));
           _api_map[ api_name ] = _app.create_api_by_name( api_name );
        }
        return true;
@@ -77,7 +85,14 @@ namespace steemit { namespace app {
 
     network_broadcast_api::network_broadcast_api(application& a):_app(a)
     {
-       _applied_block_connection = _app.chain_database()->applied_block.connect([this](const signed_block& b){ on_applied_block(b); });
+       /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
+    }
+
+    void network_broadcast_api::on_api_startup()
+    {
+       /// note cannot capture shared pointer here, because _applied_block_connection will never
+       /// be freed if the lambda holds a reference to it.
+       _applied_block_connection = connect_signal( _app.chain_database()->applied_block, *this, &network_broadcast_api::on_applied_block );
     }
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
@@ -94,9 +109,9 @@ namespace steemit { namespace app {
              auto itr = _callbacks.find(id);
              if( itr != _callbacks.end() )
              {
-                const auto& callback = _callbacks.find(id)->second;
+                auto callback = _callbacks.find(id)->second;
                 fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
-                _callbacks.erase( itr );// safe becaues callback is copied by lambda
+                itr->second = []( const variant& ){};
              }
           }
        }
@@ -110,9 +125,9 @@ namespace steemit { namespace app {
                auto cb_itr = _callbacks.find( trx_id );
                if( cb_itr != _callbacks.end() ) {
                    auto capture_this = shared_from_this();
-                   const auto& callback = _callbacks.find(trx_id)->second; 
+                   auto callback = _callbacks.find(trx_id)->second; 
                    fc::async( [capture_this,this,block_num,trx_id,callback](){ callback( fc::variant(transaction_confirmation{ trx_id, block_num, -1, true}) ); } );
-                   _callbacks.erase( cb_itr ); // safe becaues callback is copied by lambda
+                   _callbacks.erase(cb_itr);
                }
              }
              _callbacks_expirations.erase( itr );
@@ -155,6 +170,8 @@ namespace steemit { namespace app {
     network_node_api::network_node_api( application& a ) : _app( a )
     {
     }
+
+    void network_node_api::on_api_startup() {}
 
     fc::variant_object network_node_api::get_info() const
     {

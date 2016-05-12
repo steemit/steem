@@ -150,7 +150,7 @@ class database_api
       // Accounts //
       //////////////
 
-      vector< account_object > get_accounts( vector< string > names ) const;
+      vector< extended_account > get_accounts( vector< string > names ) const;
 
       /**
        *  @return all accounts that referr to the key or account id in their owner or active authorities.
@@ -303,8 +303,22 @@ class database_api
       vector<discussion>   get_discussions_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
       vector<discussion>   get_discussions_in_category_by_last_update( string category, string start_author, string start_permlink, uint32_t limit )const;
 
+      vector<discussion>   get_discussions_by_last_active( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_discussions_in_category_by_last_active( string category, string start_author, string start_permlink, uint32_t limit )const;
+
+      vector<discussion>   get_discussions_by_created( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_discussions_in_category_by_created( string category, string start_author, string start_permlink, uint32_t limit )const;
+
       vector<discussion>   get_discussions_by_cashout_time( string start_author, string start_permlink, uint32_t limit )const;
       vector<discussion>   get_discussions_in_category_by_cashout_time( string category, string start_author, string start_permlink, uint32_t limit )const;
+
+      /**
+       *  This method is used to fetch all posts/comments by start_author that occur after before_date and start_permlink with up to limit being returned.
+       *
+       *  If start_permlink is empty then only before_date will be considered. If both are specified the eariler to the two metrics will be used. This
+       *  should allow easy pagination.
+       */
+      vector<discussion>   get_discussions_by_author_before_date( string author, string start_permlink, time_point_sec before_date, uint32_t limit )const;
 
       /**
        *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
@@ -315,8 +329,15 @@ class database_api
        */
       map<uint32_t,operation_object> get_account_history( string account, uint64_t from, uint32_t limit )const;
 
+      ////////////////////////////
+      // Handlers - not exposed //
+      ////////////////////////////
+      void on_api_startup();
+
    private:
       void set_pending_payout( discussion& d )const;
+      void set_url( discussion& d )const;
+
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;
       std::shared_ptr< database_api_impl > my;
 };
@@ -382,7 +403,15 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_total_pending_payout)
    (get_discussions_in_category_by_total_pending_payout)
    (get_discussions_by_last_update)
+   (get_discussions_by_last_active)
+   (get_discussions_by_created)
    (get_discussions_in_category_by_last_update)
+   (get_discussions_in_category_by_last_active)
+   (get_discussions_in_category_by_created)
+   (get_discussions_by_author_before_date)
+   (get_discussions_by_cashout_time)
+   (get_discussions_in_category_by_cashout_time)
+
 
    // Witnesses
    (get_witnesses)

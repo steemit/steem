@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       while( acnt_itr != acnt_idx.end() )
       {
          account_vests[acnt_itr->name] = acnt_itr->vesting_shares.amount;
-         account_vsf_votes[acnt_itr->name] = acnt_itr->proxied_vsf_votes;
+         account_vsf_votes[acnt_itr->name] = acnt_itr->proxied_vsf_votes_total().value;
          acnt_itr++;
       }
 
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       while( acnt_itr != acnt_idx.end() )
       {
          BOOST_REQUIRE( acnt_itr->vesting_shares.amount == account_vests[ acnt_itr->name ] * magnitude );
-         BOOST_REQUIRE( acnt_itr->proxied_vsf_votes.value == account_vsf_votes[ acnt_itr->name ] * magnitude );
+         BOOST_REQUIRE( acnt_itr->proxied_vsf_votes_total().value == account_vsf_votes[ acnt_itr->name ] * magnitude );
          acnt_itr++;
       }
 
@@ -163,6 +163,34 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       }
 
       validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( retally_votes )
+{
+   try
+   {
+      flat_map< witness_id_type, share_type > expected_votes;
+
+      const auto& by_account_witness_idx = db.get_index_type< witness_vote_index >().indices();
+
+      for( auto vote: by_account_witness_idx )
+      {
+         if( expected_votes.find( vote.witness ) == expected_votes.end() )
+            expected_votes[ vote.witness ] = vote.account( db ).witness_vote_weight();
+         else
+            expected_votes[ vote.witness ] += vote.account( db ).witness_vote_weight();
+      }
+
+      db.retally_witness_votes();
+
+      const auto& witness_idx = db.get_index_type< witness_index >().indices();
+
+      for( auto witness: witness_idx )
+      {
+         BOOST_REQUIRE_EQUAL( witness.votes.value, expected_votes[ witness.id ].value );
+      }
    }
    FC_LOG_AND_RETHROW()
 }

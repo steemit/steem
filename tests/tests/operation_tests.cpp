@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       /// because init_witness has created vesting shares and blocks have been produced, 100 STEEM is worth less than 100 vesting shares due to rounding
       BOOST_REQUIRE_EQUAL( acct.vesting_shares.amount.value, ( op.fee * ( vest_shares / vests ) ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_withdraw_rate.amount.value, ASSET( "0.000000 VESTS" ).amount.value );
-      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( ( init_starting_balance - ASSET( "0.100 TESTS" ) ).amount.value, init.balance.amount.value );
       validate_database();
 
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE_EQUAL( acct.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_shares.amount.value, ( op.fee * ( vest_shares / vests ) ).amount.value );
       BOOST_REQUIRE_EQUAL( acct.vesting_withdraw_rate.amount.value, ASSET( "0.000000 VESTS" ).amount.value );
-      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( acct.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( ( init_starting_balance - ASSET( "0.100 TESTS" ) ).amount.value, init.balance.amount.value );
       validate_database();
 
@@ -491,13 +491,26 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       generate_blocks( 60 / STEEMIT_BLOCK_INTERVAL + 1 );
 
       BOOST_TEST_MESSAGE( "--- Test modifying a comment" );
-      const comment_object& mod_sam_comment = db.get_comment( "sam", "dolor" );
+      const auto& mod_sam_comment = db.get_comment( "sam", "dolor" );
+      const auto& mod_bob_comment = db.get_comment( "bob", "ipsum" );
+      const auto& mod_alice_comment = db.get_comment( "alice", "lorem" );
       fc::time_point_sec created = mod_sam_comment.created;
 
       db.modify( mod_sam_comment, [&]( comment_object& com )
       {
          com.net_rshares = 10;
          com.abs_rshares = 10;
+         com.children_rshares2 = 100;
+      });
+
+      db.modify( mod_bob_comment, [&]( comment_object& com)
+      {
+         com.children_rshares2 = 100;
+      });
+
+      db.modify( mod_alice_comment, [&]( comment_object& com)
+      {
+         com.children_rshares2 = 100;
       });
 
       db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
@@ -527,9 +540,18 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure posting withing 1 minute" );
-      generate_blocks( 60 / STEEMIT_BLOCK_INTERVAL );
 
       op.permlink = "sit";
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( 60 / STEEMIT_BLOCK_INTERVAL );
+
+      op.permlink = "amet";
       tx.operations.clear();
       tx.signatures.clear();
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
@@ -684,9 +706,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test payout time extension on vote" );
 
-         fc::time_point_sec old_cashout_time = alice_comment.cashout_time;
+         uint128_t old_cashout_time = alice_comment.cashout_time.sec_since_epoch();
          old_voting_power = bob.voting_power;
-         auto old_net_rshares = alice_comment.net_rshares.value;
+         auto old_abs_rshares = alice_comment.abs_rshares.value;
 
          generate_blocks( db.head_block_time() + fc::seconds( ( STEEMIT_CASHOUT_WINDOW_SECONDS / 2 ) ), true );
 
@@ -706,10 +728,13 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db.push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_alice_comment.id, new_bob.id ) );
+         uint128_t new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
 
          BOOST_REQUIRE_EQUAL( new_bob.voting_power, STEEMIT_100_PERCENT - ( STEEMIT_100_PERCENT  / 20 ) );
-         BOOST_REQUIRE_EQUAL( new_alice_comment.net_rshares.value, old_net_rshares + new_bob.vesting_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / STEEMIT_100_PERCENT );
-         BOOST_REQUIRE_EQUAL( new_alice_comment.cashout_time.sec_since_epoch(), fc::time_point_sec( uint32_t( ( ( ( uint64_t( old_cashout_time.sec_since_epoch() ) * old_net_rshares ) + ( ( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ).sec_since_epoch() * bob_weight ) ) / new_alice_comment.abs_rshares ).value ) ).sec_since_epoch() );
+         BOOST_REQUIRE_EQUAL( new_alice_comment.net_rshares.value, old_abs_rshares + new_bob.vesting_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / STEEMIT_100_PERCENT );
+         BOOST_REQUIRE_EQUAL( new_alice_comment.cashout_time.sec_since_epoch(),
+                              ( ( old_cashout_time * old_abs_rshares + new_cashout_time * bob_weight )
+                              / ( old_abs_rshares + bob_weight ) ).to_uint64() );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -718,8 +743,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          const auto& new_sam = db.get_account( "sam" );
          const auto& new_bob_comment = db.get_comment( "bob", "foo" );
 
-         old_cashout_time = new_bob_comment.cashout_time;
-         old_net_rshares = new_bob_comment.net_rshares.value;
+         old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
+         old_abs_rshares = new_bob_comment.abs_rshares.value;
 
          auto sam_weight = ( ( uint128_t( new_sam.vesting_shares.amount.value ) ) / 40 ).to_uint64();
 
@@ -734,11 +759,14 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db.push_transaction( tx, 0 );
 
          itr = vote_idx.find( std::make_tuple( new_bob_comment.id, new_sam.id ) );
+         new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
 
          BOOST_REQUIRE_EQUAL( new_sam.voting_power, STEEMIT_100_PERCENT - ( STEEMIT_100_PERCENT / 40 ) );
-         BOOST_REQUIRE_EQUAL( new_bob_comment.net_rshares.value, old_net_rshares - sam_weight );
-         BOOST_REQUIRE_EQUAL( new_bob_comment.abs_rshares.value, old_net_rshares + sam_weight );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( uint32_t( ( ( ( uint64_t( old_cashout_time.sec_since_epoch() ) * old_net_rshares ) + ( ( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ).sec_since_epoch() * sam_weight ) ) / new_bob_comment.abs_rshares ).value ) ) );
+         BOOST_REQUIRE_EQUAL( new_bob_comment.net_rshares.value, old_abs_rshares - sam_weight );
+         BOOST_REQUIRE_EQUAL( new_bob_comment.abs_rshares.value, old_abs_rshares + sam_weight );
+         BOOST_REQUIRE_EQUAL( new_bob_comment.cashout_time.sec_since_epoch(),
+                              ( ( old_cashout_time * old_abs_rshares + new_cashout_time * sam_weight )
+                              / ( old_abs_rshares + sam_weight ) ).to_uint64() );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -772,20 +800,18 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          validate_database();
 
-         db.set_hardfork( STEEMIT_HARDFORK_3 );
-
          BOOST_TEST_MESSAGE( "--- Test changing a positive vote to a different positive vote" );
 
          auto new_alice = db.get_account( "alice" );
          auto alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
          auto old_vote_rshares = alice_bob_vote->rshares;
          auto old_vote_weight = alice_bob_vote->weight;
-         old_net_rshares = new_bob_comment.net_rshares.value;
-         auto old_abs_rshares = new_bob_comment.abs_rshares;
+         auto old_net_rshares = new_bob_comment.net_rshares.value;
+         old_abs_rshares = new_bob_comment.abs_rshares.value;
          auto old_total_vote_weight = new_bob_comment.total_vote_weight;
-         old_cashout_time = new_bob_comment.cashout_time;
+         old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
          auto alice_voting_power = new_alice.voting_power - ( STEEMIT_1_PERCENT * 25 * new_alice.voting_power ) / STEEMIT_100_PERCENT / 20;
-         auto new_rshares = ( ( fc::uint128_t ( new_alice.voting_power - alice_voting_power ) * new_alice.vesting_shares.amount.value ) / STEEMIT_100_PERCENT ).to_uint64();
+         int64_t new_rshares = ( ( fc::uint128_t( new_alice.voting_power - alice_voting_power ) * new_alice.vesting_shares.amount.value ) / STEEMIT_100_PERCENT ).to_uint64();
 
          op.voter = "alice";
          op.weight = STEEMIT_1_PERCENT * 25;
@@ -796,52 +822,51 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
-
-         idump( (new_bob_comment.net_rshares)(old_net_rshares)(old_vote_rshares)(new_rshares) );
+         alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_total_vote_weight - old_vote_weight );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( ( old_cashout_time.sec_since_epoch() * old_abs_rshares.value + ( db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS ) * new_rshares ) / ( old_abs_rshares.value + new_rshares ) ) );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( ( ( old_cashout_time * old_abs_rshares + ( db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS ) * new_rshares ) / ( old_abs_rshares + new_rshares ) ).to_uint64() ) );
          BOOST_REQUIRE( alice_bob_vote->weight == 0 );
          BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_voting_power );
-
          validate_database();
 
-/*
          BOOST_TEST_MESSAGE( "--- Test changing a positive vote to a negative vote" );
 
-         BOOST_TEST_MESSAGE( "--- Test changing a negative vote to a less negative vote" );
-
-         auto sam_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, db.get_account( "sam" ).id ) );
+         old_vote_rshares = new_rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
-         old_abs_rshares = new_bob_comment.abs_rshares;
-         old_vote_weights = new_bob_comment.total_vote_weight;
-         vote_rshares = sam_bob_vote->rshares;
-         vote_weight = sam_bob_vote->weight;
-         auto sam_vote_power = db.get_account( "sam" ).voting_power;
+         old_abs_rshares = new_bob_comment.abs_rshares.value;
+         old_total_vote_weight = new_bob_comment.total_vote_weight;
+         old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
+         int64_t used_power = ( int64_t( STEEMIT_1_PERCENT ) * 75 * int64_t( alice_voting_power ) ) / STEEMIT_100_PERCENT;
+         used_power /= 20;
+         alice_voting_power -= used_power;
+         new_rshares = ( ( used_power * fc::uint128_t( new_alice.vesting_shares.amount.value ) ) / STEEMIT_100_PERCENT ).to_uint64();
 
-         op.voter = "sam";
+         op.weight = STEEMIT_1_PERCENT * -75;
          tx.operations.clear();
          tx.signatures.clear();
          tx.operations.push_back( op );
-         tx.sign( sam_private_key, db.get_chain_id() );
+         tx.sign( alice_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
-         BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - vote_rshares );
-         BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + vote_rshares );
-         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_vote_weights - vote_weight );
-         BOOST_REQUIRE( new_bob_comment.cashout_time == old_cashout_time );
-         BOOST_REQUIRE( sam_bob_vote->weight == 0 );
-         BOOST_REQUIRE( sam_bob_vote->rshares == 0 );
-         BOOST_REQUIRE( db.get_account( "sam" ).voting_power == sam_vote_power );
+         alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
+
+         BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
+         BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
+         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_total_vote_weight );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( ( ( old_cashout_time * old_abs_rshares + ( db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS ) * new_rshares ) / ( old_abs_rshares + new_rshares ) ).to_uint64() ) );
+         BOOST_REQUIRE( alice_bob_vote->weight == 0 );
+         BOOST_REQUIRE( alice_bob_vote->rshares == -1 * new_rshares );
+         BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
+         BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
+         BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_voting_power );
 
          validate_database();
-
-         BOOST_TEST_MESSAGE( "--- Test changing a negative vote to a positive vote" );
-
+/*
          BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight" );
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
@@ -850,6 +875,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test success with a new vote within lockout period" );
          */
+
       }
    }
    FC_LOG_AND_RETHROW()
@@ -1179,6 +1205,8 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       fund( "alice", 10000 );
       vest( "alice", 10000 );
 
+      BOOST_TEST_MESSAGE( "--- Test withdraw of existing VESTS" );
+
       withdraw_vesting_operation op;
       op.account = "alice";
       op.vesting_shares = asset( alice.vesting_shares.amount / 2, VESTS_SYMBOL );
@@ -1193,8 +1221,11 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
 
       BOOST_REQUIRE_EQUAL( alice.vesting_shares.amount.value, old_vesting_shares.amount.value );
       BOOST_REQUIRE_EQUAL( alice.vesting_withdraw_rate.amount.value, ( old_vesting_shares.amount / 208 ).value );
+      BOOST_REQUIRE_EQUAL( alice.to_withdraw.value, op.vesting_shares.amount.value );
+      BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test changing vesting withdrawal" );
       tx.operations.clear();
       tx.signatures.clear();
 
@@ -1206,12 +1237,16 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
 
       BOOST_REQUIRE_EQUAL( alice.vesting_shares.amount.value, old_vesting_shares.amount.value );
       BOOST_REQUIRE_EQUAL( alice.vesting_withdraw_rate.amount.value, ( old_vesting_shares.amount / 312 ).value );
+      BOOST_REQUIRE_EQUAL( alice.to_withdraw.value, op.vesting_shares.amount.value );
+      BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test withdrawing more vests than available" );
+      auto old_withdraw_amount = alice.to_withdraw;
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.vesting_shares = ASSET( "15.000000 VESTS" );
+      op.vesting_shares = asset( alice.vesting_shares.amount * 2, VESTS_SYMBOL );
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -1219,7 +1254,23 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
 
       BOOST_REQUIRE_EQUAL( alice.vesting_shares.amount.value, old_vesting_shares.amount.value );
       BOOST_REQUIRE_EQUAL( alice.vesting_withdraw_rate.amount.value, ( old_vesting_shares.amount / 312 ).value );
+      BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test withdrawing 0 to resent vesting withdraw" );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.vesting_shares = asset( 0, VESTS_SYMBOL );
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE_EQUAL( alice.vesting_shares.amount.value, old_vesting_shares.amount.value );
+      BOOST_REQUIRE_EQUAL( alice.vesting_withdraw_rate.amount.value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.to_withdraw.value, 0 );
+      BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1331,8 +1382,8 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       BOOST_REQUIRE_EQUAL( alice_witness.votes.value, 0 );
       BOOST_REQUIRE( alice_witness.virtual_last_update == 0 );
       BOOST_REQUIRE( alice_witness.virtual_position == 0 );
-      BOOST_REQUIRE( alice_witness.virtual_scheduled_time == 0 );
-      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "9.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( alice_witness.virtual_scheduled_time == fc::uint128_t::max_value() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "10.000 TESTS" ).amount.value ); // No fee
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test updating a witness" );
@@ -1358,8 +1409,8 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       BOOST_REQUIRE_EQUAL( alice_witness.votes.value, 0 );
       BOOST_REQUIRE( alice_witness.virtual_last_update == 0 );
       BOOST_REQUIRE( alice_witness.virtual_position == 0 );
-      BOOST_REQUIRE( alice_witness.virtual_scheduled_time == 0 );
-      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "9.000 TESTS" ).amount.value );
+      BOOST_REQUIRE( alice_witness.virtual_scheduled_time == fc::uint128_t::max_value() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "10.000 TESTS" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when upgrading a non-existent account" );
@@ -1369,18 +1420,6 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.owner = "bob";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
-      validate_database();
-
-      BOOST_TEST_MESSAGE( "--- Test failure when account cannot cover upgrade fee" );
-
-      ACTORS( (bob) );
-      fund( "bob", 500 );
-      op.fee = ASSET( "1.000 TESTS" );
-      tx.signatures.clear();
-      tx.operations.clear();
-      tx.operations.push_back( op );
-      tx.sign( bob_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
    }
@@ -1515,7 +1554,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes + bob.vesting_shares.amount ) );
+      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1527,7 +1566,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 
-      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes + bob.vesting_shares.amount ) );
+      BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1661,9 +1700,9 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "alice" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( alice.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( alice.proxied_vsf_votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( alice.proxied_vsf_votes_total() == bob.vesting_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test changing proxy" );
@@ -1678,10 +1717,10 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
-      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( sam.proxied_vsf_votes.value == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total().value == bob.vesting_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when changing proxy to existing proxy" );
@@ -1689,9 +1728,9 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.vesting_shares.amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandparent proxy" );
@@ -1707,11 +1746,11 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == bob.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == bob.vesting_shares.amount );
       BOOST_REQUIRE_EQUAL( dave.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes == ( sam.vesting_shares + bob.vesting_shares ).amount );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + bob.vesting_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandchild proxy" );
@@ -1728,13 +1767,13 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( alice.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( bob.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == ( bob.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == ( bob.vesting_shares + alice.vesting_shares ).amount );
       BOOST_REQUIRE_EQUAL( dave.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes == ( sam.vesting_shares + bob.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + bob.vesting_shares + alice.vesting_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test removing a grandchild proxy" );
@@ -1750,13 +1789,13 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE_EQUAL( alice.proxy, "sam" );
-      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( alice.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( bob.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes.value, 0 );
+      BOOST_REQUIRE_EQUAL( bob.proxied_vsf_votes_total().value, 0 );
       BOOST_REQUIRE_EQUAL( sam.proxy, "dave" );
-      BOOST_REQUIRE( sam.proxied_vsf_votes == alice.vesting_shares.amount );
+      BOOST_REQUIRE( sam.proxied_vsf_votes_total() == alice.vesting_shares.amount );
       BOOST_REQUIRE_EQUAL( dave.proxy, STEEMIT_PROXY_TO_SELF_ACCOUNT );
-      BOOST_REQUIRE( dave.proxied_vsf_votes == ( sam.vesting_shares + alice.vesting_shares ).amount );
+      BOOST_REQUIRE( dave.proxied_vsf_votes_total() == ( sam.vesting_shares + alice.vesting_shares ).amount );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test votes are transferred when a proxy is added" );

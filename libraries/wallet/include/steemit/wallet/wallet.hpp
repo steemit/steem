@@ -24,11 +24,13 @@
 #pragma once
 
 #include <steemit/app/api.hpp>
+#include <steemit/private_message/private_message_plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <fc/real128.hpp>
+#include <fc/crypto/base58.hpp>
 
 using namespace steemit::app;
 using namespace steemit::chain;
@@ -38,6 +40,7 @@ using namespace std;
 namespace steemit { namespace wallet {
 
 using steemit::app::discussion;
+using namespace steemit::private_message;
 
 typedef uint16_t transaction_handle_type;
 
@@ -47,6 +50,34 @@ typedef uint16_t transaction_handle_type;
  */
 
 object* create_object( const variant& v );
+
+struct memo_data {
+
+   static optional<memo_data> from_string( string str ) {
+      try {
+         if( str.size() > sizeof(memo_data) && str[0] == '#') {
+            auto data = fc::from_base58( str.substr(1) );
+            auto m  = fc::raw::unpack<memo_data>( data );
+            FC_ASSERT( string(m) == str );
+            return m;
+         }
+      } catch ( ... ) {}
+      return optional<memo_data>();
+   }
+
+   public_key_type from;
+   public_key_type to;
+   uint64_t        nonce = 0;
+   uint32_t        check = 0;
+   vector<char>    encrypted;
+
+   operator string()const {
+      auto data = fc::raw::pack(*this);
+      auto base58 = fc::to_base58( data );
+      return '#'+base58;
+   }
+};
+
 
 
 struct brain_key_info
@@ -185,7 +216,7 @@ class wallet_api
        * @param account_name the name of the account to provide information about
        * @returns the public account data stored in the blockchain
        */
-      account_object                    get_account( string account_name ) const;
+      extended_account                  get_account( string account_name ) const;
 
       /** Returns the current wallet filename.
        *
@@ -201,6 +232,11 @@ class wallet_api
        * private key must already be in the wallet.
        */
       string                            get_private_key( public_key_type pubkey )const;
+
+      /**
+       *  @param role - active | owner | posting | memo
+       */
+      pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
 
       /**
        * Returns transaction by ID.
@@ -661,6 +697,11 @@ class wallet_api
        */
       annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
 
+      annotated_signed_transaction      send_private_message( string from, string to, string subject, string body, bool broadcast );
+      vector<extended_message_object>   get_inbox( string account, fc::time_point newest, uint32_t limit );
+      vector<extended_message_object>   get_outbox( string account, fc::time_point newest, uint32_t limit );
+      message_body try_decrypt_message( const message_object& mo );
+
       /**
        * Vote on a comment to be paid STEEM
        *
@@ -725,6 +766,7 @@ FC_API( steemit::wallet::wallet_api,
         (suggest_brain_key)
         (list_keys)
         (get_private_key)
+        (get_private_key_from_password)
         (normalize_brain_key)
 
         /// query api
@@ -763,6 +805,11 @@ FC_API( steemit::wallet::wallet_api,
         (post_comment)
         (vote)
 
+        // private message api
+        (send_private_message)
+        (get_inbox)
+        (get_outbox)
+
         /// helper api
         (get_prototype_operation)
         (serialize_transaction)
@@ -776,3 +823,4 @@ FC_API( steemit::wallet::wallet_api,
         (get_transaction)
       )
 
+FC_REFLECT( steemit::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) );
