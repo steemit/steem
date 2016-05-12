@@ -127,7 +127,6 @@ void database_api::set_subscribe_callback( std::function<void(const variant&)> c
 
 void database_api_impl::set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter )
 {
-   edump((clear_filter));
    _subscribe_callback = cb;
    if( clear_filter || !cb )
    {
@@ -847,6 +846,54 @@ vector<discussion> database_api::get_discussions_in_category_by_last_update( str
    return result;
 }
 
+
+vector<discussion> database_api::get_discussions_by_last_active( string start_parent_author, string start_permlink, uint32_t limit )const {
+
+   idump((start_parent_author)(start_permlink)(limit) );
+   const auto& last_activity_idx = my->_db.get_index_type< comment_index >().indices().get< by_active >();
+
+   auto itr = last_activity_idx.begin();
+
+
+   if( start_permlink.size() )
+      itr = last_activity_idx.iterator_to( my->_db.get_comment( start_parent_author, start_permlink ) );
+   else if( start_parent_author.size() ) {
+      itr = last_activity_idx.lower_bound( boost::make_tuple( start_parent_author, time_point_sec::maximum(), object_id_type() ) );
+   }
+
+   vector<discussion> result;
+   while( itr != last_activity_idx.end() && result.size() < limit  ) {
+      result.push_back( *itr );
+      set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+      ++itr;
+   }
+   return result;
+}
+
+vector<discussion> database_api::get_discussions_in_category_by_last_active( string category, string start_auth, string start_permlink, uint32_t limit )const {
+   const auto& last_activity_in_category = my->_db.get_index_type< comment_index >().indices().get< by_active_in_category >();
+
+   auto itr = last_activity_in_category.lower_bound( boost::make_tuple( "", category, fc::time_point_sec::maximum() ) );
+
+   if( start_auth.size() )
+      itr = last_activity_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
+
+   vector<discussion> result;
+   while( itr != last_activity_in_category.end() &&
+          itr->parent_permlink == category &&
+          !itr->parent_author.size()
+          && result.size() < limit )
+   {
+      result.push_back( *itr );
+      set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+      ++itr;
+   }
+   return result;
+}
+
+
 vector<discussion> database_api::get_discussions_by_created( string start_auth, string start_permlink, uint32_t limit )const {
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
@@ -1190,7 +1237,6 @@ state database_api::get_state( string path )const
          }
       } else if( part[1] == "recent-replies" ) {
         auto replies = get_discussions_by_last_update( acnt, "", 50 );
-        edump((replies));
         eacnt.recent_replies = vector<string>();
         for( const auto& reply : replies ) {
            auto reply_ref = reply.author+"/"+reply.permlink;
@@ -1299,6 +1345,25 @@ state database_api::get_state( string path )const
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.recent.push_back( key );
+         accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
+   else if( part[0] == "active" && part[1] == "") {
+      auto trending_disc = get_discussions_by_last_active( "", "", 20 );
+      auto& didx = _state.discussion_idx[""];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.active.push_back( key );
+         accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   } else if( part[0] == "active" ) {
+      auto trending_disc = get_discussions_in_category_by_last_active( part[1], "", "", 20 );
+      auto& didx = _state.discussion_idx[part[1]];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.active.push_back( key );
          accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
