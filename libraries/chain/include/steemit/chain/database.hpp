@@ -334,7 +334,7 @@ namespace steemit { namespace chain {
          void perform_vesting_share_split( uint32_t magnitude );
          void retally_witness_votes();
 
-         bool has_hardfork( uint32_t hardfork );
+         bool has_hardfork( uint32_t hardfork )const;
 
          /* For testing and debugging only. Given a hardfork
             with id N, applies all hardforks with id <= N */

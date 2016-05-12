@@ -1262,6 +1262,7 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
    modify( c, [&](comment_object& comment ){
       comment.children_rshares2 -= old_rshares2;
       comment.children_rshares2 += new_rshares2;
+      comment.active = head_block_time();
    });
    if( c.depth ) {
       adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
@@ -2631,7 +2632,7 @@ void database::process_hardforks()
 }
 FC_CAPTURE_AND_RETHROW() }
 
-bool database::has_hardfork( uint32_t hardfork )
+bool database::has_hardfork( uint32_t hardfork )const
 {
    return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
 }

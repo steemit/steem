@@ -786,7 +786,7 @@ void database_api::set_url( discussion& d )const {
 }
 
 vector<discussion> database_api::get_content_replies( string author, string permlink )const {
-   const auto& by_permlink_idx = my->_db.get_index_type< comment_index >().indices().get< by_parent_total_pending_payout >();
+   const auto& by_permlink_idx = my->_db.get_index_type< comment_index >().indices().get< by_total_pending_payout_in_category >();
    auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
    vector<discussion> result;
    while( itr != by_permlink_idx.end() && itr->parent_author == author && itr->parent_permlink == permlink )
@@ -825,8 +825,30 @@ vector<discussion> database_api::get_discussions_by_last_update( string start_pa
    return result;
 }
 
+vector<discussion> database_api::get_discussions_in_category_by_last_update( string category, string start_auth, string start_permlink, uint32_t limit )const {
+   const auto& last_update_in_category = my->_db.get_index_type< comment_index >().indices().get< by_last_update_in_category >();
+
+   auto itr = last_update_in_category.lower_bound( boost::make_tuple( "", category, fc::time_point_sec::maximum() ) );
+
+   if( start_auth.size() )
+      itr = last_update_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
+
+   vector<discussion> result;
+   while( itr != last_update_in_category.end() &&
+          itr->parent_permlink == category &&
+          !itr->parent_author.size()
+          && result.size() < limit )
+   {
+      result.push_back( *itr );
+      set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+      ++itr;
+   }
+   return result;
+}
+
 vector<discussion> database_api::get_discussions_by_created( string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_created >();
+   const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
    auto itr = last_update_idx.begin();
 
@@ -842,6 +864,30 @@ vector<discussion> database_api::get_discussions_by_created( string start_auth, 
    }
    return result;
 }
+
+vector<discussion> database_api::get_discussions_in_category_by_created( string category, string start_auth, string start_permlink, uint32_t limit )const {
+   const auto& last_update_in_category = my->_db.get_index_type< comment_index >().indices().get< by_last_update_in_category >();
+
+   auto itr = last_update_in_category.lower_bound( boost::make_tuple( "", category, fc::time_point_sec::maximum() ) );
+
+   if( start_auth.size() )
+      itr = last_update_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
+
+   vector<discussion> result;
+   while( itr != last_update_in_category.end() &&
+          itr->parent_permlink == category &&
+          !itr->parent_author.size()
+          && result.size() < limit )
+   {
+      result.push_back( *itr );
+      set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+      ++itr;
+   }
+   return result;
+}
+
+
 
 vector<discussion> database_api::get_discussions_by_cashout_time( string start_auth, string start_permlink, uint32_t limit )const {
    const auto& cashout_time_idx = my->_db.get_index_type< comment_index >().indices().get< by_cashout_time >();
@@ -882,49 +928,7 @@ vector<discussion> database_api::get_discussions_in_category_by_cashout_time( st
    return result;
 }
 
-vector<discussion> database_api::get_discussions_in_category_by_last_update( string category, string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& last_update_in_category = my->_db.get_index_type< comment_index >().indices().get< by_last_update_in_category >();
 
-   auto itr = last_update_in_category.lower_bound( boost::make_tuple( "", category, fc::time_point_sec::maximum() ) );
-
-   if( start_auth.size() )
-      itr = last_update_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   vector<discussion> result;
-   while( itr != last_update_in_category.end() &&
-          itr->parent_permlink == category &&
-          !itr->parent_author.size()
-          && result.size() < limit )
-   {
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
-      ++itr;
-   }
-   return result;
-}
-
-vector<discussion> database_api::get_discussions_in_category_by_created( string category, string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& last_update_in_category = my->_db.get_index_type< comment_index >().indices().get< by_created_in_category >();
-
-   auto itr = last_update_in_category.lower_bound( boost::make_tuple( "", category, fc::time_point_sec::maximum() ) );
-
-   if( start_auth.size() )
-      itr = last_update_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   vector<discussion> result;
-   while( itr != last_update_in_category.end() &&
-          itr->parent_permlink == category &&
-          !itr->parent_author.size()
-          && result.size() < limit )
-   {
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
-      ++itr;
-   }
-   return result;
-}
 
 vector<discussion> database_api::get_discussions_by_total_pending_payout( string start_auth, string start_permlink, uint32_t limit )const {
    const auto& total_pending_payout_idx = my->_db.get_index_type< comment_index >().indices().get< by_total_pending_payout >();
@@ -1072,7 +1076,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
 
      FC_ASSERT( limit <= 100 );
      int count = 0;
-     const auto& didx = my->_db.get_index_type<comment_index>().indices().get<by_author_date>();
+     const auto& didx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
 
      if( before_date == time_point_sec() ) 
         before_date = time_point_sec::maximum();
@@ -1099,15 +1103,16 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
 
 state database_api::get_state( string path )const
 {
+   state _state;
+   _state.props         = get_dynamic_global_properties();
+   _state.current_route = path;
+
+   try {
    if( path.size() && path[0] == '/' )
       path = path.substr(1); /// remove '/' from front
 
    if( !path.size() )
       path = "trending";
-
-   state _state;
-   _state.props         = get_dynamic_global_properties();
-   _state.current_route = path;
 
    /// FETCH CATEGORY STATE
    auto trending_cat = get_trending_categories( "", 100 );
@@ -1194,7 +1199,7 @@ state database_api::get_state( string path )const
         }
       } else if( part[1] == "posts" ) {
         int count = 0;
-        const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_date>();
+        const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
         eacnt.posts = vector<string>();
         while( itr != pidx.end() && itr->author == acnt && count < 100 ) {
@@ -1204,19 +1209,6 @@ state database_api::get_state( string path )const
            ++count;
         }
       } else if( part[1].size() == 0 || part[1] == "blog" ) {
-        if( part[2].size() ) {
-           int count = 0;
-           const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog_category>();
-           auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), part[2], time_point_sec::maximum() ) );
-           while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() )  {
-              eacnt.blog_category[part[2]].push_back(itr->permlink);
-              _state.content[acnt+"/"+itr->permlink] = *itr;
-              set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
-              ++itr;
-              ++count;
-           }
-        }
-        else {
            int count = 0;
            const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
            auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
@@ -1228,7 +1220,6 @@ state database_api::get_state( string path )const
               ++itr;
               ++count;
            }
-        }
       }
    }
    /// pull a complete discussion
@@ -1324,7 +1315,10 @@ state database_api::get_state( string path )const
 
    _state.witness_schedule = my->_db.get_witness_schedule_object();
 
-   return _state;
+ } catch ( const fc::exception& e ) {
+    _state.error = e.to_detail_string();   
+ }
+ return _state;
 }
 
 annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const {

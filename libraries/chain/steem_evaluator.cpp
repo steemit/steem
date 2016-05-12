@@ -12,9 +12,20 @@
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
-void inline validate_permlink( string permlink )
+/**
+ *  Allow GROUP / TOPIC 
+ */
+void inline validate_permlink( string permlink, const database& db )
 {
+   bool allow_slash = db.has_hardfork( STEEMIT_HARDFORK_0_5_0 );
+
    FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
+
+   int char_count  = 0;
+   int slash_count = 0;
+   int after_slash = 0;
+   bool last_was_slash = false;
+   bool last_was_dash = false;
 
    for( auto c : permlink )
    {
@@ -24,12 +35,26 @@ void inline validate_permlink( string permlink )
          case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
          case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z': case '0':
          case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+            ++char_count;
+            last_was_dash = false;
+            if( allow_slash ) FC_ASSERT( !last_was_dash );
+            ++after_slash;
+            break;
          case '-':
+            if( allow_slash ) FC_ASSERT( char_count, "must have characters before -" );
+            last_was_dash = true;
+            ++char_count;
+            break;
+         case '/':
+            FC_ASSERT( allow_slash && !slash_count && char_count );
+            ++slash_count;
+            after_slash = 0;
             break;
          default:
             FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
       }
    }
+   if( allow_slash ) FC_ASSERT( after_slash, "there must be charcters after - or /" );
 }
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
@@ -152,8 +177,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
          if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )
          {
-            validate_permlink( o.parent_permlink );
-            validate_permlink( o.permlink );
+            validate_permlink( o.parent_permlink, db() );
+            validate_permlink( o.permlink, db() );
          }
 
          if ( o.parent_author.size() == 0 )
@@ -175,6 +200,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.last_update = db().head_block_time();
          com.created = com.last_update;
          com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+         com.active        = com.last_update;
 
          #ifndef IS_LOW_MEM
             com.title = o.title;
@@ -211,9 +237,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
 #ifndef IS_LOW_MEM
+      auto now = db().head_block_time();
       while( parent ) {
          db().modify( *parent, [&]( comment_object& p ){
             p.children++;
+            p.active = now;
          });
          if( parent->parent_author.size() )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
@@ -241,6 +269,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          }
 
          com.last_update   = db().head_block_time();
+         com.active        = com.last_update;
 
 
          com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
