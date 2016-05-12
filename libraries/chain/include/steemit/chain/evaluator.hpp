@@ -1,11 +1,14 @@
 #pragma once
 #include <steemit/chain/exceptions.hpp>
+#include <steemit/chain/transaction_evaluation_state.hpp>
+
 #include <steemit/chain/protocol/operations.hpp>
 
 namespace steemit { namespace chain {
 
    class database;
    struct signed_transaction;
+   template< typename Operation > class generic_evaluator;
    class transaction_evaluation_state;
 
    template< typename Operation >
@@ -15,7 +18,12 @@ namespace steemit { namespace chain {
       virtual ~generic_evaluator(){}
 
       virtual int get_type()const = 0;
-      virtual void start_evaluate(transaction_evaluation_state& eval_state, const Operation& op, bool apply);
+      virtual void start_evaluate(transaction_evaluation_state& eval_state, const Operation& op, bool apply)
+      { try {
+         trx_state   = &eval_state;
+         evaluate( op );
+         if( apply ) this->apply( op );
+      } FC_CAPTURE_AND_RETHROW() }
 
       /**
        * @note derived classes should ASSUME that the default validation that is
@@ -25,7 +33,7 @@ namespace steemit { namespace chain {
       virtual void evaluate(const Operation& op) = 0;
       virtual void  apply(const Operation& op) = 0;
 
-      database& db()const;
+      database& db()const { return trx_state->db(); }
 
       //void check_required_authorities(const Operation& op);
    protected:
