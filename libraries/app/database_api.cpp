@@ -755,7 +755,7 @@ void database_api::set_pending_payout( discussion& d )const
 
    if( props.total_reward_shares2 > 0 ){
       int64_t abs_net_rshares = llabs(d.net_rshares.value);
-       
+
       u256 r2 = to256(abs_net_rshares);
       r2 *= r2;
       r2 *= pot.amount.value;
@@ -809,7 +809,7 @@ vector<discussion> database_api::get_discussions_by_last_update( string start_pa
    auto itr = last_update_idx.begin();
 
 
-   if( start_permlink.size() ) 
+   if( start_permlink.size() )
       itr = last_update_idx.iterator_to( my->_db.get_comment( start_parent_author, start_permlink ) );
    else if( start_parent_author.size() ) {
       itr = last_update_idx.lower_bound( boost::make_tuple( start_parent_author, time_point_sec::maximum(), object_id_type() ) );
@@ -1069,7 +1069,7 @@ vector<string> database_api::get_active_witnesses()const {
    return wso.current_shuffled_witnesses;
 }
 
-vector<discussion>  database_api::get_discussions_by_author_before_date( 
+vector<discussion>  database_api::get_discussions_by_author_before_date(
     string author, string start_permlink, time_point_sec before_date, uint32_t limit )const
 { try {
      vector<discussion> result;
@@ -1078,7 +1078,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
      int count = 0;
      const auto& didx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
 
-     if( before_date == time_point_sec() ) 
+     if( before_date == time_point_sec() )
         before_date = time_point_sec::maximum();
 
      auto itr = didx.lower_bound( boost::make_tuple( author, time_point_sec::maximum() ) );
