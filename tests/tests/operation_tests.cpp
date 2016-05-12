@@ -667,6 +667,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( alice.last_vote_time == db.head_block_time() );
          BOOST_REQUIRE_EQUAL( alice_comment.net_rshares.value, alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEMIT_100_PERCENT );
          BOOST_REQUIRE( alice_comment.cashout_time == db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) );
+         BOOST_REQUIRE( itr->rshares == alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEMIT_100_PERCENT );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
@@ -814,6 +815,77 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          db.push_transaction( tx, 0 );
 
          BOOST_REQUIRE( db.get_comment( "alice", "foo" ).children_rshares2 == db.get_comment( "sam", "foo" ).children_rshares2 + old_rshares2 );
+
+         validate_database();
+
+         BOOST_TEST_MESSAGE( "--- Testing removing votes for hardfork 3" );
+         db.set_hardfork( STEEMIT_HARDFORK_3 );
+
+         BOOST_TEST_MESSAGE( "--- Test failure when modifying a vote to a non-zero weight" );
+
+         auto alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, db.get_account( "alice" ).id ) );
+         old_net_rshares = new_bob_comment.net_rshares.value;
+         auto old_abs_rshares = new_bob_comment.abs_rshares;
+         auto old_vote_weights = new_bob_comment.total_vote_weight;
+         old_cashout_time = new_bob_comment.cashout_time;
+         auto vote_rshares = alice_bob_vote->rshares;
+         auto vote_weight = alice_bob_vote->weight;
+         auto alice_vote_power = db.get_account( "alice" ).voting_power;
+
+         idump( (*alice_bob_vote) );
+
+         op.voter = "alice";
+         op.author = "bob";
+         op.permlink = "foo";
+         op.weight = STEEMIT_1_PERCENT * 50;
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+         BOOST_TEST_MESSAGE( "--- Test removing a positive vote" );
+
+         op.weight = 0;
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+
+         BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - vote_rshares );
+         BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares - vote_rshares );
+         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_vote_weights - vote_weight );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == old_cashout_time );
+         BOOST_REQUIRE( alice_bob_vote->weight == 0 );
+         BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
+         BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_vote_power );
+
+         validate_database();
+
+         BOOST_TEST_MESSAGE( "--- Test removing a negative vote" );
+
+         auto sam_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, db.get_account( "sam" ).id ) );
+         old_net_rshares = new_bob_comment.net_rshares.value;
+         old_abs_rshares = new_bob_comment.abs_rshares;
+         old_vote_weights = new_bob_comment.total_vote_weight;
+         vote_rshares = sam_bob_vote->rshares;
+         vote_weight = sam_bob_vote->weight;
+         auto sam_vote_power = db.get_account( "sam" ).voting_power;
+
+         op.voter = "sam";
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( sam_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+         BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - vote_rshares );
+         BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + vote_rshares );
+         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_vote_weights - vote_weight );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == old_cashout_time );
+         BOOST_REQUIRE( sam_bob_vote->weight == 0 );
+         BOOST_REQUIRE( sam_bob_vote->rshares == 0 );
+         BOOST_REQUIRE( db.get_account( "sam" ).voting_power == sam_vote_power );
 
          validate_database();
       }

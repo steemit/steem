@@ -536,93 +536,101 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
+   const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+   auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
-   auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
-   auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
-   auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
-   FC_ASSERT( current_power > 0 );
+   if( itr == comment_vote_idx.end() )
+   {
+      FC_ASSERT( o.weight != 0, "Vote weight cannot be 0" );
+      auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
+      auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
+      auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
+      FC_ASSERT( current_power > 0 );
 
-   int64_t  abs_weight    = abs(o.weight);
-   auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
-   used_power /= 20; /// a 100% vote means use 5% of voting power which should force users to spread their votes around over 20+ posts
+      int64_t  abs_weight    = abs(o.weight);
+      auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
+      used_power /= 20; /// a 100% vote means use 5% of voting power which should force users to spread their votes around over 20+ posts
 
-   int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / STEEMIT_100_PERCENT).to_uint64();
+      int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / STEEMIT_100_PERCENT).to_uint64();
 
-   /// this is the rshares voting for or against the post
-   int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
-
-
-   db().modify( voter, [&]( account_object& a ){
-      a.voting_power = current_power - used_power;
-      a.last_vote_time = db().head_block_time();
-   });
-
-   /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-   fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
-   auto old_abs_rshares = comment.abs_rshares.value;
-
-   fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
-   fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-   auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
-
-   FC_ASSERT( abs_rshares > 0 );
-
-   db().modify( comment, [&]( comment_object& c ){
-      c.net_rshares += rshares;
-      c.abs_rshares += abs_rshares;
-      c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
-   });
-
-   fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-
-   /// square it
-   new_rshares *= new_rshares;
-   old_rshares *= old_rshares;
-
-   const auto& cat = db().get_category( comment.category );
-   db().modify( cat, [&]( category_object& c ){
-      c.abs_rshares += abs_rshares;
-      c.last_update = db().head_block_time();
-   });
-
-   /** this verifies uniqueness of voter
-    *
-    *   voter_weight / new_total_weight ==> % of total vote weight provided by voter
-    *   percent^2 => used to create non-linear reward toward those who contribute a larger percentage
-    *
-    *   voter_weight * percent^2 ==> used to keep rewards proportional to vote_weight (small voters shouldn't get larger rewards simply for being first)
-    *
-    *   Simplify equation as:
-    *   vote_weight * (voter_weight/new_total_weight)^2
-    *   vote_weight * (voter_weight^2 / new_total_weight^2)
-    *   vote_weight^3 / new_total_weight^2
-    *
-    *   Since we know vote_weight is a 64 bit number and we know voter_weight^2/new_total_weight^2 is less than 1.0,
-    *   we know the resulting number is a 64 bit number.
-    *
-    **/
-   const auto& cvo = db().create<comment_vote_object>( [&]( comment_vote_object& cv ){
-       cv.voter   = voter.id;
-       cv.comment = comment.id;
-       if( rshares > 0 ) {
-          u512 rshares3(rshares);
-          rshares3 = rshares3 * rshares3 * rshares3;
-
-          u256 total2( comment.abs_rshares.value );
-          total2 *= total2;
-
-          cv.weight = static_cast<uint64_t>( rshares3 / total2 );
-       } else {
-          cv.weight = 0;
-       }
-   });
-
-   db().modify( comment, [&]( comment_object& c ){
-      c.total_vote_weight += cvo.weight;
-   });
+      /// this is the rshares voting for or against the post
+      int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
 
-   db().adjust_rshares2( comment, old_rshares, new_rshares );
+      db().modify( voter, [&]( account_object& a ){
+         a.voting_power = current_power - used_power;
+         a.last_vote_time = db().head_block_time();
+      });
+
+      /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
+      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
+      auto old_abs_rshares = comment.abs_rshares.value;
+
+      fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
+      fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+      auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
+
+      FC_ASSERT( abs_rshares > 0 );
+
+      db().modify( comment, [&]( comment_object& c ){
+         c.net_rshares += rshares;
+         c.abs_rshares += abs_rshares;
+         c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+      });
+
+      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
+
+      /// square it
+      new_rshares *= new_rshares;
+      old_rshares *= old_rshares;
+
+      const auto& cat = db().get_category( comment.category );
+      db().modify( cat, [&]( category_object& c ){
+         c.abs_rshares += abs_rshares;
+         c.last_update = db().head_block_time();
+      });
+
+      /** this verifies uniqueness of voter
+      *
+      *   voter_weight / new_total_weight ==> % of total vote weight provided by voter
+      *   percent^2 => used to create non-linear reward toward those who contribute a larger percentage
+      *
+      *   voter_weight * percent^2 ==> used to keep rewards proportional to vote_weight (small voters shouldn't get larger rewards simply for being first)
+      *
+      *   Simplify equation as:
+      *   vote_weight * (voter_weight/new_total_weight)^2
+      *   vote_weight * (voter_weight^2 / new_total_weight^2)
+      *   vote_weight^3 / new_total_weight^2
+      *
+      *   Since we know vote_weight is a 64 bit number and we know voter_weight^2/new_total_weight^2 is less than 1.0,
+      *   we know the resulting number is a 64 bit number.
+      *
+      **/
+      const auto& cvo = db().create<comment_vote_object>( [&]( comment_vote_object& cv ){
+         cv.voter   = voter.id;
+         cv.comment = comment.id;
+         cv.rshares = rshares;
+         cv.vote_percent = o.weight;
+         cv.last_update = db().head_block_time();
+         if( rshares > 0 ) {
+            u512 rshares3(rshares);
+            rshares3 = rshares3 * rshares3 * rshares3;
+
+            u256 total2( comment.abs_rshares.value );
+            total2 *= total2;
+
+            cv.weight = static_cast<uint64_t>( rshares3 / total2 );
+         } else {
+            cv.weight = 0;
+         }
+      });
+
+      db().modify( comment, [&]( comment_object& c ){
+         c.total_vote_weight += cvo.weight;
+      });
+
+      db().adjust_rshares2( comment, old_rshares, new_rshares );
+   }
 
 } FC_CAPTURE_LOG_AND_RETHROW( (o)) }
 
