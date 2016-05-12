@@ -818,8 +818,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          validate_database();
 
-         BOOST_TEST_MESSAGE( "--- Testing removing votes for hardfork 3" );
-         db.set_hardfork( STEEMIT_HARDFORK_3 );
+         /*
+         BOOST_TEST_MESSAGE( "--- Testing removing votes for hardfork 0_5_0" );
 
          BOOST_TEST_MESSAGE( "--- Test failure when modifying a vote to a non-zero weight" );
 
@@ -887,7 +887,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( sam_bob_vote->rshares == 0 );
          BOOST_REQUIRE( db.get_account( "sam" ).voting_power == sam_vote_power );
 
-         validate_database();
+         validate_database();*/
       }
    }
    FC_LOG_AND_RETHROW()
