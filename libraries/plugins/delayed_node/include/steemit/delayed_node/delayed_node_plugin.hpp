@@ -29,7 +29,7 @@
 namespace steemit { namespace delayed_node {
 namespace detail { struct delayed_node_plugin_impl; }
 
-class delayed_node_plugin : public steemit::app::plugin
+class delayed_node_plugin : public steemit::app::plugin<>
 {
    std::unique_ptr<detail::delayed_node_plugin_impl> my;
 public:

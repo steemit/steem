@@ -361,7 +361,7 @@ namespace steemit { namespace chain {
 
       private:
          optional<undo_database::session>       _pending_tx_session;
-         vector< unique_ptr<op_evaluator> >     _operation_evaluators;
+         vector< unique_ptr<op_evaluator<>> >     _operation_evaluators;
 
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );

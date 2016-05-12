@@ -61,7 +61,7 @@ namespace detail
  *  This plugin is designed to track a range of operations by account so that one node
  *  doesn't need to hold the full operation history in memory.
  */
-class account_history_plugin : public steemit::app::plugin
+class account_history_plugin : public steemit::app::plugin<>
 {
    public:
       account_history_plugin();

@@ -25,12 +25,25 @@
 
 #include <steemit/app/application.hpp>
 
+#include <steemit/chain/evaluator.hpp>
+
 #include <boost/program_options.hpp>
+
 #include <fc/io/json.hpp>
+#include <fc/static_variant.hpp>
+#include <fc/unique_ptr.hpp>
+#include <fc/vector.hpp>
 
 #include <memory>
 
 namespace steemit { namespace app {
+
+using fc::static_variant;
+using fc::unique_ptr;
+using std::vector;
+
+using chain::op_evaluator;
+using chain::op_evaluator_impl;
 
 class abstract_plugin
 {
@@ -95,7 +108,7 @@ class abstract_plugin
 /**
  * Provides basic default implementations of abstract_plugin functions.
  */
-
+template< typename PluginOps=static_variant<> >
 class plugin : public abstract_plugin
 {
    public:
@@ -114,11 +127,21 @@ class plugin : public abstract_plugin
 
       chain::database& database() { return *app().chain_database(); }
       application& app()const { assert(_app); return *_app; }
+      void plugin_push_op( string json_op );
+
    protected:
       graphene::net::node& p2p_node() { return *app().p2p_node(); }
 
+      template< typename EvaluatorType >
+      void plugin_register_evaluator()
+      {
+         _operation_evaluators[
+               PluginOps::template tag<typename EvaluatorType::operation_type>::value].reset( new op_evaluator_impl<EvaluatorType, PluginOps>() );
+      }
+
    private:
       application* _app = nullptr;
+      vector< unique_ptr< op_evaluator<> > >     _operation_evaluators;
 };
 
 /// @group Some useful tools for boost::program_options arguments using vectors of JSON strings

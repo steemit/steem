@@ -2443,7 +2443,7 @@ void database::apply_operation(transaction_evaluation_state& eval_state, const o
       assert( "Negative operation tag" && false );
    if( u_which >= _operation_evaluators.size() )
       assert( "No registered evaluator for this operation" && false );
-   unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
+   unique_ptr<op_evaluator<>>& eval = _operation_evaluators[ u_which ];
    if( !eval )
       assert( "No registered evaluator for this operation" && false );
    push_applied_operation( op );

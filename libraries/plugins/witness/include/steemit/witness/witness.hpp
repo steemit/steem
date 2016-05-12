@@ -50,7 +50,7 @@ namespace block_production_condition
    };
 }
 
-class witness_plugin : public steemit::app::plugin {
+class witness_plugin : public steemit::app::plugin<> {
 public:
    ~witness_plugin() {
       try {

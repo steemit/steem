@@ -19,7 +19,7 @@ namespace graphene { namespace db {
 
 namespace steemit { namespace plugin { namespace debug_node {
 
-class debug_node_plugin : public steemit::app::plugin
+class debug_node_plugin : public steemit::app::plugin<>
 {
    public:
       debug_node_plugin();
