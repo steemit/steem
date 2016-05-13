@@ -3,6 +3,7 @@
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
 
+#include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 
 #include <steemit/chain/block_database.hpp>
@@ -192,9 +193,9 @@ void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
 
 } // detail
 
-debug_node_api::debug_node_api( steemit::app::application& app )
+debug_node_api::debug_node_api( const steemit::app::api_context& ctx )
 {
-   my = std::make_shared< detail::debug_node_api_impl >(app);
+   my = std::make_shared< detail::debug_node_api_impl >(ctx.app);
 }
 
 void debug_node_api::on_api_startup() {}

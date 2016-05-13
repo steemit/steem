@@ -72,6 +72,9 @@ using std::vector;
 
 namespace bpo = boost::program_options;
 
+api_context::api_context( application& _app, const std::string& _api_name, std::weak_ptr< api_connection_context > _connection )
+   : app(_app), api_name(_api_name), connection(_connection) {}
+
 namespace detail {
 
    class application_impl : public graphene::net::node_delegate
@@ -189,14 +192,18 @@ namespace detail {
       void on_connection( const fc::http::websocket_connection_ptr& c )
       {
          auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+         std::shared_ptr< api_connection_context > conn_ctx = std::make_shared< api_connection_context >();
+
          for( const std::string& name : _public_apis )
          {
-            fc::api_ptr api = create_api_by_name( name );
+            api_context ctx( *_self, name, conn_ctx );
+            fc::api_ptr api = create_api_by_name( ctx );
             if( !api )
             {
                elog( "Couldn't create API ${name}", ("name", name) );
                continue;
             }
+            conn_ctx->api_map[name] = api;
             api->register_api( *wsc );
          }
          c->set_session_data( wsc );
@@ -362,20 +369,20 @@ namespace detail {
          _apiaccess.permission_map.insert(std::make_pair(username, std::move(permissions)));
       }
 
-      void register_api_factory( const string& name, std::function< fc::api_ptr() > factory )
+      void register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory )
       {
          _api_factories_by_name[name] = factory;
       }
 
-      fc::api_ptr create_api_by_name( const string& name )
+      fc::api_ptr create_api_by_name( const api_context& ctx )
       {
-         auto it = _api_factories_by_name.find(name);
+         auto it = _api_factories_by_name.find(ctx.api_name);
          if( it == _api_factories_by_name.end() )
          {
-            wlog( "unknown api: ${api}", ("api",name) );
+            wlog( "unknown api: ${api}", ("api",ctx.api_name) );
             return nullptr;
          }
-         return it->second();
+         return it->second(ctx);
       }
 
       /**
@@ -787,7 +794,7 @@ namespace detail {
 
       std::map<string, std::shared_ptr<abstract_plugin> > _plugins_available;
       std::map<string, std::shared_ptr<abstract_plugin> > _plugins_enabled;
-      flat_map< std::string, std::function< fc::api_ptr() > >          _api_factories_by_name;
+      flat_map< std::string, std::function< fc::api_ptr( const api_context& ) > >   _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
 
       bool _is_finished_syncing = false;
@@ -904,14 +911,14 @@ bool application::is_finished_syncing() const
    return my->_is_finished_syncing;
 }
 
-void application::register_api_factory( const string& name, std::function< fc::api_ptr() > factory )
+void application::register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory )
 {
    return my->register_api_factory( name, factory );
 }
 
-fc::api_ptr application::create_api_by_name( const string& name )
+fc::api_ptr application::create_api_by_name( const api_context& ctx )
 {
-   return my->create_api_by_name( name );
+   return my->create_api_by_name( ctx );
 }
 
 void application::shutdown_plugins()
