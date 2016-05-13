@@ -2,7 +2,7 @@
 This test module will only run on a POSIX system. Windows support *may* be added at some point in the future.
 """
 # Global imports
-import json, operator, os, sys
+import json, operator, os, signal, sys
 
 from argparse import ArgumentParser
 from pathlib import Path
@@ -12,8 +12,10 @@ from time import sleep
 from steemdebugnode import DebugNode
 from steemapi.steemnoderpc import SteemNodeRPC
 
+WAITING = True
 
 def main( ):
+   global WAITING
    if( os.name != "posix" ):
       print( "This script only works on POSIX systems" )
       return
@@ -24,7 +26,7 @@ def main( ):
    parser.add_argument( '--data-dir', '-d', type=str, required=True, help='The location of an existing data directory. ' + \
                         'The debug node will pull blocks from this directory when replaying the chain. The directory ' + \
                         'will not be changed.' )
-   parser.add_argument( '--pause-node', '-p', type=bool, required=False, default=False, \
+   parser.add_argument( '--pause-node', '-p', type=bool, required=False, default=True, \
                         help='True if the debug node should pause after it\'s tests. Default: false' )
 
    args = parser.parse_args()
@@ -47,14 +49,21 @@ def main( ):
    if( not data_dir.is_dir() ):
       print( 'Error: data_dir is not a directory' )
 
-   debug_node = DebugNode( str( steemd ), str( data_dir ), steemd_err=sys.stderr )
+   signal.signal( signal.SIGINT, sigint_handler )
+
+   debug_node = DebugNode( str( steemd ), str( data_dir ) )
 
    with debug_node :
 
       run_steemd_tests( debug_node )
 
       # Term on completion?
-      while( args.pause_node ):
+      if( args.pause_node ):
+         print( "Letting the node hang for manual inspection..." )
+      else:
+         WAITING = False
+
+      while( WAITING ):
          sleep( 1 )
 
 
@@ -70,31 +79,32 @@ def run_steemd_tests( debug_node ):
          print( 'Blocks Replayed: ' + str( total_blocks ) )
          sys.stdout.flush()
 
-      print( "Setting the hardfork now" ) # TODO: Grab most recent hardfork num from build directory
+      print( "Triggering payouts" )
       sys.stdout.flush()
-      debug_node.debug_set_hardfork( 4 )
+      debug_node.debug_generate_blocks_until( 1467590400 )
 
-      print( "Generating blocks after the hardfork" )
-      assert( debug_node.debug_generate_blocks( 5000 ) == 5000 )
+      print( "Generating blocks to verify nothing broke" )
+      assert( debug_node.debug_generate_blocks( 10 ) == 10 )
 
       print( "Done!" )
-      print( "Calculating block producer distribution:" )
+      print( "Getting comment dump:" )
       sys.stdout.flush()
-      rpc = SteemNodeRPC( 'ws://127.0.0.1:8090', '', '' )
-      block_producers = {}
-      for i in range( total_blocks + 1 , total_blocks + 5001 ):
-         ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_block",[' + str( i ) + ']], "id":4}' ) )
-         if( ret[ "witness" ] in block_producers ):
-            block_producers[ ret[ "witness" ] ] += 1
-         else:
-            block_producers[ ret[ "witness" ] ] = 1
+      rpc = SteemNodeRPC( 'ws://127.0.0.1:8095', '', '' )
+      ret = rpc.get_discussions_by_cashout_time( '', '', str( 0xFFFFFFFF ) );
 
-      sorted_block_producers = sorted( block_producers.items(), key=operator.itemgetter( 1 ) )
-      for (k, v) in sorted_block_producers:
-         ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_witness_by_account",["' + k + '"]], "id":5}' ) )
-         print( '{"witness":"' + k + '","votes":' + str( ret["votes"] ) + ',"blocks":' + str( v ) + '}' )
+      print( 'author, url, total_payout_value, abs_rshares, num_active_votes' )
+
+      for comment in ret:
+         print( comment[ 'author' ] + ', ' + comment[ 'url' ] + ', ' + comment[ 'total_payout_value' ] + ', ' + comment[ 'cashout_time' ] )
 
    except ValueError as val_err:
       print( str( val_err ) )
+
+
+def sigint_handler( signum, frame ):
+   global WAITING
+   WAITING = False
+   sleep( 3 )
+   sys.exit( 0 )
 
 main()

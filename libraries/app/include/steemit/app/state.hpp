@@ -13,6 +13,7 @@ namespace steemit { namespace app {
       vector<string> trending; /// pending lifetime payout
       vector<string> recent; /// creation date
       vector<string> active; /// last update or reply
+      vector<string> votes; /// last update or reply
       vector<string> maturing; /// about to be paid out
       vector<string> best; /// total lifetime payout
    };
@@ -132,6 +133,7 @@ namespace steemit { namespace app {
         vector<string>                pow_queue;
         map<string, witness_object>   witnesses;
         witness_schedule_object       witness_schedule;
+      string                          error;
    };
 
 } }
@@ -145,7 +147,8 @@ FC_REFLECT_DERIVED( steemit::app::extended_account,
 FC_REFLECT( steemit::app::vote_state, (voter)(weight) );
 FC_REFLECT( steemit::app::account_vote, (authorperm)(weight) );
 
-FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(maturing)(best) )
+FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)(votes)(maturing)(best) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
-FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
+
+FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(error) )

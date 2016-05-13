@@ -80,6 +80,7 @@ namespace steemit { namespace chain {
          string            json_metadata = "";
          time_point_sec    last_update;
          time_point_sec    created;
+         time_point_sec    active; ///< the last time this post was "touched" by voting or reply
 
          uint8_t           depth = 0; ///< used to track max nested depth
          uint32_t          children = 0; ///< used to track the total number of children, grandchildren, etc...
@@ -134,7 +135,10 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_comment_vote_object_type;
          account_id_type voter;
          comment_id_type comment;
-         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote.
+         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
+         int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
+         int16_t         vote_percent = 0; ///< The percent weight of the vote
+         time_point_sec  last_update; ///< The time of the last update of the vote
    };
 
    struct by_comment_voter;
@@ -198,35 +202,21 @@ namespace steemit { namespace chain {
 
 
 
-
-   struct by_permlink;
+   struct by_cashout_time; /// cashout_time
+   struct by_permlink; /// author, perm
+   struct by_active; /// parent_auth, active
+   struct by_active_in_category; /// parent_auth, parent_perm, active
+   struct by_cashout_time_in_category; /// parent_auth, cashout_time
    struct by_pending_payout;
-   struct by_payout;
-   struct by_created;
-   struct by_created_in_category;
-   struct by_parent_pending_payout;
-   struct by_parent_total_pending_payout;
-   struct by_parent_payout;
-   struct by_parent_date;
-   struct by_author_pending_payout;
-   struct by_author_payout;
-   struct by_author_date;
-   struct by_parent;
-   struct by_parent_created;
-   struct by_cashout;
-   struct by_parent_cashout;
-   struct by_pending_payout; /// rshares
-   struct by_parent_pending_payout;
-   struct by_payout; /// rshares
-   struct by_parent_payout;
+   struct by_pending_payout_in_category;
    struct by_total_pending_payout;
    struct by_total_pending_payout_in_category;
-   struct by_last_update;
-   struct by_last_update_in_category;
-   struct by_cashout_time;
-   struct by_cashout_time_in_category;
-   struct by_blog; /// author, parent, parent_author (aka topic), created (greater), permlink
-   struct by_blog_category; /// author, parent, parent_author (aka topic), created (greater), permlink
+   struct by_last_update; /// parent_auth, last_update
+   struct by_last_update_in_category; /// parent_auth, parent_perm, last_update
+   struct by_payout; /// parent_auth, last_update
+   struct by_payout_in_category; /// parent_auth, parent_perm, last_update
+   struct by_blog;
+   struct by_author_last_update;
 
    /**
     * @ingroup object_index
@@ -234,6 +224,7 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       comment_object,
       indexed_by<
+         /// CONSENUSS INDICIES - used by evaluators
          ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_cashout_time >,
             composite_key< comment_object,
@@ -241,6 +232,35 @@ namespace steemit { namespace chain {
                member< object, object_id_type, &object::id >
             >
          >,
+         ordered_unique< tag< by_permlink >, /// used by consensus to find posts referenced in ops
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::author >,
+               member< comment_object, string, &comment_object::permlink >
+            >,
+            composite_key_compare< std::less< string >, std::less< string > >
+         >
+
+//#ifndef IS_LOW_MEM
+         ,
+         ordered_unique< tag<by_active>,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
+               member< comment_object, time_point_sec, &comment_object::active >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
+         >,
+         /// ACTIVE INDEX - used to find posts that have recently been touched by votes, edits or replies
+         ordered_unique< tag< by_active_in_category >,  /// AKA - by_parent sorted by active
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::parent_author >,
+               member< comment_object, string, &comment_object::parent_permlink >,
+               member< comment_object, time_point_sec, &comment_object::active >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<object_id_type> >
+         >,
+         /// CASHOUT INDICIDES (NOT IN CONSENSUS)
          ordered_unique< tag< by_cashout_time_in_category >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::category >,
@@ -249,55 +269,7 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< string >, std::less<time_point_sec>, std::less<object_id_type> >
          >,
-         ordered_unique< tag< by_permlink >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::author >,
-               member< comment_object, string, &comment_object::permlink >
-            >,
-            composite_key_compare< std::less< string >, std::less< string > >
-         >,
-         ordered_unique< tag< by_parent >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, string, &comment_object::parent_permlink >,
-               member< object, object_id_type, &object::id >
-            >
-         >,
-         ordered_unique< tag< by_blog >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::author >,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< comment_object, string, &comment_object::permlink >
-            >,
-            composite_key_compare< std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<string> >
-         >,
-         ordered_unique< tag< by_blog_category >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::author >,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, string, &comment_object::parent_permlink >,
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< comment_object, string, &comment_object::permlink >
-            >,
-            composite_key_compare< std::less< string >, std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<string> >
-         >,
-         ordered_unique< tag< by_parent_created >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, string, &comment_object::parent_permlink >,
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<object_id_type> >
-         >,
-         ordered_unique< tag< by_created >,
-            composite_key< comment_object,
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::greater<time_point_sec>, std::less<object_id_type> >
-         >,
+         /// PENDING PAYOUT relative to a parent
          ordered_unique< tag< by_pending_payout >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >,
@@ -306,6 +278,16 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less<string>, std::greater<share_type>, std::less<object_id_type> >
          >,
+         ordered_unique< tag< by_pending_payout_in_category >,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::parent_author >,
+               member< comment_object, string, &comment_object::parent_permlink >,
+               member< comment_object, share_type, &comment_object::net_rshares >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< string >, std::less< string >, std::greater<share_type>, std::less<object_id_type> >
+         >,
+         /// TOTAL PENDING PAYOUT - this is the default TRENDING ORDER
          ordered_unique< tag< by_total_pending_payout >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
@@ -313,14 +295,6 @@ namespace steemit { namespace chain {
                member< object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less<string>, std::greater<fc::uint128_t>, std::less<object_id_type> >
-         >,
-         ordered_unique< tag<by_last_update>,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, time_point_sec, &comment_object::last_update >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
          >,
          ordered_unique< tag< by_total_pending_payout_in_category >,
             composite_key< comment_object,
@@ -331,6 +305,15 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less<string>, std::less<string>, std::greater<fc::uint128_t>, std::less<object_id_type> >
          >,
+         /// used to sort all posts by the last time they were edited
+         ordered_unique< tag<by_last_update>,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
+               member< comment_object, time_point_sec, &comment_object::last_update >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
+         >,
          ordered_unique< tag< by_last_update_in_category >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
@@ -340,33 +323,7 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less<string>, std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
          >,
-         ordered_unique< tag< by_created_in_category >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, string, &comment_object::parent_permlink >, /// permlink is the category
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
-         >,
-         ordered_unique< tag< by_parent_pending_payout >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, string, &comment_object::parent_permlink >,
-               member< comment_object, share_type, &comment_object::net_rshares >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less< string >, std::less< string >, std::greater<share_type>, std::less<object_id_type> >
-         >,
-         ordered_unique< tag< by_parent_total_pending_payout >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, string, &comment_object::parent_permlink >,
-               member< comment_object, fc::uint128, &comment_object::children_rshares2 >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less< string >, std::less< string >, std::greater<fc::uint128>, std::less<object_id_type> >
-         >,
+         /// posts with the high dollar value received
          ordered_unique< tag< by_payout >,
             composite_key< comment_object,
                member< comment_object, asset, &comment_object::total_payout_value >,
@@ -374,7 +331,7 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::greater<asset>, std::less<object_id_type> >
          >,
-         ordered_unique< tag< by_parent_payout >,
+         ordered_unique< tag< by_payout_in_category >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >,
                member< comment_object, string, &comment_object::parent_permlink >,
@@ -383,14 +340,26 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< string >, std::less< string >, std::greater<asset>, std::less<object_id_type> >
          >,
-         ordered_unique< tag< by_author_date >,
+         /// used to find all top-level posts (blog posts)
+         ordered_unique< tag< by_blog >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::author >,
+               member< comment_object, string, &comment_object::parent_author >,
                member< comment_object, time_point_sec, &comment_object::created >,
+               member< comment_object, string, &comment_object::permlink >
+            >,
+            composite_key_compare< std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<string> >
+         >,
+         /// used to find all posts by an author
+         ordered_unique< tag< by_author_last_update >,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::author >,
+               member< comment_object, time_point_sec, &comment_object::last_update >,
                member< object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less< string >, std::greater<time_point_sec>, std::less<object_id_type> >
          >
+// #endif /// IS_LOW_MEM
       >
    > comment_multi_index_type;
 
@@ -403,12 +372,12 @@ namespace steemit { namespace chain {
 FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (author)(permlink)
                     (category)(parent_author)(parent_permlink)
-                    (title)(body)(json_metadata)(last_update)(created)
+                    (title)(body)(json_metadata)(last_update)(created)(active)
                     (depth)(children)(children_rshares2)
                     (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(stats) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
-                    (voter)(comment)(weight) )
+                    (voter)(comment)(weight)(rshares)(vote_percent)(last_update) )
 
 FC_REFLECT_DERIVED( steemit::chain::category_object, (graphene::db::object), (name)(abs_rshares)(total_payouts)(discussions)(last_update) );
 

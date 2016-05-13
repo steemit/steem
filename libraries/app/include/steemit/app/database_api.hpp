@@ -303,6 +303,12 @@ class database_api
       vector<discussion>   get_discussions_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
       vector<discussion>   get_discussions_in_category_by_last_update( string category, string start_author, string start_permlink, uint32_t limit )const;
 
+      vector<discussion>   get_discussions_by_last_active( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_discussions_in_category_by_last_active( string category, string start_author, string start_permlink, uint32_t limit )const;
+
+      vector<discussion>   get_discussions_by_votes( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_discussions_in_category_by_votes( string category, string start_author, string start_permlink, uint32_t limit )const;
+
       vector<discussion>   get_discussions_by_created( string start_author, string start_permlink, uint32_t limit )const;
       vector<discussion>   get_discussions_in_category_by_created( string category, string start_author, string start_permlink, uint32_t limit )const;
 
@@ -312,7 +318,7 @@ class database_api
       /**
        *  This method is used to fetch all posts/comments by start_author that occur after before_date and start_permlink with up to limit being returned.
        *
-       *  If start_permlink is empty then only before_date will be considered. If both are specified the eariler to the two metrics will be used. This 
+       *  If start_permlink is empty then only before_date will be considered. If both are specified the eariler to the two metrics will be used. This
        *  should allow easy pagination.
        */
       vector<discussion>   get_discussions_by_author_before_date( string author, string start_permlink, time_point_sec before_date, uint32_t limit )const;
@@ -400,10 +406,17 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_total_pending_payout)
    (get_discussions_in_category_by_total_pending_payout)
    (get_discussions_by_last_update)
+   (get_discussions_by_last_active)
+   (get_discussions_by_votes)
    (get_discussions_by_created)
    (get_discussions_in_category_by_last_update)
+   (get_discussions_in_category_by_last_active)
+   (get_discussions_in_category_by_votes)
    (get_discussions_in_category_by_created)
    (get_discussions_by_author_before_date)
+   (get_discussions_by_cashout_time)
+   (get_discussions_in_category_by_cashout_time)
+
 
    // Witnesses
    (get_witnesses)
