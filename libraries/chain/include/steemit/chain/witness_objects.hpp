@@ -80,13 +80,17 @@ namespace steemit { namespace chain {
           * @defgroup virtual_time Virtual Time Scheduling
           */
          ///@{
-         fc::uint128  virtual_last_update;
-         fc::uint128  virtual_position;
-         fc::uint128  virtual_scheduled_time = fc::uint128::max_value();
+         fc::uint128 virtual_last_update;
+         fc::uint128 virtual_position;
+         fc::uint128 virtual_scheduled_time = fc::uint128::max_value();
          ///@}
 
-         digest_type     last_work;
+         digest_type last_work;
 
+         /* This field represents the hardforking version the witness is running. This equates to
+            the ID of the last hardfork that the witness knows about, regardless of whether it has
+            been applied or not */
+         version     running_version;
 
          witness_id_type get_id()const { return id; }
    };
@@ -182,6 +186,7 @@ FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
                     (props)
                     (sbd_exchange_rate)(last_sbd_exchange_update)
                     (last_work)
+                    (running_version)
                   )
 FC_REFLECT_DERIVED( steemit::chain::witness_vote_object, (graphene::db::object), (witness)(account) )
 

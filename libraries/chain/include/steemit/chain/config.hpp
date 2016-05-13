@@ -48,6 +48,7 @@
 
 #endif
 
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 4, 3) )
 
 #define STEEMIT_BLOCK_INTERVAL                  3
 #define STEEMIT_BLOCKS_PER_YEAR                 (365*24*60*60/STEEMIT_BLOCK_INTERVAL)

@@ -17,7 +17,7 @@ namespace steemit { namespace chain {
  */
 void inline validate_permlink( string permlink, const database& db )
 {
-   bool allow_slash = db.has_hardfork( STEEMIT_HARDFORK_0_5_0 );
+   bool allow_slash = db.has_hardfork( STEEMIT_HARDFORK_0_5 );
 
    FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
 
@@ -147,7 +147,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) )
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5 ) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
 
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
@@ -393,7 +393,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 
 
     if( o.vesting_shares.amount == 0 ) {
-       if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+       if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5 ) )
           FC_ASSERT( account.vesting_withdraw_rate.amount  != 0, "this operation would not change the vesting withdraw rate" );
 
        db().modify( account, [&]( account_object& a ) {
@@ -410,7 +410,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          if( new_vesting_withdraw_rate.amount == 0 )
             new_vesting_withdraw_rate.amount = 1;
 
-         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5 ) )
             FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "this operation would not change the vesting withdraw rate" );
 
          a.vesting_withdraw_rate = new_vesting_withdraw_rate;
@@ -633,7 +633,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    }
    else
    {
-      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ), "Cannot change votes until hardfork 0_5_0" );
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__22 ), "Cannot change votes until hardfork 0_5_0" );
 
 
       auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
@@ -696,7 +696,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 void custom_evaluator::do_apply( const custom_operation& o ){}
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o ){
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
 }
 
 

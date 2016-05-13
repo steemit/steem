@@ -714,6 +714,8 @@ signed_block database::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
    pending_block.witness = witness_owner;
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // TODO: Can be removed after hardfork time
+      pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
    if( !(skip & skip_witness_signature) )
       pending_block.sign( block_signing_private_key );
@@ -1923,6 +1925,28 @@ void database::_apply_block( const signed_block& next_block )
       dgp.current_witness = next_block.witness;
    });
 
+   /// parse witness version reporting
+   auto ext_itr = next_block.extensions.begin();
+
+   if( ext_itr != next_block.extensions.end() )
+   {
+      try
+      {
+         auto reported_version = ext_itr->get< version >();
+
+         if( reported_version != signing_witness.running_version )
+            modify( signing_witness, [&]( witness_object& wo )
+            {
+               wo.running_version = reported_version;
+            });
+      }
+      catch( fc::assert_exception )
+      {
+         if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
+            wlog( "Expected blockchain version number from witness ${w} on block ${b}", ("w", signing_witness.owner)("b", next_block_num) );
+      }
+   }
+
    for( const auto& trx : next_block.transactions )
    {
       _current_trx_id = trx.id();
@@ -2544,8 +2568,8 @@ void database::init_hardforks()
    _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
    FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_0_5_0 == 5, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_0_5_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_0_TIME );
+   FC_ASSERT( STEEMIT_HARDFORK_0_5 == 5, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_5 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_TIME );
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -2620,7 +2644,7 @@ void database::process_hardforks()
          #endif
             reset_virtual_schedule_time();
             break;
-         case STEEMIT_HARDFORK_0_5_0:
+         case STEEMIT_HARDFORK_0_5:
          #ifndef IS_TEST_NET
             elog( "HARDFORK 5" );
          #endif
