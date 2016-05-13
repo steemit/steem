@@ -12,13 +12,32 @@
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
+inline void validate_permlink( const string& permlink )
+{
+   FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
+
+   for( auto c : permlink )
+   {
+      switch( c )
+      {
+         case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i':
+         case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
+         case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z': case '0':
+         case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+         case '-':
+            break;
+         default:
+            FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
+      }
+   }
+}
+
 /**
  *  Allow GROUP / TOPIC
  */
-void inline validate_permlink( string permlink, const database& db )
+template< bool allow_slash >
+void validate_permlink_0_5( const string& permlink )
 {
-   bool allow_slash = db.has_hardfork( STEEMIT_HARDFORK_0_5_0 );
-
    FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
 
    int char_count  = 0;
@@ -175,10 +194,15 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
          {
-            validate_permlink( o.parent_permlink, db() );
-            validate_permlink( o.permlink, db() );
+            validate_permlink_0_5<true>( o.parent_permlink );
+            validate_permlink_0_5<true>( o.permlink );
+         }
+         else if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )
+         {
+            validate_permlink( o.parent_permlink );
+            validate_permlink( o.permlink );
          }
 
          if ( o.parent_author.size() == 0 )
