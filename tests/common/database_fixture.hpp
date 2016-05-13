@@ -10,7 +10,7 @@
 #define INITIAL_TEST_SUPPLY (10000000000ll)
 using namespace graphene::db;
 
-extern uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP;
+extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
 #define PUSH_TX \
    steemit::chain::test::_push_transaction

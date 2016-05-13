@@ -800,7 +800,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          validate_database();
 
-         BOOST_TEST_MESSAGE( "--- Test changing a positive vote to a different positive vote" );
+         BOOST_TEST_MESSAGE( "--- Test increasing vote rshares" );
 
          auto new_alice = db.get_account( "alice" );
          auto alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
@@ -835,7 +835,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_voting_power );
          validate_database();
 
-         BOOST_TEST_MESSAGE( "--- Test changing a positive vote to a negative vote" );
+         BOOST_TEST_MESSAGE( "--- Test decreasing vote rshares" );
 
          old_vote_rshares = new_rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
@@ -864,18 +864,67 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_voting_power );
-
          validate_database();
-/*
-         BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight" );
+
+         BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight (aka: removing a vote)" );
+
+         old_vote_rshares = -1 * new_rshares;
+         old_net_rshares = new_bob_comment.net_rshares.value;
+         old_abs_rshares = new_bob_comment.abs_rshares.value;
+         old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
+         new_rshares = 0;
+
+         op.weight = 0;
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+         alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
+
+         BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares );
+         BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares );
+         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_total_vote_weight );
+         BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( old_cashout_time.to_uint64() ) );
+         BOOST_REQUIRE( alice_bob_vote->weight == 0 );
+         BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
+         BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
+         BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
+         BOOST_REQUIRE( db.get_account( "alice" ).voting_power == alice_voting_power );
+         validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
 
+         generate_blocks( fc::time_point_sec( new_bob_comment.cashout_time.sec_since_epoch() - STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD + STEEMIT_BLOCK_INTERVAL ), true );
+
+         op.weight = STEEMIT_100_PERCENT;
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+         validate_database();
+
          BOOST_TEST_MESSAGE( "--- Test success when reducing rshares within lockout period" );
 
-         BOOST_TEST_MESSAGE( "--- Test success with a new vote within lockout period" );
-         */
+         op.weight = -1 * STEEMIT_100_PERCENT;
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+         validate_database();
 
+         BOOST_TEST_MESSAGE( "--- Test success with a new vote within lockout period" );
+
+         op.weight = STEEMIT_100_PERCENT;
+         op.voter = "sam";
+         tx.operations.clear();
+         tx.signatures.clear();
+         tx.operations.push_back( op );
+         tx.sign( sam_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+         validate_database();
       }
    }
    FC_LOG_AND_RETHROW()

@@ -652,7 +652,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       auto effective_cashout_time = std::max( STEEMIT_FIRST_CASHOUT_TIME, comment.cashout_time );
 
-      if( effective_cashout_time.sec_since_epoch() - db().head_block_time().sec_since_epoch() < STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD )
+      if( effective_cashout_time.sec_since_epoch() - db().head_block_time().sec_since_epoch() <= STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD )
          FC_ASSERT( itr->rshares > rshares, "Change of vote is within lockout period and increases net_rshares to comment." );
 
       db().modify( voter, [&]( account_object& a ){
