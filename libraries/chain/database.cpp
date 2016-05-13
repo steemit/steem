@@ -2587,7 +2587,9 @@ void database::process_hardforks()
       switch( hardforks.last_hardfork + 1)
       {
          case STEEMIT_HARDFORK_0_1_0:
+         #ifndef IS_TEST_NET
             elog( "HARDFORK 1" );
+         #endif
             perform_vesting_share_split( 1000000 );
          #ifdef IS_TEST_NET
             {
@@ -2601,19 +2603,27 @@ void database::process_hardforks()
          #endif
             break;
          case STEEMIT_HARDFORK_0_2_0:
+         #ifndef IS_TEST_NET
             elog( "HARDFORK 2" );
+         #endif
             retally_witness_votes();
             break;
          case STEEMIT_HARDFORK_0_3_0:
+         #ifndef IS_TEST_NET
             elog( "HARDFORK 3" );
+         #endif
             retally_witness_votes();
             break;
          case STEEMIT_HARDFORK_0_4_0:
+         #ifndef IS_TEST_NET
             elog( "HARDFORK 4" );
+         #endif
             reset_virtual_schedule_time();
             break;
          case STEEMIT_HARDFORK_0_5_0:
+         #ifndef IS_TEST_NET
             elog( "HARDFORK 5" );
+         #endif
             break;
          default:
             break;

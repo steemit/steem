@@ -137,7 +137,7 @@ namespace steemit { namespace chain {
          comment_id_type comment;
          uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
          int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
-         uint16_t        vote_percent = 0; ///< The percent weight of the vote
+         int16_t         vote_percent = 0; ///< The percent weight of the vote
          time_point_sec  last_update; ///< The time of the last update of the vote
    };
 
@@ -239,7 +239,7 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< string >, std::less< string > >
          >
-         
+
 //#ifndef IS_LOW_MEM
          ,
          ordered_unique< tag<by_active>,
@@ -269,7 +269,7 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< string >, std::less<time_point_sec>, std::less<object_id_type> >
          >,
-         /// PENDING PAYOUT relative to a parent 
+         /// PENDING PAYOUT relative to a parent
          ordered_unique< tag< by_pending_payout >,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >,

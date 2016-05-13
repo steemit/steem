@@ -13,7 +13,7 @@ namespace steemit { namespace chain {
    using fc::uint128_t;
 
 /**
- *  Allow GROUP / TOPIC 
+ *  Allow GROUP / TOPIC
  */
 void inline validate_permlink( string permlink, const database& db )
 {
@@ -307,7 +307,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    } // end EDIT case
 
-} FC_CAPTURE_LOG_AND_RETHROW( (o) ) }
+} FC_CAPTURE_AND_RETHROW( (o) ) }
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
@@ -631,8 +631,67 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
+   else
+   {
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ), "Cannot change votes until hardfork 0_5_0" );
 
-} FC_CAPTURE_LOG_AND_RETHROW( (o)) }
+
+      auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
+      auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
+      auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
+      FC_ASSERT( current_power > 0 );
+
+      int64_t  abs_weight    = abs(o.weight);
+      auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
+      used_power /= 20; /// a 100% vote means use 5% of voting power which should force users to spread their votes around over 20+ posts
+
+      int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / STEEMIT_100_PERCENT).to_uint64();
+
+      /// this is the rshares voting for or against the post
+      int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
+
+      auto effective_cashout_time = std::max( STEEMIT_FIRST_CASHOUT_TIME, comment.cashout_time );
+
+      if( effective_cashout_time.sec_since_epoch() - db().head_block_time().sec_since_epoch() <= STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD )
+         FC_ASSERT( itr->rshares > rshares, "Change of vote is within lockout period and increases net_rshares to comment." );
+
+      db().modify( voter, [&]( account_object& a ){
+         a.voting_power = current_power - used_power;
+         a.last_vote_time = db().head_block_time();
+      });
+
+      /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
+      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
+      auto old_abs_rshares = comment.abs_rshares.value;
+
+      fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
+      fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+      auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
+
+      db().modify( comment, [&]( comment_object& c )
+      {
+         c.net_rshares -= itr->rshares;
+         c.net_rshares += rshares;
+         c.abs_rshares += abs_rshares;
+         c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         c.total_vote_weight -= itr->weight;
+      });
+
+      old_rshares *= old_rshares;
+      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
+      new_rshares *= new_rshares;
+
+      db().modify( *itr, [&]( comment_vote_object& cv )
+      {
+         cv.rshares = rshares;
+         cv.vote_percent = o.weight;
+         cv.last_update = db().head_block_time();
+         cv.weight = 0;
+      });
+
+      db().adjust_rshares2( comment, old_rshares, new_rshares );
+   }
+} FC_CAPTURE_AND_RETHROW( (o)) }
 
 void custom_evaluator::do_apply( const custom_operation& o ){}
 

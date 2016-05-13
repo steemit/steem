@@ -23,6 +23,10 @@ programs/js_operation_serializer/js_operation_serializer
 programs/steemd/steemd
 programs/steemd/test
 programs/delayed_node
+programs/build_helpers/cat-parts
+programs/size_checker/size_checker
+programs/util/get_dev_key
+programs/util/inflation_model
 
 tests/app_test
 tests/chain_bench
@@ -39,3 +43,4 @@ witness_node_data_dir
 
 *.pyc
 *.pyo
+*.egg-info/
