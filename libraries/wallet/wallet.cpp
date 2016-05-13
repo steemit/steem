@@ -248,12 +248,6 @@ public:
       _wallet.ws_server = initial_data.ws_server;
       _wallet.ws_user = initial_data.ws_user;
       _wallet.ws_password = initial_data.ws_password;
-
-      try {
-        _remote_message_api =  rapi->get_api_by_name("private_message_api")->as< private_message_api >();
-      } catch ( const fc::exception& e ) {
-         wlog( "error fetching private_message_api" );
-      }
    }
    virtual ~wallet_api_impl()
    {}
@@ -836,11 +830,23 @@ public:
       }
       catch( const fc::exception& e )
       {
-         std::cerr << "\nCouldn't get network node API.  You probably are not configured\n"
-         "to access the network API on the witness_node you are\n"
-         "connecting to.  Please follow the instructions in README.md to set up an apiaccess file.\n"
-         "\n";
+         elog( "Couldn't get network node API" );
          throw(e);
+      }
+   }
+
+   void use_remote_message_api()
+   {
+      if( _remote_message_api.valid() )
+         return;
+      try
+      {
+         _remote_message_api = _remote_api->get_api_by_name("private_message_api")->as< private_message_api >();
+      }
+      catch( const fc::exception& e )
+      {
+        elog( "Couldn't get network node API" );
+        throw(e);
       }
    }
 
@@ -884,8 +890,8 @@ public:
    fc::api<login_api>                      _remote_api;
    fc::api<database_api>                   _remote_db;
    fc::api<network_broadcast_api>          _remote_net_broadcast;
-   fc::api<private_message_api>            _remote_message_api;
    optional< fc::api<network_node_api> >   _remote_net_node;
+   optional< fc::api<private_message_api> > _remote_message_api;
 
    flat_map<string, operation>             _prototype_ops;
 
@@ -1859,7 +1865,7 @@ message_body wallet_api::try_decrypt_message( const message_object& mo ) {
 vector<extended_message_object>   wallet_api::get_inbox( string account, fc::time_point newest, uint32_t limit ) {
    FC_ASSERT( !is_locked() );
    vector<extended_message_object> result;
-   auto remote_result = my->_remote_message_api->get_inbox( account, newest, limit );
+   auto remote_result = (*my->_remote_message_api)->get_inbox( account, newest, limit );
    for( const auto& item : remote_result ) {
       result.emplace_back( item );
       result.back().message = try_decrypt_message( item );
@@ -1870,7 +1876,7 @@ vector<extended_message_object>   wallet_api::get_inbox( string account, fc::tim
 vector<extended_message_object>   wallet_api::get_outbox( string account, fc::time_point newest, uint32_t limit ) {
    FC_ASSERT( !is_locked() );
    vector<extended_message_object> result;
-   auto remote_result = my->_remote_message_api->get_outbox( account, newest, limit );
+   auto remote_result = (*my->_remote_message_api)->get_outbox( account, newest, limit );
    for( const auto& item : remote_result ) {
       result.emplace_back( item );
       result.back().message = try_decrypt_message( item );
