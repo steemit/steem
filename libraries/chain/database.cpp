@@ -714,7 +714,7 @@ signed_block database::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
    pending_block.witness = witness_owner;
-   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // TODO: Can be removed after hardfork time
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) && get_witness( witness_owner ).running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
       pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
    if( !(skip & skip_witness_signature) )
@@ -1928,7 +1928,7 @@ void database::_apply_block( const signed_block& next_block )
    /// parse witness version reporting
    auto ext_itr = next_block.extensions.begin();
 
-   if( ext_itr != next_block.extensions.end() )
+   if( ext_itr != next_block.extensions.end() && has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
    {
       try
       {
@@ -1940,11 +1940,7 @@ void database::_apply_block( const signed_block& next_block )
                wo.running_version = reported_version;
             });
       }
-      catch( fc::assert_exception )
-      {
-         if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
-            wlog( "Expected blockchain version number from witness ${w} on block ${b}", ("w", signing_witness.owner)("b", next_block_num) );
-      }
+      catch( fc::assert_exception ) {}
    }
 
    for( const auto& trx : next_block.transactions )

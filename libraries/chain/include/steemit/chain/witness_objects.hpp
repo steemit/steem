@@ -87,9 +87,9 @@ namespace steemit { namespace chain {
 
          digest_type last_work;
 
-         /* This field represents the hardforking version the witness is running. This equates to
-            the ID of the last hardfork that the witness knows about, regardless of whether it has
-            been applied or not */
+         /**
+          * This field represents the Steem blockchain version the witness is running.
+          */
          version     running_version;
 
          witness_id_type get_id()const { return id; }
