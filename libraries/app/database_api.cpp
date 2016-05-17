@@ -269,6 +269,16 @@ dynamic_global_property_object database_api_impl::get_dynamic_global_properties(
    return _db.get(dynamic_global_property_id_type());
 }
 
+witness_schedule_object database_api::get_witness_schedule()const
+{
+   return witness_schedule_id_type()( my->_db );
+}
+
+version database_api::get_hardfork_version()const
+{
+   return hardfork_property_id_type()( my->_db ).current_hardfork_version;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Keys                                                             //
@@ -1418,7 +1428,7 @@ state database_api::get_state( string path )const
    _state.witness_schedule = my->_db.get_witness_schedule_object();
 
  } catch ( const fc::exception& e ) {
-    _state.error = e.to_detail_string();   
+    _state.error = e.to_detail_string();
  }
  return _state;
 }

@@ -9,6 +9,7 @@
 #include <fc/variant_object.hpp>
 
 #include <steemit/chain/protocol/block.hpp>
+#include <steemit/chain/witness_objects.hpp>
 
 namespace steemit { namespace app {
 class application;
@@ -50,7 +51,10 @@ class debug_node_api
       /*
        * Push an already constructed block onto the blockchain. For use with pop_block to traverse state block by block.
        */
+      // not implemented
       //void debug_push_block( steemit::chain::signed_block& block );
+
+      steemit::chain::witness_schedule_object debug_get_witness_schedule();
 
       /**
        * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
@@ -82,6 +86,8 @@ class debug_node_api
 
       void debug_set_hardfork( uint32_t hardfork_id );
 
+      bool debug_has_hardfork( uint32_t hardfork_id );
+
       std::shared_ptr< detail::debug_node_api_impl > my;
 };
 
@@ -97,4 +103,6 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_stream_json_objects)
        (debug_stream_json_objects_flush)
        (debug_set_hardfork)
+       (debug_has_hardfork)
+       (debug_get_witness_schedule)
      )

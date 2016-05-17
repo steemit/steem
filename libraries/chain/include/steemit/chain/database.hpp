@@ -380,12 +380,14 @@ namespace steemit { namespace chain {
 
          void init_hardforks();
          void process_hardforks();
+         void apply_hardfork( uint32_t hardfork );
 
          ///@}
 
          vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
+         version                       _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
          /**
           *  Note: we can probably store blocks by block num rather than

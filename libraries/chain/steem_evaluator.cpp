@@ -61,7 +61,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    db().get_account( o.owner ); // verify owner exists
 
-   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
+   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -93,7 +93,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )  {
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )  {
       const witness_schedule_object& wso = db().get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided",
                  ("f", wso.median_props.account_creation_fee)
@@ -127,7 +127,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 void account_update_evaluator::do_apply( const account_update_operation& o )
 {
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
 
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
@@ -175,7 +175,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
          {
             validate_permlink( o.parent_permlink, db() );
             validate_permlink( o.permlink, db() );
@@ -374,12 +374,12 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
     const auto& account = db().get_account( o.account );
 
-    // TODO: DELETE if( !db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
+    // TODO: DELETE if( !db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
 
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
 
-    if( !account.mined && db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) {
+    if( !account.mined && db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) {
       const auto& props = db().get_dynamic_global_properties();
       const witness_schedule_object& wso = db().get_witness_schedule_object();
 
@@ -480,7 +480,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    if( itr == by_account_witness_idx.end() ) {
       FC_ASSERT( o.approve, "vote doesn't exist, user must be indicate a desire to approve witness" );
 
-      if ( db().has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
+      if ( db().has_hardfork( STEEMIT_HARDFORK_0_2 ) )
       {
          FC_ASSERT( voter.witnesses_voted_for < STEEMIT_MAX_ACCOUNT_WITNESS_VOTES, "account has voted for too many witnesses" ); // TODO: Remove after hardfork 2
 
@@ -489,7 +489,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
              v.account = voter.id;
          });
 
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_3_0 ) ) {
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_3 ) ) {
             db().adjust_witness_vote( witness, voter.witness_vote_weight() );
          }
          else {
@@ -514,8 +514,8 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    } else {
       FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to reject witness" );
 
-      if (  db().has_hardfork( STEEMIT_HARDFORK_0_2_0 ) ) {
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_3_0 ) )
+      if (  db().has_hardfork( STEEMIT_HARDFORK_0_2 ) ) {
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_3 ) )
             db().adjust_witness_vote( witness, -voter.witness_vote_weight() );
          else
             db().adjust_proxied_witness_votes( voter, -voter.witness_vote_weight() );
@@ -830,7 +830,7 @@ void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation&
 
 void report_over_production_evaluator::do_apply( const report_over_production_operation& o ) {
    FC_ASSERT( !db().is_producing(), "this operation is currently disabled" );
-   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_4_0 ), "this operation is disabled after this hardfork" );
+   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_4 ), "this operation is disabled after this hardfork" );
 
    /*
    const auto& reporter = db().get_account( o.reporter );

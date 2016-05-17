@@ -51,7 +51,7 @@ def main( ):
 
    signal.signal( signal.SIGINT, sigint_handler )
 
-   debug_node = DebugNode( str( steemd ), str( data_dir ), steemd_out=sys.stdout, steemd_err=sys.stderr )
+   debug_node = DebugNode( str( steemd ), str( data_dir ) )
 
    with debug_node :
 
@@ -78,9 +78,21 @@ def run_steemd_tests( debug_node ):
          print( 'Blocks Replayed: ' + str( total_blocks ) )
          sys.stdout.flush()
 
+      blocks_to_generate = 21 - total_blocks % 21;
+      debug_node.debug_generate_blocks( blocks_to_generate );
+
       print( "Setting the hardfork now" ) # TODO: Grab most recent hardfork num from build directory
       sys.stdout.flush()
       debug_node.debug_set_hardfork( 5 )
+
+      print( "Checking majority version field for WSO on new block production" )
+      assert( debug_node.debug_has_hardfork( 4 ) )
+      assert( not debug_node.debug_has_hardfork( 5 ) )
+      assert( debug_node.debug_get_witness_schedule()[ "majority_version" ] == "0.0.0" )
+
+      debug_node.debug_generate_blocks( 21 )
+      assert( debug_node.debug_has_hardfork( 5 ) )
+      assert( debug_node.debug_get_witness_schedule()[ "majority_version" ] == "0.5.0" )
 
       print( "Generating blocks after the hardfork" )
       assert( debug_node.debug_generate_blocks( 5000 ) == 5000 )

@@ -139,6 +139,8 @@ class database_api
       chain_properties               get_chain_properties()const;
       price                          get_current_median_history_price()const;
       feed_history_object            get_feed_history()const;
+      witness_schedule_object        get_witness_schedule()const;
+      version                        get_hardfork_version()const;
 
       //////////
       // Keys //
@@ -372,6 +374,8 @@ FC_API(steemit::app::database_api,
    (get_chain_properties)
    (get_feed_history)
    (get_current_median_history_price)
+   (get_witness_schedule)
+   (get_hardfork_version)
 
    // Keys
    (get_key_references)

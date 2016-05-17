@@ -116,6 +116,7 @@ namespace steemit { namespace chain {
          uint32_t         next_shuffle_block_num = 1;
          vector< string > current_shuffled_witnesses;
          chain_properties median_props;
+         version          majority_version;
    };
 
 
@@ -193,5 +194,5 @@ FC_REFLECT_DERIVED( steemit::chain::witness_vote_object, (graphene::db::object),
 FC_REFLECT_DERIVED(
    steemit::chain::witness_schedule_object,
    (graphene::db::object),
-   (current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)
+   (current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)(majority_version)
 )

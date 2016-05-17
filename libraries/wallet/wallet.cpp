@@ -306,6 +306,8 @@ public:
    {
       auto dynamic_props = _remote_db->get_dynamic_global_properties();
       fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
+      result["witness_majority_version"] = fc::string( _remote_db->get_witness_schedule().majority_version );
+      result["hardfork_version"] = fc::string( _remote_db->get_hardfork_version() );
       result["head_block_num"] = dynamic_props.head_block_number;
       result["head_block_id"] = dynamic_props.head_block_id;
       result["head_block_age"] = fc::get_approximate_relative_time_string(dynamic_props.time,
@@ -363,7 +365,7 @@ public:
    optional<fc::ecc::private_key>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
-      if( it != _keys.end() ) 
+      if( it != _keys.end() )
          return wif_to_key( it->second );
       return optional<fc::ecc::private_key>();
    }
@@ -374,7 +376,7 @@ public:
       FC_ASSERT( has_key );
       return *has_key;
    }
-   
+
 
    fc::ecc::private_key get_private_key_for_account(const account_object& account)const
    {
@@ -1559,7 +1561,7 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
 
     if( memo.size() > 0 && memo[0] == '#' ) {
        memo_data m;
-       
+
        auto from_account = get_account( from );
        auto to_account   = get_account( to );
 
@@ -1569,7 +1571,7 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
 
        auto from_priv = my->get_private_key( m.from );
        auto shared_secret = from_priv.get_shared_secret( m.to );
-       
+
        fc::sha512::encoder enc;
        fc::raw::pack( enc, m.nonce );
        fc::raw::pack( enc, shared_secret );

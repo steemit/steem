@@ -960,7 +960,39 @@ void database::update_witness_schedule4() {
    FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_MINERS, "number of active witnesses does not equal STEEMIT_MAX_MINERS",
                                        ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_MINERS",STEEMIT_MAX_MINERS) );
 
+   auto majority_version = wso.majority_version;
 
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
+   {
+      flat_map< version, uint32_t, std::greater< version > > witness_versions;
+
+      for( uint32_t i = 0; i < wso.current_shuffled_witnesses.size(); i++ )
+      {
+         auto witness = get_witness( wso.current_shuffled_witnesses[ i ] );
+
+         if( witness.pow_worker == 0 && witness.running_version > majority_version )
+         {
+            if( witness_versions.find( witness.running_version ) == witness_versions.end() )
+               witness_versions[ witness.running_version ] = 1;
+            else
+               witness_versions[ witness.running_version ] += 1;
+         }
+      }
+
+      int witnesses_on_version = 0;
+      auto ver_itr = witness_versions.begin();
+
+      // The map should be sorted highest version to smallest, so we iterate until we hit the majority of witnesses on at least this version
+      while( ver_itr != witness_versions.end() )
+      {
+         witnesses_on_version += ver_itr->second;
+
+         if( witnesses_on_version > STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+            majority_version = ver_itr->first;
+
+         ver_itr++;
+      }
+   }
 
    modify( wso, [&]( witness_schedule_object& _wso ) {
       _wso.current_shuffled_witnesses = active_witnesses;
@@ -985,6 +1017,7 @@ void database::update_witness_schedule4() {
 
       _wso.current_virtual_time = new_virtual_time;
       _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
+      _wso.majority_version = majority_version;
    });
 
    update_median_witness_props();
@@ -999,7 +1032,7 @@ void database::update_witness_schedule()
 {
    if( (head_block_num() % STEEMIT_MAX_MINERS) == 0 ) //wso.next_shuffle_block_num )
    {
-      if( has_hardfork(STEEMIT_HARDFORK_0_4_0) ) {
+      if( has_hardfork(STEEMIT_HARDFORK_0_4) ) {
          update_witness_schedule4();
          return;
       }
@@ -1046,7 +1079,7 @@ void database::update_witness_schedule()
                    new_virtual_time = fc::uint128();
 
                /// this witness will produce again here
-               if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
+               if( has_hardfork( STEEMIT_HARDFORK_0_2 ) )
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
                else
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
@@ -1055,7 +1088,7 @@ void database::update_witness_schedule()
          }
 
          /* TODO: delete this if we can reindex without it through HF4 */
-         if( !has_hardfork( STEEMIT_HARDFORK_0_4_0 ) ) {
+         if( !has_hardfork( STEEMIT_HARDFORK_0_4 ) ) {
             while( sitr != schedule_idx.end() && sitr->pow_worker ) {
                modify( *sitr, [&]( witness_object& wo ) {
                        wo.virtual_last_update = new_virtual_time;
@@ -1229,13 +1262,13 @@ void database::adjust_witness_vote( const witness_object& witness, share_type de
       w.votes += delta;
       FC_ASSERT( w.votes <= get_dynamic_global_properties().total_vesting_shares.amount, "", ("w.votes", w.votes)("props",get_dynamic_global_properties().total_vesting_shares) );
 
-      if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
+      if( has_hardfork( STEEMIT_HARDFORK_0_2 ) )
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH2 - w.virtual_position)/(w.votes.value+1);
       else
          w.virtual_scheduled_time = w.virtual_last_update + (VIRTUAL_SCHEDULE_LAP_LENGTH - w.virtual_position)/(w.votes.value+1);
 
       /** witnesses with a low number of votes could overflow the time field and end up with a scheduled time in the past */
-      if( has_hardfork( STEEMIT_HARDFORK_0_4_0 ) ) {
+      if( has_hardfork( STEEMIT_HARDFORK_0_4 ) ) {
          if( w.virtual_scheduled_time < wso.current_virtual_time )
             w.virtual_scheduled_time = fc::uint128::max_value();
       }
@@ -2216,7 +2249,7 @@ void database::update_global_dynamic_data( const signed_block& b )
            dgp.current_reserve_ratio++;
          }
 
-         if( has_hardfork( STEEMIT_HARDFORK_0_2_0 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
+         if( has_hardfork( STEEMIT_HARDFORK_0_2 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
            dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
       }
       dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *
@@ -2556,16 +2589,22 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEMIT_GENESIS_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_0_1_0 == 1, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_0_1_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_1_0_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_0_2_0 == 2, "Invlaid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_0_2_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_2_0_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_0_3_0 == 3, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_0_3_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_0_TIME );
-   FC_ASSERT( STEEMIT_HARDFORK_0_4_0 == 4, "Invalid hardfork configuration" );
-   _hardfork_times[ STEEMIT_HARDFORK_0_4_0 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_0_TIME );
+   _hardfork_versions[ 0 ] = version( 0, 0, 0 );
+   FC_ASSERT( STEEMIT_HARDFORK_0_1 == 1, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_1_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_1 ] = STEEMIT_HARDFORK_0_1_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_2 == 2, "Invlaid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_2 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_2_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_2 ] = STEEMIT_HARDFORK_0_2_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_3 == 3, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_3 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_3_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_3 ] = STEEMIT_HARDFORK_0_3_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_4 == 4, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_4 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_4_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_4 ] = STEEMIT_HARDFORK_0_4_VERSION;
    FC_ASSERT( STEEMIT_HARDFORK_0_5 == 5, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_5 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_5 ] = STEEMIT_HARDFORK_0_5_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -2573,6 +2612,9 @@ void database::init_hardforks()
       FC_ASSERT( _hardfork_times[ hardforks.last_hardfork - 1 ] <= head_block_time(), "Configuration has future hardfork set that chain has already applied." );
    if( hardforks.last_hardfork + 1 < STEEMIT_NUM_HARDFORKS )
       FC_ASSERT( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time(), "Next hardfork takes place prior to head block time" );
+
+   FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
+
 
    for( int i = 0; i <= hardforks.last_hardfork; i++ )
    {
@@ -2604,9 +2646,41 @@ void database::process_hardforks()
    while( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS
          && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
    {
-      switch( hardforks.last_hardfork + 1)
+      // After hardfork 0.5, we only trigger hardforks on round barriers and if there is a majority of witness on the required version for the hardfork
+      if( has_hardfork( STEEMIT_HARDFORK_0_5__54 )
+         && witness_schedule_id_type()(*this).majority_version < _hardfork_versions[ hardforks.last_hardfork + 1 ] )
+         return;
+
+      apply_hardfork( hardforks.last_hardfork + 1 );
+   }
+}
+FC_CAPTURE_AND_RETHROW() }
+
+bool database::has_hardfork( uint32_t hardfork )const
+{
+   return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
+}
+
+void database::set_hardfork( uint32_t hardfork, bool apply_now )
+{
+   FC_ASSERT( hardfork <= STEEMIT_NUM_HARDFORKS );
+
+   auto const& hardforks = hardfork_property_id_type()( *this );
+
+   for( int i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEMIT_NUM_HARDFORKS; i++ )
+   {
+      _hardfork_times[i] = head_block_time();
+
+      if( apply_now )
+         apply_hardfork( i );
+   }
+}
+
+void database::apply_hardfork( uint32_t hardfork )
+{
+   switch( hardfork )
       {
-         case STEEMIT_HARDFORK_0_1_0:
+         case STEEMIT_HARDFORK_0_1:
          #ifndef IS_TEST_NET
             elog( "HARDFORK 1" );
          #endif
@@ -2622,19 +2696,19 @@ void database::process_hardforks()
             break;
          #endif
             break;
-         case STEEMIT_HARDFORK_0_2_0:
+         case STEEMIT_HARDFORK_0_2:
          #ifndef IS_TEST_NET
             elog( "HARDFORK 2" );
          #endif
             retally_witness_votes();
             break;
-         case STEEMIT_HARDFORK_0_3_0:
+         case STEEMIT_HARDFORK_0_3:
          #ifndef IS_TEST_NET
             elog( "HARDFORK 3" );
          #endif
             retally_witness_votes();
             break;
-         case STEEMIT_HARDFORK_0_4_0:
+         case STEEMIT_HARDFORK_0_4:
          #ifndef IS_TEST_NET
             elog( "HARDFORK 4" );
          #endif
@@ -2649,35 +2723,15 @@ void database::process_hardforks()
             break;
       }
 
-      modify( hardforks, [&]( hardfork_property_object& hfp )
+      modify( hardfork_property_id_type()( *this ), [&]( hardfork_property_object& hfp )
       {
-         FC_ASSERT( hfp.processed_hardforks.size() == hfp.last_hardfork + 1, "Hardfork being applied out of order" );
-         hfp.processed_hardforks.push_back( _hardfork_times[ hfp.last_hardfork + 1 ] );
-         hfp.last_hardfork++;
+         FC_ASSERT( hardfork == hfp.last_hardfork + 1, "Hardfork being applied out of order", ("hardfork",hardfork)("hfp.last_hardfork",hfp.last_hardfork) );
+         FC_ASSERT( hfp.processed_hardforks.size() == hardfork, "Hardfork being applied out of order" );
+         hfp.processed_hardforks.push_back( _hardfork_times[ hardfork ] );
+         hfp.last_hardfork = hardfork;
+         hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
          FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
       });
-   }
-}
-FC_CAPTURE_AND_RETHROW() }
-
-bool database::has_hardfork( uint32_t hardfork )const
-{
-   return hardfork_property_id_type()( *this ).processed_hardforks.size() > hardfork;
-}
-
-void database::set_hardfork( uint32_t hardfork, bool process_now )
-{
-   FC_ASSERT( hardfork <= STEEMIT_NUM_HARDFORKS );
-
-   auto const& hardforks = hardfork_property_id_type()( *this );
-
-   for( int i = hardforks.last_hardfork; i <= hardfork; i++ )
-   {
-      _hardfork_times[i] = head_block_time();
-   }
-
-   if( process_now )
-         process_hardforks();
 }
 
 /**
