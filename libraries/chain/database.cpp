@@ -716,6 +716,9 @@ signed_block database::_generate_block(
    pending_block.witness = witness_owner;
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) && get_witness( witness_owner ).running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
       pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) && _confirm_hardfork )
+      pending_block.extensions.insert( future_extensions( hardfork_property_id_type()(*this).current_hardfork_version ) );
+
 
    if( !(skip & skip_witness_signature) )
       pending_block.sign( block_signing_private_key );
@@ -1959,21 +1962,13 @@ void database::_apply_block( const signed_block& next_block )
    });
 
    /// parse witness version reporting
-   auto ext_itr = next_block.extensions.begin();
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // TODO: Remove after hardfork
+      process_header_extensions( next_block );
 
-   if( ext_itr != next_block.extensions.end() && has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
-      try
-      {
-         auto reported_version = ext_itr->get< version >();
-
-         if( reported_version != signing_witness.running_version )
-            modify( signing_witness, [&]( witness_object& wo )
-            {
-               wo.running_version = reported_version;
-            });
-      }
-      catch( fc::assert_exception ) {}
+      FC_ASSERT( get_witness( next_block.witness ).running_version >= hardfork_property_id_type()( *this ).current_hardfork_version,
+         "Block produced by witness that is not running current hardfork" );
    }
 
    for( const auto& trx : next_block.transactions )
@@ -2015,6 +2010,57 @@ void database::_apply_block( const signed_block& next_block )
    notify_changed_objects();
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 FC_LOG_AND_RETHROW() }
+
+void database::process_header_extensions( const signed_block& next_block )
+{
+   auto itr = next_block.extensions.begin();
+   bool received_hardfork_confirmation = false;
+
+   while( itr != next_block.extensions.end() )
+   {
+      switch( itr->which() )
+      {
+         case 0: // void_t
+            break;
+         case 1: // version
+         {
+            auto reported_version = itr->get< version >();
+            auto signing_witness = get_witness( next_block.witness );
+
+            if( reported_version != signing_witness.running_version )
+            {
+               modify( signing_witness, [&]( witness_object& wo )
+               {
+                  wo.running_version = reported_version;
+               });
+            }
+
+            break;
+         }
+         case 2: // hardfork_version
+            if( itr->get< hardfork_version >() != hardfork_property_id_type()( *this ).current_hardfork_version )
+               if( _confirm_hardfork )
+                  FC_ASSERT( false, "Did not receive correct hardfork confirmation" );
+               else
+                  elog( "Received unexpected hardfork confirmation", ("hardfork_version", itr->get< hardfork_version>()) );
+            else
+               received_hardfork_confirmation = true;
+
+            break;
+         default:
+            FC_ASSERT( false, "Unknown extension in block header" );
+      }
+
+      itr++;
+   }
+
+   if( _confirm_hardfork )
+   {
+      FC_ASSERT( received_hardfork_confirmation, "Did not receive expected hardfork confirmation" );
+      _confirm_hardfork = false;
+   }
+}
+
 const feed_history_object& database::get_feed_history()const {
    return feed_history_id_type()(*this);
 }
@@ -2589,7 +2635,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 void database::init_hardforks()
 {
    _hardfork_times[ 0 ] = fc::time_point_sec( STEEMIT_GENESIS_TIME );
-   _hardfork_versions[ 0 ] = version( 0, 0, 0 );
+   _hardfork_versions[ 0 ] = hardfork_version( 0, 0 );
    FC_ASSERT( STEEMIT_HARDFORK_0_1 == 1, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_1 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_1_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_1 ] = STEEMIT_HARDFORK_0_1_VERSION;
@@ -2732,6 +2778,8 @@ void database::apply_hardfork( uint32_t hardfork )
          hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
          FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
       });
+
+      _confirm_hardfork = true;
 }
 
 /**

@@ -15,7 +15,7 @@ namespace steemit { namespace chain {
       void validate()const{}
    };
 
-   typedef static_variant<void_t, version>      future_extensions;
+   typedef static_variant<void_t, version, hardfork_version>      future_extensions;
    typedef flat_set<future_extensions> extensions_type;
 
 } } // steemit::chain

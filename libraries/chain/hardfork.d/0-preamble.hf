@@ -22,7 +22,7 @@ class hardfork_property_object : public abstract_object< hardfork_property_objec
 
       vector< fc::time_point_sec > processed_hardforks;
       int                          last_hardfork = 0;
-      version                      current_hardfork_version;
+      hardfork_version             current_hardfork_version;
 };
 
 } } // namespace steemit::chain

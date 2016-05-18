@@ -68,4 +68,15 @@ namespace fc
 
       v.v_num = 0 | ( major << 24 ) | ( hardfork << 16 ) | revision;
    }
+
+   void to_variant( const steemit::chain::hardfork_version& hv, variant& var )
+   {
+      to_variant( (const steemit::chain::version&) hv, var );
+   }
+
+   void from_variant( const variant& var, steemit::chain::hardfork_version& hv )
+   {
+      from_variant( var, (steemit::chain::version&) hv );
+      FC_ASSERT( ( hv.v_num & 0x0000FFFF ) == 0, "Hardfork version cannot contain a revision version" );
+   }
 }
