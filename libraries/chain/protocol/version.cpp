@@ -3,28 +3,43 @@
 #include <fc/exception/exception.hpp>
 #include <fc/variant.hpp>
 
-#define TO_UTF8 0x30
+#include <sstream>
 
 namespace steemit { namespace chain {
 
-version::version( uint8_t m, uint8_t h, uint8_t r )
+/* Quick conversion utilities from http://joelverhagen.com/blog/2010/11/convert-an-int-to-a-string-and-vice-versa-in-c/ */
+inline int string_to_int( fc::string input )
+{
+   std::stringstream s( input );
+   int i;
+   s >> i;
+   return i;
+}
+
+inline fc::string int_to_string( int input )
+{
+   std::stringstream s;
+   s << input;
+   return s.str();
+}
+
+version::version( uint8_t m, uint8_t h, uint16_t r )
 {
    v_num = ( 0 | m ) << 8;
-   v_num = ( v_num | h ) << 8;
+   v_num = ( v_num | h ) << 16;
    v_num =   v_num | r;
 }
 
 version::operator fc::string()const
 {
-   char data[6];
-   data[0] = ( ( v_num >> 16 ) & 0x000000FF ) + TO_UTF8;
-   data[1] = '.';
-   data[2] = ( ( v_num >> 8 ) & 0x000000FF ) + TO_UTF8;
-   data[3] = '.';
-   data[4] = ( v_num & 0x000000FF ) + TO_UTF8;
-   data[5] = 0;
+   std::stringstream s;
+   s << ( ( v_num >> 24 ) & 0x000000FF )
+     << '.'
+     << ( ( v_num >> 16 ) & 0x000000FF )
+     << '.'
+     << ( ( v_num & 0x0000FFFF ) );
 
-   return fc::string( data );
+   return s.str();
 }
 
 } } // steemit::chain
@@ -38,13 +53,19 @@ namespace fc
 
    void from_variant( const variant& var, steemit::chain::version& v )
    {
-      auto var_str = var.as_string();
-      FC_ASSERT( var_str.length() == 5, "Variant is incorrect length for version" );
-      const char* data = var_str.data();
-      FC_ASSERT( data[1] == '.' && data[3] == '.', "Variant does not contain proper dotted decimal format" );
+      uint32_t major = 0, hardfork = 0, revision = 0;
+      char dot_a, dot_b;
 
-      v.v_num = ( 0 | ( data[0] - TO_UTF8 ) ) << 8;
-      v.v_num = ( v.v_num | ( data[2] - TO_UTF8 ) ) << 8;
-      v.v_num = v.v_num | ( data[4] - TO_UTF8 );
+      std::stringstream s( var.as_string() );
+      s >> major >> dot_a >> hardfork >> dot_b >> revision;
+
+      // We'll accept either m.h.v or m_h_v as canonical version strings
+      FC_ASSERT( ( dot_a == '.' || dot_a == '_' ) && dot_a == dot_b, "Variant does not contain proper dotted decimal format" );
+      FC_ASSERT( major <= 0xFF, "Major version is out of range" );
+      FC_ASSERT( hardfork <= 0xFF, "Hardfork version is out of range" );
+      FC_ASSERT( revision <= 0xFFFF, "Revision version is out of range" );
+      FC_ASSERT( s.eof(), "Extra information at end of version string" );
+
+      v.v_num = 0 | ( major << 24 ) | ( hardfork << 16 ) | revision;
    }
 }

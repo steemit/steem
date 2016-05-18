@@ -12,7 +12,7 @@ namespace steemit { namespace chain {
 struct version
 {
    version():v_num(0) {}
-   version( uint8_t m, uint8_t h, uint8_t r );
+   version( uint8_t m, uint8_t h, uint16_t r );
 
    bool operator == ( const version& o )const { return v_num == o.v_num; }
    bool operator != ( const version& o )const { return v_num != o.v_num; }
