@@ -61,8 +61,8 @@ struct order_book
    vector< order >      bids;
 };
 
+class api_context;
 class database_api_impl;
-class application;
 
 /**
  * @brief The database_api class implements the RPC API for the chain database.
@@ -75,7 +75,7 @@ class database_api
 {
    public:
       database_api(steemit::chain::database& db);
-      database_api(steemit::app::application& app);
+      database_api(const steemit::app::api_context& ctx);
       ~database_api();
 
       ///////////////////

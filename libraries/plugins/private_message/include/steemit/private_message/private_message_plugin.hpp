@@ -166,7 +166,7 @@ class private_message_plugin : public steemit::app::plugin
 class private_message_api : public std::enable_shared_from_this<private_message_api> {
    public:
       private_message_api(){};
-      private_message_api(app::application& a):_app(&a){
+      private_message_api(const app::api_context& ctx):_app(&ctx.app){
          ilog( "creating private message api" );
       }
       void on_api_startup(){
