@@ -12,7 +12,7 @@
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
-inline void validate_permlink( const string& permlink )
+inline void validate_permlink_0_1( const string& permlink )
 {
    FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
 
@@ -32,49 +32,7 @@ inline void validate_permlink( const string& permlink )
    }
 }
 
-/**
- *  Allow GROUP / TOPIC
- */
-template< bool allow_slash >
-void validate_permlink_0_5( const string& permlink )
-{
-   FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
 
-   int char_count  = 0;
-   int slash_count = 0;
-   int after_slash = 0;
-   bool last_was_slash = false;
-   bool last_was_dash = false;
-
-   for( auto c : permlink )
-   {
-      switch( c )
-      {
-         case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i':
-         case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
-         case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z': case '0':
-         case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-            ++char_count;
-            last_was_dash = false;
-            if( allow_slash ) FC_ASSERT( !last_was_dash );
-            ++after_slash;
-            break;
-         case '-':
-            if( allow_slash ) FC_ASSERT( char_count, "must have characters before -" );
-            last_was_dash = true;
-            ++char_count;
-            break;
-         case '/':
-            FC_ASSERT( allow_slash && !slash_count && char_count );
-            ++slash_count;
-            after_slash = 0;
-            break;
-         default:
-            FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
-      }
-   }
-   if( allow_slash ) FC_ASSERT( after_slash, "there must be charcters after - or /" );
-}
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
@@ -194,15 +152,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )// && !db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
          {
-            validate_permlink_0_5<true>( o.parent_permlink );
-            validate_permlink_0_5<true>( o.permlink );
-         }
-         else if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )
-         {
-            validate_permlink( o.parent_permlink );
-            validate_permlink( o.permlink );
+            validate_permlink_0_1( o.parent_permlink );
+            validate_permlink_0_1( o.permlink );
          }
 
          if ( o.parent_author.size() == 0 )

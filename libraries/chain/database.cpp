@@ -161,6 +161,7 @@ void database::reindex(fc::path data_dir )
          skip_tapos_check |
          skip_witness_schedule_check |
          skip_authority_check |
+         skip_validate | /// no need to validate operations
          skip_validate_invariants, false );
       first = last+1;
       _fork_db.start_block( *_block_id_to_block.fetch_by_number( last ) );
