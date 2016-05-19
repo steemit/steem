@@ -342,12 +342,12 @@ const witness_object* database::find_witness( const string& name ) const
 }
 
 const comment_object& database::get_comment( const string& author, const string& permlink )const
-{
+{ try {
    const auto& by_permlink_idx = get_index_type< comment_index >().indices().get< by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
    FC_ASSERT( itr != by_permlink_idx.end() );
    return *itr;
-}
+} FC_CAPTURE_AND_RETHROW( (author)(permlink) ) }
 
 void database::pay_fee( const account_object& account, asset fee )
 {
@@ -2105,8 +2105,8 @@ void database::apply_operation(transaction_evaluation_state& eval_state, const o
    unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
    if( !eval )
       assert( "No registered evaluator for this operation" && false );
-   push_applied_operation( op );
    eval->evaluate( eval_state, op, true );
+   push_applied_operation( op );
 } FC_CAPTURE_AND_RETHROW(  ) }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
