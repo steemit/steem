@@ -11,7 +11,7 @@
 #include <steemit/chain/protocol/block.hpp>
 
 namespace steemit { namespace app {
-class application;
+class api_context;
 } }
 
 namespace steemit { namespace plugin { namespace debug_node {
@@ -23,7 +23,7 @@ class debug_node_api_impl;
 class debug_node_api
 {
    public:
-      debug_node_api( steemit::app::application& app );
+      debug_node_api( const steemit::app::api_context& ctx );
 
       void on_api_startup();
 

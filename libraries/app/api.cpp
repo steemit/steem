@@ -39,8 +39,8 @@
 
 namespace steemit { namespace app {
 
-    login_api::login_api(application& a)
-    :_app(a)
+    login_api::login_api(const api_context& ctx)
+    :_ctx(ctx)
     {
     }
 
@@ -54,7 +54,7 @@ namespace steemit { namespace app {
     bool login_api::login(const string& user, const string& password)
     {
        idump((user)(password));
-       optional< api_access_info > acc = _app.get_api_access_info( user );
+       optional< api_access_info > acc = _ctx.app.get_api_access_info( user );
        if( !acc.valid() )
           return false;
        if( acc->password_hash_b64 != "*" )
@@ -70,6 +70,8 @@ namespace steemit { namespace app {
        }
 
        idump((acc->allowed_apis));
+       std::map< std::string, api_ptr >& _api_map = _ctx.connection->api_map;
+
        for( const std::string& api_name : acc->allowed_apis )
        {
           auto it = _api_map.find( api_name );
@@ -78,12 +80,30 @@ namespace steemit { namespace app {
              continue;
           }
           idump((api_name));
-          _api_map[ api_name ] = _app.create_api_by_name( api_name );
+          api_context new_ctx( _ctx.app, api_name, _ctx.connection );
+          _api_map[ api_name ] = _ctx.app.create_api_by_name( new_ctx );
        }
        return true;
     }
 
-    network_broadcast_api::network_broadcast_api(application& a):_app(a)
+    fc::api_ptr login_api::get_api_by_name( const string& api_name )const
+    {
+       const std::map< std::string, api_ptr >& _api_map = _ctx.connection->api_map;
+       auto it = _api_map.find( api_name );
+       if( it == _api_map.end() )
+       {
+          wlog( "unknown api: ${api}", ("api",api_name) );
+          return fc::api_ptr();
+       }
+       if( it->second )
+       {
+          ilog( "found api: ${api}", ("api",api_name) );
+       }
+       FC_ASSERT( it->second != nullptr );
+       return it->second;
+    }
+
+    network_broadcast_api::network_broadcast_api(const api_context& a):_app(a.app)
     {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
     }
@@ -167,7 +187,7 @@ namespace steemit { namespace app {
        _app.p2p_node()->broadcast_transaction(trx);
     }
 
-    network_node_api::network_node_api( application& a ) : _app( a )
+    network_node_api::network_node_api( const api_context& a ) : _app( a.app )
     {
     }
 
