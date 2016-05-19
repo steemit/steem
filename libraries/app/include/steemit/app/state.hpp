@@ -139,7 +139,8 @@ namespace steemit { namespace app {
         vector<string>                pow_queue;
         map<string, witness_object>   witnesses;
         witness_schedule_object       witness_schedule;
-      string                          error;
+        price                         feed_price;
+        string                        error;
    };
 
 } }
@@ -157,4 +158,4 @@ FC_REFLECT( steemit::app::discussion_index, (category)(trending)(recent)(active)
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
 
-FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(error) )
+FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error) )

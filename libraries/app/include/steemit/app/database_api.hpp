@@ -301,6 +301,7 @@ class database_api
       vector<discussion>   get_discussions_in_category_by_total_pending_payout( string category, string start_author, string start_permlink, uint32_t limit )const;
 
       vector<discussion>   get_discussions_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_replies_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
       vector<discussion>   get_discussions_in_category_by_last_update( string category, string start_author, string start_permlink, uint32_t limit )const;
 
       vector<discussion>   get_discussions_by_last_active( string start_author, string start_permlink, uint32_t limit )const;
@@ -406,6 +407,7 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_total_pending_payout)
    (get_discussions_in_category_by_total_pending_payout)
    (get_discussions_by_last_update)
+   (get_replies_by_last_update)
    (get_discussions_by_last_active)
    (get_discussions_by_votes)
    (get_discussions_by_created)
