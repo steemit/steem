@@ -122,6 +122,29 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
    });
 }
 
+
+/**
+ *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
+ */
+void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0) ); /// TODO: remove this check after Hard Fork 5
+
+   const auto& comment = db().get_comment( o.author, o.permlink );
+   FC_ASSERT( comment.children == 0, "comment cannot have any replies" );
+   FC_ASSERT( comment.net_rshares <= 0, "comment cannot have any net positive votes" );
+    
+   const auto& vote_idx = db().get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
+
+   auto vote_itr = vote_idx.lower_bound( comment_id_type(comment.id) );
+   while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id ) {
+      const auto& cur_vote = *vote_itr;
+      ++vote_itr;
+      db().remove(cur_vote);
+   }
+
+   db().remove( comment );
+}
+
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
    if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) )
@@ -186,6 +209,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          #endif
       });
 
+      /** TODO move category behavior to a plugin, this is not part of consensus */
       const category_object* cat = db().find_category( new_comment.category );
       if( !cat ) {
          cat = &db().create<category_object>( [&]( category_object& c ){
@@ -200,6 +224,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          });
       }
 
+      /** TODO: move this status tracking to a plugin, it is not part of consensus */
       const auto& new_comment_stats = db().create<comment_stats_object>( [&]( comment_stats_object& cso ){
           cso.comment_id  = new_comment.id;
           if( parent )

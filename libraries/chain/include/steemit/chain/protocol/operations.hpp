@@ -34,6 +34,7 @@ namespace steemit { namespace chain {
 
             report_over_production_operation,
 
+            delete_comment_operation,
             custom_json_operation,
 
             /// virtual operations below this point

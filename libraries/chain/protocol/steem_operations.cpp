@@ -69,6 +69,11 @@ namespace steemit { namespace chain {
       }
    }
 
+   void delete_comment_operation::validate()const {
+      validate_permlink( permlink );
+      FC_ASSERT( is_valid_account_name( author ) );
+   }
+
    void vote_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );

@@ -1728,6 +1728,7 @@ void database::initialize_evaluators()
 
     register_evaluator<vote_evaluator>();
     register_evaluator<comment_evaluator>();
+    register_evaluator<delete_comment_evaluator>();
     register_evaluator<transfer_evaluator>();
     register_evaluator<transfer_to_vesting_evaluator>();
     register_evaluator<withdraw_vesting_evaluator>();

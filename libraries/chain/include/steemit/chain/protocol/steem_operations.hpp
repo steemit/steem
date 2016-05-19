@@ -60,6 +60,14 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
+   struct delete_comment_operation : public base_operation {
+      string author;
+      string permlink;
+
+      void validate()const;
+      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
+   };
+
    struct vote_operation : public base_operation
    {
       string    voter;
@@ -477,3 +485,4 @@ FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(a
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (account)(vesting_shares)(steem) )
+FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
