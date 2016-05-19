@@ -61,7 +61,7 @@ struct order_book
    vector< order >      bids;
 };
 
-class api_context;
+struct api_context;
 class database_api_impl;
 
 /**

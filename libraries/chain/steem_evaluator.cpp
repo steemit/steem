@@ -398,8 +398,6 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
     const auto& account = db().get_account( o.account );
 
-    // TODO: DELETE if( !db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
-
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
 
@@ -729,7 +727,7 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
 
    FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
-   if( db().is_producing() )  { /// TODO: make this a hard fork in the future
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )  {
       const auto& witness_by_work = db().get_index_type<witness_index>().indices().get<by_work>();
       auto work_itr = witness_by_work.find( o.work.work );
       if( work_itr != witness_by_work.end() ) {
