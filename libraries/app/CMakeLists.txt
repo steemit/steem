@@ -9,7 +9,7 @@ add_library( steemit_app
              ${HEADERS}
            )
 
-target_link_libraries( steemit_app steemit_chain steemit_mf_plugins fc graphene_db graphene_net graphene_time graphene_utilities )
+target_link_libraries( steemit_app steemit_chain steemit_tags steemit_mf_plugins fc graphene_db graphene_net graphene_time graphene_utilities )
 target_include_directories( steemit_app
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

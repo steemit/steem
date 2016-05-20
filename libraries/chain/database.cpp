@@ -1403,7 +1403,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    share_type unclaimed_rewards = max_rewards;
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
    auto itr = cvidx.lower_bound( c.id );
-   auto start = itr;
    while( itr != cvidx.end() && itr->comment == c.id ) {
       // TODO: Add minimum curation pay limit
       u256 weight( itr->weight );
@@ -1765,7 +1764,6 @@ void database::initialize_indexes()
    add_index< primary_index<convert_index> >();
    add_index< primary_index<liquidity_reward_index> >();
    add_index< primary_index<limit_order_index> >();
-   add_index< primary_index<comment_stats_index> >();
 
    //Implementation object indexes
    add_index< primary_index<transaction_index                             > >();

@@ -224,17 +224,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          });
       }
 
-      /** TODO: move this status tracking to a plugin, it is not part of consensus */
-      const auto& new_comment_stats = db().create<comment_stats_object>( [&]( comment_stats_object& cso ){
-          cso.comment_id  = new_comment.id;
-          if( parent )
-            cso.parent_comment_id = parent->id;
-          cso.category_id = cat->id;
-          cso.author_id   = auth.get_id();
-      });
-
-      db().modify( new_comment, [&]( comment_object& co ) { co.stats = new_comment_stats.id; } );
-
       id = new_comment.id;
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
@@ -576,6 +565,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
          c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         if( rshares > 0 )
+            c.net_votes++;
+         else
+            c.net_votes--;
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
@@ -675,6 +668,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.abs_rshares += abs_rshares;
          c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
          c.total_vote_weight -= itr->weight;
+
+         /// TODO: figure out how to handle remove a vote (rshares == 0 )
+         if( rshares > 0 && itr->rshares < 0 )
+            c.net_votes += 2;
+         else if( rshares < 0 && itr->rshares > 0 )
+            c.net_votes -= 2;
       });
 
       old_rshares *= old_rshares;

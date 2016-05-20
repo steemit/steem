@@ -1,26 +1,3 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #pragma once
 #include <steemit/app/state.hpp>
 #include <steemit/chain/protocol/types.hpp>
@@ -28,6 +5,7 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
+#include <steemit/tags/tags_plugin.hpp>
 
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
@@ -65,6 +43,25 @@ struct api_context;
 class database_api_impl;
 
 /**
+ *  Defines the arguments to a query as a struct so it can be easily extended
+ */
+struct discussion_query {
+   void validate()const{ 
+      FC_ASSERT( filter_tags.find(tag) == filter_tags.end() ); 
+      FC_ASSERT( tag.size() ); 
+      FC_ASSERT( limit <= 100 );
+   }
+
+   string           tag;
+   uint32_t         limit;
+   set<string>      filter_tags;
+   optional<string> start_author;
+   optional<string> start_permlink;
+   optional<string> parent_author;
+   optional<string> parent_permlink;
+};
+
+/**
  * @brief The database_api class implements the RPC API for the chain database.
  *
  * This API exposes accessors on the database which query state tracked by a blockchain validating node. This API is
@@ -91,6 +88,8 @@ class database_api
        * This unsubscribes from all subscribed markets and objects.
        */
       void cancel_all_subscriptions();
+
+      vector<tags::tag_stats_object> get_trending_tags( string after_tag, uint32_t limit )const;
 
       /**
        *  This API is a short-cut for returning all of the state required for a particular URL
@@ -273,6 +272,17 @@ class database_api
       discussion           get_content( string author, string permlink )const;
       vector<discussion>   get_content_replies( string parent, string parent_permlink )const;
 
+      ///@{ tags API
+      vector<discussion> get_discussions_by_trending( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_created( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_active( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_cashout( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_payout( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_votes( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_children( const discussion_query& query )const;    
+
+      ///@}
+
       /**
        *  For each of these filters:
        *     Get root content...
@@ -292,29 +302,24 @@ class database_api
        *
        */
       ///@{
+      
+
 
       /**
        *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
        *  pending payout means the pending payout of all children as well.
        */
-      vector<discussion>   get_discussions_by_total_pending_payout( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_discussions_in_category_by_total_pending_payout( string category, string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_total_pending_payout( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_votes( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_created( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_responses( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_last_active( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_all_discussions_by_cashout_time( string start_author, string start_permlink, uint32_t limit )const;
 
-      vector<discussion>   get_discussions_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
       vector<discussion>   get_replies_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_discussions_in_category_by_last_update( string category, string start_author, string start_permlink, uint32_t limit )const;
 
-      vector<discussion>   get_discussions_by_last_active( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_discussions_in_category_by_last_active( string category, string start_author, string start_permlink, uint32_t limit )const;
 
-      vector<discussion>   get_discussions_by_votes( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_discussions_in_category_by_votes( string category, string start_author, string start_permlink, uint32_t limit )const;
-
-      vector<discussion>   get_discussions_by_created( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_discussions_in_category_by_created( string category, string start_author, string start_permlink, uint32_t limit )const;
-
-      vector<discussion>   get_discussions_by_cashout_time( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_discussions_in_category_by_cashout_time( string category, string start_author, string start_permlink, uint32_t limit )const;
 
       /**
        *  This method is used to fetch all posts/comments by start_author that occur after before_date and start_permlink with up to limit being returned.
@@ -341,6 +346,14 @@ class database_api
    private:
       void set_pending_payout( discussion& d )const;
       void set_url( discussion& d )const;
+      discussion get_discussion( comment_id_type )const;
+
+      template<typename Index, typename StartItr>
+      vector<discussion> get_discussions( const discussion_query& q, 
+                                          const string& tag, 
+                                          comment_id_type parent,
+                                          const Index& idx, StartItr itr )const;
+      comment_id_type get_parent( const discussion_query& q )const;
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;
       std::shared_ptr< database_api_impl > my;
@@ -351,12 +364,24 @@ class database_api
 FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd)(created) );
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
 
+FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
+
 FC_API(steemit::app::database_api,
    // Subscriptions
    (set_subscribe_callback)
    (set_pending_transaction_callback)
    (set_block_applied_callback)
    (cancel_all_subscriptions)
+
+   // tags
+   (get_trending_tags)
+   (get_discussions_by_trending)
+   (get_discussions_by_created)
+   (get_discussions_by_active)
+   (get_discussions_by_cashout)
+   (get_discussions_by_payout)
+   (get_discussions_by_votes)
+   (get_discussions_by_children)
 
    // Blocks and transactions
    (get_block_header)
@@ -404,20 +429,15 @@ FC_API(steemit::app::database_api,
    // content
    (get_content)
    (get_content_replies)
-   (get_discussions_by_total_pending_payout)
-   (get_discussions_in_category_by_total_pending_payout)
-   (get_discussions_by_last_update)
-   (get_replies_by_last_update)
-   (get_discussions_by_last_active)
-   (get_discussions_by_votes)
-   (get_discussions_by_created)
-   (get_discussions_in_category_by_last_update)
-   (get_discussions_in_category_by_last_active)
-   (get_discussions_in_category_by_votes)
-   (get_discussions_in_category_by_created)
+   (get_all_discussions_by_total_pending_payout)
+   (get_all_discussions_by_last_update)
+   (get_all_discussions_by_created)
+   (get_all_discussions_by_votes)
+   (get_all_discussions_by_responses)
+   (get_all_discussions_by_last_active)
+   (get_all_discussions_by_cashout_time)
    (get_discussions_by_author_before_date)
-   (get_discussions_by_cashout_time)
-   (get_discussions_in_category_by_cashout_time)
+   (get_replies_by_last_update)
 
 
    // Witnesses

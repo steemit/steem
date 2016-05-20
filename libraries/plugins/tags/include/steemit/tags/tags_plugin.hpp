@@ -192,6 +192,7 @@ class tag_stats_object : public abstract_object<tag_stats_object> {
 
       string            tag;
       fc::uint128_t     total_children_rshares2;
+      int32_t           net_votes = 0;
       uint32_t          top_posts = 0;
       uint32_t          comments  = 0;
 };
@@ -267,7 +268,7 @@ class tags_plugin : public steemit::app::plugin
 class tag_api : public std::enable_shared_from_this<tag_api> {
    public:
       tag_api(){};
-      tag_api(const app::api_context& ctx):_app(&ctx.app){}
+      tag_api(const app::api_context& ctx){}//:_app(&ctx.app){}
 
       void on_api_startup(){
       }
@@ -275,7 +276,7 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
       vector<tag_stats_object> get_tags()const { return vector<tag_stats_object>(); }
       
    private:
-      app::application* _app = nullptr;
+      //app::application* _app = nullptr;
 };
 
 
@@ -288,6 +289,6 @@ FC_REFLECT_DERIVED( steemit::tags::tag_object, (graphene::db::object),
     (tag)(created)(active)(cashout)(net_rshares)(net_votes)(children)(children_rshares2)(author)(parent)(comment) )
 
 FC_REFLECT_DERIVED( steemit::tags::tag_stats_object, (graphene::db::object),
-                    (tag)(total_children_rshares2)(top_posts)(comments) );
+                    (tag)(total_children_rshares2)(net_votes)(top_posts)(comments) );
 
 FC_REFLECT( steemit::tags::comment_metadata, (tags) );

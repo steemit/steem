@@ -47,20 +47,57 @@ struct operation_visitor {
 
    database& _db;
 
+   void remove_stats( const tag_object& tag, const tag_stats_object& stats )const {
+      _db.modify( stats, [&]( tag_stats_object& s ) {
+           if( tag.parent == comment_id_type() ) {
+              s.total_children_rshares2 -= tag.children_rshares2;
+              s.top_posts--;
+           } else {
+              s.comments--;
+           }
+           s.net_votes   -= tag.net_votes;
+      });
+   }
+   void add_stats( const tag_object& tag, const tag_stats_object& stats )const {
+      _db.modify( stats, [&]( tag_stats_object& s ) {
+           if( tag.parent == comment_id_type() ) {
+              s.total_children_rshares2 += tag.children_rshares2;
+              s.top_posts++;
+           } else {
+              s.comments++;
+           }
+           s.net_votes   += tag.net_votes;
+      });
+   }
+
    void remove_tag( const tag_object& tag )const {
       /// TODO: update tag stats object
       _db.remove(tag);
    }
 
+   const tag_stats_object& get_stats( const string& tag )const {
+      const auto& stats_idx = _db.get_index_type<tag_stats_index>().indices().get<by_tag>();
+      auto itr = stats_idx.find( tag );
+      if( itr != stats_idx.end() ) return *itr;
+
+      return _db.create<tag_stats_object>( [&]( tag_stats_object& stats ) {
+                  stats.tag = tag;
+              });
+   }
+
    void update_tag( const tag_object& current, const comment_object& comment )const
    {
+       const auto& stats = get_stats( current.tag );
+       remove_stats( current, stats );
        _db.modify( current, [&]( tag_object& obj ) {
           obj.active            = comment.active;
           obj.cashout           = comment.cashout_time;
           obj.children          = comment.children;
           obj.net_rshares       = comment.net_rshares.value;
+          obj.net_votes         = comment.net_votes;
           obj.children_rshares2 = comment.children_rshares2;
       });
+      add_stats( current, stats );
    }
 
    void create_tag( const string& tag, const comment_object& comment )const {
@@ -70,21 +107,21 @@ struct operation_visitor {
       if( comment.parent_author.size() )
          parent = _db.get_comment( comment.parent_author, comment.parent_permlink ).id;
 
-      _db.create<tag_object>( [&]( tag_object& obj ) {
+      const auto& tag_obj = _db.create<tag_object>( [&]( tag_object& obj ) {
           obj.tag               = tag;
           obj.comment           = comment.id;
           obj.parent            = parent;
           obj.created           = comment.created;
           obj.active            = comment.active;
           obj.cashout           = comment.cashout_time;
+          obj.net_votes         = comment.net_votes;
           obj.children          = comment.children;
           obj.net_rshares       = comment.net_rshares.value;
           obj.children_rshares2 = comment.children_rshares2;
           obj.author            = author;
-          //obj.net_votes = comment.net_votes;
+          obj.net_votes         = comment.net_votes;
       });
-
-      /// TODO: update tag stats object
+      add_stats( tag_obj, get_stats( tag ) );
    }
 
 
