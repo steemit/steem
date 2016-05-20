@@ -7,14 +7,14 @@ if(NOT GRAPHENE_GIT_REVISION_DESCRIPTION)
     set(GRAPHENE_GIT_REVISION_DESCRIPTION "unknown")
 endif(NOT GRAPHENE_GIT_REVISION_DESCRIPTION)
 
-file(GLOB headers "include/graphene/utilities/*.hpp")
+file(GLOB HEADERS "include/graphene/utilities/*.hpp")
 
 set(sources
    key_conversion.cpp
    string_escape.cpp
    tempdir.cpp
    words.cpp
-   ${headers})
+   ${HEADERS})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
 list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
