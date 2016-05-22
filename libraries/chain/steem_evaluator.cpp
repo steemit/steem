@@ -2,7 +2,7 @@
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
-#ifdef STEEM_DIFF_MATCH_PATCH
+#ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
 #endif
 
@@ -270,27 +270,19 @@ void comment_evaluator::do_apply( const comment_operation& o )
            if( o.json_metadata.size() ) com.json_metadata = o.json_metadata;
 
            if( o.body.size() ) {
-              #ifdef STEEM_DIFF_MATCH_PATCH
               try {
-               diff_match_patch dmp;
-               auto patch = dmp.patch_fromText( QString::fromStdString(o.body) );
+               diff_match_patch<string> dmp;
+               auto patch = dmp.patch_fromText( o.body );
                if( patch.size() ) {
-                  auto first = QString::fromStdString( com.body );
-                  auto result = dmp.patch_apply( patch, first );
-                  com.body = result.first.toStdString();
+                  auto result = dmp.patch_apply( patch, com.body );
+                  com.body = result.first;
                }
                else { // replace
                   com.body = o.body;
                }
-              } catch ( const QString& err ) {
-                  //wlog( "exception thrown while applying patch: \n   ${e}", ("e",err.toStdString()) );
-                  com.body = o.body;
               } catch ( ... ) {
                   com.body = o.body;
               }
-              #else
-               com.body = o.body;
-              #endif
            }
          #endif
 
