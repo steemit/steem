@@ -148,7 +148,7 @@ def main(args):
         command.append("-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY")
         command.append("-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY")
 
-    # Add Steen flags
+    # Add Steem flags
     command.append("-DLOW_MEMORY_NODE=" + ("ON" if args.low_mem_node else "OFF"))
     command.append("-DCMAKE_BUILD_TYPE=" + ("RELEASE" if args.release else "DEBUG"))
 
