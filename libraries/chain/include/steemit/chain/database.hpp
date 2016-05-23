@@ -155,12 +155,23 @@ namespace steemit { namespace chain {
           *  observers which may want to index these operations.
           *
           *  @return the op_id which can be used to set the result after it has finished being applied.
+          *  @todo rename this method notify_pre_apply_operation( op )
           */
          void push_applied_operation( const operation& op );
+         void notify_post_apply_operation( const operation& op );
+
          /**
-          * This signal is emitted for plugins to process every operation
+          * This signal is emitted for plugins to process every operation before it gets applied.
+          *
+          *  @deprecated - use pre_apply_operation instead
           */
          fc::signal<void(const operation_object&)> on_applied_operation;
+
+         /**
+          *  This signal is emitted for plugins to process every operation after it has been fully applied.
+          */
+         fc::signal<void(const operation_object&)> pre_apply_operation;
+         fc::signal<void(const operation_object&)> post_apply_operation;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a

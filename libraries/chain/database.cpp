@@ -779,7 +779,20 @@ void database::push_applied_operation( const operation& op )
    obj.op_in_trx    = _current_op_in_trx;
    obj.virtual_op   = _current_virtual_op++;
    obj.op           = op;
-   on_applied_operation( obj );
+   on_applied_operation( obj ); ///< TODO: deprecate
+   pre_apply_operation( obj );
+}
+
+
+void database::notify_post_apply_operation( const operation& op ) {
+   operation_object obj;
+   obj.trx_id       = _current_trx_id;
+   obj.block        = _current_block_num;
+   obj.trx_in_block = _current_trx_in_block;
+   obj.op_in_trx    = _current_op_in_trx;
+   obj.virtual_op   = _current_virtual_op;
+   obj.op           = op;
+   post_apply_operation( obj );
 }
 
 string database::get_scheduled_witness( uint32_t slot_num )const
@@ -1333,8 +1346,6 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
    modify( c, [&](comment_object& comment ){
       comment.children_rshares2 -= old_rshares2;
       comment.children_rshares2 += new_rshares2;
-      if( new_rshares2 > old_rshares2 ) /// down't update active index for down votes
-         comment.active = head_block_time();
    });
    if( c.depth ) {
       adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
@@ -2243,8 +2254,9 @@ void database::apply_operation(transaction_evaluation_state& eval_state, const o
    unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
    if( !eval )
       assert( "No registered evaluator for this operation" && false );
-   eval->evaluate( eval_state, op, true );
    push_applied_operation( op );
+   eval->evaluate( eval_state, op, true );
+   notify_post_apply_operation( op );
 } FC_CAPTURE_AND_RETHROW(  ) }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const

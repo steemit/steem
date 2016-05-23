@@ -223,7 +223,7 @@ void tags_plugin::plugin_set_program_options(
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing tags plugin" );
-   database().on_applied_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
    database().add_index< primary_index< tag_index  > >();
    database().add_index< primary_index< tag_stats_index > >();
 

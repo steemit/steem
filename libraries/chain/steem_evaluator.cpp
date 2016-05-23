@@ -227,19 +227,19 @@ void comment_evaluator::do_apply( const comment_operation& o )
       id = new_comment.id;
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
-#ifndef IS_LOW_MEM
       auto now = db().head_block_time();
       while( parent ) {
          db().modify( *parent, [&]( comment_object& p ){
             p.children++;
             p.active = now;
          });
+#ifndef IS_LOW_MEM
          if( parent->parent_author.size() )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
          else
+#endif
             parent = nullptr;
       }
-#endif
 
    }
    else // start edit case
