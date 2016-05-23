@@ -1,10 +1,8 @@
 file(GLOB HEADERS "include/steemit/chain/*.hpp")
 
 add_custom_target( build_hardfork_hpp
-   COMMAND cat-parts "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" )
+   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers/cat_parts.py" "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" )
 set_source_files_properties( "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" PROPERTIES GENERATED TRUE )
-
-add_dependencies( build_hardfork_hpp cat-parts )
 
 ## SORT .cpp by most likely to change / break compile
 add_library( steemit_chain
