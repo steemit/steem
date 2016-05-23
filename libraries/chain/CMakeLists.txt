@@ -20,6 +20,7 @@ add_library( steemit_chain
              protocol/transaction.cpp
              protocol/block.cpp
              protocol/asset.cpp
+             protocol/version.cpp
 
              get_config.cpp
 

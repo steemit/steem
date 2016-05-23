@@ -130,14 +130,14 @@ struct operation_visitor {
       try {
       comment_metadata meta;
 
-      if( c.json_metadata.size() ){ 
+      if( c.json_metadata.size() ){
          meta = fc::json::from_string( c.json_metadata ).as<comment_metadata>();
       }
 
       set<string> lower_tags;
-      for( const auto& tag : meta.tags ) 
+      for( const auto& tag : meta.tags )
          lower_tags.insert(fc::to_lower( tag ) );
-      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_5 ) )
          lower_tags.insert( c.category );
 
       meta.tags = lower_tags; /// TODO: std::move???
@@ -166,7 +166,7 @@ struct operation_visitor {
          }
       }
 
-      if( c.parent_author.size() ) 
+      if( c.parent_author.size() )
       {
          update_tags( _db.get_comment( c.parent_author, c.parent_permlink ) );
       }
@@ -188,13 +188,13 @@ struct operation_visitor {
 
 void tags_plugin_impl::on_operation( const operation_object& op_obj ) {
    try { /// plugins shouldn't ever throw
-      op_obj.op.visit( operation_visitor( database() ) ); 
-   } catch ( const fc::exception& e ) { 
+      op_obj.op.visit( operation_visitor( database() ) );
+   } catch ( const fc::exception& e ) {
       edump( (e.to_detail_string()) );
-   } catch ( ... ) { 
+   } catch ( ... ) {
       elog( "unhandled exception" );
-   } 
-} 
+   }
+}
 
 } /// end detail namespace
 

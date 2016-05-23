@@ -244,6 +244,12 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
       //We're trying to exit. Go ahead and let this one out.
       throw;
    }
+   catch( const steemit::chain::unknown_hardfork_exception& e )
+   {
+      // Hit a hardfork that the current node know nothing about, stop production and inform user
+      elog( "${e}\nNode may be out of date...", ("e", e.to_detail_string()) );
+      throw;
+   }
    catch( const fc::exception& e )
    {
       elog("Got exception while generating block:\n${e}", ("e", e.to_detail_string()));

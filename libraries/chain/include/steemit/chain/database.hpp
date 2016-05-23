@@ -375,17 +375,20 @@ namespace steemit { namespace chain {
          void update_last_irreversible_block();
          void clear_expired_transactions();
          void clear_expired_orders();
+         void process_header_extensions( const signed_block& next_block );
 
          void reset_virtual_schedule_time();
 
          void init_hardforks();
          void process_hardforks();
+         void apply_hardfork( uint32_t hardfork );
 
          ///@}
 
          vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
+         hardfork_version              _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
          /**
           *  Note: we can probably store blocks by block num rather than

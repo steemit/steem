@@ -53,6 +53,7 @@ namespace steemit { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( utility_exception,                 steemit::chain::chain_exception, 3060000, "utility method exception" )
    FC_DECLARE_DERIVED_EXCEPTION( undo_database_exception,           steemit::chain::chain_exception, 3070000, "undo database exception" )
    FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        steemit::chain::chain_exception, 3080000, "unlinkable block" )
+   FC_DECLARE_DERIVED_EXCEPTION( unknown_hardfork_exception,        steemit::chain::chain_exception, 3090000, "chain attempted to apply unknown hardfork" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_active_auth,            steemit::chain::transaction_exception, 3030001, "missing required active authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_owner_auth,             steemit::chain::transaction_exception, 3030002, "missing required owner authority" )

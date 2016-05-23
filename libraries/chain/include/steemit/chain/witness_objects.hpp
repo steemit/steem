@@ -80,13 +80,20 @@ namespace steemit { namespace chain {
           * @defgroup virtual_time Virtual Time Scheduling
           */
          ///@{
-         fc::uint128  virtual_last_update;
-         fc::uint128  virtual_position;
-         fc::uint128  virtual_scheduled_time = fc::uint128::max_value();
+         fc::uint128 virtual_last_update;
+         fc::uint128 virtual_position;
+         fc::uint128 virtual_scheduled_time = fc::uint128::max_value();
          ///@}
 
-         digest_type     last_work;
+         digest_type last_work;
 
+         /**
+          * This field represents the Steem blockchain version the witness is running.
+          */
+         version           running_version;
+
+         hardfork_version  hardfork_version_vote;
+         time_point_sec    hardfork_time_vote = STEEMIT_GENESIS_TIME;
 
          witness_id_type get_id()const { return id; }
    };
@@ -112,6 +119,7 @@ namespace steemit { namespace chain {
          uint32_t         next_shuffle_block_num = 1;
          vector< string > current_shuffled_witnesses;
          chain_properties median_props;
+         version          majority_version;
    };
 
 
@@ -182,6 +190,7 @@ FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
                     (props)
                     (sbd_exchange_rate)(last_sbd_exchange_update)
                     (last_work)
+                    (running_version)
                   )
 FC_REFLECT_DERIVED( steemit::chain::witness_vote_object, (graphene::db::object), (witness)(account) )
 
@@ -189,4 +198,5 @@ FC_REFLECT_DERIVED(
    steemit::chain::witness_schedule_object,
    (graphene::db::object),
    (current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)
+   (majority_version)
 )

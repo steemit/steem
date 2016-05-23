@@ -2,7 +2,7 @@
 This test module will only run on a POSIX system. Windows support *may* be added at some point in the future.
 """
 # Global imports
-import json, operator, os, sys
+import json, operator, os, signal, sys
 
 from argparse import ArgumentParser
 from pathlib import Path
@@ -12,8 +12,10 @@ from time import sleep
 from steemdebugnode import DebugNode
 from steemapi.steemnoderpc import SteemNodeRPC
 
+WAITING = True
 
 def main( ):
+   global WAITING
    if( os.name != "posix" ):
       print( "This script only works on POSIX systems" )
       return
@@ -47,14 +49,20 @@ def main( ):
    if( not data_dir.is_dir() ):
       print( 'Error: data_dir is not a directory' )
 
-   debug_node = DebugNode( str( steemd ), str( data_dir ), steemd_err=sys.stderr )
+   signal.signal( signal.SIGINT, sigint_handler )
+
+   debug_node = DebugNode( str( steemd ), str( data_dir ) )
 
    with debug_node :
 
       run_steemd_tests( debug_node )
 
-      # Term on completion?
-      while( args.pause_node ):
+      if( args.pause_node ):
+         print( "Letting the node hang for manual inspection..." )
+      else:
+         WAITING = False
+
+      while( WAITING ):
          sleep( 1 )
 
 
@@ -70,15 +78,27 @@ def run_steemd_tests( debug_node ):
          print( 'Blocks Replayed: ' + str( total_blocks ) )
          sys.stdout.flush()
 
+      blocks_to_generate = 21 - total_blocks % 21;
+      debug_node.debug_generate_blocks( blocks_to_generate );
+
       print( "Setting the hardfork now" ) # TODO: Grab most recent hardfork num from build directory
       sys.stdout.flush()
-      debug_node.debug_set_hardfork( 4 )
+      debug_node.debug_set_hardfork( 5 )
+
+      print( "Checking majority version field for WSO on new block production" )
+      assert( debug_node.debug_has_hardfork( 4 ) )
+      assert( not debug_node.debug_has_hardfork( 5 ) )
+      assert( debug_node.debug_get_witness_schedule()[ "majority_version" ] == "0.0.0" )
+
+      debug_node.debug_generate_blocks( 21 )
+      assert( debug_node.debug_has_hardfork( 5 ) )
+      assert( debug_node.debug_get_witness_schedule()[ "majority_version" ] == "0.5.0" )
 
       print( "Generating blocks after the hardfork" )
       assert( debug_node.debug_generate_blocks( 5000 ) == 5000 )
 
       print( "Done!" )
-      print( "Calculating block producer distribution:" )
+      '''print( "Calculating block producer distribution:" )
       sys.stdout.flush()
       rpc = SteemNodeRPC( 'ws://127.0.0.1:8090', '', '' )
       block_producers = {}
@@ -92,9 +112,15 @@ def run_steemd_tests( debug_node ):
       sorted_block_producers = sorted( block_producers.items(), key=operator.itemgetter( 1 ) )
       for (k, v) in sorted_block_producers:
          ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_witness_by_account",["' + k + '"]], "id":5}' ) )
-         print( '{"witness":"' + k + '","votes":' + str( ret["votes"] ) + ',"blocks":' + str( v ) + '}' )
+         print( '{"witness":"' + k + '","votes":' + str( ret["votes"] ) + ',"blocks":' + str( v ) + '}' )'''
 
    except ValueError as val_err:
       print( str( val_err ) )
+
+def sigint_handler( signum, frame ):
+   global WAITING
+   WAITING = False
+   sleep( 3 )
+   sys.exit( 0 )
 
 main()

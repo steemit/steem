@@ -40,15 +40,23 @@ struct order_book
 };
 
 struct api_context;
+
+struct scheduled_hardfork
+{
+   hardfork_version     hf_version;
+   fc::time_point_sec   live_time;
+};
+
+
 class database_api_impl;
 
 /**
  *  Defines the arguments to a query as a struct so it can be easily extended
  */
 struct discussion_query {
-   void validate()const{ 
-      FC_ASSERT( filter_tags.find(tag) == filter_tags.end() ); 
-      FC_ASSERT( tag.size() ); 
+   void validate()const{
+      FC_ASSERT( filter_tags.find(tag) == filter_tags.end() );
+      FC_ASSERT( tag.size() );
       FC_ASSERT( limit <= 100 );
    }
 
@@ -138,6 +146,9 @@ class database_api
       chain_properties               get_chain_properties()const;
       price                          get_current_median_history_price()const;
       feed_history_object            get_feed_history()const;
+      witness_schedule_object        get_witness_schedule()const;
+      hardfork_version               get_hardfork_version()const;
+      scheduled_hardfork             get_next_scheduled_hardfork()const;
 
       //////////
       // Keys //
@@ -273,13 +284,13 @@ class database_api
       vector<discussion>   get_content_replies( string parent, string parent_permlink )const;
 
       ///@{ tags API
-      vector<discussion> get_discussions_by_trending( const discussion_query& query )const;    
-      vector<discussion> get_discussions_by_created( const discussion_query& query )const;    
-      vector<discussion> get_discussions_by_active( const discussion_query& query )const;    
-      vector<discussion> get_discussions_by_cashout( const discussion_query& query )const;    
-      vector<discussion> get_discussions_by_payout( const discussion_query& query )const;    
-      vector<discussion> get_discussions_by_votes( const discussion_query& query )const;    
-      vector<discussion> get_discussions_by_children( const discussion_query& query )const;    
+      vector<discussion> get_discussions_by_trending( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_created( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_active( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_cashout( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_payout( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_votes( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_children( const discussion_query& query )const;
 
       ///@}
 
@@ -302,7 +313,7 @@ class database_api
        *
        */
       ///@{
-      
+
 
 
       /**
@@ -349,8 +360,8 @@ class database_api
       discussion get_discussion( comment_id_type )const;
 
       template<typename Index, typename StartItr>
-      vector<discussion> get_discussions( const discussion_query& q, 
-                                          const string& tag, 
+      vector<discussion> get_discussions( const discussion_query& q,
+                                          const string& tag,
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr )const;
       comment_id_type get_parent( const discussion_query& q )const;
@@ -363,6 +374,7 @@ class database_api
 
 FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd)(created) );
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
+FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
 
 FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
 
@@ -398,6 +410,9 @@ FC_API(steemit::app::database_api,
    (get_chain_properties)
    (get_feed_history)
    (get_current_median_history_price)
+   (get_witness_schedule)
+   (get_hardfork_version)
+   (get_next_scheduled_hardfork)
 
    // Keys
    (get_key_references)

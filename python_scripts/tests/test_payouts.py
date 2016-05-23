@@ -57,7 +57,6 @@ def main( ):
 
       run_steemd_tests( debug_node )
 
-      # Term on completion?
       if( args.pause_node ):
          print( "Letting the node hang for manual inspection..." )
       else:
