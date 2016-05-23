@@ -25,7 +25,6 @@
 #include <cstdint>
 #include <fstream>
 #include <functional>
-#include <iostream>
 
 #define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
 #define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
@@ -714,11 +713,19 @@ signed_block database::_generate_block(
    pending_block.timestamp = when;
    pending_block.transaction_merkle_root = pending_block.calculate_merkle_root();
    pending_block.witness = witness_owner;
-   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) && get_witness( witness_owner ).running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
-      pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
-   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) && _confirm_hardfork )
-      pending_block.extensions.insert( future_extensions( hardfork_property_id_type()(*this).current_hardfork_version ) );
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
+   {
+      if( get_witness( witness_owner ).running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
+         pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
+      const auto& hfp = hardfork_property_id_type()( *this );
+
+      if( STEEMIT_NUM_HARDFORKS > hfp.last_hardfork )
+      {
+         pending_block.extensions.insert( future_extensions( _hardfork_versions[ hfp.last_hardfork + 1 ] ) );
+         pending_block.extensions.insert( future_extensions( _hardfork_times[ hfp.last_hardfork + 1 ] ) );
+      }
+   }
 
    if( !(skip & skip_witness_signature) )
       pending_block.sign( block_signing_private_key );
@@ -968,6 +975,7 @@ void database::update_witness_schedule4() {
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
    {
       flat_map< version, uint32_t, std::greater< version > > witness_versions;
+      flat_map< std::tuple< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
 
       for( uint32_t i = 0; i < wso.current_shuffled_witnesses.size(); i++ )
       {
@@ -979,6 +987,13 @@ void database::update_witness_schedule4() {
                witness_versions[ witness.running_version ] = 1;
             else
                witness_versions[ witness.running_version ] += 1;
+
+            auto version_vote = std::make_tuple( witness.hardfork_version_vote, witness.hardfork_time_vote );
+
+            if( hardfork_version_votes.find( version_vote ) == hardfork_version_votes.end() )
+               hardfork_version_votes[ version_vote ] = 1;
+            else
+               hardfork_version_votes[ version_vote ] += 1;
          }
       }
 
@@ -994,6 +1009,24 @@ void database::update_witness_schedule4() {
             majority_version = ver_itr->first;
 
          ver_itr++;
+      }
+
+      auto hf_itr = hardfork_version_votes.begin();
+
+      while( hf_itr != hardfork_version_votes.end() )
+      {
+         if( hf_itr->second > STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+         {
+            modify( hardfork_property_id_type()( *this ), [&]( hardfork_property_object& hpo )
+            {
+               hpo.next_hardfork = std::get<0>( hf_itr->first );
+               hpo.next_hardfork_time = std::get<1>( hf_itr->first );
+            });
+
+            break;
+         }
+
+         hf_itr++;
       }
    }
 
@@ -1440,7 +1473,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    share_type unclaimed_rewards = max_rewards;
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
    auto itr = cvidx.lower_bound( c.id );
-   auto start = itr;
    while( itr != cvidx.end() && itr->comment == c.id ) {
       // TODO: Add minimum curation pay limit
       u256 weight( itr->weight );
@@ -2014,7 +2046,6 @@ FC_LOG_AND_RETHROW() }
 void database::process_header_extensions( const signed_block& next_block )
 {
    auto itr = next_block.extensions.begin();
-   bool received_hardfork_confirmation = false;
 
    while( itr != next_block.extensions.end() )
    {
@@ -2025,7 +2056,7 @@ void database::process_header_extensions( const signed_block& next_block )
          case 1: // version
          {
             auto reported_version = itr->get< version >();
-            auto signing_witness = get_witness( next_block.witness );
+            const auto& signing_witness = get_witness( next_block.witness );
 
             if( reported_version != signing_witness.running_version )
             {
@@ -2034,30 +2065,39 @@ void database::process_header_extensions( const signed_block& next_block )
                   wo.running_version = reported_version;
                });
             }
+            break;
+         }
+         case 2: // hardfork_version vote
+         {
+            auto hfv = itr->get< hardfork_version >();
+            const auto& signing_witness = get_witness( next_block.witness );
+
+            if( hfv != signing_witness.hardfork_version_vote )
+               modify( signing_witness, [&]( witness_object& wo )
+               {
+                  wo.hardfork_version_vote = hfv;
+               });
 
             break;
          }
-         case 2: // hardfork_version
-            if( itr->get< hardfork_version >() != hardfork_property_id_type()( *this ).current_hardfork_version )
-               if( _confirm_hardfork )
-                  FC_ASSERT( false, "Did not receive correct hardfork confirmation" );
-               else
-                  elog( "Received unexpected hardfork confirmation", ("hardfork_version", itr->get< hardfork_version>()) );
-            else
-               received_hardfork_confirmation = true;
+         case 3: // time_point_sec, for voting on hardfork time
+         {
+            auto hft = itr->get< time_point_sec >();
+            const auto& signing_witness = get_witness( next_block.witness );
+
+            if( hft != signing_witness.hardfork_time_vote )
+               modify( signing_witness, [&]( witness_object& wo )
+               {
+                  wo.hardfork_time_vote = hft;
+               });
 
             break;
+         }
          default:
             FC_ASSERT( false, "Unknown extension in block header" );
       }
 
       itr++;
-   }
-
-   if( _confirm_hardfork )
-   {
-      FC_ASSERT( received_hardfork_confirmation, "Did not receive expected hardfork confirmation" );
-      _confirm_hardfork = false;
    }
 }
 
@@ -2689,15 +2729,25 @@ void database::process_hardforks()
    // If there are upcoming hardforks and the next one is later, do nothing
    const auto& hardforks = hardfork_property_id_type()( *this );
 
-   while( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS
-         && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
+   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
    {
-      // After hardfork 0.5, we only trigger hardforks on round barriers and if there is a majority of witness on the required version for the hardfork
-      if( has_hardfork( STEEMIT_HARDFORK_0_5__54 )
-         && witness_schedule_id_type()(*this).majority_version < _hardfork_versions[ hardforks.last_hardfork + 1 ] )
-         return;
-
-      apply_hardfork( hardforks.last_hardfork + 1 );
+      while( _hardfork_versions[ hardforks.last_hardfork ] < hardforks.next_hardfork
+         && hardforks.next_hardfork_time <= head_block_time() )
+      {
+         if( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS )
+            apply_hardfork( hardforks.last_hardfork + 1 );
+         else
+            throw unknown_hardfork_exception();
+      }
+   }
+   else
+   {
+      while( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS
+            && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time()
+            && hardforks.last_hardfork < STEEMIT_HARDFORK_0_5__54 )
+      {
+         apply_hardfork( hardforks.last_hardfork + 1 );
+      }
    }
 }
 FC_CAPTURE_AND_RETHROW() }
@@ -2709,13 +2759,18 @@ bool database::has_hardfork( uint32_t hardfork )const
 
 void database::set_hardfork( uint32_t hardfork, bool apply_now )
 {
-   FC_ASSERT( hardfork <= STEEMIT_NUM_HARDFORKS );
-
    auto const& hardforks = hardfork_property_id_type()( *this );
 
    for( int i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEMIT_NUM_HARDFORKS; i++ )
    {
-      _hardfork_times[i] = head_block_time();
+      if( i <= STEEMIT_HARDFORK_0_5__54 )
+         _hardfork_times[i] = head_block_time();
+      else
+         modify( hardforks, [&]( hardfork_property_object& hpo )
+         {
+            hpo.next_hardfork = _hardfork_versions[i];
+            hpo.next_hardfork_time = head_block_time();
+         });
 
       if( apply_now )
          apply_hardfork( i );
@@ -2778,8 +2833,6 @@ void database::apply_hardfork( uint32_t hardfork )
          hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
          FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
       });
-
-      _confirm_hardfork = true;
 }
 
 /**

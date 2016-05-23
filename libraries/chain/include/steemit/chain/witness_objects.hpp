@@ -90,7 +90,10 @@ namespace steemit { namespace chain {
          /**
           * This field represents the Steem blockchain version the witness is running.
           */
-         version     running_version;
+         version           running_version;
+
+         hardfork_version  hardfork_version_vote;
+         time_point_sec    hardfork_time_vote = STEEMIT_GENESIS_TIME;
 
          witness_id_type get_id()const { return id; }
    };
@@ -194,5 +197,6 @@ FC_REFLECT_DERIVED( steemit::chain::witness_vote_object, (graphene::db::object),
 FC_REFLECT_DERIVED(
    steemit::chain::witness_schedule_object,
    (graphene::db::object),
-   (current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)(majority_version)
+   (current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)
+   (majority_version)
 )

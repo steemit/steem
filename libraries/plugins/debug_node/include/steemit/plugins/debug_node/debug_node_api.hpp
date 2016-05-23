@@ -56,6 +56,8 @@ class debug_node_api
 
       steemit::chain::witness_schedule_object debug_get_witness_schedule();
 
+      steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
+
       /**
        * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
        */
@@ -105,4 +107,5 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_set_hardfork)
        (debug_has_hardfork)
        (debug_get_witness_schedule)
+       (debug_get_hardfork_property_object)
      )

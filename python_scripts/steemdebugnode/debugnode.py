@@ -233,6 +233,10 @@ class DebugNode( object ):
       return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_get_witness_schedule",[]], "id":1}' ) )
 
 
+   def debug_get_hardfork_property_object( self ):
+      return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_get_hardfork_property_object",[]], "id":1}' ) )
+
+
 if __name__=="__main__":
    WAITING = True
 

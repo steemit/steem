@@ -389,7 +389,6 @@ namespace steemit { namespace chain {
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
          hardfork_version              _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
-         bool                          _confirm_hardfork = false;
 
          /**
           *  Note: we can probably store blocks by block num rather than

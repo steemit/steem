@@ -32,6 +32,20 @@ struct hardfork_version : version
    hardfork_version():version() {}
    hardfork_version( uint8_t m, uint8_t h ):version( m, h, 0 ) {}
    ~hardfork_version() {}
+
+   bool operator == ( const hardfork_version& o )const { return v_num == o.v_num; }
+   bool operator != ( const hardfork_version& o )const { return v_num != o.v_num; }
+   bool operator <  ( const hardfork_version& o )const { return v_num <  o.v_num; }
+   bool operator <= ( const hardfork_version& o )const { return v_num <= o.v_num; }
+   bool operator >  ( const hardfork_version& o )const { return v_num >  o.v_num; }
+   bool operator >= ( const hardfork_version& o )const { return v_num >= o.v_num; }
+
+   bool operator == ( const version& o )const { return v_num == ( o.v_num & 0xFFFF0000 ); }
+   bool operator != ( const version& o )const { return v_num != ( o.v_num & 0xFFFF0000 ); }
+   bool operator <  ( const version& o )const { return v_num <  ( o.v_num & 0xFFFF0000 ); }
+   bool operator <= ( const version& o )const { return v_num <= ( o.v_num & 0xFFFF0000 ); }
+   bool operator >  ( const version& o )const { return v_num >  ( o.v_num & 0xFFFF0000 ); }
+   bool operator >= ( const version& o )const { return v_num >= ( o.v_num & 0xFFFF0000 ); }
 };
 
 } } // steemit::chain

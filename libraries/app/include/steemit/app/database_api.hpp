@@ -61,6 +61,12 @@ struct order_book
    vector< order >      bids;
 };
 
+struct scheduled_hardfork
+{
+   hardfork_version     hf_version;
+   fc::time_point_sec   live_time;
+};
+
 class database_api_impl;
 class application;
 
@@ -140,7 +146,8 @@ class database_api
       price                          get_current_median_history_price()const;
       feed_history_object            get_feed_history()const;
       witness_schedule_object        get_witness_schedule()const;
-      version                        get_hardfork_version()const;
+      hardfork_version               get_hardfork_version()const;
+      scheduled_hardfork             get_next_scheduled_hardfork()const;
 
       //////////
       // Keys //
@@ -351,6 +358,7 @@ class database_api
 
 FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd)(created) );
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
+FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
 
 FC_API(steemit::app::database_api,
    // Subscriptions
@@ -376,6 +384,7 @@ FC_API(steemit::app::database_api,
    (get_current_median_history_price)
    (get_witness_schedule)
    (get_hardfork_version)
+   (get_next_scheduled_hardfork)
 
    // Keys
    (get_key_references)

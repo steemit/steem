@@ -274,9 +274,18 @@ witness_schedule_object database_api::get_witness_schedule()const
    return witness_schedule_id_type()( my->_db );
 }
 
-version database_api::get_hardfork_version()const
+hardfork_version database_api::get_hardfork_version()const
 {
    return hardfork_property_id_type()( my->_db ).current_hardfork_version;
+}
+
+scheduled_hardfork database_api::get_next_scheduled_hardfork() const
+{
+   scheduled_hardfork shf;
+   const auto& hpo = hardfork_property_id_type()( my->_db );
+   shf.hf_version = hpo.next_hardfork;
+   shf.live_time = hpo.next_hardfork_time;
+   return shf;
 }
 
 //////////////////////////////////////////////////////////////////////

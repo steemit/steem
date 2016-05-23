@@ -30,6 +30,7 @@ class debug_node_api_impl
       fc::optional< steemit::chain::signed_block > debug_pop_block();
       //void debug_push_block( const steemit::chain::signed_block& block );
       steemit::chain::witness_schedule_object debug_get_witness_schedule();
+      steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
       void debug_update_object( const fc::variant_object& update );
       //void debug_save_db( std::string db_path );
       void debug_stream_json_objects( const std::string& filename );
@@ -184,6 +185,11 @@ steemit::chain::witness_schedule_object debug_node_api_impl::debug_get_witness_s
    return steemit::chain::witness_schedule_id_type()( *app.chain_database() );
 }
 
+steemit::chain::hardfork_property_object debug_node_api_impl::debug_get_hardfork_property_object()
+{
+   return steemit::chain::hardfork_property_id_type()( *app.chain_database() );
+}
+
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
 {
    get_plugin()->debug_update( update );
@@ -260,6 +266,11 @@ fc::optional< steemit::chain::signed_block > debug_node_api::debug_pop_block()
 steemit::chain::witness_schedule_object debug_node_api::debug_get_witness_schedule()
 {
    return my->debug_get_witness_schedule();
+}
+
+steemit::chain::hardfork_property_object debug_node_api::debug_get_hardfork_property_object()
+{
+   return my->debug_get_hardfork_property_object();
 }
 
 void debug_node_api::debug_update_object( fc::variant_object update )
