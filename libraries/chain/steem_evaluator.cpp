@@ -626,8 +626,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
    }
    else
    {
-      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__22 ), "Cannot change votes until hardfork 0_5_0" );
-
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__22 ), "Cannot change votes until hardfork 0_5" );
+      FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Cannot change vote again" );
 
       auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
       auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
@@ -686,6 +686,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
          cv.weight = 0;
+         cv.num_changes += 1;
       });
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );

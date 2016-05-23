@@ -122,6 +122,7 @@ namespace steemit { namespace chain {
          int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
          int16_t         vote_percent = 0; ///< The percent weight of the vote
          time_point_sec  last_update; ///< The time of the last update of the vote
+         uint8_t         num_changes = 0;
    };
 
    struct by_comment_voter;
