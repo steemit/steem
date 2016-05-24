@@ -2715,12 +2715,6 @@ void database::init_hardforks()
       FC_ASSERT( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time(), "Next hardfork takes place prior to head block time" );
 
    FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
-
-
-   for( int i = 0; i <= hardforks.last_hardfork; i++ )
-   {
-      FC_ASSERT( hardforks.processed_hardforks[ i ] == _hardfork_times[ i ], "Time of processed hardfork does not match hardfork configuration time" );
-   }
 }
 
 void database::reset_virtual_schedule_time() {
