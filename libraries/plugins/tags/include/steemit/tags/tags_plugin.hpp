@@ -64,6 +64,7 @@ class  tag_object : public abstract_object<tag_object> {
       int64_t            net_rshares = 0;
       int32_t            net_votes   = 0;
       int32_t            children    = 0;
+      double             hot         = 0;
 
       /**
        *  Used to track the total rshares^2 of all children, this is used for indexing purposes. A discussion
@@ -86,6 +87,7 @@ struct by_parent_net_rshares; /// all top level posts by direct pending payout
 struct by_parent_net_votes; /// all top level posts by direct votes
 struct by_parent_children_rshares2; /// all top level posts by total cumulative payout (aka trending)
 struct by_parent_children; /// all top level posts with the most discussion (replies at all levels)
+struct by_parent_hot;
 struct by_author_parent_created;  /// all blog posts by author with tag
 struct by_comment;
 struct by_tag;
@@ -140,6 +142,15 @@ typedef multi_index_container<
                member<object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< int32_t >, std::less< object_id_type > >
+      >,
+      ordered_unique< tag< by_parent_hot >, 
+            composite_key< tag_object,
+               member< tag_object, string, &tag_object::tag >,
+               member< tag_object, comment_id_type, &tag_object::parent >,
+               member< tag_object, double, &tag_object::hot >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< double >, std::less< object_id_type > >
       >,
       ordered_unique< tag< by_parent_children_rshares2 >, 
             composite_key< tag_object,
@@ -286,7 +297,7 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 FC_API( steemit::tags::tag_api, (get_tags) );
 
 FC_REFLECT_DERIVED( steemit::tags::tag_object, (graphene::db::object), 
-    (tag)(created)(active)(cashout)(net_rshares)(net_votes)(children)(children_rshares2)(author)(parent)(comment) )
+    (tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(children)(children_rshares2)(author)(parent)(comment) )
 
 FC_REFLECT_DERIVED( steemit::tags::tag_stats_object, (graphene::db::object),
                     (tag)(total_children_rshares2)(net_votes)(top_posts)(comments) );
