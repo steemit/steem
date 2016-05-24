@@ -883,6 +883,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
    comment_id_type start;
 
    if( query.start_author && query.start_permlink ) {
+      edump(("start author")(query));
       start = my->_db.get_comment( *query.start_author, *query.start_permlink ).id;
       auto itr = cidx.find( start );
       while( itr != cidx.end() && itr->comment == start ) {
@@ -896,8 +897,8 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
 
    uint32_t count = query.limit;
    while( count > 0 && tidx_itr != tidx.end() ) {
-      if( tidx_itr->tag != tag || tidx_itr->parent != parent ) break;
-
+      if( tidx_itr->tag != tag || tidx_itr->parent != parent )
+         break;
       result.push_back( get_discussion( tidx_itr->comment ) );
 
       ++tidx_itr; --count;
@@ -930,6 +931,7 @@ vector<discussion> database_api::get_discussions_by_created( const discussion_qu
    query.validate();
    auto tag = fc::to_lower( query.tag );
    auto parent = get_parent( query );
+   idump((parent));
 
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_created>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::time_point_sec::maximum() )  );
@@ -1138,10 +1140,10 @@ state database_api::get_state( string path )const
    part.resize(std::max( part.size(), size_t(4) ) ); // at least 4
    idump((part));
 
+   auto tag = fc::to_lower( part[1] );
    idump((part[1])(part[1]==string()));
 
    if( part[0].size() && part[0][0] == '@' ) {
-      ilog( "...................");
       auto acnt = part[0].substr(1);
       _state.accounts[acnt] = my->_db.get_account(acnt);
       auto& eacnt = _state.accounts[acnt];
@@ -1217,7 +1219,6 @@ state database_api::get_state( string path )const
    }
    /// pull a complete discussion
    else if( part[1].size() && part[1][0] == '@' ) {
-      ilog( "...................");
 
       auto account  = part[1].substr( 1 );
       auto category = part[0];
@@ -1230,7 +1231,6 @@ state database_api::get_state( string path )const
       _state.content[key] = std::move(dis);
    }
    else if( part[0] == "witnesses" || part[0] == "~witnesses") {
-      ilog( "...................");
       auto wits = get_witnesses_by_vote( "", 50 );
       for( const auto& w : wits ) {
          _state.witnesses[w.owner] = w;
@@ -1238,10 +1238,9 @@ state database_api::get_state( string path )const
       _state.pow_queue = get_miner_queue();
    }
    else if( part[0] == "trending"  ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_trending( {part[1],20} );
+      auto trending_disc = get_discussions_by_trending( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.trending.push_back( key );
@@ -1250,10 +1249,9 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "responses"  ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_children( {part[1],20} );
+      auto trending_disc = get_discussions_by_children( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.responses.push_back( key );
@@ -1262,11 +1260,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( !part[0].size() || part[0] == "hot" ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_hot( {part[1],20} );
+      auto trending_disc = get_discussions_by_hot( {tag,20} );
       idump((part[1])(part[1]==string()));
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.hot.push_back( key );
@@ -1275,10 +1272,9 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "votes"  ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_votes( {part[1],20} );
+      auto trending_disc = get_discussions_by_votes( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.votes.push_back( key );
@@ -1287,10 +1283,9 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "active"  ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_active( {part[1],20} );
+      auto trending_disc = get_discussions_by_active( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.active.push_back( key );
@@ -1299,10 +1294,9 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "created"  ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_created( {part[1],20} );
+      auto trending_disc = get_discussions_by_created( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.created.push_back( key );
@@ -1311,10 +1305,9 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "recent"  ) {
-      ilog( "...................");
-      auto trending_disc = get_discussions_by_created( {part[1],20} );
+      auto trending_disc = get_discussions_by_created( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.created.push_back( key );

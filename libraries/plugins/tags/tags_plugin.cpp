@@ -102,6 +102,8 @@ struct operation_visitor {
    }
 
    void create_tag( const string& tag, const comment_object& comment, double hot )const {
+
+
       comment_id_type parent;
       account_id_type author = _db.get_account( comment.author ).id;
 
@@ -142,6 +144,7 @@ struct operation_visitor {
    /** finds tags that have been added or removed or updated */
    void update_tags( const comment_object& c )const {
       try {
+
       auto hot = calculate_hot(c);
 
       comment_metadata meta;
@@ -172,11 +175,12 @@ struct operation_visitor {
       auto citr = comment_idx.lower_bound( c.id );
 
       map<string, const tag_object*> existing_tags;
+      vector<const tag_object*> remove_queue;
       while( citr != comment_idx.end() && citr->comment == c.id ) {
          const tag_object* tag = &*citr;
          ++citr;
          if( meta.tags.find( tag->tag ) == meta.tags.end() ) {
-            remove_tag( *tag );
+            remove_queue.push_back(tag);
          } else {
             existing_tags[tag->tag] = tag;
          }
@@ -191,11 +195,14 @@ struct operation_visitor {
          }
       }
 
+      for( const auto& item : remove_queue )
+         remove_tag(*item);
+
       if( c.parent_author.size() )
       {
          update_tags( _db.get_comment( c.parent_author, c.parent_permlink ) );
       }
-     } FC_CAPTURE_AND_RETHROW( (c) )
+     } FC_CAPTURE_LOG_AND_RETHROW( (c) )
    }
 
    void operator()( const comment_operation& op )const {
