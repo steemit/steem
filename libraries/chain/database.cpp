@@ -716,15 +716,22 @@ signed_block database::_generate_block(
    pending_block.witness = witness_owner;
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
    {
-      if( get_witness( witness_owner ).running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
+      const auto& witness = get_witness( witness_owner );
+
+      if( witness.running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
          pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
       const auto& hfp = hardfork_property_id_type()( *this );
 
-      if( STEEMIT_NUM_HARDFORKS > hfp.last_hardfork )
+      if( STEEMIT_NUM_HARDFORKS > hfp.last_hardfork ) // Binary knows of a new hardfork
       {
          pending_block.extensions.insert( future_extensions( _hardfork_versions[ hfp.last_hardfork + 1 ] ) );
          pending_block.extensions.insert( future_extensions( _hardfork_times[ hfp.last_hardfork + 1 ] ) );
+      }
+      else if( witness.hardfork_version_vote > _hardfork_versions[ hfp.last_hardfork ] ) // Don't know about the new hardfork and have previously voted for it
+      {
+         pending_block.extensions.insert( future_extensions( _hardfork_versions[ hfp.last_hardfork ] ) );
+         pending_block.extensions.insert( future_extensions( _hardfork_times[ hfp.last_hardfork ] ) );
       }
    }
 
@@ -994,21 +1001,16 @@ void database::update_witness_schedule4() {
       for( uint32_t i = 0; i < wso.current_shuffled_witnesses.size(); i++ )
       {
          auto witness = get_witness( wso.current_shuffled_witnesses[ i ] );
+         if( witness_versions.find( witness.running_version ) == witness_versions.end() )
+            witness_versions[ witness.running_version ] = 1;
+         else
+            witness_versions[ witness.running_version ] += 1;
 
-         if( witness.pow_worker == 0 && witness.running_version > majority_version )
-         {
-            if( witness_versions.find( witness.running_version ) == witness_versions.end() )
-               witness_versions[ witness.running_version ] = 1;
-            else
-               witness_versions[ witness.running_version ] += 1;
-
-            auto version_vote = std::make_tuple( witness.hardfork_version_vote, witness.hardfork_time_vote );
-
-            if( hardfork_version_votes.find( version_vote ) == hardfork_version_votes.end() )
-               hardfork_version_votes[ version_vote ] = 1;
-            else
-               hardfork_version_votes[ version_vote ] += 1;
-         }
+         auto version_vote = std::make_tuple( witness.hardfork_version_vote, witness.hardfork_time_vote );
+         if( hardfork_version_votes.find( version_vote ) == hardfork_version_votes.end() )
+            hardfork_version_votes[ version_vote ] = 1;
+         else
+            hardfork_version_votes[ version_vote ] += 1;
       }
 
       int witnesses_on_version = 0;
