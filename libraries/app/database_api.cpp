@@ -1333,6 +1333,8 @@ state database_api::get_state( string path )const
  } catch ( const fc::exception& e ) {
     _state.error = e.to_detail_string();
  }
+ idump((_state)(fc::json::to_string(_state).size()));
+ idump((fc::is_utf8( fc::json::to_string(_state)) ));
  return _state;
 }
 

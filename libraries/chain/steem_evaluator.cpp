@@ -275,7 +275,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
                auto patch = dmp.patch_fromText( o.body );
                if( patch.size() ) {
                   auto result = dmp.patch_apply( patch, com.body );
-                  com.body = result.first;
+                  if( !fc::is_utf8( result.first ) ) {
+                     idump(("invalid utf8")(result.first));
+                     com.body = fc::prune_invalid_utf8(result.first);
+                  } else { com.body = result.first; }
                }
                else { // replace
                   com.body = o.body;
