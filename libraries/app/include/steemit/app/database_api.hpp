@@ -56,7 +56,6 @@ class database_api_impl;
 struct discussion_query {
    void validate()const{
       FC_ASSERT( filter_tags.find(tag) == filter_tags.end() );
-      FC_ASSERT( tag.size() );
       FC_ASSERT( limit <= 100 );
    }
 
@@ -291,6 +290,7 @@ class database_api
       vector<discussion> get_discussions_by_payout( const discussion_query& query )const;
       vector<discussion> get_discussions_by_votes( const discussion_query& query )const;
       vector<discussion> get_discussions_by_children( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_hot( const discussion_query& query )const;
 
       ///@}
 
@@ -320,14 +320,6 @@ class database_api
        *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
        *  pending payout means the pending payout of all children as well.
        */
-      vector<discussion>   get_all_discussions_by_total_pending_payout( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_all_discussions_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_all_discussions_by_votes( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_all_discussions_by_created( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_all_discussions_by_responses( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_all_discussions_by_last_active( string start_author, string start_permlink, uint32_t limit )const;
-      vector<discussion>   get_all_discussions_by_cashout_time( string start_author, string start_permlink, uint32_t limit )const;
-
       vector<discussion>   get_replies_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
 
 
@@ -394,6 +386,7 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_payout)
    (get_discussions_by_votes)
    (get_discussions_by_children)
+   (get_discussions_by_hot)
 
    // Blocks and transactions
    (get_block_header)
@@ -444,13 +437,6 @@ FC_API(steemit::app::database_api,
    // content
    (get_content)
    (get_content_replies)
-   (get_all_discussions_by_total_pending_payout)
-   (get_all_discussions_by_last_update)
-   (get_all_discussions_by_created)
-   (get_all_discussions_by_votes)
-   (get_all_discussions_by_responses)
-   (get_all_discussions_by_last_active)
-   (get_all_discussions_by_cashout_time)
    (get_discussions_by_author_before_date)
    (get_replies_by_last_update)
 

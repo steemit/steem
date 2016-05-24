@@ -85,7 +85,7 @@ struct operation_visitor {
               });
    }
 
-   void update_tag( const tag_object& current, const comment_object& comment )const
+   void update_tag( const tag_object& current, const comment_object& comment, double hot )const
    {
        const auto& stats = get_stats( current.tag );
        remove_stats( current, stats );
@@ -96,11 +96,12 @@ struct operation_visitor {
           obj.net_rshares       = comment.net_rshares.value;
           obj.net_votes         = comment.net_votes;
           obj.children_rshares2 = comment.children_rshares2;
+          obj.hot               = hot;
       });
       add_stats( current, stats );
    }
 
-   void create_tag( const string& tag, const comment_object& comment )const {
+   void create_tag( const string& tag, const comment_object& comment, double hot )const {
       comment_id_type parent;
       account_id_type author = _db.get_account( comment.author ).id;
 
@@ -124,10 +125,25 @@ struct operation_visitor {
       add_stats( tag_obj, get_stats( tag ) );
    }
 
+   /**
+    * https://medium.com/hacking-and-gonzo/how-reddit-ranking-algorithms-work-ef111e33d0d9#.lcbj6auuw
+    */
+   double calculate_hot( const comment_object& c )const {
+      auto s = c.net_votes;
+      double order = log10( std::max<int32_t>( abs(s), 1) );
+      int sign = 0;
+      if( s > 0 ) sign = 1;
+      else if( s < 0 ) sign = -1;
+      auto seconds = c.created.sec_since_epoch(); 
+
+      return sign * order + double(seconds) / 45000.0;
+   }
 
    /** finds tags that have been added or removed or updated */
    void update_tags( const comment_object& c )const {
       try {
+      auto hot = calculate_hot(c);
+
       comment_metadata meta;
 
       if( c.json_metadata.size() ){
@@ -140,8 +156,17 @@ struct operation_visitor {
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_5 ) )
          lower_tags.insert( c.category );
 
+
+      /// the universal tag applies to everything safe for work or nsfw with a positive payout
+      if( c.net_rshares >= 0 ||
+          (lower_tags.find( "spam" ) == lower_tags.end() && 
+           lower_tags.find( "nsfw" ) == lower_tags.end() &&
+           lower_tags.find( "test" ) == lower_tags.end() )  )
+      {
+         lower_tags.insert( string() ); /// add it to the universal tag
+      }
+
       meta.tags = lower_tags; /// TODO: std::move???
-      if( meta.tags.size() > 1 ) wdump( (meta.tags) );
 
       const auto& comment_idx = _db.get_index_type<tag_index>().indices().get<by_comment>();
       auto citr = comment_idx.lower_bound( c.id );
@@ -160,9 +185,9 @@ struct operation_visitor {
       for( const auto& tag : meta.tags ) {
          auto existing = existing_tags.find(tag);
          if( existing == existing_tags.end() ) {
-            create_tag( tag, c );
+            create_tag( tag, c, hot );
          } else {
-            update_tag( *existing->second, c );
+            update_tag( *existing->second, c, hot );
          }
       }
 
