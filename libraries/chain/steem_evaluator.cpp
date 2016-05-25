@@ -4,6 +4,25 @@
 
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
+#include <locale>
+#include <codecvt>
+
+// Hack to workaround diff-match-patch-cpp-stl's apparently broken UTF8 handling
+// Long term I think the best solution is to just fix the diff_match_patch code.
+template <> struct diff_match_patch_traits<char16_t> : diff_match_patch_utf32_from_utf16<char16_t> {
+  static bool is_alnum(char16_t c) { return std::isalnum(c)? true : false; }
+  static bool is_digit(char16_t c) { return std::isdigit(c)? true : false; }
+  static bool is_space(char16_t c) { return std::isspace(c)? true : false; }
+  static int to_int(const char16_t* s) {
+     std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> codecvt;
+     std::string utf8 = codecvt.to_bytes(std::u16string(s));
+     return static_cast<int>(std::stol(utf8, NULL, 10)); }
+  static char16_t from_wchar(wchar_t c) { return c; }
+  static wchar_t to_wchar(char16_t c) { return c; }
+  static const std::u16string cs(const wchar_t* s) { return std::u16string(s, s + wcslen(s)); }
+  static const char16_t eol = u'\n';
+  static const char16_t tab = u'\t';
+};
 #endif
 
 #include <fc/uint128.hpp>
@@ -271,14 +290,16 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
            if( o.body.size() ) {
               try {
-               diff_match_patch<string> dmp;
-               auto patch = dmp.patch_fromText( o.body );
+               std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> codecvt;
+               diff_match_patch<std::u16string> dmp;
+               auto patch = dmp.patch_fromText( codecvt.from_bytes(o.body) );
                if( patch.size() ) {
-                  auto result = dmp.patch_apply( patch, com.body );
-                  if( !fc::is_utf8( result.first ) ) {
-                     idump(("invalid utf8")(result.first));
-                     com.body = fc::prune_invalid_utf8(result.first);
-                  } else { com.body = result.first; }
+                  auto result = dmp.patch_apply( patch, codecvt.from_bytes(com.body) );
+                  auto patched_body = codecvt.to_bytes(result.first);
+                  if( !fc::is_utf8( patched_body ) ) {
+                     idump(("invalid utf8")(patched_body));
+                     com.body = fc::prune_invalid_utf8(patched_body);
+                  } else { com.body = patched_body; }
                }
                else { // replace
                   com.body = o.body;
