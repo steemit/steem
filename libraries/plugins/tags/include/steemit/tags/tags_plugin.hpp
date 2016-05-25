@@ -34,7 +34,8 @@ enum tags_object_type
    bucket_object_type = 1,///< used in market_history_plugin
    message_object_type = 2,
    tag_object_type = 3,
-   tag_stats_object_type = 4
+   tag_stats_object_type = 4,
+   peer_stats_object_type = 5
 };
 
 
@@ -77,6 +78,7 @@ class  tag_object : public abstract_object<tag_object> {
       comment_id_type    parent;
       comment_id_type    comment;
 };
+
 
 struct by_id;
 struct by_cashout; /// all posts regardless of depth
@@ -244,6 +246,74 @@ typedef multi_index_container<
 typedef graphene::db::generic_index< tag_stats_object, tag_stats_multi_index_type> tag_stats_index;
 
 
+/**
+ *  The purpose of this object is to track the relationship between accounts based upon how a user votes. Every time
+ *  a user votes on a post, the relationship between voter and author increases direct rshares.
+ */
+class  peer_stats_object : public abstract_object<peer_stats_object> {
+  public:
+      static const uint8_t space_id = TAG_SPACE_ID;
+      static const uint8_t type_id  = peer_stats_object_type;
+
+      account_id_type voter;
+      account_id_type peer;
+      int32_t         direct_positive_votes = 0;
+      int32_t         direct_votes = 1;
+
+      int32_t         indirect_positive_votes = 0;
+      int32_t         indirect_votes = 1;
+      
+      float           rank = 0;
+
+      void update_rank() {
+          auto direct         = float( direct_positive_votes ) / direct_votes;
+          auto indirect       = float( indirect_positive_votes ) / indirect_votes;
+          auto direct_order   = log( direct_votes );
+          auto indirect_order = log( indirect_votes );
+
+          if( !(direct_positive_votes+indirect_positive_votes) ){
+            direct_order *= -1;
+            indirect_order *= -1;
+          } 
+
+          direct *= direct;
+          indirect *= indirect;
+
+          direct *= direct_order * 10;
+          indirect *= indirect_order;
+
+          rank = direct + indirect;
+      }
+};
+
+
+struct by_rank;
+struct by_voter_peer;
+typedef multi_index_container<
+   peer_stats_object,
+   indexed_by<
+      ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_rank >, 
+         composite_key< peer_stats_object,
+            member< peer_stats_object, account_id_type, &peer_stats_object::voter >,
+            member< peer_stats_object, float, &peer_stats_object::rank >,
+            member< peer_stats_object, account_id_type, &peer_stats_object::peer >
+         >,
+         composite_key_compare< std::less<account_id_type>, std::greater<float>, std::less<account_id_type> >
+      >,
+      ordered_unique< tag< by_voter_peer >, 
+         composite_key< peer_stats_object,
+            member< peer_stats_object, account_id_type, &peer_stats_object::voter >,
+            member< peer_stats_object, account_id_type, &peer_stats_object::peer >
+         >,
+         composite_key_compare< std::less<account_id_type>,  std::less<account_id_type> >
+      >
+   >
+> peer_stats_multi_index_type;
+typedef graphene::db::generic_index< peer_stats_object, peer_stats_multi_index_type> peer_stats_index;
+
+
+
 
 /**
  * Used to parse the metadata from the comment json_meta field.
@@ -302,4 +372,5 @@ FC_REFLECT_DERIVED( steemit::tags::tag_object, (graphene::db::object),
 FC_REFLECT_DERIVED( steemit::tags::tag_stats_object, (graphene::db::object),
                     (tag)(total_children_rshares2)(net_votes)(top_posts)(comments) );
 
+FC_REFLECT_DERIVED( steemit::tags::peer_stats_object, (graphene::db::object), (voter)(peer)(direct_positive_votes)(direct_votes)(indirect_positive_votes)(indirect_votes)(rank) );
 FC_REFLECT( steemit::tags::comment_metadata, (tags) );

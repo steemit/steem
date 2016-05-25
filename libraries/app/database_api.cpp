@@ -1147,7 +1147,16 @@ state database_api::get_state( string path )const
       auto acnt = part[0].substr(1);
       _state.accounts[acnt] = my->_db.get_account(acnt);
       auto& eacnt = _state.accounts[acnt];
-      if( part[1] == "transfers" ) {
+      if( part[1] == "recommended" ) {
+          auto discussions = get_recommended_for( acnt, 100 );
+          eacnt.recommended = vector<string>();
+          for( const auto& d : discussions ) {
+              auto ref = d.author+"/"+d.permlink;
+              _state.content[ ref ] = d;
+              eacnt.recommended->push_back( ref );
+          }
+      }
+      else if( part[1] == "transfers" ) {
          auto history = get_account_history( acnt, uint64_t(-1), 1000 );
          for( auto& item : history ) {
             switch( item.second.op.which() ) {
@@ -1349,6 +1358,55 @@ annotated_signed_transaction database_api::get_transaction( transaction_id_type 
       return result;
    }
    FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
+}
+
+vector<discussion> database_api::get_recommended_for( const string& u, uint32_t limit  )const {
+   FC_ASSERT( limit <= 1000 );
+   auto start_time = fc::time_point::now();
+
+   const auto& user = my->_db.get_account(u);
+   const auto& rank_idx = my->_db.get_index_type<tags::peer_stats_index>().indices().get<tags::by_rank>();
+   const auto& vote_idx = my->_db.get_index_type<comment_vote_index>().indices().get<by_voter_last_update>();
+
+   map<comment_id_type,float> stage;
+
+   auto max_age = my->_db.head_block_time() - fc::days(1);
+
+   auto itr = rank_idx.lower_bound( boost::make_tuple( user.get_id(), std::numeric_limits<float>::max() ) );
+   while( itr != rank_idx.end() && itr->voter == user.id && stage.size() < 1000 && itr->rank > 0 ) {
+      auto vitr = vote_idx.lower_bound( boost::make_tuple( itr->peer, fc::time_point_sec::maximum() ) );
+      int32_t max_votes_per_peer = 50;
+      while( max_votes_per_peer && vitr->voter == itr->peer && vitr->last_update >= max_age ) {
+         const auto& c = vitr->comment(my->_db);
+         if( c.parent_author.size() == 0 && c.created > max_age && c.author != u && c.net_rshares > 0 )
+         {
+            stage[vitr->comment] += itr->rank * vitr->vote_percent;
+            max_votes_per_peer--;
+         }
+         ++vitr;
+      }
+      ++itr;
+   }
+   auto vitr = vote_idx.lower_bound( boost::make_tuple( user.get_id(), fc::time_point_sec::maximum() ) );
+   while( vitr != vote_idx.end() && vitr->voter == user.get_id() && vitr->last_update > max_age ) {
+      stage.erase( vitr->comment );
+      ++vitr;
+   }
+
+   vector< pair<float,comment_id_type> > result;
+   result.reserve(stage.size());
+   for( const auto& item : stage ) result.push_back({item.second,item.first});
+   std::sort( result.begin(), result.end(), std::greater<pair<float,comment_id_type>>() );
+
+   vector<discussion> dresult; dresult.reserve(limit);
+   for( const auto& item : result ) {
+      dresult.push_back( get_discussion( item.second ) );
+      if( dresult.size() == limit ) break;
+   }
+   auto end_time = fc::time_point::now();
+   idump((start_time-end_time));
+
+   return dresult;
 }
 
 } } // steemit::app

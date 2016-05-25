@@ -128,6 +128,7 @@ namespace steemit { namespace chain {
    struct by_comment_voter;
    struct by_voter_comment;
    struct by_comment_weight_voter;
+   struct by_voter_last_update;
    typedef multi_index_container<
       comment_vote_object,
       indexed_by<
@@ -143,6 +144,14 @@ namespace steemit { namespace chain {
                member< comment_vote_object, account_id_type, &comment_vote_object::voter>,
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment>
             >
+         >,
+         ordered_unique< tag< by_voter_last_update >,
+            composite_key< comment_vote_object,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter>,
+               member< comment_vote_object, time_point_sec, &comment_vote_object::last_update>,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment>
+            >,
+            composite_key_compare< std::less< account_id_type >, std::greater< time_point_sec >, std::less<comment_id_type> >
          >,
          ordered_unique< tag< by_comment_weight_voter >,
             composite_key< comment_vote_object,
