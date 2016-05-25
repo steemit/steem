@@ -1538,9 +1538,13 @@ void database::process_comment_cashout() {
             unclaimed = pay_curators( cur, curator_rewards );
             cashout_comment_helper( cur, cur, asset( to_vesting, STEEM_SYMBOL ), asset( to_sbd, STEEM_SYMBOL ) );
 
+            auto total_payout = asset(reward_tokens - unclaimed ,STEEM_SYMBOL) * median_price;
+
             modify( cat, [&]( category_object& c ) {
-               c.total_payouts += asset(reward_tokens - unclaimed ,STEEM_SYMBOL) * median_price;
+               c.total_payouts += total_payout;
             });
+
+            notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
          }
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;

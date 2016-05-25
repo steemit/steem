@@ -72,6 +72,7 @@ class  tag_object : public abstract_object<tag_object> {
        *  be reviewed.
        */
       fc::uint128_t     children_rshares2;
+      asset             total_payout;
 
       account_id_type    author;
       comment_id_type    parent;
@@ -98,7 +99,7 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_non_unique< tag< by_comment >, member< tag_object, comment_id_type, &tag_object::comment > >,
-      ordered_unique< tag< by_parent_created >, 
+      ordered_unique< tag< by_parent_created >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -107,7 +108,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< time_point_sec >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_parent_active >, 
+      ordered_unique< tag< by_parent_active >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -116,7 +117,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< time_point_sec >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_parent_net_rshares >, 
+      ordered_unique< tag< by_parent_net_rshares >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -125,7 +126,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< int64_t >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_parent_net_votes >, 
+      ordered_unique< tag< by_parent_net_votes >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -134,7 +135,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< int32_t >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_parent_children >, 
+      ordered_unique< tag< by_parent_children >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -143,7 +144,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< int32_t >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_parent_hot >, 
+      ordered_unique< tag< by_parent_hot >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -152,7 +153,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< double >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_parent_children_rshares2 >, 
+      ordered_unique< tag< by_parent_children_rshares2 >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, comment_id_type, &tag_object::parent >,
@@ -161,7 +162,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< fc::uint128_t >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_cashout >, 
+      ordered_unique< tag< by_cashout >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, time_point_sec, &tag_object::cashout >,
@@ -169,7 +170,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_net_rshares >, 
+      ordered_unique< tag< by_net_rshares >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, int64_t, &tag_object::net_rshares >,
@@ -177,7 +178,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::greater< int64_t >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_author_parent_created >, 
+      ordered_unique< tag< by_author_parent_created >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,
                member< tag_object, account_id_type, &tag_object::author >,
@@ -203,6 +204,7 @@ class tag_stats_object : public abstract_object<tag_stats_object> {
 
       string            tag;
       fc::uint128_t     total_children_rshares2;
+      asset             total_payout;
       int32_t           net_votes = 0;
       uint32_t          top_posts = 0;
       uint32_t          comments  = 0;
@@ -217,21 +219,21 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_unique< tag< by_tag >, member< tag_stats_object, string, &tag_stats_object::tag > >,
-      ordered_non_unique< tag< by_comments >, 
+      ordered_non_unique< tag< by_comments >,
          composite_key< tag_stats_object,
             member< tag_stats_object, string, &tag_stats_object::tag >,
             member< tag_stats_object, uint32_t, &tag_stats_object::comments >
          >,
          composite_key_compare< std::less<string>, std::greater<uint32_t> >
       >,
-      ordered_non_unique< tag< by_top_posts >, 
+      ordered_non_unique< tag< by_top_posts >,
          composite_key< tag_stats_object,
             member< tag_stats_object, string, &tag_stats_object::tag >,
             member< tag_stats_object, uint32_t, &tag_stats_object::top_posts >
          >,
          composite_key_compare< std::less<string>, std::greater<uint32_t> >
       >,
-      ordered_non_unique< tag< by_trending >, 
+      ordered_non_unique< tag< by_trending >,
          composite_key< tag_stats_object,
             member< tag_stats_object, string, &tag_stats_object::tag >,
             member< tag_stats_object, fc::uint128_t, &tag_stats_object::total_children_rshares2 >
@@ -254,7 +256,7 @@ struct comment_metadata {
 
 /**
  *  This plugin will scan all changes to posts and/or their meta data and
- *  
+ *
  */
 class tags_plugin : public steemit::app::plugin
 {
@@ -285,7 +287,7 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
       }
 
       vector<tag_stats_object> get_tags()const { return vector<tag_stats_object>(); }
-      
+
    private:
       //app::application* _app = nullptr;
 };
@@ -296,10 +298,10 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 
 FC_API( steemit::tags::tag_api, (get_tags) );
 
-FC_REFLECT_DERIVED( steemit::tags::tag_object, (graphene::db::object), 
-    (tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(children)(children_rshares2)(author)(parent)(comment) )
+FC_REFLECT_DERIVED( steemit::tags::tag_object, (graphene::db::object),
+    (tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(children)(children_rshares2)(total_payout)(author)(parent)(comment) )
 
 FC_REFLECT_DERIVED( steemit::tags::tag_stats_object, (graphene::db::object),
-                    (tag)(total_children_rshares2)(net_votes)(top_posts)(comments) );
+                    (tag)(total_children_rshares2)(total_payout)(net_votes)(top_posts)(comments) );
 
 FC_REFLECT( steemit::tags::comment_metadata, (tags) );

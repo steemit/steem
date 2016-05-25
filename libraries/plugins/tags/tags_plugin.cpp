@@ -56,6 +56,7 @@ struct operation_visitor {
               s.comments--;
            }
            s.net_votes   -= tag.net_votes;
+           s.total_payout += tag.total_payout;
       });
    }
    void add_stats( const tag_object& tag, const tag_stats_object& stats )const {
@@ -97,6 +98,7 @@ struct operation_visitor {
           obj.net_votes         = comment.net_votes;
           obj.children_rshares2 = comment.children_rshares2;
           obj.hot               = hot;
+          obj.total_payout      = comment.total_payout_value;
       });
       add_stats( current, stats );
    }
@@ -121,6 +123,7 @@ struct operation_visitor {
           obj.children          = comment.children;
           obj.net_rshares       = comment.net_rshares.value;
           obj.children_rshares2 = comment.children_rshares2;
+          obj.total_payout      = comment.total_payout_value;
           obj.author            = author;
           obj.net_votes         = comment.net_votes;
       });
@@ -136,7 +139,7 @@ struct operation_visitor {
       int sign = 0;
       if( s > 0 ) sign = 1;
       else if( s < 0 ) sign = -1;
-      auto seconds = c.created.sec_since_epoch(); 
+      auto seconds = c.created.sec_since_epoch();
 
       return sign * order + double(seconds) / 45000.0;
    }
@@ -162,7 +165,7 @@ struct operation_visitor {
 
       /// the universal tag applies to everything safe for work or nsfw with a positive payout
       if( c.net_rshares >= 0 ||
-          (lower_tags.find( "spam" ) == lower_tags.end() && 
+          (lower_tags.find( "spam" ) == lower_tags.end() &&
            lower_tags.find( "nsfw" ) == lower_tags.end() &&
            lower_tags.find( "test" ) == lower_tags.end() )  )
       {
@@ -212,6 +215,11 @@ struct operation_visitor {
    void operator()( const vote_operation& op )const {
       update_tags( _db.get_comment( op.author, op.permlink ) );
    }
+
+   void operator()( const comment_payout_operation& op )const {
+       update_tags( _db.get_comment( op.author, op.permlink ) );
+   }
+
    template<typename Op>
    void operator()( Op&& )const{} /// ignore all other ops
 };

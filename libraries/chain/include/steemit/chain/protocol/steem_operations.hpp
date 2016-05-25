@@ -105,6 +105,17 @@ namespace steemit { namespace chain {
       void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
+   struct comment_payout_operation : public base_operation {
+      comment_payout_operation(){}
+      comment_payout_operation( const string& a, const string& pl, const asset& p )
+         :author(a),permlink(pl),payout(p){}
+
+      string author;
+      string permlink;
+      asset  payout;
+      void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
+   };
+
    struct liquidity_reward_operation : public base_operation {
       liquidity_reward_operation( string o = string(), asset p = asset() )
       :owner(o),payout(p){}
@@ -303,7 +314,7 @@ namespace steemit { namespace chain {
    };
 
    /** serves the same purpose as custom_operation but also supports required posting authorities. Unlike custom_operation,
-    * this operation is designed to be human readable/developer friendly. 
+    * this operation is designed to be human readable/developer friendly.
     **/
    struct custom_json_operation : public base_operation {
       flat_set<string>  required_auths;
@@ -481,6 +492,7 @@ FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
 FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(originating_author)(originating_permlink)(payout)(vesting_payout) )
 FC_REFLECT( steemit::chain::curate_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
+FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
