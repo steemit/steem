@@ -1980,7 +1980,19 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
          FC_ASSERT( next_block.id() == itr->second, "Block did not match checkpoint", ("checkpoint",*itr)("block_id",next_block.id()) );
 
       if( _checkpoints.rbegin()->first >= block_num )
-         skip = ~0;// WE CAN SKIP ALMOST EVERYTHING
+         skip = skip_witness_signature
+              | skip_transaction_signatures
+              | skip_transaction_dupe_check
+              | skip_fork_db
+              | skip_block_size_check
+              | skip_tapos_check
+              | skip_authority_check
+              | skip_merkle_check
+              | skip_undo_history_check
+              | skip_witness_schedule_check
+              | skip_validate
+              | skip_validate_invariants
+              ;
    }
 
    detail::with_skip_flags( *this, skip, [&]()
