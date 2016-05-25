@@ -49,11 +49,10 @@ namespace steemit { namespace chain {
             skip_tapos_check            = 1 << 5,  ///< used while reindexing -- note this skips expiration check as well
             skip_authority_check        = 1 << 6,  ///< used while reindexing -- disables any checking of authority on transactions
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
-            skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
-            skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_witness_schedule_check = 1 << 10, ///< used while reindexing
-            skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_validate_invariants    = 1 << 12  ///< used to skip database invariant check on block application
+            skip_undo_history_check     = 1 << 8,  ///< used while reindexing
+            skip_witness_schedule_check = 1 << 9,  ///< used while reindexing
+            skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
+            skip_validate_invariants    = 1 << 11  ///< used to skip database invariant check on block application
          };
 
          /**
