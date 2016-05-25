@@ -1380,7 +1380,8 @@ vector<discussion> database_api::get_recommended_for( const string& u, uint32_t 
          const auto& c = vitr->comment(my->_db);
          if( c.parent_author.size() == 0 && c.created > max_age && c.author != u && c.net_rshares > 0 )
          {
-            stage[vitr->comment] += itr->rank * vitr->vote_percent;
+            auto agediscount = float((c.created - max_age).count())/fc::days(1).count();
+            stage[vitr->comment] += agediscount * itr->rank * vitr->vote_percent;
             max_votes_per_peer--;
          }
          ++vitr;
