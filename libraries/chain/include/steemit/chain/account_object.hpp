@@ -9,6 +9,7 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
+#include <numeric>
 
 namespace steemit { namespace chain {
 
@@ -23,12 +24,14 @@ namespace steemit { namespace chain {
          authority       active; ///< used for all monetary operations, can set active or posting
          authority       posting; ///< used for voting and posting
          public_key_type memo_key;
-         string          json_metadata;
+         string          json_metadata = "";
          string          proxy;
 
          time_point_sec  created;
+         bool            mined = true;
          uint32_t        comment_count = 0;
          uint32_t        lifetime_vote_count = 0;
+         uint32_t        post_count = 0;
 
          uint16_t        voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
          time_point_sec  last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
@@ -62,7 +65,8 @@ namespace steemit { namespace chain {
          share_type      withdrawn = 0; /// Track how many shares have been withdrawn
          share_type      to_withdraw = 0; /// Might be able to look this up with operation history.
 
-         share_type      proxied_vsf_votes; ///< the total VFS votes proxied to this account
+         std::vector<share_type> proxied_vsf_votes = std::vector<share_type>( STEEMIT_MAX_PROXY_RECURSION_DEPTH, 0 ); ///< the total VFS votes proxied to this account
+         uint16_t        witnesses_voted_for = 0;
 
          /**
           *  This field tracks the average bandwidth consumed by this account and gets updated every time a transaction
@@ -85,7 +89,17 @@ namespace steemit { namespace chain {
 
 
          account_id_type get_id()const { return id; }
-         share_type      witness_vote_weight()const { return vesting_shares.amount + proxied_vsf_votes; }
+         /// This function should be used only when the account votes for a witness directly
+         share_type      witness_vote_weight()const {
+            return std::accumulate( proxied_vsf_votes.begin(),
+                                    proxied_vsf_votes.end(),
+                                    vesting_shares.amount );
+         }
+         share_type      proxied_vsf_votes_total()const {
+            return std::accumulate( proxied_vsf_votes.begin(),
+                                    proxied_vsf_votes.end(),
+                                    share_type() );
+         }
    };
 
    /**
@@ -114,7 +128,14 @@ namespace steemit { namespace chain {
 
    struct by_name;
    struct by_proxy;
+   struct by_last_post;
    struct by_next_vesting_withdrawal;
+   struct by_steem_balance;
+   struct by_smp_balance;
+   struct by_smd_balance;
+   struct by_post_count;
+   struct by_vote_count;
+
    /**
     * @ingroup object_index
     */
@@ -136,6 +157,48 @@ namespace steemit { namespace chain {
                member<account_object, time_point_sec, &account_object::next_vesting_withdrawal >,
                member<object, object_id_type, &object::id >
             > /// composite key by_next_vesting_withdrawal
+         >,
+         ordered_unique< tag< by_last_post >,
+            composite_key< account_object,
+               member<account_object, time_point_sec, &account_object::last_post >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< time_point_sec >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_steem_balance >,
+            composite_key< account_object,
+               member<account_object, asset, &account_object::balance >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< asset >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_smp_balance >,
+            composite_key< account_object,
+               member<account_object, asset, &account_object::vesting_shares >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< asset >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_smd_balance >,
+            composite_key< account_object,
+               member<account_object, asset, &account_object::sbd_balance >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< asset >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_post_count >,
+            composite_key< account_object,
+               member<account_object, uint32_t, &account_object::post_count >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< uint32_t >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_vote_count >,
+            composite_key< account_object,
+               member<account_object, uint32_t, &account_object::lifetime_vote_count >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< uint32_t >, std::less< object_id_type > >
          >
       >
    > account_multi_index_type;
@@ -146,11 +209,11 @@ namespace steemit { namespace chain {
 
 FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)
-                    (created)(comment_count)(lifetime_vote_count)(voting_power)(last_vote_time)
+                    (created)(mined)(comment_count)(lifetime_vote_count)(post_count)(voting_power)(last_vote_time)
                     (balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)
-                    (proxied_vsf_votes)
+                    (proxied_vsf_votes)(witnesses_voted_for)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)

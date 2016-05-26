@@ -2,6 +2,7 @@
 #include <boost/program_options.hpp>
 
 #include <graphene/db/simple_index.hpp>
+#include <graphene/time/time.hpp>
 #include <graphene/utilities/tempdir.hpp>
 
 #include <steemit/chain/steem_objects.hpp>
@@ -26,8 +27,7 @@ namespace steemit { namespace chain {
 using std::cout;
 using std::cerr;
 
-database_fixture::database_fixture()
-   : app(), db( *app.chain_database() )
+clean_database_fixture::clean_database_fixture()
 {
    try {
    int argc = boost::unit_test::framework::master_test_suite().argc;
@@ -51,11 +51,17 @@ database_fixture::database_fixture()
    ahplugin->plugin_set_app( &app );
    ahplugin->plugin_initialize( options );
 
-   // Set account create fee to a smaller amount
-   const auto& init_miner = db.get_witness( STEEMIT_INIT_MINER_NAME );
-
    generate_block();
+   db.set_hardfork( STEEMIT_NUM_HARDFORKS );
    vest( "initminer", 10000 );
+
+   // Fill up the rest of the required miners
+   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_MINERS; i++ )
+   {
+      account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+   }
 
    validate_database();
    } catch ( const fc::exception& e )
@@ -67,7 +73,7 @@ database_fixture::database_fixture()
    return;
 }
 
-database_fixture::~database_fixture()
+clean_database_fixture::~clean_database_fixture()
 { try {
    // If we're unwinding due to an exception, don't do any more checks.
    // This way, boost test's last checkpoint tells us approximately where the error was.
@@ -80,6 +86,47 @@ database_fixture::~database_fixture()
       db.close();
    return;
 } FC_CAPTURE_AND_RETHROW() }
+
+live_database_fixture::live_database_fixture()
+{
+   try
+   {
+      ilog( "Loading saved chain" );
+      _chain_dir = fc::current_path() / "test_blockchain";
+      FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
+
+      db.open( _chain_dir );
+      graphene::time::now();
+
+      auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
+      ahplugin->plugin_set_app( &app );
+      ahplugin->plugin_initialize( boost::program_options::variables_map() );
+
+      validate_database();
+      generate_block();
+
+      ilog( "Done loading saved chain" );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+live_database_fixture::~live_database_fixture()
+{
+   try
+   {
+      // If we're unwinding due to an exception, don't do any more checks.
+      // This way, boost test's last checkpoint tells us approximately where the error was.
+      if( !std::uncaught_exception() )
+      {
+         BOOST_CHECK( db.get_node_properties().skip_flags == database::skip_nothing );
+      }
+
+      db.pop_block();
+      db.close();
+      return;
+   }
+   FC_LOG_AND_RETHROW()
+}
 
 fc::ecc::private_key database_fixture::generate_private_key(string seed)
 {
@@ -124,7 +171,7 @@ void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_i
 {
    if( miss_intermediate_blocks )
    {
-      //generate_block();
+      generate_block();
       auto slots_to_miss = db.get_slot_at_time(timestamp);
       if( slots_to_miss <= 1 )
          return;
@@ -325,21 +372,11 @@ void database_fixture::set_price_feed( const price& new_price )
    {
       for ( int i = 1; i < 8; i++ )
       {
-         try
-         {
-            db.get_witness( "STEEMIT_INIT_MINER_NAME + fc::to_string( i )" );
-         }
-         catch ( fc::assert_exception e )
-         {
-            account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-            fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
-            witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
-         }
-
          feed_publish_operation op;
          op.publisher = STEEMIT_INIT_MINER_NAME + fc::to_string( i );
          op.exchange_rate = new_price;
          trx.operations.push_back( op );
+         trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
          db.push_transaction( trx, ~0 );
          trx.operations.clear();
       }
@@ -389,7 +426,11 @@ void database_fixture::validate_database( void )
          total_supply += itr->balance;
          total_sbd += itr->sbd_balance;
          total_vesting += itr->vesting_shares;
-         total_vsf_votes += itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ? itr->proxied_vsf_votes + itr->vesting_shares.amount : 0;
+         total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
+                                 itr->witness_vote_weight() :
+                                 ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
+                                      itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
+                                      itr->vesting_shares.amount ) );
       }
 
       const auto& convert_request_idx = db.get_index_type< convert_index >().indices().get< by_id >();
@@ -418,16 +459,30 @@ void database_fixture::validate_database( void )
          }
       }
 
+      fc::uint128_t total_rshares2;
+      fc::uint128_t total_children_rshares2;
+
+      const auto& comment_idx = db.get_index_type< comment_index >().indices().get< by_id >();
+
+      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
+      {
+         if( itr->net_rshares.value > 0 )
+            total_rshares2 += fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+         if( itr->parent_author.size() == 0 )
+            total_children_rshares2 += itr->children_rshares2;
+      }
+
       auto gpo = db.get_dynamic_global_properties();
 
       total_supply += gpo.total_vesting_fund_steem
          + gpo.total_reward_fund_steem;
 
-      BOOST_REQUIRE_EQUAL( gpo.current_supply.amount.value, total_supply.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.current_sbd_supply.amount.value, total_sbd.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vesting.amount.value );
-      BOOST_REQUIRE_EQUAL( gpo.total_vesting_shares.amount.value, total_vsf_votes.value );
-      BOOST_REQUIRE( gpo.virtual_supply >= gpo.current_supply );
+      FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
+      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
+      FC_ASSERT( gpo.total_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
+      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
+      FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
+      FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
       if ( !db.get_feed_history().current_median_history.is_null() )
          BOOST_REQUIRE( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
             == gpo.virtual_supply );

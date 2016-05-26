@@ -20,9 +20,9 @@ namespace steemit { namespace chain {
          return &a[1];
       }
 
-      uint64_t asset::precision()const {
+       int64_t asset::precision()const {
 
-         static uint64_t table[] = {
+         static int64_t table[] = {
                            1, 10, 100, 1000, 10000,
                            100000, 1000000, 10000000, 100000000ll,
                            1000000000ll, 10000000000ll,
@@ -127,14 +127,14 @@ namespace steemit { namespace chain {
          {
             FC_ASSERT( b.base.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.quote.amount.value)/b.base.amount.value;
-            FC_ASSERT( result <= STEEMIT_MAX_SHARE_SUPPLY );
+            FC_ASSERT( result.hi == 0 );
             return asset( result.to_uint64(), b.quote.symbol );
          }
          else if( a.symbol_name() == b.quote.symbol_name() )
          {
             FC_ASSERT( b.quote.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.base.amount.value)/b.quote.amount.value;
-            FC_ASSERT( result <= STEEMIT_MAX_SHARE_SUPPLY );
+            FC_ASSERT( result.hi == 0 );
             return asset( result.to_uint64(), b.base.symbol );
          }
          FC_THROW_EXCEPTION( fc::assert_exception, "invalid asset * price", ("asset",a)("price",b) );

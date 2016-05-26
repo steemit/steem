@@ -48,7 +48,14 @@ class hello_api_plugin : public steemit::app::plugin
 class hello_api_api
 {
    public:
-      hello_api_api( steemit::app::application& app );
+      hello_api_api( const steemit::app::api_context& ctx );
+
+      /**
+       * Called immediately after the constructor.  If the API class uses enable_shared_from_this,
+       * shared_from_this() is available in this method, which allows signal handlers to be registered
+       * with app::connect_signal()
+       */
+      void on_api_startup();
       std::string get_message();
 
    private:
@@ -89,7 +96,9 @@ std::string hello_api_plugin::get_message()
    return result.str();
 }
 
-hello_api_api::hello_api_api( steemit::app::application& app ) : _app(app) {}
+hello_api_api::hello_api_api( const steemit::app::api_context& ctx ) : _app(ctx.app) {}
+
+void hello_api_api::on_api_startup() {}
 
 std::string hello_api_api::get_message()
 {

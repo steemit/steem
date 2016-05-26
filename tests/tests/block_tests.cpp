@@ -21,13 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
+#ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/exceptions.hpp>
-
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/history_object.hpp>
+#include <steemit/account_history/account_history_plugin.hpp>
 
 #include <graphene/utilities/tempdir.hpp>
 
@@ -436,7 +437,7 @@ BOOST_AUTO_TEST_CASE( tapos )
    }
 }
 
-BOOST_FIXTURE_TEST_CASE( optional_tapos, database_fixture )
+BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
 {
    try
    {
@@ -505,7 +506,7 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, database_fixture )
    }
 }
 
-BOOST_FIXTURE_TEST_CASE( double_sign_check, database_fixture )
+BOOST_FIXTURE_TEST_CASE( double_sign_check, clean_database_fixture )
 { try {
    generate_block();
    ACTOR(bob);
@@ -548,7 +549,7 @@ BOOST_FIXTURE_TEST_CASE( double_sign_check, database_fixture )
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
+BOOST_FIXTURE_TEST_CASE( pop_block_twice, clean_database_fixture )
 {
    try
    {
@@ -588,7 +589,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, database_fixture )
    }
 }
 
-BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, database_fixture )
+BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, clean_database_fixture )
 {
    try
    {
@@ -722,7 +723,7 @@ BOOST_FIXTURE_TEST_CASE( rsf_missed_blocks, database_fixture )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_FIXTURE_TEST_CASE( skip_block, database_fixture )
+BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
 {
    try
    {
@@ -763,7 +764,7 @@ BOOST_FIXTURE_TEST_CASE( skip_block, database_fixture )
  *  this wouldn't happen.
  */
 /*
-BOOST_FIXTURE_TEST_CASE( pow_blocks, database_fixture ) {
+BOOST_FIXTURE_TEST_CASE( pow_blocks, clean_database_fixture ) {
 try {
    ACTOR(bob1);
    ACTOR(bob2);
@@ -830,7 +831,7 @@ try {
 } FC_LOG_AND_RETHROW() }
 */
 /*
-BOOST_FIXTURE_TEST_CASE( pow_block, database_fixture )
+BOOST_FIXTURE_TEST_CASE( pow_block, clean_database_fixture )
 {
    try
    {
@@ -972,4 +973,86 @@ BOOST_FIXTURE_TEST_CASE( overproduction_test )
 }
 //*/
 
+BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
+{
+   try
+   {
+      /* Setup code from clean fixture sans setting hardforks */
+      try {
+         int argc = boost::unit_test::framework::master_test_suite().argc;
+         char** argv = boost::unit_test::framework::master_test_suite().argv;
+         for( int i=1; i<argc; i++ )
+         {
+            const std::string arg = argv[i];
+            if( arg == "--record-assert-trip" )
+               fc::enable_record_assert_trip = true;
+            if( arg == "--show-test-names" )
+               std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
+         }
+         auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
+         init_account_pub_key = init_account_priv_key.get_public_key();
+
+         boost::program_options::variables_map options;
+
+         open_database();
+
+         // app.initialize();
+         ahplugin->plugin_set_app( &app );
+         ahplugin->plugin_initialize( options );
+
+         generate_block();
+         vest( "initminer", 10000 );
+
+         // Fill up the rest of the required miners
+         for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_MINERS; i++ )
+         {
+            account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+            fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
+            witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+         }
+
+         validate_database();
+      } catch ( const fc::exception& e )
+      {
+         edump( (e.to_detail_string()) );
+         throw;
+      }
+
+      BOOST_TEST_MESSAGE( "Check hardfork not applied at genesis" );
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( !db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
+
+      BOOST_TEST_MESSAGE( "Generate blocks up to the hardfork time and check hardfork still not applied" );
+      generate_blocks( fc::time_point_sec( STEEMIT_HARDFORK_0_1_TIME - STEEMIT_BLOCK_INTERVAL ), true );
+
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( !db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
+
+      BOOST_TEST_MESSAGE( "Generate a block and check hardfork is applied" );
+      generate_block();
+
+      string op_msg = "Testnet: Hardfork applied";
+      auto itr = db.get_index_type< account_history_index >().indices().get< by_id >().end();
+      itr--;
+
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
+      BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
+      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() );
+
+      BOOST_TEST_MESSAGE( "Testing hardfork is only applied once" );
+      generate_block();
+
+      itr = db.get_index_type< account_history_index >().indices().get< by_id >().end();
+      itr--;
+
+      BOOST_REQUIRE( db.has_hardfork( 0 ) );
+      BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
+      BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
+      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() - STEEMIT_BLOCK_INTERVAL );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
+#endif

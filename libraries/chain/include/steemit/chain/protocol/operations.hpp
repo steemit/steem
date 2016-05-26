@@ -4,6 +4,9 @@
 
 namespace steemit { namespace chain {
 
+   /** NOTE: do not change the order of any operations prior to the virtual operations
+    * or it will trigger a hardfork.
+    */
    typedef fc::static_variant<
             vote_operation,
             comment_operation,
@@ -31,14 +34,18 @@ namespace steemit { namespace chain {
 
             report_over_production_operation,
 
+            delete_comment_operation,
+            custom_json_operation,
+
             /// virtual operations below this point
-            fill_convert_request_operation, 
-            comment_reward_operation, 
-            curate_reward_operation, 
-            liquidity_reward_operation, 
-            interest_operation, 
-            fill_vesting_withdraw_operation, 
-            fill_order_operation 
+            fill_convert_request_operation,
+            comment_reward_operation,
+            curate_reward_operation,
+            liquidity_reward_operation,
+            interest_operation,
+            fill_vesting_withdraw_operation,
+            fill_order_operation,
+            comment_payout_operation
 
          > operation;
 

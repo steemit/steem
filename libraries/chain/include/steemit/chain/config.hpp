@@ -3,6 +3,8 @@
  */
 #pragma once
 
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 5, 0) )
+
 #ifdef IS_TEST_NET
 #define STEEMIT_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
 #define STEEMIT_INIT_PUBLIC_KEY_STR             (std::string( steemit::chain::public_key_type(STEEMIT_INIT_PRIVATE_KEY.get_public_key()) ))
@@ -11,16 +13,19 @@
 #define VESTS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< VESTS with 6 digits of precision
 #define STEEM_SYMBOL  (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< STEEM with 3 digits of precision
 #define SBD_SYMBOL    (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< Test Backed Dollars with 3 digits of precision
+#define STMD_SYMBOL   (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('S') << 16) | (uint64_t('T') << 24) | (uint64_t('D') << 32) ) ///< Test Dollars with 3 digits of precision
 
 #define STEEMIT_SYMBOL                          "TEST"
 #define STEEMIT_ADDRESS_PREFIX                  "TST"
 
-#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec())
-#define STEEMIT_MINING_TIME                     (fc::time_point_sec())
-#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec())
+#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1451606400))
+#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
+#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
+#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
 
-#define STEEMIT_MIN_ACCOUNT_CREATION_FEE        0
+#define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE 0
+#define STEEMIT_MIN_ACCOUNT_CREATION_FEE          0
 
 
 #else // IS LIVE STEEM NETWORK
@@ -30,6 +35,7 @@
 #define VESTS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< VESTS with 6 digits of precision
 #define STEEM_SYMBOL  (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('E') << 24) | (uint64_t('E') << 32) | (uint64_t('M') << 40)) ///< STEEM with 3 digits of precision
 #define SBD_SYMBOL    (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< STEEM Backed Dollars with 3 digits of precision
+#define STMD_SYMBOL   (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('M') << 24) | (uint64_t('D') << 32) ) ///< STEEM Dollars with 3 digits of precision
 #define STEEMIT_SYMBOL                          "STEEM"
 #define STEEMIT_ADDRESS_PREFIX                  "STM"
 
@@ -37,11 +43,12 @@
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
 #define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1467590400))  /// July 4th
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24)  /// 1 day
+#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2) /// 2 hours
 
-#define STEEMIT_MIN_ACCOUNT_CREATION_FEE        100000
+#define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE  100000
+#define STEEMIT_MIN_ACCOUNT_CREATION_FEE           1
 
 #endif
-
 
 #define STEEMIT_BLOCK_INTERVAL                  3
 #define STEEMIT_BLOCKS_PER_YEAR                 (365*24*60*60/STEEMIT_BLOCK_INTERVAL)
@@ -52,13 +59,20 @@
 #define STEEMIT_INIT_MINER_NAME                 "initminer"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
-#define STEEMIT_MAX_MINERS                      21 /// 21 is more than enough
+#define STEEMIT_MAX_VOTED_WITNESSES             19
+#define STEEMIT_MAX_MINER_WITNESSES             1
+#define STEEMIT_MAX_RUNNER_WITNESSES            1
+#define STEEMIT_MAX_MINERS                      (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
+#define STEEMIT_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 20 dpos witnesses (19 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define STEEMIT_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define STEEMIT_MAX_MEMO_SIZE                   2048
 #define STEEMIT_MAX_PROXY_RECURSION_DEPTH       4
 #define STEEMIT_VESTING_WITHDRAW_INTERVALS      104
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (60*60*24) // 1 day
+#define STEEMIT_MAX_VOTE_CHANGES                5
+
+#define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
 #define STEEMIT_100_PERCENT                     10000
 #define STEEMIT_1_PERCENT                       (STEEMIT_100_PERCENT/100)
@@ -73,7 +87,7 @@
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
 #define STEEMIT_MAX_COMMENT_DEPTH               6
 
-#define STEEMIT_MAX_RESERVE_RATIO   (10000)
+#define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
 
 #define STEEMIT_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )
@@ -88,16 +102,49 @@
 #define STEEMIT_MIN_PRODUCER_REWARD             STEEMIT_MINING_REWARD
 #define STEEMIT_MIN_POW_REWARD                  STEEMIT_MINING_REWARD
 
-#define STEEMIT_CURATE_APR                      5
-#define STEEMIT_CONTENT_APR                     5
-#define STEEMIT_LIQUIDITY_APR                   1
-#define STEEMIT_PRODUCER_APR                    1
-#define STEEMIT_POW_APR                         1
+// 5ccc e802 de5f
+// int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)
+// we use 100000 here instead of 10000 because we end up creating an additional 9x for vesting
+#define STEEMIT_APR_PERCENT_MULTIPLY_PER_BLOCK          ( (uint64_t( 0x5ccc ) << 0x20) \
+                                                        | (uint64_t( 0xe802 ) << 0x10) \
+                                                        | (uint64_t( 0xde5f )        ) \
+                                                        )
+// chosen to be the maximal value such that STEEMIT_APR_PERCENT_MULTIPLY_PER_BLOCK * 2**64 * 100000 < 2**128
+#define STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK             87
+
+#define STEEMIT_APR_PERCENT_MULTIPLY_PER_ROUND          ( (uint64_t( 0x79cc ) << 0x20 ) \
+                                                        | (uint64_t( 0xf5c7 ) << 0x10 ) \
+                                                        | (uint64_t( 0x3480 )         ) \
+                                                        )
+
+#define STEEMIT_APR_PERCENT_SHIFT_PER_ROUND             83
+
+// We have different constants for hourly rewards
+// i.e. hex(int(math.expm1( math.log1p( 1 ) / HOURS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_HOUR / 100000 + 0.5))
+#define STEEMIT_APR_PERCENT_MULTIPLY_PER_HOUR           ( (uint64_t( 0x6cc1 ) << 0x20) \
+                                                        | (uint64_t( 0x39a1 ) << 0x10) \
+                                                        | (uint64_t( 0x5cbd )        ) \
+                                                        )
+
+// chosen to be the maximal value such that STEEMIT_APR_PERCENT_MULTIPLY_PER_HOUR * 2**64 * 100000 < 2**128
+#define STEEMIT_APR_PERCENT_SHIFT_PER_HOUR              77
+
+// These constants add up to GRAPHENE_100_PERCENT.  Each GRAPHENE_1_PERCENT is equivalent to 1% per year APY
+// *including the corresponding 9x vesting rewards*
+#define STEEMIT_CURATE_APR_PERCENT              3875
+#define STEEMIT_CONTENT_APR_PERCENT             3875
+#define STEEMIT_LIQUIDITY_APR_PERCENT            750
+#define STEEMIT_PRODUCER_APR_PERCENT             750
+#define STEEMIT_POW_APR_PERCENT                  750
 
 #define STEEMIT_MIN_PAYOUT_SBD                  (asset(20,SBD_SYMBOL))
 
 #define STEEMIT_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEMIT_MAX_ACCOUNT_NAME_LENGTH         16
+
+#define STEEMIT_MIN_PERMLINK_LENGTH             0
+#define STEEMIT_MAX_PERMLINK_LENGTH             256
+#define STEEMIT_MAX_WITNESS_URL_LENGTH          2048
 
 #define STEEMIT_INIT_SUPPLY                     int64_t(0)
 #define STEEMIT_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
@@ -130,13 +177,6 @@
 #define STEEMIT_MAX_AUTHORITY_MEMBERSHIP        10
 #define STEEMIT_MAX_ASSET_WHITELIST_AUTHORITIES 10
 #define STEEMIT_MAX_URL_LENGTH                  127
-
-/**
- * every second, the fraction of burned core asset which cycles is
- * STEEMIT_CORE_ASSET_CYCLE_RATE / (1 << STEEMIT_CORE_ASSET_CYCLE_RATE_BITS)
- */
-#define STEEMIT_CORE_ASSET_CYCLE_RATE           17
-#define STEEMIT_CORE_ASSET_CYCLE_RATE_BITS      32
 
 #define GRAPHENE_CURRENT_DB_VERSION             "GPH2.4"
 

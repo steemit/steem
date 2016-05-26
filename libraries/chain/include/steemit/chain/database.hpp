@@ -4,6 +4,7 @@
 #pragma once
 #include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/global_property_object.hpp>
+#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
 #include <steemit/chain/fork_database.hpp>
 #include <steemit/chain/block_database.hpp>
@@ -48,10 +49,10 @@ namespace steemit { namespace chain {
             skip_tapos_check            = 1 << 5,  ///< used while reindexing -- note this skips expiration check as well
             skip_authority_check        = 1 << 6,  ///< used while reindexing -- disables any checking of authority on transactions
             skip_merkle_check           = 1 << 7,  ///< used while reindexing
-            skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
-            skip_undo_history_check     = 1 << 9,  ///< used while reindexing
-            skip_witness_schedule_check = 1 << 10,  ///< used while reindexing
-            skip_validate               = 1 << 11 ///< used prior to checkpoint, skips validate() call on transaction
+            skip_undo_history_check     = 1 << 8,  ///< used while reindexing
+            skip_witness_schedule_check = 1 << 9,  ///< used while reindexing
+            skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
+            skip_validate_invariants    = 1 << 11  ///< used to skip database invariant check on block application
          };
 
          /**
@@ -153,12 +154,23 @@ namespace steemit { namespace chain {
           *  observers which may want to index these operations.
           *
           *  @return the op_id which can be used to set the result after it has finished being applied.
+          *  @todo rename this method notify_pre_apply_operation( op )
           */
          void push_applied_operation( const operation& op );
+         void notify_post_apply_operation( const operation& op );
+
          /**
-          * This signal is emitted for plugins to process every operation
+          * This signal is emitted for plugins to process every operation before it gets applied.
+          *
+          *  @deprecated - use pre_apply_operation instead
           */
          fc::signal<void(const operation_object&)> on_applied_operation;
+
+         /**
+          *  This signal is emitted for plugins to process every operation after it has been fully applied.
+          */
+         fc::signal<void(const operation_object&)> pre_apply_operation;
+         fc::signal<void(const operation_object&)> post_apply_operation;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
@@ -240,10 +252,23 @@ namespace steemit { namespace chain {
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
 
-         void adjust_witness_votes( const account_object& a, share_type delta, int depth = 0 );
+         /** this updates the votes for witnesses as a result of account voting proxy changing */
+         void adjust_proxied_witness_votes( const account_object& a,
+                                            const std::array< share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1 >& delta,
+                                            int depth = 0 );
+
+         /** this updates the votes for all witnesses as a result of account VESTS changing */
+         void adjust_proxied_witness_votes( const account_object& a, share_type delta, int depth = 0 );
+
+         /** this is called by `adjust_proxied_witness_votes` when account proxy to self */
+         void adjust_witness_votes( const account_object& a, share_type delta );
+
+         /** this updates the vote of a single witness as a result of a vote being added or removed*/
+         void adjust_witness_vote( const witness_object& obj, share_type delta );
+
          /** clears all vote records for a particular account but does not update the
           * witness vote totals.  Vote totals should be updated first via a call to
-          * adjust_witness_votes( a, -a.witness_vote_weight() )
+          * adjust_proxied_witness_votes( a, -a.witness_vote_weight() )
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
@@ -316,6 +341,16 @@ namespace steemit { namespace chain {
          void cancel_order( const limit_order_object& obj );
          int  match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
 
+         void perform_vesting_share_split( uint32_t magnitude );
+         void retally_witness_votes();
+
+         bool has_hardfork( uint32_t hardfork )const;
+
+         /* For testing and debugging only. Given a hardfork
+            with id N, applies all hardforks with id <= N */
+         void set_hardfork( uint32_t hardfork, bool process_now = true );
+
+         void validate_invariants()const;
          /**
           * @}
           */
@@ -342,16 +377,28 @@ namespace steemit { namespace chain {
          const witness_object& validate_block_header( uint32_t skip, const signed_block& next_block )const;
          void create_block_summary(const signed_block& next_block);
 
+         void update_witness_schedule4();
+         void update_median_witness_props();
+
          void update_global_dynamic_data( const signed_block& b );
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
          void clear_expired_orders();
+         void process_header_extensions( const signed_block& next_block );
+
+         void reset_virtual_schedule_time();
+
+         void init_hardforks();
+         void process_hardforks();
+         void apply_hardfork( uint32_t hardfork );
 
          ///@}
 
-         vector< signed_transaction >        _pending_tx;
-         fork_database                       _fork_db;
+         vector< signed_transaction >  _pending_tx;
+         fork_database                 _fork_db;
+         fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
+         hardfork_version              _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
          /**
           *  Note: we can probably store blocks by block num rather than
@@ -374,7 +421,6 @@ namespace steemit { namespace chain {
 
          node_property_object              _node_property_object;
 
-         void validate()const;
    };
 
 

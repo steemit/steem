@@ -72,6 +72,9 @@ using std::vector;
 
 namespace bpo = boost::program_options;
 
+api_context::api_context( application& _app, const std::string& _api_name, std::weak_ptr< api_connection_context > _connection )
+   : app(_app), api_name(_api_name), connection(_connection) {}
+
 namespace detail {
 
    class application_impl : public graphene::net::node_delegate
@@ -160,20 +163,7 @@ namespace detail {
 
          _websocket_server = std::make_shared<fc::http::websocket_server>();
 
-         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
-            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            for( const std::string& name : _public_apis )
-            {
-               fc::api_ptr api = create_api_by_name( name );
-               if( !api )
-               {
-                  elog( "Couldn't create API ${name}", ("name", name) );
-                  continue;
-               }
-               api->register_api( *wsc );
-            }
-            c->set_session_data( wsc );
-         });
+         _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
          ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
          _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
          _websocket_server->start_accept();
@@ -193,24 +183,31 @@ namespace detail {
          string password = _options->count("server-pem-password") ? _options->at("server-pem-password").as<string>() : "";
          _websocket_tls_server = std::make_shared<fc::http::websocket_tls_server>( _options->at("server-pem").as<string>(), password );
 
-         _websocket_tls_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){
-            auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-            for( const std::string& name : _public_apis )
-            {
-               fc::api_ptr api = create_api_by_name( name );
-               if( !api )
-               {
-                  elog( "Couldn't create API ${name}", ("name", name) );
-                  continue;
-               }
-               api->register_api( *wsc );
-            }
-            c->set_session_data( wsc );
-         });
+         _websocket_tls_server->on_connection([this]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
          ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
          _websocket_tls_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-tls-endpoint").as<string>()) );
          _websocket_tls_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
+
+      void on_connection( const fc::http::websocket_connection_ptr& c )
+      {
+         auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
+         std::shared_ptr< api_connection_context > conn_ctx = std::make_shared< api_connection_context >();
+
+         for( const std::string& name : _public_apis )
+         {
+            api_context ctx( *_self, name, conn_ctx );
+            fc::api_ptr api = create_api_by_name( ctx );
+            if( !api )
+            {
+               elog( "Couldn't create API ${name}", ("name", name) );
+               continue;
+            }
+            conn_ctx->api_map[name] = api;
+            api->register_api( *wsc );
+         }
+         c->set_session_data( wsc );
+      }
 
       application_impl(application* self)
          : _self(self),
@@ -227,8 +224,8 @@ namespace detail {
       {
          _self->register_api_factory< login_api >( "login_api" );
          _self->register_api_factory< database_api >( "database_api" );
-         _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
          _self->register_api_factory< network_node_api >( "network_node_api" );
+         _self->register_api_factory< network_broadcast_api >( "network_broadcast_api" );
       }
 
       void startup()
@@ -333,6 +330,7 @@ namespace detail {
             wild_access.allowed_apis.push_back( "network_broadcast_api" );
             wild_access.allowed_apis.push_back( "history_api" );
             wild_access.allowed_apis.push_back( "crypto_api" );
+            wild_access.allowed_apis.push_back( "tag_api" );
             _apiaccess.permission_map["*"] = wild_access;
          }
 
@@ -370,17 +368,20 @@ namespace detail {
          _apiaccess.permission_map.insert(std::make_pair(username, std::move(permissions)));
       }
 
-      void register_api_factory( const string& name, std::function< fc::api_ptr() > factory )
+      void register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory )
       {
          _api_factories_by_name[name] = factory;
       }
 
-      fc::api_ptr create_api_by_name( const string& name )
+      fc::api_ptr create_api_by_name( const api_context& ctx )
       {
-         auto it = _api_factories_by_name.find(name);
+         auto it = _api_factories_by_name.find(ctx.api_name);
          if( it == _api_factories_by_name.end() )
+         {
+            wlog( "unknown api: ${api}", ("api",ctx.api_name) );
             return nullptr;
-         return it->second();
+         }
+         return it->second(ctx);
       }
 
       /**
@@ -417,6 +418,12 @@ namespace detail {
                  ("n", blk_msg.block.block_num()) );
          }
 
+         time_point_sec now = graphene::time::now();
+
+         uint64_t max_accept_time = now.sec_since_epoch();
+         max_accept_time += allow_future_time;
+         FC_ASSERT( blk_msg.block.timestamp.sec_since_epoch() <= max_accept_time );
+
          try {
             // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
             // you can help the network code out by throwing a block_older_than_undo_history exception.
@@ -451,16 +458,6 @@ namespace detail {
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         /*static fc::time_point last_call;
-         static int trx_count = 0;
-         ++trx_count;
-         auto now = fc::time_point::now();
-         if( now - last_call > fc::seconds(1) ) {
-            ilog("Got ${c} transactions from network", ("c",trx_count) );
-            last_call = now;
-            trx_count = 0;
-         }*/
-
          _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
@@ -796,10 +793,11 @@ namespace detail {
 
       std::map<string, std::shared_ptr<abstract_plugin> > _plugins_available;
       std::map<string, std::shared_ptr<abstract_plugin> > _plugins_enabled;
-      flat_map< std::string, std::function< fc::api_ptr() > >          _api_factories_by_name;
+      flat_map< std::string, std::function< fc::api_ptr( const api_context& ) > >   _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
 
       bool _is_finished_syncing = false;
+      uint32_t allow_future_time = 5;
    };
 
 }
@@ -912,14 +910,14 @@ bool application::is_finished_syncing() const
    return my->_is_finished_syncing;
 }
 
-void application::register_api_factory( const string& name, std::function< fc::api_ptr() > factory )
+void application::register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory )
 {
    return my->register_api_factory( name, factory );
 }
 
-fc::api_ptr application::create_api_by_name( const string& name )
+fc::api_ptr application::create_api_by_name( const api_context& ctx )
 {
-   return my->create_api_by_name( name );
+   return my->create_api_by_name( ctx );
 }
 
 void application::shutdown_plugins()

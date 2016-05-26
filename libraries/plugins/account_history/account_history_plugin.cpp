@@ -80,6 +80,7 @@ void account_history_plugin_impl::on_operation( const operation_object& op_obj )
                obj.trx_in_block = op_obj.trx_in_block;
                obj.op_in_trx    = op_obj.op_in_trx;
                obj.virtual_op   = op_obj.virtual_op;
+               obj.timestamp    = db.head_block_time();
                obj.op           = op_obj.op;
             });
          }

@@ -306,6 +306,8 @@ public:
    {
       auto dynamic_props = _remote_db->get_dynamic_global_properties();
       fc::mutable_variant_object result(fc::variant(dynamic_props).get_object());
+      result["witness_majority_version"] = fc::string( _remote_db->get_witness_schedule().majority_version );
+      result["hardfork_version"] = fc::string( _remote_db->get_hardfork_version() );
       result["head_block_num"] = dynamic_props.head_block_number;
       result["head_block_id"] = dynamic_props.head_block_id;
       result["head_block_age"] = fc::get_approximate_relative_time_string(dynamic_props.time,
@@ -351,7 +353,7 @@ public:
       return result;
    }
 
-   account_object get_account( string account_name ) const
+   extended_account get_account( string account_name ) const
    {
       auto accounts = _remote_db->get_accounts( { account_name } );
       FC_ASSERT( !accounts.empty(), "Unknown account" );
@@ -360,15 +362,21 @@ public:
 
    string get_wallet_filename() const { return _wallet_filename; }
 
-   fc::ecc::private_key              get_private_key(const public_key_type& id)const
+   optional<fc::ecc::private_key>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
-      FC_ASSERT( it != _keys.end() );
-
-      fc::optional< fc::ecc::private_key > privkey = wif_to_key( it->second );
-      FC_ASSERT( privkey );
-      return *privkey;
+      if( it != _keys.end() )
+         return wif_to_key( it->second );
+      return optional<fc::ecc::private_key>();
    }
+
+   fc::ecc::private_key              get_private_key(const public_key_type& id)const
+   {
+      auto has_key = try_get_private_key( id );
+      FC_ASSERT( has_key );
+      return *has_key;
+   }
+
 
    fc::ecc::private_key get_private_key_for_account(const account_object& account)const
    {
@@ -518,7 +526,6 @@ public:
          {
             //_remote_net_broadcast->broadcast_transaction( tx );
             auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx );
-            idump((result));
          }
          return tx;
    } FC_CAPTURE_AND_RETHROW( (account_name)(creator_account_name)(broadcast) ) }
@@ -550,8 +557,6 @@ public:
 
       tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
 
-      idump((req_posting_approvals)(req_active_approvals));
-
       for( const auto& auth : other_auths )
          for( const auto& a : auth.account_auths )
             req_active_approvals.insert(a.first);
@@ -569,12 +574,11 @@ public:
 
       /// TODO: fetch the accounts specified via other_auths as well.
 
-      vector< account_object > approving_account_objects =
-            _remote_db->get_accounts( v_approving_account_names );
+      auto approving_account_objects = _remote_db->get_accounts( v_approving_account_names );
 
       /// TODO: recursively check one layer deeper in the authority tree for keys
 
-      FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size() );
+      FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size(), "", ("aco.size:", approving_account_objects.size())("acn",v_approving_account_names.size()) );
 
       flat_map< string, account_object > approving_account_lut;
       size_t i = 0;
@@ -590,6 +594,12 @@ public:
          approving_account_lut[ approving_acct->name ] =  *approving_acct;
          i++;
       }
+      auto get_account_from_lut = [&]( const std::string& name ) -> const account_object&
+      {
+         auto it = approving_account_lut.find( name );
+         FC_ASSERT( it != approving_account_lut.end() );
+         return it->second;
+      };
 
       flat_set<public_key_type> approving_key_set;
       for( string& acct_name : req_active_approvals )
@@ -643,14 +653,15 @@ public:
             approving_key_set.insert( k.first );
          }
       }
-      idump((approving_key_set));
 
       auto dyn_props = _remote_db->get_dynamic_global_properties();
       tx.set_reference_block( dyn_props.head_block_id );
       tx.set_expiration( dyn_props.time + fc::seconds(30) );
       tx.signatures.clear();
 
-      idump((_keys));
+      //idump((_keys));
+      flat_set< public_key_type > available_keys;
+      flat_map< public_key_type, fc::ecc::private_key > available_private_keys;
       for( const public_key_type& key : approving_key_set )
       {
          auto it = _keys.find(key);
@@ -658,20 +669,34 @@ public:
          {
             fc::optional<fc::ecc::private_key> privkey = wif_to_key( it->second );
             FC_ASSERT( privkey.valid(), "Malformed private key in _keys" );
-
-            tx.sign( *privkey, STEEMIT_CHAIN_ID );
+            available_keys.insert(key);
+            available_private_keys[key] = *privkey;
          }
-         /// TODO: if transaction has enough signatures to be "valid" don't add any more,
-         /// there are cases where the wallet may have more keys than strictly necessary and
-         /// the transaction will be rejected if the transaction validates without requiring
-         /// all signatures provided
+      }
+
+      auto minimal_signing_keys = tx.minimize_required_signatures(
+         STEEMIT_CHAIN_ID,
+         available_keys,
+         [&]( const string& account_name ) -> const authority*
+         { return &(get_account_from_lut( account_name ).active); },
+         [&]( const string& account_name ) -> const authority*
+         { return &(get_account_from_lut( account_name ).owner); },
+         [&]( const string& account_name ) -> const authority*
+         { return &(get_account_from_lut( account_name ).posting); },
+         STEEMIT_MAX_SIG_CHECK_DEPTH
+         );
+
+      for( const public_key_type& k : minimal_signing_keys )
+      {
+         auto it = available_private_keys.find(k);
+         FC_ASSERT( it != available_private_keys.end() );
+         tx.sign( it->second, STEEMIT_CHAIN_ID );
       }
 
       if( broadcast ) {
          try {
             auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx );
             annotated_signed_transaction rtrx(tx);
-            idump((result));
             rtrx.block_num = result.get_object()["block_num"].as_uint64();
             rtrx.transaction_num = result.get_object()["trx_num"].as_uint64();
             return rtrx;
@@ -807,11 +832,23 @@ public:
       }
       catch( const fc::exception& e )
       {
-         std::cerr << "\nCouldn't get network node API.  You probably are not configured\n"
-         "to access the network API on the witness_node you are\n"
-         "connecting to.  Please follow the instructions in README.md to set up an apiaccess file.\n"
-         "\n";
+         elog( "Couldn't get network node API" );
          throw(e);
+      }
+   }
+
+   void use_remote_message_api()
+   {
+      if( _remote_message_api.valid() )
+         return;
+      try
+      {
+         _remote_message_api = _remote_api->get_api_by_name("private_message_api")->as< private_message_api >();
+      }
+      catch( const fc::exception& e )
+      {
+        elog( "Couldn't get network node API" );
+        throw(e);
       }
    }
 
@@ -856,6 +893,7 @@ public:
    fc::api<database_api>                   _remote_db;
    fc::api<network_broadcast_api>          _remote_net_broadcast;
    optional< fc::api<network_node_api> >   _remote_net_node;
+   optional< fc::api<private_message_api> > _remote_message_api;
 
    flat_map<string, operation>             _prototype_ops;
 
@@ -965,7 +1003,7 @@ string wallet_api::get_wallet_filename() const
 }
 
 
-account_object wallet_api::get_account( string account_name ) const
+extended_account wallet_api::get_account( string account_name ) const
 {
    return my->get_account( account_name );
 }
@@ -1146,6 +1184,14 @@ map<public_key_type, string> wallet_api::list_keys()
 string wallet_api::get_private_key( public_key_type pubkey )const
 {
    return key_to_wif( my->get_private_key( pubkey ) );
+}
+
+pair<public_key_type,string> wallet_api::get_private_key_from_password( string account, string role, string password )const {
+   auto seed = account + role + password;
+   FC_ASSERT( seed.size() );
+   auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
+   auto priv = fc::ecc::private_key::regenerate( secret );
+   return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
 }
 
 signed_block_with_info::signed_block_with_info( const signed_block& block )
@@ -1512,7 +1558,31 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
     op.from = from;
     op.to = to;
     op.amount = amount;
-    op.memo = memo;
+
+    if( memo.size() > 0 && memo[0] == '#' ) {
+       memo_data m;
+
+       auto from_account = get_account( from );
+       auto to_account   = get_account( to );
+
+       m.from            = from_account.memo_key;
+       m.to              = to_account.memo_key;
+       m.nonce = fc::time_point::now().time_since_epoch().count();
+
+       auto from_priv = my->get_private_key( m.from );
+       auto shared_secret = from_priv.get_shared_secret( m.to );
+
+       fc::sha512::encoder enc;
+       fc::raw::pack( enc, m.nonce );
+       fc::raw::pack( enc, shared_secret );
+       auto encrypt_key = enc.result();
+
+       m.encrypted = fc::aes_encrypt( encrypt_key, fc::raw::pack(memo.substr(1)) );
+       m.check = fc::sha256::hash( encrypt_key )._hash[0];
+       op.memo = m;
+    } else {
+       op.memo = memo;
+    }
 
     signed_transaction tx;
     tx.operations.push_back( op );
@@ -1584,7 +1654,41 @@ vector< convert_request_object > wallet_api::get_conversion_requests( string own
 }
 
 map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
-   return my->_remote_db->get_account_history(account,from,limit);
+   auto result = my->_remote_db->get_account_history(account,from,limit);
+   if( !is_locked() ) {
+      for( auto& item : result ) {
+         if( item.second.op.which() == operation::tag<transfer_operation>::value ) {
+            auto& top = item.second.op.get<transfer_operation>();
+            if( top.memo.size() && top.memo[0] == '#' ) {
+               auto m = memo_data::from_string( top.memo );
+               if( m ) {
+                  fc::sha512 shared_secret;
+                  auto from_key = my->try_get_private_key( m->from );
+                  if( !from_key ) {
+                     auto to_key   = my->try_get_private_key( m->to );
+                     if( !to_key ) return result;
+                     shared_secret = to_key->get_shared_secret( m->from );
+                  } else {
+                     shared_secret = from_key->get_shared_secret( m->to );
+                  }
+                  fc::sha512::encoder enc;
+                  fc::raw::pack( enc, m->nonce );
+                  fc::raw::pack( enc, shared_secret );
+                  auto encryption_key = enc.result();
+
+                  uint32_t check = fc::sha256::hash( encryption_key )._hash[0];
+                  if( check != m->check ) return result;
+
+                  try {
+                     vector<char> decrypted = fc::aes_decrypt( encryption_key, m->encrypted );
+                     top.memo = fc::raw::unpack<std::string>( decrypted );
+                  } catch ( ... ){}
+               }
+            }
+         }
+      }
+   }
+   return result;
 }
 
 app::state wallet_api::get_state( string url ) {
@@ -1666,6 +1770,120 @@ annotated_signed_transaction wallet_api::vote( string voter, string author, stri
 }
 annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
    return my->_remote_db->get_transaction( id );
+}
+
+annotated_signed_transaction      wallet_api::send_private_message( string from, string to, string subject, string body, bool broadcast ) {
+   FC_ASSERT( !is_locked(), "wallet must be unlocked to send a private message" );
+   auto from_account = get_account( from );
+   auto to_account   = get_account( to );
+
+   custom_operation op;
+   op.required_auths.insert(from);
+   op.id = STEEMIT_PRIVATE_MESSAGE_COP_ID;
+
+
+   private_message_operation pmo;
+   pmo.from          = from;
+   pmo.to            = to;
+   pmo.sent_time     = fc::time_point::now().time_since_epoch().count();
+   pmo.from_memo_key = from_account.memo_key;
+   pmo.to_memo_key   = to_account.memo_key;
+
+   message_body message;
+   message.subject = subject;
+   message.body    = body;
+
+   auto priv_key = wif_to_key( get_private_key( pmo.from_memo_key ) );
+   FC_ASSERT( priv_key, "unable to find private key for memo" );
+   auto shared_secret = priv_key->get_shared_secret( pmo.to_memo_key );
+   fc::sha512::encoder enc;
+   fc::raw::pack( enc, pmo.sent_time );
+   fc::raw::pack( enc, shared_secret );
+   auto encrypt_key = enc.result();
+   auto hash_encrypt_key = fc::sha256::hash( encrypt_key );
+   pmo.checksum = hash_encrypt_key._hash[0];
+
+   vector<char> plain_text = fc::raw::pack( message );
+   pmo.encrypted_message = fc::aes_encrypt( encrypt_key, plain_text );
+
+   message_object obj;
+   obj.to_memo_key   = pmo.to_memo_key;
+   obj.from_memo_key = pmo.from_memo_key;
+   obj.checksum = pmo.checksum;
+   obj.sent_time = pmo.sent_time;
+   obj.encrypted_message = pmo.encrypted_message;
+   auto decrypted = try_decrypt_message(obj);
+
+   op.data = fc::raw::pack( pmo );
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+message_body wallet_api::try_decrypt_message( const message_object& mo ) {
+   message_body result;
+
+   fc::sha512 shared_secret;
+
+   auto it = my->_keys.find(mo.from_memo_key);
+   if( it == my->_keys.end() )
+   {
+      it = my->_keys.find(mo.to_memo_key);
+      if( it == my->_keys.end() )
+      {
+         wlog( "unable to find keys" );
+         return result;
+      }
+      auto priv_key = wif_to_key( it->second );
+      if( !priv_key ) return result;
+      shared_secret = priv_key->get_shared_secret( mo.from_memo_key );
+   } else {
+      auto priv_key = wif_to_key( it->second );
+      if( !priv_key ) return result;
+      shared_secret = priv_key->get_shared_secret( mo.to_memo_key );
+   }
+
+
+   fc::sha512::encoder enc;
+   fc::raw::pack( enc, mo.sent_time );
+   fc::raw::pack( enc, shared_secret );
+   auto encrypt_key = enc.result();
+
+   uint32_t check = fc::sha256::hash( encrypt_key )._hash[0];
+
+   if( mo.checksum != check )
+      return result;
+
+   auto decrypt_data = fc::aes_decrypt( encrypt_key, mo.encrypted_message );
+   try {
+      return fc::raw::unpack<message_body>( decrypt_data );
+   } catch ( ... ) {
+      return result;
+   }
+}
+
+vector<extended_message_object>   wallet_api::get_inbox( string account, fc::time_point newest, uint32_t limit ) {
+   FC_ASSERT( !is_locked() );
+   vector<extended_message_object> result;
+   auto remote_result = (*my->_remote_message_api)->get_inbox( account, newest, limit );
+   for( const auto& item : remote_result ) {
+      result.emplace_back( item );
+      result.back().message = try_decrypt_message( item );
+   }
+   return result;
+}
+
+vector<extended_message_object>   wallet_api::get_outbox( string account, fc::time_point newest, uint32_t limit ) {
+   FC_ASSERT( !is_locked() );
+   vector<extended_message_object> result;
+   auto remote_result = (*my->_remote_message_api)->get_outbox( account, newest, limit );
+   for( const auto& item : remote_result ) {
+      result.emplace_back( item );
+      result.back().message = try_decrypt_message( item );
+   }
+   return result;
 }
 
 } } // steemit::wallet

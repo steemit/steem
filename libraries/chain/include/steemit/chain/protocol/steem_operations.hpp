@@ -3,10 +3,12 @@
 #include <steemit/chain/protocol/block_header.hpp>
 #include <steemit/chain/protocol/asset.hpp>
 
+#include <fc/utf8.hpp>
+
 namespace steemit { namespace chain {
    struct account_create_operation : public base_operation
    {
-      asset             fee; 
+      asset             fee;
       string            creator;
       string            new_account_name;
       authority         owner;
@@ -18,6 +20,7 @@ namespace steemit { namespace chain {
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(creator); }
    };
+
 
 
    struct account_update_operation : public base_operation
@@ -35,7 +38,10 @@ namespace steemit { namespace chain {
       { if( owner ) a.insert( account ); }
 
       void get_required_active_authorities( flat_set<string>& a )const
-      { if( !owner ) a.insert( account ); }
+      { if( !owner /*&& active*/) a.insert( account ); }
+
+      //void get_required_posting_authorities( flat_set<string>& a )const
+      //{ if( !active && !owner && posting ) a.insert( account ); }
    };
 
    struct comment_operation : public base_operation
@@ -54,12 +60,20 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
+   struct delete_comment_operation : public base_operation {
+      string author;
+      string permlink;
+
+      void validate()const;
+      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
+   };
+
    struct vote_operation : public base_operation
    {
       string    voter;
       string    author;
       string    permlink;
-      int16_t   weight = 0; 
+      int16_t   weight = 0;
 
       void validate()const;
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(voter); }
@@ -88,6 +102,17 @@ namespace steemit { namespace chain {
       asset  reward;
       string comment_author;
       string comment_permlink;
+      void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
+   };
+
+   struct comment_payout_operation : public base_operation {
+      comment_payout_operation(){}
+      comment_payout_operation( const string& a, const string& pl, const asset& p )
+         :author(a),permlink(pl),payout(p){}
+
+      string author;
+      string permlink;
+      asset  payout;
       void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
@@ -151,7 +176,8 @@ namespace steemit { namespace chain {
       string            memo;
 
       void              validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
+      void get_required_active_authorities( flat_set<string>& a )const{ if(amount.symbol != VESTS_SYMBOL) a.insert(from); }
+      void get_required_owner_authorities( flat_set<string>& a )const { if(amount.symbol == VESTS_SYMBOL) a.insert(from); }
    };
 
    /**
@@ -285,6 +311,20 @@ namespace steemit { namespace chain {
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+   };
+
+   /** serves the same purpose as custom_operation but also supports required posting authorities. Unlike custom_operation,
+    * this operation is designed to be human readable/developer friendly.
+    **/
+   struct custom_json_operation : public base_operation {
+      flat_set<string>  required_auths;
+      flat_set<string>  required_posting_auths;
+      string            id; ///< must be less than 32 characters long
+      string            json; ///< must be proper utf8 / JSON string.
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
    };
 
    /**
@@ -445,13 +485,16 @@ FC_REFLECT( steemit::chain::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steemit::chain::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
 FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
+FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::fill_order_operation, (owner)(orderid)(pays)(receives) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
 FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(originating_author)(originating_permlink)(payout)(vesting_payout) )
 FC_REFLECT( steemit::chain::curate_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
+FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (account)(vesting_shares)(steem) )
+FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );

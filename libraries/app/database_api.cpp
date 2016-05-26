@@ -1,27 +1,4 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
+#include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 #include <steemit/app/database_api.hpp>
 #include <steemit/chain/get_config.hpp>
@@ -33,6 +10,7 @@
 
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
+
 
 #include <cctype>
 
@@ -73,7 +51,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       vector<set<string>> get_key_references( vector<public_key_type> key )const;
 
       // Accounts
-      vector< account_object > get_accounts( vector< string > names )const;
+      vector< extended_account > get_accounts( vector< string > names )const;
       vector<account_id_type> get_account_references( account_id_type account_id )const;
       vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
       set<string> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
@@ -94,6 +72,9 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       set<public_key_type> get_potential_signatures( const signed_transaction& trx )const;
       bool verify_authority( const signed_transaction& trx )const;
       bool verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
+
+      // signal handlers
+      void on_applied_block( const chain::signed_block& b );
 
       mutable fc::bloom_filter                _subscribe_filter;
       std::function<void(const fc::variant&)> _subscribe_callback;
@@ -124,7 +105,6 @@ void database_api::set_subscribe_callback( std::function<void(const variant&)> c
 
 void database_api_impl::set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter )
 {
-   edump((clear_filter));
    _subscribe_callback = cb;
    if( clear_filter || !cb )
    {
@@ -150,14 +130,17 @@ void database_api_impl::set_pending_transaction_callback( std::function<void(con
 void database_api::set_block_applied_callback( std::function<void(const variant& block_id)> cb )
 {
    my->set_block_applied_callback( cb );
-   my->_block_applied_connection = my->_db.applied_block.connect( [&]( const chain::signed_block& b ) {
-    my->_block_applied_callback( fc::variant(signed_block_header(b) ) );
-   });
+}
+
+void database_api_impl::on_applied_block( const chain::signed_block& b )
+{
+   _block_applied_callback( fc::variant(signed_block_header(b) ) );
 }
 
 void database_api_impl::set_block_applied_callback( std::function<void(const variant& block_header)> cb )
 {
    _block_applied_callback = cb;
+   _block_applied_connection = connect_signal( _db.applied_block, *this, &database_api_impl::on_applied_block );
 }
 
 void database_api::cancel_all_subscriptions()
@@ -179,8 +162,8 @@ void database_api_impl::cancel_all_subscriptions()
 database_api::database_api( steemit::chain::database& db )
    : my( new database_api_impl( db ) ) {}
 
-database_api::database_api( steemit::app::application& app )
-   : database_api( *app.chain_database() ) {}
+database_api::database_api( const steemit::app::api_context& ctx )
+   : database_api( *ctx.app.chain_database() ) {}
 
 database_api::~database_api() {}
 
@@ -193,6 +176,8 @@ database_api_impl::~database_api_impl()
 {
    elog("freeing database api ${x}", ("x",int64_t(this)) );
 }
+
+void database_api::on_api_startup() {}
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
@@ -262,6 +247,25 @@ dynamic_global_property_object database_api_impl::get_dynamic_global_properties(
    return _db.get(dynamic_global_property_id_type());
 }
 
+witness_schedule_object database_api::get_witness_schedule()const
+{
+   return witness_schedule_id_type()( my->_db );
+}
+
+hardfork_version database_api::get_hardfork_version()const
+{
+   return hardfork_property_id_type()( my->_db ).current_hardfork_version;
+}
+
+scheduled_hardfork database_api::get_next_scheduled_hardfork() const
+{
+   scheduled_hardfork shf;
+   const auto& hpo = hardfork_property_id_type()( my->_db );
+   shf.hf_version = hpo.next_hardfork;
+   shf.live_time = hpo.next_hardfork_time;
+   return shf;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Keys                                                             //
@@ -306,21 +310,29 @@ vector<set<string>> database_api_impl::get_key_references( vector<public_key_typ
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-vector< account_object > database_api::get_accounts( vector< string > names )const
+vector< extended_account > database_api::get_accounts( vector< string > names )const
 {
    return my->get_accounts( names );
 }
 
-vector< account_object > database_api_impl::get_accounts( vector< string > names )const
+vector< extended_account > database_api_impl::get_accounts( vector< string > names )const
 {
-   const auto& idx = _db.get_index_type< account_index >().indices().get< by_name >();
-   vector< account_object > results;
+   const auto& idx  = _db.get_index_type< account_index >().indices().get< by_name >();
+   const auto& vidx = _db.get_index_type< witness_vote_index >().indices().get< by_account_witness >();
+   vector< extended_account > results;
 
    for( auto name: names )
    {
       auto itr = idx.find( name );
       if ( itr != idx.end() )
+      {
          results.push_back( *itr );
+         auto vitr = vidx.lower_bound( boost::make_tuple( itr->get_id(), witness_id_type() ) );
+         while( vitr != vidx.end() && vitr->account == itr->get_id() ) {
+            results.back().witness_votes.insert(vitr->witness(_db).owner);
+            ++vitr;
+         }
+      }
    }
 
    return results;
@@ -423,6 +435,34 @@ vector<optional<witness_object>> database_api_impl::get_witnesses(const vector<w
 fc::optional<witness_object> database_api::get_witness_by_account( string account_name ) const
 {
    return my->get_witness_by_account( account_name );
+}
+
+vector< witness_object > database_api::get_witnesses_by_vote( string from, uint32_t limit )const
+{
+   //idump((from)(limit));
+   FC_ASSERT( limit <= 100 );
+
+   vector<witness_object> result;
+   result.reserve(limit);
+
+   const auto& name_idx = my->_db.get_index_type< witness_index >().indices().get< by_name >();
+   const auto& vote_idx = my->_db.get_index_type< witness_index >().indices().get< by_vote_name >();
+
+   auto itr = vote_idx.begin();
+   if( from.size() ) {
+      auto nameitr = name_idx.find( from );
+      FC_ASSERT( nameitr != name_idx.end(), "invalid witness name ${n}", ("n",from) );
+      itr = vote_idx.iterator_to( *nameitr );
+   }
+
+   while( itr != vote_idx.end()  &&
+          result.size() < limit &&
+          itr->votes > 0 )
+   {
+      result.push_back(*itr);
+      ++itr;
+   }
+   return result;
 }
 
 fc::optional<witness_object> database_api_impl::get_witness_by_account( string account_name ) const
@@ -655,6 +695,7 @@ discussion database_api::get_content( string author, string permlink )const {
    {
       discussion result(*itr);
       set_pending_payout(result);
+      result.active_votes = get_active_votes( author, permlink );
       return result;
    }
    return discussion();
@@ -670,11 +711,33 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
    while( itr != idx.end() && itr->comment == cid )
    {
       const auto& vo = itr->voter(my->_db);
-      result.push_back(vote_state{vo.name,itr->weight});
+      result.push_back(vote_state{vo.name,itr->weight,itr->rshares,itr->vote_percent,itr->last_update});
       ++itr;
    }
    return result;
+}
+vector<account_vote> database_api::get_account_votes( string voter )const {
+   vector<account_vote> result;
 
+   const auto& voter_acnt = my->_db.get_account(voter);
+   const auto& idx = my->_db.get_index_type<comment_vote_index>().indices().get< by_voter_comment >();
+
+   account_id_type aid(voter_acnt.id);
+   auto itr = idx.lower_bound( aid );
+   auto end = idx.upper_bound( aid );
+   while( itr != end )
+   {
+      const auto& vo = itr->comment(my->_db);
+      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->weight,itr->rshares,itr->vote_percent, itr->last_update});
+      ++itr;
+   }
+   return result;
+}
+u256 to256( const fc::uint128& t ) {
+   u256 result( t.high_bits() );
+   result <<= 65;
+   result += t.low_bits();
+   return result;
 }
 
 void database_api::set_pending_payout( discussion& d )const
@@ -684,21 +747,38 @@ void database_api::set_pending_payout( discussion& d )const
    asset pot = props.total_reward_fund_steem;
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
 
-   idump((pot)(props.total_reward_shares2));
+   u256 total_r2 = to256( props.total_reward_shares2 );
+
    if( props.total_reward_shares2 > 0 ){
-      fc::uint128_t r2(d.net_rshares.value);
+      int64_t abs_net_rshares = llabs(d.net_rshares.value);
+
+      u256 r2 = to256(abs_net_rshares);
       r2 *= r2;
       r2 *= pot.amount.value;
-      r2 /= props.total_reward_shares2;
-      idump((props.total_reward_shares2)(r2));
+      r2 /= total_r2;
 
-      auto tpp = d.children_rshares2;
+      u256 tpp = to256(d.children_rshares2);
       tpp *= pot.amount.value;
-      tpp /= props.total_reward_shares2;
+      tpp /= total_r2;
 
-      d.pending_payout_value = asset( r2.to_uint64(), pot.symbol );
-      d.total_pending_payout_value = asset( tpp.to_uint64(), pot.symbol );
+      d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
+      d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
+
+      if( d.net_rshares.value < 0 ) {
+         d.pending_payout_value.amount.value *= -1;
+      }
    }
+   set_url(d);
+}
+void database_api::set_url( discussion& d )const {
+   const comment_object* root = &d;
+   while( root->parent_author.size() ) {
+      root = &my->_db.get_comment( root->parent_author, root->parent_permlink );
+   }
+   d.url = "/" + root->category + "/@" + root->author + "/" + root->permlink;
+   d.root_title = root->title;
+   if( root != &d )
+      d.url += "#@" + d.author + "/" + d.permlink;
 }
 
 vector<discussion> database_api::get_content_replies( string author, string permlink )const {
@@ -714,118 +794,42 @@ vector<discussion> database_api::get_content_replies( string author, string perm
    return result;
 }
 
-vector<discussion> database_api::get_discussions_by_last_update( string start_auth, string start_permlink, uint32_t limit )const {
+/**
+ *  This method can be used to fetch replies to start_auth
+ */
+
+
+
+vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const {
+
+   idump((start_parent_author)(start_permlink)(limit) );
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
    auto itr = last_update_idx.begin();
 
-   if( start_auth.size() )
-      itr = last_update_idx.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
+
+   bool filter_by_parent_author = true;
+   if( start_permlink.size() )
+      itr = last_update_idx.iterator_to( my->_db.get_comment( start_parent_author, start_permlink ) );
+   else if( start_parent_author.size() ) {
+      itr = last_update_idx.lower_bound( boost::make_tuple( start_parent_author, time_point_sec::maximum(), object_id_type() ) );
+      filter_by_parent_author = true;
+   }
 
    vector<discussion> result;
-   while( itr != last_update_idx.end() && result.size() < limit && !itr->parent_author.size() ) {
+   while( itr != last_update_idx.end() && result.size() < limit  ) {
+      if( filter_by_parent_author && itr->parent_author != start_parent_author ) {
+         return result;
+      }
+
       result.push_back( *itr );
       set_pending_payout(result.back());
+      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
    return result;
 }
 
-vector<discussion> database_api::get_discussions_by_cashout_time( string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& cashout_time_idx = my->_db.get_index_type< comment_index >().indices().get< by_cashout_time >();
-
-   auto itr = cashout_time_idx.begin();
-
-   if( start_auth.size() )
-      itr = cashout_time_idx.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   vector<discussion> result;
-   while( itr != cashout_time_idx.end() && result.size() < limit ) {
-      idump((*itr));
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      ++itr;
-   }
-   return result;
-}
-vector<discussion> database_api::get_discussions_in_category_by_cashout_time( string category, string start_auth, string start_permlink, uint32_t limit )const {
-   vector<discussion> result;
-   const auto& cashout_time_in_category = my->_db.get_index_type< comment_index >().indices().get< by_cashout_time_in_category >();
-
-   auto itr = cashout_time_in_category.lower_bound( boost::make_tuple( category, fc::time_point_sec::maximum() ) );
-
-   if( start_auth.size() )
-      itr = cashout_time_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   while( itr != cashout_time_in_category.end() &&
-          itr->parent_permlink == category &&
-          result.size() < limit )
-   {
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      ++itr;
-   }
-   return result;
-}
-
-vector<discussion> database_api::get_discussions_in_category_by_last_update( string category, string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& last_update_in_category = my->_db.get_index_type< comment_index >().indices().get< by_last_update_in_category >();
-
-   auto itr = last_update_in_category.lower_bound( boost::make_tuple( "", category, fc::time_point_sec::maximum() ) );
-
-   if( start_auth.size() )
-      itr = last_update_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   vector<discussion> result;
-   while( itr != last_update_in_category.end() &&
-          itr->parent_permlink == category &&
-          !itr->parent_author.size()
-          && result.size() < limit )
-   {
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      ++itr;
-   }
-   return result;
-}
-
-vector<discussion> database_api::get_discussions_by_total_pending_payout( string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& total_pending_payout_idx = my->_db.get_index_type< comment_index >().indices().get< by_total_pending_payout >();
-
-   auto itr = total_pending_payout_idx.begin();
-
-   if( start_auth.size() )
-      itr = total_pending_payout_idx.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   vector<discussion> result;
-   while( itr != total_pending_payout_idx.end() && result.size() < limit && !itr->parent_author.size() ) {
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      ++itr;
-   }
-   return result;
-}
-
-vector<discussion> database_api::get_discussions_in_category_by_total_pending_payout( string category, string start_auth, string start_permlink, uint32_t limit )const {
-   const auto& total_pending_payout_in_category = my->_db.get_index_type< comment_index >().indices().get< by_total_pending_payout_in_category >();
-
-   auto itr = total_pending_payout_in_category.lower_bound( boost::make_tuple( "", category, fc::uint128_t::max_value() ) );
-
-   if( start_auth.size() )
-      itr = total_pending_payout_in_category.iterator_to( my->_db.get_comment( start_auth, start_permlink ) );
-
-   vector<discussion> result;
-   while( itr != total_pending_payout_in_category.end() &&
-          itr->parent_permlink == category &&
-          !itr->parent_author.size()
-          && result.size() < limit )
-   {
-      result.push_back( *itr );
-      set_pending_payout(result.back());
-      ++itr;
-   }
-   return result;
-}
 
 map<uint32_t,operation_object> database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
    FC_ASSERT( limit <= 2000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
@@ -845,8 +849,150 @@ map<uint32_t,operation_object> database_api::get_account_history( string account
    return result;
 }
 
+vector<tags::tag_stats_object> database_api::get_trending_tags( string after, uint32_t limit )const {
+  vector<tags::tag_stats_object> result;
+  const auto& tags_stats_idx = my->_db.get_index_type<tags::tag_stats_index>().indices().get<tags::by_tag>();
+  auto itr = tags_stats_idx.lower_bound(after);
+
+  while( itr != tags_stats_idx.end() && limit > 0 ) {
+     result.push_back(*itr);
+     --limit; ++itr;
+  }
+
+  return result;
+}
+
+discussion database_api::get_discussion( comment_id_type id )const {
+   discussion d = id(my->_db);
+   set_url( d );
+   set_pending_payout( d );
+   return d;
+}
+
+
+template<typename Index, typename StartItr>
+vector<discussion> database_api::get_discussions( const discussion_query& query, 
+                                                  const string& tag, 
+                                                  comment_id_type parent,
+                                                  const Index& tidx, StartItr tidx_itr )const
+{
+   idump((query));
+   vector<discussion> result;
+
+   const auto& cidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_comment>();
+   comment_id_type start;
+
+   if( query.start_author && query.start_permlink ) {
+      edump(("start author")(query));
+      start = my->_db.get_comment( *query.start_author, *query.start_permlink ).id;
+      auto itr = cidx.find( start );
+      while( itr != cidx.end() && itr->comment == start ) {
+         if( itr->tag == tag ) {
+            tidx_itr = tidx.iterator_to( *itr );
+            break;
+         }
+         ++itr;
+      }
+   }
+
+   uint32_t count = query.limit;
+   while( count > 0 && tidx_itr != tidx.end() ) {
+      if( tidx_itr->tag != tag || tidx_itr->parent != parent )
+         break;
+      result.push_back( get_discussion( tidx_itr->comment ) );
+
+      ++tidx_itr; --count;
+   }
+   return result;
+}
+
+comment_id_type database_api::get_parent( const discussion_query& query )const {
+   comment_id_type parent;
+   if( query.parent_author && query.parent_permlink ) {
+      parent = my->_db.get_comment( *query.parent_author, *query.parent_permlink ).id;
+   }
+   return parent;
+}
+
+vector<discussion> database_api::get_discussions_by_trending( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_children_rshares2>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::uint128_t::max_value() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr );
+}
+
+
+
+vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+   idump((parent));
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_created>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::time_point_sec::maximum() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr );
+}
+
+vector<discussion> database_api::get_discussions_by_active( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_active>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::time_point_sec::maximum() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr );
+}
+
+vector<discussion> database_api::get_discussions_by_cashout( const discussion_query& query )const {
+   vector<discussion> result;
+   return result;
+}
+vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const {
+   vector<discussion> result;
+   return result;
+}
+vector<discussion> database_api::get_discussions_by_votes( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<int32_t>::max() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr );
+}
+vector<discussion> database_api::get_discussions_by_children( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_children>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<int32_t>::max() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr );
+}
+vector<discussion> database_api::get_discussions_by_hot( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_hot>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<double>::max() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr );
+}
+
+
+
 vector<category_object> database_api::get_trending_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
 
    const auto& nidx = my->_db.get_index_type<chain::category_index>().indices().get<by_name>();
@@ -868,19 +1014,19 @@ vector<category_object> database_api::get_trending_categories( string after, uin
 }
 
 vector<category_object> database_api::get_best_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
    return result;
 }
 
 vector<category_object> database_api::get_active_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
    return result;
 }
 
 vector<category_object> database_api::get_recent_categories( string after, uint32_t limit )const {
-   limit = std::min( limit, uint32_t(50) );
+   limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );
    return result;
 }
@@ -926,38 +1072,60 @@ vector<string> database_api::get_active_witnesses()const {
    return wso.current_shuffled_witnesses;
 }
 
+vector<discussion>  database_api::get_discussions_by_author_before_date(
+    string author, string start_permlink, time_point_sec before_date, uint32_t limit )const
+{ try {
+     vector<discussion> result;
+
+     FC_ASSERT( limit <= 100 );
+     int count = 0;
+     const auto& didx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
+
+     if( before_date == time_point_sec() )
+        before_date = time_point_sec::maximum();
+
+     auto itr = didx.lower_bound( boost::make_tuple( author, time_point_sec::maximum() ) );
+     if( start_permlink.size() ) {
+        const auto& comment = my->_db.get_comment( author, start_permlink );
+        if( comment.created < before_date )
+           itr = didx.iterator_to(comment);
+     }
+
+
+     while( itr != didx.end() && itr->author ==  author && count < limit ) {
+        result.push_back( *itr );
+        set_pending_payout( result.back() );
+        result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+        ++itr;
+        ++count;
+     }
+
+     return result;
+} FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) ) }
+
+
 state database_api::get_state( string path )const
 {
+   state _state;
+   _state.props         = get_dynamic_global_properties();
+   _state.current_route = path;
+   _state.feed_price    = get_current_median_history_price();
+
+   try {
    if( path.size() && path[0] == '/' )
       path = path.substr(1); /// remove '/' from front
 
    if( !path.size() )
       path = "trending";
 
-   state _state;
-   _state.props         = get_dynamic_global_properties();
-   _state.current_route = path;
-
    /// FETCH CATEGORY STATE
-   auto trending_cat = get_trending_categories( "", 20 );
+   auto trending_cat = get_trending_categories( "", 100 );
    for( const auto& c : trending_cat )
    {
       _state.category_idx.trending.push_back(c.name);
       _state.categories[c.name] = c;
    }
-   auto recent_cat   = get_recent_categories( "", 20 );
-   for( const auto& c : recent_cat )
-   {
-      _state.category_idx.active.push_back(c.name);
-      _state.categories[c.name] = c;
-   }
-   auto active_cat   = get_active_categories( "", 20 );
-   for( const auto& c : active_cat )
-   {
-      _state.category_idx.active.push_back(c.name);
-      _state.categories[c.name] = c;
-   }
-   auto best_cat     = get_best_categories( "", 20 );
+   auto best_cat     = get_best_categories( "", 50 );
    for( const auto& c : best_cat )
    {
       _state.category_idx.best.push_back(c.name);
@@ -972,59 +1140,95 @@ state database_api::get_state( string path )const
    part.resize(std::max( part.size(), size_t(4) ) ); // at least 4
    idump((part));
 
+   auto tag = fc::to_lower( part[1] );
+   idump((part[1])(part[1]==string()));
+
    if( part[0].size() && part[0][0] == '@' ) {
       auto acnt = part[0].substr(1);
       _state.accounts[acnt] = my->_db.get_account(acnt);
       auto& eacnt = _state.accounts[acnt];
-      auto history = get_account_history( acnt, uint64_t(-1), 1000 );
-      for( auto& item : history ) {
-         switch( item.second.op.which() ) {
-            case operation::tag<transfer_to_vesting_operation>::value:
-            case operation::tag<withdraw_vesting_operation>::value:
-            case operation::tag<interest_operation>::value:
-            case operation::tag<transfer_operation>::value:
-            case operation::tag<liquidity_reward_operation>::value:
-            case operation::tag<comment_reward_operation>::value:
-            case operation::tag<curate_reward_operation>::value:
-               eacnt.transfer_history[item.first] =  item.second;
-               break;
-            case operation::tag<comment_operation>::value:
-               eacnt.post_history[item.first] =  item.second;
-               break;
-            case operation::tag<limit_order_create_operation>::value:
-            case operation::tag<limit_order_cancel_operation>::value:
-            case operation::tag<fill_convert_request_operation>::value:
-            case operation::tag<fill_order_operation>::value:
-               eacnt.market_history[item.first] =  item.second;
-               break;
-            case operation::tag<vote_operation>::value:
-            case operation::tag<account_witness_vote_operation>::value:
-            case operation::tag<account_witness_proxy_operation>::value:
-               eacnt.vote_history[item.first] =  item.second;
-               break;
-            case operation::tag<account_create_operation>::value:
-            case operation::tag<account_update_operation>::value:
-            case operation::tag<witness_update_operation>::value:
-            case operation::tag<pow_operation>::value:
-            case operation::tag<custom_operation>::value:
-            default:
-               eacnt.other_history[item.first] =  item.second;
-         }
+      if( part[1] == "recommended" ) {
+          auto discussions = get_recommended_for( acnt, 100 );
+          eacnt.recommended = vector<string>();
+          for( const auto& d : discussions ) {
+              auto ref = d.author+"/"+d.permlink;
+              _state.content[ ref ] = d;
+              eacnt.recommended->push_back( ref );
+          }
       }
-      if( part[1] == "posts" ) {
+      else if( part[1] == "transfers" ) {
+         auto history = get_account_history( acnt, uint64_t(-1), 1000 );
+         for( auto& item : history ) {
+            switch( item.second.op.which() ) {
+               case operation::tag<transfer_to_vesting_operation>::value:
+               case operation::tag<withdraw_vesting_operation>::value:
+               case operation::tag<interest_operation>::value:
+               case operation::tag<transfer_operation>::value:
+               case operation::tag<liquidity_reward_operation>::value:
+               case operation::tag<comment_reward_operation>::value:
+               case operation::tag<curate_reward_operation>::value:
+                  eacnt.transfer_history[item.first] =  item.second;
+                  break;
+               case operation::tag<comment_operation>::value:
+               //   eacnt.post_history[item.first] =  item.second;
+                  break;
+               case operation::tag<limit_order_create_operation>::value:
+               case operation::tag<limit_order_cancel_operation>::value:
+               case operation::tag<fill_convert_request_operation>::value:
+               case operation::tag<fill_order_operation>::value:
+               //   eacnt.market_history[item.first] =  item.second;
+                  break;
+               case operation::tag<vote_operation>::value:
+               case operation::tag<account_witness_vote_operation>::value:
+               case operation::tag<account_witness_proxy_operation>::value:
+               //   eacnt.vote_history[item.first] =  item.second;
+                  break;
+               case operation::tag<account_create_operation>::value:
+               case operation::tag<account_update_operation>::value:
+               case operation::tag<witness_update_operation>::value:
+               case operation::tag<pow_operation>::value:
+               case operation::tag<custom_operation>::value:
+               default:
+                  eacnt.other_history[item.first] =  item.second;
+            }
+         }
+      } else if( part[1] == "recent-replies" ) {
+        auto replies = get_replies_by_last_update( acnt, "", 50 );
+        eacnt.recent_replies = vector<string>();
+        for( const auto& reply : replies ) {
+           auto reply_ref = reply.author+"/"+reply.permlink;
+           _state.content[ reply_ref ] = reply;
+           eacnt.recent_replies->push_back( reply_ref );
+        }
+      } else if( part[1] == "posts" ) {
         int count = 0;
-        const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_date>();
+        const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
+        eacnt.posts = vector<string>();
         while( itr != pidx.end() && itr->author == acnt && count < 100 ) {
-           eacnt.posts.push_back(itr->permlink);
+           eacnt.posts->push_back(itr->permlink);
+           _state.content[acnt+"/"+itr->permlink] = *itr;
+           set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
            ++itr;
            ++count;
         }
-        _state.content[acnt+"/"+itr->permlink] = *itr;
+      } else if( part[1].size() == 0 || part[1] == "blog" ) {
+           int count = 0;
+           const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
+           auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
+           eacnt.blog = vector<string>();
+           while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() ) {
+              eacnt.blog->push_back(itr->permlink);
+              _state.content[acnt+"/"+itr->permlink] = *itr;
+              set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
+              ++itr;
+              ++count;
+           }
       }
    }
    /// pull a complete discussion
    else if( part[1].size() && part[1][0] == '@' ) {
+
       auto account  = part[1].substr( 1 );
       auto category = part[0];
       auto slug     = part[2];
@@ -1035,10 +1239,17 @@ state database_api::get_state( string path )const
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
    }
-   else if( part[0] == "trending" && part[1].size() ) {
-      auto trending_disc = get_discussions_in_category_by_total_pending_payout( part[1], "", "", 20 );
+   else if( part[0] == "witnesses" || part[0] == "~witnesses") {
+      auto wits = get_witnesses_by_vote( "", 50 );
+      for( const auto& w : wits ) {
+         _state.witnesses[w.owner] = w;
+      }
+      _state.pow_queue = get_miner_queue();
+   }
+   else if( part[0] == "trending"  ) {
+      auto trending_disc = get_discussions_by_trending( {tag,20} );
 
-      auto& didx = _state.discussion_idx[part[1]];
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.trending.push_back( key );
@@ -1046,56 +1257,75 @@ state database_api::get_state( string path )const
          _state.content[key] = std::move(d);
       }
    }
-   else if( part[0] == "trending" || part[0] == "") {
-      auto trending_disc = get_discussions_by_total_pending_payout( "", "", 20 );
-      auto& didx = _state.discussion_idx[""];
+   else if( part[0] == "responses"  ) {
+      auto trending_disc = get_discussions_by_children( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
-         didx.trending.push_back( key );
+         didx.responses.push_back( key );
          if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
    }
-   else if( part[0] == "best" && part[1] == "" ) {
-   }
-   else if( part[0] == "maturing" && part[1] == "" ) {
-      auto trending_disc = get_discussions_by_cashout_time( "", "", 20 );
-      auto& didx = _state.discussion_idx[""];
+   else if( !part[0].size() || part[0] == "hot" ) {
+      auto trending_disc = get_discussions_by_hot( {tag,20} );
+      idump((part[1])(part[1]==string()));
+
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
-         didx.maturing.push_back( key );
-         accounts.insert(d.author);
+         didx.hot.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
    }
-   else if( part[0] == "maturing" ) {
-      auto trending_disc = get_discussions_in_category_by_cashout_time( part[1], "", "", 20 );
-      auto& didx = _state.discussion_idx[part[1]];
+   else if( part[0] == "votes"  ) {
+      auto trending_disc = get_discussions_by_votes( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
-         didx.maturing.push_back( key );
-         accounts.insert(d.author);
+         didx.votes.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
    }
-   else if( part[0] == "recent" && part[1] == "") {
-      auto trending_disc = get_discussions_by_last_update( "", "", 20 );
-      auto& didx = _state.discussion_idx[""];
+   else if( part[0] == "active"  ) {
+      auto trending_disc = get_discussions_by_active( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
-         didx.recent.push_back( key );
-         accounts.insert(d.author);
+         didx.active.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
-   } else if( part[0] == "recent" ) {
-      auto trending_disc = get_discussions_in_category_by_last_update( part[1], "", "", 20 );
-      auto& didx = _state.discussion_idx[part[1]];
+   }
+   else if( part[0] == "created"  ) {
+      auto trending_disc = get_discussions_by_created( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
-         didx.recent.push_back( key );
-         accounts.insert(d.author);
+         didx.created.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
+   }
+   else if( part[0] == "recent"  ) {
+      auto trending_disc = get_discussions_by_created( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.created.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
+   else {
+      elog( "What... no matches" );
    }
 
    for( const auto& a : accounts )
@@ -1107,9 +1337,12 @@ state database_api::get_state( string path )const
       d.second.active_votes = get_active_votes( d.second.author, d.second.permlink );
    }
 
-   _state.witnesses = my->_db.get_witness_schedule_object();
+   _state.witness_schedule = my->_db.get_witness_schedule_object();
 
-   return _state;
+ } catch ( const fc::exception& e ) {
+    _state.error = e.to_detail_string();
+ }
+ return _state;
 }
 
 annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const {
@@ -1125,6 +1358,56 @@ annotated_signed_transaction database_api::get_transaction( transaction_id_type 
       return result;
    }
    FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
+}
+
+vector<discussion> database_api::get_recommended_for( const string& u, uint32_t limit  )const {
+   FC_ASSERT( limit <= 1000 );
+   auto start_time = fc::time_point::now();
+
+   const auto& user = my->_db.get_account(u);
+   const auto& rank_idx = my->_db.get_index_type<tags::peer_stats_index>().indices().get<tags::by_rank>();
+   const auto& vote_idx = my->_db.get_index_type<comment_vote_index>().indices().get<by_voter_last_update>();
+
+   map<comment_id_type,float> stage;
+
+   auto max_age = my->_db.head_block_time() - fc::days(1);
+
+   auto itr = rank_idx.lower_bound( boost::make_tuple( user.get_id(), std::numeric_limits<float>::max() ) );
+   while( itr != rank_idx.end() && itr->voter == user.id && stage.size() < 1000 && itr->rank > 0 ) {
+      auto vitr = vote_idx.lower_bound( boost::make_tuple( itr->peer, fc::time_point_sec::maximum() ) );
+      int32_t max_votes_per_peer = 50;
+      while( max_votes_per_peer && vitr->voter == itr->peer && vitr->last_update >= max_age ) {
+         const auto& c = vitr->comment(my->_db);
+         if( c.parent_author.size() == 0 && c.created > max_age && c.author != u && c.net_rshares > 0 )
+         {
+            auto agediscount = float((c.created - max_age).count())/fc::days(1).count();
+            stage[vitr->comment] += agediscount * itr->rank * vitr->vote_percent;
+            max_votes_per_peer--;
+         }
+         ++vitr;
+      }
+      ++itr;
+   }
+   auto vitr = vote_idx.lower_bound( boost::make_tuple( user.get_id(), fc::time_point_sec::maximum() ) );
+   while( vitr != vote_idx.end() && vitr->voter == user.get_id() && vitr->last_update > max_age ) {
+      stage.erase( vitr->comment );
+      ++vitr;
+   }
+
+   vector< pair<float,comment_id_type> > result;
+   result.reserve(stage.size());
+   for( const auto& item : stage ) result.push_back({item.second,item.first});
+   std::sort( result.begin(), result.end(), std::greater<pair<float,comment_id_type>>() );
+
+   vector<discussion> dresult; dresult.reserve(limit);
+   for( const auto& item : result ) {
+      dresult.push_back( get_discussion( item.second ) );
+      if( dresult.size() == limit ) break;
+   }
+   auto end_time = fc::time_point::now();
+   idump((start_time-end_time));
+
+   return dresult;
 }
 
 } } // steemit::app

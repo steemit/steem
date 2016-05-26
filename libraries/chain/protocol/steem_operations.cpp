@@ -3,42 +3,21 @@
 
 #include <locale>
 
-#include <fc/utf8.hpp>
-
 namespace steemit { namespace chain {
+
+   /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
+   ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags 
+   ///  going forward.
+   inline void validate_permlink( const string& permlink )
+   {
+      FC_ASSERT( permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
+      FC_ASSERT( fc::is_utf8( permlink ), "permlink not formatted in UTF8" );
+   }
+
 
    bool inline is_asset_type( asset asset, asset_symbol_type symbol )
    {
       return asset.symbol == symbol;
-   }
-
-   void inline validate_permlink( string permlink )
-   {
-      FC_ASSERT( permlink.size() > 0 && permlink.size() < 256 );
-      FC_ASSERT( fc::is_utf8( permlink ) );
-      FC_ASSERT( fc::to_lower( permlink ) == permlink );
-      FC_ASSERT( fc::trim_and_normalize_spaces( permlink ) == permlink );
-
-      for ( auto c : permlink )
-      {
-         FC_ASSERT( c > 0 );
-         switch( c )
-         {
-            case ' ':
-            case '\t':
-            case '\n':
-            case ':':
-            case '#':
-            case '/':
-            case '\\':
-            case '%':
-            case '=':
-            case '@':
-            case '~':
-            case '.':
-               FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
-         }
-      }
    }
 
    void account_create_operation::validate() const
@@ -78,11 +57,11 @@ namespace steemit { namespace chain {
       FC_ASSERT( body.size() > 0, "Body is empty" );
       FC_ASSERT( fc::is_utf8( body ), "Body not formatted in UTF8" );
 
+
       FC_ASSERT( !parent_author.size() || is_valid_account_name( parent_author ), "Parent author name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author name invalid" );
+      validate_permlink( parent_permlink );
       validate_permlink( permlink );
-      if ( parent_author.size() > 0 )
-         validate_permlink( parent_permlink );
 
       if( json_metadata.size() > 0 )
       {
@@ -90,20 +69,23 @@ namespace steemit { namespace chain {
       }
    }
 
+   void delete_comment_operation::validate()const {
+      validate_permlink( permlink );
+      FC_ASSERT( is_valid_account_name( author ) );
+   }
+
    void vote_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );
-      FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );
-      validate_permlink( permlink );
+      FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );\
       FC_ASSERT( abs(weight) <= STEEMIT_100_PERCENT, "Weight is not a STEEMIT percentage" );
-      FC_ASSERT( weight != 0, "Vote weight is 0" );
+      validate_permlink( permlink );
    }
 
    void transfer_operation::validate() const
    { try {
       FC_ASSERT( is_valid_account_name( from ), "Invalid 'from' account name" );
       FC_ASSERT( is_valid_account_name( to ), "Invalid 'to' account name" );
-      FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ) || is_asset_type( amount, SBD_SYMBOL ), "Must transfer SBD or STEEM" );
       FC_ASSERT( amount.amount > 0, "Cannot transfer a negative amount (aka: stealing)" );
       FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
       FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
@@ -120,7 +102,6 @@ namespace steemit { namespace chain {
    void withdraw_vesting_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( account ), "Account name invalid" );
-      FC_ASSERT( vesting_shares.amount > 0, "Must withdraw a nonzero amount" );
       FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
    }
 
@@ -150,6 +131,13 @@ namespace steemit { namespace chain {
    void custom_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( required_auths.size() > 0, "at least on account must be specified" );
+   }
+   void custom_json_operation::validate() const {
+      /// required auth accounts are the ones whose bandwidth is consumed
+      FC_ASSERT( (required_auths.size() + required_posting_auths.size()) > 0, "at least on account must be specified" );
+      FC_ASSERT( id.size() <= 32 );
+      FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
+      FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
    }
 
    fc::sha256 pow_operation::work_input()const
@@ -221,6 +209,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( first_block.witness   == second_block.witness );
       FC_ASSERT( first_block.timestamp == second_block.timestamp );
       FC_ASSERT( first_block.signee()  == second_block.signee() );
+      FC_ASSERT( first_block.id() != second_block.id() );
    }
 
 

@@ -1,0 +1,5 @@
+#ifndef STEEMIT_HARDFORK_0_4
+#define STEEMIT_HARDFORK_0_4 4
+#define STEEMIT_HARDFORK_0_4_TIME 1462028400
+#define STEEMIT_HARDFORK_0_4_VERSION hardfork_version( 0, 4 )
+#endif

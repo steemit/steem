@@ -39,8 +39,8 @@
 
 namespace steemit { namespace app {
 
-    login_api::login_api(application& a)
-    :_app(a)
+    login_api::login_api(const api_context& ctx)
+    :_ctx(ctx)
     {
     }
 
@@ -48,9 +48,13 @@ namespace steemit { namespace app {
     {
     }
 
+    void login_api::on_api_startup() {
+    }
+
     bool login_api::login(const string& user, const string& password)
     {
-       optional< api_access_info > acc = _app.get_api_access_info( user );
+       idump((user)(password));
+       optional< api_access_info > acc = _ctx.app.get_api_access_info( user );
        if( !acc.valid() )
           return false;
        if( acc->password_hash_b64 != "*" )
@@ -65,38 +69,89 @@ namespace steemit { namespace app {
              return false;
        }
 
+       idump((acc->allowed_apis));
+       std::map< std::string, api_ptr >& _api_map = _ctx.connection->api_map;
+
        for( const std::string& api_name : acc->allowed_apis )
        {
           auto it = _api_map.find( api_name );
-          if( it != _api_map.end() )
+          if( it != _api_map.end() ) {
+             wlog( "known api: ${api}", ("api",api_name) );
              continue;
-          _api_map[ api_name ] = _app.create_api_by_name( api_name );
+          }
+          idump((api_name));
+          api_context new_ctx( _ctx.app, api_name, _ctx.connection );
+          _api_map[ api_name ] = _ctx.app.create_api_by_name( new_ctx );
        }
        return true;
     }
 
-    network_broadcast_api::network_broadcast_api(application& a):_app(a)
+    fc::api_ptr login_api::get_api_by_name( const string& api_name )const
     {
-       _applied_block_connection = _app.chain_database()->applied_block.connect([this](const signed_block& b){ on_applied_block(b); });
+       const std::map< std::string, api_ptr >& _api_map = _ctx.connection->api_map;
+       auto it = _api_map.find( api_name );
+       if( it == _api_map.end() )
+       {
+          wlog( "unknown api: ${api}", ("api",api_name) );
+          return fc::api_ptr();
+       }
+       if( it->second )
+       {
+          ilog( "found api: ${api}", ("api",api_name) );
+       }
+       FC_ASSERT( it->second != nullptr );
+       return it->second;
+    }
+
+    network_broadcast_api::network_broadcast_api(const api_context& a):_app(a.app)
+    {
+       /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
+    }
+
+    void network_broadcast_api::on_api_startup()
+    {
+       /// note cannot capture shared pointer here, because _applied_block_connection will never
+       /// be freed if the lambda holds a reference to it.
+       _applied_block_connection = connect_signal( _app.chain_database()->applied_block, *this, &network_broadcast_api::on_applied_block );
     }
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
     {
+       int32_t block_num = int32_t(b.block_num());
        if( _callbacks.size() )
        {
           /// we need to ensure the database_api is not deleted for the life of the async operation
           auto capture_this = shared_from_this();
-          for( uint32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
+          for( int32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
           {
              const auto& trx = b.transactions[trx_num];
              auto id = trx.id();
              auto itr = _callbacks.find(id);
              if( itr != _callbacks.end() )
              {
-                auto block_num = b.block_num();
-                auto& callback = _callbacks.find(id)->second;
-                fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num}) ); } );
+                auto callback = _callbacks.find(id)->second;
+                fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
+                itr->second = []( const variant& ){};
              }
+          }
+       }
+
+       /// clear all expirations
+       if( _callbacks_expirations.size() ) {
+          auto end = _callbacks_expirations.upper_bound( b.timestamp );
+          auto itr = _callbacks_expirations.begin();
+          while( itr != end ) {
+             for( const auto trx_id : itr->second ) {
+               auto cb_itr = _callbacks.find( trx_id );
+               if( cb_itr != _callbacks.end() ) {
+                   auto capture_this = shared_from_this();
+                   auto callback = _callbacks.find(trx_id)->second; 
+                   fc::async( [capture_this,this,block_num,trx_id,callback](){ callback( fc::variant(transaction_confirmation{ trx_id, block_num, -1, true}) ); } );
+                   _callbacks.erase(cb_itr);
+               }
+             }
+             _callbacks_expirations.erase( itr );
+             itr = _callbacks_expirations.begin();
           }
        }
     }
@@ -126,13 +181,17 @@ namespace steemit { namespace app {
     {
        trx.validate();
        _callbacks[trx.id()] = cb;
+       _callbacks_expirations[trx.expiration].push_back(trx.id());
+
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }
 
-    network_node_api::network_node_api( application& a ) : _app( a )
+    network_node_api::network_node_api( const api_context& a ) : _app( a.app )
     {
     }
+
+    void network_node_api::on_api_startup() {}
 
     fc::variant_object network_node_api::get_info() const
     {

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <steemit/app/api_access.hpp>
+#include <steemit/app/api_context.hpp>
 #include <steemit/chain/database.hpp>
 
 #include <graphene/net/node.hpp>
@@ -88,7 +89,7 @@ namespace steemit { namespace app {
          /**
           * Register a way to instantiate the named API with the application.
           */
-         void register_api_factory( const string& name, std::function< fc::api_ptr() > factory );
+         void register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory );
 
          /**
           * Convenience method to build an API factory from a type which only requires a reference to the application.
@@ -96,18 +97,21 @@ namespace steemit { namespace app {
          template< typename Api >
          void register_api_factory( const string& name )
          {
-            register_api_factory( name, [this]() -> fc::api_ptr
+            idump((name));
+            register_api_factory( name, []( const api_context& ctx ) -> fc::api_ptr
             {
                // apparently the compiler is smart enough to downcast shared_ptr< api<Api> > to shared_ptr< api_base > automatically
                // see http://en.cppreference.com/w/cpp/memory/shared_ptr/pointer_cast for example
-               return std::make_shared< fc::api< Api > >( std::make_shared< Api >( *this ) );
+               std::shared_ptr< Api > api = std::make_shared< Api >( ctx );
+               api->on_api_startup();
+               return std::make_shared< fc::api< Api > >( api );
             } );
          }
 
          /**
           * Instantiate the named API.  Currently this simply calls the previously registered factory method.
           */
-         fc::api_ptr create_api_by_name( const string& name );
+         fc::api_ptr create_api_by_name( const api_context& ctx );
 
          /// Emitted when syncing finishes (is_finished_syncing will return true)
          boost::signals2::signal<void()> syncing_finished;
@@ -118,5 +122,19 @@ namespace steemit { namespace app {
          boost::program_options::options_description _cli_options;
          boost::program_options::options_description _cfg_options;
    };
+
+   template< class C, typename... Args >
+   boost::signals2::scoped_connection connect_signal( boost::signals2::signal< void(Args...) >& sig, C& c, void(C::* f)(Args...) )
+   {
+      std::weak_ptr<C> weak_c = c.shared_from_this();
+      return sig.connect(
+         [weak_c,f](Args... args)
+         {
+            std::shared_ptr<C> shared_c = weak_c.lock();
+            if( !shared_c )
+               return;
+            ((*shared_c).*f)(args...);
+      } );
+   }
 
 } } // steemit::app
