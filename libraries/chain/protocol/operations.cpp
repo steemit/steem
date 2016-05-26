@@ -32,16 +32,19 @@ namespace fc {
       }
    };
 
-    void to_variant( const steemit::chain::operation& var,  fc::variant& vo )
-    {
-       var.visit( from_operation( vo ) );
-    }
-    void from_variant( const fc::variant& var,  steemit::chain::operation& vo )
-    {
+   template< typename Ops = static_variant<> >
+   void abstract_operation_to_variant( const Ops& var,  fc::variant& vo )
+   {
+      var.visit( from_operation( vo ) );
+   }
+
+   template< typename Ops = static_variant<> >
+   void abstract_operation_from_variant( const fc::variant& var,  Ops& vo )
+   {
       static std::map<string,uint32_t> to_tag = [](){
          std::map<string,uint32_t> name_map;
-         for( int i = 0; i < operation::count(); ++i ) {
-            operation tmp;
+         for( int i = 0; i < Ops::count(); ++i ) {
+            Ops tmp;
             tmp.set_which(i);
             string n;
             tmp.visit( get_operation_name(n) );
@@ -61,6 +64,16 @@ namespace fc {
          vo.set_which( to_tag[ar[0].as_string()] );
       }
        vo.visit( fc::to_static_variant( ar[1] ) );
+   }
+
+   void to_variant( const steemit::chain::operation& var,  fc::variant& vo )
+    {
+       abstract_operation_to_variant< steemit::chain::operation >( var, vo );
+    }
+
+    void from_variant( const fc::variant& var,  steemit::chain::operation& vo )
+    {
+       abstract_operation_from_variant< steemit::chain::operation >( var, vo );
     }
 }
 
@@ -101,18 +114,34 @@ struct operation_get_required_auth
    }
 };
 
-void operation_validate( const operation& op )
+template< typename Ops = static_variant<> >
+void abstract_operation_validate( const Ops& op )
 {
    op.visit( operation_validator() );
 }
 
-void operation_get_required_authorities( const operation& op,
-                                         flat_set<string>& active,
-                                         flat_set<string>& owner,
-                                         flat_set<string>& posting,
-                                         vector<authority>&  other )
+void operation_validate( const operation& op )
+{
+   abstract_operation_validate< operation >( op );
+}
+
+template< typename Ops = static_variant<> >
+void abstract_operation_get_required_authorities( const Ops& op,
+                                                  flat_set<string>& active,
+                                                  flat_set<string>& owner,
+                                                  flat_set<string>& posting,
+                                                  vector<authority>&  other )
 {
    op.visit( operation_get_required_auth( active, owner, posting, other ) );
+}
+
+void operation_get_required_authorities( const operation& op,
+                                         flat_set< string >& active,
+                                         flat_set< string >& owner,
+                                         flat_set< string >& posting,
+                                         vector< authority >& other )
+{
+abstract_operation_get_required_authorities< operation >( op, active, owner, posting, other );
 }
 
 struct is_market_op_visitor {

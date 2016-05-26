@@ -127,7 +127,8 @@ class plugin : public abstract_plugin
 
       chain::database& database() { return *app().chain_database(); }
       application& app()const { assert(_app); return *_app; }
-      void plugin_push_op( string json_op );
+      void plugin_apply_op( string json_op );
+      void plugin_push_op( PluginOps op );
 
    protected:
       graphene::net::node& p2p_node() { return *app().p2p_node(); }

@@ -96,12 +96,30 @@ void plugin< PluginOps >::plugin_set_program_options(
 }
 
 template< typename PluginOps >
-void plugin< PluginOps >::plugin_push_op( string json_op )
+void plugin< PluginOps >::plugin_apply_op( string json_op )
 {
    return;
 }
 
-template<> void plugin< fc::static_variant<> >::plugin_push_op( string json_op ) { FC_ASSERT( false, "This plugin has no custom ops" ); return; }
+template<>
+void plugin< fc::static_variant<> >::plugin_apply_op( string json_op )
+{
+   FC_ASSERT( false, "This plugin has no custom ops" );
+   return;
+}
+
+template< typename PluginOps >
+void plugin< PluginOps >::plugin_push_op( PluginOps op )
+{
+   return;
+}
+
+template<>
+void plugin< fc::static_variant<> >::plugin_push_op( fc::static_variant<> op )
+{
+   FC_ASSERT( false, "This plugin has no custom ops" );
+   return;
+}
 
 template<>
 template< typename EvaluatorType > void plugin< fc::static_variant<> >::plugin_register_evaluator() { return; }

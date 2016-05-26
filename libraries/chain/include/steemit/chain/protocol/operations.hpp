@@ -46,14 +46,23 @@ namespace steemit { namespace chain {
             fill_vesting_withdraw_operation,
             fill_order_operation,
             comment_payout_operation
-
          > operation;
+
+   template< typename Ops >
+   void abstract_operation_get_required_authorities( const Ops& op,
+                                                     flat_set< string >& active,
+                                                     flat_set< string >& owner,
+                                                     flat_set< string >& posting,
+                                                     vector< authority >& other );
 
    void operation_get_required_authorities( const operation& op,
                                             flat_set<string>& active,
                                             flat_set<string>& owner,
                                             flat_set<string>& posting,
                                             vector<authority>&  other );
+
+   template< typename Ops >
+   void abstract_operation_validate( const Ops& op );
 
    void operation_validate( const operation& op );
 
@@ -69,6 +78,12 @@ namespace steemit { namespace chain {
 } } // steemit::chain
 
 namespace fc {
+    template< typename Ops >
+    void abstract_operation_to_variant( const Ops& var, fc::variant& vo );
+
+    template< typename Ops >
+    void abstract_operation_from_variant( const fc::variant& var, Ops& vo );
+
     void to_variant( const steemit::chain::operation& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  steemit::chain::operation& vo );
 }
