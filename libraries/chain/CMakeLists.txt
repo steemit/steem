@@ -22,7 +22,6 @@ add_library( steemit_chain
 
              get_config.cpp
 
-             evaluator.cpp
              steem_evaluator.cpp
 
 #             account_object.cpp

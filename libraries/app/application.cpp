@@ -27,6 +27,7 @@
 #include <steemit/app/plugin.hpp>
 
 #include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <graphene/net/core_messages.hpp>

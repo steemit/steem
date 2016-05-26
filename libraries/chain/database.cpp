@@ -10,7 +10,6 @@
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/transaction_evaluation_state.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
 #include <graphene/db/flat_index.hpp>
@@ -54,8 +53,21 @@ const uint8_t transaction_object::type_id;
 const uint8_t witness_object::space_id;
 const uint8_t witness_object::type_id;
 
+class database_impl
+{
+   public:
+      database_impl( database& self );
+
+      database&                              _self;
+      evaluator_registry< operation >        _evaluator_registry;
+};
+
+database_impl::database_impl( database& self )
+   : _self(self), _evaluator_registry(self)
+{ }
 
 database::database()
+   : _my( new database_impl(*this) )
 {
    initialize_indexes();
    initialize_evaluators();
@@ -1973,28 +1985,26 @@ uint32_t database::last_non_undoable_block_num() const
 
 void database::initialize_evaluators()
 {
-    _operation_evaluators.resize(255);
+    _my->_evaluator_registry.register_evaluator<vote_evaluator>();
+    _my->_evaluator_registry.register_evaluator<comment_evaluator>();
+    _my->_evaluator_registry.register_evaluator<delete_comment_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_to_vesting_evaluator>();
+    _my->_evaluator_registry.register_evaluator<withdraw_vesting_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_create_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_update_evaluator>();
+    _my->_evaluator_registry.register_evaluator<witness_update_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_witness_vote_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_witness_proxy_evaluator>();
+    _my->_evaluator_registry.register_evaluator<custom_evaluator>();
+    _my->_evaluator_registry.register_evaluator<custom_json_evaluator>();
+    _my->_evaluator_registry.register_evaluator<pow_evaluator>();
+    _my->_evaluator_registry.register_evaluator<report_over_production_evaluator>();
 
-    register_evaluator<vote_evaluator>();
-    register_evaluator<comment_evaluator>();
-    register_evaluator<delete_comment_evaluator>();
-    register_evaluator<transfer_evaluator>();
-    register_evaluator<transfer_to_vesting_evaluator>();
-    register_evaluator<withdraw_vesting_evaluator>();
-    register_evaluator<account_create_evaluator>();
-    register_evaluator<account_update_evaluator>();
-    register_evaluator<witness_update_evaluator>();
-    register_evaluator<account_witness_vote_evaluator>();
-    register_evaluator<account_witness_proxy_evaluator>();
-    register_evaluator<custom_evaluator>();
-    register_evaluator<custom_json_evaluator>();
-    register_evaluator<pow_evaluator>();
-    register_evaluator<report_over_production_evaluator>();
-
-    register_evaluator<feed_publish_evaluator>();
-    register_evaluator<convert_evaluator>();
-    register_evaluator<limit_order_create_evaluator>();
-    register_evaluator<limit_order_cancel_evaluator>();
+    _my->_evaluator_registry.register_evaluator<feed_publish_evaluator>();
+    _my->_evaluator_registry.register_evaluator<convert_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_create_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_cancel_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -2039,8 +2049,6 @@ void database::init_genesis( uint64_t init_supply )
          database& db;
          uint32_t old_flags;
       } inhibitor(*this);
-
-      transaction_evaluation_state genesis_eval_state(this);
 
       flat_index<block_summary_object>& bsi = get_mutable_index_type< flat_index<block_summary_object> >();
       bsi.resize(0xffff+1);
@@ -2365,8 +2373,6 @@ void database::_apply_transaction(const signed_transaction& trx)
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
-   transaction_evaluation_state eval_state(this);
-   eval_state._trx = &trx;
 
    if( !(skip & (skip_transaction_signatures | skip_authority_check) ) )
    {
@@ -2427,7 +2433,7 @@ void database::_apply_transaction(const signed_transaction& trx)
    _current_op_in_trx = 0;
    for( const auto& op : trx.operations )
    { try {
-      apply_operation(eval_state, op);
+      apply_operation(op);
       ++_current_op_in_trx;
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
@@ -2435,21 +2441,12 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
-{ try {
-   int i_which = op.which();
-   uint64_t u_which = uint64_t( i_which );
-   if( i_which < 0 )
-      assert( "Negative operation tag" && false );
-   if( u_which >= _operation_evaluators.size() )
-      assert( "No registered evaluator for this operation" && false );
-   unique_ptr<op_evaluator<>>& eval = _operation_evaluators[ u_which ];
-   if( !eval )
-      assert( "No registered evaluator for this operation" && false );
+void database::apply_operation(const operation& op)
+{
    push_applied_operation( op );
-   eval->evaluate( eval_state, op, true );
+   _my->_evaluator_registry.get_evaluator( op ).apply( op );
    notify_post_apply_operation( op );
-} FC_CAPTURE_AND_RETHROW(  ) }
+}
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {

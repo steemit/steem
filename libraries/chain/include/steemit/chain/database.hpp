@@ -2,7 +2,6 @@
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
  */
 #pragma once
-#include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
@@ -23,6 +22,8 @@
 namespace steemit { namespace chain {
    using graphene::db::abstract_object;
    using graphene::db::object;
+
+   class database_impl;
 
    /**
     *   @class database
@@ -317,13 +318,6 @@ namespace steemit { namespace chain {
          void initialize_indexes();
          void init_genesis(uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
 
-         template<typename EvaluatorType>
-         void register_evaluator()
-         {
-            _operation_evaluators[
-               operation::tag<typename EvaluatorType::operation_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
-         }
-
          /**
           *  This method validates transactions without adding it to the pending state.
           *  @throw if an error occurs
@@ -361,14 +355,12 @@ namespace steemit { namespace chain {
 
       private:
          optional<undo_database::session>       _pending_tx_session;
-         vector< unique_ptr<op_evaluator<>> >     _operation_evaluators;
-
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );
          void _apply_transaction( const signed_transaction& trx );
-         void apply_operation( transaction_evaluation_state& eval_state, const operation& op );
+         void apply_operation( const operation& op );
 
 
          ///Steps involved in applying a new block
@@ -394,6 +386,8 @@ namespace steemit { namespace chain {
          void apply_hardfork( uint32_t hardfork );
 
          ///@}
+
+         std::unique_ptr< database_impl > _my;
 
          vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
