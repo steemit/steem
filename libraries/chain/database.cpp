@@ -759,7 +759,7 @@ signed_block database::_generate_block(
    {
       const auto& witness = get_witness( witness_owner );
 
-      if( witness.running_version != STEEMIT_BLOCKCHAIN_VERSION ) // TODO: Hardfork requirement can be removed after hardfork time
+      if( witness.running_version != STEEMIT_BLOCKCHAIN_VERSION )
          pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
       const auto& hfp = hardfork_property_id_type()( *this );
@@ -1096,8 +1096,11 @@ void database::update_witness_schedule4()
       {
          witnesses_on_version += ver_itr->second;
 
-         if( witnesses_on_version > STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+         if( witnesses_on_version >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+         {
             majority_version = ver_itr->first;
+            break;
+         }
 
          ver_itr++;
       }
@@ -1106,7 +1109,7 @@ void database::update_witness_schedule4()
 
       while( hf_itr != hardfork_version_votes.end() )
       {
-         if( hf_itr->second > STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+         if( hf_itr->second >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
          {
             modify( hardfork_property_id_type()( *this ), [&]( hardfork_property_object& hpo )
             {

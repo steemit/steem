@@ -73,7 +73,7 @@ class  tag_object : public abstract_object<tag_object> {
        *  be reviewed.
        */
       fc::uint128_t     children_rshares2;
-      asset             total_payout;
+      asset             total_payout = asset( 0, SBD_SYMBOL );
 
       account_id_type    author;
       comment_id_type    parent;
@@ -206,7 +206,7 @@ class tag_stats_object : public abstract_object<tag_stats_object> {
 
       string            tag;
       fc::uint128_t     total_children_rshares2;
-      asset             total_payout;
+      asset             total_payout = asset( 0, SBD_SYMBOL );
       int32_t           net_votes = 0;
       uint32_t          top_posts = 0;
       uint32_t          comments  = 0;
@@ -264,7 +264,7 @@ class  peer_stats_object : public abstract_object<peer_stats_object> {
 
       int32_t         indirect_positive_votes = 0;
       int32_t         indirect_votes = 1;
-      
+
       float           rank = 0;
 
       void update_rank() {
@@ -276,7 +276,7 @@ class  peer_stats_object : public abstract_object<peer_stats_object> {
           if( !(direct_positive_votes+indirect_positive_votes) ){
             direct_order *= -1;
             indirect_order *= -1;
-          } 
+          }
 
           direct *= direct;
           indirect *= indirect;
@@ -295,7 +295,7 @@ typedef multi_index_container<
    peer_stats_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_rank >, 
+      ordered_unique< tag< by_rank >,
          composite_key< peer_stats_object,
             member< peer_stats_object, account_id_type, &peer_stats_object::voter >,
             member< peer_stats_object, float, &peer_stats_object::rank >,
@@ -303,7 +303,7 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less<account_id_type>, std::greater<float>, std::less<account_id_type> >
       >,
-      ordered_unique< tag< by_voter_peer >, 
+      ordered_unique< tag< by_voter_peer >,
          composite_key< peer_stats_object,
             member< peer_stats_object, account_id_type, &peer_stats_object::voter >,
             member< peer_stats_object, account_id_type, &peer_stats_object::peer >
