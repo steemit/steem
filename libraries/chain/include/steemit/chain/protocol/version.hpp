@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fc/string.hpp>
+#include <fc/time.hpp>
 
 namespace steemit { namespace chain {
 
@@ -48,6 +49,15 @@ struct hardfork_version : version
    bool operator >= ( const version& o )const { return v_num >= ( o.v_num & 0xFFFF0000 ); }
 };
 
+struct hardfork_version_vote
+{
+   hardfork_version_vote() {}
+   hardfork_version_vote( hardfork_version v, fc::time_point_sec t ):hf_version( v ),hf_time( t ) {}
+
+   hardfork_version   hf_version;
+   fc::time_point_sec hf_time;
+};
+
 } } // steemit::chain
 
 namespace fc
@@ -63,3 +73,5 @@ namespace fc
 #include <fc/reflect/reflect.hpp>
 FC_REFLECT( steemit::chain::version, (v_num) )
 FC_REFLECT_DERIVED( steemit::chain::hardfork_version, (steemit::chain::version), )
+
+FC_REFLECT( steemit::chain::hardfork_version_vote, (hf_version)(hf_time) )

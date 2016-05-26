@@ -19,9 +19,8 @@ namespace steemit { namespace chain {
 
    typedef static_variant<
       void_t,
-      version,             // Normal witness version reporting, for diagnostics and voting
-      hardfork_version,    // Voting for the next hardfork to trigger
-      fc::time_point_sec   // Voting for when that hardfork should happen
+      version,              // Normal witness version reporting, for diagnostics and voting
+      hardfork_version_vote // Voting for the next hardfork to trigger
       >                                future_extensions;
    typedef flat_set<future_extensions> extensions_type;
 
