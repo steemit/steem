@@ -5,6 +5,16 @@
 
 namespace steemit { namespace chain {
 
+   /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
+   ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags 
+   ///  going forward.
+   inline void validate_permlink( const string& permlink )
+   {
+      FC_ASSERT( permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
+      FC_ASSERT( fc::is_utf8( permlink ), "permlink not formatted in UTF8" );
+   }
+
+
    bool inline is_asset_type( asset asset, asset_symbol_type symbol )
    {
       return asset.symbol == symbol;
@@ -47,8 +57,11 @@ namespace steemit { namespace chain {
       FC_ASSERT( body.size() > 0, "Body is empty" );
       FC_ASSERT( fc::is_utf8( body ), "Body not formatted in UTF8" );
 
+
       FC_ASSERT( !parent_author.size() || is_valid_account_name( parent_author ), "Parent author name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author name invalid" );
+      validate_permlink( parent_permlink );
+      validate_permlink( permlink );
 
       if( json_metadata.size() > 0 )
       {
@@ -56,12 +69,17 @@ namespace steemit { namespace chain {
       }
    }
 
+   void delete_comment_operation::validate()const {
+      validate_permlink( permlink );
+      FC_ASSERT( is_valid_account_name( author ) );
+   }
+
    void vote_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );
       FC_ASSERT( is_valid_account_name( author ), "Author account name invalid" );\
       FC_ASSERT( abs(weight) <= STEEMIT_100_PERCENT, "Weight is not a STEEMIT percentage" );
-      //FC_ASSERT( weight != 0, "Vote weight is 0" );
+      validate_permlink( permlink );
    }
 
    void transfer_operation::validate() const

@@ -3,6 +3,7 @@
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
 
+#include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 
 #include <steemit/chain/protocol/block.hpp>
@@ -29,11 +30,14 @@ class debug_node_api_impl
       uint32_t debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely );
       fc::optional< steemit::chain::signed_block > debug_pop_block();
       //void debug_push_block( const steemit::chain::signed_block& block );
+      steemit::chain::witness_schedule_object debug_get_witness_schedule();
+      steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
       void debug_update_object( const fc::variant_object& update );
       //void debug_save_db( std::string db_path );
       void debug_stream_json_objects( const std::string& filename );
       void debug_stream_json_objects_flush();
       void debug_set_hardfork( uint32_t hardfork_id );
+      bool debug_has_hardfork( uint32_t hardfork_id );
       std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > get_plugin();
 
       steemit::app::application& app;
@@ -177,6 +181,16 @@ fc::optional< steemit::chain::signed_block > debug_node_api_impl::debug_pop_bloc
    app.chain_database()->push_block( block );
 }*/
 
+steemit::chain::witness_schedule_object debug_node_api_impl::debug_get_witness_schedule()
+{
+   return steemit::chain::witness_schedule_id_type()( *app.chain_database() );
+}
+
+steemit::chain::hardfork_property_object debug_node_api_impl::debug_get_hardfork_property_object()
+{
+   return steemit::chain::hardfork_property_id_type()( *app.chain_database() );
+}
+
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
 {
    get_plugin()->debug_update( update );
@@ -210,11 +224,17 @@ void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
    get_plugin()->debug_update( update );
 }
 
+bool debug_node_api_impl::debug_has_hardfork( uint32_t hardfork_id )
+{
+   idump( (steemit::chain::hardfork_property_id_type()( *app.chain_database() ))(hardfork_id) );
+   return steemit::chain::hardfork_property_id_type()( *app.chain_database() ).last_hardfork >= hardfork_id;
+}
+
 } // detail
 
-debug_node_api::debug_node_api( steemit::app::application& app )
+debug_node_api::debug_node_api( const steemit::app::api_context& ctx )
 {
-   my = std::make_shared< detail::debug_node_api_impl >(app);
+   my = std::make_shared< detail::debug_node_api_impl >(ctx.app);
 }
 
 void debug_node_api::on_api_startup() {}
@@ -244,6 +264,16 @@ fc::optional< steemit::chain::signed_block > debug_node_api::debug_pop_block()
    my->debug_push_block( block );
 }*/
 
+steemit::chain::witness_schedule_object debug_node_api::debug_get_witness_schedule()
+{
+   return my->debug_get_witness_schedule();
+}
+
+steemit::chain::hardfork_property_object debug_node_api::debug_get_hardfork_property_object()
+{
+   return my->debug_get_hardfork_property_object();
+}
+
 void debug_node_api::debug_update_object( fc::variant_object update )
 {
    my->debug_update_object( update );
@@ -262,6 +292,11 @@ void debug_node_api::debug_stream_json_objects_flush()
 void debug_node_api::debug_set_hardfork( uint32_t hardfork_id )
 {
    my->debug_set_hardfork( hardfork_id );
+}
+
+bool debug_node_api::debug_has_hardfork( uint32_t hardfork_id )
+{
+   return my->debug_has_hardfork( hardfork_id );
 }
 
 } } } // steemit::plugin::debug_node

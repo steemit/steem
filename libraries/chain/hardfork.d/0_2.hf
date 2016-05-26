@@ -1,0 +1,6 @@
+#ifndef STEEMIT_HARDFORK_0_2
+#define STEEMIT_HARDFORK_0_2 2
+// Tue, 26 Apr 2016 18:00:00 GMT
+#define STEEMIT_HARDFORK_0_2_TIME 1461693600
+#define STEEMIT_HARDFORK_0_2_VERSION hardfork_version( 0, 2 )
+#endif

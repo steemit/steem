@@ -225,66 +225,89 @@ class DebugNode( object ):
       self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_set_hardfork",[' + str( hardfork_id ) + ']], "id":1}' ) )
 
 
-def main():
-   """
-   This example contains a simple parser to obtain the locations of both steemd and the data directory,
-   creates and runs a new debug node, replays all of the blocks in the data directory, and finally waits
-   for the user to interface with it outside of the script. Sending SIGINT succesfully and cleanly terminates
-   the program.
-   """
-   import os, sys
-   from argparse import ArgumentParser
+   def debug_has_hardfork( self, hardfork_id ):
+      return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_has_hardfork",[' + str( hardfork_id ) + ']], "id":1}' ) )
 
-   if( os.name != "posix" ):
-      print( "This script only works on POSIX systems" )
-      return
 
-   parser = ArgumentParser( description='Run a Debug Node on an existing chain. This simply replays all blocks ' + \
-                              'and then waits indefinitely to allow user interaction through RPC calls and ' + \
-                              'the CLI wallet' )
-   parser.add_argument( '--steemd', '-s', type=str, required=True, help='The location of a steemd binary to run the debug node' )
-   parser.add_argument( '--data-dir', '-d', type=str, required=True, help='The location of an existing data directory. ' + \
-                        'The debug node will pull blocks from this directory when replaying the chain. The directory ' + \
-                        'will not be changed.' )
+   def debug_get_witness_schedule( self ):
+      return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_get_witness_schedule",[]], "id":1}' ) )
 
-   args = parser.parse_args()
 
-   steemd = Path( args.steemd )
-   if( not steemd.exists() ):
-      print( 'Error: steemd does not exist.' )
-      return
+   def debug_get_hardfork_property_object( self ):
+      return self._rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [2,"debug_get_hardfork_property_object",[]], "id":1}' ) )
 
-   steemd = steemd.resolve()
-   if( not steemd.is_file() ):
-      print( 'Error: steemd is not a file.' )
-      return
-
-   data_dir = Path( args.data_dir )
-   if( not data_dir.exists() ):
-      print( 'Error: data_dir does not exist or is not a properly constructed steemd data directory' )
-
-   data_dir = data_dir.resolve()
-   if( not data_dir.is_dir() ):
-      print( 'Error: data_dir is not a directory' )
-
-   print( 'Creating and starting debug node' )
-   debug_node = DebugNode( str( steemd ), str( data_dir ) )
-
-   with debug_node:
-      print( 'Replaying blocks...', )
-      sys.stdout.flush()
-      total_blocks = 0
-      while( total_blocks % 100000 == 0 ):
-         total_blocks += debug_node.debug_push_blocks( 100000 )
-         print( 'Blocks Replayed: ' + str( total_blocks ) )
-         sys.stdout.flush()
-
-      print( 'Done!' )
-      print( 'Feel free to interact with this node via RPC calls for the cli wallet.' )
-      print( 'To shutdown the node, send SIGINT with Ctrl + C to this script. It will shut down safely.' )
-
-      while( True ):
-         sleep( 1 )
 
 if __name__=="__main__":
+   WAITING = True
+
+   def main():
+      global WAITING
+      """
+      This example contains a simple parser to obtain the locations of both steemd and the data directory,
+      creates and runs a new debug node, replays all of the blocks in the data directory, and finally waits
+      for the user to interface with it outside of the script. Sending SIGINT succesfully and cleanly terminates
+      the program.
+      """
+      import os, signal, sys
+      from argparse import ArgumentParser
+
+      if( os.name != "posix" ):
+         print( "This script only works on POSIX systems" )
+         return
+
+      parser = ArgumentParser( description='Run a Debug Node on an existing chain. This simply replays all blocks ' + \
+                                 'and then waits indefinitely to allow user interaction through RPC calls and ' + \
+                                 'the CLI wallet' )
+      parser.add_argument( '--steemd', '-s', type=str, required=True, help='The location of a steemd binary to run the debug node' )
+      parser.add_argument( '--data-dir', '-d', type=str, required=True, help='The location of an existing data directory. ' + \
+                           'The debug node will pull blocks from this directory when replaying the chain. The directory ' + \
+                           'will not be changed.' )
+
+      args = parser.parse_args()
+
+      steemd = Path( args.steemd )
+      if( not steemd.exists() ):
+         print( 'Error: steemd does not exist.' )
+         return
+
+      steemd = steemd.resolve()
+      if( not steemd.is_file() ):
+         print( 'Error: steemd is not a file.' )
+         return
+
+      data_dir = Path( args.data_dir )
+      if( not data_dir.exists() ):
+         print( 'Error: data_dir does not exist or is not a properly constructed steemd data directory' )
+
+      data_dir = data_dir.resolve()
+      if( not data_dir.is_dir() ):
+         print( 'Error: data_dir is not a directory' )
+
+      signal.signal( signal.SIGINT, sigint_handler )
+
+      print( 'Creating and starting debug node' )
+      debug_node = DebugNode( str( steemd ), str( data_dir ) )
+
+      with debug_node:
+         print( 'Replaying blocks...', )
+         sys.stdout.flush()
+         total_blocks = 0
+         while( total_blocks % 100000 == 0 ):
+            total_blocks += debug_node.debug_push_blocks( 100000 )
+            print( 'Blocks Replayed: ' + str( total_blocks ) )
+            sys.stdout.flush()
+
+         print( 'Done!' )
+         print( 'Feel free to interact with this node via RPC calls for the cli wallet.' )
+         print( 'To shutdown the node, send SIGINT with Ctrl + C to this script. It will shut down safely.' )
+
+         while( WAITING ):
+            sleep( 1 )
+
+   def sigint_handler( signum, frame ):
+      global WAITING
+      WAITING = False
+      sleep( 3 )
+      sys.exit( 0 )
+
    main()

@@ -56,7 +56,7 @@ const index& object_database::get_index(uint8_t space_id, uint8_t type_id)const
    FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
    FC_ASSERT( _index[space_id].size() > type_id, "", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
    const auto& tmp = _index[space_id][type_id];
-   FC_ASSERT( tmp );
+   FC_ASSERT( tmp, "unkown index" );
    return *tmp;
 }
 index& object_database::get_mutable_index(uint8_t space_id, uint8_t type_id)

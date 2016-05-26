@@ -1,16 +1,3 @@
-
-## This feature depends upon Qt 5.5 but is not required for consensus
-IF( ENABLE_CONTENT_PATCHING )
-   find_package(Qt5Core REQUIRED)
-   MESSAGE( STATUS "             CONFIGURING WITH DIFF MATCH PATCH             " )
-   SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTEEM_DIFF_MATCH_PATCH" )
-   add_subdirectory( google-diff-match-patch/cpp )
-
-   SET( PATCH_MERGE_LIB google_patch_diff_merge Qt5::Core)
-ELSE()
-   MESSAGE( STATUS "             CONFIGURING WITHOUT DIFF MATCH PATCH             " )
-ENDIF( ENABLE_CONTENT_PATCHING )
-
 add_subdirectory( fc )
 add_subdirectory( db )
 add_subdirectory( deterministic_openssl_rand )

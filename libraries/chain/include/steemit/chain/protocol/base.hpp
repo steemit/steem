@@ -2,6 +2,9 @@
 
 #include <steemit/chain/protocol/types.hpp>
 #include <steemit/chain/protocol/authority.hpp>
+#include <steemit/chain/protocol/version.hpp>
+
+#include <fc/time.hpp>
 
 namespace steemit { namespace chain {
 
@@ -14,7 +17,11 @@ namespace steemit { namespace chain {
       void validate()const{}
    };
 
-   typedef static_variant<void_t>      future_extensions;
+   typedef static_variant<
+      void_t,
+      version,              // Normal witness version reporting, for diagnostics and voting
+      hardfork_version_vote // Voting for the next hardfork to trigger
+      >                                future_extensions;
    typedef flat_set<future_extensions> extensions_type;
 
 } } // steemit::chain

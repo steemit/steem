@@ -23,6 +23,7 @@
  */
 #pragma once
 
+#include <steemit/app/api_context.hpp>
 #include <steemit/app/database_api.hpp>
 #include <steemit/chain/protocol/types.hpp>
 
@@ -46,6 +47,7 @@ namespace steemit { namespace app {
    using namespace std;
 
    class application;
+   struct api_context;
 
    /**
     * @brief The network_broadcast_api class allows broadcasting of transactions.
@@ -53,7 +55,7 @@ namespace steemit { namespace app {
    class network_broadcast_api : public std::enable_shared_from_this<network_broadcast_api>
    {
       public:
-         network_broadcast_api(application& a);
+         network_broadcast_api(const api_context& a);
 
          struct transaction_confirmation
          {
@@ -114,7 +116,7 @@ namespace steemit { namespace app {
    class network_node_api
    {
       public:
-         network_node_api(application& a);
+         network_node_api(const api_context& a);
 
          /**
           * @brief Return general network information, such as p2p port
@@ -152,6 +154,7 @@ namespace steemit { namespace app {
 
          /// internal method, not exposed via JSON RPC
          void on_api_startup();
+
       private:
          application& _app;
    };
@@ -164,7 +167,7 @@ namespace steemit { namespace app {
    class login_api
    {
       public:
-         login_api(application& a);
+         login_api(const api_context& ctx);
          virtual ~login_api();
 
          /**
@@ -178,24 +181,13 @@ namespace steemit { namespace app {
           */
          bool login(const string& user, const string& password);
 
-         fc::api_ptr get_api_by_name( const string& api_name )const
-         {
-            auto it = _api_map.find( api_name );
-            if( it == _api_map.end() ) {
-               wlog( "unknown api: ${api}", ("api",api_name) );
-               return fc::api_ptr();
-            }
-            if( it->second ) ilog( "found api: ${api}", ("api",api_name) );
-            FC_ASSERT( it->second != nullptr );
-            return it->second;
-         }
+         fc::api_ptr get_api_by_name( const string& api_name )const;
 
          /// internal method, not exposed via JSON RPC
          void on_api_startup();
 
       private:
-         application& _app;
-         flat_map< std::string, fc::api_ptr > _api_map;
+         api_context _ctx;
    };
 
 }}  // steemit::app

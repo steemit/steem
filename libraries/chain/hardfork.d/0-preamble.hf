@@ -10,6 +10,7 @@
 #pragma once
 
 #include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/protocol/version.hpp>
 
 namespace steemit { namespace chain {
 
@@ -21,11 +22,16 @@ class hardfork_property_object : public abstract_object< hardfork_property_objec
 
       vector< fc::time_point_sec > processed_hardforks;
       int                          last_hardfork = 0;
+      hardfork_version             current_hardfork_version;
+      hardfork_version             next_hardfork;
+      fc::time_point_sec           next_hardfork_time;
 };
 
 } } // namespace steemit::chain
 
-FC_REFLECT_DERIVED( steemit::chain::hardfork_property_object, (graphene::db::object), (processed_hardforks)(last_hardfork) )
+FC_REFLECT_DERIVED( steemit::chain::hardfork_property_object, (graphene::db::object),
+   (processed_hardforks)(last_hardfork)(current_hardfork_version)
+   (next_hardfork)(next_hardfork_time) )
 
 #define STEEMIT_NUM_HARDFORKS 5
 

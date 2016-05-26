@@ -2,8 +2,22 @@
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
-#ifdef STEEM_DIFF_MATCH_PATCH
+#ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
+#include <boost/locale/encoding_utf.hpp>
+
+using boost::locale::conv::utf_to_utf;
+
+std::wstring utf8_to_wstring(const std::string& str)
+{
+    return utf_to_utf<wchar_t>(str.c_str(), str.c_str() + str.size());
+}
+
+std::string wstring_to_utf8(const std::wstring& str)
+{
+    return utf_to_utf<char>(str.c_str(), str.c_str() + str.size());
+}
+
 #endif
 
 #include <fc/uint128.hpp>
@@ -12,7 +26,7 @@
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
-inline void validate_permlink( const string& permlink )
+inline void validate_permlink_0_1( const string& permlink )
 {
    FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
 
@@ -32,55 +46,13 @@ inline void validate_permlink( const string& permlink )
    }
 }
 
-/**
- *  Allow GROUP / TOPIC
- */
-template< bool allow_slash >
-void validate_permlink_0_5( const string& permlink )
-{
-   FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH );
 
-   int char_count  = 0;
-   int slash_count = 0;
-   int after_slash = 0;
-   bool last_was_slash = false;
-   bool last_was_dash = false;
-
-   for( auto c : permlink )
-   {
-      switch( c )
-      {
-         case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i':
-         case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
-         case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z': case '0':
-         case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-            ++char_count;
-            last_was_dash = false;
-            if( allow_slash ) FC_ASSERT( !last_was_dash );
-            ++after_slash;
-            break;
-         case '-':
-            if( allow_slash ) FC_ASSERT( char_count, "must have characters before -" );
-            last_was_dash = true;
-            ++char_count;
-            break;
-         case '/':
-            FC_ASSERT( allow_slash && !slash_count && char_count );
-            ++slash_count;
-            after_slash = 0;
-            break;
-         default:
-            FC_ASSERT( !"Invalid permlink character:", "${s}", ("s", std::string() + c ) );
-      }
-   }
-   if( allow_slash ) FC_ASSERT( after_slash, "there must be charcters after - or /" );
-}
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    db().get_account( o.owner ); // verify owner exists
 
-   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
+   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -112,7 +84,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )  {
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )  {
       const witness_schedule_object& wso = db().get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided",
                  ("f", wso.median_props.account_creation_fee)
@@ -146,7 +118,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 void account_update_evaluator::do_apply( const account_update_operation& o )
 {
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
 
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
@@ -164,9 +136,32 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
    });
 }
 
+
+/**
+ *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
+ */
+void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__62) ); /// TODO: remove this check after Hard Fork 5
+
+   const auto& comment = db().get_comment( o.author, o.permlink );
+   FC_ASSERT( comment.children == 0, "comment cannot have any replies" );
+   FC_ASSERT( comment.net_rshares <= 0, "comment cannot have any net positive votes" );
+
+   const auto& vote_idx = db().get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
+
+   auto vote_itr = vote_idx.lower_bound( comment_id_type(comment.id) );
+   while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id ) {
+      const auto& cur_vote = *vote_itr;
+      ++vote_itr;
+      db().remove(cur_vote);
+   }
+
+   db().remove( comment );
+}
+
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0) )
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
 
    const auto& by_permlink_idx = db().get_index_type< comment_index >().indices().get< by_permlink >();
@@ -194,15 +189,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       const auto& new_comment = db().create< comment_object >( [&]( comment_object& com )
       {
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
          {
-            validate_permlink_0_5<true>( o.parent_permlink );
-            validate_permlink_0_5<true>( o.permlink );
-         }
-         else if( db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) )
-         {
-            validate_permlink( o.parent_permlink );
-            validate_permlink( o.permlink );
+            validate_permlink_0_1( o.parent_permlink );
+            validate_permlink_0_1( o.permlink );
          }
 
          if ( o.parent_author.size() == 0 )
@@ -233,6 +223,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          #endif
       });
 
+      /** TODO move category behavior to a plugin, this is not part of consensus */
       const category_object* cat = db().find_category( new_comment.category );
       if( !cat ) {
          cat = &db().create<category_object>( [&]( category_object& c ){
@@ -247,32 +238,22 @@ void comment_evaluator::do_apply( const comment_operation& o )
          });
       }
 
-      const auto& new_comment_stats = db().create<comment_stats_object>( [&]( comment_stats_object& cso ){
-          cso.comment_id  = new_comment.id;
-          if( parent )
-            cso.parent_comment_id = parent->id;
-          cso.category_id = cat->id;
-          cso.author_id   = auth.get_id();
-      });
-
-      db().modify( new_comment, [&]( comment_object& co ) { co.stats = new_comment_stats.id; } );
-
       id = new_comment.id;
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
-#ifndef IS_LOW_MEM
       auto now = db().head_block_time();
       while( parent ) {
          db().modify( *parent, [&]( comment_object& p ){
             p.children++;
             p.active = now;
          });
+#ifndef IS_LOW_MEM
          if( parent->parent_author.size() )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
          else
+#endif
             parent = nullptr;
       }
-#endif
 
    }
    else // start edit case
@@ -303,27 +284,23 @@ void comment_evaluator::do_apply( const comment_operation& o )
            if( o.json_metadata.size() ) com.json_metadata = o.json_metadata;
 
            if( o.body.size() ) {
-              #ifdef STEEM_DIFF_MATCH_PATCH
               try {
-               diff_match_patch dmp;
-               auto patch = dmp.patch_fromText( QString::fromStdString(o.body) );
+               diff_match_patch<std::wstring> dmp;
+               auto patch = dmp.patch_fromText( utf8_to_wstring(o.body) );
                if( patch.size() ) {
-                  auto first = QString::fromStdString( com.body );
-                  auto result = dmp.patch_apply( patch, first );
-                  com.body = result.first.toStdString();
+                  auto result = dmp.patch_apply( patch, utf8_to_wstring(com.body) );
+                  auto patched_body = wstring_to_utf8(result.first);
+                  if( !fc::is_utf8( patched_body ) ) {
+                     idump(("invalid utf8")(patched_body));
+                     com.body = fc::prune_invalid_utf8(patched_body);
+                  } else { com.body = patched_body; }
                }
                else { // replace
                   com.body = o.body;
                }
-              } catch ( const QString& err ) {
-                  //wlog( "exception thrown while applying patch: \n   ${e}", ("e",err.toStdString()) );
-                  com.body = o.body;
               } catch ( ... ) {
                   com.body = o.body;
               }
-              #else
-               com.body = o.body;
-              #endif
            }
          #endif
 
@@ -398,12 +375,10 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
     const auto& account = db().get_account( o.account );
 
-    // TODO: DELETE if( !db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) FC_ASSERT( o.vesting_shares.amount > 0 );
-
     FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ) );
     FC_ASSERT( account.vesting_shares >= o.vesting_shares );
 
-    if( !account.mined && db().has_hardfork( STEEMIT_HARDFORK_0_1_0 ) ) {
+    if( !account.mined && db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) {
       const auto& props = db().get_dynamic_global_properties();
       const witness_schedule_object& wso = db().get_witness_schedule_object();
 
@@ -417,7 +392,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 
 
     if( o.vesting_shares.amount == 0 ) {
-       if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+       if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__57 ) )
           FC_ASSERT( account.vesting_withdraw_rate.amount  != 0, "this operation would not change the vesting withdraw rate" );
 
        db().modify( account, [&]( account_object& a ) {
@@ -434,7 +409,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          if( new_vesting_withdraw_rate.amount == 0 )
             new_vesting_withdraw_rate.amount = 1;
 
-         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) )
+         if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__57 ) )
             FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "this operation would not change the vesting withdraw rate" );
 
          a.vesting_withdraw_rate = new_vesting_withdraw_rate;
@@ -504,7 +479,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    if( itr == by_account_witness_idx.end() ) {
       FC_ASSERT( o.approve, "vote doesn't exist, user must be indicate a desire to approve witness" );
 
-      if ( db().has_hardfork( STEEMIT_HARDFORK_0_2_0 ) )
+      if ( db().has_hardfork( STEEMIT_HARDFORK_0_2 ) )
       {
          FC_ASSERT( voter.witnesses_voted_for < STEEMIT_MAX_ACCOUNT_WITNESS_VOTES, "account has voted for too many witnesses" ); // TODO: Remove after hardfork 2
 
@@ -513,7 +488,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
              v.account = voter.id;
          });
 
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_3_0 ) ) {
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_3 ) ) {
             db().adjust_witness_vote( witness, voter.witness_vote_weight() );
          }
          else {
@@ -538,8 +513,8 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    } else {
       FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to reject witness" );
 
-      if (  db().has_hardfork( STEEMIT_HARDFORK_0_2_0 ) ) {
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_3_0 ) )
+      if (  db().has_hardfork( STEEMIT_HARDFORK_0_2 ) ) {
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_3 ) )
             db().adjust_witness_vote( witness, -voter.witness_vote_weight() );
          else
             db().adjust_proxied_witness_votes( voter, -voter.witness_vote_weight() );
@@ -600,6 +575,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
          c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         if( rshares > 0 )
+            c.net_votes++;
+         else
+            c.net_votes--;
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
@@ -657,8 +636,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
    }
    else
    {
-      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ), "Cannot change votes until hardfork 0_5_0" );
-
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__22 ), "Cannot change votes until hardfork 0_5" );
+      FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Cannot change vote again" );
 
       auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
       auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
@@ -699,6 +678,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.abs_rshares += abs_rshares;
          c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
          c.total_vote_weight -= itr->weight;
+
+         /// TODO: figure out how to handle remove a vote (rshares == 0 )
+         if( rshares > 0 && itr->rshares < 0 )
+            c.net_votes += 2;
+         else if( rshares < 0 && itr->rshares > 0 )
+            c.net_votes -= 2;
       });
 
       old_rshares *= old_rshares;
@@ -711,6 +696,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
          cv.weight = 0;
+         cv.num_changes += 1;
       });
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
@@ -720,7 +706,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 void custom_evaluator::do_apply( const custom_operation& o ){}
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o ){
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5_0 ) );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
 }
 
 
@@ -729,7 +715,7 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
 
    FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
-   if( db().is_producing() )  { /// TODO: make this a hard fork in the future
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )  {
       const auto& witness_by_work = db().get_index_type<witness_index>().indices().get<by_work>();
       auto work_itr = witness_by_work.find( o.work.work );
       if( work_itr != witness_by_work.end() ) {
@@ -854,7 +840,7 @@ void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation&
 
 void report_over_production_evaluator::do_apply( const report_over_production_operation& o ) {
    FC_ASSERT( !db().is_producing(), "this operation is currently disabled" );
-   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_4_0 ), "this operation is disabled after this hardfork" );
+   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_4 ), "this operation is disabled after this hardfork" );
 
    /*
    const auto& reporter = db().get_account( o.reporter );

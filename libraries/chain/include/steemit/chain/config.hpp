@@ -3,6 +3,8 @@
  */
 #pragma once
 
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 5, 0) )
+
 #ifdef IS_TEST_NET
 #define STEEMIT_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
 #define STEEMIT_INIT_PUBLIC_KEY_STR             (std::string( steemit::chain::public_key_type(STEEMIT_INIT_PRIVATE_KEY.get_public_key()) ))
@@ -48,7 +50,6 @@
 
 #endif
 
-
 #define STEEMIT_BLOCK_INTERVAL                  3
 #define STEEMIT_BLOCKS_PER_YEAR                 (365*24*60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_BLOCKS_PER_DAY                  (24*60*60/STEEMIT_BLOCK_INTERVAL)
@@ -62,12 +63,14 @@
 #define STEEMIT_MAX_MINER_WITNESSES             1
 #define STEEMIT_MAX_RUNNER_WITNESSES            1
 #define STEEMIT_MAX_MINERS                      (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
+#define STEEMIT_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 20 dpos witnesses (19 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define STEEMIT_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define STEEMIT_MAX_MEMO_SIZE                   2048
 #define STEEMIT_MAX_PROXY_RECURSION_DEPTH       4
 #define STEEMIT_VESTING_WITHDRAW_INTERVALS      104
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (60*60*24) // 1 day
+#define STEEMIT_MAX_VOTE_CHANGES                5
 
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
