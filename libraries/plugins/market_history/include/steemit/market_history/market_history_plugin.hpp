@@ -1,4 +1,4 @@
-#include <teemit/app/plugin.hpp>
+#include <steemit/app/plugin.hpp>
 
 namespace steemit { namespace market_history {
 
@@ -25,7 +25,7 @@ class market_history_plugin : public steemit::app::plugin
    private:
       friend class detail::market_history_plugin_impl;
       std::unique_ptr< detail::market_history_plugin_impl > _my;
-}
+};
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -52,7 +52,7 @@ struct bucket_key
 
    friend bool operator < ( const bucket_key& a, const bucket_key& b )
    {
-      return std::tie( a.seconds, a.open ) < std::tie( b.seconds, b.quote );
+      return std::tie( a.seconds, a.open ) < std::tie( b.seconds, b.open );
    }
 
    friend bool operator == ( const bucket_key& a, const bucket_key& b )
@@ -66,8 +66,8 @@ struct bucket_object : public abstract_object< bucket_object >
    static const uint8_t space_id = ACCOUNT_HISTORY_SPACE_ID;
    static const uint8_t type_id = 1;
 
-   price high()const { return asset( high_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ) }
-   price low()const { return asset( low_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ) }
+   price high()const { return asset( high_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
+   price low()const { return asset( low_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
 
    uint32_t             seconds = 0;
    fc::time_point_sec   open;
@@ -90,6 +90,7 @@ struct order_history_object : public abstract_object< order_history_object >
    fill_order_operation op;
 };
 
+struct by_id;
 struct by_key;
 typedef multi_index_container<
    bucket_object,
@@ -100,7 +101,7 @@ typedef multi_index_container<
 > bucket_object_multi_index_type;
 
 struct by_sequence;
-typedef mutli_index_container<
+typedef multi_index_container<
    order_history_object,
    indexed_by<
       hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
