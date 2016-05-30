@@ -1,12 +1,14 @@
 file(GLOB HEADERS "include/steemit/chain/*.hpp")
 
 if( MSVC )
-   add_custom_target( build_hardfork_hpp
-      COMMAND cat-parts "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" )
+   set( hardfork_hpp_file "${CMAKE_CURRENT_SOURCE_DIR}/include/steemit/chain/hardfork.hpp" )
+   add_custom_target( build_hardfork_hpp 
+      COMMAND cat-parts "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" ${build_hardfork_hpp} )
    add_dependencies( build_hardfork_hpp cat-parts )
 else( MSVC )
+   set( hardfork_hpp_file "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" )
    add_custom_target( build_hardfork_hpp
-      COMMAND "${CMAKE_SOURCE_DIR}/programs/build_helpers/cat_parts.py" "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" )
+      COMMAND "${CMAKE_SOURCE_DIR}/programs/build_helpers/cat_parts.py" "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" ${hardfork_hpp_file} )
 endif( MSVC )
 set_source_files_properties( "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" PROPERTIES GENERATED TRUE )
 
@@ -36,7 +38,7 @@ add_library( steemit_chain
              block_database.cpp
 
              ${HEADERS}
-             "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
+             ${hardfork_hpp_file}
            )
 
 add_dependencies( steemit_chain build_hardfork_hpp )
