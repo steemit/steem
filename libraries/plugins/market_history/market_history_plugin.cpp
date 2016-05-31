@@ -27,8 +27,6 @@ class market_history_plugin_impl
 
 void market_history_plugin_impl::update_market_histories( const operation_object& o )
 {
-   //fill_order_operation& op = fill_order_operation();
-
    try
    {
       fill_order_operation op = o.op.get< fill_order_operation >();
@@ -64,7 +62,7 @@ void market_history_plugin_impl::update_market_histories( const operation_object
          auto open = fc::time_point_sec( ( db.head_block_time().sec_since_epoch() / bucket ) * bucket );
          auto seconds = bucket;
 
-         auto itr = bucket_idx.find( boost::make_tuple( open, seconds ) );
+         auto itr = bucket_idx.find( boost::make_tuple( seconds, open ) );
          if( itr == bucket_idx.end() )
          {
             db.create< bucket_object >( [&]( bucket_object &b )
@@ -108,7 +106,7 @@ void market_history_plugin_impl::update_market_histories( const operation_object
             if( _maximum_history_per_bucket_size > 0 )
             {
                open = fc::time_point_sec();
-               itr = bucket_idx.lower_bound( boost::make_tuple( open, seconds ) );
+               itr = bucket_idx.lower_bound( boost::make_tuple( seconds, open ) );
 
                while( itr->seconds == seconds && itr->open < cutoff )
                {
@@ -162,6 +160,16 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 }
 
 void market_history_plugin::plugin_startup() {}
+
+flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const
+{
+   return _my->_tracked_buckets;
+}
+
+uint32_t market_history_plugin::get_max_history_per_bucket() const
+{
+   return _my->_maximum_history_per_bucket_size;
+}
 
 } } // steemit::market_history
 

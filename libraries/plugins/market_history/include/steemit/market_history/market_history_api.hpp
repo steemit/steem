@@ -52,8 +52,8 @@ struct order_book
 struct market_trade
 {
    time_point_sec date;
-   share_type         steem;
-   share_type         sbd;
+   share_type     steem;
+   share_type     sbd;
 };
 
 class market_history_api

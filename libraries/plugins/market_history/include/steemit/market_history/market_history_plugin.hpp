@@ -4,6 +4,25 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
+//
+// Plugins should #define their SPACE_ID's so plugins with
+// conflicting SPACE_ID assignments can be compiled into the
+// same binary (by simply re-assigning some of the conflicting #defined
+// SPACE_ID's in a build script).
+//
+// Assignment of SPACE_ID's cannot be done at run-time because
+// various template automagic depends on them being known at compile
+// time.
+//
+#ifndef MARKET_HISTORY_SPACE_ID
+#define MARKET_HISTORY_SPACE_ID 7
+#endif
+
+#ifndef MARKET_HISTORY_PLUGIN_NAME
+#define MARKET_HISTORY_PLUGIN_NAME "market_history"
+#endif
+
+
 namespace steemit { namespace market_history {
 
 using namespace chain;
@@ -20,55 +39,24 @@ class market_history_plugin : public steemit::app::plugin
       market_history_plugin();
       virtual ~market_history_plugin();
 
-      virtual std::string plugin_name()const override { return "market_history"; }
+      virtual std::string plugin_name()const override { return MARKET_HISTORY_PLUGIN_NAME; }
       virtual void plugin_set_program_options(
          boost::program_options::options_description& cli,
          boost::program_options::options_description& cfg ) override;
       virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
       virtual void plugin_startup() override;
 
+      flat_set< uint32_t > get_tracked_buckets() const;
+      uint32_t get_max_history_per_bucket() const;
+
    private:
       friend class detail::market_history_plugin_impl;
       std::unique_ptr< detail::market_history_plugin_impl > _my;
 };
 
-//
-// Plugins should #define their SPACE_ID's so plugins with
-// conflicting SPACE_ID assignments can be compiled into the
-// same binary (by simply re-assigning some of the conflicting #defined
-// SPACE_ID's in a build script).
-//
-// Assignment of SPACE_ID's cannot be done at run-time because
-// various template automagic depends on them being known at compile
-// time.
-//
-#ifndef ACCOUNT_HISTORY_SPACE_ID
-#define ACCOUNT_HISTORY_SPACE_ID 5
-#endif
-
-/*struct bucket_key
-{
-   bucket_key( uint32_t s, fc::time_point_sec o )
-      :seconds(s), open(o) {}
-   bucket_key(){}
-
-   uint32_t             seconds = 0;
-   fc::time_point_sec   open;
-
-   friend bool operator < ( const bucket_key& a, const bucket_key& b )
-   {
-      return std::tie( a.seconds, a.open ) < std::tie( b.seconds, b.open );
-   }
-
-   friend bool operator == ( const bucket_key& a, const bucket_key& b )
-   {
-      return std::tie( a.seconds, a.open ) == std::tie( a.seconds, a.open );
-   }
-};*/
-
 struct bucket_object : public abstract_object< bucket_object >
 {
-   static const uint8_t space_id = ACCOUNT_HISTORY_SPACE_ID;
+   static const uint8_t space_id = MARKET_HISTORY_SPACE_ID;
    static const uint8_t type_id = 1;
 
    price high()const { return asset( high_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
@@ -103,20 +91,22 @@ typedef multi_index_container<
       hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_unique< tag< by_bucket >,
          composite_key< bucket_object,
-            member< bucket_object, fc::time_point_sec, &bucket_object::open >,
-            member< bucket_object, uint32_t, &bucket_object::seconds >
+            member< bucket_object, uint32_t, &bucket_object::seconds >,
+            member< bucket_object, fc::time_point_sec, &bucket_object::open >
          >,
-         composite_key_compare< std::less< fc::time_point_sec >, std::less< uint32_t > >
+         composite_key_compare< std::less< uint32_t >, std::less< fc::time_point_sec > >
       >
    >
 > bucket_object_multi_index_type;
 
 struct by_sequence;
+struct by_time;
 typedef multi_index_container<
    order_history_object,
    indexed_by<
       hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_sequence >, member< order_history_object, uint64_t, &order_history_object::sequence > >
+      ordered_unique< tag< by_sequence >, member< order_history_object, uint64_t, &order_history_object::sequence > >,
+      ordered_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
    >
 > order_history_multi_index_type;
 
