@@ -14,6 +14,7 @@ add_library( steemit_chain
              protocol/types.cpp
              protocol/authority.cpp
              protocol/operations.cpp
+             protocol/operation_util_impl.cpp
              protocol/steem_operations.cpp
              protocol/transaction.cpp
              protocol/block.cpp
