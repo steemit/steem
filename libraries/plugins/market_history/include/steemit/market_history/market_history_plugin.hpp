@@ -1,8 +1,13 @@
 #include <steemit/app/plugin.hpp>
 
+#include <graphene/db/generic_index.hpp>
+
+#include <boost/multi_index/composite_key.hpp>
+
 namespace steemit { namespace market_history {
 
 using namespace chain;
+using namespace graphene::db;
 
 namespace detail
 {
@@ -41,7 +46,7 @@ class market_history_plugin : public steemit::app::plugin
 #define ACCOUNT_HISTORY_SPACE_ID 5
 #endif
 
-struct bucket_key
+/*struct bucket_key
 {
    bucket_key( uint32_t s, fc::time_point_sec o )
       :seconds(s), open(o) {}
@@ -59,7 +64,7 @@ struct bucket_key
    {
       return std::tie( a.seconds, a.open ) == std::tie( a.seconds, a.open );
    }
-};
+};*/
 
 struct bucket_object : public abstract_object< bucket_object >
 {
@@ -69,8 +74,8 @@ struct bucket_object : public abstract_object< bucket_object >
    price high()const { return asset( high_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
    price low()const { return asset( low_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
 
-   uint32_t             seconds = 0;
    fc::time_point_sec   open;
+   uint32_t             seconds = 0;
    share_type           high_steem;
    share_type           high_sbd;
    share_type           low_steem;
@@ -91,12 +96,18 @@ struct order_history_object : public abstract_object< order_history_object >
 };
 
 struct by_id;
-struct by_key;
+struct by_bucket;
 typedef multi_index_container<
    bucket_object,
    indexed_by<
       hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_key >, member< bucket_object, bucket_key, &bucket_object::key > >
+      ordered_unique< tag< by_bucket >,
+         composite_key< bucket_object,
+            member< bucket_object, fc::time_point_sec, &bucket_object::open >,
+            member< bucket_object, uint32_t, &bucket_object::seconds >
+         >,
+         composite_key_compare< std::less< fc::time_point_sec >, std::less< uint32_t > >
+      >
    >
 > bucket_object_multi_index_type;
 
@@ -114,14 +125,14 @@ typedef generic_index< order_history_object, order_history_multi_index_type > or
 
 } } // steemit::market_history
 
-FC_REFLECT( steemit::market_history::bucket_key, (seconds)(open) )
 FC_REFLECT_DERIVED( steemit::market_history::bucket_object, (graphene::db::object),
-                     (key)
-                     (high_base)(high_quote)
-                     (low_base)(low_quote)
-                     (open_base)(open_quote)
-                     (close_base)(close_quote)
-                     (base_volume)(quote_volume) )
+                     (open)(seconds)
+                     (high_steem)(high_sbd)
+                     (low_steem)(low_sbd)
+                     (open_steem)(open_sbd)
+                     (close_steem)(close_sbd)
+                     (steem_volume)(sbd_volume) )
+
 FC_REFLECT_DERIVED( steemit::market_history::order_history_object, (graphene::db::object),
                      (sequence)
                      (time)
