@@ -866,6 +866,7 @@ discussion database_api::get_discussion( comment_id_type id )const {
    discussion d = id(my->_db);
    set_url( d );
    set_pending_payout( d );
+   d.active_votes = get_active_votes( d.author, d.permlink );
    return d;
 }
 
@@ -968,6 +969,7 @@ vector<discussion> database_api::get_discussions_by_votes( const discussion_quer
 
    return get_discussions( query, tag, parent, tidx, tidx_itr );
 }
+
 vector<discussion> database_api::get_discussions_by_children( const discussion_query& query )const {
    query.validate();
    auto tag = fc::to_lower( query.tag );
@@ -978,6 +980,7 @@ vector<discussion> database_api::get_discussions_by_children( const discussion_q
 
    return get_discussions( query, tag, parent, tidx, tidx_itr );
 }
+
 vector<discussion> database_api::get_discussions_by_hot( const discussion_query& query )const {
    query.validate();
    auto tag = fc::to_lower( query.tag );
