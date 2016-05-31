@@ -2007,6 +2007,21 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<limit_order_cancel_evaluator>();
 }
 
+void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
+{
+   bool inserted = _custom_json_evaluators.emplace( id, registry ).second;
+   // This assert triggering means we're mis-configured (multiple registrations of custom JSON evaluator for same ID)
+   FC_ASSERT( inserted );
+}
+
+std::shared_ptr< generic_json_evaluator_registry > database::get_custom_json_evaluator( const std::string& id )
+{
+   auto it = _custom_json_evaluators.find( id );
+   if( it != _custom_json_evaluators.end() )
+      return it->second;
+   return std::shared_ptr< generic_json_evaluator_registry >();
+}
+
 void database::initialize_indexes()
 {
    reset_indexes();

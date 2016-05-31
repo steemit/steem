@@ -24,6 +24,7 @@ namespace steemit { namespace chain {
    using graphene::db::object;
 
    class database_impl;
+   class generic_json_evaluator_registry;
 
    /**
     *   @class database
@@ -314,6 +315,9 @@ namespace steemit { namespace chain {
          //////////////////// db_init.cpp ////////////////////
 
          void initialize_evaluators();
+         void set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry );
+         std::shared_ptr< generic_json_evaluator_registry > get_custom_json_evaluator( const std::string& id );
+
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_genesis(uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
@@ -323,7 +327,6 @@ namespace steemit { namespace chain {
           *  @throw if an error occurs
           */
          void validate_transaction( const signed_transaction& trx );
-
 
          /** when popping a block, the transactions that were removed get cached here so they
           * can be reapplied at the proper time */
@@ -415,6 +418,7 @@ namespace steemit { namespace chain {
 
          node_property_object              _node_property_object;
 
+         flat_map< std::string, std::shared_ptr< generic_json_evaluator_registry > >   _custom_json_evaluators;
    };
 
 

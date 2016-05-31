@@ -152,3 +152,19 @@ if( options.count(name) ) { \
    std::shared_ptr< steemit::app::abstract_plugin > create_ ## plugin_name ## _plugin()  \
    { return std::make_shared< plugin_class >(); } \
    } }
+
+#define DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )                     \
+class X ## _evaluator : public steemit::chain::evaluator< X ## _evaluator, OPERATION > \
+{                                                                           \
+   public:                                                                  \
+      typedef X ## _operation operation_type;                               \
+                                                                            \
+      X ## _evaluator( database& db, PLUGIN* plugin )                       \
+         : steemit::chain::evaluator< X ## _evaluator, OPERATION >( db ),   \
+           _plugin( plugin )                                                \
+      {}                                                                    \
+                                                                            \
+      void do_apply( const X ## _operation& o );                            \
+                                                                            \
+      PLUGIN* _plugin;                                                      \
+};

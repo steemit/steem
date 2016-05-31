@@ -1,4 +1,5 @@
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/generic_json_evaluator_registry.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
@@ -705,8 +706,23 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
 void custom_evaluator::do_apply( const custom_operation& o ){}
 
-void custom_json_evaluator::do_apply( const custom_json_operation& o ){
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
+void custom_json_evaluator::do_apply( const custom_json_operation& o )
+{
+   database& d = db();
+
+   FC_ASSERT( d.has_hardfork( STEEMIT_HARDFORK_0_5 ) );
+   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   if( !eval )
+      return;
+
+   try
+   {
+      eval->apply( o );
+   }
+   catch( const fc::exception& e )
+   {
+      elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+   }
 }
 
 

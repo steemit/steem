@@ -50,10 +50,10 @@ class evaluator_registry
              _op_evaluators.emplace_back();
       }
 
-      template< typename EvaluatorType >
-      void register_evaluator()
+      template< typename EvaluatorType, typename... Args >
+      void register_evaluator( Args... args )
       {
-         _op_evaluators[ OperationType::template tag< typename EvaluatorType::operation_type >::value ].reset( new evaluator<EvaluatorType>(_db) );
+         _op_evaluators[ OperationType::template tag< typename EvaluatorType::operation_type >::value ].reset( new EvaluatorType(_db, args...) );
       }
 
       generic_evaluator<OperationType>& get_evaluator( const OperationType& op )
@@ -75,3 +75,16 @@ class evaluator_registry
 };
 
 } }
+
+#define DEFINE_EVALUATOR( X ) \
+class X ## _evaluator : public steemit::chain::evaluator< X ## _evaluator > \
+{                                                                           \
+   public:                                                                  \
+      typedef X ## _operation operation_type;                               \
+                                                                            \
+      X ## _evaluator( database& db )                                       \
+         : steemit::chain::evaluator< X ## _evaluator >( db )               \
+      {}                                                                    \
+                                                                            \
+      void do_apply( const X ## _operation& o );                            \
+};
