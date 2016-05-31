@@ -28,100 +28,49 @@
 
 namespace steemit { namespace app {
 
-template< typename PluginOps >
-plugin< PluginOps >::plugin()
+plugin::plugin()
 {
    _app = nullptr;
    return;
 }
 
-// Simply for backwards compatability
-template<>
-plugin< fc::static_variant<> >::plugin()
-{
-   _app = nullptr;
-   return;
-}
-
-template< typename PluginOps >
-plugin< PluginOps >::~plugin()
+plugin::~plugin()
 {
    return;
 }
 
-template<>
-plugin< fc::static_variant<> >::~plugin()
-{
-   return;
-}
-
-template< typename PluginOps >
-std::string plugin< PluginOps >::plugin_name()const
+std::string plugin::plugin_name()const
 {
    return "<unknown plugin>";
 }
 
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_initialize( const boost::program_options::variables_map& options )
+void plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
    return;
 }
 
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_startup()
+void plugin::plugin_startup()
 {
    return;
 }
 
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_shutdown()
+void plugin::plugin_shutdown()
 {
    return;
 }
 
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_set_app( application* app )
+void plugin::plugin_set_app( application* app )
 {
    _app = app;
    return;
 }
 
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_set_program_options(
+void plugin::plugin_set_program_options(
    boost::program_options::options_description& command_line_options,
    boost::program_options::options_description& config_file_options
 )
 {
    return;
 }
-
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_apply_op( string json_op )
-{
-   return;
-}
-
-template<>
-void plugin< fc::static_variant<> >::plugin_apply_op( string json_op )
-{
-   FC_ASSERT( false, "This plugin has no custom ops" );
-   return;
-}
-
-template< typename PluginOps >
-void plugin< PluginOps >::plugin_push_op( PluginOps op )
-{
-   return;
-}
-
-template<>
-void plugin< fc::static_variant<> >::plugin_push_op( fc::static_variant<> op )
-{
-   FC_ASSERT( false, "This plugin has no custom ops" );
-   return;
-}
-
-template<>
-template< typename EvaluatorType > void plugin< fc::static_variant<> >::plugin_register_evaluator() { return; }
 
 } } // steemit::app

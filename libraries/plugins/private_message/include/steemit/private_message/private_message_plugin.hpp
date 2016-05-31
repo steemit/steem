@@ -143,7 +143,7 @@ typedef graphene::db::generic_index< message_object, message_multi_index_type> p
  *   by the posting key.
  *
  */
-class private_message_plugin : public steemit::app::plugin<>
+class private_message_plugin : public steemit::app::plugin
 {
    public:
       private_message_plugin();
