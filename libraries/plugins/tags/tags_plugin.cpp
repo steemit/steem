@@ -159,8 +159,8 @@ struct operation_visitor {
       set<string> lower_tags;
       for( const auto& tag : meta.tags )
          lower_tags.insert(fc::to_lower( tag ) );
-      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_5 ) )
-         lower_tags.insert( c.category );
+
+      lower_tags.insert( fc::to_lower(c.category) );
 
 
       /// the universal tag applies to everything safe for work or nsfw with a positive payout
