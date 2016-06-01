@@ -134,7 +134,14 @@ void database_api::set_block_applied_callback( std::function<void(const variant&
 
 void database_api_impl::on_applied_block( const chain::signed_block& b )
 {
-   _block_applied_callback( fc::variant(signed_block_header(b) ) );
+   try
+   {
+      _block_applied_callback( fc::variant(signed_block_header(b) ) );
+   }
+   catch( ... )
+   {
+      _block_applied_connection.release();
+   }
 }
 
 void database_api_impl::set_block_applied_callback( std::function<void(const variant& block_header)> cb )
@@ -872,8 +879,8 @@ discussion database_api::get_discussion( comment_id_type id )const {
 
 
 template<typename Index, typename StartItr>
-vector<discussion> database_api::get_discussions( const discussion_query& query, 
-                                                  const string& tag, 
+vector<discussion> database_api::get_discussions( const discussion_query& query,
+                                                  const string& tag,
                                                   comment_id_type parent,
                                                   const Index& tidx, StartItr tidx_itr )const
 {
