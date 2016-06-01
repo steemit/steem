@@ -1237,6 +1237,11 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
    {
       ACTORS( (alice)(bob)(sam)(dave) )
 
+      auto mh_plugin = app.register_plugin< steemit::market_history::market_history_plugin >();
+      boost::program_options::variables_map options;
+      mh_plugin->plugin_set_app( &app );
+      mh_plugin->plugin_initialize( options );
+
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 
       auto exchange_rate = price( ASSET( "1.250 TESTS" ), ASSET( "1.000 TBD" ) );
