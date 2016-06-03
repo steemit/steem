@@ -1,26 +1,3 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
@@ -841,15 +818,18 @@ public:
    {
       if( _remote_message_api.valid() )
          return;
-      try
-      {
-         _remote_message_api = _remote_api->get_api_by_name("private_message_api")->as< private_message_api >();
-      }
-      catch( const fc::exception& e )
-      {
-        elog( "Couldn't get network node API" );
-        throw(e);
-      }
+
+      try { _remote_message_api = _remote_api->get_api_by_name("private_message_api")->as< private_message_api >(); }
+      catch( const fc::exception& e ) { elog( "Couldn't get private message API" ); throw(e); }
+   }
+
+   void use_follow_api()
+   {
+      if( _remote_follow_api.valid() )
+         return;
+
+      try { _remote_follow_api = _remote_api->get_api_by_name("follow_api")->as< follow::follow_api >(); }
+      catch( const fc::exception& e ) { elog( "Couldn't get follow API" ); throw(e); }
    }
 
    void network_add_nodes( const vector<string>& nodes )
@@ -894,6 +874,7 @@ public:
    fc::api<network_broadcast_api>          _remote_net_broadcast;
    optional< fc::api<network_node_api> >   _remote_net_node;
    optional< fc::api<private_message_api> > _remote_message_api;
+   optional< fc::api<follow::follow_api> >  _remote_follow_api;
 
    flat_map<string, operation>             _prototype_ops;
 
@@ -1770,6 +1751,27 @@ annotated_signed_transaction wallet_api::vote( string voter, string author, stri
 }
 annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
    return my->_remote_db->get_transaction( id );
+}
+
+annotated_signed_transaction wallet_api::follow( string follower, string following, set<string> what, bool broadcast ) {
+   auto follwer_account     = get_account( follower );
+   auto following_account   = get_account( following );
+   
+   follow::follow_operation fop;
+   fop.follower = follower;
+   fop.following = following;
+   fop.what = what;
+
+   custom_json_operation jop;
+   jop.id = "follow";
+   jop.json = fc::json::to_string(fop);
+   jop.required_posting_auths.insert(follower);
+
+   signed_transaction trx;
+   trx.operations.push_back( jop );
+   trx.validate();
+
+   return my->sign_transaction( trx, broadcast );
 }
 
 annotated_signed_transaction      wallet_api::send_private_message( string from, string to, string subject, string body, bool broadcast ) {

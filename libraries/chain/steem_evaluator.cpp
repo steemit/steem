@@ -579,6 +579,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes++;
          else
             c.net_votes--;
+         if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));

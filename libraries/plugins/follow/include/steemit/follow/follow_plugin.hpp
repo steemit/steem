@@ -81,7 +81,7 @@ class follow_plugin : public steemit::app::plugin
 
       std::string plugin_name()const override;
       virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
-      virtual void plugin_startup() override;
+      virtual void plugin_startup() override{};
 
       friend class detail::follow_plugin_impl;
       std::unique_ptr<detail::follow_plugin_impl> my;

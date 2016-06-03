@@ -34,6 +34,7 @@ void follow_plugin_impl::on_operation( const operation_object& op_obj ) {
    try {
       if( op_obj.op.which() == operation::tag<custom_json_operation>::value ) {
          const custom_json_operation& cop = op_obj.op.get<custom_json_operation>();
+         idump(("json op")(cop));
          if( cop.id == "follow" )  {
             auto op = fc::json::from_string(cop.json).as<follow_operation>();
             FC_ASSERT( cop.required_auths.find( op.follower ) != cop.required_auths.end() ||

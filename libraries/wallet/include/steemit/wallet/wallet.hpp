@@ -1,30 +1,8 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #pragma once
 
 #include <steemit/app/api.hpp>
 #include <steemit/private_message/private_message_plugin.hpp>
+#include <steemit/follow/follow_plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -237,6 +215,7 @@ class wallet_api
        *  @param role - active | owner | posting | memo
        */
       pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
+
 
       /**
        * Returns transaction by ID.
@@ -724,6 +703,14 @@ class wallet_api
       map<uint32_t,operation_object> get_account_history( string account, uint32_t from, uint32_t limit );
 
 
+      /**
+       *  Marks one account as following another account.  Requires the posting authority of the follower.
+       *
+       *  @param what - a set of things to follow: posts, comments, votes, ignore
+       */
+      annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
+
+
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
       fc::signal<void(bool)> lock_changed;
@@ -794,6 +781,7 @@ FC_API( steemit::wallet::wallet_api,
         (update_witness)
         (set_voting_proxy)
         (vote_for_witness)
+        (follow)
         (transfer)
         (transfer_to_vesting)
         (withdraw_vesting)
