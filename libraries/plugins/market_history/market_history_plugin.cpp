@@ -21,32 +21,23 @@ class market_history_plugin_impl
       void update_market_histories( const operation_object& b );
 
       market_history_plugin& _self;
-      flat_set<uint32_t>     _tracked_buckets = { 15, 50, 300, 3600, 86400 };
+      flat_set<uint32_t>     _tracked_buckets = { 15, 60, 300, 3600, 86400 };
       int32_t                _maximum_history_per_bucket_size = 1000;
 };
 
 void market_history_plugin_impl::update_market_histories( const operation_object& o )
 {
-   try
+   if( o.op.which() == operation::tag< fill_order_operation >::value )
    {
       fill_order_operation op = o.op.get< fill_order_operation >();
 
       auto& db = _self.database();
       const auto& bucket_idx = db.get_index_type< bucket_index >().indices().get< by_bucket >();
-      const auto& history_idx = db.get_index_type< order_history_index >().indices().get< by_sequence >();
 
-      uint64_t history_seq = std::numeric_limits< uint64_t >::max();
-
-      auto hist_itr = history_idx.upper_bound( history_seq );
-
-      if ( hist_itr != history_idx.end() )
-         history_seq = hist_itr->sequence + 1;
-      else
-         history_seq = 0;
+      uint64_t history_seq = std::numeric_limits< uint64_t >::min();
 
       db.create< order_history_object >( [&]( order_history_object& ho )
       {
-         ho.sequence = history_seq;
          ho.time = db.head_block_time();
          ho.op = op;
       });
@@ -79,7 +70,6 @@ void market_history_plugin_impl::update_market_histories( const operation_object
                b.close_sbd = op.receives.amount;
                b.steem_volume = op.pays.amount;
                b.sbd_volume = op.receives.amount;
-
             });
          }
          else
@@ -90,13 +80,13 @@ void market_history_plugin_impl::update_market_histories( const operation_object
                b.close_steem = op.pays.amount;
                b.close_sbd = op.receives.amount;
 
-               if( b.high() < price( op.pays, op.receives ) )
+               if( b.high() < price( op.receives, op.pays ) )
                {
                   b.high_steem = op.pays.amount;
                   b.high_sbd = op.receives.amount;
                }
 
-               if( b.low() > price( op.pays, op.receives ) )
+               if( b.low() > price( op.receives, op.pays ) )
                {
                   b.low_steem = op.pays.amount;
                   b.low_sbd = op.receives.amount;
@@ -118,7 +108,6 @@ void market_history_plugin_impl::update_market_histories( const operation_object
          }
       }
    }
-   catch ( fc::assert_exception ) { return; }
 }
 
 } // detail

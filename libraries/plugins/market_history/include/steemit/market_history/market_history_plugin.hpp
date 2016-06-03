@@ -59,8 +59,8 @@ struct bucket_object : public abstract_object< bucket_object >
    static const uint8_t space_id = MARKET_HISTORY_SPACE_ID;
    static const uint8_t type_id = 1;
 
-   price high()const { return asset( high_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
-   price low()const { return asset( low_steem, STEEM_SYMBOL ) / asset( high_sbd, SBD_SYMBOL ); }
+   price high()const { return asset( high_sbd, SBD_SYMBOL ) / asset( high_steem, STEEM_SYMBOL ); }
+   price low()const { return asset( low_sbd, SBD_SYMBOL ) / asset( low_steem, STEEM_SYMBOL ); }
 
    fc::time_point_sec   open;
    uint32_t             seconds = 0;
@@ -78,12 +78,11 @@ struct bucket_object : public abstract_object< bucket_object >
 
 struct order_history_object : public abstract_object< order_history_object >
 {
-   uint64_t             sequence;
    fc::time_point_sec   time;
    fill_order_operation op;
 };
 
-struct by_id;
+//struct by_id;
 struct by_bucket;
 typedef multi_index_container<
    bucket_object,
@@ -99,14 +98,12 @@ typedef multi_index_container<
    >
 > bucket_object_multi_index_type;
 
-struct by_sequence;
 struct by_time;
 typedef multi_index_container<
    order_history_object,
    indexed_by<
       hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_sequence >, member< order_history_object, uint64_t, &order_history_object::sequence > >,
-      ordered_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
+      ordered_non_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
    >
 > order_history_multi_index_type;
 
@@ -124,6 +121,5 @@ FC_REFLECT_DERIVED( steemit::market_history::bucket_object, (graphene::db::objec
                      (steem_volume)(sbd_volume) )
 
 FC_REFLECT_DERIVED( steemit::market_history::order_history_object, (graphene::db::object),
-                     (sequence)
                      (time)
                      (op) )
