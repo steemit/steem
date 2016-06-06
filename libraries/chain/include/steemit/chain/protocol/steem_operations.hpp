@@ -218,6 +218,24 @@ namespace steemit { namespace chain {
    };
 
    /**
+    * Allows an account to setup a vesting withdraw but with the additional
+    * request for the funds to be transferred directly to another account's
+    * balance rather than the withdrawing account. In addition, those funds
+    * can be immediately vested again, circumventing the conversion from
+    * vests to steem and back, guaranteeing they maintain their value.
+    */
+   struct set_withdraw_vesting_destination_operation : public base_operation
+   {
+      string   from_account;
+      string   to_account;
+      uint16_t percent;
+      bool     auto_vest;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set< string >& a )const { a.insert( from_account ); }
+   };
+
+   /**
     * Witnesses must vote on how to set certain chain properties to ensure a smooth
     * and well functioning network.  Any time @owner is in the active set of witnesses these
     * properties will be used to control the blockchain configuration.

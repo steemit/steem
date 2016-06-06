@@ -70,8 +70,6 @@ namespace steemit { namespace chain {
          std::deque<price>   price_history; ///< tracks this last week of median_feed one per hour
    };
 
-
-
    /**
     *  @brief an offer to sell a amount of a asset at a specified exchange rate by a certain time
     *  @ingroup object
@@ -104,6 +102,18 @@ namespace steemit { namespace chain {
          asset amount_to_receive()const { return amount_for_sale() * sell_price; }
    };
 
+   /**
+    * @breif a destination to send withdrawn vesting shares.
+    */
+   class withdraw_vesting_destination_object : public abstract_object< withdraw_vesting_destination_object >
+   {
+      public:
+         account_id_type from_account;
+         account_id_type to_account;
+         uint16_t        percent;
+         bool            auto_vest;
+   };
+
    struct by_price;
    struct by_expiration;
    struct by_account;
@@ -127,8 +137,6 @@ namespace steemit { namespace chain {
          >
       >
    > limit_order_multi_index_type;
-
-
 
    struct by_owner;
    struct by_conversion_date;
@@ -169,12 +177,26 @@ namespace steemit { namespace chain {
       >
    > liquidity_reward_balance_index_type;
 
+   struct by_withdraw_destination;
+   typedef multi_index_container<
+      withdraw_vesting_destination_object,
+      indexed_by<
+         ordered_unique< tag< by_withdraw_destination >,
+            composite_key< withdraw_vesting_destination_object,
+               member< withdraw_vesting_destination_object, account_id_type, &withdraw_vesting_destination_object::from_account >,
+               member< withdraw_vesting_destination_object, account_id_type, &withdraw_vesting_destination_object::to_account >
+            >
+         >
+      >
+   > withdraw_vesting_destination_index_type;
+
    /**
     * @ingroup object_index
     */
-   typedef generic_index< convert_request_object,           convert_request_index_type >           convert_index;
-   typedef generic_index< limit_order_object,               limit_order_multi_index_type >         limit_order_index;
-   typedef generic_index< liquidity_reward_balance_object,  liquidity_reward_balance_index_type >  liquidity_reward_index;
+   typedef generic_index< convert_request_object,              convert_request_index_type >              convert_index;
+   typedef generic_index< limit_order_object,                  limit_order_multi_index_type >            limit_order_index;
+   typedef generic_index< liquidity_reward_balance_object,     liquidity_reward_balance_index_type >     liquidity_reward_index;
+   typedef generic_index< withdraw_vesting_destination_object, withdraw_vesting_destination_index_type > withdraw_vesting_destination_index;
 
 } } // steemit::chain
 
