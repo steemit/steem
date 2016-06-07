@@ -92,6 +92,7 @@ struct by_parent_children_rshares2; /// all top level posts by total cumulative 
 struct by_parent_children; /// all top level posts with the most discussion (replies at all levels)
 struct by_parent_hot;
 struct by_author_parent_created;  /// all blog posts by author with tag
+struct by_author_comment;
 struct by_comment;
 struct by_tag;
 
@@ -101,6 +102,14 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_non_unique< tag< by_comment >, member< tag_object, comment_id_type, &tag_object::comment > >,
+      ordered_unique< tag< by_author_comment >,
+            composite_key< tag_object,
+               member< tag_object, account_id_type, &tag_object::author >,
+               member< tag_object, comment_id_type, &tag_object::comment >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less<account_id_type>, std::less<comment_id_type>, std::less< object_id_type > >
+      >,
       ordered_unique< tag< by_parent_created >,
             composite_key< tag_object,
                member< tag_object, string, &tag_object::tag >,

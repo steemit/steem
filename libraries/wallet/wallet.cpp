@@ -1755,7 +1755,14 @@ annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id
 
 annotated_signed_transaction wallet_api::follow( string follower, string following, set<string> what, bool broadcast ) {
    auto follwer_account     = get_account( follower );
-   auto following_account   = get_account( following );
+   FC_ASSERT( following.size() );
+   if( following[0] != '@' || following[0] != '#' ) {
+      following = '@' + following;
+   }
+   if( following[0] == '@' ) {
+      auto following = get_account( following.substr(1) );
+   }
+   FC_ASSERT( following.size() > 1 );
    
    follow::follow_operation fop;
    fop.follower = follower;
