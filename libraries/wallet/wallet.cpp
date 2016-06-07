@@ -1760,7 +1760,7 @@ annotated_signed_transaction wallet_api::follow( string follower, string followi
       following = '@' + following;
    }
    if( following[0] == '@' ) {
-      auto following = get_account( following.substr(1) );
+      get_account( following.substr(1) );
    }
    FC_ASSERT( following.size() > 1 );
    
