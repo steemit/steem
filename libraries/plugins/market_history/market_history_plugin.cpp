@@ -56,7 +56,7 @@ void market_history_plugin_impl::update_market_histories( const operation_object
          auto itr = bucket_idx.find( boost::make_tuple( seconds, open ) );
          if( itr == bucket_idx.end() )
          {
-            db.create< bucket_object >( [&]( bucket_object &b )
+            db.create< bucket_object >( [&]( bucket_object& b )
             {
                b.open = open;
                b.seconds = bucket;
