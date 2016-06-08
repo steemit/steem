@@ -850,6 +850,11 @@ void database::notify_post_apply_operation( const operation& op )
    post_apply_operation( obj );
 }
 
+void database::push_virtual_operation( const operation& op )
+{
+   notify_post_apply_operation( op );
+}
+
 string database::get_scheduled_witness( uint32_t slot_num )const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
@@ -1537,7 +1542,7 @@ void database::process_vesting_withdrawals()
          }
       } );
 
-      push_applied_operation( fill_vesting_withdraw_operation( cur.name, asset( withdrawn_vesting, VESTS_SYMBOL ), converted_steem ) );
+      push_virtual_operation( fill_vesting_withdraw_operation( cur.name, asset( withdrawn_vesting, VESTS_SYMBOL ), converted_steem ) );
 
       modify( cprops, [&]( dynamic_global_property_object& o )
       {
@@ -1581,7 +1586,7 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
 
       /// push virtual operation for this reward payout
-      push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
+      push_virtual_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
 
       /// only recurse if the SBD created is more than $0.02, this should stop recursion quickly for
       /// small payouts.
@@ -1599,7 +1604,7 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
          sbd_created  = create_sbd( parent_author, parent_sbd_reward );
 
          /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
-         push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
+         push_virtual_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
          adjust_total_payout( get_comment( cur.parent_author, cur.parent_permlink ), sbd_created + to_sbd( vesting_steem_reward ) );
       }
    }
@@ -1611,7 +1616,7 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
 
       /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
       /// push virtual operation for this reward payout
-      push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
+      push_virtual_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
       adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
    }
 }
@@ -1637,7 +1642,7 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       {
          unclaimed_rewards -= claim;
          auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+         push_virtual_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
       }
       ++itr;
    }
@@ -1843,7 +1848,7 @@ void database::pay_liquidity_reward()
             obj.sbd_volume   = 0;
             obj.last_update  = head_block_time();
          } );
-         push_applied_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
+         push_virtual_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
       }
    }
 }
@@ -1876,7 +1881,7 @@ void database::process_conversions()
       net_sbd   += itr->amount;
       net_steem += amount_to_issue;
 
-      push_applied_operation( fill_convert_request_operation ( user.name, itr->requestid, itr->amount, amount_to_issue ) );
+      push_virtual_operation( fill_convert_request_operation ( user.name, itr->requestid, itr->amount, amount_to_issue ) );
 
       remove( *itr );
       itr = request_by_date.begin();
@@ -2427,6 +2432,7 @@ void database::_apply_transaction(const signed_transaction& trx)
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
 
+   on_applied_transaction( trx );
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
@@ -2752,7 +2758,7 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
 
       adjust_balance( seller, receives );
 
-      push_applied_operation( fill_order_operation( order.seller, order.orderid, pays, receives ) );
+      push_virtual_operation( fill_order_operation( order.seller, order.orderid, pays, receives ) );
 
       if( pays == order.amount_for_sale() )
       {
@@ -2836,7 +2842,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                   acnt.sbd_balance += interest_paid;
                   acnt.sbd_seconds = 0;
                   acnt.sbd_last_interest_payment = head_block_time();
-                  push_applied_operation( interest_operation( a.name, interest_paid ) );
+                  push_virtual_operation( interest_operation( a.name, interest_paid ) );
 
                   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {

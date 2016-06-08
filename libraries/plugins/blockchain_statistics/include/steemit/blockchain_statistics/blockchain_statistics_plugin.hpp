@@ -19,7 +19,7 @@
 #endif
 
 #ifndef BLOCKCHAIN_STATISTICS_PLUGIN_NAME
-#define BLOCKCHAIN_STATISTICS_PLUGIN_NAME "blockchain_statistics"
+#define BLOCKCHAIN_STATISTICS_PLUGIN_NAME "chain_stats"
 #endif
 
 namespace steemit { namespace blockchain_statistics {

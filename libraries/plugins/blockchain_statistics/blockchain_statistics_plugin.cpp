@@ -1,4 +1,4 @@
-#include <steemit/blockchain_statistics/blockchain_statistics_plugin.hpp>
+#include <steemit/blockchain_statistics/blockchain_statistics_api.hpp>
 
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
@@ -42,7 +42,7 @@ struct operation_process
    template< typename T >
    void operator()( const T& )const {}
 
-   void operator()( const transfer_operation& op )
+   void operator()( const transfer_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -55,7 +55,7 @@ struct operation_process
       });
    }
 
-   void operator()( const interest_operation& op )
+   void operator()( const interest_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -63,7 +63,7 @@ struct operation_process
       });
    }
 
-   void operator()( const account_create_operation& op )
+   void operator()( const account_create_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -71,7 +71,7 @@ struct operation_process
       });
    }
 
-   void operator()( const pow_operation& op )
+   void operator()( const pow_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -83,13 +83,19 @@ struct operation_process
          b.total_pow++;
 
          uint64_t bits = ( _db.get_dynamic_global_properties().num_pow_witnesses / 4 ) + 4;
-         uint128_t estimated_hashes = 1 << bits;
-         uint128_t hash_rate = estimated_hashes / b.seconds;
-         b.estimated_hashpower = hash_rate;
+         uint128_t estimated_hashes = ( 1 << bits );
+         uint32_t delta_t;
+
+         if( b.seconds == 0 )
+            delta_t = _db.head_block_time().sec_since_epoch() - b.open.sec_since_epoch();
+         else
+         	delta_t = b.seconds;
+
+         b.estimated_hashpower = ( b.estimated_hashpower * delta_t + estimated_hashes ) / delta_t;
       });
    }
 
-   void operator()( const comment_operation& op )
+   void operator()( const comment_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -111,7 +117,7 @@ struct operation_process
       });
    }
 
-   void operator()( const delete_comment_operation& op )
+   void operator()( const delete_comment_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -119,7 +125,7 @@ struct operation_process
       });
    }
 
-   void operator()( const vote_operation& op )
+   void operator()( const vote_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -137,7 +143,7 @@ struct operation_process
       });
    }
 
-   void operator()( const comment_reward_operation& op )
+   void operator()( const comment_reward_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -150,7 +156,7 @@ struct operation_process
       });
    }
 
-   void operator()( const curate_reward_operation& op )
+   void operator()( const curate_reward_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -158,7 +164,7 @@ struct operation_process
       });
    }
 
-   void operator()( const liquidity_reward_operation& op )
+   void operator()( const liquidity_reward_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -166,7 +172,7 @@ struct operation_process
       });
    }
 
-   void operator()( const transfer_to_vesting_operation& op )
+   void operator()( const transfer_to_vesting_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -175,7 +181,7 @@ struct operation_process
       });
    }
 
-   void operator()( const fill_vesting_withdraw_operation& op )
+   void operator()( const fill_vesting_withdraw_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -184,7 +190,7 @@ struct operation_process
       });
    }
 
-   void operator()( const limit_order_create_operation& op )
+   void operator()( const limit_order_create_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -192,7 +198,7 @@ struct operation_process
       });
    }
 
-   void operator()( const fill_order_operation& op )
+   void operator()( const fill_order_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -200,7 +206,7 @@ struct operation_process
       });
    }
 
-   void operator()( const limit_order_cancel_operation& op )
+   void operator()( const limit_order_cancel_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -215,11 +221,18 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
 
    if( b.block_num() == 1 )
    {
-      db.create< bucket_object >( [&]( bucket_object&b )
+      db.create< bucket_object >( [&]( bucket_object& bo )
       {
-         b.open = fc::time_point_sec();
-         b.seconds = 0;
-         b.blocks = 1;
+         bo.open = b.timestamp;
+         bo.seconds = 0;
+         bo.blocks = 1;
+      });
+   }
+   else
+   {
+      db.modify( bucket_object_id_type()( db ), [&]( bucket_object& bo )
+      {
+         bo.blocks++;
       });
    }
 
@@ -237,11 +250,11 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
       if( itr == bucket_idx.end() )
       {
          _current_buckets.insert(
-            db.create< bucket_object >( [&]( bucket_object& b )
+            db.create< bucket_object >( [&]( bucket_object& bo )
             {
-               b.open = open;
-               b.seconds = bucket;
-               b.blocks = 1;
+               bo.open = open;
+               bo.seconds = bucket;
+               bo.blocks = 1;
             }).id );
 
          if( _maximum_history_per_bucket_size > 0 )
@@ -259,9 +272,9 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
       }
       else
       {
-         db.modify( *itr, [&]( bucket_object& b )
+         db.modify( *itr, [&]( bucket_object& bo )
          {
-            b.blocks++;
+            bo.blocks++;
          });
 
          _current_buckets.insert( itr->id );
@@ -275,6 +288,8 @@ void blockchain_statistics_plugin_impl::on_transaction( const signed_transaction
 
    for( auto bucket_id : _current_buckets )
    {
+      //const auto& bucket = bucket_id( db );
+
       db.modify( bucket_id( db ), [&]( bucket_object& b )
       {
          b.transactions++;
@@ -312,9 +327,9 @@ void blockchain_statistics_plugin::plugin_set_program_options(
 )
 {
    cli.add_options()
-         ("blockchain-stats-bucket-size", boost::program_options::value<string>()->default_value("[15,60,300,3600,86400]"),
+         ("chain-stats-bucket-size", boost::program_options::value<string>()->default_value("[15,60,300,3600,86400]"),
            "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
-         ("blockchain-stats-history-per-size", boost::program_options::value<uint32_t>()->default_value(1000),
+         ("chain-stats-history-per-size", boost::program_options::value<uint32_t>()->default_value(1000),
            "How far back in time to track history for each bucket size, measured in the number of buckets (default: 1000)")
          ;
    cfg.add(cli);
@@ -325,23 +340,26 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
    try
    {
       database().applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-      database().on_pending_transaction.connect( [&]( const signed_transaction& t ){ _my->on_transaction( t ); } );
-      database().pre_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
+      database().on_applied_transaction.connect( [&]( const signed_transaction& t ){ _my->on_transaction( t ); } );
+      database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
 
       database().add_index< primary_index< bucket_index > >();
 
-      if( options.count( "blockchain-stats-bucket-size" ) )
+      if( options.count( "chain-stats-bucket-size" ) )
       {
-         const std::string& buckets = options[ "blockchain-stats-bucket-size" ].as< string >();
+         const std::string& buckets = options[ "chain-stats-bucket-size" ].as< string >();
          _my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
       }
-      if( options.count( "blockchain-stats-history-per-edge" ) )
-         _my->_maximum_history_per_bucket_size = options[ "blockchain-stats-history-per-size" ].as< uint32_t >();
+      if( options.count( "chain-stats-history-per-edge" ) )
+         _my->_maximum_history_per_bucket_size = options[ "chain-stats-history-per-size" ].as< uint32_t >();
 
    } FC_CAPTURE_AND_RETHROW()
 }
 
-void blockchain_statistics_plugin::plugin_startup() {}
+void blockchain_statistics_plugin::plugin_startup()
+{
+   app().register_api_factory< blockchain_statistics_api >( "chain_stats_api" );
+}
 
 const flat_set< uint32_t >& blockchain_statistics_plugin::get_tracked_buckets() const
 {
