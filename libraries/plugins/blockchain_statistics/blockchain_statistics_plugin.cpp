@@ -23,9 +23,9 @@ class blockchain_statistics_plugin_impl
       void on_operation( const operation_object& o );
 
       blockchain_statistics_plugin&       _self;
-      flat_set< uint32_t >                _tracked_buckets = { 15, 60, 300, 3600, 86400 };
+      flat_set< uint32_t >                _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
       flat_set< bucket_object_id_type >   _current_buckets;
-      int32_t                             _maximum_history_per_bucket_size = 1000;
+      int32_t                             _maximum_history_per_bucket_size = 100;
 };
 
 struct operation_process
@@ -243,7 +243,6 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
 
    for( auto bucket : _tracked_buckets )
    {
-      auto cutoff = db.head_block_time() - fc::seconds( bucket * _maximum_history_per_bucket_size );
       auto open = fc::time_point_sec( ( db.head_block_time().sec_since_epoch() / bucket ) * bucket );
       auto itr = bucket_idx.find( boost::make_tuple( bucket, open ) );
 
@@ -259,15 +258,21 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
 
          if( _maximum_history_per_bucket_size > 0 )
          {
-            open = fc::time_point_sec();
-            itr = bucket_idx.lower_bound( boost::make_tuple( bucket, open ) );
-
-            while( itr->seconds == bucket && itr->open < cutoff )
+            try
             {
-               auto old_itr = itr;
-               ++itr;
-               db.remove( *old_itr );
+               auto cutoff = fc::time_point_sec( ( safe< uint32_t >( db.head_block_time().sec_since_epoch() ) - safe< uint32_t >( bucket ) * safe< uint32_t >( _maximum_history_per_bucket_size ) ).value );
+
+               itr = bucket_idx.lower_bound( boost::make_tuple( bucket, fc::time_point_sec() ) );
+
+               while( itr->seconds == bucket && itr->open < cutoff )
+               {
+                  auto old_itr = itr;
+                  ++itr;
+                  db.remove( *old_itr );
+               }
             }
+            catch( fc::overflow_exception& e ) {}
+            catch( fc::underflow_exception& e ) {}
          }
       }
       else
@@ -327,10 +332,10 @@ void blockchain_statistics_plugin::plugin_set_program_options(
 )
 {
    cli.add_options()
-         ("chain-stats-bucket-size", boost::program_options::value<string>()->default_value("[15,60,300,3600,86400]"),
+         ("chain-stats-bucket-size", boost::program_options::value<string>()->default_value("[60,3600,21600,86400,604800,2592000]"),
            "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
-         ("chain-stats-history-per-size", boost::program_options::value<uint32_t>()->default_value(1000),
-           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 1000)")
+         ("chain-stats-history-per-size", boost::program_options::value<uint32_t>()->default_value(100),
+           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 100)")
          ;
    cfg.add(cli);
 }

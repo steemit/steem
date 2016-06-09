@@ -37,18 +37,26 @@ namespace detail
    statistics blockchain_statistics_api_impl::get_stats_for_interval( fc::time_point_sec start, fc::time_point_sec end )const
    {
       statistics result;
-      auto bucket_size = *( _app.get_plugin< blockchain_statistics_plugin >( BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets().upper_bound( 0 ) );
-      const auto& bucket_idx = _app.chain_database()->get_index_type< bucket_index >().indices().get< by_bucket >();
-      auto itr = bucket_idx.lower_bound( boost::make_tuple( bucket_size, start ) );
+      const auto& bucket_itr = _app.chain_database()->get_index_type< bucket_index >().indices().get< by_bucket >();
+      const auto& sizes = _app.get_plugin< blockchain_statistics_plugin >( BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets();
+      auto size_itr = sizes.rbegin();
+      auto time = start;
 
-      // If start is on a interval boundary, then lower_bound will return the bucket directly before the start bucket
-      if( itr->open + bucket_size <= start )
-         itr++;
-
-      while( itr != bucket_idx.end() && itr->seconds == bucket_size && itr->open < end )
+      // This is a greedy algorithm, same as the ubiquitous "making change" problem.
+      // So long as the bucket sizes share a common denominator, the greedy solution
+      // has the same efficiency as the dynamic solution.
+      while( size_itr != sizes.rend() && time < end )
       {
-         result += *itr;
-         itr++;
+         auto itr = bucket_itr.find( boost::make_tuple( *size_itr, time ) );
+
+         while( itr != bucket_itr.end() && itr->seconds == *size_itr && time + itr->seconds <= end )
+         {
+            time += *size_itr;
+            result += *itr;
+            itr++;
+         }
+
+         size_itr++;
       }
 
       return result;
