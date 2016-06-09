@@ -13,7 +13,21 @@ namespace detail
          statistics get_stats_for_time( fc::time_point_sec open, uint32_t interval )const;
          statistics get_stats_for_interval( fc::time_point_sec start, fc::time_point_sec end )const;
          statistics get_lifetime_stats()const;
+         vector< account_activity > get_account_activity_by_name( string start, string end, uint32_t limit )const;
+         vector< account_activity > get_account_activity_by_last_activity( uint32_t limit )const;
+         vector< account_activity > get_account_activity_by_longest_inactive( uint32_t limit )const;
+         vector< account_activity > get_account_activity_by_most_active( uint32_t limit )const;
+         vector< account_activity > get_account_activity_by_least_active( uint32_t limit )const;
+         vector< account_activity > get_account_activity_by_most_ops( uint32_t limit )const;
+         vector< account_activity > get_account_activity_by_least_ops( uint32_t limit )const;
+         vector< account_activity > get_account_forum_activity_by_last_activity( uint32_t limit )const;
+         vector< account_activity > get_account_forum_activity_by_longest_inactive( uint32_t limit )const;
+         vector< account_activity > get_account_forum_activity_by_most_active( uint32_t limit )const;
+         vector< account_activity > get_account_forum_activity_by_least_active( uint32_t limit )const;
+         vector< account_activity > get_account_forum_activity_by_most_ops( uint32_t limit )const;
+         vector< account_activity > get_account_forum_activity_by_least_ops( uint32_t limit )const;
 
+         uint32_t                   _account_activity_api_limit = 1000;
          steemit::app::application& _app;
    };
 
@@ -69,6 +83,228 @@ namespace detail
 
       return result;
    }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_name( string start, string end, uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_name >();
+
+      for( auto itr = activity_idx.lower_bound( start );
+         itr!= activity_idx.end() && result.size() < limit && itr->account_name < end;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_last_activity( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_last_activity >();
+
+      for( auto itr = activity_idx.rbegin();
+         itr != activity_idx.rend() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_longest_inactive( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_last_activity >();
+
+      for( auto itr = activity_idx.begin();
+         itr != activity_idx.end() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_most_active( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_activity >();
+
+      for( auto itr = activity_idx.rbegin();
+         itr != activity_idx.rend() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_least_active( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_activity >();
+
+      for( auto itr = activity_idx.begin();
+         itr != activity_idx.end() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_most_ops( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_num_ops >();
+
+      for( auto itr = activity_idx.rbegin();
+         itr != activity_idx.rend() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_activity_by_least_ops( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_num_ops >();
+
+      for( auto itr = activity_idx.begin();
+         itr != activity_idx.end() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_forum_activity_by_last_activity( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_last_forum_activity >();
+
+      for( auto itr = activity_idx.rbegin();
+         itr != activity_idx.rend() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_forum_activity_by_longest_inactive( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_last_forum_activity >();
+
+      for( auto itr = activity_idx.begin();
+         itr != activity_idx.end() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_forum_activity_by_most_active( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_forum_activity >();
+
+      for( auto itr = activity_idx.rbegin();
+         itr != activity_idx.rend() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_forum_activity_by_least_active( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_forum_activity >();
+
+      for( auto itr = activity_idx.begin();
+         itr != activity_idx.end() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_forum_activity_by_most_ops( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_num_forum_ops >();
+
+      for( auto itr = activity_idx.rbegin();
+         itr != activity_idx.rend() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
+   vector< account_activity > blockchain_statistics_api_impl::get_account_forum_activity_by_least_ops( uint32_t limit )const
+   {
+      FC_ASSERT( limit <= _account_activity_api_limit, "Cannot query more than 1000 accounts at a time" );
+
+      vector< account_activity > result;
+      const auto& activity_idx = _app.chain_database()->get_index_type< account_activity_index >().indices().get< by_num_forum_ops >();
+
+      for( auto itr = activity_idx.begin();
+         itr != activity_idx.end() && result.size() < limit;
+         itr++ )
+      {
+         result.push_back( *itr );
+      }
+
+      return result;
+   }
+
 } // detail
 
 blockchain_statistics_api::blockchain_statistics_api( const steemit::app::api_context& ctx )
@@ -76,7 +312,10 @@ blockchain_statistics_api::blockchain_statistics_api( const steemit::app::api_co
    my = std::make_shared< detail::blockchain_statistics_api_impl >( ctx.app );
 }
 
-void blockchain_statistics_api::on_api_startup() {}
+void blockchain_statistics_api::on_api_startup()
+{
+   my->_account_activity_api_limit = my->_app.get_plugin< blockchain_statistics_plugin >( BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_account_activity_api_limit();
+}
 
 statistics blockchain_statistics_api::get_stats_for_time( fc::time_point_sec open, uint32_t interval )const
 {
@@ -91,6 +330,71 @@ statistics blockchain_statistics_api::get_stats_for_interval( fc::time_point_sec
 statistics blockchain_statistics_api::get_lifetime_stats()const
 {
    return my->get_lifetime_stats();
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_name( string start, string end, uint32_t limit )const
+{
+   return my->get_account_activity_by_name( start, end, limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_last_activity( uint32_t limit )const
+{
+   return my->get_account_activity_by_last_activity( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_longest_inactive( uint32_t limit )const
+{
+   return my->get_account_activity_by_longest_inactive( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_most_active( uint32_t limit )const
+{
+   return my->get_account_activity_by_most_active( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_least_active( uint32_t limit )const
+{
+   return my->get_account_activity_by_least_active( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_most_ops( uint32_t limit )const
+{
+   return my->get_account_activity_by_most_ops( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_activity_by_least_ops( uint32_t limit )const
+{
+   return my->get_account_activity_by_least_ops( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_forum_activity_by_last_activity( uint32_t limit )const
+{
+   return my->get_account_forum_activity_by_last_activity( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_forum_activity_by_longest_inactive( uint32_t limit )const
+{
+   return my->get_account_forum_activity_by_longest_inactive( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_forum_activity_by_most_active( uint32_t limit )const
+{
+   return my->get_account_forum_activity_by_most_active( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_forum_activity_by_least_active( uint32_t limit )const
+{
+   return my->get_account_forum_activity_by_least_active( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_forum_activity_by_most_ops( uint32_t limit )const
+{
+   return my->get_account_forum_activity_by_most_ops( limit );
+}
+
+vector< account_activity > blockchain_statistics_api::get_account_forum_activity_by_least_ops( uint32_t limit )const
+{
+   return my->get_account_forum_activity_by_least_ops( limit );
 }
 
 statistics& statistics::operator +=( const bucket_object& b )
