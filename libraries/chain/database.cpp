@@ -2232,7 +2232,6 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
-   update_median_feed();
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
 
@@ -2243,11 +2242,15 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_orders();
    update_witness_schedule();
 
+   update_median_feed();
+   update_virtual_supply();
+
    process_funds();
    process_conversions();
    process_comment_cashout();
    process_vesting_withdrawals();
    pay_liquidity_reward();
+   update_virtual_supply();
 
    process_hardforks();
 
@@ -2512,8 +2515,6 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.virtual_supply = dgp.current_supply
-         + ( get_feed_history().current_median_history.is_null() ? asset( 0, STEEM_SYMBOL ) : dgp.current_sbd_supply * get_feed_history().current_median_history );
       dgp.recent_slots_filled = (
            (dgp.recent_slots_filled << 1)
            + 1) << missed_blocks;
@@ -2565,6 +2566,15 @@ void database::update_global_dynamic_data( const signed_block& b )
 
    _undo_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
+}
+
+void database::update_virtual_supply()
+{
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp )
+   {
+      dgp.virtual_supply = dgp.current_supply
+         + ( get_feed_history().current_median_history.is_null() ? asset( 0, STEEM_SYMBOL ) : dgp.current_sbd_supply * get_feed_history().current_median_history );
+   });
 }
 
 void database::update_signing_witness(const witness_object& signing_witness, const signed_block& new_block)
