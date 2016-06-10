@@ -69,6 +69,13 @@ namespace steemit { namespace chain {
       }
    }
 
+   void comment_options_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( author ), "Author name invalid" );
+      FC_ASSERT( percent_steem_dollars <= STEEMIT_100_PERCENT );
+      FC_ASSERT( max_accepted_payout.amount.value >= 0 );
+      validate_permlink( permlink );
+   }
+
    void delete_comment_operation::validate()const {
       validate_permlink( permlink );
       FC_ASSERT( is_valid_account_name( author ) );
