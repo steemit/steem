@@ -1624,13 +1624,14 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
  */
 share_type database::pay_curators( const comment_object& c, share_type max_rewards )
 {
+   if( c.total_vote_weight <= 0 ) return max_rewards;
+
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
    auto itr = cvidx.lower_bound( c.id );
    while( itr != cvidx.end() && itr->comment == c.id )
    {
-      // TODO: Add minimum curation pay limit
       u256 weight( itr->weight );
       auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
       if( claim > 1 ) // min_amt is non-zero satoshis
@@ -1641,7 +1642,7 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       }
       ++itr;
    }
-   if( max_rewards.value - unclaimed_rewards.value )
+   if( unclaimed_rewards.value > 0 )
    {
       modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
       {
