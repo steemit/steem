@@ -1,0 +1,7 @@
+#ifndef STEEMIT_HARDFORK_0_6
+#define STEEMIT_HARDFORK_0_6 6
+
+// Thu, 30 Jun 2016 14:00:00 GMT (10:00 AM EST)
+#define STEEMIT_HARDFORK_0_6_TIME 1467295200
+#define STEEMIT_HARDFORK_0_6_VERSION hardfork_version( 0, 6 )
+#endif
