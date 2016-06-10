@@ -764,7 +764,7 @@ signed_block database::_generate_block(
 
       const auto& hfp = hardfork_property_id_type()( *this );
 
-      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been replied
+      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
          && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
          // Make vote match binary configuration
@@ -2232,6 +2232,7 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
+   update_median_feed();
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
 
@@ -2241,8 +2242,6 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_transactions();
    clear_expired_orders();
    update_witness_schedule();
-
-   update_median_feed();
 
    process_funds();
    process_conversions();
