@@ -2918,16 +2918,12 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_5 == 5, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_5 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_5 ] = STEEMIT_HARDFORK_0_5_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_6 == 6, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_6 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_6_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_6 ] = STEEMIT_HARDFORK_0_6_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
-
-   if( hardforks.last_hardfork >= 0 )
-      FC_ASSERT( _hardfork_times[ hardforks.last_hardfork - 1 ] <= head_block_time(), "Configuration has future hardfork set that chain has already applied." );
-
-   if( hardforks.last_hardfork + 1 < STEEMIT_NUM_HARDFORKS )
-      FC_ASSERT( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time(), "Next hardfork takes place prior to head block time" );
-
    FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
 }
 
