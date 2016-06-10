@@ -23,6 +23,8 @@ class blockchain_statistics_plugin_impl
       void on_transaction( const signed_transaction& t );
       void on_operation( const operation_object& o );
 
+      void update_account_forum_activity( const string& account )const;
+
       blockchain_statistics_plugin&       _self;
       flat_set< uint32_t >                _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
       flat_set< bucket_object_id_type >   _current_buckets;
@@ -38,29 +40,6 @@ struct operation_process
 
    operation_process( blockchain_statistics_plugin& bsp, const bucket_object& b )
       :_plugin( bsp ), _bucket( b ), _db( bsp.database() ) {}
-
-   void update_account_forum_activity( const string& account )const
-   {
-      //ilog( "update account forum activity" );
-      const auto& activity_idx = _db.get_index_type< account_activity_index >().indices().get< by_name >();
-      auto itr = activity_idx.find( account );
-
-      _db.modify( *itr, [&]( account_activity_object& a )
-      {
-         if( a.num_forum_ops == 0 )
-         {
-            a.last_forum_activity = _db.head_block_time();
-            a.num_forum_ops = 1;
-            a.forum_ops_per_day = 1;
-         }
-         else
-         {
-            a.num_forum_ops++;
-            a.forum_ops_per_day = std::min( double( a.num_forum_ops ), 86400 * ( double( a.num_forum_ops ) / ( std::max( _db.head_block_time().sec_since_epoch() - _db.get_account( account ).created.sec_since_epoch(), 1u ) ) ) );
-            a.last_forum_activity = _db.head_block_time();
-         }
-      });
-   }
 
    typedef void result_type;
 
@@ -122,8 +101,6 @@ struct operation_process
 
    void operator()( const comment_operation& op )const
    {
-      bool update_activity = false;
-
       _db.modify( _bucket, [&]( bucket_object& b )
       {
          auto& comment = _db.get_comment( op.author, op.permlink );
@@ -136,17 +113,12 @@ struct operation_process
                b.top_level_posts++;
             else
                b.replies++;
-
-            update_activity = true;
          }
          else
          {
             b.posts_modified++;
          }
       });
-
-      if( update_activity )
-         update_account_forum_activity( op.author );
    }
 
    void operator()( const delete_comment_operation& op )const
@@ -159,8 +131,6 @@ struct operation_process
 
    void operator()( const vote_operation& op )const
    {
-      bool update_activity = false;
-
       _db.modify( _bucket, [&]( bucket_object& b )
       {
          b.total_votes++;
@@ -173,14 +143,8 @@ struct operation_process
          if( itr->num_changes )
             b.changed_votes++;
          else
-         {
             b.new_votes++;
-            update_activity = true;
-         }
       });
-
-      if( update_activity )
-         update_account_forum_activity( op.voter );
    }
 
    void operator()( const comment_reward_operation& op )const
@@ -355,43 +319,103 @@ void blockchain_statistics_plugin_impl::on_operation( const operation_object& o 
          b.operations++;
       });
 
-      flat_set< string > impacted;
-      steemit::app::operation_get_impacted_accounts( o.op, impacted );
-      const auto& activity_idx = db.get_index_type< account_activity_index >().indices().get< by_name >();
-
-      for( auto account : impacted )
-      {
-         if( account == "" )
-            continue;
-
-         auto itr = activity_idx.find( account );
-
-         if( itr == activity_idx.end() )
-         {
-            db.create< account_activity_object >( [&]( account_activity_object& a)
-            {
-               a.account_name = account;
-               a.last_activity = db.head_block_time();
-               a.last_forum_activity = fc::time_point_sec();
-               a.ops_per_day = 0;
-               a.forum_ops_per_day = 0;
-               a.num_ops = 1;
-               a.num_forum_ops = 0;
-            });
-         }
-         else
-         {
-            db.modify( *itr, [&]( account_activity_object& a )
-            {
-               a.num_ops++;
-               a.ops_per_day = std::min( double( a.num_ops ), 86400 * ( double( a.num_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( account ).created.sec_since_epoch(), 1u ) ) ) );
-               a.last_activity = db.head_block_time();
-            });
-         }
-      }
-
       o.op.visit( operation_process( _self, bucket ) );
    }
+
+   flat_set< string > impacted;
+   steemit::app::operation_get_impacted_accounts( o.op, impacted );
+   const auto& activity_idx = db.get_index_type< account_activity_index >().indices().get< by_name >();
+
+   for( auto account : impacted )
+   {
+      if( account == "" )
+         continue;
+
+      auto itr = activity_idx.find( account );
+
+      if( itr == activity_idx.end() )
+      {
+         db.create< account_activity_object >( [&]( account_activity_object& a)
+         {
+            a.account_name = account;
+            a.last_activity = db.head_block_time();
+            a.last_forum_activity = fc::time_point_sec();
+            a.ops_per_day = 0;
+            a.forum_ops_per_day = 0;
+            a.num_ops = 1;
+            a.num_forum_ops = 0;
+         });
+      }
+      else
+      {
+         db.modify( *itr, [&]( account_activity_object& a )
+         {
+            a.num_ops++;
+            a.ops_per_day = std::min( double( a.num_ops ), 86400 * ( double( a.num_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( account ).created.sec_since_epoch(), 1u ) ) ) );
+            a.last_activity = db.head_block_time();
+         });
+      }
+   }
+
+   switch( o.op.which() )
+   {
+      case operation::tag< comment_operation >::value:
+      {
+         const auto& op = o.op.get< comment_operation >();
+         const auto& comment = db.get_comment( op.author, op.permlink );
+         if( comment.created == db.head_block_time() )
+            update_account_forum_activity( op.author );
+         break;
+      }
+      case operation::tag< vote_operation >::value:
+      {
+         const auto& op = o.op.get< vote_operation >();
+         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         auto& comment = db.get_comment( op.author, op.permlink );
+         auto& voter = db.get_account( op.voter );
+         auto itr = cv_idx.find( boost::make_tuple( comment.id, voter.id ) );
+         if( itr->num_changes == 0 )
+            update_account_forum_activity( op.voter );
+         break;
+      }
+      default:
+         break;
+   }
+
+   if( db.head_block_time().sec_since_epoch() % 86400 == 0 )
+   {
+      for( auto itr = activity_idx.begin(); itr != activity_idx.end(); itr++ )
+      {
+         db.modify( *itr, [&]( account_activity_object& a )
+         {
+            a.ops_per_day = std::min( double( a.num_ops ), 86400 * ( double( a.num_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( a.account_name ).created.sec_since_epoch(), 1u ) ) ) );
+            a.forum_ops_per_day = std::min( double( a.num_forum_ops ), 86400 * ( double( a.num_forum_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( a.account_name ).created.sec_since_epoch(), 1u ) ) ) );
+         });
+      }
+   }
+}
+
+void blockchain_statistics_plugin_impl::update_account_forum_activity( const string& account )const
+{
+   auto& db = _self.database();
+   const auto& activity_idx = db.get_index_type< account_activity_index >().indices().get< by_name >();
+   auto itr = activity_idx.find( account );
+
+   db.modify( *itr, [&]( account_activity_object& a )
+   {
+      if( a.num_forum_ops == 0 )
+      {
+         a.last_forum_activity = db.head_block_time();
+         a.num_forum_ops = 1;
+         a.forum_ops_per_day = 1;
+      }
+      else
+      {
+         a.num_forum_ops++;
+         a.forum_ops_per_day = std::min( double( a.num_forum_ops ), 86400 * ( double( a.num_forum_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( account ).created.sec_since_epoch(), 1u ) ) ) );
+         a.last_forum_activity = db.head_block_time();
+      }
+   });
 }
 
 } // detail
