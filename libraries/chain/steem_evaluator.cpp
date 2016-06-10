@@ -421,6 +421,54 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
     }
 }
 
+void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_vesting_destination_operation& o )
+{
+   FC_ASSERT( db().has_hardfork( 6 ) );
+
+   /*
+   string   from_account;
+   string   to_account;
+   uint16_t percent;
+   bool     auto_vest;
+   */
+   const auto& from_account = db().get_account( o.from_account );
+   const auto& to_account = db().get_account( o.to_account );
+   const auto& wd_idx = db().get_index_type< withdraw_vesting_destination_index >().indices().get< by_withdraw_destination >();
+   auto itr = wd_idx.find( boost::make_tuple( from_account.id, to_account.id ) );
+
+   if( itr == wd_idx.end() )
+   {
+      db().create< withdraw_vesting_destination_object >( [&]( withdraw_vesting_destination_object& wvdo )
+      {
+         wvdo.from_account = from_account.id;
+         wvdo.to_account = to_account.id;
+         wvdo.percent = o.percent;
+         wvdo.auto_vest = o.auto_vest;
+      });
+   }
+   else
+   {
+      db().modify( *itr, [&]( withdraw_vesting_destination_object& wvdo )
+      {
+         wvdo.from_account = from_account.id;
+         wvdo.to_account = to_account.id;
+         wvdo.percent = o.percent;
+         wvdo.auto_vest = o.auto_vest;
+      });
+   }
+
+   itr = wd_idx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
+   uint16_t total_percent;
+
+   while( itr->from_account == from_account.id && itr != wd_idx.end() )
+   {
+      total_percent = itr->percent;
+      itr++;
+   }
+
+   FC_ASSERT( total_percent <= STEEMIT_100_PERCENT, "More than 100% of vesting allocated to destinations" );
+}
+
 void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_operation& o )
 {
    const auto& account = db().get_account( o.account );

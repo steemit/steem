@@ -109,6 +109,7 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( from_account ), "Account name invalid" );
       FC_ASSERT( is_valid_account_name( to_account ), "Account name invalid" );
+      FC_ASSERT( 0 <= percent && percent <= STEEMIT_100_PERCENT, "Percent must be valid steemit percent" );
    }
 
    void witness_update_operation::validate() const

@@ -149,11 +149,12 @@ namespace steemit { namespace chain {
    struct fill_vesting_withdraw_operation : public base_operation
    {
       fill_vesting_withdraw_operation(){}
-      fill_vesting_withdraw_operation( const string& a, const asset& v, const asset& s )
-         :account(a), vesting_shares(v), steem(s){}
-      string account;
-      asset  vesting_shares;
-      asset  steem;
+      fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
+         :from_account(f), to_account(t), withdrawn(w), depositted(d){}
+      string from_account;
+      string to_account;
+      asset  withdrawn;
+      asset  depositted;
 
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
@@ -514,5 +515,5 @@ FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout)
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
-FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (account)(vesting_shares)(steem) )
+FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(depositted) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
