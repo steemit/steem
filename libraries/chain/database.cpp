@@ -764,13 +764,17 @@ signed_block database::_generate_block(
 
       const auto& hfp = hardfork_property_id_type()( *this );
 
-      if( hfp.last_hardfork < STEEMIT_NUM_HARDFORKS && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Binary knows of a new hardfork
+      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been replied
+         && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
+         // Make vote match binary configuration
          pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
       }
-      else if( witness.hardfork_version_vote > _hardfork_versions[ hfp.last_hardfork ] || ( hfp.last_hardfork < STEEMIT_NUM_HARDFORKS && witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Don't know about the new hardfork and have previously voted for it
+      else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
+         && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
       {
-         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
+         // Make vote match binary configuration. This is vote to not apply the new hardfork.
+         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
       }
    }
 
