@@ -1626,22 +1626,25 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
 {
    u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
-   const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-   auto itr = cvidx.lower_bound( c.id );
-   while( itr != cvidx.end() && itr->comment == c.id )
+   if( total_weight )
    {
-      // TODO: Add minimum curation pay limit
-      u256 weight( itr->weight );
-      auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
-      if( claim > 1 ) // min_amt is non-zero satoshis
+      const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
+      auto itr = cvidx.lower_bound( c.id );
+      while( itr != cvidx.end() && itr->comment == c.id )
       {
-         unclaimed_rewards -= claim;
-         auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+         // TODO: Add minimum curation pay limit
+         u256 weight( itr->weight );
+         auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
+         if( claim > 1 ) // min_amt is non-zero satoshis
+         {
+            unclaimed_rewards -= claim;
+            auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
+            push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+         }
+         ++itr;
       }
-      ++itr;
    }
-   if( max_rewards.value - unclaimed_rewards.value )
+   if( unclaimed_rewards.value )
    {
       modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
       {
