@@ -163,6 +163,26 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
    db().remove( comment );
 }
 
+void comment_options_evaluator::do_apply( const comment_options_operation& o )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) );
+
+   const auto& comment = db().get_comment( o.author, o.permlink );
+   FC_ASSERT( comment.abs_rshares == 0 );
+   FC_ASSERT( comment.max_accepted_payout >= o.max_accepted_payout );
+   FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars );
+   FC_ASSERT( comment.allow_replies >= o.allow_replies );
+   FC_ASSERT( comment.allow_votes >= o.allow_votes );
+   FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
+
+   db().modify( comment, [&]( comment_object& c ) {
+       c.max_accepted_payout   = o.max_accepted_payout;
+       c.percent_steem_dollars = o.percent_steem_dollars;
+       c.allow_replies         = o.allow_replies;
+       c.allow_votes           = o.allow_votes;
+       c.allow_curation_rewards = o.allow_curation_rewards;
+   });
+}
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
    if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )

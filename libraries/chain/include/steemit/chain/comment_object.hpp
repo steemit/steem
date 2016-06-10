@@ -104,6 +104,12 @@ namespace steemit { namespace chain {
          asset             total_payout_value = asset(0, SBD_SYMBOL);
 
          int32_t           net_votes = 0;
+
+         asset    max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
+         uint16_t percent_steem_dollars = 0; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
+         bool     allow_replies = true;      /// allows a post to disable replies. 
+         bool     allow_votes   = true;      /// allows a post to receive votes;
+         bool     allow_curation_rewards = true;
    };
 
 
@@ -312,7 +318,8 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (category)(parent_author)(parent_permlink)
                     (title)(body)(json_metadata)(last_update)(created)(active)
                     (depth)(children)(children_rshares2)
-                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes) )
+                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)
+                    (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
                     (voter)(comment)(weight)(rshares)(vote_percent)(last_update) )
