@@ -169,10 +169,7 @@ void database::reindex(fc::path data_dir )
          first = last+1;
          _fork_db.start_block( *_block_id_to_block.fetch_by_number( last ) );
       }
-      else
-      {
-         _fork_db.start_block( *_block_id_to_block.fetch_by_number( last_block_num_in_file ) );
-      }
+
       _undo_db.enable();
 
       reindex_range( first, last_block_num_in_file, skip_nothing, true );
