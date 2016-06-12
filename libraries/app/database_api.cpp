@@ -757,7 +757,7 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      int64_t abs_net_rshares = llabs(d.net_rshares.value);
+      int64_t abs_net_rshares = d.net_rshares.value > 0 ? d.net_rshares.value : 0;
 
       u256 r2 = to256(abs_net_rshares);
       r2 *= r2;
@@ -770,10 +770,6 @@ void database_api::set_pending_payout( discussion& d )const
 
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
-
-      if( d.net_rshares.value < 0 ) {
-         d.pending_payout_value.amount.value *= -1;
-      }
    }
    set_url(d);
 }
