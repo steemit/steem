@@ -2081,6 +2081,7 @@ void database::initialize_evaluators()
     register_evaluator<transfer_evaluator>();
     register_evaluator<transfer_to_vesting_evaluator>();
     register_evaluator<withdraw_vesting_evaluator>();
+    register_evaluator<set_withdraw_vesting_destination_evaluator>();
     register_evaluator<account_create_evaluator>();
     register_evaluator<account_update_evaluator>();
     register_evaluator<witness_update_evaluator>();

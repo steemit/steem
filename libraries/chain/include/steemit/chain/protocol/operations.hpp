@@ -36,6 +36,7 @@ namespace steemit { namespace chain {
 
             delete_comment_operation,
             custom_json_operation,
+            set_withdraw_vesting_destination_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,

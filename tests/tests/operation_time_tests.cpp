@@ -770,6 +770,49 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( vesting_withdraw_destination )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(sam) )
+
+      auto original_vesting = alice.vesting_shares;
+
+      fund( "alice", 1040000 );
+      vest( "alice", 1040000 );
+
+      auto withdraw_amount = alice.vesting_shares - original_vesting;
+
+      withdraw_vesting_operation wv;
+      wv.account = "alice";
+      wv.vesting_shares = withdraw_amount;
+
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( wv );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      set_withdraw_vesting_destination_operation op;
+      op.from_account = "alice";
+      op.to_account = "bob";
+      op.percent = STEEMIT_1_PERCENT * 50;
+      op.auto_vest = true;
+      tx.operations.push_back( op );
+
+      op.to_account = "sam";
+      op.percent = STEEMIT_1_PERCENT * 30;
+      op.auto_vest = false;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( feed_publish_mean )
 {
    try

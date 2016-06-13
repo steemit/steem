@@ -498,6 +498,7 @@ FC_REFLECT( steemit::chain::account_update_operation,
 FC_REFLECT( steemit::chain::transfer_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::transfer_to_vesting_operation, (from)(to)(amount) )
 FC_REFLECT( steemit::chain::withdraw_vesting_operation, (account)(vesting_shares) )
+FC_REFLECT( steemit::chain::set_withdraw_vesting_destination_operation, (from_account)(to_account)(percent)(auto_vest) )
 FC_REFLECT( steemit::chain::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
 FC_REFLECT( steemit::chain::account_witness_vote_operation, (account)(witness)(approve) )
 FC_REFLECT( steemit::chain::account_witness_proxy_operation, (account)(proxy) )
