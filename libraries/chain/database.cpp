@@ -2106,22 +2106,23 @@ void database::initialize_indexes()
    auto acnt_index = add_index< primary_index<account_index> >();
    acnt_index->add_secondary_index<account_member_index>();
 
-   add_index< primary_index<witness_index> >();
-   add_index< primary_index<witness_vote_index> >();
-   add_index< primary_index<category_index> >();
-   add_index< primary_index<comment_index> >();
-   add_index< primary_index<comment_vote_index> >();
-   add_index< primary_index<convert_index> >();
-   add_index< primary_index<liquidity_reward_index> >();
-   add_index< primary_index<limit_order_index> >();
+   add_index< primary_index< witness_index > >();
+   add_index< primary_index< witness_vote_index > >();
+   add_index< primary_index< category_index > >();
+   add_index< primary_index< comment_index > >();
+   add_index< primary_index< comment_vote_index > >();
+   add_index< primary_index< convert_index > >();
+   add_index< primary_index< liquidity_reward_index > >();
+   add_index< primary_index< limit_order_index > >();
 
    //Implementation object indexes
-   add_index< primary_index<transaction_index                             > >();
-   add_index< primary_index<simple_index<dynamic_global_property_object  >> >();
-   add_index< primary_index<simple_index<feed_history_object  >> >();
-   add_index< primary_index<flat_index<  block_summary_object            >> >();
-   add_index< primary_index<simple_index<witness_schedule_object        > > >();
-   add_index< primary_index<simple_index<hardfork_property_object       > > >();
+   add_index< primary_index< transaction_index                             > >();
+   add_index< primary_index< simple_index< dynamic_global_property_object  > > >();
+   add_index< primary_index< simple_index< feed_history_object             > > >();
+   add_index< primary_index< flat_index<   block_summary_object            > > >();
+   add_index< primary_index< simple_index< witness_schedule_object         > > >();
+   add_index< primary_index< simple_index< hardfork_property_object        > > >();
+   add_index< primary_index< withdraw_vesting_destination_index            > >();
 }
 
 void database::init_genesis( uint64_t init_supply )

@@ -215,3 +215,6 @@ FC_REFLECT_DERIVED( steemit::chain::convert_request_object, (graphene::db::objec
 
 FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::db::object),
                     (owner)(steem_volume)(sbd_volume)(last_update) )
+
+FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_destination_object, (graphene::db::object),
+                    (from_account)(to_account)(percent)(auto_vest) )
