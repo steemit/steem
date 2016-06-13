@@ -764,13 +764,17 @@ signed_block database::_generate_block(
 
       const auto& hfp = hardfork_property_id_type()( *this );
 
-      if( hfp.last_hardfork < STEEMIT_NUM_HARDFORKS && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Binary knows of a new hardfork
+      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
+         && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
+         // Make vote match binary configuration
          pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
       }
-      else if( witness.hardfork_version_vote > _hardfork_versions[ hfp.last_hardfork ] || ( hfp.last_hardfork < STEEMIT_NUM_HARDFORKS && witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Don't know about the new hardfork and have previously voted for it
+      else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
+         && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
       {
-         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
+         // Make vote match binary configuration. This is vote to not apply the new hardfork.
+         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
       }
    }
 
@@ -1717,24 +1721,27 @@ void database::cashout_comment_helper( const comment_object& cur, const comment_
  */
 share_type database::pay_curators( const comment_object& c, share_type max_rewards )
 {
-   u256 total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
-   const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-   auto itr = cvidx.lower_bound( c.id );
-   while( itr != cvidx.end() && itr->comment == c.id )
-   {
-      // TODO: Add minimum curation pay limit
-      u256 weight( itr->weight );
-      auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
-      if( claim > 1 ) // min_amt is non-zero satoshis
+
+   if( c.total_vote_weight > 0 ) {
+      u256 total_weight( c.total_vote_weight );
+      const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
+      auto itr = cvidx.lower_bound( c.id );
+      while( itr != cvidx.end() && itr->comment == c.id )
       {
-         unclaimed_rewards -= claim;
-         auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+         u256 weight( itr->weight );
+         auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
+         if( claim > 1 ) // min_amt is non-zero satoshis
+         {
+            unclaimed_rewards -= claim;
+            auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
+            push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+         }
+         ++itr;
       }
-      ++itr;
    }
-   if( max_rewards.value - unclaimed_rewards.value )
+
+   if( unclaimed_rewards.value > 0 )
    {
       modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
       {
@@ -2077,6 +2084,7 @@ void database::initialize_evaluators()
 
     register_evaluator<vote_evaluator>();
     register_evaluator<comment_evaluator>();
+    register_evaluator<comment_options_evaluator>();
     register_evaluator<delete_comment_evaluator>();
     register_evaluator<transfer_evaluator>();
     register_evaluator<transfer_to_vesting_evaluator>();
@@ -2333,12 +2341,14 @@ void database::_apply_block( const signed_block& next_block )
    update_witness_schedule();
 
    update_median_feed();
+   update_virtual_supply();
 
    process_funds();
    process_conversions();
    process_comment_cashout();
    process_vesting_withdrawals();
    pay_liquidity_reward();
+   update_virtual_supply();
 
    process_hardforks();
 
@@ -2603,8 +2613,6 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.virtual_supply = dgp.current_supply
-         + ( get_feed_history().current_median_history.is_null() ? asset( 0, STEEM_SYMBOL ) : dgp.current_sbd_supply * get_feed_history().current_median_history );
       dgp.recent_slots_filled = (
            (dgp.recent_slots_filled << 1)
            + 1) << missed_blocks;
@@ -2656,6 +2664,15 @@ void database::update_global_dynamic_data( const signed_block& b )
 
    _undo_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
+}
+
+void database::update_virtual_supply()
+{
+   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp )
+   {
+      dgp.virtual_supply = dgp.current_supply
+         + ( get_feed_history().current_median_history.is_null() ? asset( 0, STEEM_SYMBOL ) : dgp.current_sbd_supply * get_feed_history().current_median_history );
+   });
 }
 
 void database::update_signing_witness(const witness_object& signing_witness, const signed_block& new_block)
@@ -3012,16 +3029,12 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_5 == 5, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_5 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_5_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_5 ] = STEEMIT_HARDFORK_0_5_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_6 == 6, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_6 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_6_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_6 ] = STEEMIT_HARDFORK_0_6_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
-
-   if( hardforks.last_hardfork >= 0 )
-      FC_ASSERT( _hardfork_times[ hardforks.last_hardfork - 1 ] <= head_block_time(), "Configuration has future hardfork set that chain has already applied." );
-
-   if( hardforks.last_hardfork + 1 < STEEMIT_NUM_HARDFORKS )
-      FC_ASSERT( _hardfork_times[ hardforks.last_hardfork + 1 ] > head_block_time(), "Next hardfork takes place prior to head block time" );
-
    FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
 }
 

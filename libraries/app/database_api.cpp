@@ -907,7 +907,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
    while( count > 0 && tidx_itr != tidx.end() ) {
       if( tidx_itr->tag != tag || tidx_itr->parent != parent )
          break;
+      try {
       result.push_back( get_discussion( tidx_itr->comment ) );
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string()));
+      }
 
       ++tidx_itr; --count;
    }
