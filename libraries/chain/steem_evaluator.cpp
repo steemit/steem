@@ -604,7 +604,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-      share_type old_rshares = std::max(comment.net_rshares.value, int64_t(0));
+      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       auto old_abs_rshares = comment.abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
@@ -624,7 +624,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
          if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
       });
 
-      share_type new_rshares = std::max( comment.net_rshares.value, int64_t(0));
+      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
+
+      /// square it
+      new_rshares *= new_rshares;
+      old_rshares *= old_rshares;
 
       const auto& cat = db().get_category( comment.category );
       db().modify( cat, [&]( category_object& c ){
@@ -656,7 +660,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.last_update = db().head_block_time();
       });
 
-      db().adjust_rshares( comment, old_rshares, new_rshares );
+      db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
    else
    {
@@ -676,7 +680,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-      share_type old_rshares = std::max(comment.net_rshares.value, int64_t(0));
+      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       auto old_abs_rshares = comment.abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
@@ -697,7 +701,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes -= 2;
       });
 
-      share_type new_rshares = std::max( comment.net_rshares.value, int64_t(0));
+      old_rshares *= old_rshares;
+      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
+      new_rshares *= new_rshares;
 
       db().modify( *itr, [&]( comment_vote_object& cv )
       {
@@ -707,7 +713,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.num_changes += 1;
       });
 
-      db().adjust_rshares( comment, old_rshares, new_rshares );
+      db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
 
 } FC_CAPTURE_AND_RETHROW( (o)) }

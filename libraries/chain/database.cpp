@@ -1477,31 +1477,21 @@ void database::clear_witness_votes( const account_object& a )
 }
 
 /**
- * This method recursively tallies children_rshares2 for this post plus all of its parents and children_rshares for the root.
+ * This method recursively tallies children_rshares2 for this post plus all of its parents,
  * TODO: this method can be skipped for validation-only nodes
  */
-void database::adjust_rshares( const comment_object& c, share_type old_rshares, share_type new_rshares, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
+void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
 {
-   if( old_rshares2 == 0 && new_rshares2 == 0 )
-   {
-      old_rshares2 = fc::uint128_t( old_rshares.value ) * old_rshares.value;
-      new_rshares2 = fc::uint128_t( new_rshares.value ) * new_rshares.value;
-   }
 
+//   idump( ("before")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
    modify( c, [&](comment_object& comment )
    {
       comment.children_rshares2 -= old_rshares2;
       comment.children_rshares2 += new_rshares2;
-
-      if( c.author == "" )
-      {
-         comment.children_rshares -= old_rshares;
-         comment.children_rshares += new_rshares;
-      }
    } );
    if( c.depth )
    {
-      adjust_rshares( get_comment( c.parent_author, c.parent_permlink ), old_rshares, new_rshares, old_rshares2, new_rshares2 );
+      adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
    }
    else
    {
@@ -1657,13 +1647,16 @@ void database::process_comment_cashout()
       if( cur.net_rshares > 0 )
       {
          auto reward_tokens = claim_rshare_reward( cur.net_rshares );
-         auto discussion_tokens = reward_tokens / 4;
+         share_type discussion_tokens = 0;
+         if( cur.parent_author == "" )
+            discussion_tokens = reward_tokens / 4;
          reward_tokens -= discussion_tokens;
 
          if( to_sbd( asset( reward_tokens, STEEM_SYMBOL ) ) >= asset::from_string( "0.020 SBD" ) ) // Must say your 2 cents
          {
             auto sbd_steem     = reward_tokens / 2;
             auto vesting_steem = reward_tokens - sbd_steem;
+            share_type unclaimed = 0;
 
             const auto& author = get_account( cur.author );
             auto vest_created = create_vesting( author, vesting_steem );
@@ -1672,7 +1665,8 @@ void database::process_comment_cashout()
 
             push_applied_operation( comment_reward_operation( cur.author, cur.permlink, sbd_created, vest_created ) );
 
-            auto unclaimed = pay_discussions( cur, discussion_tokens );
+            if( discussion_tokens > 0 )
+               unclaimed = pay_discussions( cur, discussion_tokens );
 
             auto total_payout = asset( reward_tokens - unclaimed, STEEM_SYMBOL ) * median_price;
 
@@ -1687,7 +1681,7 @@ void database::process_comment_cashout()
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;
 
-         adjust_rshares( cur, cur.net_rshares, 0 );
+         adjust_rshares2( cur, old_rshares2, 0 );
       }
 
       modify( cat, [&]( category_object& c )
@@ -3246,7 +3240,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares( c, 0, c.net_rshares );
+            adjust_rshares2( c, 0, fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value );
       }
 
       // Update category rshares
