@@ -54,6 +54,13 @@ const uint8_t transaction_object::type_id;
 const uint8_t witness_object::space_id;
 const uint8_t witness_object::type_id;
 
+inline u256 to256( const fc::uint128& t ) {
+   u256 v(t.hi);
+   v <<= 64;
+   v += t.lo;
+   return v;
+}
+
 
 database::database()
 {
@@ -1756,6 +1763,10 @@ void database::process_funds()
    auto witness_pay = get_producer_reward();
    auto vesting_reward = content_reward + curate_reward + witness_pay;
 
+   /// we decided to redistribute curation rewards between authors and activity rewards.
+   asset activity_reward = asset(curate_reward.amount.value / 3, STEEM_SYMBOL);
+   content_reward += curate_reward - activity_reward;
+
    if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
       vesting_reward.amount = 0;
    else
@@ -1764,10 +1775,49 @@ void database::process_funds()
    modify( props, [&]( dynamic_global_property_object& p )
    {
        p.total_vesting_fund_steem += vesting_reward;
-       p.total_reward_fund_steem  += content_reward + curate_reward;
-       p.current_supply += content_reward + curate_reward + witness_pay + vesting_reward;
-       p.virtual_supply += content_reward + curate_reward + witness_pay + vesting_reward;
+       p.total_reward_fund_steem  += content_reward + activity_reward;
+       p.current_supply += content_reward + activity_reward + witness_pay + vesting_reward;
+       p.virtual_supply += content_reward + activity_reward + witness_pay + vesting_reward;
    } );
+}
+
+void database::update_account_activity( const account_object& account ) {
+   auto now = head_block_time();
+   auto delta_time = std::min( fc::days(1), now - account.last_active );
+   auto shares = fc::uint128( delta_time.to_seconds() ) * account.vesting_shares.amount.value;
+
+   if( shares == 0 ) return;
+
+   modify( account, [&]( account_object& a ) {
+      a.last_active = now;
+      a.activity_shares += shares;
+   });
+
+   const auto& props = get_dynamic_global_properties();
+
+   modify( props, [&]( dynamic_global_property_object& gprop ) {
+      gprop.total_activity_fund_shares += shares;
+   });
+
+   if( account.last_active - account.last_activity_payout > fc::days(7) && props.total_activity_fund_steem.amount.value > 0 ) {
+      u256 tashares( to256(props.total_activity_fund_shares) );
+      u256 tasteem( props.total_activity_fund_steem.amount.value );
+      u256 ushares( to256(account.activity_shares) );
+
+      auto payout = asset( static_cast<uint64_t>((ushares * tasteem) / tashares), STEEM_SYMBOL);
+
+      modify( props, [&]( dynamic_global_property_object& gprops ){
+          gprops.total_activity_fund_shares -= account.activity_shares;
+          gprops.total_activity_fund_steem -= payout;
+      });
+
+      modify( account, [&]( account_object& a ) {
+          a.last_activity_payout = now;
+          a.activity_shares = 0;
+      });
+      auto vests_created = create_vesting( account, payout );
+      /// TODO: create vop
+   }
 }
 
 asset database::get_liquidity_reward()const
@@ -1931,8 +1981,7 @@ share_type database::claim_rshare_reward( share_type rshares )
 
    u256 rs(rshares.value);
    u256 rf(props.total_reward_fund_steem.amount.value);
-   u256 total_rshares2 = props.total_reward_shares2.hi;
-   total_rshares2 = ( total_rshares2 << 64 ) + props.total_reward_shares2.lo;
+   u256 total_rshares2 = to256( props.total_reward_shares2 ); 
 
    auto rs2 = rs*rs;
 
@@ -3153,7 +3202,7 @@ void database::validate_invariants()const
             total_children_rshares2 += itr->children_rshares2;
       }
 
-      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
+      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.total_activity_fund_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
       FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );

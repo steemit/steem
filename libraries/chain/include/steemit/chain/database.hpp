@@ -240,6 +240,7 @@ namespace steemit { namespace chain {
          /** @return the sbd created and deposited to_account, may return STEEM if there is no median feed */
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
+         void update_account_activity( const account_object& account );
          void adjust_total_payout( const comment_object& a, const asset& sbd );
 
          void update_witness_schedule();

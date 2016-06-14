@@ -571,6 +571,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
+
+   db().update_account_activity( voter );
+
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
@@ -730,6 +733,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
+
 } FC_CAPTURE_AND_RETHROW( (o)) }
 
 void custom_evaluator::do_apply( const custom_operation& o ){}
