@@ -1775,7 +1775,8 @@ void database::process_funds()
    modify( props, [&]( dynamic_global_property_object& p )
    {
        p.total_vesting_fund_steem += vesting_reward;
-       p.total_reward_fund_steem  += content_reward + activity_reward;
+       p.total_reward_fund_steem  += content_reward;
+       p.total_activity_fund_steem += activity_reward;
        p.current_supply += content_reward + activity_reward + witness_pay + vesting_reward;
        p.virtual_supply += content_reward + activity_reward + witness_pay + vesting_reward;
    } );
@@ -1981,7 +1982,7 @@ share_type database::claim_rshare_reward( share_type rshares )
 
    u256 rs(rshares.value);
    u256 rf(props.total_reward_fund_steem.amount.value);
-   u256 total_rshares2 = to256( props.total_reward_shares2 ); 
+   u256 total_rshares2 = to256( props.total_reward_shares2 );
 
    auto rs2 = rs*rs;
 
