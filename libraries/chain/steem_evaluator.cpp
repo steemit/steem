@@ -459,6 +459,8 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 
 void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_vesting_destination_operation& o )
 {
+   try
+   {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) );
 
    const auto& from_account = db().get_account( o.from_account );
@@ -488,15 +490,17 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
    }
 
    itr = wd_idx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
-   uint16_t total_percent;
+   uint16_t total_percent = 0;
 
    while( itr->from_account == from_account.id && itr != wd_idx.end() )
    {
-      total_percent = itr->percent;
+      total_percent += itr->percent;
       itr++;
    }
 
    FC_ASSERT( total_percent <= STEEMIT_100_PERCENT, "More than 100% of vesting allocated to destinations" );
+   }
+   FC_CAPTURE_AND_RETHROW()
 }
 
 void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_operation& o )

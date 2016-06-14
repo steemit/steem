@@ -108,6 +108,9 @@ namespace steemit { namespace chain {
    class withdraw_vesting_destination_object : public abstract_object< withdraw_vesting_destination_object >
    {
       public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_withdraw_vesting_destination_object_type;
+
          account_id_type from_account;
          account_id_type to_account;
          uint16_t        percent;
@@ -181,11 +184,13 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       withdraw_vesting_destination_object,
       indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_withdraw_destination >,
             composite_key< withdraw_vesting_destination_object,
                member< withdraw_vesting_destination_object, account_id_type, &withdraw_vesting_destination_object::from_account >,
                member< withdraw_vesting_destination_object, account_id_type, &withdraw_vesting_destination_object::to_account >
-            >
+            >,
+            composite_key_compare< std::less< account_id_type >, std::less< account_id_type > >
          >
       >
    > withdraw_vesting_destination_index_type;
