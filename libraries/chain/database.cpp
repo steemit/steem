@@ -23,6 +23,7 @@
 #include <fc/io/fstream.hpp>
 
 #include <cstdint>
+#include <deque>
 #include <fstream>
 #include <functional>
 
@@ -1476,21 +1477,31 @@ void database::clear_witness_votes( const account_object& a )
 }
 
 /**
- * This method recursively tallies children_rshares2 for this post plus all of its parents,
+ * This method recursively tallies children_rshares2 for this post plus all of its parents and children_rshares for the root.
  * TODO: this method can be skipped for validation-only nodes
  */
-void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
+void database::adjust_rshares( const comment_object& c, share_type old_rshares, share_type new_rshares, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
 {
+   if( old_rshares2 == 0 && new_rshares2 == 0 )
+   {
+      old_rshares2 = fc::uint128_t( old_rshares.value ) * old_rshares.value;
+      new_rshares2 = fc::uint128_t( new_rshares.value ) * new_rshares.value;
+   }
 
-//   idump( ("before")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
    modify( c, [&](comment_object& comment )
    {
       comment.children_rshares2 -= old_rshares2;
       comment.children_rshares2 += new_rshares2;
+
+      if( c.author == "" )
+      {
+         comment.children_rshares -= old_rshares;
+         comment.children_rshares += new_rshares;
+      }
    } );
    if( c.depth )
    {
-      adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
+      adjust_rshares( get_comment( c.parent_author, c.parent_permlink ), old_rshares, new_rshares, old_rshares2, new_rshares2 );
    }
    else
    {
@@ -1501,7 +1512,6 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
          p.total_reward_shares2 += new_rshares2;
       } );
    }
-//   wdump( ("after")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
 }
 
 void database::process_vesting_withdrawals()
@@ -1580,22 +1590,39 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
 share_type database::pay_discussions( const comment_object& c, share_type max_rewards )
 {
    share_type unclaimed_rewards = max_rewards;
+   std::deque< comment_id_type > child_queue;
 
-   if( c.total_vote_weight > 0 ) {
-      u256 total_weight( c.total_vote_weight );
-      const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-      auto itr = cvidx.lower_bound( c.id );
-      while( itr != cvidx.end() && itr->comment == c.id )
+   if( c.children_rshares > 0 )
+   {
+      const auto& comment_by_parent = get_index_type< comment_index >().indices().get< by_parent >();
+      share_type total_rshares( c.children_rshares );
+      child_queue.push_back( c.id );
+
+      // In order traversal of the tree of child comments
+      while( child_queue.size() )
       {
-         u256 weight( itr->weight );
-         auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
-         if( claim > 1 ) // min_amt is non-zero satoshis
+         const auto& cur = child_queue.front()( *this );
+         child_queue.pop_front();
+
+         if( cur.net_rshares > 0 )
          {
+            auto claim = ( ( fc::uint128_t( cur.net_rshares.value ) * max_rewards.value ) / total_rshares.value ).to_uint64();
             unclaimed_rewards -= claim;
-            auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-            push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+
+            if( claim > 0 )
+            {
+               auto vest_created = create_vesting( get_account( cur.author ), asset( claim, STEEM_SYMBOL ) );
+               // create discussion reward vop
+            }
          }
-         ++itr;
+
+         auto itr = comment_by_parent.lower_bound( boost::make_tuple( cur.author, cur.permlink, comment_id_type() ) );
+
+         while( itr != comment_by_parent.end() && itr->parent_author == cur.author && itr->parent_permlink == cur.permlink )
+         {
+            child_queue.push_back( itr->id );
+            itr++;
+         }
       }
    }
 
@@ -1604,7 +1631,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
       modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
       {
          p.total_reward_fund_steem += unclaimed_rewards;
-      } );
+      });
    }
    return unclaimed_rewards;
 }
@@ -1660,7 +1687,7 @@ void database::process_comment_cashout()
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;
 
-         adjust_rshares2( cur, old_rshares2, 0 );
+         adjust_rshares( cur, cur.net_rshares, 0 );
       }
 
       modify( cat, [&]( category_object& c )
@@ -3210,17 +3237,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value );
-      }
-
-      // Update vote weights
-      const auto& vote_idx = get_index_type< comment_vote_index >().indices();
-      for( const auto& vote : vote_idx )
-      {
-         modify( vote, [&]( comment_vote_object& cv )
-         {
-            cv.weight = cv.weight * magnitude ;
-         } );
+            adjust_rshares( c, 0, c.net_rshares );
       }
 
       // Update category rshares

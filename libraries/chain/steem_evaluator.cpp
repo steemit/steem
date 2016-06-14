@@ -207,8 +207,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       if( db().is_producing() && o.parent_author.size() == 0 ) {
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
-      } 
-      
+      }
+
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
          if( o.parent_author.size() == 0 )
              FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
@@ -604,7 +604,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
+      share_type old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       auto old_abs_rshares = comment.abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
@@ -624,11 +624,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
       });
 
-      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-
-      /// square it
-      new_rshares *= new_rshares;
-      old_rshares *= old_rshares;
+      share_type new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       const auto& cat = db().get_category( comment.category );
       db().modify( cat, [&]( category_object& c ){
@@ -658,25 +654,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
-         if( rshares > 0 ) {
-            cv.weight = rshares;
-            u512 rshares3(rshares);
-            rshares3 = rshares3 * rshares3 * rshares3;
-
-            u256 total2( comment.abs_rshares.value );
-            total2 *= total2;
-
-            cv.weight = static_cast<uint64_t>( rshares3 / total2 );
-         } else {
-            cv.weight = 0;
-         }
       });
 
-      db().modify( comment, [&]( comment_object& c ){
-         c.total_vote_weight += cvo.weight;
-      });
-
-      db().adjust_rshares2( comment, old_rshares, new_rshares );
+      db().adjust_rshares( comment, old_rshares, new_rshares );
    }
    else
    {
@@ -696,7 +676,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       });
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
-      fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
+      share_type old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       auto old_abs_rshares = comment.abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
@@ -709,7 +689,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
          c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
-         c.total_vote_weight -= itr->weight;
 
          /// TODO: figure out how to handle remove a vote (rshares == 0 )
          if( rshares > 0 && itr->rshares < 0 )
@@ -718,20 +697,17 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes -= 2;
       });
 
-      old_rshares *= old_rshares;
-      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-      new_rshares *= new_rshares;
+      share_type new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       db().modify( *itr, [&]( comment_vote_object& cv )
       {
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
-         cv.weight = 0;
          cv.num_changes += 1;
       });
 
-      db().adjust_rshares2( comment, old_rshares, new_rshares );
+      db().adjust_rshares( comment, old_rshares, new_rshares );
    }
 
 } FC_CAPTURE_AND_RETHROW( (o)) }
