@@ -1776,24 +1776,29 @@ void database::update_account_activity( const account_object& account ) {
       gprop.total_activity_fund_shares += shares;
    });
 
-   if( account.last_active - account.last_activity_payout > fc::days(7) && props.total_activity_fund_steem.amount.value > 0 ) {
-      u256 tashares( to256(props.total_activity_fund_shares) );
-      u256 tasteem( props.total_activity_fund_steem.amount.value );
-      u256 ushares( to256(account.activity_shares) );
+   if( has_hardfork( STEEMIT_HARDFORK_0_6 ) )
+   {
+      if( account.last_active - account.last_activity_payout > fc::days(7) && props.total_activity_fund_steem.amount.value > 0 )
+      {
+         u256 tashares( to256(props.total_activity_fund_shares) );
+         u256 tasteem( props.total_activity_fund_steem.amount.value );
+         u256 ushares( to256(account.activity_shares) );
 
-      auto payout = asset( static_cast<uint64_t>((ushares * tasteem) / tashares), STEEM_SYMBOL);
+         auto payout = asset( static_cast<uint64_t>((ushares * tasteem) / tashares), STEEM_SYMBOL);
 
-      modify( props, [&]( dynamic_global_property_object& gprops ){
-          gprops.total_activity_fund_shares -= account.activity_shares;
-          gprops.total_activity_fund_steem -= payout;
-      });
+         modify( props, [&]( dynamic_global_property_object& gprops ){
+            gprops.total_activity_fund_shares -= account.activity_shares;
+            gprops.total_activity_fund_steem -= payout;
+         });
 
-      modify( account, [&]( account_object& a ) {
-          a.last_activity_payout = now;
-          a.activity_shares = 0;
-      });
-      auto vests_created = create_vesting( account, payout );
-      /// TODO: create vop
+         modify( account, [&]( account_object& a ) {
+            a.last_activity_payout = now;
+            a.activity_shares = 0;
+         });
+
+         auto vests_created = create_vesting( account, payout );
+         /// TODO: create vop
+      }
    }
 }
 
@@ -2215,9 +2220,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       _apply_block( next_block );
    } );
 
+   try
+   {
    /// check invariants
    if( is_producing() || !( skip & skip_validate_invariants ) )
       validate_invariants();
+   }
+   FC_CAPTURE_AND_RETHROW( (next_block) );
 }
 
 void database::_apply_block( const signed_block& next_block )
