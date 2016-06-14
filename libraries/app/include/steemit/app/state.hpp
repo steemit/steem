@@ -22,13 +22,12 @@ namespace steemit { namespace app {
    };
    struct category_index {
       vector<string> trending; /// pending payouts
-      vector<string> active; /// recent activity 
+      vector<string> active; /// recent activity
       vector<string> recent; /// recently created
       vector<string> best; /// total lifetime payout
    };
    struct vote_state {
-      string   voter;
-      uint64_t weight;
+      string         voter;
       int64_t        rshares;
       int16_t        percent;
       time_point_sec time;
@@ -36,7 +35,6 @@ namespace steemit { namespace app {
 
    struct account_vote {
       string         authorperm;
-      uint64_t       weight;
       int64_t        rshares;
       int16_t        percent;
       time_point_sec time;
@@ -65,8 +63,8 @@ namespace steemit { namespace app {
       map<uint64_t,operation_object>  transfer_history; /// transfer to/from vesting
       map<uint64_t,operation_object>  market_history; /// limit order / cancel / fill
       map<uint64_t,operation_object>  post_history;
-      map<uint64_t,operation_object>  vote_history; 
-      map<uint64_t,operation_object>  other_history; 
+      map<uint64_t,operation_object>  vote_history;
+      map<uint64_t,operation_object>  other_history;
       set<string>                     witness_votes;
       optional<vector<string>>        posts; /// permlinks for this user
       optional<vector<string>>        blog; /// blog posts for this user
@@ -77,7 +75,7 @@ namespace steemit { namespace app {
 
 
 #if 0
-   struct extended_limit_order : public limit_order_object 
+   struct extended_limit_order : public limit_order_object
    {
       double price;
    };
@@ -87,7 +85,7 @@ namespace steemit { namespace app {
     *  to normalize everything to be priced in SBD
     */
    struct extended_price {
-      double price; /// SBD per STEEM 
+      double price; /// SBD per STEEM
       price  ratio; /// the exact ratio
    };
 
@@ -109,10 +107,10 @@ namespace steemit { namespace app {
       int                          current_zoom = 0;
       vector<candle_stick>         price_history;
    };
-#endif 
+#endif
 
    /**
-    *  This struct is designed 
+    *  This struct is designed
     */
    struct state {
         string                        current_route;
@@ -149,14 +147,14 @@ namespace steemit { namespace app {
 
 } }
 
-FC_REFLECT_DERIVED( steemit::app::extended_account, 
-                   (steemit::chain::account_object), 
+FC_REFLECT_DERIVED( steemit::app::extended_account,
+                   (steemit::chain::account_object),
                    (vesting_balance)
                    (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(posts)(blog)(recent_replies)(blog_category)(recommended) )
 
 
-FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(time) );
-FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(time) );
+FC_REFLECT( steemit::app::vote_state, (voter)(rshares)(percent)(time) );
+FC_REFLECT( steemit::app::account_vote, (authorperm)(rshares)(percent)(time) );
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )

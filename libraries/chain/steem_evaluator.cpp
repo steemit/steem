@@ -207,8 +207,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       if( db().is_producing() && o.parent_author.size() == 0 ) {
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
-      } 
-      
+      }
+
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
          if( o.parent_author.size() == 0 )
              FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
@@ -658,22 +658,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
-         if( rshares > 0 ) {
-            cv.weight = rshares;
-            u512 rshares3(rshares);
-            rshares3 = rshares3 * rshares3 * rshares3;
-
-            u256 total2( comment.abs_rshares.value );
-            total2 *= total2;
-
-            cv.weight = static_cast<uint64_t>( rshares3 / total2 );
-         } else {
-            cv.weight = 0;
-         }
-      });
-
-      db().modify( comment, [&]( comment_object& c ){
-         c.total_vote_weight += cvo.weight;
       });
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
@@ -709,7 +693,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
          c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
-         c.total_vote_weight -= itr->weight;
 
          /// TODO: figure out how to handle remove a vote (rshares == 0 )
          if( rshares > 0 && itr->rshares < 0 )
@@ -727,7 +710,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
-         cv.weight = 0;
          cv.num_changes += 1;
       });
 
