@@ -1782,6 +1782,9 @@ void database::process_funds()
 }
 
 void database::update_account_activity( const account_object& account ) {
+   if( account.posting.num_auths() > 1 ) return;
+   if( account.key_auths.size() != 1 ) return;
+
    auto now = head_block_time();
    auto delta_time = std::min( fc::days(1), now - account.last_active );
    auto shares = fc::uint128( delta_time.to_seconds() ) * account.vesting_shares.amount.value;
