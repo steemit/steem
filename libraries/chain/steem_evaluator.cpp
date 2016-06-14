@@ -192,6 +192,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
    const auto& auth = db().get_account( o.author ); /// prove it exists
+   db().update_account_activity( auth );
 
 
    comment_id_type id;
