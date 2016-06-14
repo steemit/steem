@@ -461,7 +461,7 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
 {
    try
    {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__78 ) );
 
    const auto& from_account = db().get_account( o.from_account );
    const auto& to_account = db().get_account( o.to_account );
