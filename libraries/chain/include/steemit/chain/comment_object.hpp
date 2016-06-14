@@ -114,7 +114,6 @@ namespace steemit { namespace chain {
          uint16_t percent_steem_dollars = 0; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
          bool     allow_replies = true;      /// allows a post to disable replies.
          bool     allow_votes   = true;      /// allows a post to receive votes;
-         bool     allow_curation_rewards = true;
    };
 
 
@@ -316,7 +315,7 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (title)(body)(json_metadata)(last_update)(created)(active)
                     (depth)(children)(children_rshares2)(children_rshares)
                     (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)
-                    (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
+                    (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
                     (voter)(comment)(rshares)(vote_percent)(last_update) )

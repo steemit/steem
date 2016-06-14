@@ -173,14 +173,12 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars );
    FC_ASSERT( comment.allow_replies >= o.allow_replies );
    FC_ASSERT( comment.allow_votes >= o.allow_votes );
-   FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
 
    db().modify( comment, [&]( comment_object& c ) {
        c.max_accepted_payout   = o.max_accepted_payout;
        c.percent_steem_dollars = o.percent_steem_dollars;
        c.allow_replies         = o.allow_replies;
        c.allow_votes           = o.allow_votes;
-       c.allow_curation_rewards = o.allow_curation_rewards;
    });
 }
 void comment_evaluator::do_apply( const comment_operation& o )
