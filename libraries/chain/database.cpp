@@ -1572,68 +1572,12 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
 }
 
 /**
- *  @recursively pays out parent posts
- */
-void database::cashout_comment_helper( const comment_object& cur, const comment_object& origin, asset vesting_steem_reward, asset sbd_reward )
-{
-   const auto& author = get_account( cur.author );
-   if( cur.parent_author.size() )
-   {
-      auto parent_vesting_steem_reward = vesting_steem_reward;
-      auto parent_sbd_reward = sbd_reward;
-      parent_vesting_steem_reward.amount /= 2;
-      parent_sbd_reward.amount /= 2;
-
-      vesting_steem_reward -= parent_vesting_steem_reward;
-      sbd_reward -= parent_sbd_reward;
-
-      auto vest_created = create_vesting( author, vesting_steem_reward );
-      auto sbd_created  = create_sbd( author, sbd_reward );
-      adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
-
-      /// push virtual operation for this reward payout
-      push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
-
-      /// only recurse if the SBD created is more than $0.02, this should stop recursion quickly for
-      /// small payouts.
-      if( sbd_created > asset( 20, SBD_SYMBOL ) )
-      {
-         const auto& parent = get_comment( cur.parent_author, cur.parent_permlink );
-         sbd_created.amount *= 2; /// 50/50 VESTING SBD means total value is 2x
-
-         cashout_comment_helper( parent, origin, parent_vesting_steem_reward, parent_sbd_reward );
-      }
-      else /// parent gets the full change, recursion stops
-      {
-         const auto& parent_author = get_account( cur.parent_author );
-         vest_created = create_vesting( parent_author, parent_vesting_steem_reward );
-         sbd_created  = create_sbd( parent_author, parent_sbd_reward );
-
-         /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
-         push_applied_operation( comment_reward_operation( cur.parent_author, cur.parent_permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
-         adjust_total_payout( get_comment( cur.parent_author, cur.parent_permlink ), sbd_created + to_sbd( vesting_steem_reward ) );
-      }
-   }
-   else
-   {
-      /// no parent, everything goes to the post
-      auto vest_created = create_vesting( author, vesting_steem_reward );
-      auto sbd_created  = create_sbd( author, sbd_reward );
-
-      /// THE FOLLOWING IS NOT REQUIRED FOR VALIDATION
-      /// push virtual operation for this reward payout
-      push_applied_operation( comment_reward_operation( cur.author, cur.permlink, origin.author, origin.permlink, sbd_created, vest_created ) );
-      adjust_total_payout( cur, sbd_created + to_sbd( vesting_steem_reward ) );
-   }
-}
-
-/**
  *  This method will iterate through all comment_vote_objects and give them
  *  (max_rewards * weight) / c.total_vote_weight.
  *
  *  @returns unclaimed rewards.
  */
-share_type database::pay_curators( const comment_object& c, share_type max_rewards )
+share_type database::pay_discussions( const comment_object& c, share_type max_rewards )
 {
    share_type unclaimed_rewards = max_rewards;
 
@@ -1679,27 +1623,31 @@ void database::process_comment_cashout()
    auto current = cidx.begin();
    while( current != cidx.end() && current->cashout_time <= head_block_time() )
    {
-      share_type unclaimed;
       const auto& cur = *current; ++current;
-      asset sbd_created(0,SBD_SYMBOL);
-      asset vest_created(0,VESTS_SYMBOL);
 
       const auto& cat = get_category( cur.category );
 
       if( cur.net_rshares > 0 )
       {
          auto reward_tokens = claim_rshare_reward( cur.net_rshares );
-         auto curator_rewards = reward_tokens / 2;
-         reward_tokens -= curator_rewards;
+         auto discussion_tokens = reward_tokens / 4;
+         reward_tokens -= discussion_tokens;
 
-         if( reward_tokens > 0 ) {
-            auto to_sbd     = reward_tokens / 2;
-            auto to_vesting = reward_tokens - to_sbd;
+         if( to_sbd( asset( reward_tokens, STEEM_SYMBOL ) ) >= asset::from_string( "0.020 SBD" ) ) // Must say your 2 cents
+         {
+            auto sbd_steem     = reward_tokens / 2;
+            auto vesting_steem = reward_tokens - sbd_steem;
 
-            unclaimed = pay_curators( cur, curator_rewards );
-            cashout_comment_helper( cur, cur, asset( to_vesting, STEEM_SYMBOL ), asset( to_sbd, STEEM_SYMBOL ) );
+            const auto& author = get_account( cur.author );
+            auto vest_created = create_vesting( author, vesting_steem );
+            auto sbd_created = create_sbd( author, sbd_steem );
+            adjust_total_payout( cur, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
 
-            auto total_payout = asset(reward_tokens - unclaimed ,STEEM_SYMBOL) * median_price;
+            push_applied_operation( comment_reward_operation( cur.author, cur.permlink, sbd_created, vest_created ) );
+
+            auto unclaimed = pay_discussions( cur, discussion_tokens );
+
+            auto total_payout = asset( reward_tokens - unclaimed, STEEM_SYMBOL ) * median_price;
 
             modify( cat, [&]( category_object& c )
             {
@@ -1708,6 +1656,7 @@ void database::process_comment_cashout()
 
             notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
          }
+
          fc::uint128_t old_rshares2(cur.net_rshares.value);
          old_rshares2 *= old_rshares2;
 
