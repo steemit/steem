@@ -1709,7 +1709,10 @@ void database::process_comment_cashout()
       {
          const auto& cur_vote = *vote_itr;
          ++vote_itr;
-         remove(cur_vote);
+         modify( cur_vote, [&]( comment_vote_object& cvo )
+         {
+            cvo.num_changes = -1;
+         });
       }
    }
 }
