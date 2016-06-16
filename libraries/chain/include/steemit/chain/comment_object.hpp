@@ -96,6 +96,8 @@ namespace steemit { namespace chain {
          /// TRENDING = UNCLAIMED + PENDING
          share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
          share_type        abs_rshares; /// this is used to track the total abs(weight) of votes for the purpose of calculating cashout_time
+
+         share_type        children_abs_rshares; /// this is used to calculate cashout time of a discussion.
          time_point_sec    cashout_time; /// 24 hours from the weighted average of vote time
          uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
 
@@ -312,7 +314,7 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (category)(parent_author)(parent_permlink)
                     (title)(body)(json_metadata)(last_update)(created)(active)
                     (depth)(children)(children_rshares2)
-                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)(root_comment)
+                    (net_rshares)(abs_rshares)(children_abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)(root_comment)
                     (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),

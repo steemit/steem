@@ -380,7 +380,7 @@ const comment_object& database::get_comment( const string& author, const string&
    FC_CAPTURE_AND_RETHROW( (author)(permlink) )
 }
 
-const time_point_sec database::calculate_comment_payout_time( const comment_object& comment )const
+const time_point_sec database::calculate_discussion_payout_time( const comment_object& comment )const
 {
    if( comment.parent_author == "" )
       return comment.cashout_time;
