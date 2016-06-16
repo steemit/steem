@@ -1591,7 +1591,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
    if( c.children_rshares2 > 0 )
    {
       const auto& comment_by_parent = get_index_type< comment_index >().indices().get< by_parent >();
-      fc::uint128_t total_rshares( c.children_rshares2 );
+      fc::uint128_t total_rshares( c.children_rshares2 - uint128_t( c.abs_rshares.value ) * c.abs_rshares.value );
       child_queue.push_back( c.id );
 
       // In order traversal of the tree of child comments
@@ -1632,6 +1632,41 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
    return unclaimed_rewards;
 }
 
+/**
+ *  This method will iterate through all comment_vote_objects and give them
+ *  (max_rewards * weight) / c.total_vote_weight.
+ *
+ *  @returns unclaimed rewards.
+ */
+share_type database::pay_curators( const comment_object& c, share_type max_rewards )
+{
+   u256 total_weight( c.total_vote_weight );
+   share_type unclaimed_rewards = max_rewards;
+   const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
+   auto itr = cvidx.lower_bound( c.id );
+   while( itr != cvidx.end() && itr->comment == c.id )
+   {
+      // TODO: Add minimum curation pay limit
+      u256 weight( itr->weight );
+      auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
+      if( claim > 1 ) // min_amt is non-zero satoshis
+      {
+         unclaimed_rewards -= claim;
+         auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
+         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+      }
+      ++itr;
+   }
+   if( max_rewards.value - unclaimed_rewards.value )
+   {
+      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
+      {
+         p.total_reward_fund_steem += unclaimed_rewards;
+      } );
+   }
+   return unclaimed_rewards;
+}
+
 void database::process_comment_cashout()
 {
    /// don't allow any content to get paid out until the website is ready to launch
@@ -1659,16 +1694,18 @@ void database::process_comment_cashout()
 
          if( cur.net_rshares > 0 )
          {
-            auto reward_tokens = claim_rshare_reward( cur.net_rshares );
+            uint128_t reward_tokens = uint128_t( claim_rshare_reward( cur.net_rshares ).value );
             share_type discussion_tokens = 0;
+            share_type curation_tokens = ( ( reward_tokens * STEEMIT_CURATION_REWARD_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
             if( cur.parent_author == "" )
-               discussion_tokens = reward_tokens / 4;
-            reward_tokens -= discussion_tokens;
+               discussion_tokens = ( ( reward_tokens * STEEMIT_DISCUSSION_REWARD_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
 
-            if( to_sbd( asset( reward_tokens, STEEM_SYMBOL ) ) >= asset( 20, SBD_SYMBOL ) ) // Must say your 2 cents
+            share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
+
+            if( to_sbd( asset( author_tokens, STEEM_SYMBOL ) ) >= asset( 20, SBD_SYMBOL ) ) // Must say your 2 cents
             {
-               auto sbd_steem     = reward_tokens / 2;
-               auto vesting_steem = reward_tokens - sbd_steem;
+               auto sbd_steem     = author_tokens / 2;
+               auto vesting_steem = author_tokens - sbd_steem;
                share_type unclaimed = 0;
 
                const auto& author = get_account( cur.author );
@@ -1681,7 +1718,9 @@ void database::process_comment_cashout()
                if( discussion_tokens > 0 )
                   unclaimed = pay_discussions( cur, discussion_tokens );
 
-               auto total_payout = asset( reward_tokens - unclaimed, STEEM_SYMBOL ) * median_price;
+               //unclaimed += pay_curators( cur, curation_tokens
+
+               auto total_payout = asset( reward_tokens.to_uint64() - unclaimed, STEEM_SYMBOL ) * median_price;
 
                modify( cat, [&]( category_object& c )
                {
@@ -1751,8 +1790,11 @@ void database::process_funds()
    auto vesting_reward = content_reward + curate_reward + witness_pay;
 
    /// we decided to redistribute curation rewards between authors and activity rewards.
-   asset activity_reward = asset(curate_reward.amount.value / 3, STEEM_SYMBOL);
-   content_reward += curate_reward - activity_reward;
+   //asset activity_reward = asset(curate_reward.amount.value / 3, STEEM_SYMBOL);
+   //content_reward += curate_reward - activity_reward;
+
+   asset activity_reward( ( ( uint128_t( content_reward.amount.value + curate_reward.amount.value ) * STEEMIT_ACTIVITY_REWARD_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64() , STEEM_SYMBOL );
+   content_reward = content_reward + curate_reward - activity_reward;
 
    if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
       vesting_reward.amount = 0;

@@ -126,6 +126,7 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_comment_vote_object_type;
          account_id_type voter;
          comment_id_type comment;
+         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
          int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
          int16_t         vote_percent = 0; ///< The percent weight of the vote
          time_point_sec  last_update; ///< The time of the last update of the vote
@@ -159,6 +160,14 @@ namespace steemit { namespace chain {
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment>
             >,
             composite_key_compare< std::less< account_id_type >, std::greater< time_point_sec >, std::less<comment_id_type> >
+         >,
+         ordered_unique< tag< by_comment_weight_voter >,
+            composite_key< comment_vote_object,
+               member< comment_vote_object, comment_id_type, &comment_vote_object::comment>,
+               member< comment_vote_object, uint64_t, &comment_vote_object::weight>,
+               member< comment_vote_object, account_id_type, &comment_vote_object::voter>
+            >,
+            composite_key_compare< std::less< comment_id_type >, std::greater< uint64_t >, std::less<account_id_type> >
          >
       >
    > comment_vote_multi_index_type;
@@ -318,7 +327,7 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
-                    (voter)(comment)(rshares)(vote_percent)(last_update) )
+                    (voter)(comment)(weight)(rshares)(vote_percent)(last_update) )
 
 FC_REFLECT_DERIVED( steemit::chain::category_object, (graphene::db::object), (name)(abs_rshares)(total_payouts)(discussions)(last_update) );
 

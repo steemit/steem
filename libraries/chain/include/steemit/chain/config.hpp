@@ -84,6 +84,10 @@
 #define STEEMIT_MAX_RATION_DECAY_RATE           (1000000)
 #define STEEMIT_FREE_TRANSACTIONS_WITH_NEW_ACCOUNT 100
 
+#define STEEMIT_ACTIVITY_REWARD_PERCENT         (STEEMIT_1_PERCENT * 10 ) /// Percent of total rewards for activity rewards
+#define STEEMIT_DISCUSSION_REWARD_PERCENT       (STEEMIT_1_PERCENT * 15 ) /// Percent of content rewards for discussion rewards
+#define STEEMIT_CURATION_REWARD_PERCENT         (STEEMIT_1_PERCENT * 15 ) /// Percent of content rewards for curation rewards
+
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
 #define STEEMIT_MAX_COMMENT_DEPTH               6

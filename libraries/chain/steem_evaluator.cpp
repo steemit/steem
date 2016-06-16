@@ -675,6 +675,27 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
+
+         if( rshares > 0 )
+         {
+            cv.weight = rshares;
+            u512 rshares3(rshares);
+            rshares3 = rshares3 * rshares3 * rshares3;
+
+            u256 total2( comment.abs_rshares.value );
+            total2 *= total2;
+
+            cv.weight = static_cast<uint64_t>( rshares3 / total2 );
+         }
+         else
+         {
+            cv.weight = 0;
+         }
+      });
+
+      db().modify( comment, [&]( comment_object& c )
+      {
+         c.total_vote_weight += cvo.weight;
       });
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );

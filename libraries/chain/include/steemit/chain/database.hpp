@@ -275,6 +275,7 @@ namespace steemit { namespace chain {
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
          share_type pay_discussions( const comment_object& c, share_type max_rewards );
+         share_type pay_curators( const comment_object& c, share_type max_rewards );
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
