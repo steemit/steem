@@ -2436,7 +2436,10 @@ void database::_apply_transaction(const signed_transaction& trx)
    auto trx_size = fc::raw::pack_size(trx);
 
    for( const auto& auth : required ) {
-      update_account_bandwidth( get_account(auth), trx_size );
+      const auto& acnt = get_account(auth);
+      update_account_activity( acnt );
+
+      update_account_bandwidth( acnt, trx_size );
       for( const auto& op : trx.operations ) {
          if( is_market_operation( op ) )
          {
