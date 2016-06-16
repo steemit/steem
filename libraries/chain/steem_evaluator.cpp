@@ -235,6 +235,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_author = "";
             com.parent_permlink = o.parent_permlink;
             com.category = o.parent_permlink;
+            com.root_comment = com.id;
          }
          else
          {
@@ -242,6 +243,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_permlink = parent->permlink;
             com.depth = parent->depth + 1;
             com.category = parent->category;
+            com.root_comment = parent->root_comment;
          }
 
          com.author = o.author;
@@ -601,6 +603,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
+      if( rshares > 0 )
+      {
+         idump( (db().head_block_time())(db().calculate_comment_payout_time( comment )) );
+         FC_ASSERT( db().head_block_time() < db().calculate_comment_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
+            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT );
+      }
+
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
       //if( used_power == 0 ) used_power = 1;
 
@@ -613,16 +622,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       auto old_abs_rshares = comment.abs_rshares.value;
 
-      fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
-      fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
-
       FC_ASSERT( abs_rshares > 0 );
 
       db().modify( comment, [&]( comment_object& c ){
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         if( c.parent_author == "" )
+         {
+            fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
+            fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+            auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_abs_rshares + abs_rshares );
+            c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         }
          if( rshares > 0 )
             c.net_votes++;
          else
@@ -677,8 +688,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       auto effective_cashout_time = std::max( STEEMIT_FIRST_CASHOUT_TIME, comment.cashout_time );
 
-      if( effective_cashout_time.sec_since_epoch() - db().head_block_time().sec_since_epoch() <= STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD )
-         FC_ASSERT( itr->rshares > rshares, "Change of vote is within lockout period and increases net_rshares to comment." );
+      if( itr->rshares < rshares )
+         FC_ASSERT( db().head_block_time() < db().calculate_comment_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
+            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT );
 
       db().modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;
@@ -689,16 +701,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
       auto old_abs_rshares = comment.abs_rshares.value;
 
-      fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
-      fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
-
       db().modify( comment, [&]( comment_object& c )
       {
          c.net_rshares -= itr->rshares;
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         if( comment.parent_author == "" )
+         {
+            fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
+            fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+            auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_abs_rshares + abs_rshares );
+            c.cashout_time = fc::time_point_sec( std::max( c.cashout_time.sec_since_epoch(), fc::time_point_sec().sec_since_epoch() + (uint32_t) avg_cashout_sec.to_uint64() ) );
+         }
 
          /// TODO: figure out how to handle remove a vote (rshares == 0 )
          if( rshares > 0 && itr->rshares < 0 )

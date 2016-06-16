@@ -474,8 +474,7 @@ void database_fixture::validate_database( void )
 
       auto gpo = db.get_dynamic_global_properties();
 
-      total_supply += gpo.total_vesting_fund_steem
-         + gpo.total_reward_fund_steem;
+      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.total_activity_fund_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
       FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );

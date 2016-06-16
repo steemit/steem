@@ -604,7 +604,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
       {
          const auto& alice = db.get_account( "alice" );
          const auto& bob = db.get_account( "bob" );
-         const auto& sam = db.get_account( "sam" );
 
          signed_transaction tx;
          comment_operation comment_op;
@@ -805,10 +804,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          auto new_alice = db.get_account( "alice" );
          auto alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
          auto old_vote_rshares = alice_bob_vote->rshares;
-         auto old_vote_weight = alice_bob_vote->weight;
          auto old_net_rshares = new_bob_comment.net_rshares.value;
          old_abs_rshares = new_bob_comment.abs_rshares.value;
-         auto old_total_vote_weight = new_bob_comment.total_vote_weight;
          old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
          auto alice_voting_power = new_alice.voting_power - ( STEEMIT_1_PERCENT * 25 * new_alice.voting_power ) / STEEMIT_100_PERCENT / 20;
          int64_t new_rshares = ( ( fc::uint128_t( new_alice.voting_power - alice_voting_power ) * new_alice.vesting_shares.amount.value ) / STEEMIT_100_PERCENT ).to_uint64();
@@ -826,9 +823,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
-         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_total_vote_weight - old_vote_weight );
          BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( ( ( old_cashout_time * old_abs_rshares + ( db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS ) * new_rshares ) / ( old_abs_rshares + new_rshares ) ).to_uint64() ) );
-         BOOST_REQUIRE( alice_bob_vote->weight == 0 );
          BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
@@ -840,7 +835,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_vote_rshares = new_rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
          old_abs_rshares = new_bob_comment.abs_rshares.value;
-         old_total_vote_weight = new_bob_comment.total_vote_weight;
          old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
          int64_t used_power = ( int64_t( STEEMIT_1_PERCENT ) * 75 * int64_t( alice_voting_power ) ) / STEEMIT_100_PERCENT;
          used_power /= 20;
@@ -857,9 +851,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
-         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_total_vote_weight );
          BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( ( ( old_cashout_time * old_abs_rshares + ( db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS ) * new_rshares ) / ( old_abs_rshares + new_rshares ) ).to_uint64() ) );
-         BOOST_REQUIRE( alice_bob_vote->weight == 0 );
          BOOST_REQUIRE( alice_bob_vote->rshares == -1 * new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
@@ -884,9 +876,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares );
-         BOOST_REQUIRE( new_bob_comment.total_vote_weight == old_total_vote_weight );
          BOOST_REQUIRE( new_bob_comment.cashout_time == fc::time_point_sec( old_cashout_time.to_uint64() ) );
-         BOOST_REQUIRE( alice_bob_vote->weight == 0 );
          BOOST_REQUIRE( alice_bob_vote->rshares == 0 );
          BOOST_REQUIRE( alice_bob_vote->last_update == db.head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );

@@ -92,12 +92,6 @@ namespace steemit { namespace chain {
           */
          fc::uint128_t     children_rshares2;
 
-         /**
-          *  Used for discussion rewards. Child posts receive rewards proportional to their rshares.
-          *  This is a sum of positive rshares only.
-          */
-         share_type        children_rshares;
-
          /// index on pending_payout for "things happning now... needs moderation"
          /// TRENDING = UNCLAIMED + PENDING
          share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
@@ -109,6 +103,8 @@ namespace steemit { namespace chain {
          asset             total_payout_value = asset(0, SBD_SYMBOL);
 
          int32_t           net_votes = 0;
+
+         comment_id_type   root_comment;
 
          asset    max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
          uint16_t percent_steem_dollars = 0; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
@@ -168,6 +164,7 @@ namespace steemit { namespace chain {
 
    struct by_cashout_time; /// cashout_time
    struct by_permlink; /// author, perm
+   struct by_root;
    struct by_parent;
    struct by_active; /// parent_auth, active
    struct by_pending_payout;
@@ -202,6 +199,10 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< string >, std::less< string > >
          >,
+         ordered_non_unique< tag< by_root >, member< comment_object, comment_id_type, &comment_object::root_comment > >
+
+//#ifndef IS_LOW_MEM
+         ,
          ordered_unique< tag< by_parent >, /// used by consensus to find posts referenced in ops
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >,
@@ -209,10 +210,7 @@ namespace steemit { namespace chain {
                member< object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less< string >, std::less< string >, std::less<object_id_type> >
-         >
-
-//#ifndef IS_LOW_MEM
-         ,
+         >,
          ordered_unique< tag<by_active>,
             composite_key< comment_object,
                member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
@@ -313,8 +311,8 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (author)(permlink)
                     (category)(parent_author)(parent_permlink)
                     (title)(body)(json_metadata)(last_update)(created)(active)
-                    (depth)(children)(children_rshares2)(children_rshares)
-                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)
+                    (depth)(children)(children_rshares2)
+                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)(root_comment)
                     (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),

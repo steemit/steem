@@ -380,6 +380,14 @@ const comment_object& database::get_comment( const string& author, const string&
    FC_CAPTURE_AND_RETHROW( (author)(permlink) )
 }
 
+const time_point_sec database::calculate_comment_payout_time( const comment_object& comment )const
+{
+   if( comment.parent_author == "" )
+      return comment.cashout_time;
+   else
+      return comment.root_comment( *this ).cashout_time;
+}
+
 void database::pay_fee( const account_object& account, asset fee )
 {
    FC_ASSERT( fee.amount >= 0 ); /// NOTE if this fails then validate() on some operation is probably wrong
@@ -1482,8 +1490,6 @@ void database::clear_witness_votes( const account_object& a )
  */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
 {
-
-//   idump( ("before")(c.author)(c.permlink)(old_rshares2)(new_rshares2)(c.net_rshares)(c.children_rshares2) );
    modify( c, [&](comment_object& comment )
    {
       comment.children_rshares2 -= old_rshares2;
@@ -1582,10 +1588,10 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
    share_type unclaimed_rewards = max_rewards;
    std::deque< comment_id_type > child_queue;
 
-   if( c.children_rshares > 0 )
+   if( c.children_rshares2 > 0 )
    {
       const auto& comment_by_parent = get_index_type< comment_index >().indices().get< by_parent >();
-      share_type total_rshares( c.children_rshares );
+      fc::uint128_t total_rshares( c.children_rshares2 );
       child_queue.push_back( c.id );
 
       // In order traversal of the tree of child comments
@@ -1596,7 +1602,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
 
          if( cur.net_rshares > 0 )
          {
-            auto claim = ( ( fc::uint128_t( cur.net_rshares.value ) * max_rewards.value ) / total_rshares.value ).to_uint64();
+            auto claim = ( ( fc::uint128_t( cur.net_rshares.value ) * max_rewards.value ) / total_rshares ).to_uint64();
             unclaimed_rewards -= claim;
 
             if( claim > 0 )
@@ -1640,79 +1646,87 @@ void database::process_comment_cashout()
    auto current = cidx.begin();
    while( current != cidx.end() && current->cashout_time <= head_block_time() )
    {
-      const auto& cur = *current; ++current;
+      const auto& root = *current; ++current;
 
-      const auto& cat = get_category( cur.category );
+      const auto& com_by_root = get_index_type< comment_index >().indices().get< by_root >();
+      auto itr = com_by_root.lower_bound( root.id );
 
-      if( cur.net_rshares > 0 )
+      while( itr != com_by_root.end() && itr->root_comment == root.id )
       {
-         auto reward_tokens = claim_rshare_reward( cur.net_rshares );
-         share_type discussion_tokens = 0;
-         if( cur.parent_author == "" )
-            discussion_tokens = reward_tokens / 4;
-         reward_tokens -= discussion_tokens;
+         const auto& cur = *itr; itr++;
 
-         if( to_sbd( asset( reward_tokens, STEEM_SYMBOL ) ) >= asset::from_string( "0.020 SBD" ) ) // Must say your 2 cents
+         const auto& cat = get_category( cur.category );
+
+         if( cur.net_rshares > 0 )
          {
-            auto sbd_steem     = reward_tokens / 2;
-            auto vesting_steem = reward_tokens - sbd_steem;
-            share_type unclaimed = 0;
+            auto reward_tokens = claim_rshare_reward( cur.net_rshares );
+            share_type discussion_tokens = 0;
+            if( cur.parent_author == "" )
+               discussion_tokens = reward_tokens / 4;
+            reward_tokens -= discussion_tokens;
 
-            const auto& author = get_account( cur.author );
-            auto vest_created = create_vesting( author, vesting_steem );
-            auto sbd_created = create_sbd( author, sbd_steem );
-            adjust_total_payout( cur, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
-
-            push_applied_operation( comment_reward_operation( cur.author, cur.permlink, sbd_created, vest_created ) );
-
-            if( discussion_tokens > 0 )
-               unclaimed = pay_discussions( cur, discussion_tokens );
-
-            auto total_payout = asset( reward_tokens - unclaimed, STEEM_SYMBOL ) * median_price;
-
-            modify( cat, [&]( category_object& c )
+            if( to_sbd( asset( reward_tokens, STEEM_SYMBOL ) ) >= asset( 20, SBD_SYMBOL ) ) // Must say your 2 cents
             {
-               c.total_payouts += total_payout;
-            } );
+               auto sbd_steem     = reward_tokens / 2;
+               auto vesting_steem = reward_tokens - sbd_steem;
+               share_type unclaimed = 0;
 
-            notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
+               const auto& author = get_account( cur.author );
+               auto vest_created = create_vesting( author, vesting_steem );
+               auto sbd_created = create_sbd( author, sbd_steem );
+               adjust_total_payout( cur, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
+
+               push_applied_operation( comment_reward_operation( cur.author, cur.permlink, sbd_created, vest_created ) );
+
+               if( discussion_tokens > 0 )
+                  unclaimed = pay_discussions( cur, discussion_tokens );
+
+               auto total_payout = asset( reward_tokens - unclaimed, STEEM_SYMBOL ) * median_price;
+
+               modify( cat, [&]( category_object& c )
+               {
+                  c.total_payouts += total_payout;
+               } );
+
+               notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
+            }
+
+            fc::uint128_t old_rshares2(cur.net_rshares.value);
+            old_rshares2 *= old_rshares2;
+
+            adjust_rshares2( cur, old_rshares2, 0 );
          }
 
-         fc::uint128_t old_rshares2(cur.net_rshares.value);
-         old_rshares2 *= old_rshares2;
-
-         adjust_rshares2( cur, old_rshares2, 0 );
-      }
-
-      modify( cat, [&]( category_object& c )
-      {
-         c.abs_rshares -= cur.abs_rshares;
-         c.last_update  = head_block_time();
-      } );
-
-      modify( cur, [&]( comment_object& c )
-      {
-         /**
-          * A payout is only made for positive rshares, negative rshares hang around
-          * for the next time this post might get an upvote.
-          */
-         if( c.net_rshares > 0 )
-             c.net_rshares = 0;
-         c.abs_rshares  = 0;
-         c.total_vote_weight = 0;
-         c.cashout_time = fc::time_point_sec::maximum();
-      } );
-
-      const auto& vote_idx = get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
-      auto vote_itr = vote_idx.lower_bound( comment_id_type(cur.id) );
-      while( vote_itr != vote_idx.end() && vote_itr->comment == cur.id )
-      {
-         const auto& cur_vote = *vote_itr;
-         ++vote_itr;
-         modify( cur_vote, [&]( comment_vote_object& cvo )
+         modify( cat, [&]( category_object& c )
          {
-            cvo.num_changes = -1;
-         });
+            c.abs_rshares -= cur.abs_rshares;
+            c.last_update  = head_block_time();
+         } );
+
+         modify( cur, [&]( comment_object& c )
+         {
+            /**
+            * A payout is only made for positive rshares, negative rshares hang around
+            * for the next time this post might get an upvote.
+            */
+            if( c.net_rshares > 0 )
+               c.net_rshares = 0;
+            c.abs_rshares  = 0;
+            c.total_vote_weight = 0;
+            c.cashout_time = fc::time_point_sec::maximum();
+         } );
+
+         const auto& vote_idx = get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
+         auto vote_itr = vote_idx.lower_bound( comment_id_type(cur.id) );
+         while( vote_itr != vote_idx.end() && vote_itr->comment == cur.id )
+         {
+            const auto& cur_vote = *vote_itr;
+            ++vote_itr;
+            modify( cur_vote, [&]( comment_vote_object& cvo )
+            {
+               cvo.num_changes = -1;
+            });
+         }
       }
    }
 }

@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 5, 0) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 6, 0) )
 
 #ifdef IS_TEST_NET
 #define STEEMIT_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
@@ -71,6 +71,7 @@
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEMIT_MAX_VOTE_CHANGES                5
+#define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
