@@ -288,6 +288,10 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
+         uint16_t get_activity_rewards_percent() const;
+         uint16_t get_discussion_rewards_percent() const;
+         uint16_t get_curation_rewards_percent() const;
+
          void  pay_liquidity_reward();
 
 

@@ -1696,9 +1696,9 @@ void database::process_comment_cashout()
          {
             uint128_t reward_tokens = uint128_t( claim_rshare_reward( cur.net_rshares ).value );
             share_type discussion_tokens = 0;
-            share_type curation_tokens = ( ( reward_tokens * STEEMIT_CURATION_REWARD_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
+            share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
             if( cur.parent_author == "" )
-               discussion_tokens = ( ( reward_tokens * STEEMIT_DISCUSSION_REWARD_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
+               discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
 
             share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
 
@@ -1718,7 +1718,7 @@ void database::process_comment_cashout()
                if( discussion_tokens > 0 )
                   unclaimed = pay_discussions( cur, discussion_tokens );
 
-               //unclaimed += pay_curators( cur, curation_tokens
+               unclaimed += pay_curators( cur, curation_tokens );
 
                auto total_payout = asset( reward_tokens.to_uint64() - unclaimed, STEEM_SYMBOL ) * median_price;
 
@@ -1793,7 +1793,7 @@ void database::process_funds()
    //asset activity_reward = asset(curate_reward.amount.value / 3, STEEM_SYMBOL);
    //content_reward += curate_reward - activity_reward;
 
-   asset activity_reward( ( ( uint128_t( content_reward.amount.value + curate_reward.amount.value ) * STEEMIT_ACTIVITY_REWARD_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64() , STEEM_SYMBOL );
+   asset activity_reward( ( ( uint128_t( content_reward.amount.value + curate_reward.amount.value ) * get_activity_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64() , STEEM_SYMBOL );
    content_reward = content_reward + curate_reward - activity_reward;
 
    if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
@@ -1941,6 +1941,30 @@ void database::pay_liquidity_reward()
          push_applied_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
       }
    }
+}
+
+uint16_t database::get_activity_rewards_percent() const
+{
+   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+      return STEEMIT_1_PERCENT * 10;
+   else
+      return 0;
+}
+
+uint16_t database::get_discussion_rewards_percent() const
+{
+   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+      return STEEMIT_1_PERCENT * 22;
+   else
+      return 0;
+}
+
+uint16_t database::get_curation_rewards_percent() const
+{
+   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+      return STEEMIT_1_PERCENT * 11;
+   else
+      return STEEMIT_1_PERCENT * 50;
 }
 
 /**
