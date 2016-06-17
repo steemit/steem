@@ -625,9 +625,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       FC_ASSERT( abs_rshares > 0 );
 
+      auto old_vote_rshares = comment.vote_rshares;
+
       db().modify( comment, [&]( comment_object& c ){
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
+         if( rshares > 0 )
+            c.vote_rshares += rshares;
          if( rshares > 0 )
             c.net_votes++;
          else
@@ -643,9 +647,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
-      /// square it
-      new_rshares *= new_rshares;
-      old_rshares *= old_rshares;
+      /// calculate rshares2 value
+      new_rshares = db().calculate_vshares( new_rshares );
+      old_rshares = db().calculate_vshares( old_rshares );
 
       const auto& cat = db().get_category( comment.category );
       db().modify( cat, [&]( category_object& c ){
@@ -655,18 +659,20 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       /** this verifies uniqueness of voter
       *
-      *   voter_rshares / new_total_rshares ==> % of total vote weight provided by voter
-      *   percent^2 => used to create non-linear reward toward those who contribute a larger percentage
+      *   cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
       *
-      *   voter_rshares * percent^2 ==> used to keep rewards proportional to vote_weight (small voters shouldn't get larger rewards simply for being first)
+      *   W(R) = B * R / ( R + 2S )
+      *   W(R) is bounded above by B. B is fixed at 2^63, so all weights fit in a 64 bit integer.
       *
-      *   Simplify equation as:
-      *   voter_rshares * (voter_rshares/new_total_rshares)^2
-      *   voter_rshares * (voter_rshares^2 / new_total_rshares^2)
-      *   vote_rshares^3 / new_total_rshares^2
+      *   The equation for an individual vote is:
+      *     W(R_N) - W(R_N-1), which is the delta increase of proportional weight
       *
-      *   Since we know vote_rshares is a 64 bit number and we know voter_rshares^2/new_total_rshares^2 is less than 1.0,
-      *   we know the resulting number is a 64 bit number.
+      *   c.total_vote_weight =
+      *     W(R_1) - W(R_0) +
+      *     W(R_2) - W(R_1) + ...
+      *     W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
+      *
+      *   Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
       *
       **/
       const auto& cvo = db().create<comment_vote_object>( [&]( comment_vote_object& cv ){
@@ -678,14 +684,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
          if( rshares > 0 )
          {
-            cv.weight = rshares;
-            u512 rshares3(rshares);
-            rshares3 = rshares3 * rshares3 * rshares3;
-
-            u256 total2( comment.abs_rshares.value );
-            total2 *= total2;
-
-            cv.weight = static_cast<uint64_t>( rshares3 / total2 );
+            // cv.weight = W(R_1) - W(R_0)
+            uint64_t old_weight = ( ( uint64_t( -1 ) * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
+            uint64_t new_weight = ( ( uint64_t( -1 ) * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
+            cv.weight = new_weight - old_weight;
          }
          else
          {
@@ -744,15 +746,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.cashout_time = fc::time_point_sec() + fc::seconds( avg_cashout_sec.to_uint64() );
       });
 
-      old_rshares *= old_rshares;
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-      new_rshares *= new_rshares;
+
+      /// calculate rshares2 value
+      new_rshares = db().calculate_vshares( new_rshares );
+      old_rshares = db().calculate_vshares( old_rshares );
 
       db().modify( *itr, [&]( comment_vote_object& cv )
       {
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
+         cv.weight = 0;
          cv.num_changes += 1;
       });
 

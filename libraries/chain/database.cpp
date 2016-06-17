@@ -1967,6 +1967,17 @@ uint16_t database::get_curation_rewards_percent() const
       return STEEMIT_1_PERCENT * 50;
 }
 
+uint128_t database::get_content_constant_s() const
+{
+   return 1000000; // TODO: Placeholder
+}
+
+uint128_t database::calculate_vshares( uint128_t rshares ) const
+{
+   auto s = get_content_constant_s();
+   return ( rshares + s ) * ( rshares + s ) + s * s;
+}
+
 /**
  *  Iterates over all conversion requests with a conversion date before
  *  the head block time and then converts them to/from steem/sbd at the

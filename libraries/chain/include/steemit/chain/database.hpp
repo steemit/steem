@@ -292,6 +292,9 @@ namespace steemit { namespace chain {
          uint16_t get_discussion_rewards_percent() const;
          uint16_t get_curation_rewards_percent() const;
 
+         uint128_t get_content_constant_s() const;
+         uint128_t calculate_vshares( uint128_t rshares ) const;
+
          void  pay_liquidity_reward();
 
 
