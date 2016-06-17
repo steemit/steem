@@ -1640,29 +1640,33 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
  */
 share_type database::pay_curators( const comment_object& c, share_type max_rewards )
 {
-   u256 total_weight( c.total_vote_weight );
+   uint128_t total_weight( c.total_vote_weight );
    share_type unclaimed_rewards = max_rewards;
    const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
    auto itr = cvidx.lower_bound( c.id );
    while( itr != cvidx.end() && itr->comment == c.id )
    {
       // TODO: Add minimum curation pay limit
-      u256 weight( itr->weight );
-      auto claim = static_cast<uint64_t>((max_rewards.value * weight) / total_weight);
+      uint128_t weight( itr->weight );
+      auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
       if( claim > 1 ) // min_amt is non-zero satoshis
       {
          unclaimed_rewards -= claim;
          auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
          push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
+         modify( itr->voter(*this), [&]( account_object& a)
+         {
+            a.curation_rewards += asset( claim, STEEM_SYMBOL );
+         });
       }
       ++itr;
    }
-   if( max_rewards.value - unclaimed_rewards.value )
+   if( unclaimed_rewards > 0 )
    {
       modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
       {
          p.total_reward_fund_steem += unclaimed_rewards;
-      } );
+      });
    }
    return unclaimed_rewards;
 }
@@ -1689,7 +1693,6 @@ void database::process_comment_cashout()
       while( itr != com_by_root.end() && itr->root_comment == root.id )
       {
          const auto& cur = *itr; itr++;
-
          const auto& cat = get_category( cur.category );
 
          if( cur.net_rshares > 0 )
@@ -1697,7 +1700,7 @@ void database::process_comment_cashout()
             uint128_t reward_tokens = uint128_t( claim_rshare_reward( cur.net_rshares ).value );
             share_type discussion_tokens = 0;
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-            if( cur.parent_author == "" )
+            if( cur.parent_author.size() == 0 )
                discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
 
             share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
@@ -1729,6 +1732,13 @@ void database::process_comment_cashout()
 
                notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
             }
+            else
+            {
+               modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgpo )
+               {
+                  dgpo.total_reward_fund_steem += asset( reward_tokens.to_uint64(), STEEM_SYMBOL );
+               });
+            }
 
             fc::uint128_t old_rshares2 = calculate_vshares( cur.net_rshares.value );
 
@@ -1750,6 +1760,7 @@ void database::process_comment_cashout()
             if( c.net_rshares > 0 )
                c.net_rshares = 0;
             c.abs_rshares  = 0;
+            c.vote_rshares = 0;
             c.total_vote_weight = 0;
             c.cashout_time = fc::time_point_sec::maximum();
          } );
@@ -1766,6 +1777,11 @@ void database::process_comment_cashout()
             });
          }
       }
+
+      modify( root, [&]( comment_object& c )
+      {
+         c.children_abs_rshares = 0;
+      });
    }
 }
 
@@ -3331,7 +3347,8 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          {
             c.net_rshares       *= magnitude;
             c.abs_rshares       *= magnitude;
-            c.total_vote_weight *= magnitude; // TODO: Determine impact of vest split on the new curation algorithm
+            c.vote_rshares      *= magnitude;
+            //c.total_vote_weight *= magnitude; // TODO: Determine impact of vest split on the new curation algorithm
             c.children_rshares2  = 0;
          } );
       }
