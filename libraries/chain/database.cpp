@@ -1730,8 +1730,7 @@ void database::process_comment_cashout()
                notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
             }
 
-            fc::uint128_t old_rshares2(cur.net_rshares.value);
-            old_rshares2 *= old_rshares2;
+            fc::uint128_t old_rshares2 = calculate_vshares( cur.net_rshares.value );
 
             adjust_rshares2( cur, old_rshares2, 0 );
          }
@@ -1975,7 +1974,7 @@ uint128_t database::get_content_constant_s() const
 uint128_t database::calculate_vshares( uint128_t rshares ) const
 {
    auto s = get_content_constant_s();
-   return ( rshares + s ) * ( rshares + s ) + s * s;
+   return ( rshares + s ) * ( rshares + s ) - s * s;
 }
 
 /**
@@ -3275,7 +3274,7 @@ void database::validate_invariants()const
       {
          if( itr->net_rshares.value > 0 )
          {
-            auto delta = fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+            auto delta = calculate_vshares( itr->net_rshares.value );
             total_rshares2 += delta;
          }
          if( itr->parent_author.size() == 0 )
@@ -3332,7 +3331,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
          {
             c.net_rshares       *= magnitude;
             c.abs_rshares       *= magnitude;
-            c.total_vote_weight *= magnitude;
+            c.total_vote_weight *= magnitude; // TODO: Determine impact of vest split on the new curation algorithm
             c.children_rshares2  = 0;
          } );
       }
@@ -3340,7 +3339,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, fc::uint128_t( c.net_rshares.value ) * c.net_rshares.value );
+            adjust_rshares2( c, 0, calculate_vshares( c.net_rshares.value ) );
       }
 
       // Update category rshares
