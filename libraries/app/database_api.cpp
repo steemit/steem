@@ -392,7 +392,7 @@ set<string> database_api::lookup_accounts(const string& lower_bound_name, uint32
 
 set<string> database_api_impl::lookup_accounts(const string& lower_bound_name, uint32_t limit)const
 {
-   FC_ASSERT( limit <= 1000 );
+   //FC_ASSERT( limit <= 1000 );
    const auto& accounts_by_name = _db.get_index_type<account_index>().indices().get<by_name>();
    set<string> result;
 

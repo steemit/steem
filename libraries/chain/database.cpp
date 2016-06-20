@@ -1640,35 +1640,134 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
  */
 share_type database::pay_curators( const comment_object& c, share_type max_rewards )
 {
-   uint128_t total_weight( c.total_vote_weight );
-   share_type unclaimed_rewards = max_rewards;
-   const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
-   auto itr = cvidx.lower_bound( c.id );
-   while( itr != cvidx.end() && itr->comment == c.id )
+   try
    {
-      // TODO: Add minimum curation pay limit
-      uint128_t weight( itr->weight );
-      auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
-      if( claim > 1 ) // min_amt is non-zero satoshis
+      uint128_t total_weight( c.total_vote_weight );
+      edump( (total_weight)(max_rewards) );
+      share_type unclaimed_rewards = max_rewards;
+      const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
+      auto itr = cvidx.lower_bound( c.id );
+      while( itr != cvidx.end() && itr->comment == c.id )
       {
-         unclaimed_rewards -= claim;
-         auto reward = create_vesting( itr->voter(*this), asset( claim, STEEM_SYMBOL ) );
-         push_applied_operation( curate_reward_operation( itr->voter(*this).name, reward, c.author, c.permlink ) );
-         modify( itr->voter(*this), [&]( account_object& a)
+         // TODO: Add minimum curation pay limit
+         uint128_t weight( itr->weight );
+         auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
+         idump( (itr->voter(*this).name)(claim)(weight) );
+         if( claim > 0 ) // min_amt is non-zero satoshis
          {
-            a.curation_rewards += asset( claim, STEEM_SYMBOL );
+            unclaimed_rewards -= claim;
+            const auto& voter = itr->voter(*this);
+            auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ) );
+            push_applied_operation( curate_reward_operation( voter.name, reward, c.author, c.permlink ) );
+            modify( voter, [&]( account_object& a )
+            {
+               a.curation_rewards += asset( claim, STEEM_SYMBOL );
+               wdump( (asset( claim, STEEM_SYMBOL ))( a.curation_rewards ) );
+            });
+         }
+         ++itr;
+      }
+      if( unclaimed_rewards > 0 )
+      {
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
+         {
+            p.total_reward_fund_steem += unclaimed_rewards;
          });
       }
-      ++itr;
-   }
-   if( unclaimed_rewards > 0 )
+      return unclaimed_rewards;
+   } FC_CAPTURE_AND_RETHROW()
+}
+
+void database::cashout_comment_helper( const comment_object& comment )
+{
+   try
    {
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
+      const auto& cat = get_category( comment.category );
+
+      if( comment.net_rshares > 0 )
       {
-         p.total_reward_fund_steem += unclaimed_rewards;
-      });
-   }
-   return unclaimed_rewards;
+         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares ).value );
+         share_type discussion_tokens = 0;
+         share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
+         if( comment.parent_author.size() == 0 )
+            discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
+
+         share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
+
+         idump( (reward_tokens)(author_tokens)(discussion_tokens)(curation_tokens) );
+
+         //if( to_sbd( asset( author_tokens, STEEM_SYMBOL ) ) >= asset( 20, SBD_SYMBOL ) ) // Must say your 2 cents
+         {
+            auto sbd_steem     = author_tokens / 2;
+            auto vesting_steem = author_tokens - sbd_steem;
+            share_type unclaimed = 0;
+
+            const auto& author = get_account( comment.author );
+            auto vest_created = create_vesting( author, vesting_steem );
+            auto sbd_created = create_sbd( author, sbd_steem );
+            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
+
+            push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
+
+            if( discussion_tokens > 0 )
+               unclaimed = pay_discussions( comment, discussion_tokens );
+
+            unclaimed += pay_curators( comment, curation_tokens );
+
+            auto total_payout = to_sbd( asset( reward_tokens.to_uint64() - unclaimed, STEEM_SYMBOL ) );
+
+            modify( cat, [&]( category_object& c )
+            {
+               c.total_payouts += total_payout;
+            } );
+
+            notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
+         }
+         /*else
+         {
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgpo )
+            {
+               dgpo.total_reward_fund_steem += asset( reward_tokens.to_uint64(), STEEM_SYMBOL );
+            });
+         }*/
+
+         fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
+
+         adjust_rshares2( comment, old_rshares2, 0 );
+      }
+
+      modify( cat, [&]( category_object& c )
+      {
+         c.abs_rshares -= comment.abs_rshares;
+         c.last_update  = head_block_time();
+      } );
+
+      modify( comment, [&]( comment_object& c )
+      {
+         /**
+         * A payout is only made for positive rshares, negative rshares hang around
+         * for the next time this post might get an upvote.
+         */
+         if( c.net_rshares > 0 )
+            c.net_rshares = 0;
+         c.abs_rshares  = 0;
+         c.vote_rshares = 0;
+         c.total_vote_weight = 0;
+         c.cashout_time = fc::time_point_sec::maximum();
+      } );
+
+      const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+      auto vote_itr = vote_idx.lower_bound( comment_id_type( comment.id ) );
+      while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id )
+      {
+         const auto& cur_vote = *vote_itr;
+         ++vote_itr;
+         modify( cur_vote, [&]( comment_vote_object& cvo )
+         {
+            cvo.num_changes = -1;
+         });
+      }
+   } FC_CAPTURE_AND_RETHROW()
 }
 
 void database::process_comment_cashout()
@@ -1679,109 +1778,24 @@ void database::process_comment_cashout()
    if( head_block_time() < STEEMIT_FIRST_CASHOUT_TIME )
       return;
 
-   const auto& median_price = get_feed_history().current_median_history;
-
    const auto& cidx = get_index_type<comment_index>().indices().get<by_cashout_time>();
    auto current = cidx.begin();
    while( current != cidx.end() && current->cashout_time <= head_block_time() )
    {
       const auto& root = *current; ++current;
+      edump( (root.id) );
 
       const auto& com_by_root = get_index_type< comment_index >().indices().get< by_root >();
       auto itr = com_by_root.lower_bound( root.id );
+      if( itr != com_by_root.end() )
+         idump( (itr->root_comment) );
 
       while( itr != com_by_root.end() && itr->root_comment == root.id )
       {
-         const auto& cur = *itr; itr++;
-         const auto& cat = get_category( cur.category );
-
-         if( cur.net_rshares > 0 )
-         {
-            uint128_t reward_tokens = uint128_t( claim_rshare_reward( cur.net_rshares ).value );
-            share_type discussion_tokens = 0;
-            share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-            if( cur.parent_author.size() == 0 )
-               discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-
-            share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
-
-            if( to_sbd( asset( author_tokens, STEEM_SYMBOL ) ) >= asset( 20, SBD_SYMBOL ) ) // Must say your 2 cents
-            {
-               auto sbd_steem     = author_tokens / 2;
-               auto vesting_steem = author_tokens - sbd_steem;
-               share_type unclaimed = 0;
-
-               const auto& author = get_account( cur.author );
-               auto vest_created = create_vesting( author, vesting_steem );
-               auto sbd_created = create_sbd( author, sbd_steem );
-               adjust_total_payout( cur, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
-
-               push_applied_operation( comment_reward_operation( cur.author, cur.permlink, sbd_created, vest_created ) );
-
-               if( discussion_tokens > 0 )
-                  unclaimed = pay_discussions( cur, discussion_tokens );
-
-               unclaimed += pay_curators( cur, curation_tokens );
-
-               auto total_payout = asset( reward_tokens.to_uint64() - unclaimed, STEEM_SYMBOL ) * median_price;
-
-               modify( cat, [&]( category_object& c )
-               {
-                  c.total_payouts += total_payout;
-               } );
-
-               notify_post_apply_operation( comment_payout_operation( cur.author, cur.permlink, total_payout ) );
-            }
-            else
-            {
-               modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgpo )
-               {
-                  dgpo.total_reward_fund_steem += asset( reward_tokens.to_uint64(), STEEM_SYMBOL );
-               });
-            }
-
-            fc::uint128_t old_rshares2 = calculate_vshares( cur.net_rshares.value );
-
-            adjust_rshares2( cur, old_rshares2, 0 );
-         }
-
-         modify( cat, [&]( category_object& c )
-         {
-            c.abs_rshares -= cur.abs_rshares;
-            c.last_update  = head_block_time();
-         } );
-
-         modify( cur, [&]( comment_object& c )
-         {
-            /**
-            * A payout is only made for positive rshares, negative rshares hang around
-            * for the next time this post might get an upvote.
-            */
-            if( c.net_rshares > 0 )
-               c.net_rshares = 0;
-            c.abs_rshares  = 0;
-            c.vote_rshares = 0;
-            c.total_vote_weight = 0;
-            c.cashout_time = fc::time_point_sec::maximum();
-         } );
-
-         const auto& vote_idx = get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
-         auto vote_itr = vote_idx.lower_bound( comment_id_type(cur.id) );
-         while( vote_itr != vote_idx.end() && vote_itr->comment == cur.id )
-         {
-            const auto& cur_vote = *vote_itr;
-            ++vote_itr;
-            modify( cur_vote, [&]( comment_vote_object& cvo )
-            {
-               cvo.num_changes = -1;
-            });
-         }
+         const auto& comment = *itr; ++itr;
+         edump( (comment.root_comment)(comment.id) );
+         cashout_comment_helper( comment );
       }
-
-      modify( root, [&]( comment_object& c )
-      {
-         c.children_abs_rshares = 0;
-      });
    }
 }
 
@@ -1960,31 +1974,31 @@ void database::pay_liquidity_reward()
 
 uint16_t database::get_activity_rewards_percent() const
 {
-   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
-      return STEEMIT_1_PERCENT * 10;
-   else
+   /*if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME + fc::seconds( STEEMIT_BLOCK_INTERVAL ) )
+      return STEEMIT_1_PERCENT * 10
+   else*/
       return 0;
 }
 
 uint16_t database::get_discussion_rewards_percent() const
 {
-   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+   /*if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME + fc::seconds( STEEMIT_BLOCK_INTERVAL ) )
       return STEEMIT_1_PERCENT * 22;
-   else
+   else*/
       return 0;
 }
 
 uint16_t database::get_curation_rewards_percent() const
 {
-   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+   /*if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME + fc::seconds( STEEMIT_BLOCK_INTERVAL ) )
       return STEEMIT_1_PERCENT * 11;
-   else
+   else*/
       return STEEMIT_1_PERCENT * 50;
 }
 
 uint128_t database::get_content_constant_s() const
 {
-   return 1000000; // TODO: Placeholder
+   return uint128_t( 20000000000000000ll ); // TODO: Placeholder
 }
 
 uint128_t database::calculate_vshares( uint128_t rshares ) const
@@ -2071,7 +2085,7 @@ share_type database::claim_rshare_reward( share_type rshares )
    u256 rf(props.total_reward_fund_steem.amount.value);
    u256 total_rshares2 = to256( props.total_reward_shares2 );
 
-   auto rs2 = rs*rs;
+   auto rs2 = to256( calculate_vshares( rshares.value ) );
 
    auto payout = static_cast< uint64_t >( ( rf * rs2 ) / total_rshares2);
 

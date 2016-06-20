@@ -229,12 +229,19 @@ void comment_evaluator::do_apply( const comment_operation& o )
             validate_permlink_0_1( o.permlink );
          }
 
+         com.author = o.author;
+         com.permlink = o.permlink;
+         com.last_update = db().head_block_time();
+         com.created = com.last_update;
+         com.active = com.last_update;
+
          if ( o.parent_author.size() == 0 )
          {
             com.parent_author = "";
             com.parent_permlink = o.parent_permlink;
             com.category = o.parent_permlink;
             com.root_comment = com.id;
+            com.cashout_time = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
          }
          else
          {
@@ -243,14 +250,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.depth = parent->depth + 1;
             com.category = parent->category;
             com.root_comment = parent->root_comment;
+            com.cashout_time = fc::time_point_sec::maximum();
          }
-
-         com.author = o.author;
-         com.permlink = o.permlink;
-         com.last_update = db().head_block_time();
-         com.created = com.last_update;
-         com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
-         com.active        = com.last_update;
 
          #ifndef IS_LOW_MEM
             com.title = o.title;

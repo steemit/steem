@@ -211,7 +211,12 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< string >, std::less< string > >
          >,
-         ordered_non_unique< tag< by_root >, member< comment_object, comment_id_type, &comment_object::root_comment > >
+         ordered_unique< tag< by_root >,
+            composite_key< comment_object,
+               member< comment_object, comment_id_type, &comment_object::root_comment >,
+               member< object, object_id_type, &object::id >
+            >
+         >
 
 //#ifndef IS_LOW_MEM
          ,
