@@ -299,22 +299,20 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       db().modify( comment, [&]( comment_object& com )
       {
+         com.last_update   = db().head_block_time();
+         com.active        = com.last_update;
+
          if( !parent )
          {
             FC_ASSERT( com.parent_author == "" );
             FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change" );
+            com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
          }
          else
          {
             FC_ASSERT( com.parent_author == o.parent_author );
             FC_ASSERT( com.parent_permlink == o.parent_permlink );
          }
-
-         com.last_update   = db().head_block_time();
-         com.active        = com.last_update;
-
-
-         com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
 
          #ifndef IS_LOW_MEM
            if( o.title.size() )         com.title         = o.title;
