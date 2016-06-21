@@ -602,7 +602,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       if( rshares > 0 )
       {
          FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
-            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT );
+            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT + fc::days(7) ); /// TODO remove
       }
 
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
@@ -656,6 +656,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.last_update = db().head_block_time();
       });
 
+      int64_t max_vote_weight = 0;
+
       /** this verifies uniqueness of voter
       *
       *   cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
@@ -696,6 +698,19 @@ void vote_evaluator::do_apply( const vote_operation& o )
                uint64_t new_weight = ( ( uint64_t( -1 ) * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
                cv.weight = new_weight - old_weight;
             }
+
+
+            /// discournt weight by time
+            max_vote_weight = cv.weight;
+            u256 w(max_vote_weight);
+            static const uint64_t  vote_curve_window_sec  = (60*30); // 30 minutes;
+            static const uint64_t  vote_curve_window_sec2 = vote_curve_window_sec * vote_curve_window_sec; // 30 minutes;
+            auto delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), vote_curve_window_sec );
+
+            w *= delta_t;
+            w *= delta_t;
+            w /= vote_curve_window_sec2;
+            cv.weight = static_cast<uint64_t>(w);
          }
          else
          {
@@ -705,7 +720,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       db().modify( comment, [&]( comment_object& c )
       {
-         c.total_vote_weight += cvo.weight;
+         c.total_vote_weight += max_vote_weight;
       });
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );

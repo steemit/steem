@@ -757,10 +757,14 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      int64_t abs_net_rshares = llabs(d.net_rshares.value);
+      auto vshares = my->_db.calculate_vshares( d.net_rshares.value );
 
-      u256 r2 = to256(abs_net_rshares);
+      //int64_t abs_net_rshares = llabs(d.net_rshares.value);
+
+      u256 r2 = to256(vshares); //to256(abs_net_rshares);
+      /*
       r2 *= r2;
+      */
       r2 *= pot.amount.value;
       r2 /= total_r2;
 

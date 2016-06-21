@@ -59,6 +59,7 @@ namespace steemit { namespace chain {
          ///@}
 
          asset           curation_rewards = asset( 0, STEEM_SYMBOL );
+         asset           posting_rewards = asset( 0, SBD_SYMBOL );
 
          asset           vesting_shares = asset( 0, VESTS_SYMBOL ); ///< total vesting shares held by this account, controls its voting power
          asset           vesting_withdraw_rate = asset( 0, VESTS_SYMBOL ); ///< at the time this is updated it can be at most vesting_shares/104
@@ -145,6 +146,8 @@ namespace steemit { namespace chain {
    struct by_smd_balance;
    struct by_post_count;
    struct by_vote_count;
+   struct by_total_curation_rewards;
+   struct by_total_posting_rewards;
 
    /**
     * @ingroup object_index
@@ -189,6 +192,20 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::greater< asset >, std::less< object_id_type > >
          >,
+         ordered_unique< tag< by_total_curation_rewards >,
+            composite_key< account_object,
+               member<account_object, asset, &account_object::curation_rewards >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< asset >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_total_posting_rewards >,
+            composite_key< account_object,
+               member<account_object, asset, &account_object::posting_rewards >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< asset >, std::less< object_id_type > >
+         >,
          ordered_unique< tag< by_smd_balance >,
             composite_key< account_object,
                member<account_object, asset, &account_object::sbd_balance >,
@@ -223,6 +240,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
                     (curation_rewards)
+                    (posting_rewards)
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)
                     (proxied_vsf_votes)(witnesses_voted_for)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
