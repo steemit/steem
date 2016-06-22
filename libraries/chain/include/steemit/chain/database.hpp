@@ -343,6 +343,7 @@ namespace steemit { namespace chain {
 
          void perform_vesting_share_split( uint32_t magnitude );
          void retally_witness_votes();
+         void retally_witness_vote_counts();
 
          bool has_hardfork( uint32_t hardfork )const;
 
