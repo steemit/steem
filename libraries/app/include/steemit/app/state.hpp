@@ -8,6 +8,12 @@ namespace steemit { namespace app {
    using std::vector;
    using namespace steemit::chain;
 
+   struct extended_limit_order : public limit_order_object 
+   {
+      double real_price  = 0;
+      bool   rewarded    = false;
+   };
+
    struct discussion_index {
       string         category; /// category by which everything is filtered
       vector<string> trending; /// pending lifetime payout
@@ -61,34 +67,33 @@ namespace steemit { namespace app {
       extended_account(){}
       extended_account( const account_object& a ):account_object(a){}
 
-      asset                           vesting_balance; /// convert vesting_shares to vesting steem
-      map<uint64_t,operation_object>  transfer_history; /// transfer to/from vesting
-      map<uint64_t,operation_object>  market_history; /// limit order / cancel / fill
-      map<uint64_t,operation_object>  post_history;
-      map<uint64_t,operation_object>  vote_history; 
-      map<uint64_t,operation_object>  other_history; 
-      set<string>                     witness_votes;
-      optional<vector<string>>        posts; /// permlinks for this user
-      optional<vector<string>>        blog; /// blog posts for this user
-      optional<vector<string>>        recent_replies; /// blog posts for this user
-      map<string,vector<string>>      blog_category; /// blog posts for this user
-      optional<vector<string>>        recommended; /// posts recommened for this user
+      asset                              vesting_balance; /// convert vesting_shares to vesting steem
+      map<uint64_t,operation_object>     transfer_history; /// transfer to/from vesting
+      map<uint64_t,operation_object>     market_history; /// limit order / cancel / fill
+      map<uint64_t,operation_object>     post_history;
+      map<uint64_t,operation_object>     vote_history; 
+      map<uint64_t,operation_object>     other_history; 
+      set<string>                        witness_votes;
+
+      optional<map<uint32_t,extended_limit_order>> open_orders;
+      optional<vector<string>>           posts; /// permlinks for this user
+      optional<vector<string>>           blog; /// blog posts for this user
+      optional<vector<string>>           recent_replies; /// blog posts for this user
+      map<string,vector<string>>         blog_category; /// blog posts for this user
+      optional<vector<string>>           recommended; /// posts recommened for this user
    };
 
 
-#if 0
-   struct extended_limit_order : public limit_order_object 
-   {
-      double price;
-   };
 
-   /**
-    *  This is provided to help 3rd parites convert price ratio's to real, and
-    *  to normalize everything to be priced in SBD
-    */
-   struct extended_price {
-      double price; /// SBD per STEEM 
-      price  ratio; /// the exact ratio
+   struct candle_stick {
+      time_point_sec  open_time;
+      uint32_t        period = 0;
+      double          high = 0;
+      double          low = 0;
+      double          open = 0;
+      double          close = 0;
+      double          steem_volume = 0;
+      double          dollar_volume = 0;
    };
 
    struct order_history_item {
@@ -96,7 +101,7 @@ namespace steemit { namespace app {
       string         type; // buy or sell
       asset          sbd_quantity;
       asset          steem_quantity;
-      double         price;
+      double         real_price = 0;
    };
 
    struct market {
@@ -109,7 +114,6 @@ namespace steemit { namespace app {
       int                          current_zoom = 0;
       vector<candle_stick>         price_history;
    };
-#endif 
 
    /**
     *  This struct is designed 
@@ -145,6 +149,7 @@ namespace steemit { namespace app {
         witness_schedule_object       witness_schedule;
         price                         feed_price;
         string                        error;
+        optional<market>              market_data;
    };
 
 } }
@@ -152,7 +157,7 @@ namespace steemit { namespace app {
 FC_REFLECT_DERIVED( steemit::app::extended_account, 
                    (steemit::chain::account_object), 
                    (vesting_balance)
-                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(posts)(blog)(recent_replies)(blog_category)(recommended) )
+                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(posts)(blog)(recent_replies)(blog_category)(recommended) )
 
 
 FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(time) );
@@ -163,3 +168,8 @@ FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
 
 FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error) )
+
+FC_REFLECT_DERIVED( steemit::app::extended_limit_order, (steemit::chain::limit_order_object), (real_price)(rewarded) )
+FC_REFLECT( steemit::app::order_history_item, (time)(type)(sbd_quantity)(steem_quantity)(real_price) );
+FC_REFLECT( steemit::app::market, (bids)(asks)(history)(price_history)(available_candlesticks)(available_zoom)(current_candlestick)(current_zoom) )
+FC_REFLECT( steemit::app::candle_stick, (open_time)(period)(high)(low)(open)(close)(steem_volume)(dollar_volume) );

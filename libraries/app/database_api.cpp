@@ -531,36 +531,41 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
 {
    FC_ASSERT( limit <= 1000 );
    order_book result;
-   const auto& order_idx = _db.get_index_type< limit_order_index >().indices().get< by_price >();
-   auto end = order_idx.lower_bound( std::make_tuple( price( asset( 0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
-   auto itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
 
-   while( itr != end && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
+   auto max_sell = price::max( SBD_SYMBOL, STEEM_SYMBOL );
+   auto max_buy = price::max( STEEM_SYMBOL, SBD_SYMBOL );
+
+   const auto& limit_price_idx = _db.get_index_type<limit_order_index>().indices().get<by_price>();
+   auto sell_itr = limit_price_idx.lower_bound(max_sell);
+   auto buy_itr  = limit_price_idx.lower_bound(max_buy);
+   auto end = limit_price_idx.end();
+   idump((max_sell)(max_buy));
+   if( sell_itr != end ) idump((*sell_itr));
+   if( buy_itr != end ) idump((*buy_itr));
+
+   while(  sell_itr != end && sell_itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
    {
+      auto itr = sell_itr;
       order cur;
       cur.order_price = itr->sell_price;
       cur.sbd = itr->for_sale;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.bids.push_back( cur );
-
-      itr--;
+      ++sell_itr; 
    }
-
-   end = order_idx.lower_bound( std::make_tuple( price( asset( 0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
-   itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
-
-   while( itr != end && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
+   while(  buy_itr != end && buy_itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
    {
+      auto itr = buy_itr;
       order cur;
       cur.order_price = itr->sell_price;
-      cur.steem = itr->for_sale;
-      cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
+      cur.steem   = itr->for_sale;
+      cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.asks.push_back( cur );
-
-      itr--;
+      ++buy_itr; 
    }
+
 
    return result;
 }
