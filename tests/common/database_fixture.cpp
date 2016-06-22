@@ -467,7 +467,7 @@ void database_fixture::validate_database( void )
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
       {
          if( itr->net_rshares.value > 0 )
-            total_rshares2 += fc::uint128_t( itr->net_rshares.value ) * itr->net_rshares.value;
+            total_rshares2 += db.calculate_vshares( itr->net_rshares.value );
          if( itr->parent_author.size() == 0 )
             total_children_rshares2 += itr->children_rshares2;
       }

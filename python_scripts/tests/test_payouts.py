@@ -90,10 +90,12 @@ def run_steemd_tests( debug_node ):
       assert( debug_node.debug_generate_blocks( 10 ) == 10 )
 
       account_rewards = {}
+      vote_count = {}
       for acc_name in ret:
          acc = rpc.get_accounts( [ acc_name ] )
          #print( acc_name + ',' + acc[0][ 'curation_rewards' ] )
          account_rewards[ acc_name ] = float( acc[0][ 'curation_rewards' ].split( ' ' )[0] )
+         vote_count[ acc_name ] = int( acc[0][ 'lifetime_vote_count' ] )
 
 
 
@@ -114,7 +116,7 @@ def run_steemd_tests( debug_node ):
       sorted_rewards = sorted( account_rewards.items(), key=operator.itemgetter(1) )
       print( "account, curation_steem" )
       for rew in sorted_rewards:
-         print( rew[0] + ', ' + str( rew[1] ) )
+         print( rew[0] + ', ' + str( rew[1] ) + ', ' + str( vote_count[ rew[0] ] ) )
 
    except ValueError as val_err:
       print( str( val_err ) )

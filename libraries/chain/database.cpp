@@ -1623,13 +1623,6 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
       }
    }
 
-   if( unclaimed_rewards.value > 0 )
-   {
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
-      {
-         p.total_reward_fund_steem += unclaimed_rewards;
-      });
-   }
    return unclaimed_rewards;
 }
 
@@ -1654,30 +1647,17 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
          {
             uint128_t weight( itr->weight );
             auto claim = ( ( max_rewards.value * weight ) / total_weight ).to_uint64();
-            //idump( (c.id)(itr->voter(*this).name)(claim)(weight) );
             if( claim > 0 ) // min_amt is non-zero satoshis
             {
                unclaimed_rewards -= claim;
                const auto& voter = itr->voter(*this);
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ) );
                push_applied_operation( curate_reward_operation( voter.name, reward, c.author, c.permlink ) );
-               modify( voter, [&]( account_object& a ){
-                  a.curation_rewards += asset( claim, STEEM_SYMBOL );
-                  //wdump( (asset( claim, STEEM_SYMBOL ))( a.curation_rewards ) );
-               });
             }
             ++itr;
          }
       }
-      /*
-      if( unclaimed_rewards > 0 )
-      {
-         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
-         {
-            p.total_reward_fund_steem += unclaimed_rewards;
-         });
-      }
-      */
+
       return unclaimed_rewards;
    } FC_CAPTURE_AND_RETHROW()
 }
@@ -1698,8 +1678,6 @@ void database::cashout_comment_helper( const comment_object& comment )
 
          share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
 
-         idump( (reward_tokens)(author_tokens)(discussion_tokens)(curation_tokens) );
-
          author_tokens += pay_curators( comment, curation_tokens );
          if( discussion_tokens > 0 )
             author_tokens += pay_discussions( comment, discussion_tokens );
@@ -1711,10 +1689,6 @@ void database::cashout_comment_helper( const comment_object& comment )
          auto vest_created = create_vesting( author, vesting_steem );
          auto sbd_created = create_sbd( author, sbd_steem );
          adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
-
-         modify( author, [&]( account_object& a ) {
-              a.posting_rewards += sbd_created;
-         });
 
          push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
 
@@ -1790,28 +1764,6 @@ void database::process_comment_cashout()
          ++count;
       }
       current = cidx.begin();
-   }
-
-   const auto& posting_idx = get_index_type<account_index>().indices().get<by_total_posting_rewards>();
-   const auto& curation_idx = get_index_type<account_index>().indices().get<by_total_curation_rewards>();
-
-   if( count > 0 ) {
-    //  idump((count)(head_block_num()));
-      std::cerr << "\n===============================================================\n";
-      std::cerr << " START POSTING REWARDS\n===============================================================\n";
-      auto posting_itr = posting_idx.begin();
-      while( posting_itr != posting_idx.end() && posting_itr->posting_rewards.amount.value > 0 ) {
-         std::cerr << posting_itr->name << ", " << variant(posting_itr->posting_rewards).as_string() << "\n";
-         ++posting_itr;
-      }
-      std::cerr << "\n===============================================================\n";
-      std::cerr << " START CURATION REWARDS\n===============================================================\n";
-      auto curation_itr = curation_idx.begin();
-      while( curation_itr != curation_idx.end() && curation_itr->curation_rewards.amount.value > 0 ) {
-         std::cerr << curation_itr->name << ", " << variant(curation_itr->curation_rewards).as_string() << "\n";
-         ++curation_itr;
-      }
-   //   idump((get_dynamic_global_properties().total_reward_fund_steem));
    }
 }
 
@@ -1990,32 +1942,34 @@ void database::pay_liquidity_reward()
 
 uint16_t database::get_activity_rewards_percent() const
 {
-   /*if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME + fc::seconds( STEEMIT_BLOCK_INTERVAL ) )
-      return STEEMIT_1_PERCENT * 10
-   else*/
+   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+      return STEEMIT_1_PERCENT * 0;
+   else
       return 0;
 }
 
 uint16_t database::get_discussion_rewards_percent() const
 {
-   /*if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME + fc::seconds( STEEMIT_BLOCK_INTERVAL ) )
-      return STEEMIT_1_PERCENT * 22;
-   else*/
+   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+   {
+      FC_ASSERT( false, "Did not cash out all comments on july 4th" );
+      return STEEMIT_1_PERCENT * 20;
+   }
+   else
       return 0;
 }
 
 uint16_t database::get_curation_rewards_percent() const
 {
-   /*if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME + fc::seconds( STEEMIT_BLOCK_INTERVAL ) )
-      return STEEMIT_1_PERCENT * 11;
-   else*/
+   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+      return STEEMIT_1_PERCENT * 30;
+   else
       return STEEMIT_1_PERCENT * 50;
 }
 
 uint128_t database::get_content_constant_s() const
 {
    return uint128_t( 2000000000000ll ); // looking good for posters
-   //return uint128_t( 40000000000000ll ); // attempting to smooth for curators
 }
 
 uint128_t database::calculate_vshares( uint128_t rshares ) const

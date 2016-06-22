@@ -635,7 +635,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes++;
          else
             c.net_votes--;
-         if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
+         //if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0, "", ("net_rshares",c.net_rshares)("abs_rshares",c.abs_rshares)("c.net_votes",c.net_votes) );
       });
 
       db().modify( root, [&]( comment_object& c )
@@ -656,7 +656,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.last_update = db().head_block_time();
       });
 
-      int64_t max_vote_weight = 0;
+      uint64_t max_vote_weight = 0;
 
       /** this verifies uniqueness of voter
       *
@@ -683,7 +683,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
 
-         if( rshares > 0 )
+         if( rshares > 0 && cv.last_update < db().calculate_discussion_payout_time( comment ) )
          {
             // cv.weight = W(R_1) - W(R_0)
             if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
@@ -699,18 +699,20 @@ void vote_evaluator::do_apply( const vote_operation& o )
                cv.weight = new_weight - old_weight;
             }
 
+            if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) )
+            {
+               /// discournt weight by time
+               max_vote_weight = cv.weight;
+               u256 w(max_vote_weight);
+               static const uint64_t  vote_curve_window_sec  = (60*30); // 30 minutes;
+               static const uint64_t  vote_curve_window_sec2 = vote_curve_window_sec * vote_curve_window_sec; // 30 minutes;
+               auto delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), vote_curve_window_sec );
 
-            /// discournt weight by time
-            max_vote_weight = cv.weight;
-            u256 w(max_vote_weight);
-            static const uint64_t  vote_curve_window_sec  = (60*30); // 30 minutes;
-            static const uint64_t  vote_curve_window_sec2 = vote_curve_window_sec * vote_curve_window_sec; // 30 minutes;
-            auto delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), vote_curve_window_sec );
-
-            w *= delta_t;
-            w *= delta_t;
-            w /= vote_curve_window_sec2;
-            cv.weight = static_cast<uint64_t>(w);
+               w *= delta_t;
+               w *= delta_t;
+               w /= vote_curve_window_sec2;
+               cv.weight = static_cast<uint64_t>(w);
+            }
          }
          else
          {

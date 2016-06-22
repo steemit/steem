@@ -459,7 +459,8 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( bob_comment.created == db.head_block_time() );
       BOOST_REQUIRE_EQUAL( bob_comment.net_rshares.value, 0 );
       BOOST_REQUIRE_EQUAL( bob_comment.abs_rshares.value, 0 );
-      BOOST_REQUIRE( bob_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
+      BOOST_REQUIRE( bob_comment.cashout_time == fc::time_point_sec::maximum() );
+      BOOST_REQUIRE( bob_comment.root_comment == alice_comment.id );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test Sam posting a comment on Bob's comment" );
@@ -485,7 +486,8 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( sam_comment.created == db.head_block_time() );
       BOOST_REQUIRE_EQUAL( sam_comment.net_rshares.value, 0 );
       BOOST_REQUIRE_EQUAL( sam_comment.abs_rshares.value, 0 );
-      BOOST_REQUIRE( sam_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
+      BOOST_REQUIRE( sam_comment.cashout_time == fc::time_point_sec::maximum() );
+      BOOST_REQUIRE( sam_comment.root_comment == alice_comment.id );
       validate_database();
 
       generate_blocks( 60 * 5 / STEEMIT_BLOCK_INTERVAL + 1 );
@@ -500,22 +502,22 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       {
          com.net_rshares = 10;
          com.abs_rshares = 10;
-         com.children_rshares2 = 100;
+         com.children_rshares2 = db.calculate_vshares( 10 );
       });
 
       db.modify( mod_bob_comment, [&]( comment_object& com)
       {
-         com.children_rshares2 = 100;
+         com.children_rshares2 = db.calculate_vshares( 10 );
       });
 
       db.modify( mod_alice_comment, [&]( comment_object& com)
       {
-         com.children_rshares2 = 100;
+         com.children_rshares2 = db.calculate_vshares( 10 );
       });
 
       db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
       {
-         o.total_reward_shares2 = 100;
+         o.total_reward_shares2 = db.calculate_vshares( 10 );
       });
 
       tx.signatures.clear();
@@ -534,7 +536,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE_EQUAL( mod_sam_comment.parent_permlink, op.parent_permlink );
       BOOST_REQUIRE( mod_sam_comment.last_update == db.head_block_time() );
       BOOST_REQUIRE( mod_sam_comment.created == created );
-      BOOST_REQUIRE( mod_sam_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
+      BOOST_REQUIRE( mod_sam_comment.cashout_time == fc::time_point_sec::maximum() );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure posting withing 1 minute" );
@@ -904,6 +906,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
 
+         idump( (new_bob_comment.cashout_time) );
+         idump( (db.get_comment("alice","foo")) );
          generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT ).sec_since_epoch() + STEEMIT_BLOCK_INTERVAL ), true );
 
          op.weight = STEEMIT_100_PERCENT;
