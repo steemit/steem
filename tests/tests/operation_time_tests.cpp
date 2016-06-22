@@ -689,9 +689,10 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
 
       BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).vesting_shares.amount.value, ( vesting_shares - withdraw_rate ).amount.value );
       BOOST_REQUIRE( ( withdraw_rate * gpo.get_vesting_share_price() ).amount.value - db.get_account( "alice" ).balance.amount.value <= 1 ); // Check a range due to differences in the share price
-      BOOST_REQUIRE_EQUAL( fill_op.account, "alice" );
-      BOOST_REQUIRE_EQUAL( fill_op.vesting_shares.amount.value, withdraw_rate.amount.value );
-      BOOST_REQUIRE( std::abs( ( fill_op.steem - fill_op.vesting_shares * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+      BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
+      BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
+      BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
+      BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
       validate_database();
 
       BOOST_TEST_MESSAGE( "Generating the rest of the blocks in the withdrawal" );
@@ -711,9 +712,10 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
 
          BOOST_REQUIRE_EQUAL( alice.vesting_shares.amount.value, ( vesting_shares - withdraw_rate ).amount.value );
          BOOST_REQUIRE( balance.amount.value + ( withdraw_rate * gpo.get_vesting_share_price() ).amount.value - alice.balance.amount.value <= 1 );
-         BOOST_REQUIRE_EQUAL( fill_op.account, "alice" );
-         BOOST_REQUIRE_EQUAL( fill_op.vesting_shares.amount.value, withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.steem - fill_op.vesting_shares * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
+         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          if ( i == STEEMIT_VESTING_WITHDRAW_INTERVALS - 1 )
             BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
@@ -734,17 +736,19 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
 
          BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch(), ( old_next_vesting + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );
-         BOOST_REQUIRE_EQUAL( fill_op.account, "alice" );
-         BOOST_REQUIRE_EQUAL( fill_op.vesting_shares.amount.value, withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.steem - fill_op.vesting_shares * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
+         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          generate_blocks( db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
          fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
 
          BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch(), ( old_next_vesting + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );
-         BOOST_REQUIRE_EQUAL( fill_op.account, "alice" );
-         BOOST_REQUIRE_EQUAL( fill_op.vesting_shares.amount.value, original_vesting.amount.value % withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.steem - fill_op.vesting_shares * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, original_vesting.amount.value % withdraw_rate.amount.value );
+         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          validate_database();
       }
@@ -755,12 +759,127 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch(), fc::time_point_sec::maximum().sec_since_epoch() );
 
          fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
-         BOOST_REQUIRE_EQUAL( fill_op.account, "alice" );
-         BOOST_REQUIRE_EQUAL( fill_op.vesting_shares.amount.value, withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.steem - fill_op.vesting_shares * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
+         BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
+         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
       }
 
       BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).vesting_shares.amount.value, ( original_vesting - op.vesting_shares ).amount.value );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( vesting_withdraw_destination )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(sam) )
+
+      auto original_vesting = alice.vesting_shares;
+
+      fund( "alice", 1040000 );
+      vest( "alice", 1040000 );
+
+      auto withdraw_amount = alice.vesting_shares - original_vesting;
+
+      BOOST_TEST_MESSAGE( "Setup vesting withdraw" );
+      withdraw_vesting_operation wv;
+      wv.account = "alice";
+      wv.vesting_shares = withdraw_amount;
+
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( wv );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      BOOST_TEST_MESSAGE( "Setting up bob destination" );
+      set_withdraw_vesting_destination_operation op;
+      op.from_account = "alice";
+      op.to_account = "bob";
+      op.percent = STEEMIT_1_PERCENT * 50;
+      op.auto_vest = true;
+      tx.operations.push_back( op );
+
+      BOOST_TEST_MESSAGE( "Setting up sam destination" );
+      op.to_account = "sam";
+      op.percent = STEEMIT_1_PERCENT * 30;
+      op.auto_vest = false;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "Setting up first withdraw" );
+
+      auto vesting_withdraw_rate = alice.vesting_withdraw_rate;
+      auto old_alice_balance = alice.balance;
+      auto old_alice_vesting = alice.vesting_shares;
+      auto old_bob_balance = bob.balance;
+      auto old_bob_vesting = bob.vesting_shares;
+      auto old_sam_balance = sam.balance;
+      auto old_sam_vesting = sam.vesting_shares;
+      generate_blocks( alice.next_vesting_withdrawal, true );
+
+      {
+         const auto& alice = db.get_account( "alice" );
+         const auto& bob = db.get_account( "bob" );
+         const auto& sam = db.get_account( "sam" );
+
+         BOOST_REQUIRE( alice.vesting_shares == old_alice_vesting - vesting_withdraw_rate );
+         BOOST_REQUIRE( alice.balance == old_alice_balance + asset( ( vesting_withdraw_rate.amount * STEEMIT_1_PERCENT * 20 ) / STEEMIT_100_PERCENT, VESTS_SYMBOL ) * db.get_dynamic_global_properties().get_vesting_share_price() );
+         BOOST_REQUIRE( bob.vesting_shares == old_bob_vesting + asset( ( vesting_withdraw_rate.amount * STEEMIT_1_PERCENT * 50 ) / STEEMIT_100_PERCENT, VESTS_SYMBOL ) );
+         BOOST_REQUIRE( bob.balance == old_bob_balance );
+         BOOST_REQUIRE( sam.vesting_shares == old_sam_vesting );
+         BOOST_REQUIRE( sam.balance ==  old_sam_balance + asset( ( vesting_withdraw_rate.amount * STEEMIT_1_PERCENT * 30 ) / STEEMIT_100_PERCENT, VESTS_SYMBOL ) * db.get_dynamic_global_properties().get_vesting_share_price() );
+
+         old_alice_balance = alice.balance;
+         old_alice_vesting = alice.vesting_shares;
+         old_bob_balance = bob.balance;
+         old_bob_vesting = bob.vesting_shares;
+         old_sam_balance = sam.balance;
+         old_sam_vesting = sam.vesting_shares;
+      }
+
+      BOOST_TEST_MESSAGE( "Test failure with greater than 100% destination assignment" );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.to_account = "sam";
+      op.percent = STEEMIT_1_PERCENT * 50 + 1;
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "Test from_account receiving no withdraw" );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.to_account = "sam";
+      op.percent = STEEMIT_1_PERCENT * 50;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( db.get_account( "alice" ).next_vesting_withdrawal, true );
+      {
+         const auto& alice = db.get_account( "alice" );
+         const auto& bob = db.get_account( "bob" );
+         const auto& sam = db.get_account( "sam" );
+
+         BOOST_REQUIRE( alice.vesting_shares == old_alice_vesting - vesting_withdraw_rate );
+         BOOST_REQUIRE( alice.balance == old_alice_balance );
+         BOOST_REQUIRE( bob.vesting_shares == old_bob_vesting + asset( ( vesting_withdraw_rate.amount * STEEMIT_1_PERCENT * 50 ) / STEEMIT_100_PERCENT, VESTS_SYMBOL ) );
+         BOOST_REQUIRE( bob.balance == old_bob_balance );
+         BOOST_REQUIRE( sam.vesting_shares == old_sam_vesting );
+         BOOST_REQUIRE( sam.balance ==  old_sam_balance + asset( ( vesting_withdraw_rate.amount * STEEMIT_1_PERCENT * 50 ) / STEEMIT_100_PERCENT, VESTS_SYMBOL ) * db.get_dynamic_global_properties().get_vesting_share_price() );
+      }
    }
    FC_LOG_AND_RETHROW()
 }

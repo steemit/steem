@@ -207,8 +207,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       if( db().is_producing() && o.parent_author.size() == 0 ) {
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
-      } 
-      
+      }
+
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
          if( o.parent_author.size() == 0 )
              FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
@@ -455,6 +455,52 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          a.withdrawn = 0;
        });
     }
+}
+
+void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_vesting_destination_operation& o )
+{
+   try
+   {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__78 ) );
+
+   const auto& from_account = db().get_account( o.from_account );
+   const auto& to_account = db().get_account( o.to_account );
+   const auto& wd_idx = db().get_index_type< withdraw_vesting_destination_index >().indices().get< by_withdraw_destination >();
+   auto itr = wd_idx.find( boost::make_tuple( from_account.id, to_account.id ) );
+
+   if( itr == wd_idx.end() )
+   {
+      db().create< withdraw_vesting_destination_object >( [&]( withdraw_vesting_destination_object& wvdo )
+      {
+         wvdo.from_account = from_account.id;
+         wvdo.to_account = to_account.id;
+         wvdo.percent = o.percent;
+         wvdo.auto_vest = o.auto_vest;
+      });
+   }
+   else
+   {
+      db().modify( *itr, [&]( withdraw_vesting_destination_object& wvdo )
+      {
+         wvdo.from_account = from_account.id;
+         wvdo.to_account = to_account.id;
+         wvdo.percent = o.percent;
+         wvdo.auto_vest = o.auto_vest;
+      });
+   }
+
+   itr = wd_idx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
+   uint16_t total_percent = 0;
+
+   while( itr->from_account == from_account.id && itr != wd_idx.end() )
+   {
+      total_percent += itr->percent;
+      itr++;
+   }
+
+   FC_ASSERT( total_percent <= STEEMIT_100_PERCENT, "More than 100% of vesting allocated to destinations" );
+   }
+   FC_CAPTURE_AND_RETHROW()
 }
 
 void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_operation& o )

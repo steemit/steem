@@ -160,7 +160,8 @@ struct get_impacted_account_visitor
 
    void operator()( const fill_vesting_withdraw_operation& op )
    {
-      _impacted.insert( op.account );
+      _impacted.insert( op.from_account );
+      _impacted.insert( op.to_account );
    }
 
    void operator()( const custom_operation& op )
