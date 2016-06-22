@@ -906,8 +906,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
 
-         idump( (new_bob_comment.cashout_time) );
-         idump( (db.get_comment("alice","foo")) );
          generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT ).sec_since_epoch() + STEEMIT_BLOCK_INTERVAL ), true );
 
          op.weight = STEEMIT_100_PERCENT;
