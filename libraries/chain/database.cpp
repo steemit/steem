@@ -1951,10 +1951,7 @@ uint16_t database::get_activity_rewards_percent() const
 uint16_t database::get_discussion_rewards_percent() const
 {
    if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
-   {
-      FC_ASSERT( false, "Did not cash out all comments on july 4th" );
       return STEEMIT_1_PERCENT * 20;
-   }
    else
       return 0;
 }
