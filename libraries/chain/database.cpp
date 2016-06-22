@@ -1670,7 +1670,8 @@ void database::cashout_comment_helper( const comment_object& comment )
 
       if( comment.net_rshares > 0 )
       {
-         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares ).value );
+         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
+
          share_type discussion_tokens = 0;
          share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
          if( comment.parent_author.size() == 0 )
@@ -1682,7 +1683,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          if( discussion_tokens > 0 )
             author_tokens += pay_discussions( comment, discussion_tokens );
 
-         auto sbd_steem     = author_tokens / 2;
+         auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
          auto vesting_steem = author_tokens - sbd_steem;
 
          const auto& author = get_account( comment.author );
@@ -2043,7 +2044,7 @@ asset database::to_steem( const asset& sbd )const
  *  This method reduces the rshare^2 supply and returns the number of tokens are
  *  redeemed.
  */
-share_type database::claim_rshare_reward( share_type rshares )
+share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
 {
    FC_ASSERT( rshares > 0 );
 
@@ -2061,6 +2062,8 @@ share_type database::claim_rshare_reward( share_type rshares )
 
    if( sbd_payout_value < STEEMIT_MIN_PAYOUT_SBD )
       payout = 0;
+
+   payout = std::min( payout, uint64_t( max_steem.amount.value ) );
 
    modify( props, [&]( dynamic_global_property_object& p ){
      p.total_reward_fund_steem.amount -= payout;

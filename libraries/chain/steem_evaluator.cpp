@@ -173,6 +173,7 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars );
    FC_ASSERT( comment.allow_replies >= o.allow_replies );
    FC_ASSERT( comment.allow_votes >= o.allow_votes );
+   FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
 
    db().modify( comment, [&]( comment_object& c ) {
        c.max_accepted_payout   = o.max_accepted_payout;
@@ -206,6 +207,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       }
+
+      if( o.parent_author.size() != 0 )
+         FC_ASSERT( parent->allow_replies, "Comment has disabled replies." );
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
          if( o.parent_author.size() == 0 )
@@ -571,6 +575,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
+   if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
+
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
@@ -683,7 +689,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
 
-         if( rshares > 0 && cv.last_update < db().calculate_discussion_payout_time( comment ) )
+         if( rshares > 0 && cv.last_update < db().calculate_discussion_payout_time( comment ) && comment.allow_curation_rewards )
          {
             // cv.weight = W(R_1) - W(R_0)
             if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
@@ -699,10 +705,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
                cv.weight = new_weight - old_weight;
             }
 
+            max_vote_weight = cv.weight;
+
             if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) )
             {
                /// discournt weight by time
-               max_vote_weight = cv.weight;
                u256 w(max_vote_weight);
                static const uint64_t  vote_curve_window_sec  = (60*30); // 30 minutes;
                static const uint64_t  vote_curve_window_sec2 = vote_curve_window_sec * vote_curve_window_sec; // 30 minutes;
@@ -720,10 +727,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
          }
       });
 
-      db().modify( comment, [&]( comment_object& c )
+      if( max_vote_weight ) // Optimization
       {
-         c.total_vote_weight += max_vote_weight;
-      });
+         db().modify( comment, [&]( comment_object& c )
+         {
+            c.total_vote_weight += max_vote_weight;
+         });
+      }
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
