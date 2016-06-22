@@ -34,7 +34,7 @@ undo_database::session undo_database::start_undo_session( bool force_enable )
 {
    if( _disabled && !force_enable ) return session(*this);
    bool disable_on_exit = _disabled  && force_enable;
-   if( force_enable ) 
+   if( force_enable )
       _disabled = false;
 
    while( size() > max_size() )

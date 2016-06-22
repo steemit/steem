@@ -6,7 +6,7 @@
 namespace steemit { namespace chain {
 
    /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
-   ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags 
+   ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags
    ///  going forward.
    inline void validate_permlink( const string& permlink )
    {
@@ -111,6 +111,13 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( account ), "Account name invalid" );
       FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
+   }
+
+   void set_withdraw_vesting_destination_operation::validate() const
+   {
+      FC_ASSERT( is_valid_account_name( from_account ), "Account name invalid" );
+      FC_ASSERT( is_valid_account_name( to_account ), "Account name invalid" );
+      FC_ASSERT( 0 <= percent && percent <= STEEMIT_100_PERCENT, "Percent must be valid steemit percent" );
    }
 
    void witness_update_operation::validate() const

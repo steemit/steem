@@ -1499,14 +1499,15 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
 
 void database::process_vesting_withdrawals()
 {
-   const auto& widx = get_index_type<account_index>().indices().get<by_next_vesting_withdrawal>();
+   const auto& widx = get_index_type< account_index >().indices().get< by_next_vesting_withdrawal >();
+   const auto& didx = get_index_type< withdraw_vesting_destination_index >().indices().get< by_withdraw_destination >();
    auto current = widx.begin();
 
    const auto& cprops = get_dynamic_global_properties();
 
    while( current != widx.end() && current->next_vesting_withdrawal <= head_block_time() )
    {
-      const auto& cur = *current; ++current;
+      const auto& from_account = *current; ++current;
 
       /**
       *  Let T = total tokens in vesting fund
@@ -1515,16 +1516,108 @@ void database::process_vesting_withdrawals()
       *
       *  The user may withdraw  vT / V tokens
       */
-      share_type withdrawn_vesting;
-      if ( cur.to_withdraw - cur.withdrawn < cur.vesting_withdraw_rate.amount )
-         withdrawn_vesting = std::min( cur.vesting_shares.amount, cur.to_withdraw % cur.vesting_withdraw_rate.amount ).value;
+      share_type to_withdraw;
+      if ( from_account.to_withdraw - from_account.withdrawn < from_account.vesting_withdraw_rate.amount )
+         to_withdraw = std::min( from_account.vesting_shares.amount, from_account.to_withdraw % from_account.vesting_withdraw_rate.amount ).value;
       else
-         withdrawn_vesting = std::min( cur.vesting_shares.amount, cur.vesting_withdraw_rate.amount ).value;
+         to_withdraw = std::min( from_account.vesting_shares.amount, from_account.vesting_withdraw_rate.amount ).value;
 
-      asset converted_steem = asset( withdrawn_vesting, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+      share_type steem_depositted = 0;
+      share_type vests_depositted = 0;
+      asset total_steem_converted = asset( 0, STEEM_SYMBOL );
+
+      // Do two passes, the first for vests, the second for steem. Try to maintain as much accuracy for vests as possible.
+      for( auto itr = didx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
+           itr != didx.end() && itr->from_account == from_account.id;
+           itr++ )
+      {
+         if( itr->auto_vest )
+         {
+            share_type to_deposit = ( to_withdraw * itr->percent ) / STEEMIT_100_PERCENT;
+            vests_depositted += to_deposit;
+
+            if( to_deposit > 0 )
+            {
+               const auto& to_account = itr->to_account( *this );
+
+               modify( to_account, [&]( account_object& a )
+               {
+                  a.vesting_shares.amount += to_deposit;
+               });
+
+               adjust_proxied_witness_votes( to_account, to_deposit );
+
+               push_applied_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL ), asset( to_deposit, VESTS_SYMBOL ) ) );
+            }
+         }
+      }
+
+      for( auto itr = didx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
+           itr != didx.end() && itr->from_account == from_account.id;
+           itr++ )
+      {
+         if( !itr->auto_vest )
+         {
+            const auto& to_account = itr->to_account( *this );
+
+            share_type to_deposit = ( to_withdraw * itr->percent ) / STEEMIT_100_PERCENT;
+            steem_depositted += to_deposit;
+            auto converted_steem = asset( to_deposit, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+            total_steem_converted += converted_steem;
+
+            if( to_deposit > 0 )
+            {
+               modify( to_account, [&]( account_object& a )
+               {
+                  a.balance += converted_steem;
+               });
+
+               modify( cprops, [&]( dynamic_global_property_object& o )
+               {
+                  o.total_vesting_fund_steem -= converted_steem;
+                  o.total_vesting_shares.amount -= to_deposit;
+               });
+
+               push_applied_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL), converted_steem ) );
+            }
+         }
+      }
+
+      share_type to_deposit = to_withdraw - steem_depositted - vests_depositted;
+      FC_ASSERT( to_deposit >= 0, "Depositted more vests than were supposed to be withdrawn" );
+
+      auto converted_steem = asset( to_withdraw - steem_depositted - vests_depositted, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+
+      modify( from_account, [&]( account_object& a )
+      {
+         a.vesting_shares.amount -= to_withdraw;
+         a.balance += converted_steem;
+         a.withdrawn += to_withdraw;
+
+         if( a.withdrawn >= a.to_withdraw || a.vesting_shares.amount == 0 )
+         {
+            a.vesting_withdraw_rate.amount = 0;
+            a.next_vesting_withdrawal = fc::time_point_sec::maximum();
+         }
+         else
+         {
+            a.next_vesting_withdrawal += fc::seconds( STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
+         }
+      });
+
+      modify( cprops, [&]( dynamic_global_property_object& o )
+      {
+         o.total_vesting_fund_steem -= converted_steem;
+         o.total_vesting_shares.amount -= to_deposit;
+      });
+
+      if( to_withdraw > 0 )
+         adjust_proxied_witness_votes( from_account, -to_withdraw );
+
+      push_applied_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_withdraw, VESTS_SYMBOL ), converted_steem ) );
 
       /// TODO: perhaps we should generate a virtual operation at this point in time
-      modify( cur, [&]( account_object& a )
+      /*modify( cur, [&]( account_object& a )
       {
          a.vesting_shares.amount -= withdrawn_vesting;
          a.balance += converted_steem;
@@ -1550,7 +1643,7 @@ void database::process_vesting_withdrawals()
       } );
 
       if( withdrawn_vesting > 0 )
-         adjust_proxied_witness_votes( cur, -withdrawn_vesting );
+         adjust_proxied_witness_votes( cur, -withdrawn_vesting );*/
    }
 }
 
@@ -1996,6 +2089,7 @@ void database::initialize_evaluators()
     register_evaluator<transfer_evaluator>();
     register_evaluator<transfer_to_vesting_evaluator>();
     register_evaluator<withdraw_vesting_evaluator>();
+    register_evaluator<set_withdraw_vesting_destination_evaluator>();
     register_evaluator<account_create_evaluator>();
     register_evaluator<account_update_evaluator>();
     register_evaluator<witness_update_evaluator>();
@@ -2021,22 +2115,23 @@ void database::initialize_indexes()
    auto acnt_index = add_index< primary_index<account_index> >();
    acnt_index->add_secondary_index<account_member_index>();
 
-   add_index< primary_index<witness_index> >();
-   add_index< primary_index<witness_vote_index> >();
-   add_index< primary_index<category_index> >();
-   add_index< primary_index<comment_index> >();
-   add_index< primary_index<comment_vote_index> >();
-   add_index< primary_index<convert_index> >();
-   add_index< primary_index<liquidity_reward_index> >();
-   add_index< primary_index<limit_order_index> >();
+   add_index< primary_index< witness_index > >();
+   add_index< primary_index< witness_vote_index > >();
+   add_index< primary_index< category_index > >();
+   add_index< primary_index< comment_index > >();
+   add_index< primary_index< comment_vote_index > >();
+   add_index< primary_index< convert_index > >();
+   add_index< primary_index< liquidity_reward_index > >();
+   add_index< primary_index< limit_order_index > >();
 
    //Implementation object indexes
-   add_index< primary_index<transaction_index                             > >();
-   add_index< primary_index<simple_index<dynamic_global_property_object  >> >();
-   add_index< primary_index<simple_index<feed_history_object  >> >();
-   add_index< primary_index<flat_index<  block_summary_object            >> >();
-   add_index< primary_index<simple_index<witness_schedule_object        > > >();
-   add_index< primary_index<simple_index<hardfork_property_object       > > >();
+   add_index< primary_index< transaction_index                             > >();
+   add_index< primary_index< simple_index< dynamic_global_property_object  > > >();
+   add_index< primary_index< simple_index< feed_history_object             > > >();
+   add_index< primary_index< flat_index<   block_summary_object            > > >();
+   add_index< primary_index< simple_index< witness_schedule_object         > > >();
+   add_index< primary_index< simple_index< hardfork_property_object        > > >();
+   add_index< primary_index< withdraw_vesting_destination_index            > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
