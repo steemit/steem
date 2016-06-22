@@ -635,7 +635,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes++;
          else
             c.net_votes--;
-         //if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0, "", ("net_rshares",c.net_rshares)("abs_rshares",c.abs_rshares)("c.net_votes",c.net_votes) );
+         if( !db().has_hardfork( STEEMIT_HARDFORK_0_6 ) && c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
       });
 
       db().modify( root, [&]( comment_object& c )
