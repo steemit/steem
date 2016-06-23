@@ -167,6 +167,8 @@ market_history_api::market_history_api( const steemit::app::api_context& ctx )
    my = std::make_shared< detail::market_history_api_impl >( ctx.app );
 }
 
+void market_history_api::on_api_startup() {}
+
 market_ticker market_history_api::get_ticker() const
 {
    return my->get_ticker();

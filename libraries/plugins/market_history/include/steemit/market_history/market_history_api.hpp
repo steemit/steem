@@ -22,12 +22,12 @@ namespace detail
 
 struct market_ticker
 {
-   double     latest;
-   double     lowest_ask;
-   double     highest_bid;
-   double     percent_change;
-   share_type steem_volume;
-   share_type sbd_volume;
+   double     latest = 0;
+   double     lowest_ask = 0;
+   double     highest_bid = 0;
+   double     percent_change = 0;
+   share_type steem_volume = 0;
+   share_type sbd_volume = 0;
 };
 
 struct market_volume
@@ -60,6 +60,8 @@ class market_history_api
 {
    public:
       market_history_api( const steemit::app::api_context& ctx );
+
+      void on_api_startup();
 
       /**
        * @brief Returns the market ticker for the internal SBD:STEEM market
@@ -122,4 +124,6 @@ FC_API( steemit::market_history::market_history_api,
    (get_volume)
    (get_order_book)
    (get_trade_history)
+   (get_market_history)
+   (get_market_history_buckets)
 );

@@ -1,4 +1,4 @@
-#include <steemit/market_history/market_history_plugin.hpp>
+#include <steemit/market_history/market_history_api.hpp>
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/history_object.hpp>
@@ -148,7 +148,10 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
    } FC_CAPTURE_AND_RETHROW()
 }
 
-void market_history_plugin::plugin_startup() {}
+void market_history_plugin::plugin_startup()
+{
+   app().register_api_factory< market_history_api >( "market_history_api" );
+}
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const
 {
