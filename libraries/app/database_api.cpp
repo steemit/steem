@@ -552,7 +552,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.bids.push_back( cur );
-      ++sell_itr; 
+      ++sell_itr;
    }
    while(  buy_itr != end && buy_itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
    {
@@ -563,7 +563,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.asks.push_back( cur );
-      ++buy_itr; 
+      ++buy_itr;
    }
 
 
@@ -723,7 +723,7 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
    while( itr != idx.end() && itr->comment == cid )
    {
       const auto& vo = itr->voter(my->_db);
-      result.push_back(vote_state{vo.name,itr->rshares,itr->vote_percent,itr->last_update});
+      result.push_back(vote_state{vo.name,itr->weight,itr->rshares,itr->vote_percent,itr->last_update});
       ++itr;
    }
    return result;
@@ -740,7 +740,7 @@ vector<account_vote> database_api::get_account_votes( string voter )const {
    while( itr != end )
    {
       const auto& vo = itr->comment(my->_db);
-      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->rshares,itr->vote_percent, itr->last_update});
+      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->weight,itr->rshares,itr->vote_percent, itr->last_update});
       ++itr;
    }
    return result;

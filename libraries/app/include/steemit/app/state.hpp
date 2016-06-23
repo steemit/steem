@@ -34,6 +34,7 @@ namespace steemit { namespace app {
    };
    struct vote_state {
       string         voter;
+      uint64_t       weight;
       int64_t        rshares;
       int16_t        percent;
       time_point_sec time;
@@ -41,6 +42,7 @@ namespace steemit { namespace app {
 
    struct account_vote {
       string         authorperm;
+      uint64_t       weight;
       int64_t        rshares;
       int16_t        percent;
       time_point_sec time;
@@ -158,8 +160,8 @@ FC_REFLECT_DERIVED( steemit::app::extended_account,
                    (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(posts)(blog)(recent_replies)(blog_category)(recommended) )
 
 
-FC_REFLECT( steemit::app::vote_state, (voter)(rshares)(percent)(time) );
-FC_REFLECT( steemit::app::account_vote, (authorperm)(rshares)(percent)(time) );
+FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(time) );
+FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(time) );
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
