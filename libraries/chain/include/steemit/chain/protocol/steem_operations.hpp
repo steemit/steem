@@ -62,21 +62,21 @@ namespace steemit { namespace chain {
 
    /**
     *  Authors of posts may not want all of the benefits that come from creating a post. This
-    *  operation allows authors to update properties associated with their post.  
+    *  operation allows authors to update properties associated with their post.
     *
     *  The max_accepted_payout may be decreased, but never increased.
     *  The percent_steem_dollars may be decreased, but never increased
-    * 
+    *
     */
    struct comment_options_operation : public base_operation {
       string author;
       string permlink;
 
-      asset    max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
-      uint16_t percent_steem_dollars = 0; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
-      bool     allow_replies = true;      /// allows a post to disable replies. 
-      bool     allow_votes   = true;      /// allows a post to receive votes;
-      bool     allow_curation_rewards = true;
+      asset    max_accepted_payout    = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
+      uint16_t percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
+      bool     allow_replies          = true;      /// allows a post to disable replies.
+      bool     allow_votes            = true;      /// allows a post to receive votes;
+      bool     allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
 
 
       void validate()const;
@@ -104,13 +104,11 @@ namespace steemit { namespace chain {
 
    struct comment_reward_operation : public base_operation {
       comment_reward_operation(){}
-      comment_reward_operation( const string& a, const string& l, const string& o_a, const string& o_l, const asset& p, const asset& v )
-         :author(a),permlink(l),originating_author(o_a),originating_permlink(o_l),payout(p),vesting_payout(v){}
+      comment_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
+         :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
       string author;
       string permlink;
-      string originating_author;
-      string originating_permlink;
-      asset  payout;
+      asset  sbd_payout;
       asset  vesting_payout;
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
@@ -533,7 +531,7 @@ FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amoun
 FC_REFLECT( steemit::chain::fill_order_operation, (owner)(orderid)(pays)(receives) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(originating_author)(originating_permlink)(payout)(vesting_payout) )
+FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
 FC_REFLECT( steemit::chain::curate_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
 FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )

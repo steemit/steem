@@ -392,7 +392,7 @@ set<string> database_api::lookup_accounts(const string& lower_bound_name, uint32
 
 set<string> database_api_impl::lookup_accounts(const string& lower_bound_name, uint32_t limit)const
 {
-   FC_ASSERT( limit <= 1000 );
+   //FC_ASSERT( limit <= 1000 );
    const auto& accounts_by_name = _db.get_index_type<account_index>().indices().get<by_name>();
    set<string> result;
 
@@ -723,7 +723,7 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
    while( itr != idx.end() && itr->comment == cid )
    {
       const auto& vo = itr->voter(my->_db);
-      result.push_back(vote_state{vo.name,itr->weight,itr->rshares,itr->vote_percent,itr->last_update});
+      result.push_back(vote_state{vo.name,itr->rshares,itr->vote_percent,itr->last_update});
       ++itr;
    }
    return result;
@@ -740,7 +740,7 @@ vector<account_vote> database_api::get_account_votes( string voter )const {
    while( itr != end )
    {
       const auto& vo = itr->comment(my->_db);
-      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->weight,itr->rshares,itr->vote_percent, itr->last_update});
+      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->rshares,itr->vote_percent, itr->last_update});
       ++itr;
    }
    return result;
@@ -762,10 +762,14 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      int64_t abs_net_rshares = llabs(d.net_rshares.value);
+      auto vshares = my->_db.calculate_vshares( d.net_rshares.value );
 
-      u256 r2 = to256(abs_net_rshares);
+      //int64_t abs_net_rshares = llabs(d.net_rshares.value);
+
+      u256 r2 = to256(vshares); //to256(abs_net_rshares);
+      /*
       r2 *= r2;
+      */
       r2 *= pot.amount.value;
       r2 /= total_r2;
 
