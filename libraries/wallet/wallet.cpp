@@ -743,6 +743,26 @@ public:
          }
          return ss.str();
       };
+      m["get_open_orders"] = []( variant result, const fc::variants& a ) {
+          auto orders = result.as<vector<extended_limit_order>>();
+
+          std::stringstream ss;
+
+          ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
+          ss << ' ' << setw( 10 ) << "Order #";
+          ss << ' ' << setw( 10 ) << "Price";
+          ss << ' ' << setw( 10 ) << "Quantity";
+          ss << ' ' << setw( 10 ) << "Type";
+          ss << "\n=====================================================================================================\n";
+          for( const auto& o : orders ) {
+             ss << ' ' << setw( 10 ) << o.orderid;
+             ss << ' ' << setw( 10 ) << o.real_price;
+             ss << ' ' << setw( 10 ) << fc::variant( asset( o.for_sale, o.sell_price.base.symbol ) ).as_string();
+             ss << ' ' << setw( 10 ) << (o.sell_price.base.symbol == STEEM_SYMBOL ? "SELL" : "BUY");
+             ss << "\n";
+          }
+          return ss.str();
+      };
       m["get_order_book"] = []( variant result, const fc::variants& a ) {
          auto orders = result.as< order_book >();
          std::stringstream ss;
@@ -753,9 +773,13 @@ public:
          ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
 
          ss << ' ' << setw( ( spacing * 4 ) + 6 ) << "Bids" << "Asks\n"
-            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing + 1 ) << "STEEM"
-            << setw( spacing + 1) << "SBD" << setw( spacing + 3 ) << "Sum(SBD)"
-            << setw( spacing + 1 ) << "Price" << setw( spacing + 1 ) << "STEEM "
+            << ' ' 
+            << setw( spacing + 3 ) << "Sum(SBD)"
+            << setw( spacing + 1) << "SBD" 
+            << setw( spacing + 1 ) << "STEEM"
+            << setw( spacing + 1 ) << "Price" 
+            << setw( spacing + 1 ) << "Price" 
+            << setw( spacing + 1 ) << "STEEM "
             << setw( spacing + 1 ) << "SBD " << "Sum(SBD)"
             << "\n====================================================================================================="
             << "|=====================================================================================================\n";
@@ -765,10 +789,11 @@ public:
             if ( i < orders.bids.size() )
             {
                bid_sum += asset( orders.bids[i].sbd, SBD_SYMBOL );
-               ss << ' ' << setw( spacing ) << orders.bids[i].order_price.to_real()
-                  << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
+               ss 
+                  << ' ' << setw( spacing ) << bid_sum.to_string()
                   << ' ' << setw( spacing ) << asset( orders.bids[i].sbd, SBD_SYMBOL ).to_string()
-                  << ' ' << setw( spacing ) << bid_sum.to_string();
+                  << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << orders.bids[i].real_price; //(~orders.bids[i].order_price).to_real();
             }
             else
             {
@@ -780,7 +805,8 @@ public:
             if ( i < orders.asks.size() )
             {
                ask_sum += asset( orders.asks[i].sbd, SBD_SYMBOL );
-               ss << ' ' << setw( spacing ) << orders.asks[i].order_price.to_real()
+               //ss << ' ' << setw( spacing ) << (~orders.asks[i].order_price).to_real()
+               ss << ' ' << setw( spacing ) << orders.asks[i].real_price
                   << ' ' << setw( spacing ) << asset( orders.asks[i].steem, STEEM_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << asset( orders.asks[i].sbd, SBD_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << ask_sum.to_string();
@@ -1680,6 +1706,10 @@ order_book wallet_api::get_order_book( uint32_t limit )
 {
    FC_ASSERT( limit <= 1000 );
    return my->_remote_db->get_order_book( limit );
+}
+vector<extended_limit_order> wallet_api::get_open_orders( string owner )
+{
+   return my->_remote_db->get_open_orders( owner );
 }
 
 annotated_signed_transaction wallet_api::create_order(  string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast )

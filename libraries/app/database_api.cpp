@@ -526,6 +526,17 @@ order_book database_api::get_order_book( uint32_t limit )const
 {
    return my->get_order_book( limit );
 }
+vector<extended_limit_order> database_api::get_open_orders( string owner )const {
+   vector<extended_limit_order> result;
+   const auto& idx = my->_db.get_index_type<limit_order_index>().indices().get<by_account>();
+   auto itr = idx.lower_bound( owner );
+   while( itr != idx.end() && itr->seller == owner ) {
+      result.push_back( *itr );
+      result.back().real_price = (~result.back().sell_price).to_real();
+      ++itr;
+   }
+   return result;
+}
 
 order_book database_api_impl::get_order_book( uint32_t limit )const
 {
@@ -548,6 +559,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       auto itr = sell_itr;
       order cur;
       cur.order_price = itr->sell_price;
+      cur.real_price  = (~cur.order_price).to_real();
       cur.sbd = itr->for_sale;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
@@ -559,10 +571,13 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       auto itr = buy_itr;
       order cur;
       cur.order_price = itr->sell_price;
+      cur.real_price  = (~cur.order_price).to_real();
       cur.steem   = itr->for_sale;
       cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.asks.push_back( cur );
+
+
       ++buy_itr; 
    }
 

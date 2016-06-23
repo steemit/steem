@@ -28,6 +28,7 @@ using namespace std;
 struct order
 {
    price                order_price;
+   double               real_price; // dollars per steem
    share_type           steem;
    share_type           sbd;
    fc::time_point_sec   created;
@@ -239,6 +240,7 @@ class database_api
        * @param limit Maximum number of orders for each side of the spread to return -- Must not exceed 1000
        */
       order_book get_order_book( uint32_t limit = 1000 )const;
+      vector<extended_limit_order> get_open_orders( string owner )const;
 
 
       ////////////////////////////
@@ -366,7 +368,7 @@ class database_api
 
 } }
 
-FC_REFLECT( steemit::app::order, (order_price)(steem)(sbd)(created) );
+FC_REFLECT( steemit::app::order, (order_price)(real_price)(steem)(sbd)(created) );
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
 FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
 
@@ -424,6 +426,7 @@ FC_API(steemit::app::database_api,
 
    // Market
    (get_order_book)
+   (get_open_orders)
 
    // Authority / validation
    (get_transaction_hex)

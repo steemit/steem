@@ -10,6 +10,9 @@ namespace steemit { namespace app {
 
    struct extended_limit_order : public limit_order_object 
    {
+      extended_limit_order(){}
+      extended_limit_order( const limit_order_object& o ):limit_order_object(o){}
+         
       double real_price  = 0;
       bool   rewarded    = false;
    };
