@@ -392,7 +392,7 @@ set<string> database_api::lookup_accounts(const string& lower_bound_name, uint32
 
 set<string> database_api_impl::lookup_accounts(const string& lower_bound_name, uint32_t limit)const
 {
-   FC_ASSERT( limit <= 1000 );
+   //FC_ASSERT( limit <= 1000 );
    const auto& accounts_by_name = _db.get_index_type<account_index>().indices().get<by_name>();
    set<string> result;
 
@@ -564,7 +564,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.bids.push_back( cur );
-      ++sell_itr; 
+      ++sell_itr;
    }
    while(  buy_itr != end && buy_itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
    {
@@ -576,9 +576,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.asks.push_back( cur );
-
-
-      ++buy_itr; 
+      ++buy_itr;
    }
 
 
@@ -777,10 +775,14 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      int64_t abs_net_rshares = llabs(d.net_rshares.value);
+      auto vshares = my->_db.calculate_vshares( d.net_rshares.value );
 
-      u256 r2 = to256(abs_net_rshares);
+      //int64_t abs_net_rshares = llabs(d.net_rshares.value);
+
+      u256 r2 = to256(vshares); //to256(abs_net_rshares);
+      /*
       r2 *= r2;
+      */
       r2 *= pot.amount.value;
       r2 /= total_r2;
 

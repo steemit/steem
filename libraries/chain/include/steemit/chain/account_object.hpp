@@ -58,7 +58,6 @@ namespace steemit { namespace chain {
          fc::time_point_sec sbd_last_interest_payment; ///< used to pay interest at most once per month
          ///@}
 
-
          asset           vesting_shares = asset( 0, VESTS_SYMBOL ); ///< total vesting shares held by this account, controls its voting power
          asset           vesting_withdraw_rate = asset( 0, VESTS_SYMBOL ); ///< at the time this is updated it can be at most vesting_shares/104
          time_point_sec  next_vesting_withdrawal = fc::time_point_sec::maximum(); ///< after every withdrawal this is incremented by 1 week
@@ -86,6 +85,15 @@ namespace steemit { namespace chain {
          uint64_t        average_market_bandwidth  = 0;
          time_point_sec  last_market_bandwidth_update;
          time_point_sec  last_post;
+
+         /**
+          *  Used to track activity rewards, updated on every post and comment
+          */
+         ///@{
+         time_point_sec  last_active;
+         fc::uint128_t   activity_shares;
+         time_point_sec  last_activity_payout;
+         ///@}
 
 
          account_id_type get_id()const { return id; }
@@ -217,4 +225,6 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)
+                    (last_active)
+                    (activity_shares)
                   )

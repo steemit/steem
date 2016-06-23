@@ -92,11 +92,13 @@ namespace steemit { namespace chain {
           */
          fc::uint128_t     children_rshares2;
 
-
          /// index on pending_payout for "things happning now... needs moderation"
          /// TRENDING = UNCLAIMED + PENDING
          share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
          share_type        abs_rshares; /// this is used to track the total abs(weight) of votes for the purpose of calculating cashout_time
+         share_type        vote_rshares; /// Total positive rshares from all votes. Used to calculate delta weights. Needed to handle vote changing and removal.
+
+         share_type        children_abs_rshares; /// this is used to calculate cashout time of a discussion.
          time_point_sec    cashout_time; /// 24 hours from the weighted average of vote time
          uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
 
@@ -105,9 +107,11 @@ namespace steemit { namespace chain {
 
          int32_t           net_votes = 0;
 
+         comment_id_type   root_comment;
+
          asset    max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
-         uint16_t percent_steem_dollars = 0; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
-         bool     allow_replies = true;      /// allows a post to disable replies. 
+         uint16_t percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
+         bool     allow_replies = true;      /// allows a post to disable replies.
          bool     allow_votes   = true;      /// allows a post to receive votes;
          bool     allow_curation_rewards = true;
    };
@@ -128,7 +132,7 @@ namespace steemit { namespace chain {
          int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
          int16_t         vote_percent = 0; ///< The percent weight of the vote
          time_point_sec  last_update; ///< The time of the last update of the vote
-         uint8_t         num_changes = 0;
+         int8_t          num_changes = 0;
    };
 
    struct by_comment_voter;
@@ -173,6 +177,8 @@ namespace steemit { namespace chain {
 
    struct by_cashout_time; /// cashout_time
    struct by_permlink; /// author, perm
+   struct by_root;
+   struct by_parent;
    struct by_active; /// parent_auth, active
    struct by_pending_payout;
    struct by_total_pending_payout;
@@ -205,6 +211,12 @@ namespace steemit { namespace chain {
                member< comment_object, string, &comment_object::permlink >
             >,
             composite_key_compare< std::less< string >, std::less< string > >
+         >,
+         ordered_unique< tag< by_root >,
+            composite_key< comment_object,
+               member< comment_object, comment_id_type, &comment_object::root_comment >,
+               member< object, object_id_type, &object::id >
+            >
          >
 
 //#ifndef IS_LOW_MEM
@@ -318,7 +330,9 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (category)(parent_author)(parent_permlink)
                     (title)(body)(json_metadata)(last_update)(created)(active)
                     (depth)(children)(children_rshares2)
-                    (net_rshares)(abs_rshares)(cashout_time)(total_vote_weight)(total_payout_value)(net_votes)
+                    (net_rshares)(abs_rshares)(vote_rshares)
+                    (children_abs_rshares)(cashout_time)
+                    (total_vote_weight)(total_payout_value)(net_votes)(root_comment)
                     (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
