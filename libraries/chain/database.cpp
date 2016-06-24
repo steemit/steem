@@ -1555,7 +1555,7 @@ void database::process_vesting_withdrawals()
       {
          if( itr->auto_vest )
          {
-            share_type to_deposit = ( to_withdraw * itr->percent ) / STEEMIT_100_PERCENT;
+            share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
             vests_depositted += to_deposit;
 
             if( to_deposit > 0 )
@@ -1582,7 +1582,7 @@ void database::process_vesting_withdrawals()
          {
             const auto& to_account = itr->to_account( *this );
 
-            share_type to_deposit = ( to_withdraw * itr->percent ) / STEEMIT_100_PERCENT;
+            share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
             steem_depositted += to_deposit;
             auto converted_steem = asset( to_deposit, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
             total_steem_converted += converted_steem;
