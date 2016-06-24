@@ -3301,6 +3301,12 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 5" );
 #endif
          break;
+      case STEEMIT_HARDFORK_0_6:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 6" );
+#endif
+         retally_witness_vote_counts();
+         break;
       default:
          break;
    }
@@ -3498,6 +3504,35 @@ void database::retally_witness_votes()
       {
          adjust_witness_vote( wit_itr->witness(*this), a.witness_vote_weight() );
          ++wit_itr;
+      }
+   }
+}
+
+void database::retally_witness_vote_counts()
+{
+   const auto& account_idx = get_index_type< account_index >().indices();
+
+   // Check all existing votes by account
+   for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
+   {
+      const auto& a = *itr;
+      uint16_t witnesses_voted_for = 0;
+      if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT )
+      {
+        const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
+        auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
+        while( wit_itr != vidx.end() && wit_itr->account == a.get_id() )
+        {
+           ++witnesses_voted_for;
+           ++wit_itr;
+        }
+      }
+      if( a.witnesses_voted_for != witnesses_voted_for )
+      {
+         modify( a, [&]( account_object& account )
+         {
+            account.witnesses_voted_for = witnesses_voted_for;
+         } );
       }
    }
 }
