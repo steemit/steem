@@ -664,7 +664,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       if( rshares > 0 )
       {
          FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
-            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT );
+            || db().head_block_time() < fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME ) - STEEMIT_UPVOTE_LOCKOUT );
       }
 
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
@@ -803,7 +803,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       if( itr->rshares < rshares )
          FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
-            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT );
+            || db().head_block_time() < fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME ) - STEEMIT_UPVOTE_LOCKOUT );
 
       db().modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;

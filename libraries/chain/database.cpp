@@ -1860,7 +1860,7 @@ void database::process_comment_cashout()
    /// don't allow any content to get paid out until the website is ready to launch
    /// and people have had a week to start posting.  The first cashout will be the biggest because it
    /// will represent 2+ months of rewards.
-   if( head_block_time() < STEEMIT_FIRST_CASHOUT_TIME )
+   if( !has_hardfork( STEEMIT_FIRST_CASHOUT_TIME ) )
       return;
 
    int count = 0;
@@ -2056,15 +2056,12 @@ void database::pay_liquidity_reward()
 
 uint16_t database::get_activity_rewards_percent() const
 {
-   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
-      return STEEMIT_1_PERCENT * 0;
-   else
-      return 0;
+   return 0;
 }
 
 uint16_t database::get_discussion_rewards_percent() const
 {
-   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+   if( has_hardfork( STEEMIT_HARDFORK_0_8__116 ) )
       return STEEMIT_1_PERCENT * 20;
    else
       return 0;
@@ -2072,7 +2069,7 @@ uint16_t database::get_discussion_rewards_percent() const
 
 uint16_t database::get_curation_rewards_percent() const
 {
-   if( head_block_time() > STEEMIT_FIRST_CASHOUT_TIME )
+   if( has_hardfork( STEEMIT_HARDFORK_0_8__116 ) )
       return STEEMIT_1_PERCENT * 30;
    else
       return STEEMIT_1_PERCENT * 50;
@@ -3181,6 +3178,12 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_6 == 6, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_6 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_6_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_6 ] = STEEMIT_HARDFORK_0_6_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_7 == 7, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_7 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_7 ] = STEEMIT_HARDFORK_0_7_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_8 == 8, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_8 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_8_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_8 ] = STEEMIT_HARDFORK_0_8_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3314,6 +3317,16 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 6" );
 #endif
          retally_witness_vote_counts();
+         break;
+      case STEEMIT_HARDFORK_0_7:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 7" );
+#endif
+         break;
+      case STEEMIT_HARDFORK_0_8:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 8" );
+#endif
          break;
       default:
          break;
