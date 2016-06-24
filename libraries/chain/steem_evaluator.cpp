@@ -165,7 +165,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__74 ) );
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    if( !o.allow_curation_rewards || !o.allow_votes )
@@ -214,7 +214,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       if( o.parent_author.size() != 0 )
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) ) {
          if( o.parent_author.size() == 0 )
              FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
          else
@@ -697,7 +697,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes++;
          else
             c.net_votes--;
-         if( !db().has_hardfork( STEEMIT_HARDFORK_0_6 ) && c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
+         if( !db().has_hardfork( STEEMIT_HARDFORK_0_6__114 ) && c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
       });
 
       db().modify( root, [&]( comment_object& c )
@@ -795,7 +795,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    {
       FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Cannot change vote again" );
 
-      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_6 ) )
+      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_6__112 ) )
          FC_ASSERT( itr->vote_percent != o.weight, "Changing your vote requires actually changing you vote." );
 
       /// this is the rshares voting for or against the post

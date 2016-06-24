@@ -1484,7 +1484,7 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6 ) ) // TODO: this check can be removed after hard fork 6
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork 6
    {
       modify( a, [&](account_object& acc )
       {
@@ -1943,7 +1943,7 @@ void database::update_account_activity( const account_object& account ) {
       gprop.total_activity_fund_shares += shares;
    });
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6 ) )
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__101 ) )
    {
       if( account.last_active - account.last_activity_payout > fc::days(7) && props.total_activity_fund_steem.amount.value > 0 )
       {
