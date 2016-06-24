@@ -180,6 +180,7 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
        c.percent_steem_dollars = o.percent_steem_dollars;
        c.allow_replies         = o.allow_replies;
        c.allow_votes           = o.allow_votes;
+       c.allow_curation_rewards = o.allow_curation_rewards;
    });
 }
 void comment_evaluator::do_apply( const comment_operation& o )
