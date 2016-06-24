@@ -212,7 +212,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       if( o.parent_author.size() != 0 )
-         FC_ASSERT( parent.root_comment( db() )->allow_replies, "Comment has disabled replies." );
+         FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
          if( o.parent_author.size() == 0 )
