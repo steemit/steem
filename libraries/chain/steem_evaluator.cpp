@@ -547,9 +547,6 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
 
       db().modify( account, [&]( account_object& a ) {
          a.proxy = o.proxy;
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) { // TODO: this check can be removed after hard fork 6
-            a.witnesses_voted_for = 0;
-         }
       });
 
       /// add all new votes
