@@ -81,6 +81,7 @@ namespace steemit { namespace chain {
          time_point_sec    last_update;
          time_point_sec    created;
          time_point_sec    active; ///< the last time this post was "touched" by voting or reply
+         time_point_sec    last_payout;
 
          uint8_t           depth = 0; ///< used to track max nested depth
          uint32_t          children = 0; ///< used to track the total number of children, grandchildren, etc...
@@ -328,7 +329,7 @@ namespace steemit { namespace chain {
 FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (author)(permlink)
                     (category)(parent_author)(parent_permlink)
-                    (title)(body)(json_metadata)(last_update)(created)(active)
+                    (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
                     (depth)(children)(children_rshares2)
                     (net_rshares)(abs_rshares)(vote_rshares)
                     (children_abs_rshares)(cashout_time)

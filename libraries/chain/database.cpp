@@ -1733,7 +1733,8 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
       //edump( (total_weight)(max_rewards) );
       share_type unclaimed_rewards = max_rewards;
 
-      if( c.total_vote_weight > 0 ) {
+      if( c.total_vote_weight > 0 && c.allow_curation_rewards )
+      {
          const auto& cvidx = get_index_type<comment_vote_index>().indices().get<by_comment_weight_voter>();
          auto itr = cvidx.lower_bound( c.id );
          while( itr != cvidx.end() && itr->comment == c.id )
@@ -1749,6 +1750,16 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
             }
             ++itr;
          }
+      }
+
+      if( !c.allow_curation_rewards )
+      {
+         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props )
+         {
+            props.total_reward_fund_steem += unclaimed_rewards;
+         });
+
+         unclaimed_rewards = 0;
       }
 
       return unclaimed_rewards;
@@ -1819,6 +1830,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.vote_rshares = 0;
          c.total_vote_weight = 0;
          c.cashout_time = fc::time_point_sec::maximum();
+         c.last_payout = head_block_time();
       } );
 
       const auto& vote_idx = get_index_type< comment_vote_index >().indices().get< by_comment_voter >();

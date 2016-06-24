@@ -168,12 +168,14 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) );
 
    const auto& comment = db().get_comment( o.author, o.permlink );
-   FC_ASSERT( comment.abs_rshares == 0 );
+   if( !o.allow_curation_rewards || !o.allow_votes )
+      FC_ASSERT( comment.abs_rshares == 0 );
+
+   FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
+   FC_ASSERT( comment.allow_votes >= o.allow_votes );
    FC_ASSERT( comment.max_accepted_payout >= o.max_accepted_payout );
    FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars );
    FC_ASSERT( comment.allow_replies >= o.allow_replies );
-   FC_ASSERT( comment.allow_votes >= o.allow_votes );
-   FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
 
    db().modify( comment, [&]( comment_object& c ) {
        c.max_accepted_payout   = o.max_accepted_payout;
@@ -239,6 +241,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.last_update = db().head_block_time();
          com.created = com.last_update;
          com.active = com.last_update;
+         com.last_payout = fc::time_point_sec::min();
 
          if ( o.parent_author.size() == 0 )
          {
@@ -742,7 +745,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
 
-         if( rshares > 0 && cv.last_update < db().calculate_discussion_payout_time( comment ) && comment.allow_curation_rewards )
+         if( rshares > 0 && comment.last_payout.sec_since_epoch() == 0 && comment.allow_curation_rewards )
          {
             // cv.weight = W(R_1) - W(R_0)
             if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
