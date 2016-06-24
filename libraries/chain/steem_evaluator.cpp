@@ -473,6 +473,8 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
 
    if( itr == wd_idx.end() )
    {
+      FC_ASSERT( o.percent != 0, "Cannot create a 0% destination." );
+
       db().create< withdraw_vesting_destination_object >( [&]( withdraw_vesting_destination_object& wvdo )
       {
          wvdo.from_account = from_account.id;
@@ -480,6 +482,10 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
          wvdo.percent = o.percent;
          wvdo.auto_vest = o.auto_vest;
       });
+   }
+   else if( o.percent == 0 )
+   {
+      db().remove( *itr );
    }
    else
    {
@@ -654,7 +660,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       if( rshares > 0 )
       {
          FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
-            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT + fc::days(7) ); /// TODO remove
+            || db().head_block_time() < STEEMIT_FIRST_CASHOUT_TIME - STEEMIT_UPVOTE_LOCKOUT );
       }
 
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
