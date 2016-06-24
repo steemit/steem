@@ -212,7 +212,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       if( o.parent_author.size() != 0 )
-         FC_ASSERT( parent->allow_replies, "Comment has disabled replies." );
+         FC_ASSERT( parent.root_comment( db() )->allow_replies, "Comment has disabled replies." );
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6 ) ) {
          if( o.parent_author.size() == 0 )
@@ -794,6 +794,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
    else
    {
       FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Cannot change vote again" );
+
+      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_6 ) )
+         FC_ASSERT( itr->vote_percent != o.weight, "Changing your vote requires actually changing you vote." );
 
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
