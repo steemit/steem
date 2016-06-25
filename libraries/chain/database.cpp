@@ -2077,7 +2077,7 @@ uint16_t database::get_curation_rewards_percent() const
 
 uint128_t database::get_content_constant_s() const
 {
-   return uint128_t( 2000000000000ll ); // looking good for posters
+   return uint128_t( uint64_t(2000000000000ll) ); // looking good for posters
 }
 
 uint128_t database::calculate_vshares( uint128_t rshares ) const
