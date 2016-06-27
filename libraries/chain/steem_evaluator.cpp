@@ -23,6 +23,8 @@ std::string wstring_to_utf8(const std::wstring& str)
 #include <fc/uint128.hpp>
 #include <fc/utf8.hpp>
 
+#include <limits>
+
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
@@ -751,22 +753,22 @@ void vote_evaluator::do_apply( const vote_operation& o )
       uint64_t max_vote_weight = 0;
 
       /** this verifies uniqueness of voter
-      *
-      *   cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
-      *
-      *   W(R) = B * R / ( R + 2S )
-      *   W(R) is bounded above by B. B is fixed at 2^64 - 1, so all weights fit in a 64 bit integer.
-      *
-      *   The equation for an individual vote is:
-      *     W(R_N) - W(R_N-1), which is the delta increase of proportional weight
-      *
-      *   c.total_vote_weight =
-      *     W(R_1) - W(R_0) +
-      *     W(R_2) - W(R_1) + ...
-      *     W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
-      *
-      *   Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
-      *
+       *
+       *  cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
+       *
+       *  W(R) = B * R / ( R + 2S )
+       *  W(R) is bounded above by B. B is fixed at 2^64 - 1, so all weights fit in a 64 bit integer.
+       *
+       *  The equation for an individual vote is:
+       *    W(R_N) - W(R_N-1), which is the delta increase of proportional weight
+       *
+       *  c.total_vote_weight =
+       *    W(R_1) - W(R_0) +
+       *    W(R_2) - W(R_1) + ...
+       *    W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
+       *
+       *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
+       *
       **/
       const auto& cvo = db().create<comment_vote_object>( [&]( comment_vote_object& cv ){
          cv.voter   = voter.id;
@@ -780,14 +782,14 @@ void vote_evaluator::do_apply( const vote_operation& o )
             // cv.weight = W(R_1) - W(R_0)
             if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
             {
-               uint64_t old_weight = ( ( uint64_t( -1 ) * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
-               uint64_t new_weight = ( ( uint64_t( -1 ) * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
+               uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
+               uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
                cv.weight = new_weight - old_weight;
             }
             else
             {
-               uint64_t old_weight = ( ( uint64_t( -1 ) * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
-               uint64_t new_weight = ( ( uint64_t( -1 ) * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
+               uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
+               uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
                cv.weight = new_weight - old_weight;
             }
 
