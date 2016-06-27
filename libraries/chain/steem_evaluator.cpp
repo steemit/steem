@@ -336,8 +336,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          {
             FC_ASSERT( com.parent_author == "" );
             FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change" );
-            com.cashout_time = fc::time_point_sec::maximum();
-            com.max_cashout_time = fc::time_point_sec::maximum();
          }
          else
          {
