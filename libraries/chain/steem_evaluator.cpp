@@ -226,9 +226,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      if( db().is_producing() && o.parent_author.size() == 0 )
+      if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
       {
-          FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
+          FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
       }
 
       if( o.parent_author.size() != 0 )
