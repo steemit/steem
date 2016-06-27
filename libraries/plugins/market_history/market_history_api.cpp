@@ -93,6 +93,7 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
       cur.price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * itr->sell_price ).amount;
       cur.sbd = itr->for_sale;
+      result.bids.push_back( cur );
       itr--;
    }
 
@@ -105,6 +106,7 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
       cur.price = itr->sell_price.to_real();
       cur.steem = itr->for_sale;
       cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * itr->sell_price ).amount;
+      result.asks.push_back( cur );
       itr--;
    }
 
