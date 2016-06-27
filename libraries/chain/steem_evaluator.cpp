@@ -262,6 +262,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.created = com.last_update;
          com.active = com.last_update;
          com.last_payout = fc::time_point_sec::min();
+         com.cashout_time = fc::time_point_sec::maximum();
 
          if ( o.parent_author.size() == 0 )
          {
@@ -269,7 +270,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_permlink = o.parent_permlink;
             com.category = o.parent_permlink;
             com.root_comment = com.id;
-            com.cashout_time = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
          }
          else
          {
@@ -278,7 +278,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.depth = parent->depth + 1;
             com.category = parent->category;
             com.root_comment = parent->root_comment;
-            com.cashout_time = fc::time_point_sec::maximum();
          }
 
          #ifndef IS_LOW_MEM
