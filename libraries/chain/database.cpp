@@ -3428,6 +3428,9 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             a.withdrawn             *= magnitude;
             a.to_withdraw           *= magnitude;
             a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+            if( a.vesting_withdraw_rate.amount == 0 )
+               a.vesting_withdraw_rate.amount = 1;
+
             for( uint32_t i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
                a.proxied_vsf_votes[i] *= magnitude;
          } );
