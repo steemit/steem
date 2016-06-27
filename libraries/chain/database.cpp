@@ -1522,7 +1522,7 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
 void database::process_vesting_withdrawals()
 {
    const auto& widx = get_index_type< account_index >().indices().get< by_next_vesting_withdrawal >();
-   const auto& didx = get_index_type< withdraw_vesting_destination_index >().indices().get< by_withdraw_destination >();
+   const auto& didx = get_index_type< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
    auto current = widx.begin();
 
    const auto& cprops = get_dynamic_global_properties();
@@ -1544,8 +1544,8 @@ void database::process_vesting_withdrawals()
       else
          to_withdraw = std::min( from_account.vesting_shares.amount, from_account.vesting_withdraw_rate.amount ).value;
 
-      share_type steem_depositted = 0;
-      share_type vests_depositted = 0;
+      share_type steem_deposited = 0;
+      share_type vests_deposited = 0;
       asset total_steem_converted = asset( 0, STEEM_SYMBOL );
 
       // Do two passes, the first for vests, the second for steem. Try to maintain as much accuracy for vests as possible.
@@ -1556,7 +1556,7 @@ void database::process_vesting_withdrawals()
          if( itr->auto_vest )
          {
             share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
-            vests_depositted += to_deposit;
+            vests_deposited += to_deposit;
 
             if( to_deposit > 0 )
             {
@@ -1583,7 +1583,7 @@ void database::process_vesting_withdrawals()
             const auto& to_account = itr->to_account( *this );
 
             share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
-            steem_depositted += to_deposit;
+            steem_deposited += to_deposit;
             auto converted_steem = asset( to_deposit, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
             total_steem_converted += converted_steem;
 
@@ -1605,10 +1605,10 @@ void database::process_vesting_withdrawals()
          }
       }
 
-      share_type to_deposit = to_withdraw - steem_depositted - vests_depositted;
-      FC_ASSERT( to_deposit >= 0, "Depositted more vests than were supposed to be withdrawn" );
+      share_type to_convert = to_withdraw - steem_deposited - vests_deposited;
+      FC_ASSERT( to_convert >= 0, "Deposited more vests than were supposed to be withdrawn" );
 
-      auto converted_steem = asset( to_withdraw - steem_depositted - vests_depositted, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+      auto converted_steem = asset( to_withdraw - steem_deposited - vests_deposited, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
 
       modify( from_account, [&]( account_object& a )
       {
@@ -1630,7 +1630,7 @@ void database::process_vesting_withdrawals()
       modify( cprops, [&]( dynamic_global_property_object& o )
       {
          o.total_vesting_fund_steem -= converted_steem;
-         o.total_vesting_shares.amount -= to_deposit;
+         o.total_vesting_shares.amount -= to_convert;
       });
 
       if( to_withdraw > 0 )
@@ -2201,7 +2201,7 @@ void database::initialize_evaluators()
     register_evaluator<transfer_evaluator>();
     register_evaluator<transfer_to_vesting_evaluator>();
     register_evaluator<withdraw_vesting_evaluator>();
-    register_evaluator<set_withdraw_vesting_destination_evaluator>();
+    register_evaluator<set_withdraw_vesting_route_evaluator>();
     register_evaluator<account_create_evaluator>();
     register_evaluator<account_update_evaluator>();
     register_evaluator<witness_update_evaluator>();
@@ -2243,7 +2243,7 @@ void database::initialize_indexes()
    add_index< primary_index< flat_index<   block_summary_object            > > >();
    add_index< primary_index< simple_index< witness_schedule_object         > > >();
    add_index< primary_index< simple_index< hardfork_property_object        > > >();
-   add_index< primary_index< withdraw_vesting_destination_index            > >();
+   add_index< primary_index< withdraw_vesting_route_index                  > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -3428,6 +3428,9 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             a.withdrawn             *= magnitude;
             a.to_withdraw           *= magnitude;
             a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+            if( a.vesting_withdraw_rate.amount == 0 )
+               a.vesting_withdraw_rate.amount = 1;
+
             for( uint32_t i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
                a.proxied_vsf_votes[i] *= magnitude;
          } );

@@ -485,7 +485,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
     }
 }
 
-void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_vesting_destination_operation& o )
+void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_route_operation& o )
 {
    try
    {
@@ -493,15 +493,15 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
 
    const auto& from_account = db().get_account( o.from_account );
    const auto& to_account = db().get_account( o.to_account );
-   const auto& wd_idx = db().get_index_type< withdraw_vesting_destination_index >().indices().get< by_withdraw_destination >();
+   const auto& wd_idx = db().get_index_type< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
    auto itr = wd_idx.find( boost::make_tuple( from_account.id, to_account.id ) );
 
    if( itr == wd_idx.end() )
    {
       FC_ASSERT( o.percent != 0, "Cannot create a 0% destination." );
-      FC_ASSERT( from_account.withdraw_destinations < STEEMIT_MAX_WITHDRAW_DESTINATIONS );
+      FC_ASSERT( from_account.withdraw_routes < STEEMIT_MAX_WITHDRAW_ROUTES );
 
-      db().create< withdraw_vesting_destination_object >( [&]( withdraw_vesting_destination_object& wvdo )
+      db().create< withdraw_vesting_route_object >( [&]( withdraw_vesting_route_object& wvdo )
       {
          wvdo.from_account = from_account.id;
          wvdo.to_account = to_account.id;
@@ -511,7 +511,7 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
 
       db().modify( from_account, [&]( account_object& a )
       {
-         a.withdraw_destinations++;
+         a.withdraw_routes++;
       });
    }
    else if( o.percent == 0 )
@@ -520,12 +520,12 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
 
       db().modify( from_account, [&]( account_object& a )
       {
-         a.withdraw_destinations--;
+         a.withdraw_routes--;
       });
    }
    else
    {
-      db().modify( *itr, [&]( withdraw_vesting_destination_object& wvdo )
+      db().modify( *itr, [&]( withdraw_vesting_route_object& wvdo )
       {
          wvdo.from_account = from_account.id;
          wvdo.to_account = to_account.id;
@@ -676,6 +676,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t  abs_weight    = abs(o.weight);
    auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
    used_power = (used_power/200) + 1;
+   FC_ASSERT( used_power <= current_power );
 
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( abs_rshares == 0 ) abs_rshares = 1;
