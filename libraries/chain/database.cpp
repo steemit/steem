@@ -2156,9 +2156,11 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    u256 rf(props.total_reward_fund_steem.amount.value);
    u256 total_rshares2 = to256( props.total_reward_shares2 );
 
-   auto rs2 = to256( calculate_vshares( rshares.value ) );
+   u256 rs2 = to256( calculate_vshares( rshares.value ) );
 
-   auto payout = static_cast< uint64_t >( ( rf * rs2 ) / total_rshares2);
+   u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
+   FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
+   uint64_t payout = static_cast< uint64_t >( payout );
 
    asset sbd_payout_value = to_sbd( asset(payout, STEEM_SYMBOL) );
 
