@@ -1664,7 +1664,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
    if( c.children_rshares2 > 0 )
    {
       const auto& comment_by_parent = get_index_type< comment_index >().indices().get< by_parent >();
-      fc::uint128_t total_rshares( c.children_rshares2 - uint128_t( c.abs_rshares.value ) * c.abs_rshares.value );
+      fc::uint128_t total_rshares2( c.children_rshares2 - calculate_vshares( c.net_rshares.value ) );
       child_queue.push_back( c.id );
 
       // In order traversal of the tree of child comments
@@ -1675,7 +1675,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
 
          if( cur.net_rshares > 0 )
          {
-            auto claim = ( ( fc::uint128_t( cur.net_rshares.value ) * max_rewards.value ) / total_rshares ).to_uint64();
+            auto claim = ( ( calculate_vshares( cur.net_rshares.value ) * max_rewards.value ) / total_rshares2 ).to_uint64();
             unclaimed_rewards -= claim;
 
             if( claim > 0 )
@@ -3440,7 +3440,6 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             c.net_rshares       *= magnitude;
             c.abs_rshares       *= magnitude;
             c.vote_rshares      *= magnitude;
-            //c.total_vote_weight *= magnitude; // TODO: Determine impact of vest split on the new curation algorithm
             c.children_rshares2  = 0;
          } );
       }
