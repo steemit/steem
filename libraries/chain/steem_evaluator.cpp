@@ -738,7 +738,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
          if( c.max_cashout_time == fc::time_point_sec::maximum() )
-            c.max_cashout_time = c.cashout_time + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+            c.max_cashout_time = db().head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
@@ -873,7 +873,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
          if( c.max_cashout_time == fc::time_point_sec::maximum() )
-            c.max_cashout_time = c.cashout_time + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+            c.max_cashout_time = db().head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
