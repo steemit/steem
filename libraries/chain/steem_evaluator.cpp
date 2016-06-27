@@ -336,8 +336,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          {
             FC_ASSERT( com.parent_author == "" );
             FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change" );
-            com.cashout_time = fc::time_point_sec::maximum();
-            com.max_cashout_time = fc::time_point_sec::maximum();
          }
          else
          {
@@ -737,7 +735,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( std::max( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+         c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
          if( c.max_cashout_time == fc::time_point_sec::maximum() )
             c.max_cashout_time = c.cashout_time + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
@@ -872,7 +870,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( std::max( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+         c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
          if( c.max_cashout_time == fc::time_point_sec::maximum() )
             c.max_cashout_time = c.cashout_time + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );

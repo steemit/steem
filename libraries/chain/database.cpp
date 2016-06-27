@@ -1675,7 +1675,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
 
          if( cur.net_rshares > 0 )
          {
-            auto claim = ( ( calculate_vshares( cur.net_rshares.value ) * max_rewards.value ) / total_rshares2 ).to_uint64();
+            auto claim = static_cast< uint64_t >( ( to256( calculate_vshares( cur.net_rshares.value ) ) * max_rewards.value ) / to256( total_rshares2 ) );
             unclaimed_rewards -= claim;
 
             if( claim > 0 )
