@@ -2034,7 +2034,7 @@ uint16_t database::get_activity_rewards_percent() const
 uint16_t database::get_discussion_rewards_percent() const
 {
    if( has_hardfork( STEEMIT_HARDFORK_0_8__116 ) )
-      return STEEMIT_1_PERCENT * 20;
+      return STEEMIT_1_PERCENT * 25;
    else
       return 0;
 }
@@ -2042,7 +2042,7 @@ uint16_t database::get_discussion_rewards_percent() const
 uint16_t database::get_curation_rewards_percent() const
 {
    if( has_hardfork( STEEMIT_HARDFORK_0_8__116 ) )
-      return STEEMIT_1_PERCENT * 30;
+      return STEEMIT_1_PERCENT * 25;
    else
       return STEEMIT_1_PERCENT * 50;
 }
