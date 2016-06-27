@@ -1805,6 +1805,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          */
          if( c.net_rshares > 0 )
             c.net_rshares = 0;
+         c.children_abs_rshares = 0;
          c.abs_rshares  = 0;
          c.vote_rshares = 0;
          c.total_vote_weight = 0;
