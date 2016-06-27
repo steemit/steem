@@ -577,7 +577,7 @@ class wallet_api
        *
        * @param from The account the VESTS are withdrawn from
        * @param vesting_shares The amount of VESTS to withdraw over the next two years. Each week (amount/104) shares are
-       *    withdrawn and depositted back as STEEM. i.e. "10.000000 VESTS"
+       *    withdrawn and deposited back as STEEM. i.e. "10.000000 VESTS"
        * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );

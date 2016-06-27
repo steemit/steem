@@ -870,7 +870,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
       BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
       BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
       BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
-      BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+      BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
       validate_database();
 
       BOOST_TEST_MESSAGE( "Generating the rest of the blocks in the withdrawal" );
@@ -893,7 +893,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          if ( i == STEEMIT_VESTING_WITHDRAW_INTERVALS - 1 )
             BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
@@ -917,7 +917,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          generate_blocks( db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
          fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
@@ -926,7 +926,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, original_vesting.amount.value % withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          validate_database();
       }
@@ -940,7 +940,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE_EQUAL( fill_op.from_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.to_account, "alice" );
          BOOST_REQUIRE_EQUAL( fill_op.withdrawn.amount.value, withdraw_rate.amount.value );
-         BOOST_REQUIRE( std::abs( ( fill_op.depositted - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
+         BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
       }
 
       BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).vesting_shares.amount.value, ( original_vesting - op.vesting_shares ).amount.value );

@@ -171,11 +171,11 @@ namespace steemit { namespace chain {
    {
       fill_vesting_withdraw_operation(){}
       fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
-         :from_account(f), to_account(t), withdrawn(w), depositted(d){}
+         :from_account(f), to_account(t), withdrawn(w), deposited(d){}
       string from_account;
       string to_account;
       asset  withdrawn;
-      asset  depositted;
+      asset  deposited;
 
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
@@ -382,7 +382,7 @@ namespace steemit { namespace chain {
 
    /**
     *  This operation instructs the blockchain to start a conversion between STEEM and SBD,
-    *  The funds are depositted after STEEMIT_CONVERSION_DELAY
+    *  The funds are deposited after STEEMIT_CONVERSION_DELAY
     */
    struct convert_operation : public base_operation
    {
@@ -537,6 +537,6 @@ FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout)
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
-FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(depositted) )
+FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
