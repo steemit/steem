@@ -1809,6 +1809,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.vote_rshares = 0;
          c.total_vote_weight = 0;
          c.cashout_time = fc::time_point_sec::maximum();
+         c.max_cashout_time = fc::time_point_sec::maximum();
          c.last_payout = head_block_time();
       } );
 

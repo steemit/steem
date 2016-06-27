@@ -265,6 +265,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.active = com.last_update;
          com.last_payout = fc::time_point_sec::min();
          com.cashout_time = fc::time_point_sec::maximum();
+         com.max_cashout_time = fc::time_point_sec::maximum();
 
          if ( o.parent_author.size() == 0 )
          {
@@ -335,7 +336,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
          {
             FC_ASSERT( com.parent_author == "" );
             FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change" );
-            com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
+            com.cashout_time = fc::time_point_sec::maximum();
+            com.max_cashout_time = fc::time_point_sec::maximum();
          }
          else
          {
@@ -714,7 +716,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      auto avg_cashout_sec = (cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
+      auto avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       FC_ASSERT( abs_rshares > 0 );
 
@@ -735,7 +737,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec() + fc::seconds( avg_cashout_sec.to_uint64() );
+         c.cashout_time = fc::time_point_sec( std::max( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+
+         if( c.max_cashout_time == fc::time_point_sec::maximum() )
+            c.max_cashout_time = c.cashout_time + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
@@ -867,7 +872,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec() + fc::seconds( avg_cashout_sec.to_uint64() );
+         c.cashout_time = fc::time_point_sec( std::max( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+
+         if( c.max_cashout_time == fc::time_point_sec::maximum() )
+            c.max_cashout_time = c.cashout_time + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
