@@ -1605,8 +1605,8 @@ void database::process_vesting_withdrawals()
          }
       }
 
-      share_type to_deposit = to_withdraw - steem_deposited - vests_deposited;
-      FC_ASSERT( to_deposit >= 0, "Deposited more vests than were supposed to be withdrawn" );
+      share_type to_convert = to_withdraw - steem_deposited - vests_deposited;
+      FC_ASSERT( to_convert >= 0, "Deposited more vests than were supposed to be withdrawn" );
 
       auto converted_steem = asset( to_withdraw - steem_deposited - vests_deposited, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
 
@@ -1630,7 +1630,7 @@ void database::process_vesting_withdrawals()
       modify( cprops, [&]( dynamic_global_property_object& o )
       {
          o.total_vesting_fund_steem -= converted_steem;
-         o.total_vesting_shares.amount -= to_deposit;
+         o.total_vesting_shares.amount -= to_convert;
       });
 
       if( to_withdraw > 0 )
