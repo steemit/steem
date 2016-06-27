@@ -1544,8 +1544,8 @@ void database::process_vesting_withdrawals()
       else
          to_withdraw = std::min( from_account.vesting_shares.amount, from_account.vesting_withdraw_rate.amount ).value;
 
-      share_type steem_deposited = 0;
-      share_type vests_deposited = 0;
+      share_type vests_deposited_as_steem = 0;
+      share_type vests_deposited_as_vests = 0;
       asset total_steem_converted = asset( 0, STEEM_SYMBOL );
 
       // Do two passes, the first for vests, the second for steem. Try to maintain as much accuracy for vests as possible.
@@ -1556,7 +1556,7 @@ void database::process_vesting_withdrawals()
          if( itr->auto_vest )
          {
             share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
-            vests_deposited += to_deposit;
+            vests_deposited_as_vests += to_deposit;
 
             if( to_deposit > 0 )
             {
@@ -1583,7 +1583,7 @@ void database::process_vesting_withdrawals()
             const auto& to_account = itr->to_account( *this );
 
             share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
-            steem_deposited += to_deposit;
+            vests_deposited_as_steem += to_deposit;
             auto converted_steem = asset( to_deposit, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
             total_steem_converted += converted_steem;
 
@@ -1605,10 +1605,10 @@ void database::process_vesting_withdrawals()
          }
       }
 
-      share_type to_convert = to_withdraw - steem_deposited - vests_deposited;
+      share_type to_convert = to_withdraw - vests_deposited_as_steem - vests_deposited_as_vests;
       FC_ASSERT( to_convert >= 0, "Deposited more vests than were supposed to be withdrawn" );
 
-      auto converted_steem = asset( to_withdraw - steem_deposited - vests_deposited, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
+      auto converted_steem = asset( to_convert, VESTS_SYMBOL ) * cprops.get_vesting_share_price();
 
       modify( from_account, [&]( account_object& a )
       {
