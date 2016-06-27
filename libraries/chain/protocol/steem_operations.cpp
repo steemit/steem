@@ -113,7 +113,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL), "Amount must be VESTS"  );
    }
 
-   void set_withdraw_vesting_destination_operation::validate() const
+   void set_withdraw_vesting_route_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( from_account ), "Account name invalid" );
       FC_ASSERT( is_valid_account_name( to_account ), "Account name invalid" );

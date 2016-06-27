@@ -246,7 +246,7 @@ namespace steemit { namespace chain {
     * can be immediately vested again, circumventing the conversion from
     * vests to steem and back, guaranteeing they maintain their value.
     */
-   struct set_withdraw_vesting_destination_operation : public base_operation
+   struct set_withdraw_vesting_route_operation : public base_operation
    {
       string   from_account;
       string   to_account;
@@ -519,7 +519,7 @@ FC_REFLECT( steemit::chain::account_update_operation,
 FC_REFLECT( steemit::chain::transfer_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::transfer_to_vesting_operation, (from)(to)(amount) )
 FC_REFLECT( steemit::chain::withdraw_vesting_operation, (account)(vesting_shares) )
-FC_REFLECT( steemit::chain::set_withdraw_vesting_destination_operation, (from_account)(to_account)(percent)(auto_vest) )
+FC_REFLECT( steemit::chain::set_withdraw_vesting_route_operation, (from_account)(to_account)(percent)(auto_vest) )
 FC_REFLECT( steemit::chain::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
 FC_REFLECT( steemit::chain::account_witness_vote_operation, (account)(witness)(approve) )
 FC_REFLECT( steemit::chain::account_witness_proxy_operation, (account)(proxy) )

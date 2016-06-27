@@ -948,7 +948,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( vesting_withdraw_destination )
+BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
 {
    try
    {
@@ -976,7 +976,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_destination )
       tx.signatures.clear();
 
       BOOST_TEST_MESSAGE( "Setting up bob destination" );
-      set_withdraw_vesting_destination_operation op;
+      set_withdraw_vesting_route_operation op;
       op.from_account = "alice";
       op.to_account = "bob";
       op.percent = STEEMIT_1_PERCENT * 50;

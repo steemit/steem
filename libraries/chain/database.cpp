@@ -1522,7 +1522,7 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
 void database::process_vesting_withdrawals()
 {
    const auto& widx = get_index_type< account_index >().indices().get< by_next_vesting_withdrawal >();
-   const auto& didx = get_index_type< withdraw_vesting_destination_index >().indices().get< by_withdraw_destination >();
+   const auto& didx = get_index_type< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
    auto current = widx.begin();
 
    const auto& cprops = get_dynamic_global_properties();
@@ -2201,7 +2201,7 @@ void database::initialize_evaluators()
     register_evaluator<transfer_evaluator>();
     register_evaluator<transfer_to_vesting_evaluator>();
     register_evaluator<withdraw_vesting_evaluator>();
-    register_evaluator<set_withdraw_vesting_destination_evaluator>();
+    register_evaluator<set_withdraw_vesting_route_evaluator>();
     register_evaluator<account_create_evaluator>();
     register_evaluator<account_update_evaluator>();
     register_evaluator<witness_update_evaluator>();
@@ -2243,7 +2243,7 @@ void database::initialize_indexes()
    add_index< primary_index< flat_index<   block_summary_object            > > >();
    add_index< primary_index< simple_index< witness_schedule_object         > > >();
    add_index< primary_index< simple_index< hardfork_property_object        > > >();
-   add_index< primary_index< withdraw_vesting_destination_index            > >();
+   add_index< primary_index< withdraw_vesting_route_index                  > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
