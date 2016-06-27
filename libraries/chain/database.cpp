@@ -1843,7 +1843,7 @@ void database::process_comment_cashout()
    while( current != cidx.end() && current->cashout_time <= head_block_time() )
    {
       auto itr = com_by_root.lower_bound( current->root_comment );
-      while( itr != com_by_root.end() && itr->root_comment == current->id )
+      while( itr != com_by_root.end() && itr->root_comment == current->root_comment )
       {
          const auto& comment = *itr; ++itr;
          cashout_comment_helper( comment );
