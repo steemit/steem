@@ -676,6 +676,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t  abs_weight    = abs(o.weight);
    auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
    used_power = (used_power/200) + 1;
+   FC_ASSERT( used_power <= current_power );
 
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( abs_rshares == 0 ) abs_rshares = 1;
