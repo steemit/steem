@@ -1637,35 +1637,6 @@ void database::process_vesting_withdrawals()
          adjust_proxied_witness_votes( from_account, -to_withdraw );
 
       push_applied_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_withdraw, VESTS_SYMBOL ), converted_steem ) );
-
-      /// TODO: perhaps we should generate a virtual operation at this point in time
-      /*modify( cur, [&]( account_object& a )
-      {
-         a.vesting_shares.amount -= withdrawn_vesting;
-         a.balance += converted_steem;
-         a.withdrawn += withdrawn_vesting;
-
-         if ( a.withdrawn >= a.to_withdraw || a.vesting_shares.amount == 0 )
-         {
-            a.vesting_withdraw_rate.amount = 0;
-            a.next_vesting_withdrawal = fc::time_point_sec::maximum();
-         }
-         else
-         {
-            a.next_vesting_withdrawal += fc::seconds( STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
-         }
-      } );
-
-      push_applied_operation( fill_vesting_withdraw_operation( cur.name, asset( withdrawn_vesting, VESTS_SYMBOL ), converted_steem ) );
-
-      modify( cprops, [&]( dynamic_global_property_object& o )
-      {
-         o.total_vesting_fund_steem -= converted_steem;
-         o.total_vesting_shares.amount -= withdrawn_vesting;
-      } );
-
-      if( withdrawn_vesting > 0 )
-         adjust_proxied_witness_votes( cur, -withdrawn_vesting );*/
    }
 }
 

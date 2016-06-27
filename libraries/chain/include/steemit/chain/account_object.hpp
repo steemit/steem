@@ -63,6 +63,7 @@ namespace steemit { namespace chain {
          time_point_sec  next_vesting_withdrawal = fc::time_point_sec::maximum(); ///< after every withdrawal this is incremented by 1 week
          share_type      withdrawn = 0; /// Track how many shares have been withdrawn
          share_type      to_withdraw = 0; /// Might be able to look this up with operation history.
+         uint16_t        withdraw_destinations = 0;
 
          std::vector<share_type> proxied_vsf_votes = std::vector<share_type>( STEEMIT_MAX_PROXY_RECURSION_DEPTH, 0 ); ///< the total VFS votes proxied to this account
          uint16_t        witnesses_voted_for = 0;
@@ -220,7 +221,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (created)(mined)(comment_count)(lifetime_vote_count)(post_count)(voting_power)(last_vote_time)
                     (balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
-                    (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)
+                    (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_destinations)
                     (proxied_vsf_votes)(witnesses_voted_for)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)

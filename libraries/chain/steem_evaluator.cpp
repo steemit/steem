@@ -497,6 +497,7 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
    if( itr == wd_idx.end() )
    {
       FC_ASSERT( o.percent != 0, "Cannot create a 0% destination." );
+      FC_ASSERT( from_account.withdraw_destinations < STEEMIT_MAX_WITHDRAW_DESTINATIONS );
 
       db().create< withdraw_vesting_destination_object >( [&]( withdraw_vesting_destination_object& wvdo )
       {
@@ -505,10 +506,20 @@ void set_withdraw_vesting_destination_evaluator::do_apply( const set_withdraw_ve
          wvdo.percent = o.percent;
          wvdo.auto_vest = o.auto_vest;
       });
+
+      db().modify( from_account, [&]( account_object& a )
+      {
+         a.withdraw_destinations++;
+      });
    }
    else if( o.percent == 0 )
    {
       db().remove( *itr );
+
+      db().modify( from_account, [&]( account_object& a )
+      {
+         a.withdraw_destinations--;
+      });
    }
    else
    {
