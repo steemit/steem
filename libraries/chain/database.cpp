@@ -3496,7 +3496,7 @@ void database::retally_comment_children()
             c.children++;
          });
 #else
-         const comment_object* parent = get_comment( itr->parent_author, itr->parent_permlink );
+         const comment_object* parent = &get_comment( itr->parent_author, itr->parent_permlink );
          while( parent )
          {
             modify( *parent, [&]( comment_object& c )
@@ -3505,7 +3505,7 @@ void database::retally_comment_children()
             });
 
             if( parent->parent_author.size() )
-               parent = get_comment( parent->parent_author, parent->parent_permlink );
+               parent = &get_comment( parent->parent_author, parent->parent_permlink );
             else
                parent = nullptr;
          }
