@@ -1803,7 +1803,7 @@ void database::cashout_comment_helper( const comment_object& comment )
             c.total_payouts += total_payout;
          } );
 
-         notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
+         push_applied_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
 
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
 
