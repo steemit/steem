@@ -1726,6 +1726,13 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
                const auto& voter = itr->voter(*this);
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ) );
                push_applied_operation( curate_reward_operation( voter.name, reward, c.author, c.permlink ) );
+
+               #ifndef IS_LOW_MEM
+               modify( voter, [&]( account_object& a )
+               {
+                  a.curation_rewards += claim;
+               });
+               #endif
             }
             ++itr;
          }
@@ -1778,6 +1785,18 @@ void database::cashout_comment_helper( const comment_object& comment )
 
          // stats only.. TODO: Move to plugin...
          auto total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
+
+         #ifndef IS_LOW_MEM
+         modify( comment, [&]( comment_object& c )
+         {
+            c.author_rewards += author_tokens;
+         });
+
+         modify( get_account( comment.author ), [&]( account_object& a )
+         {
+            a.posting_rewards += author_tokens;
+         });
+         #endif
 
          modify( cat, [&]( category_object& c )
          {
