@@ -71,7 +71,7 @@ market_volume market_history_api_impl::get_volume() const
       result.steem_volume += itr->steem_volume;
       result.sbd_volume += itr->sbd_volume;
 
-      itr++;
+      ++itr;
    }
 
    return result;
@@ -133,7 +133,7 @@ std::vector< market_trade > market_history_api_impl::get_trade_history( time_poi
          result.push_back( trade );
       }
 
-      itr++;
+      ++itr;
    }
 
    return result;
@@ -150,7 +150,7 @@ std::vector< bucket_object > market_history_api_impl::get_market_history( uint32
    {
       result.push_back( *itr );
 
-      itr++;
+      ++itr;
    }
 
    return result;

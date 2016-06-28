@@ -539,7 +539,7 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    while( itr->from_account == from_account.id && itr != wd_idx.end() )
    {
       total_percent += itr->percent;
-      itr++;
+      ++itr;
    }
 
    FC_ASSERT( total_percent <= STEEMIT_100_PERCENT, "More than 100% of vesting allocated to destinations" );

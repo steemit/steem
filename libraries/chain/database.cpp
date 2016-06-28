@@ -1121,7 +1121,7 @@ void database::update_witness_schedule4()
             break;
          }
 
-         ver_itr++;
+         ++ver_itr;
       }
 
       auto hf_itr = hardfork_version_votes.begin();
@@ -1139,7 +1139,7 @@ void database::update_witness_schedule4()
             break;
          }
 
-         hf_itr++;
+         ++hf_itr;
       }
 
       // We no longer have a majority
@@ -1551,7 +1551,7 @@ void database::process_vesting_withdrawals()
       // Do two passes, the first for vests, the second for steem. Try to maintain as much accuracy for vests as possible.
       for( auto itr = didx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
            itr != didx.end() && itr->from_account == from_account.id;
-           itr++ )
+           ++itr )
       {
          if( itr->auto_vest )
          {
@@ -1576,7 +1576,7 @@ void database::process_vesting_withdrawals()
 
       for( auto itr = didx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
            itr != didx.end() && itr->from_account == from_account.id;
-           itr++ )
+           ++itr )
       {
          if( !itr->auto_vest )
          {
@@ -1667,7 +1667,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
       fc::uint128_t total_rshares2( c.children_rshares2 - calculate_vshares( c.net_rshares.value ) );
       child_queue.push_back( c.id );
 
-      // In order traversal of the tree of child comments
+      // Pre-order traversal of the tree of child comments
       while( child_queue.size() )
       {
          const auto& cur = child_queue.front()( *this );
@@ -1690,7 +1690,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
          while( itr != comment_by_parent.end() && itr->parent_author == cur.author && itr->parent_permlink == cur.permlink )
          {
             child_queue.push_back( itr->id );
-            itr++;
+            ++itr;
          }
       }
    }
@@ -2538,7 +2538,7 @@ void database::process_header_extensions( const signed_block& next_block )
             FC_ASSERT( false, "Unknown extension in block header" );
       }
 
-      itr++;
+      ++itr;
    }
 }
 
@@ -3355,10 +3355,10 @@ void database::validate_invariants()const
 
       /// verify no witness has too many votes
       const auto& witness_idx = get_index_type< witness_index >().indices();
-      for( auto itr = witness_idx.begin(); itr != witness_idx.end(); itr++ )
+      for( auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr )
          FC_ASSERT( itr->votes < gpo.total_vesting_shares.amount, "", ("itr",*itr) );
 
-      for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
+      for( auto itr = account_idx.begin(); itr != account_idx.end(); ++itr )
       {
          total_supply += itr->balance;
          total_sbd += itr->sbd_balance;
@@ -3372,7 +3372,7 @@ void database::validate_invariants()const
 
       const auto& convert_request_idx = get_index_type< convert_index >().indices();
 
-      for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); itr++ )
+      for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); ++itr )
       {
          if( itr->amount.symbol == STEEM_SYMBOL )
             total_supply += itr->amount;
@@ -3384,7 +3384,7 @@ void database::validate_invariants()const
 
       const auto& limit_order_idx = get_index_type< limit_order_index >().indices();
 
-      for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); itr++ )
+      for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); ++itr )
       {
          if( itr->sell_price.base.symbol == STEEM_SYMBOL )
          {
@@ -3401,7 +3401,7 @@ void database::validate_invariants()const
 
       const auto& comment_idx = get_index_type< comment_index >().indices();
 
-      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
+      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
       {
          if( itr->net_rshares.value > 0 )
          {
@@ -3486,7 +3486,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             c.abs_rshares *= magnitude;
          } );
 
-         cat_itr++;
+         ++cat_itr;
       }
 
    }
@@ -3498,7 +3498,7 @@ void database::retally_comment_children()
    const auto& cidx = get_index_type< comment_index >().indices();
 
    // Clear children counts
-   for( auto itr = cidx.begin(); itr != cidx.end(); itr++ )
+   for( auto itr = cidx.begin(); itr != cidx.end(); ++itr )
    {
       modify( *itr, [&]( comment_object& c )
       {
@@ -3506,7 +3506,7 @@ void database::retally_comment_children()
       });
    }
 
-   for( auto itr = cidx.begin(); itr != cidx.end(); itr++ )
+   for( auto itr = cidx.begin(); itr != cidx.end(); ++itr )
    {
       if( itr->parent_author.size() )
       {
@@ -3540,7 +3540,7 @@ void database::retally_witness_votes()
    const auto& witness_idx = get_index_type< witness_index >().indices();
 
    // Clear all witness votes
-   for( auto itr = witness_idx.begin(); itr != witness_idx.end(); itr++ )
+   for( auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr )
    {
       modify( *itr, [&]( witness_object& w )
       {
@@ -3552,7 +3552,7 @@ void database::retally_witness_votes()
    const auto& account_idx = get_index_type< account_index >().indices();
 
    // Apply all existing votes by account
-   for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
+   for( auto itr = account_idx.begin(); itr != account_idx.end(); ++itr )
    {
       if( itr->proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT ) continue;
 
@@ -3573,7 +3573,7 @@ void database::retally_witness_vote_counts()
    const auto& account_idx = get_index_type< account_index >().indices();
 
    // Check all existing votes by account
-   for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
+   for( auto itr = account_idx.begin(); itr != account_idx.end(); ++itr )
    {
       const auto& a = *itr;
       uint16_t witnesses_voted_for = 0;
