@@ -1726,7 +1726,6 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
                const auto& voter = itr->voter(*this);
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ) );
                push_applied_operation( curate_reward_operation( voter.name, reward, c.author, c.permlink ) );
-
                #ifndef IS_LOW_MEM
                modify( voter, [&]( account_object& a )
                {
@@ -1844,7 +1843,7 @@ void database::cashout_comment_helper( const comment_object& comment )
             cvo.num_changes = -1;
          });
       }
-   } FC_CAPTURE_AND_RETHROW()
+   } FC_CAPTURE_AND_RETHROW( (comment) )
 }
 
 void database::process_comment_cashout()
@@ -2148,6 +2147,8 @@ asset database::to_steem( const asset& sbd )const
  */
 share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
 {
+   try
+   {
    FC_ASSERT( rshares > 0 );
 
    const auto& props = get_dynamic_global_properties();
@@ -2160,7 +2161,7 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
-   uint64_t payout = static_cast< uint64_t >( payout );
+   uint64_t payout = static_cast< uint64_t >( payout_u256 );
 
    asset sbd_payout_value = to_sbd( asset(payout, STEEM_SYMBOL) );
 
@@ -2174,6 +2175,7 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    });
 
    return payout;
+   } FC_CAPTURE_AND_RETHROW( (rshares)(max_steem) )
 }
 
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
