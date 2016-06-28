@@ -106,7 +106,7 @@ namespace steemit { namespace chain {
          const account_object&  get_account( const string& name )const;
          const comment_object&  get_comment( const string& author, const string& permlink )const;
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
-         const limit_order_object& get_limit_order( const string& owner, uint16_t id )const;
+         const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
 
          /**
           *  Deducts fee from the account and the share supply
