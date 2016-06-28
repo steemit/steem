@@ -60,6 +60,8 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
+   typedef static_variant< void_t > comment_options;
+
    /**
     *  Authors of posts may not want all of the benefits that come from creating a post. This
     *  operation allows authors to update properties associated with their post.
@@ -74,10 +76,9 @@ namespace steemit { namespace chain {
 
       asset    max_accepted_payout    = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
       uint16_t percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
-      bool     allow_replies          = true;      /// allows a post to disable replies.
       bool     allow_votes            = true;      /// allows a post to receive votes;
       bool     allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
-
+      flat_set< comment_options > extensions;
 
       void validate()const;
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
@@ -539,4 +540,6 @@ FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
-FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
+FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
+
+FC_REFLECT_TYPENAME( steemit::chain::comment_options )

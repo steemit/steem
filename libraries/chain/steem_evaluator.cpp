@@ -190,19 +190,18 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__74 ) );
 
    const auto& comment = db().get_comment( o.author, o.permlink );
-   if( !o.allow_curation_rewards || !o.allow_votes )
+   if( !o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout )
       FC_ASSERT( comment.abs_rshares == 0 );
 
+   FC_ASSERT( o.extensions.size() == 0 );
    FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
    FC_ASSERT( comment.allow_votes >= o.allow_votes );
    FC_ASSERT( comment.max_accepted_payout >= o.max_accepted_payout );
    FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars );
-   FC_ASSERT( comment.allow_replies >= o.allow_replies );
 
    db().modify( comment, [&]( comment_object& c ) {
        c.max_accepted_payout   = o.max_accepted_payout;
        c.percent_steem_dollars = o.percent_steem_dollars;
-       c.allow_replies         = o.allow_replies;
        c.allow_votes           = o.allow_votes;
        c.allow_curation_rewards = o.allow_curation_rewards;
    });
