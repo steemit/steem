@@ -343,7 +343,7 @@ const account_object& database::get_account( const string& name )const
 
 const limit_order_object& database::get_limit_order( const string& name, uint32_t orderid )const
 {
-   if( !has_hardfork( STEEMIT_HARDFORK_0_6 ) )
+   if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
       orderid = orderid & 0x0000FFFF;
    const auto& orders_by_account = get_index_type<limit_order_index>().indices().get<by_account>();
    auto itr = orders_by_account.find(boost::make_tuple(name,orderid));
