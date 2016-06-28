@@ -3290,6 +3290,7 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 6" );
 #endif
          retally_witness_vote_counts();
+         retally_comment_children();
          break;
       case STEEMIT_HARDFORK_0_7:
 #ifndef IS_TEST_NET
@@ -3469,6 +3470,48 @@ void database::perform_vesting_share_split( uint32_t magnitude )
 
    }
    FC_CAPTURE_AND_RETHROW()
+}
+
+void database::retally_comment_children()
+{
+   const auto& cidx = get_index_type< comment_index >().indices();
+
+   // Clear children counts
+   for( auto itr = cidx.begin(); itr != cidx.end(); itr++ )
+   {
+      modify( *itr, [&]( comment_object& c )
+      {
+         c.children = 0;
+      });
+   }
+
+   for( auto itr = cidx.begin(); itr != cidx.end(); itr++ )
+   {
+      if( itr->parent_author.size() )
+      {
+// Low memory nodes only need immediate child count, full nodes track total children
+#ifdef IS_LOW_MEM
+         modify( get_comment( itr->parent_author, itr->parent_permlink ), [&]( comment_object& c )
+         {
+            c.children++;
+         });
+#else
+         const comment_object* parent = get_comment( itr->parent_author, itr->parent_permlink );
+         while( parent )
+         {
+            modify( *parent, [&]( comment_object& c )
+            {
+               c.children++;
+            });
+
+            if( parent->parent_author.size() )
+               parent = get_comment( parent->parent_author, parent->parent_permlink );
+            else
+               parent = nullptr;
+         }
+#endif
+      }
+   }
 }
 
 void database::retally_witness_votes()

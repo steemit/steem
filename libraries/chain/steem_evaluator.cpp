@@ -163,7 +163,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
    }
 
    /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
-   if( comment.parent_author.size() != 0 )
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_6__80 ) && comment.parent_author.size() != 0 )
    {
       auto parent = &db().get_comment( comment.parent_author, comment.parent_permlink );
       auto now = db().head_block_time();
