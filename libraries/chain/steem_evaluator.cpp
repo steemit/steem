@@ -800,14 +800,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
             if( db().head_block_time() > fc::time_point_sec(STEEMIT_HARDFORK_0_6_SPEED_PENALTY_TIME) )  /// start enforcing this prior to the hardfork
             {
-               /// discournt weight by time
-               u256 w(max_vote_weight);
-               static const uint64_t  vote_curve_window_sec  = (60*30); // 30 minutes;
-               auto delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), vote_curve_window_sec );
+               /// discount weight by time
+               uint128_t w(max_vote_weight);
+               uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t(STEEMIT_SPEED_PENALTY_WINDOW_SECONDS) );
 
                w *= delta_t;
-               w /= vote_curve_window_sec;
-               cv.weight = static_cast<uint64_t>(w);
+               w /= STEEMIT_SPEED_PENALTY_WINDOW_SECONDS;
+               cv.weight = w.to_uint64();
             }
          }
          else
