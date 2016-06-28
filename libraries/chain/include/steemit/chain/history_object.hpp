@@ -41,7 +41,8 @@ namespace steemit { namespace chain {
                member< operation_object, uint32_t, &operation_object::block>,
                member< operation_object, uint32_t, &operation_object::trx_in_block>,
                member< operation_object, uint16_t, &operation_object::op_in_trx>,
-               member< operation_object, uint64_t, &operation_object::virtual_op>
+               member< operation_object, uint64_t, &operation_object::virtual_op>,
+               member< object, object_id_type, &operation_object::id>
             >
          >,
          ordered_unique< tag< by_transaction_id >,

@@ -1,30 +1,8 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #pragma once
 
 #include <steemit/app/api.hpp>
 #include <steemit/private_message/private_message_plugin.hpp>
+#include <steemit/follow/follow_plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -237,6 +215,7 @@ class wallet_api
        *  @param role - active | owner | posting | memo
        */
       pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
+
 
       /**
        * Returns transaction by ID.
@@ -598,7 +577,7 @@ class wallet_api
        *
        * @param from The account the VESTS are withdrawn from
        * @param vesting_shares The amount of VESTS to withdraw over the next two years. Each week (amount/104) shares are
-       *    withdrawn and depositted back as STEEM. i.e. "10.000000 VESTS"
+       *    withdrawn and deposited back as STEEM. i.e. "10.000000 VESTS"
        * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );
@@ -660,6 +639,7 @@ class wallet_api
        * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
        */
       order_book  get_order_book( uint32_t limit = 1000 );
+      vector<extended_limit_order>  get_open_orders( string accountname );
 
       /**
        *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
@@ -722,6 +702,14 @@ class wallet_api
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
       map<uint32_t,operation_object> get_account_history( string account, uint32_t from, uint32_t limit );
+
+
+      /**
+       *  Marks one account as following another account.  Requires the posting authority of the follower.
+       *
+       *  @param what - a set of things to follow: posts, comments, votes, ignore
+       */
+      annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
 
 
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
@@ -794,12 +782,14 @@ FC_API( steemit::wallet::wallet_api,
         (update_witness)
         (set_voting_proxy)
         (vote_for_witness)
+        (follow)
         (transfer)
         (transfer_to_vesting)
         (withdraw_vesting)
         (convert_sbd)
         (publish_feed)
         (get_order_book)
+        (get_open_orders)
         (create_order)
         (cancel_order)
         (post_comment)

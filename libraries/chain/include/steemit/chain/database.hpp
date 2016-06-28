@@ -105,7 +105,8 @@ namespace steemit { namespace chain {
          const witness_object&  get_witness( const string& name )const;
          const account_object&  get_account( const string& name )const;
          const comment_object&  get_comment( const string& author, const string& permlink )const;
-         const limit_order_object& get_limit_order( const string& owner, uint16_t id )const;
+         const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
+         const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -240,6 +241,7 @@ namespace steemit { namespace chain {
          /** @return the sbd created and deposited to_account, may return STEEM if there is no median feed */
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
+         void update_account_activity( const account_object& account );
          void adjust_total_payout( const comment_object& a, const asset& sbd );
 
          void update_witness_schedule();
@@ -272,19 +274,27 @@ namespace steemit { namespace chain {
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
+         share_type pay_discussions( const comment_object& c, share_type max_rewards );
          share_type pay_curators( const comment_object& c, share_type max_rewards );
-         void cashout_comment_helper( const comment_object& cur, const comment_object& origin, asset to_vesting_steem, asset to_sbd );
+         void cashout_comment_helper( const comment_object& comment );
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
          void update_median_feed();
-         share_type claim_rshare_reward( share_type rshares );
+         share_type claim_rshare_reward( share_type rshares, asset max_steem );
 
          asset get_liquidity_reward()const;
          asset get_content_reward()const;
          asset get_producer_reward();
          asset get_curation_reward()const;
          asset get_pow_reward()const;
+
+         uint16_t get_activity_rewards_percent() const;
+         uint16_t get_discussion_rewards_percent() const;
+         uint16_t get_curation_rewards_percent() const;
+
+         uint128_t get_content_constant_s() const;
+         uint128_t calculate_vshares( uint128_t rshares ) const;
 
          void  pay_liquidity_reward();
 
@@ -342,7 +352,9 @@ namespace steemit { namespace chain {
          int  match( const limit_order_object& bid, const limit_order_object& ask, const price& trade_price );
 
          void perform_vesting_share_split( uint32_t magnitude );
+         void retally_comment_children();
          void retally_witness_votes();
+         void retally_witness_vote_counts();
 
          bool has_hardfork( uint32_t hardfork )const;
 
@@ -381,6 +393,7 @@ namespace steemit { namespace chain {
          void update_median_witness_props();
 
          void update_global_dynamic_data( const signed_block& b );
+         void update_virtual_supply();
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();

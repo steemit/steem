@@ -70,7 +70,10 @@ namespace steemit { namespace app {
        }
 
        idump((acc->allowed_apis));
-       std::map< std::string, api_ptr >& _api_map = _ctx.connection->api_map;
+       std::shared_ptr< api_session_data > session = _ctx.session.lock();
+       FC_ASSERT( session );
+
+       std::map< std::string, api_ptr >& _api_map = session->api_map;
 
        for( const std::string& api_name : acc->allowed_apis )
        {
@@ -80,7 +83,7 @@ namespace steemit { namespace app {
              continue;
           }
           idump((api_name));
-          api_context new_ctx( _ctx.app, api_name, _ctx.connection );
+          api_context new_ctx( _ctx.app, api_name, _ctx.session );
           _api_map[ api_name ] = _ctx.app.create_api_by_name( new_ctx );
        }
        return true;
@@ -88,7 +91,10 @@ namespace steemit { namespace app {
 
     fc::api_ptr login_api::get_api_by_name( const string& api_name )const
     {
-       const std::map< std::string, api_ptr >& _api_map = _ctx.connection->api_map;
+       std::shared_ptr< api_session_data > session = _ctx.session.lock();
+       FC_ASSERT( session );
+
+       const std::map< std::string, api_ptr >& _api_map = session->api_map;
        auto it = _api_map.find( api_name );
        if( it == _api_map.end() )
        {

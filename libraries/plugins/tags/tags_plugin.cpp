@@ -159,8 +159,8 @@ struct operation_visitor {
       set<string> lower_tags;
       for( const auto& tag : meta.tags )
          lower_tags.insert(fc::to_lower( tag ) );
-      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_5 ) )
-         lower_tags.insert( c.category );
+
+      lower_tags.insert( fc::to_lower(c.category) );
 
 
       /// the universal tag applies to everything safe for work or nsfw with a positive payout
@@ -264,6 +264,22 @@ struct operation_visitor {
                          _db.get_account(op.author),
                          _db.get_comment(op.author, op.permlink),
                          op.weight );
+   }
+
+   void operator()( const delete_comment_operation& op )const {
+      const auto& idx = _db.get_index_type<tag_index>().indices().get<by_author_comment>();
+
+      const auto& auth = _db.get_account(op.author);
+      auto itr = idx.lower_bound( boost::make_tuple( auth.get_id() ) );
+      while( itr != idx.end() && itr->author == auth.get_id() ) {
+         const auto& tobj = *itr;
+         const auto* obj = _db.find_object( itr->comment );
+         ++itr;
+         if( !obj ) {
+            idump((tobj));
+            _db.remove( tobj );
+         }
+      }
    }
 
    void operator()( const comment_payout_operation& op )const {

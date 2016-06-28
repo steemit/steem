@@ -24,7 +24,7 @@ else()
 endif()
 
 add_library( steemit_wallet wallet.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS} )
-target_link_libraries( steemit_wallet PRIVATE steemit_app graphene_net steemit_chain graphene_utilities fc steemit_private_message  ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( steemit_wallet PRIVATE steemit_app graphene_net steemit_chain graphene_utilities fc steemit_private_message steemit_follow  ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 target_include_directories( graphene_db PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if(MSVC)
