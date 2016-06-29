@@ -782,7 +782,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
          if( rshares > 0 && (comment.last_payout == fc::time_point_sec())  && comment.allow_curation_rewards )
          {
-            if( comment.created < fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME) ) {
+            if( !db().has_hardfork( STEEMIT_HARDFORK_0_7 ) && comment.created < fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME) ) {
                   u512 rshares3(rshares);
                   u256 total2( comment.abs_rshares.value );
 
