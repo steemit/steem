@@ -5,6 +5,6 @@
 
 // Mon Jul  4 00:00:00 UTC 2016
 // Sun Jul  3 20:00:00 EDT 2016
-#define STEEMIT_HARDFORK_0_7_TIME 1467590400
+#define STEEMIT_HARDFORK_0_7_TIME 1467590400  //July 4th
 #define STEEMIT_HARDFORK_0_7_VERSION hardfork_version( 0, 7 )
 #endif
