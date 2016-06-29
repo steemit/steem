@@ -662,9 +662,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
-   /// no new votes after payout
-   FC_ASSERT( comment.last_payout == fc::time_point_sec() );
-
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
 
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
