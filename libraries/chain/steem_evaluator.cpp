@@ -780,7 +780,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
 
-         if( rshares > 0 && comment.last_payout.sec_since_epoch() == 0 && comment.allow_curation_rewards )
+         if( rshares > 0 && (comment.last_payout == fc::time_point_sec())  && comment.allow_curation_rewards )
          {
             // cv.weight = W(R_1) - W(R_0)
             if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )

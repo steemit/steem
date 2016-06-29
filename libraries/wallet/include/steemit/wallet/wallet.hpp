@@ -583,6 +583,20 @@ class wallet_api
       annotated_signed_transaction withdraw_vesting( string from, asset vesting_shares, bool broadcast = false );
 
       /**
+       * Set up a vesting withdraw route. When vesting shares are withdrawn, they will be routed to these accounts
+       * based on the specified weights.
+       *
+       * @param from The account the VESTS are withdrawn from.
+       * @param to   The account receiving either VESTS or STEEM.
+       * @param percent The percent of the withdraw to go to the 'to' account. This is denoted in hundreths of a percent.
+       *    i.e. 100 is 1% and 10000 is 100%. This value must be between 1 and 100000
+       * @param auto_vest Set to true if the from account should receive the VESTS as VESTS, or false if it should receive
+       *    them as STEEM.
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      annotated_signed_transaction set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast = false );
+
+      /**
        *  This method will convert SBD to STEEM at the current_median_history price one
        *  week from the time it is executed. This method depends upon there being a valid price feed.
        *
@@ -786,6 +800,7 @@ FC_API( steemit::wallet::wallet_api,
         (transfer)
         (transfer_to_vesting)
         (withdraw_vesting)
+        (set_withdraw_vesting_route)
         (convert_sbd)
         (publish_feed)
         (get_order_book)

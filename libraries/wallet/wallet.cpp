@@ -773,12 +773,12 @@ public:
          ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
 
          ss << ' ' << setw( ( spacing * 4 ) + 6 ) << "Bids" << "Asks\n"
-            << ' ' 
+            << ' '
             << setw( spacing + 3 ) << "Sum(SBD)"
-            << setw( spacing + 1) << "SBD" 
+            << setw( spacing + 1) << "SBD"
             << setw( spacing + 1 ) << "STEEM"
-            << setw( spacing + 1 ) << "Price" 
-            << setw( spacing + 1 ) << "Price" 
+            << setw( spacing + 1 ) << "Price"
+            << setw( spacing + 1 ) << "Price"
             << setw( spacing + 1 ) << "STEEM "
             << setw( spacing + 1 ) << "SBD " << "Sum(SBD)"
             << "\n====================================================================================================="
@@ -789,7 +789,7 @@ public:
             if ( i < orders.bids.size() )
             {
                bid_sum += asset( orders.bids[i].sbd, SBD_SYMBOL );
-               ss 
+               ss
                   << ' ' << setw( spacing ) << bid_sum.to_string()
                   << ' ' << setw( spacing ) << asset( orders.bids[i].sbd, SBD_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
@@ -1626,6 +1626,22 @@ annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset ves
    return my->sign_transaction( tx, broadcast );
 }
 
+annotated_signed_transaction wallet_api::set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+    set_withdraw_vesting_route_operation op;
+    op.from_account = from;
+    op.to_account = to;
+    op.percent = percent;
+    op.auto_vest = auto_vest;
+
+    signed_transaction tx;
+    tx.operations.push_back( op );
+    tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
 annotated_signed_transaction wallet_api::convert_sbd(string from, asset amount, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
@@ -1793,7 +1809,7 @@ annotated_signed_transaction wallet_api::follow( string follower, string followi
       get_account( following.substr(1) );
    }
    FC_ASSERT( following.size() > 1 );
-   
+
    follow::follow_operation fop;
    fop.follower = follower;
    fop.following = following;
