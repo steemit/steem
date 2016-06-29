@@ -1771,6 +1771,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
 
          author_tokens += pay_curators( comment, curation_tokens );
+
          if( discussion_tokens > 0 )
             author_tokens += pay_discussions( comment, discussion_tokens );
 
@@ -2054,10 +2055,12 @@ uint16_t database::get_activity_rewards_percent() const
 
 uint16_t database::get_discussion_rewards_percent() const
 {
+   /*
    if( has_hardfork( STEEMIT_HARDFORK_0_8__116 ) )
       return STEEMIT_1_PERCENT * 25;
    else
-      return 0;
+   */
+   return 0;
 }
 
 uint16_t database::get_curation_rewards_percent() const
