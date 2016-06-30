@@ -77,6 +77,5 @@ namespace fc
    void from_variant( const variant& var, steemit::chain::hardfork_version& hv )
    {
       from_variant( var, (steemit::chain::version&) hv );
-      FC_ASSERT( ( hv.v_num & 0x0000FFFF ) == 0, "Hardfork version cannot contain a revision version" );
    }
 }
