@@ -90,11 +90,11 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
    while( itr != end && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
    {
       order cur;
-      cur.price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
+      cur.price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * itr->sell_price ).amount;
       cur.sbd = itr->for_sale;
       result.bids.push_back( cur );
-      itr--;
+      --itr;
    }
 
    itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
@@ -103,11 +103,11 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
    while( itr != end && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
    {
       order cur;
-      cur.price = itr->sell_price.to_real();
+      cur.price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
       cur.steem = itr->for_sale;
       cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * itr->sell_price ).amount;
       result.asks.push_back( cur );
-      itr--;
+      --itr;
    }
 
    return result;
