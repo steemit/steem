@@ -695,6 +695,9 @@ namespace detail {
             if (high_block_num == 0)
               return synopsis; // we have no blocks
           }
+          
+          if( low_block_num == 0)
+             low_block_num = 1;
 
           // at this point:
           // low_block_num is the block before the first block we can undo,
