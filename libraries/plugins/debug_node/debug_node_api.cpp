@@ -33,6 +33,8 @@ class debug_node_api_impl
       steemit::chain::witness_schedule_object debug_get_witness_schedule();
       steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
       void debug_update_object( const fc::variant_object& update );
+      fc::variant_object debug_get_edits();
+      void debug_set_edits( const fc::variant_object& edits );
       //void debug_save_db( std::string db_path );
       void debug_stream_json_objects( const std::string& filename );
       void debug_stream_json_objects_flush();
@@ -196,6 +198,18 @@ void debug_node_api_impl::debug_update_object( const fc::variant_object& update 
    get_plugin()->debug_update( update );
 }
 
+fc::variant_object debug_node_api_impl::debug_get_edits()
+{
+   fc::mutable_variant_object result;
+   get_plugin()->save_debug_updates( result );
+   return fc::variant_object( std::move( result ) );
+}
+
+void debug_node_api_impl::debug_set_edits( const fc::variant_object& edits )
+{
+   get_plugin()->load_debug_updates( edits );
+}
+
 std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > debug_node_api_impl::get_plugin()
 {
    return app.get_plugin< debug_node_plugin >( "debug_node" );
@@ -277,6 +291,16 @@ steemit::chain::hardfork_property_object debug_node_api::debug_get_hardfork_prop
 void debug_node_api::debug_update_object( fc::variant_object update )
 {
    my->debug_update_object( update );
+}
+
+fc::variant_object debug_node_api::debug_get_edits()
+{
+   return my->debug_get_edits();
+}
+
+void debug_node_api::debug_set_edits( fc::variant_object edits )
+{
+   my->debug_set_edits(edits);
 }
 
 void debug_node_api::debug_stream_json_objects( std::string filename )
