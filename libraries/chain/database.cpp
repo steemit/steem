@@ -1496,10 +1496,11 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   modify( a, [&](account_object& acc )
-   {
-      acc.witnesses_voted_for = 0;
-   });
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork 
+      modify( a, [&](account_object& acc )
+      {
+         acc.witnesses_voted_for = 0;
+      });
 }
 
 /**
