@@ -900,7 +900,8 @@ template<typename Index, typename StartItr>
 vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
-                                                  const Index& tidx, StartItr tidx_itr )const
+                                                  const Index& tidx, StartItr tidx_itr, 
+                                                  const std::function<bool(const comment_object&)>& filter  )const
 {
    idump((query));
    vector<discussion> result;
@@ -909,7 +910,6 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
    comment_id_type start;
 
    if( query.start_author && query.start_permlink ) {
-      edump(("start author")(query));
       start = my->_db.get_comment( *query.start_author, *query.start_permlink ).id;
       auto itr = cidx.find( start );
       while( itr != cidx.end() && itr->comment == start ) {
@@ -927,6 +927,10 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
          break;
       try {
       result.push_back( get_discussion( tidx_itr->comment ) );
+
+      if( filter( result.back() ) )
+         result.pop_back();
+
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
       }
@@ -1018,7 +1022,7 @@ vector<discussion> database_api::get_discussions_by_hot( const discussion_query&
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_hot>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<double>::max() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ) { return c.net_rshares <= 0; } );
 }
 
 

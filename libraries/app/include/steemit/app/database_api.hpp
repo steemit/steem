@@ -359,7 +359,8 @@ class database_api
       vector<discussion> get_discussions( const discussion_query& q,
                                           const string& tag,
                                           comment_id_type parent,
-                                          const Index& idx, StartItr itr )const;
+                                          const Index& idx, StartItr itr,
+                                          const std::function<bool(const comment_object&)>& filter = []( const comment_object& ){ return false; }  )const;
       comment_id_type get_parent( const discussion_query& q )const;
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;

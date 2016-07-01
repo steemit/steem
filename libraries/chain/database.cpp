@@ -1486,13 +1486,10 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork 6
+   modify( a, [&](account_object& acc )
    {
-      modify( a, [&](account_object& acc )
-      {
-         acc.witnesses_voted_for = 0;
-      });
-   }
+      acc.witnesses_voted_for = 0;
+   });
 }
 
 /**
@@ -3324,6 +3321,7 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 7" );
 #endif
+         retally_witness_vote_counts();
          break;
       case STEEMIT_HARDFORK_0_8:
 #ifndef IS_TEST_NET
@@ -3584,7 +3582,8 @@ void database::retally_witness_vote_counts()
    {
       const auto& a = *itr;
       uint16_t witnesses_voted_for = 0;
-      if( a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT )
+      if( has_hardfork( STEEMIT_HARDFORK_0_7 ) || 
+          (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT && has_hardfork( STEEMIT_HARDFORK_0_6 ) ) ) 
       {
         const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
         auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
