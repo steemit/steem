@@ -782,18 +782,33 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
          if( rshares > 0 && (comment.last_payout == fc::time_point_sec())  && comment.allow_curation_rewards )
          {
-            // cv.weight = W(R_1) - W(R_0)
-            if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
-            {
-               uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
-               uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
-               cv.weight = new_weight - old_weight;
-            }
-            else
-            {
-               uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
-               uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
-               cv.weight = new_weight - old_weight;
+            if( comment.created < fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME) ) {
+               u512 rshares3(rshares);
+               u256 total2( comment.abs_rshares.value );
+
+               if( !db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+               {
+                  rshares3 *= 1000000;
+                  total2 *= 1000000;
+               }
+
+               rshares3 = rshares3 * rshares3 * rshares3;
+
+               total2 *= total2;
+               cv.weight = static_cast<uint64_t>( rshares3 / total2 );
+            } else {// cv.weight = W(R_1) - W(R_0)
+               if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+               {
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
+                  cv.weight = new_weight - old_weight;
+               }
+               else
+               {
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
+                  cv.weight = new_weight - old_weight;
+               }
             }
 
             max_vote_weight = cv.weight;
