@@ -81,19 +81,6 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          com_itr++;
       }
 
-      flat_map< std::tuple< comment_id_type, account_id_type >, uint64_t > comment_vote_weights;
-      const auto& vote_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
-      auto vote_itr = vote_idx.begin();
-
-      BOOST_TEST_MESSAGE( "Saving comment vote weights" );
-
-      while( vote_itr != vote_idx.end() )
-      {
-         comment_vote_weights[ std::make_tuple( vote_itr->comment, vote_itr->voter ) ] = vote_itr->weight;
-         total_vote_weights[ vote_itr->comment ] += vote_itr->weight * magnitude;
-         vote_itr++;
-      }
-
       BOOST_TEST_MESSAGE( "Saving category rshares" );
 
       const auto& cat_idx = db.get_index_type< category_index >().indices();
@@ -126,13 +113,6 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
          BOOST_REQUIRE( acnt_itr->vesting_shares.amount == account_vests[ acnt_itr->name ] * magnitude );
          BOOST_REQUIRE( acnt_itr->proxied_vsf_votes_total().value == account_vsf_votes[ acnt_itr->name ] * magnitude );
          acnt_itr++;
-      }
-
-      vote_itr = vote_idx.begin();
-      while( vote_itr != vote_idx.end() )
-      {
-         BOOST_REQUIRE( vote_itr->weight == comment_vote_weights[ std::make_tuple( vote_itr->comment, vote_itr->voter ) ] * magnitude );
-         vote_itr++;
       }
 
       gpo = db.get_dynamic_global_properties();

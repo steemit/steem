@@ -72,8 +72,8 @@ using std::vector;
 
 namespace bpo = boost::program_options;
 
-api_context::api_context( application& _app, const std::string& _api_name, std::weak_ptr< api_connection_context > _connection )
-   : app(_app), api_name(_api_name), connection(_connection) {}
+api_context::api_context( application& _app, const std::string& _api_name, std::weak_ptr< api_session_data > _session )
+   : app(_app), api_name(_api_name), session(_session) {}
 
 namespace detail {
 
@@ -191,22 +191,22 @@ namespace detail {
 
       void on_connection( const fc::http::websocket_connection_ptr& c )
       {
-         auto wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
-         std::shared_ptr< api_connection_context > conn_ctx = std::make_shared< api_connection_context >();
+         std::shared_ptr< api_session_data > session = std::make_shared<api_session_data>();
+         session->wsc = std::make_shared<fc::rpc::websocket_api_connection>(*c);
 
          for( const std::string& name : _public_apis )
          {
-            api_context ctx( *_self, name, conn_ctx );
+            api_context ctx( *_self, name, session );
             fc::api_ptr api = create_api_by_name( ctx );
             if( !api )
             {
                elog( "Couldn't create API ${name}", ("name", name) );
                continue;
             }
-            conn_ctx->api_map[name] = api;
-            api->register_api( *wsc );
+            session->api_map[name] = api;
+            api->register_api( *session->wsc );
          }
-         c->set_session_data( wsc );
+         c->set_session_data( session );
       }
 
       application_impl(application* self)
@@ -328,8 +328,6 @@ namespace detail {
             wild_access.password_salt_b64 = "*";
             wild_access.allowed_apis.push_back( "database_api" );
             wild_access.allowed_apis.push_back( "network_broadcast_api" );
-            wild_access.allowed_apis.push_back( "history_api" );
-            wild_access.allowed_apis.push_back( "crypto_api" );
             wild_access.allowed_apis.push_back( "tag_api" );
             _apiaccess.permission_map["*"] = wild_access;
          }
@@ -697,6 +695,9 @@ namespace detail {
             if (high_block_num == 0)
               return synopsis; // we have no blocks
           }
+          
+          if( low_block_num == 0)
+             low_block_num = 1;
 
           // at this point:
           // low_block_num is the block before the first block we can undo,

@@ -31,6 +31,7 @@ programs/util/inflation_model
 tests/app_test
 tests/chain_bench
 tests/chain_test
+tests/plugin_test
 tests/intense_test
 tests/performance_test
 

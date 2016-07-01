@@ -32,7 +32,11 @@ struct hardfork_version : version
 {
    hardfork_version():version() {}
    hardfork_version( uint8_t m, uint8_t h ):version( m, h, 0 ) {}
+   hardfork_version( version v ) { v_num = v.v_num & 0xFFFF0000; }
    ~hardfork_version() {}
+
+   void operator =  ( const version& o ) { v_num = o.v_num & 0xFFFF0000; }
+   void operator =  ( const hardfork_version& o ) { v_num = o.v_num & 0xFFFF0000; }
 
    bool operator == ( const hardfork_version& o )const { return v_num == o.v_num; }
    bool operator != ( const hardfork_version& o )const { return v_num != o.v_num; }

@@ -1,26 +1,3 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
@@ -766,6 +743,26 @@ public:
          }
          return ss.str();
       };
+      m["get_open_orders"] = []( variant result, const fc::variants& a ) {
+          auto orders = result.as<vector<extended_limit_order>>();
+
+          std::stringstream ss;
+
+          ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
+          ss << ' ' << setw( 10 ) << "Order #";
+          ss << ' ' << setw( 10 ) << "Price";
+          ss << ' ' << setw( 10 ) << "Quantity";
+          ss << ' ' << setw( 10 ) << "Type";
+          ss << "\n=====================================================================================================\n";
+          for( const auto& o : orders ) {
+             ss << ' ' << setw( 10 ) << o.orderid;
+             ss << ' ' << setw( 10 ) << o.real_price;
+             ss << ' ' << setw( 10 ) << fc::variant( asset( o.for_sale, o.sell_price.base.symbol ) ).as_string();
+             ss << ' ' << setw( 10 ) << (o.sell_price.base.symbol == STEEM_SYMBOL ? "SELL" : "BUY");
+             ss << "\n";
+          }
+          return ss.str();
+      };
       m["get_order_book"] = []( variant result, const fc::variants& a ) {
          auto orders = result.as< order_book >();
          std::stringstream ss;
@@ -776,9 +773,13 @@ public:
          ss << setiosflags( ios::fixed ) << setiosflags( ios::left ) ;
 
          ss << ' ' << setw( ( spacing * 4 ) + 6 ) << "Bids" << "Asks\n"
-            << ' ' << setw( spacing + 1 ) << "Price" << setw( spacing + 1 ) << "STEEM"
-            << setw( spacing + 1) << "SBD" << setw( spacing + 3 ) << "Sum(SBD)"
-            << setw( spacing + 1 ) << "Price" << setw( spacing + 1 ) << "STEEM "
+            << ' '
+            << setw( spacing + 3 ) << "Sum(SBD)"
+            << setw( spacing + 1) << "SBD"
+            << setw( spacing + 1 ) << "STEEM"
+            << setw( spacing + 1 ) << "Price"
+            << setw( spacing + 1 ) << "Price"
+            << setw( spacing + 1 ) << "STEEM "
             << setw( spacing + 1 ) << "SBD " << "Sum(SBD)"
             << "\n====================================================================================================="
             << "|=====================================================================================================\n";
@@ -788,10 +789,11 @@ public:
             if ( i < orders.bids.size() )
             {
                bid_sum += asset( orders.bids[i].sbd, SBD_SYMBOL );
-               ss << ' ' << setw( spacing ) << orders.bids[i].order_price.to_real()
-                  << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
+               ss
+                  << ' ' << setw( spacing ) << bid_sum.to_string()
                   << ' ' << setw( spacing ) << asset( orders.bids[i].sbd, SBD_SYMBOL ).to_string()
-                  << ' ' << setw( spacing ) << bid_sum.to_string();
+                  << ' ' << setw( spacing ) << asset( orders.bids[i].steem, STEEM_SYMBOL ).to_string()
+                  << ' ' << setw( spacing ) << orders.bids[i].real_price; //(~orders.bids[i].order_price).to_real();
             }
             else
             {
@@ -803,7 +805,8 @@ public:
             if ( i < orders.asks.size() )
             {
                ask_sum += asset( orders.asks[i].sbd, SBD_SYMBOL );
-               ss << ' ' << setw( spacing ) << orders.asks[i].order_price.to_real()
+               //ss << ' ' << setw( spacing ) << (~orders.asks[i].order_price).to_real()
+               ss << ' ' << setw( spacing ) << orders.asks[i].real_price
                   << ' ' << setw( spacing ) << asset( orders.asks[i].steem, STEEM_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << asset( orders.asks[i].sbd, SBD_SYMBOL ).to_string()
                   << ' ' << setw( spacing ) << ask_sum.to_string();
@@ -841,15 +844,18 @@ public:
    {
       if( _remote_message_api.valid() )
          return;
-      try
-      {
-         _remote_message_api = _remote_api->get_api_by_name("private_message_api")->as< private_message_api >();
-      }
-      catch( const fc::exception& e )
-      {
-        elog( "Couldn't get network node API" );
-        throw(e);
-      }
+
+      try { _remote_message_api = _remote_api->get_api_by_name("private_message_api")->as< private_message_api >(); }
+      catch( const fc::exception& e ) { elog( "Couldn't get private message API" ); throw(e); }
+   }
+
+   void use_follow_api()
+   {
+      if( _remote_follow_api.valid() )
+         return;
+
+      try { _remote_follow_api = _remote_api->get_api_by_name("follow_api")->as< follow::follow_api >(); }
+      catch( const fc::exception& e ) { elog( "Couldn't get follow API" ); throw(e); }
    }
 
    void network_add_nodes( const vector<string>& nodes )
@@ -894,6 +900,7 @@ public:
    fc::api<network_broadcast_api>          _remote_net_broadcast;
    optional< fc::api<network_node_api> >   _remote_net_node;
    optional< fc::api<private_message_api> > _remote_message_api;
+   optional< fc::api<follow::follow_api> >  _remote_follow_api;
 
    flat_map<string, operation>             _prototype_ops;
 
@@ -1619,6 +1626,22 @@ annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset ves
    return my->sign_transaction( tx, broadcast );
 }
 
+annotated_signed_transaction wallet_api::set_withdraw_vesting_route( string from, string to, uint16_t percent, bool auto_vest, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+    set_withdraw_vesting_route_operation op;
+    op.from_account = from;
+    op.to_account = to;
+    op.percent = percent;
+    op.auto_vest = auto_vest;
+
+    signed_transaction tx;
+    tx.operations.push_back( op );
+    tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
 annotated_signed_transaction wallet_api::convert_sbd(string from, asset amount, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
@@ -1700,6 +1723,10 @@ order_book wallet_api::get_order_book( uint32_t limit )
    FC_ASSERT( limit <= 1000 );
    return my->_remote_db->get_order_book( limit );
 }
+vector<extended_limit_order> wallet_api::get_open_orders( string owner )
+{
+   return my->_remote_db->get_open_orders( owner );
+}
 
 annotated_signed_transaction wallet_api::create_order(  string owner, uint32_t order_id, asset amount_to_sell, asset min_to_receive, bool fill_or_kill, uint32_t expiration_sec, bool broadcast )
 {
@@ -1770,6 +1797,34 @@ annotated_signed_transaction wallet_api::vote( string voter, string author, stri
 }
 annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
    return my->_remote_db->get_transaction( id );
+}
+
+annotated_signed_transaction wallet_api::follow( string follower, string following, set<string> what, bool broadcast ) {
+   auto follwer_account     = get_account( follower );
+   FC_ASSERT( following.size() );
+   if( following[0] != '@' || following[0] != '#' ) {
+      following = '@' + following;
+   }
+   if( following[0] == '@' ) {
+      get_account( following.substr(1) );
+   }
+   FC_ASSERT( following.size() > 1 );
+
+   follow::follow_operation fop;
+   fop.follower = follower;
+   fop.following = following;
+   fop.what = what;
+
+   custom_json_operation jop;
+   jop.id = "follow";
+   jop.json = fc::json::to_string(fop);
+   jop.required_posting_auths.insert(follower);
+
+   signed_transaction trx;
+   trx.operations.push_back( jop );
+   trx.validate();
+
+   return my->sign_transaction( trx, broadcast );
 }
 
 annotated_signed_transaction      wallet_api::send_private_message( string from, string to, string subject, string body, bool broadcast ) {

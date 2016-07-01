@@ -191,6 +191,7 @@ FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
                     (sbd_exchange_rate)(last_sbd_exchange_update)
                     (last_work)
                     (running_version)
+                    (hardfork_version_vote)(hardfork_time_vote)
                   )
 FC_REFLECT_DERIVED( steemit::chain::witness_vote_object, (graphene::db::object), (witness)(account) )
 
