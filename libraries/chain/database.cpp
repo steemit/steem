@@ -3321,7 +3321,7 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 7" );
 #endif
-         retally_witness_vote_counts();
+         retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_8:
 #ifndef IS_TEST_NET
@@ -3573,7 +3573,7 @@ void database::retally_witness_votes()
    }
 }
 
-void database::retally_witness_vote_counts()
+void database::retally_witness_vote_counts( bool force )
 {
    const auto& account_idx = get_index_type< account_index >().indices();
 
@@ -3582,8 +3582,7 @@ void database::retally_witness_vote_counts()
    {
       const auto& a = *itr;
       uint16_t witnesses_voted_for = 0;
-      if( has_hardfork( STEEMIT_HARDFORK_0_7 ) || 
-          (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT && has_hardfork( STEEMIT_HARDFORK_0_6 ) ) ) 
+      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT && has_hardfork( STEEMIT_HARDFORK_0_6 ) ) ) 
       {
         const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
         auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
