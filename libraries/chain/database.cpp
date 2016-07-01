@@ -3321,12 +3321,12 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 7" );
 #endif
-         retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_8:
 #ifndef IS_TEST_NET
          elog( "HARDFORK 8" );
 #endif
+         retally_witness_vote_counts(true);
          break;
       default:
          break;
