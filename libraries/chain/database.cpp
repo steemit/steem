@@ -3582,7 +3582,7 @@ void database::retally_witness_vote_counts( bool force )
    {
       const auto& a = *itr;
       uint16_t witnesses_voted_for = 0;
-      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT && has_hardfork( STEEMIT_HARDFORK_0_6 ) ) ) 
+      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT  ) ) 
       {
         const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
         auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
