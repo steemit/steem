@@ -27,18 +27,20 @@ market_ticker market_history_api_impl::get_ticker() const
 {
    market_ticker result;
 
-   auto trades = get_trade_history( time_point_sec::maximum(), time_point_sec::min(), 1 );
-   if( trades.size() )
-      result.latest = ( asset( trades[0].steem, STEEM_SYMBOL ) / asset( trades[0].sbd, SBD_SYMBOL ) ).to_real();
-
    auto db = app.chain_database();
    const auto& bucket_idx = db->get_index_type< bucket_index >().indices().get< by_bucket >();
-   auto itr = bucket_idx.lower_bound( boost::make_tuple( 0, db->head_block_time() - 86400 ) );
+   auto itr = bucket_idx.lower_bound( boost::make_tuple( 86400, db->head_block_time() - 86400 ) );
 
-   if( itr != bucket_idx.end() && trades.size() )
+   if( itr != bucket_idx.end() )
    {
-      auto open = ( asset( itr->open_steem, STEEM_SYMBOL ) / asset( itr->open_sbd, SBD_SYMBOL ) ).to_real();
+      auto open = ( asset( itr->open_sbd, SBD_SYMBOL ) / asset( itr->open_steem, STEEM_SYMBOL ) ).to_real();
+      result.latest = ( asset( itr->close_sbd, SBD_SYMBOL ) / asset( itr->close_steem, STEEM_SYMBOL ) ).to_real();
       result.percent_change = ( result.latest - open ) / open;
+   }
+   else
+   {
+      result.latest = 0;
+      result.percent_change = 0;
    }
 
    auto orders = get_order_book( 1 );
