@@ -1331,6 +1331,17 @@ state database_api::get_state( string path )const
          _state.content[key] = std::move(d);
       }
    }
+   else if( part[0] == "cashout"  ) {
+      auto trending_disc = get_discussions_by_cashout( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.cashout.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
    else if( part[0] == "active"  ) {
       auto trending_disc = get_discussions_by_active( {tag,20} );
 
