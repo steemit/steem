@@ -110,6 +110,7 @@ def validate_members(name2members_ref, name2members_test):
             print("error in", name)
             print("doxygen:", name2members_ref[name])
             print("fc     :", name2members_test[name])
+            print("diff   :", set(name2members_ref[name]).symmetric_difference(set(name2members_test[name])) )
         else:
             ok_items.append(name)
 
