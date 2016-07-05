@@ -81,35 +81,33 @@ market_volume market_history_api_impl::get_volume() const
 
 order_book market_history_api_impl::get_order_book( uint32_t limit ) const
 {
-   FC_ASSERT( limit <= 50 );
+   FC_ASSERT( limit <= 500 );
 
    const auto& order_idx = app.chain_database()->get_index_type< steemit::chain::limit_order_index >().indices().get< steemit::chain::by_price >();
-   auto itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
-   auto end = order_idx.lower_bound( std::make_tuple( price( asset( 0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
+   auto itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
 
    order_book result;
 
-   while( itr != end && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
+   while( itr != order_idx.end() && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
    {
       order cur;
       cur.price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * itr->sell_price ).amount;
       cur.sbd = itr->for_sale;
       result.bids.push_back( cur );
-      --itr;
+      ++itr;
    }
 
-   itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
-   end = order_idx.lower_bound( std::make_tuple( price( asset( 0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
+   itr = order_idx.lower_bound( price::max( STEEM_SYMBOL, SBD_SYMBOL ) );
 
-   while( itr != end && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
+   while( itr != order_idx.end() && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
    {
       order cur;
       cur.price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
       cur.steem = itr->for_sale;
       cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * itr->sell_price ).amount;
       result.asks.push_back( cur );
-      --itr;
+      ++itr;
    }
 
    return result;
