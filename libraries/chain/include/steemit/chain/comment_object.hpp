@@ -336,12 +336,11 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (depth)(children)(children_rshares2)
                     (net_rshares)(abs_rshares)(vote_rshares)
                     (children_abs_rshares)(cashout_time)(max_cashout_time)
-                    (total_vote_weight)(total_payout_value)(net_votes)(root_comment)
                     (total_vote_weight)(total_payout_value)(author_rewards)(net_votes)(root_comment)
                     (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
-                    (voter)(comment)(weight)(rshares)(vote_percent)(last_update) )
+                    (voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes) )
 
 FC_REFLECT_DERIVED( steemit::chain::category_object, (graphene::db::object), (name)(abs_rshares)(total_payouts)(discussions)(last_update) );
 

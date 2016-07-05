@@ -12,7 +12,7 @@ namespace steemit { namespace app {
    {
       extended_limit_order(){}
       extended_limit_order( const limit_order_object& o ):limit_order_object(o){}
-         
+
       double real_price  = 0;
       bool   rewarded    = false;
    };
@@ -170,7 +170,7 @@ FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(create
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
 
-FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error) )
+FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data) )
 
 FC_REFLECT_DERIVED( steemit::app::extended_limit_order, (steemit::chain::limit_order_object), (real_price)(rewarded) )
 FC_REFLECT( steemit::app::order_history_item, (time)(type)(sbd_quantity)(steem_quantity)(real_price) );
