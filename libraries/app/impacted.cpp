@@ -145,7 +145,8 @@ struct get_impacted_account_visitor
 
    void operator()( const fill_order_operation& op )
    {
-      _impacted.insert( op.owner );
+      _impacted.insert( op.current_owner );
+      _impacted.insert( op.open_owner );
    }
 
    void operator()( const limit_order_cancel_operation& op )

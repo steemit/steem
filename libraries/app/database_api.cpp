@@ -559,7 +559,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       auto itr = sell_itr;
       order cur;
       cur.order_price = itr->sell_price;
-      cur.real_price  = (~cur.order_price).to_real();
+      cur.real_price  = (cur.order_price).to_real();
       cur.sbd = itr->for_sale;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
@@ -900,7 +900,7 @@ template<typename Index, typename StartItr>
 vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
-                                                  const Index& tidx, StartItr tidx_itr, 
+                                                  const Index& tidx, StartItr tidx_itr,
                                                   const std::function<bool(const comment_object&)>& filter  )const
 {
    idump((query));
@@ -930,12 +930,12 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
 
       if( filter( result.back() ) )
          result.pop_back();
-
+      else
+         --count;
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
       }
-
-      ++tidx_itr; --count;
+      ++tidx_itr; 
    }
    return result;
 }
@@ -956,7 +956,7 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_children_rshares2>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
 }
 
 
@@ -965,7 +965,6 @@ vector<discussion> database_api::get_discussions_by_created( const discussion_qu
    query.validate();
    auto tag = fc::to_lower( query.tag );
    auto parent = get_parent( query );
-   idump((parent));
 
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_created>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::time_point_sec::maximum() )  );
@@ -985,8 +984,16 @@ vector<discussion> database_api::get_discussions_by_active( const discussion_que
 }
 
 vector<discussion> database_api::get_discussions_by_cashout( const discussion_query& query )const {
+   query.validate();
    vector<discussion> result;
-   return result;
+
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_cashout>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, fc::time_point::now() - fc::minutes(60) ) );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
 }
 vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const {
    vector<discussion> result;
@@ -1174,7 +1181,6 @@ state database_api::get_state( string path )const
    vector<string> part; part.reserve(4);
    boost::split( part, path, boost::is_any_of("/") );
    part.resize(std::max( part.size(), size_t(4) ) ); // at least 4
-   idump((part));
 
    auto tag = fc::to_lower( part[1] );
    idump((part[1])(part[1]==string()));
@@ -1270,7 +1276,6 @@ state database_api::get_state( string path )const
       auto slug     = part[2];
 
       auto key = account +"/" + slug;
-      idump((key));
       auto dis = get_content( account, slug );
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
@@ -1306,7 +1311,6 @@ state database_api::get_state( string path )const
    }
    else if( !part[0].size() || part[0] == "hot" ) {
       auto trending_disc = get_discussions_by_hot( {tag,20} );
-      idump((part[1])(part[1]==string()));
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {

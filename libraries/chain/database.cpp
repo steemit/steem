@@ -341,6 +341,16 @@ const account_object& database::get_account( const string& name )const
    return *itr;
 }
 
+const limit_order_object* database::find_limit_order( const string& name, uint32_t orderid )const
+{
+   if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
+      orderid = orderid & 0x0000FFFF;
+   const auto& orders_by_account = get_index_type<limit_order_index>().indices().get<by_account>();
+   auto itr = orders_by_account.find(boost::make_tuple(name,orderid));
+   if( itr == orders_by_account.end() ) return nullptr;
+   return &*itr;
+}
+
 const limit_order_object& database::get_limit_order( const string& name, uint32_t orderid )const
 {
    if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
@@ -1761,53 +1771,59 @@ void database::cashout_comment_helper( const comment_object& comment )
       {
          uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
 
-         share_type discussion_tokens = 0;
-         share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-         if( comment.parent_author.size() == 0 )
-            discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-
-         share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
-
-         author_tokens += pay_curators( comment, curation_tokens );
-
-         if( discussion_tokens > 0 )
-            author_tokens += pay_discussions( comment, discussion_tokens );
-
-         auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
-         auto vesting_steem = author_tokens - sbd_steem;
-
-         const auto& author = get_account( comment.author );
-         auto vest_created = create_vesting( author, vesting_steem );
-         auto sbd_created = create_sbd( author, sbd_steem );
-         adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
-
-         push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
-
-         // stats only.. TODO: Move to plugin...
-         auto total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
-
-         #ifndef IS_LOW_MEM
-         modify( comment, [&]( comment_object& c )
+         asset total_payout;
+         if( reward_tokens > 0 )
          {
-            c.author_rewards += author_tokens;
-         });
+            share_type discussion_tokens = 0;
+            share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
+            if( comment.parent_author.size() == 0 )
+               discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
 
-         modify( get_account( comment.author ), [&]( account_object& a )
-         {
-            a.posting_rewards += author_tokens;
-         });
-         #endif
+            share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
 
-         modify( cat, [&]( category_object& c )
-         {
-            c.total_payouts += total_payout;
-         } );
+            author_tokens += pay_curators( comment, curation_tokens );
 
-         push_applied_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
+            if( discussion_tokens > 0 )
+               author_tokens += pay_discussions( comment, discussion_tokens );
+
+            auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
+            auto vesting_steem = author_tokens - sbd_steem;
+
+            const auto& author = get_account( comment.author );
+            auto vest_created = create_vesting( author, vesting_steem );
+            auto sbd_created = create_sbd( author, sbd_steem );
+            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
+
+            push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
+
+            // stats only.. TODO: Move to plugin...
+            total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
+
+            #ifndef IS_LOW_MEM
+            modify( comment, [&]( comment_object& c )
+            {
+               c.author_rewards += author_tokens;
+            });
+
+            modify( get_account( comment.author ), [&]( account_object& a )
+            {
+               a.posting_rewards += author_tokens;
+            });
+            #endif
+
+            modify( cat, [&]( category_object& c )
+            {
+               c.total_payouts += total_payout;
+            } );
+
+         }
 
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
-
          adjust_rshares2( comment, old_rshares2, 0 );
+
+          
+         if( reward_tokens > 0 )
+            notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
       }
 
       modify( cat, [&]( category_object& c )
@@ -2934,7 +2950,7 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
    }
 
    old_order_pays = new_order_receives;
-   new_order_pays  = old_order_receives;
+   new_order_pays = old_order_receives;
 
    assert( new_order_pays == new_order.amount_for_sale() ||
            old_order_pays == old_order.amount_for_sale() );
@@ -2953,6 +2969,8 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
          adjust_liquidity_reward( get_account( new_order.seller ), -new_order_receives, true );
       }
    }
+
+   push_applied_operation( fill_order_operation( new_order.seller, new_order.orderid, new_order_pays, old_order.seller, old_order.orderid, old_order_pays ) );
 
    int result = 0;
    result |= fill_order( new_order, new_order_pays, new_order_receives );
@@ -3008,8 +3026,6 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
       const account_object& seller = get_account( order.seller );
 
       adjust_balance( seller, receives );
-
-      push_applied_operation( fill_order_operation( order.seller, order.orderid, pays, receives ) );
 
       if( pays == order.amount_for_sale() )
       {
@@ -3583,7 +3599,7 @@ void database::retally_witness_vote_counts( bool force )
    {
       const auto& a = *itr;
       uint16_t witnesses_voted_for = 0;
-      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT  ) ) 
+      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT  ) )
       {
         const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
         auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );

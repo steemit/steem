@@ -179,7 +179,7 @@ typedef multi_index_container<
                member< tag_object, time_point_sec, &tag_object::cashout >,
                member<object, object_id_type, &object::id >
             >,
-            composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
+            composite_key_compare< std::less<string>, std::less< time_point_sec >, std::less< object_id_type > >
       >,
       ordered_unique< tag< by_net_rshares >,
             composite_key< tag_object,

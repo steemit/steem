@@ -276,14 +276,14 @@ struct operation_visitor {
          const auto* obj = _db.find_object( itr->comment );
          ++itr;
          if( !obj ) {
-            idump((tobj));
             _db.remove( tobj );
          }
       }
    }
 
    void operator()( const comment_payout_operation& op )const {
-       update_tags( _db.get_comment( op.author, op.permlink ) );
+       const auto& c = _db.get_comment( op.author, op.permlink );
+       update_tags( c );
    }
 
    template<typename Op>
