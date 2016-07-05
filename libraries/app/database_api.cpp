@@ -559,7 +559,7 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       auto itr = sell_itr;
       order cur;
       cur.order_price = itr->sell_price;
-      cur.real_price  = (~cur.order_price).to_real();
+      cur.real_price  = (cur.order_price).to_real();
       cur.sbd = itr->for_sale;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
@@ -900,7 +900,7 @@ template<typename Index, typename StartItr>
 vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
-                                                  const Index& tidx, StartItr tidx_itr, 
+                                                  const Index& tidx, StartItr tidx_itr,
                                                   const std::function<bool(const comment_object&)>& filter  )const
 {
    idump((query));

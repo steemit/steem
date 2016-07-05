@@ -422,13 +422,15 @@ namespace steemit { namespace chain {
 
    struct fill_order_operation : public base_operation {
       fill_order_operation(){}
-      fill_order_operation( const string& o, uint32_t id, const asset& p, const asset& r )
-      :owner(o),orderid(id),pays(p),receives(r){}
+      fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
+      :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
 
-      string   owner;
-      uint32_t orderid;
-      asset    pays;
-      asset    receives;
+      string   current_owner;
+      uint32_t current_orderid;
+      asset    current_pays;
+      string   open_owner;
+      uint32_t open_orderid;
+      asset    open_pays;
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
@@ -529,7 +531,7 @@ FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
-FC_REFLECT( steemit::chain::fill_order_operation, (owner)(orderid)(pays)(receives) );
+FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
 FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
