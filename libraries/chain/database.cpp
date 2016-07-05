@@ -1770,6 +1770,7 @@ void database::cashout_comment_helper( const comment_object& comment )
       {
          uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
 
+         asset total_payout;
          if( reward_tokens > 0 )
          {
             share_type discussion_tokens = 0;
@@ -1795,7 +1796,7 @@ void database::cashout_comment_helper( const comment_object& comment )
             push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
 
             // stats only.. TODO: Move to plugin...
-            auto total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
+            total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
 
             #ifndef IS_LOW_MEM
             modify( comment, [&]( comment_object& c )
