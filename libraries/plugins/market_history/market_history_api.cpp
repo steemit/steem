@@ -17,6 +17,7 @@ class market_history_api_impl
       market_volume get_volume() const;
       order_book get_order_book( uint32_t limit ) const;
       vector< market_trade > get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit ) const;
+      vector< market_trade > get_recent_trades( uint32_t limit ) const;
       vector< bucket_object > get_market_history( uint32_t bucket_seconds, time_point_sec start, time_point_sec end ) const;
       flat_set< uint32_t > get_market_history_buckets() const;
 
@@ -115,7 +116,7 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
 
 std::vector< market_trade > market_history_api_impl::get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit ) const
 {
-   FC_ASSERT( limit <= 100 );
+   FC_ASSERT( limit <= 1000 );
    const auto& bucket_idx = app.chain_database()->get_index_type< order_history_index >().indices().get< by_time >();
    auto itr = bucket_idx.lower_bound( start );
 
@@ -123,16 +124,32 @@ std::vector< market_trade > market_history_api_impl::get_trade_history( time_poi
 
    while( itr != bucket_idx.end() && itr->time <= end && result.size() < limit )
    {
-      // Only return one side of the trade
-      if( itr->op.pays.symbol == STEEM_SYMBOL )
-      {
-         market_trade trade;
-         trade.date = itr->time;
-         trade.steem = itr->op.pays.amount;
-         trade.sbd = itr->op.receives.amount;
-         result.push_back( trade );
-      }
+      market_trade trade;
+      trade.date = itr->time;
+      trade.current_pays = itr->op.current_pays;
+      trade.open_pays = itr->op.open_pays;
+      result.push_back( trade );
+      ++itr;
+   }
 
+   return result;
+}
+
+vector< market_trade > market_history_api_impl::get_recent_trades( uint32_t limit = 1000 ) const
+{
+   FC_ASSERT( limit <= 1000 );
+   const auto& order_idx = app.chain_database()->get_index_type< order_history_index >().indices().get< by_time >();
+   auto itr = order_idx.rbegin();
+
+   vector< market_trade > result;
+
+   while( itr != order_idx.rend() && result.size() < limit )
+   {
+      market_trade trade;
+      trade.date = itr->time;
+      trade.current_pays = itr->op.current_pays;
+      trade.open_pays = itr->op.open_pays;
+      result.push_back( trade );
       ++itr;
    }
 
@@ -189,6 +206,11 @@ order_book market_history_api::get_order_book( uint32_t limit ) const
 std::vector< market_trade > market_history_api::get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit ) const
 {
    return my->get_trade_history( start, end, limit );
+}
+
+std::vector< market_trade > market_history_api::get_recent_trades( uint32_t limit ) const
+{
+   return my->get_recent_trades( limit );
 }
 
 std::vector< bucket_object > market_history_api::get_market_history( uint32_t bucket_seconds, time_point_sec start, time_point_sec end ) const

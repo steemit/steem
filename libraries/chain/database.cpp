@@ -2936,7 +2936,7 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
    }
 
    old_order_pays = new_order_receives;
-   new_order_pays  = old_order_receives;
+   new_order_pays = old_order_receives;
 
    assert( new_order_pays == new_order.amount_for_sale() ||
            old_order_pays == old_order.amount_for_sale() );
@@ -2955,6 +2955,8 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
          adjust_liquidity_reward( get_account( new_order.seller ), -new_order_receives, true );
       }
    }
+
+   push_applied_operation( fill_order_operation( new_order.seller, new_order.orderid, new_order_pays, old_order.seller, old_order.orderid, old_order_pays ) );
 
    int result = 0;
    result |= fill_order( new_order, new_order_pays, new_order_receives );
@@ -3010,8 +3012,6 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
       const account_object& seller = get_account( order.seller );
 
       adjust_balance( seller, receives );
-
-      push_applied_operation( fill_order_operation( order.seller, order.orderid, pays, receives ) );
 
       if( pays == order.amount_for_sale() )
       {
@@ -3585,7 +3585,7 @@ void database::retally_witness_vote_counts( bool force )
    {
       const auto& a = *itr;
       uint16_t witnesses_voted_for = 0;
-      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT  ) ) 
+      if( force || (a.proxy != STEEMIT_PROXY_TO_SELF_ACCOUNT  ) )
       {
         const auto& vidx = get_index_type<witness_vote_index>().indices().get<by_account_witness>();
         auto wit_itr = vidx.lower_bound( boost::make_tuple( a.get_id(), witness_id_type() ) );
