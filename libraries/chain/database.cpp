@@ -1760,49 +1760,52 @@ void database::cashout_comment_helper( const comment_object& comment )
       {
          uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
 
-         share_type discussion_tokens = 0;
-         share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-         if( comment.parent_author.size() == 0 )
-            discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-
-         share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
-
-         author_tokens += pay_curators( comment, curation_tokens );
-
-         if( discussion_tokens > 0 )
-            author_tokens += pay_discussions( comment, discussion_tokens );
-
-         auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
-         auto vesting_steem = author_tokens - sbd_steem;
-
-         const auto& author = get_account( comment.author );
-         auto vest_created = create_vesting( author, vesting_steem );
-         auto sbd_created = create_sbd( author, sbd_steem );
-         adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
-
-         push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
-
-         // stats only.. TODO: Move to plugin...
-         auto total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
-
-         #ifndef IS_LOW_MEM
-         modify( comment, [&]( comment_object& c )
+         if( reward_tokens > 0 )
          {
-            c.author_rewards += author_tokens;
-         });
+            share_type discussion_tokens = 0;
+            share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
+            if( comment.parent_author.size() == 0 )
+               discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
 
-         modify( get_account( comment.author ), [&]( account_object& a )
-         {
-            a.posting_rewards += author_tokens;
-         });
-         #endif
+            share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
 
-         modify( cat, [&]( category_object& c )
-         {
-            c.total_payouts += total_payout;
-         } );
+            author_tokens += pay_curators( comment, curation_tokens );
 
-         push_applied_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
+            if( discussion_tokens > 0 )
+               author_tokens += pay_discussions( comment, discussion_tokens );
+
+            auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
+            auto vesting_steem = author_tokens - sbd_steem;
+
+            const auto& author = get_account( comment.author );
+            auto vest_created = create_vesting( author, vesting_steem );
+            auto sbd_created = create_sbd( author, sbd_steem );
+            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
+
+            push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
+
+            // stats only.. TODO: Move to plugin...
+            auto total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
+
+            #ifndef IS_LOW_MEM
+            modify( comment, [&]( comment_object& c )
+            {
+               c.author_rewards += author_tokens;
+            });
+
+            modify( get_account( comment.author ), [&]( account_object& a )
+            {
+               a.posting_rewards += author_tokens;
+            });
+            #endif
+
+            modify( cat, [&]( category_object& c )
+            {
+               c.total_payouts += total_payout;
+            } );
+
+            push_applied_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
+         }
 
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
 
