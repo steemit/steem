@@ -25,6 +25,7 @@ namespace steemit { namespace app {
       vector<string> updated; /// creation date
       vector<string> active; /// last update or reply
       vector<string> votes; /// last update or reply
+      vector<string> cashout; /// last update or reply
       vector<string> maturing; /// about to be paid out
       vector<string> best; /// total lifetime payout
       vector<string> hot; /// total lifetime payout
@@ -166,7 +167,7 @@ FC_REFLECT_DERIVED( steemit::app::extended_account,
 FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(time) );
 FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(time) );
 
-FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot) )
+FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(cashout) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
 
