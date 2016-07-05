@@ -341,6 +341,16 @@ const account_object& database::get_account( const string& name )const
    return *itr;
 }
 
+const limit_order_object* database::find_limit_order( const string& name, uint32_t orderid )const
+{
+   if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
+      orderid = orderid & 0x0000FFFF;
+   const auto& orders_by_account = get_index_type<limit_order_index>().indices().get<by_account>();
+   auto itr = orders_by_account.find(boost::make_tuple(name,orderid));
+   if( itr == orders_by_account.end() ) return nullptr;
+   return &*itr;
+}
+
 const limit_order_object& database::get_limit_order( const string& name, uint32_t orderid )const
 {
    if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
@@ -1802,11 +1812,12 @@ void database::cashout_comment_helper( const comment_object& comment )
             c.total_payouts += total_payout;
          } );
 
-         push_applied_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
 
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
-
          adjust_rshares2( comment, old_rshares2, 0 );
+
+          
+         notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
       }
 
       modify( cat, [&]( category_object& c )
