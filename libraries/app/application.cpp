@@ -328,8 +328,6 @@ namespace detail {
             wild_access.password_salt_b64 = "*";
             wild_access.allowed_apis.push_back( "database_api" );
             wild_access.allowed_apis.push_back( "network_broadcast_api" );
-            wild_access.allowed_apis.push_back( "history_api" );
-            wild_access.allowed_apis.push_back( "crypto_api" );
             wild_access.allowed_apis.push_back( "tag_api" );
             _apiaccess.permission_map["*"] = wild_access;
          }
@@ -697,6 +695,9 @@ namespace detail {
             if (high_block_num == 0)
               return synopsis; // we have no blocks
           }
+          
+          if( low_block_num == 0)
+             low_block_num = 1;
 
           // at this point:
           // low_block_num is the block before the first block we can undo,

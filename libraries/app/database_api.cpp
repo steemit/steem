@@ -392,7 +392,7 @@ set<string> database_api::lookup_accounts(const string& lower_bound_name, uint32
 
 set<string> database_api_impl::lookup_accounts(const string& lower_bound_name, uint32_t limit)const
 {
-   FC_ASSERT( limit <= 1000 );
+   //FC_ASSERT( limit <= 1000 );
    const auto& accounts_by_name = _db.get_index_type<account_index>().indices().get<by_name>();
    set<string> result;
 
@@ -526,41 +526,59 @@ order_book database_api::get_order_book( uint32_t limit )const
 {
    return my->get_order_book( limit );
 }
+vector<extended_limit_order> database_api::get_open_orders( string owner )const {
+   vector<extended_limit_order> result;
+   const auto& idx = my->_db.get_index_type<limit_order_index>().indices().get<by_account>();
+   auto itr = idx.lower_bound( owner );
+   while( itr != idx.end() && itr->seller == owner ) {
+      result.push_back( *itr );
+      result.back().real_price = (~result.back().sell_price).to_real();
+      ++itr;
+   }
+   return result;
+}
 
 order_book database_api_impl::get_order_book( uint32_t limit )const
 {
    FC_ASSERT( limit <= 1000 );
    order_book result;
-   const auto& order_idx = _db.get_index_type< limit_order_index >().indices().get< by_price >();
-   auto end = order_idx.lower_bound( std::make_tuple( price( asset( 0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
-   auto itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) ) ) );
 
-   while( itr != end && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
+   auto max_sell = price::max( SBD_SYMBOL, STEEM_SYMBOL );
+   auto max_buy = price::max( STEEM_SYMBOL, SBD_SYMBOL );
+
+   const auto& limit_price_idx = _db.get_index_type<limit_order_index>().indices().get<by_price>();
+   auto sell_itr = limit_price_idx.lower_bound(max_sell);
+   auto buy_itr  = limit_price_idx.lower_bound(max_buy);
+   auto end = limit_price_idx.end();
+   idump((max_sell)(max_buy));
+   if( sell_itr != end ) idump((*sell_itr));
+   if( buy_itr != end ) idump((*buy_itr));
+
+   while(  sell_itr != end && sell_itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
    {
+      auto itr = sell_itr;
       order cur;
       cur.order_price = itr->sell_price;
+      cur.real_price  = (cur.order_price).to_real();
       cur.sbd = itr->for_sale;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.bids.push_back( cur );
-
-      itr--;
+      ++sell_itr;
    }
-
-   end = order_idx.lower_bound( std::make_tuple( price( asset( 0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
-   itr = order_idx.upper_bound( std::make_tuple( price( asset( ~0, STEEM_SYMBOL ), asset( 1, SBD_SYMBOL ) ) ) );
-
-   while( itr != end && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
+   while(  buy_itr != end && buy_itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < limit )
    {
+      auto itr = buy_itr;
       order cur;
       cur.order_price = itr->sell_price;
-      cur.steem = itr->for_sale;
-      cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
+      cur.real_price  = (~cur.order_price).to_real();
+      cur.steem   = itr->for_sale;
+      cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
       result.asks.push_back( cur );
-
-      itr--;
+      ++buy_itr;
    }
+
 
    return result;
 }
@@ -757,10 +775,14 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      int64_t abs_net_rshares = llabs(d.net_rshares.value);
+      auto vshares = my->_db.calculate_vshares( d.net_rshares.value > 0 ? d.net_rshares.value : 0  );
 
-      u256 r2 = to256(abs_net_rshares);
+      //int64_t abs_net_rshares = llabs(d.net_rshares.value);
+
+      u256 r2 = to256(vshares); //to256(abs_net_rshares);
+      /*
       r2 *= r2;
+      */
       r2 *= pot.amount.value;
       r2 /= total_r2;
 
@@ -770,10 +792,6 @@ void database_api::set_pending_payout( discussion& d )const
 
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
-
-      if( d.net_rshares.value < 0 ) {
-         d.pending_payout_value.amount.value *= -1;
-      }
    }
    set_url(d);
 }
@@ -882,7 +900,8 @@ template<typename Index, typename StartItr>
 vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
-                                                  const Index& tidx, StartItr tidx_itr )const
+                                                  const Index& tidx, StartItr tidx_itr,
+                                                  const std::function<bool(const comment_object&)>& filter  )const
 {
    idump((query));
    vector<discussion> result;
@@ -891,7 +910,6 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
    comment_id_type start;
 
    if( query.start_author && query.start_permlink ) {
-      edump(("start author")(query));
       start = my->_db.get_comment( *query.start_author, *query.start_permlink ).id;
       auto itr = cidx.find( start );
       while( itr != cidx.end() && itr->comment == start ) {
@@ -907,9 +925,17 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
    while( count > 0 && tidx_itr != tidx.end() ) {
       if( tidx_itr->tag != tag || tidx_itr->parent != parent )
          break;
+      try {
       result.push_back( get_discussion( tidx_itr->comment ) );
 
-      ++tidx_itr; --count;
+      if( filter( result.back() ) )
+         result.pop_back();
+      else
+         --count;
+      } catch ( const fc::exception& e ) {
+         edump((e.to_detail_string()));
+      }
+      ++tidx_itr; 
    }
    return result;
 }
@@ -930,7 +956,7 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_children_rshares2>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
 }
 
 
@@ -939,7 +965,6 @@ vector<discussion> database_api::get_discussions_by_created( const discussion_qu
    query.validate();
    auto tag = fc::to_lower( query.tag );
    auto parent = get_parent( query );
-   idump((parent));
 
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_created>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::time_point_sec::maximum() )  );
@@ -959,8 +984,16 @@ vector<discussion> database_api::get_discussions_by_active( const discussion_que
 }
 
 vector<discussion> database_api::get_discussions_by_cashout( const discussion_query& query )const {
+   query.validate();
    vector<discussion> result;
-   return result;
+
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_cashout>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, fc::time_point::now() - fc::minutes(60) ) );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
 }
 vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const {
    vector<discussion> result;
@@ -996,7 +1029,7 @@ vector<discussion> database_api::get_discussions_by_hot( const discussion_query&
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_hot>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<double>::max() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ) { return c.net_rshares <= 0; } );
 }
 
 
@@ -1148,7 +1181,6 @@ state database_api::get_state( string path )const
    vector<string> part; part.reserve(4);
    boost::split( part, path, boost::is_any_of("/") );
    part.resize(std::max( part.size(), size_t(4) ) ); // at least 4
-   idump((part));
 
    auto tag = fc::to_lower( part[1] );
    idump((part[1])(part[1]==string()));
@@ -1244,7 +1276,6 @@ state database_api::get_state( string path )const
       auto slug     = part[2];
 
       auto key = account +"/" + slug;
-      idump((key));
       auto dis = get_content( account, slug );
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
@@ -1280,7 +1311,6 @@ state database_api::get_state( string path )const
    }
    else if( !part[0].size() || part[0] == "hot" ) {
       auto trending_disc = get_discussions_by_hot( {tag,20} );
-      idump((part[1])(part[1]==string()));
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1297,6 +1327,17 @@ state database_api::get_state( string path )const
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.votes.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
+   else if( part[0] == "cashout"  ) {
+      auto trending_disc = get_discussions_by_cashout( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.cashout.push_back( key );
          if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }

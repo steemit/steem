@@ -60,6 +60,30 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
+   typedef static_variant< void_t > comment_options;
+
+   /**
+    *  Authors of posts may not want all of the benefits that come from creating a post. This
+    *  operation allows authors to update properties associated with their post.
+    *
+    *  The max_accepted_payout may be decreased, but never increased.
+    *  The percent_steem_dollars may be decreased, but never increased
+    *
+    */
+   struct comment_options_operation : public base_operation {
+      string author;
+      string permlink;
+
+      asset    max_accepted_payout    = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
+      uint16_t percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
+      bool     allow_votes            = true;      /// allows a post to receive votes;
+      bool     allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
+      flat_set< comment_options > extensions;
+
+      void validate()const;
+      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
+   };
+
    struct delete_comment_operation : public base_operation {
       string author;
       string permlink;
@@ -81,13 +105,11 @@ namespace steemit { namespace chain {
 
    struct comment_reward_operation : public base_operation {
       comment_reward_operation(){}
-      comment_reward_operation( const string& a, const string& l, const string& o_a, const string& o_l, const asset& p, const asset& v )
-         :author(a),permlink(l),originating_author(o_a),originating_permlink(o_l),payout(p),vesting_payout(v){}
+      comment_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
+         :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
       string author;
       string permlink;
-      string originating_author;
-      string originating_permlink;
-      asset  payout;
+      asset  sbd_payout;
       asset  vesting_payout;
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
@@ -149,11 +171,12 @@ namespace steemit { namespace chain {
    struct fill_vesting_withdraw_operation : public base_operation
    {
       fill_vesting_withdraw_operation(){}
-      fill_vesting_withdraw_operation( const string& a, const asset& v, const asset& s )
-         :account(a), vesting_shares(v), steem(s){}
-      string account;
-      asset  vesting_shares;
-      asset  steem;
+      fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
+         :from_account(f), to_account(t), withdrawn(w), deposited(d){}
+      string from_account;
+      string to_account;
+      asset  withdrawn;
+      asset  deposited;
 
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
@@ -215,6 +238,24 @@ namespace steemit { namespace chain {
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(account); }
+   };
+
+   /**
+    * Allows an account to setup a vesting withdraw but with the additional
+    * request for the funds to be transferred directly to another account's
+    * balance rather than the withdrawing account. In addition, those funds
+    * can be immediately vested again, circumventing the conversion from
+    * vests to steem and back, guaranteeing they maintain their value.
+    */
+   struct set_withdraw_vesting_route_operation : public base_operation
+   {
+      string   from_account;
+      string   to_account;
+      uint16_t percent;
+      bool     auto_vest;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set< string >& a )const { a.insert( from_account ); }
    };
 
    /**
@@ -342,7 +383,7 @@ namespace steemit { namespace chain {
 
    /**
     *  This operation instructs the blockchain to start a conversion between STEEM and SBD,
-    *  The funds are depositted after STEEMIT_CONVERSION_DELAY
+    *  The funds are deposited after STEEMIT_CONVERSION_DELAY
     */
    struct convert_operation : public base_operation
    {
@@ -381,13 +422,15 @@ namespace steemit { namespace chain {
 
    struct fill_order_operation : public base_operation {
       fill_order_operation(){}
-      fill_order_operation( const string& o, uint32_t id, const asset& p, const asset& r )
-      :owner(o),orderid(id),pays(p),receives(r){}
+      fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
+      :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
 
-      string   owner;
-      uint32_t orderid;
-      asset    pays;
-      asset    receives;
+      string   current_owner;
+      uint32_t current_orderid;
+      asset    current_pays;
+      string   open_owner;
+      uint32_t open_orderid;
+      asset    open_pays;
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
@@ -479,6 +522,7 @@ FC_REFLECT( steemit::chain::account_update_operation,
 FC_REFLECT( steemit::chain::transfer_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::transfer_to_vesting_operation, (from)(to)(amount) )
 FC_REFLECT( steemit::chain::withdraw_vesting_operation, (account)(vesting_shares) )
+FC_REFLECT( steemit::chain::set_withdraw_vesting_route_operation, (from_account)(to_account)(percent)(auto_vest) )
 FC_REFLECT( steemit::chain::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
 FC_REFLECT( steemit::chain::account_witness_vote_operation, (account)(witness)(approve) )
 FC_REFLECT( steemit::chain::account_witness_proxy_operation, (account)(proxy) )
@@ -487,14 +531,17 @@ FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
-FC_REFLECT( steemit::chain::fill_order_operation, (owner)(orderid)(pays)(receives) );
+FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(originating_author)(originating_permlink)(payout)(vesting_payout) )
+FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
 FC_REFLECT( steemit::chain::curate_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
 FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
-FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (account)(vesting_shares)(steem) )
+FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
+FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
+
+FC_REFLECT_TYPENAME( steemit::chain::comment_options )

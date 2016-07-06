@@ -145,7 +145,8 @@ struct get_impacted_account_visitor
 
    void operator()( const fill_order_operation& op )
    {
-      _impacted.insert( op.owner );
+      _impacted.insert( op.current_owner );
+      _impacted.insert( op.open_owner );
    }
 
    void operator()( const limit_order_cancel_operation& op )
@@ -160,7 +161,8 @@ struct get_impacted_account_visitor
 
    void operator()( const fill_vesting_withdraw_operation& op )
    {
-      _impacted.insert( op.account );
+      _impacted.insert( op.from_account );
+      _impacted.insert( op.to_account );
    }
 
    void operator()( const custom_operation& op )

@@ -22,12 +22,12 @@ namespace detail
 
 struct market_ticker
 {
-   double     latest;
-   double     lowest_ask;
-   double     highest_bid;
-   double     percent_change;
-   share_type steem_volume;
-   share_type sbd_volume;
+   double     latest = 0;
+   double     lowest_ask = 0;
+   double     highest_bid = 0;
+   double     percent_change = 0;
+   share_type steem_volume = 0;
+   share_type sbd_volume = 0;
 };
 
 struct market_volume
@@ -52,14 +52,16 @@ struct order_book
 struct market_trade
 {
    time_point_sec date;
-   share_type     steem;
-   share_type     sbd;
+   asset          current_pays;
+   asset          open_pays;
 };
 
 class market_history_api
 {
    public:
       market_history_api( const steemit::app::api_context& ctx );
+
+      void on_api_startup();
 
       /**
        * @brief Returns the market ticker for the internal SBD:STEEM market
@@ -73,21 +75,28 @@ class market_history_api
 
       /**
        * @brief Returns the current order book for the internal SBD:STEEM market.
-       * @param limit The number of orders to have on each side of the order book. Maximum is 50
+       * @param limit The number of orders to have on each side of the order book. Maximum is 500
        */
-      order_book get_order_book( uint32_t limit = 50 ) const;
+      order_book get_order_book( uint32_t limit = 500 ) const;
 
       /**
        * @brief Returns the trade history for the internal SBD:STEEM market.
        * @param start The start time of the trade history.
        * @param end The end time of the trade history.
-       * @param limit The number of trades to return. Maximum is 100.
+       * @param limit The number of trades to return. Maximum is 1000.
        * @return A list of completed trades.
        */
-      std::vector< market_trade > get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit = 100 ) const;
+      std::vector< market_trade > get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit = 1000 ) const;
 
       /**
-       * @brief Returns the market histry for the internal SBD:STEEM market.
+       * @brief Returns the N most recent trades for the internal SBD:STEEM market.
+       * @param limit The number of recent trades to return. Maximum is 1000.
+       * @returns A list of completed trades.
+       */
+       std::vector< market_trade > get_recent_trades( uint32_t limit = 1000 ) const;
+
+      /**
+       * @brief Returns the market history for the internal SBD:STEEM market.
        * @param bucket_seconds The size of buckets the history is broken into. The bucket size must be configured in the plugin options.
        * @param start The start time to get market history.
        * @param end The end time to get market history
@@ -115,11 +124,14 @@ FC_REFLECT( steemit::market_history::order,
 FC_REFLECT( steemit::market_history::order_book,
    (bids)(asks) );
 FC_REFLECT( steemit::market_history::market_trade,
-   (date)(steem)(sbd) );
+   (date)(current_pays)(open_pays) );
 
 FC_API( steemit::market_history::market_history_api,
    (get_ticker)
    (get_volume)
    (get_order_book)
    (get_trade_history)
+   (get_recent_trades)
+   (get_market_history)
+   (get_market_history_buckets)
 );

@@ -266,8 +266,24 @@ struct operation_visitor {
                          op.weight );
    }
 
+   void operator()( const delete_comment_operation& op )const {
+      const auto& idx = _db.get_index_type<tag_index>().indices().get<by_author_comment>();
+
+      const auto& auth = _db.get_account(op.author);
+      auto itr = idx.lower_bound( boost::make_tuple( auth.get_id() ) );
+      while( itr != idx.end() && itr->author == auth.get_id() ) {
+         const auto& tobj = *itr;
+         const auto* obj = _db.find_object( itr->comment );
+         ++itr;
+         if( !obj ) {
+            _db.remove( tobj );
+         }
+      }
+   }
+
    void operator()( const comment_payout_operation& op )const {
-       update_tags( _db.get_comment( op.author, op.permlink ) );
+       const auto& c = _db.get_comment( op.author, op.permlink );
+       update_tags( c );
    }
 
    template<typename Op>

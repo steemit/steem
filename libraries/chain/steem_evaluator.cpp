@@ -23,6 +23,8 @@ std::string wstring_to_utf8(const std::wstring& str)
 #include <fc/uint128.hpp>
 #include <fc/utf8.hpp>
 
+#include <limits>
+
 namespace steemit { namespace chain {
    using fc::uint128_t;
 
@@ -145,7 +147,11 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    FC_ASSERT( comment.children == 0, "comment cannot have any replies" );
-   FC_ASSERT( comment.net_rshares <= 0, "comment cannot have any net positive votes" );
+
+   if( db().is_producing() ) {
+      FC_ASSERT( comment.net_rshares <= 0, "comment cannot have any net positive votes" );
+   }
+   if( comment.net_rshares > 0 ) return;
 
    const auto& vote_idx = db().get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
 
@@ -156,9 +162,50 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
       db().remove(cur_vote);
    }
 
+   /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_6__80 ) && comment.parent_author.size() != 0 )
+   {
+      auto parent = &db().get_comment( comment.parent_author, comment.parent_permlink );
+      auto now = db().head_block_time();
+      while( parent )
+      {
+         db().modify( *parent, [&]( comment_object& p ){
+            p.children--;
+            p.active = now;
+         });
+   #ifndef IS_LOW_MEM
+         if( parent->parent_author.size() )
+            parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
+         else
+   #endif
+            parent = nullptr;
+      }
+   }
+
    db().remove( comment );
 }
 
+void comment_options_evaluator::do_apply( const comment_options_operation& o )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__74 ) );
+
+   const auto& comment = db().get_comment( o.author, o.permlink );
+   if( !o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout )
+      FC_ASSERT( comment.abs_rshares == 0 );
+
+   FC_ASSERT( o.extensions.size() == 0 );
+   FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards );
+   FC_ASSERT( comment.allow_votes >= o.allow_votes );
+   FC_ASSERT( comment.max_accepted_payout >= o.max_accepted_payout );
+   FC_ASSERT( comment.percent_steem_dollars >= o.percent_steem_dollars );
+
+   db().modify( comment, [&]( comment_object& c ) {
+       c.max_accepted_payout   = o.max_accepted_payout;
+       c.percent_steem_dollars = o.percent_steem_dollars;
+       c.allow_votes           = o.allow_votes;
+       c.allow_curation_rewards = o.allow_curation_rewards;
+   });
+}
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
    if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )
@@ -168,7 +215,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
    const auto& auth = db().get_account( o.author ); /// prove it exists
-
 
    comment_id_type id;
 
@@ -181,7 +227,23 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
+      if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
+      {
+          FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
+      }
+
+      if( o.parent_author.size() != 0 )
+         FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) ) {
+         if( o.parent_author.size() == 0 )
+             FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
+         else
+             FC_ASSERT( (now - auth.last_post) > fc::seconds(20), "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
+      } else {
+         FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
+      }
+
       db().modify( auth, [&]( account_object& a ) {
          a.last_post = now;
          a.post_count++;
@@ -195,11 +257,21 @@ void comment_evaluator::do_apply( const comment_operation& o )
             validate_permlink_0_1( o.permlink );
          }
 
+         com.author = o.author;
+         com.permlink = o.permlink;
+         com.last_update = db().head_block_time();
+         com.created = com.last_update;
+         com.active = com.last_update;
+         com.last_payout = fc::time_point_sec::min();
+         com.cashout_time = fc::time_point_sec::maximum();
+         com.max_cashout_time = fc::time_point_sec::maximum();
+
          if ( o.parent_author.size() == 0 )
          {
             com.parent_author = "";
             com.parent_permlink = o.parent_permlink;
             com.category = o.parent_permlink;
+            com.root_comment = com.id;
          }
          else
          {
@@ -207,14 +279,8 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_permlink = parent->permlink;
             com.depth = parent->depth + 1;
             com.category = parent->category;
+            com.root_comment = parent->root_comment;
          }
-
-         com.author = o.author;
-         com.permlink = o.permlink;
-         com.last_update = db().head_block_time();
-         com.created = com.last_update;
-         com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
-         com.active        = com.last_update;
 
          #ifndef IS_LOW_MEM
             com.title = o.title;
@@ -262,6 +328,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       db().modify( comment, [&]( comment_object& com )
       {
+         com.last_update   = db().head_block_time();
+         com.active        = com.last_update;
+
          if( !parent )
          {
             FC_ASSERT( com.parent_author == "" );
@@ -272,12 +341,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( com.parent_author == o.parent_author );
             FC_ASSERT( com.parent_permlink == o.parent_permlink );
          }
-
-         com.last_update   = db().head_block_time();
-         com.active        = com.last_update;
-
-
-         com.cashout_time  = com.last_update + fc::seconds(STEEMIT_CASHOUT_WINDOW_SECONDS);
 
          #ifndef IS_LOW_MEM
            if( o.title.size() )         com.title         = o.title;
@@ -421,6 +484,69 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
     }
 }
 
+void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_route_operation& o )
+{
+   try
+   {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__78 ) );
+
+   const auto& from_account = db().get_account( o.from_account );
+   const auto& to_account = db().get_account( o.to_account );
+   const auto& wd_idx = db().get_index_type< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
+   auto itr = wd_idx.find( boost::make_tuple( from_account.id, to_account.id ) );
+
+   if( itr == wd_idx.end() )
+   {
+      FC_ASSERT( o.percent != 0, "Cannot create a 0% destination." );
+      FC_ASSERT( from_account.withdraw_routes < STEEMIT_MAX_WITHDRAW_ROUTES );
+
+      db().create< withdraw_vesting_route_object >( [&]( withdraw_vesting_route_object& wvdo )
+      {
+         wvdo.from_account = from_account.id;
+         wvdo.to_account = to_account.id;
+         wvdo.percent = o.percent;
+         wvdo.auto_vest = o.auto_vest;
+      });
+
+      db().modify( from_account, [&]( account_object& a )
+      {
+         a.withdraw_routes++;
+      });
+   }
+   else if( o.percent == 0 )
+   {
+      db().remove( *itr );
+
+      db().modify( from_account, [&]( account_object& a )
+      {
+         a.withdraw_routes--;
+      });
+   }
+   else
+   {
+      db().modify( *itr, [&]( withdraw_vesting_route_object& wvdo )
+      {
+         wvdo.from_account = from_account.id;
+         wvdo.to_account = to_account.id;
+         wvdo.percent = o.percent;
+         wvdo.auto_vest = o.auto_vest;
+      });
+   }
+
+   itr = wd_idx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
+   uint16_t total_percent = 0;
+
+   while( itr->from_account == from_account.id && itr != wd_idx.end() )
+   {
+      total_percent += itr->percent;
+      ++itr;
+   }
+
+   FC_ASSERT( total_percent <= STEEMIT_100_PERCENT, "More than 100% of vesting allocated to destinations" );
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
+
 void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_operation& o )
 {
    const auto& account = db().get_account( o.account );
@@ -451,7 +577,7 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
       db().clear_witness_votes( account );
 
       db().modify( account, [&]( account_object& a ) {
-          a.proxy = o.proxy;
+         a.proxy = o.proxy;
       });
 
       /// add all new votes
@@ -535,26 +661,46 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
+
+   if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
+
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+
+   auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
+   auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
+   auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
+   FC_ASSERT( current_power > 0 );
+
+   int64_t  abs_weight    = abs(o.weight);
+   auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
+   used_power = (used_power/200) + 1;
+   FC_ASSERT( used_power <= current_power );
+
+   int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
+   if( abs_rshares == 0 ) abs_rshares = 1;
+
+   // Lazily delete vote
+   if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
+   {
+      db().remove( *itr );
+      itr = comment_vote_idx.end();
+   }
 
    if( itr == comment_vote_idx.end() )
    {
       FC_ASSERT( o.weight != 0, "Vote weight cannot be 0" );
-      auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
-      auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
-      auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
-      FC_ASSERT( current_power > 0 );
-
-      int64_t  abs_weight    = abs(o.weight);
-      auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
-      used_power /= 20; /// a 100% vote means use 5% of voting power which should force users to spread their votes around over 20+ posts
-
-      int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / STEEMIT_100_PERCENT).to_uint64();
-
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
+      if( rshares > 0 )
+      {
+         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
+            || db().head_block_time() < fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME ) - STEEMIT_UPVOTE_LOCKOUT );
+      }
+
+      //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
+      //if( used_power == 0 ) used_power = 1;
 
       db().modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;
@@ -563,30 +709,43 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
-      auto old_abs_rshares = comment.abs_rshares.value;
+      const auto& root = comment.root_comment( db() );
+      auto old_root_abs_rshares = root.children_abs_rshares.value;
 
-      fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
+      fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
+      auto avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       FC_ASSERT( abs_rshares > 0 );
+
+      auto old_vote_rshares = comment.vote_rshares;
 
       db().modify( comment, [&]( comment_object& c ){
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
+         if( rshares > 0 )
+            c.vote_rshares += rshares;
          if( rshares > 0 )
             c.net_votes++;
          else
             c.net_votes--;
-         if( c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
+         if( !db().has_hardfork( STEEMIT_HARDFORK_0_6__114 ) && c.net_rshares == -c.abs_rshares) FC_ASSERT( c.net_votes < 0 );
+      });
+
+      db().modify( root, [&]( comment_object& c )
+      {
+         c.children_abs_rshares += abs_rshares;
+         c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+
+         if( c.max_cashout_time == fc::time_point_sec::maximum() )
+            c.max_cashout_time = db().head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
-      /// square it
-      new_rshares *= new_rshares;
-      old_rshares *= old_rshares;
+      /// calculate rshares2 value
+      new_rshares = db().calculate_vshares( new_rshares );
+      old_rshares = db().calculate_vshares( old_rshares );
 
       const auto& cat = db().get_category( comment.category );
       db().modify( cat, [&]( category_object& c ){
@@ -594,21 +753,25 @@ void vote_evaluator::do_apply( const vote_operation& o )
          c.last_update = db().head_block_time();
       });
 
+      uint64_t max_vote_weight = 0;
+
       /** this verifies uniqueness of voter
-      *
-      *   voter_weight / new_total_weight ==> % of total vote weight provided by voter
-      *   percent^2 => used to create non-linear reward toward those who contribute a larger percentage
-      *
-      *   voter_weight * percent^2 ==> used to keep rewards proportional to vote_weight (small voters shouldn't get larger rewards simply for being first)
-      *
-      *   Simplify equation as:
-      *   vote_weight * (voter_weight/new_total_weight)^2
-      *   vote_weight * (voter_weight^2 / new_total_weight^2)
-      *   vote_weight^3 / new_total_weight^2
-      *
-      *   Since we know vote_weight is a 64 bit number and we know voter_weight^2/new_total_weight^2 is less than 1.0,
-      *   we know the resulting number is a 64 bit number.
-      *
+       *
+       *  cv.weight / c.total_vote_weight ==> % of rshares increase that is accounted for by the vote
+       *
+       *  W(R) = B * R / ( R + 2S )
+       *  W(R) is bounded above by B. B is fixed at 2^64 - 1, so all weights fit in a 64 bit integer.
+       *
+       *  The equation for an individual vote is:
+       *    W(R_N) - W(R_N-1), which is the delta increase of proportional weight
+       *
+       *  c.total_vote_weight =
+       *    W(R_1) - W(R_0) +
+       *    W(R_2) - W(R_1) + ...
+       *    W(R_N) - W(R_N-1) = W(R_N) - W(R_0)
+       *
+       *  Since W(R_0) = 0, c.total_vote_weight is also bounded above by B and will always fit in a 64 bit integer.
+       *
       **/
       const auto& cvo = db().create<comment_vote_object>( [&]( comment_vote_object& cv ){
          cv.voter   = voter.id;
@@ -616,48 +779,80 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.rshares = rshares;
          cv.vote_percent = o.weight;
          cv.last_update = db().head_block_time();
-         if( rshares > 0 ) {
-            u512 rshares3(rshares);
-            rshares3 = rshares3 * rshares3 * rshares3;
 
-            u256 total2( comment.abs_rshares.value );
-            total2 *= total2;
+         if( rshares > 0 && (comment.last_payout == fc::time_point_sec())  && comment.allow_curation_rewards )
+         {
+            if( comment.created < fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME) ) {
+               u512 rshares3(rshares);
+               u256 total2( comment.abs_rshares.value );
 
-            cv.weight = static_cast<uint64_t>( rshares3 / total2 );
-         } else {
+               if( !db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+               {
+                  rshares3 *= 1000000;
+                  total2 *= 1000000;
+               }
+
+               rshares3 = rshares3 * rshares3 * rshares3;
+
+               total2 *= total2;
+               cv.weight = static_cast<uint64_t>( rshares3 / total2 );
+            } else {// cv.weight = W(R_1) - W(R_0)
+               if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+               {
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
+                  cv.weight = new_weight - old_weight;
+               }
+               else
+               {
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
+                  cv.weight = new_weight - old_weight;
+               }
+            }
+
+            max_vote_weight = cv.weight;
+
+            if( db().head_block_time() > fc::time_point_sec(STEEMIT_HARDFORK_0_6_REVERSE_AUCTION_TIME) )  /// start enforcing this prior to the hardfork
+            {
+               /// discount weight by time
+               uint128_t w(max_vote_weight);
+               uint64_t delta_t = std::min( uint64_t((cv.last_update - comment.created).to_seconds()), uint64_t(STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS) );
+
+               w *= delta_t;
+               w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
+               cv.weight = w.to_uint64();
+            }
+         }
+         else
+         {
             cv.weight = 0;
          }
       });
 
-      db().modify( comment, [&]( comment_object& c ){
-         c.total_vote_weight += cvo.weight;
-      });
+      if( max_vote_weight ) // Optimization
+      {
+         db().modify( comment, [&]( comment_object& c )
+         {
+            c.total_vote_weight += max_vote_weight;
+         });
+      }
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
    else
    {
-      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__22 ), "Cannot change votes until hardfork 0_5" );
       FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Cannot change vote again" );
 
-      auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
-      auto regenerated_power = ((STEEMIT_100_PERCENT - voter.voting_power) * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
-      auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
-      FC_ASSERT( current_power > 0 );
-
-      int64_t  abs_weight    = abs(o.weight);
-      auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
-      used_power /= 20; /// a 100% vote means use 5% of voting power which should force users to spread their votes around over 20+ posts
-
-      int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / STEEMIT_100_PERCENT).to_uint64();
+      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_6__112 ) )
+         FC_ASSERT( itr->vote_percent != o.weight, "Changing your vote requires actually changing you vote." );
 
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      auto effective_cashout_time = std::max( STEEMIT_FIRST_CASHOUT_TIME, comment.cashout_time );
-
-      if( effective_cashout_time.sec_since_epoch() - db().head_block_time().sec_since_epoch() <= STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD )
-         FC_ASSERT( itr->rshares > rshares, "Change of vote is within lockout period and increases net_rshares to comment." );
+      if( itr->rshares < rshares )
+         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
+            || db().head_block_time() < fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME ) - STEEMIT_UPVOTE_LOCKOUT );
 
       db().modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;
@@ -666,19 +861,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
-      auto old_abs_rshares = comment.abs_rshares.value;
+      const auto& root = comment.root_comment( db() );
+      auto old_root_abs_rshares = root.children_abs_rshares.value;
 
-      fc::uint128_t cur_cashout_time_sec = comment.cashout_time.sec_since_epoch();
+      fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      auto avg_cashout_sec = (cur_cashout_time_sec * old_abs_rshares + new_cashout_time_sec * abs_rshares ) / (comment.abs_rshares.value + abs_rshares );
+      auto avg_cashout_sec = (cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       db().modify( comment, [&]( comment_object& c )
       {
          c.net_rshares -= itr->rshares;
          c.net_rshares += rshares;
          c.abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( ) + fc::seconds(avg_cashout_sec.to_uint64());
-         c.total_vote_weight -= itr->weight;
 
          /// TODO: figure out how to handle remove a vote (rshares == 0 )
          if( rshares > 0 && itr->rshares < 0 )
@@ -687,9 +881,25 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.net_votes -= 2;
       });
 
-      old_rshares *= old_rshares;
+      db().modify( root, [&]( comment_object& c )
+      {
+         c.children_abs_rshares += abs_rshares;
+         c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+
+         if( c.max_cashout_time == fc::time_point_sec::maximum() )
+            c.max_cashout_time = db().head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+      });
+
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-      new_rshares *= new_rshares;
+
+      /// calculate rshares2 value
+      new_rshares = db().calculate_vshares( new_rshares );
+      old_rshares = db().calculate_vshares( old_rshares );
+
+      db().modify( comment, [&]( comment_object& c )
+      {
+         c.total_vote_weight -= itr->weight;
+      });
 
       db().modify( *itr, [&]( comment_vote_object& cv )
       {
@@ -702,6 +912,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       db().adjust_rshares2( comment, old_rshares, new_rshares );
    }
+
 } FC_CAPTURE_AND_RETHROW( (o)) }
 
 void custom_evaluator::do_apply( const custom_operation& o ){}
