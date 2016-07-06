@@ -75,6 +75,7 @@ struct operation_validator
    typedef void result_type;
    template<typename T>
    void operator()( const T& v )const { v.validate(); }
+   void operator()( const virtual_operation& v )const { FC_ASSERT( false, "This is a virtual operation" ); };
 };
 
 struct operation_get_required_auth
@@ -128,6 +129,19 @@ struct is_market_op_visitor {
 
 bool is_market_operation( const operation& op ) {
    return op.visit( is_market_op_visitor() );
+}
+
+struct is_vop_visitor
+{
+   typedef bool result_type;
+
+   template< typename T >
+   bool operator()( const T& v )const { return v.is_virtual(); }
+};
+
+bool is_virtual_operation( const operation& op )
+{
+   return op.visit( is_vop_visitor() );
 }
 
 } } // namespace steemit::chain

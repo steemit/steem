@@ -23,13 +23,10 @@ class blockchain_statistics_plugin_impl
       void on_transaction( const signed_transaction& t );
       void on_operation( const operation_object& o );
 
-      void update_account_forum_activity( const string& account )const;
-
       blockchain_statistics_plugin&       _self;
       flat_set< uint32_t >                _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
       flat_set< bucket_object_id_type >   _current_buckets;
       uint32_t                            _maximum_history_per_bucket_size = 100;
-      uint32_t                            _account_activity_api_limit = 1000;
 };
 
 struct operation_process
@@ -147,20 +144,17 @@ struct operation_process
       });
    }
 
-   void operator()( const comment_reward_operation& op )const
+   void operator()( const author_reward_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
-         if( op.author == op.originating_author
-            && op.permlink == op.originating_permlink )
-            b.payouts++;
-
-         b.sbd_paid_to_comments += op.payout.amount;
+         b.payouts++;
+         b.sbd_paid_to_comments += op.sbd_payout.amount;
          b.vests_paid_to_comments += op.vesting_payout.amount;
       });
    }
 
-   void operator()( const curate_reward_operation& op )const
+   void operator()( const curation_reward_operation& op )const
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
@@ -190,7 +184,10 @@ struct operation_process
       _db.modify( _bucket, [&]( bucket_object& b )
       {
          b.vesting_withdrawals_processed++;
-         b.vests_withdrawn += op.vesting_shares.amount;
+         if( op.deposited.symbol == STEEM_SYMBOL )
+            b.vests_withdrawn += op.withdrawn.amount;
+         else
+            b.vests_transferred += op.withdrawn.amount;
       });
    }
 
@@ -297,9 +294,9 @@ void blockchain_statistics_plugin_impl::on_transaction( const signed_transaction
 
    for( auto bucket_id : _current_buckets )
    {
-      //const auto& bucket = bucket_id( db );
+      const auto& bucket = bucket_id( db );
 
-      db.modify( bucket_id( db ), [&]( bucket_object& b )
+      db.modify( bucket, [&]( bucket_object& b )
       {
          b.transactions++;
       });
@@ -321,101 +318,6 @@ void blockchain_statistics_plugin_impl::on_operation( const operation_object& o 
 
       o.op.visit( operation_process( _self, bucket ) );
    }
-
-   flat_set< string > impacted;
-   steemit::app::operation_get_impacted_accounts( o.op, impacted );
-   const auto& activity_idx = db.get_index_type< account_activity_index >().indices().get< by_name >();
-
-   for( auto account : impacted )
-   {
-      if( account == "" )
-         continue;
-
-      auto itr = activity_idx.find( account );
-
-      if( itr == activity_idx.end() )
-      {
-         db.create< account_activity_object >( [&]( account_activity_object& a)
-         {
-            a.account_name = account;
-            a.last_activity = db.head_block_time();
-            a.last_forum_activity = fc::time_point_sec();
-            a.ops_per_day = 0;
-            a.forum_ops_per_day = 0;
-            a.num_ops = 1;
-            a.num_forum_ops = 0;
-         });
-      }
-      else
-      {
-         db.modify( *itr, [&]( account_activity_object& a )
-         {
-            a.num_ops++;
-            a.ops_per_day = std::min( double( a.num_ops ), 86400 * ( double( a.num_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( account ).created.sec_since_epoch(), 1u ) ) ) );
-            a.last_activity = db.head_block_time();
-         });
-      }
-   }
-
-   switch( o.op.which() )
-   {
-      case operation::tag< comment_operation >::value:
-      {
-         const auto& op = o.op.get< comment_operation >();
-         const auto& comment = db.get_comment( op.author, op.permlink );
-         if( comment.created == db.head_block_time() )
-            update_account_forum_activity( op.author );
-         break;
-      }
-      case operation::tag< vote_operation >::value:
-      {
-         const auto& op = o.op.get< vote_operation >();
-         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
-         auto& comment = db.get_comment( op.author, op.permlink );
-         auto& voter = db.get_account( op.voter );
-         auto itr = cv_idx.find( boost::make_tuple( comment.id, voter.id ) );
-         if( itr->num_changes == 0 )
-            update_account_forum_activity( op.voter );
-         break;
-      }
-      default:
-         break;
-   }
-
-   if( db.head_block_time().sec_since_epoch() % 86400 == 0 )
-   {
-      for( auto itr = activity_idx.begin(); itr != activity_idx.end(); itr++ )
-      {
-         db.modify( *itr, [&]( account_activity_object& a )
-         {
-            a.ops_per_day = std::min( double( a.num_ops ), 86400 * ( double( a.num_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( a.account_name ).created.sec_since_epoch(), 1u ) ) ) );
-            a.forum_ops_per_day = std::min( double( a.num_forum_ops ), 86400 * ( double( a.num_forum_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( a.account_name ).created.sec_since_epoch(), 1u ) ) ) );
-         });
-      }
-   }
-}
-
-void blockchain_statistics_plugin_impl::update_account_forum_activity( const string& account )const
-{
-   auto& db = _self.database();
-   const auto& activity_idx = db.get_index_type< account_activity_index >().indices().get< by_name >();
-   auto itr = activity_idx.find( account );
-
-   db.modify( *itr, [&]( account_activity_object& a )
-   {
-      if( a.num_forum_ops == 0 )
-      {
-         a.last_forum_activity = db.head_block_time();
-         a.num_forum_ops = 1;
-         a.forum_ops_per_day = 1;
-      }
-      else
-      {
-         a.num_forum_ops++;
-         a.forum_ops_per_day = std::min( double( a.num_forum_ops ), 86400 * ( double( a.num_forum_ops ) / ( std::max( db.head_block_time().sec_since_epoch() - db.get_account( account ).created.sec_since_epoch(), 1u ) ) ) );
-         a.last_forum_activity = db.head_block_time();
-      }
-   });
 }
 
 } // detail
@@ -433,10 +335,8 @@ void blockchain_statistics_plugin::plugin_set_program_options(
    cli.add_options()
          ("chain-stats-bucket-size", boost::program_options::value<string>()->default_value("[60,3600,21600,86400,604800,2592000]"),
            "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
-         ("chain-stats-history-per-size", boost::program_options::value<uint32_t>()->default_value(100),
+         ("chain-stats-history-per-bucket", boost::program_options::value<uint32_t>()->default_value(100),
            "How far back in time to track history for each bucket size, measured in the number of buckets (default: 100)")
-         ("chain-stats-activity-api-limit", boost::program_options::value<uint32_t>()->default_value(1000),
-           "The limit of how many objects should be returned in the account activity API calls (default: 1000)")
          ;
    cfg.add(cli);
 }
@@ -450,24 +350,25 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
 
       database().add_index< primary_index< bucket_index > >();
-      database().add_index< primary_index< account_activity_index > >();
 
       if( options.count( "chain-stats-bucket-size" ) )
       {
          const std::string& buckets = options[ "chain-stats-bucket-size" ].as< string >();
          _my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
       }
-      if( options.count( "chain-stats-history-per-edge" ) )
-         _my->_maximum_history_per_bucket_size = options[ "chain-stats-history-per-size" ].as< uint32_t >();
-      if( options.count( "chain-stats-activity-api-limit" ) )
-         _my->_account_activity_api_limit = options[ "chain-stats-activity-api-limit" ].as< uint32_t >();
+      if( options.count( "chain-stats-history-per-bucket" ) )
+         _my->_maximum_history_per_bucket_size = options[ "chain-stats-history-per-bucket" ].as< uint32_t >();
 
    } FC_CAPTURE_AND_RETHROW()
 }
 
 void blockchain_statistics_plugin::plugin_startup()
 {
+   ilog( "chain_stats plugin: plugin_startup() begin" );
+
    app().register_api_factory< blockchain_statistics_api >( "chain_stats_api" );
+
+   ilog( "chain_stats plugin: plugin_startup() end" );
 }
 
 const flat_set< uint32_t >& blockchain_statistics_plugin::get_tracked_buckets() const
@@ -478,11 +379,6 @@ const flat_set< uint32_t >& blockchain_statistics_plugin::get_tracked_buckets() 
 uint32_t blockchain_statistics_plugin::get_max_history_per_bucket() const
 {
    return _my->_maximum_history_per_bucket_size;
-}
-
-uint32_t blockchain_statistics_plugin::get_account_activity_api_limit() const
-{
-   return _my->_account_activity_api_limit;
 }
 
 } } // steemit::blockchain_statistics

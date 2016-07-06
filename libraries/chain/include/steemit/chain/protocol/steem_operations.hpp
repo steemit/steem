@@ -103,61 +103,59 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(voter); }
    };
 
-   struct comment_reward_operation : public base_operation {
-      comment_reward_operation(){}
-      comment_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
+   struct author_reward_operation : public virtual_operation {
+      author_reward_operation(){}
+      author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
          :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
       string author;
       string permlink;
       asset  sbd_payout;
       asset  vesting_payout;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct curate_reward_operation : public base_operation
+   struct curation_reward_operation : public virtual_operation
    {
-      curate_reward_operation(){}
-      curate_reward_operation( const string& c, const asset& r, const string& a, const string& p )
+      curation_reward_operation(){}
+      curation_reward_operation( const string& c, const asset& r, const string& a, const string& p )
          :curator(c),reward(r),comment_author(a),comment_permlink(p){}
 
       string curator;
       asset  reward;
       string comment_author;
       string comment_permlink;
-      void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct comment_payout_operation : public base_operation {
-      comment_payout_operation(){}
-      comment_payout_operation( const string& a, const string& pl, const asset& p )
+   struct comment_reward_operation : public virtual_operation
+   {
+      comment_reward_operation(){}
+      comment_reward_operation( const string& a, const string& pl, const asset& p )
          :author(a),permlink(pl),payout(p){}
 
       string author;
       string permlink;
       asset  payout;
-      void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct liquidity_reward_operation : public base_operation {
+   struct liquidity_reward_operation : public virtual_operation
+   {
       liquidity_reward_operation( string o = string(), asset p = asset() )
       :owner(o),payout(p){}
 
       string owner;
       asset  payout;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct interest_operation : public base_operation {
+   struct interest_operation : public virtual_operation
+   {
       interest_operation( const string& o = "", const asset& i = asset(0,SBD_SYMBOL) )
          :owner(o),interest(i){}
 
       string owner;
       asset  interest;
-
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct fill_convert_request_operation : public base_operation {
+   struct fill_convert_request_operation : public virtual_operation
+   {
       fill_convert_request_operation(){}
       fill_convert_request_operation( const string& o, const uint32_t id, const asset& in, const asset& out )
          :owner(o), requestid(id), amount_in(in), amount_out(out){}
@@ -165,10 +163,9 @@ namespace steemit { namespace chain {
       uint32_t requestid = 0;
       asset    amount_in;
       asset    amount_out;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct fill_vesting_withdraw_operation : public base_operation
+   struct fill_vesting_withdraw_operation : public virtual_operation
    {
       fill_vesting_withdraw_operation(){}
       fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
@@ -177,8 +174,6 @@ namespace steemit { namespace chain {
       string to_account;
       asset  withdrawn;
       asset  deposited;
-
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
    /**
@@ -420,7 +415,8 @@ namespace steemit { namespace chain {
       }
    };
 
-   struct fill_order_operation : public base_operation {
+   struct fill_order_operation : public virtual_operation
+   {
       fill_order_operation(){}
       fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
       :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
@@ -431,7 +427,6 @@ namespace steemit { namespace chain {
       string   open_owner;
       uint32_t open_orderid;
       asset    open_pays;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
    /**
@@ -534,9 +529,9 @@ FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amoun
 FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
-FC_REFLECT( steemit::chain::curate_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
-FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout) )
+FC_REFLECT( steemit::chain::author_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
+FC_REFLECT( steemit::chain::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
+FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )

@@ -47,7 +47,6 @@ class blockchain_statistics_plugin : public steemit::app::plugin
 
       const flat_set< uint32_t >& get_tracked_buckets() const;
       uint32_t get_max_history_per_bucket() const;
-      uint32_t get_account_activity_api_limit() const;
 
    private:
       friend class detail::blockchain_statistics_plugin_impl;
@@ -86,26 +85,12 @@ struct bucket_object : public abstract_object< bucket_object >
    share_type           steem_vested = 0;
    uint32_t             vesting_withdrawals_processed = 0;
    share_type           vests_withdrawn = 0;
+   share_type           vests_transferred = 0;
    uint32_t             limit_orders_created = 0;
    uint32_t             limit_orders_filled = 0;
    uint32_t             limit_orders_cancelled = 0;
    uint32_t             total_pow = 0;
    uint128_t            estimated_hashpower = 0;
-};
-
-
-struct account_activity_object : public abstract_object< account_activity_object >
-{
-   static const uint8_t space_id = BLOCKCHAIN_STATISTICS_SPACE_ID;
-   static const uint8_t type_id = 1;
-
-   string               account_name;
-   fc::time_point_sec   last_activity;
-   fc::time_point_sec   last_forum_activity;
-   double               ops_per_day;
-   double               forum_ops_per_day;
-   uint32_t             num_ops;
-   uint32_t             num_forum_ops;
 };
 
 struct by_bucket;
@@ -122,39 +107,10 @@ typedef multi_index_container<
    >
 > bucket_object_multi_index_type;
 
-struct by_name;
-struct by_last_activity;
-struct by_last_forum_activity;
-struct by_activity;
-struct by_forum_activity;
-struct by_num_ops;
-struct by_num_forum_ops;
-typedef multi_index_container<
-   account_activity_object,
-   indexed_by<
-      hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_name >,
-         member< account_activity_object, string, &account_activity_object::account_name > >,
-      ordered_non_unique< tag< by_last_activity >,
-         member< account_activity_object, fc::time_point_sec, &account_activity_object::last_activity > >,
-      ordered_non_unique< tag< by_last_forum_activity >,
-         member< account_activity_object, fc::time_point_sec, &account_activity_object::last_forum_activity > >,
-      ordered_non_unique< tag< by_activity >,
-         member< account_activity_object, double, &account_activity_object::ops_per_day > >,
-      ordered_non_unique< tag< by_forum_activity >,
-         member< account_activity_object, double, &account_activity_object::forum_ops_per_day > >,
-      ordered_non_unique< tag< by_num_ops >,
-         member< account_activity_object, uint32_t, &account_activity_object::num_ops > >,
-      ordered_non_unique< tag< by_num_forum_ops >,
-         member< account_activity_object, uint32_t, &account_activity_object::num_forum_ops > >
-   >
-> account_activity_mulit_index_type;
 
 typedef object_id< BLOCKCHAIN_STATISTICS_SPACE_ID, 0, bucket_object >                  bucket_object_id_type;
-typedef object_id< BLOCKCHAIN_STATISTICS_SPACE_ID, 1, account_activity_object >        account_activity_object_id_type;
 
 typedef generic_index< bucket_object, bucket_object_multi_index_type >                 bucket_index;
-typedef generic_index< account_activity_object, account_activity_mulit_index_type >    account_activity_index;
 
 } } // steemit::blockchain_statistics
 
@@ -186,19 +142,10 @@ FC_REFLECT_DERIVED( steemit::blockchain_statistics::bucket_object, (graphene::db
    (steem_vested)
    (vesting_withdrawals_processed)
    (vests_withdrawn)
+   (vests_transferred)
    (limit_orders_created)
    (limit_orders_filled)
    (limit_orders_cancelled)
    (total_pow)
    (estimated_hashpower)
-)
-
-FC_REFLECT_DERIVED( steemit::blockchain_statistics::account_activity_object, (graphene::db::object),
-   (account_name)
-   (last_activity)
-   (last_forum_activity)
-   (ops_per_day)
-   (forum_ops_per_day)
-   (num_ops)
-   (num_forum_ops)
 )

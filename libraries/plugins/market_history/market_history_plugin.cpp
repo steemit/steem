@@ -161,10 +161,10 @@ void market_history_plugin::plugin_set_program_options(
 )
 {
    cli.add_options()
-         ("bucket-size", boost::program_options::value<string>()->default_value("[15,60,300,3600,86400]"),
+         ("market-history-bucket-size", boost::program_options::value<string>()->default_value("[15,60,300,3600,86400]"),
            "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
-         ("history-per-size", boost::program_options::value<uint32_t>()->default_value(1000),
-           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 1000)")
+         ("market-history-buckets-per-size", boost::program_options::value<uint32_t>()->default_value(5760),
+           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 5760)")
          ;
    cfg.add(cli);
 }
@@ -173,7 +173,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 {
    try
    {
-      database().on_applied_operation.connect( [&]( const operation_object& o ){ _my->update_market_histories( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->update_market_histories( o ); } );
       database().add_index< primary_index< bucket_index > >();
       database().add_index< primary_index< order_history_index > >();
 
@@ -189,7 +189,11 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 
 void market_history_plugin::plugin_startup()
 {
+   ilog( "market_history plugin: plugin_startup() begin" );
+
    app().register_api_factory< market_history_api >( "market_history_api" );
+
+   ilog( "market_history plugin: plugin_startup() end" );
 }
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const

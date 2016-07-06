@@ -140,6 +140,9 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 
 void account_history_plugin::plugin_startup()
 {
+   ilog( "account_history plugin: plugin_startup() begin" );
+
+   ilog( "account_history plugin: plugin_startup() end" );
 }
 
 flat_map<string,string> account_history_plugin::tracked_accounts() const
