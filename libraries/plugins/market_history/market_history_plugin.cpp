@@ -21,7 +21,7 @@ class market_history_plugin_impl
       void update_market_histories( const operation_object& b );
 
       market_history_plugin& _self;
-      flat_set<uint32_t>     _tracked_buckets = { 15, 60, 300, 3600, 86400 };
+	  flat_set<uint32_t>     _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
       int32_t                _maximum_history_per_bucket_size = 1000;
 };
 
