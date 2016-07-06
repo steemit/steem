@@ -356,6 +356,7 @@ namespace steemit { namespace chain {
          void retally_comment_children();
          void retally_witness_votes();
          void retally_witness_vote_counts( bool force = false );
+         void retally_liquidity_weight();
 
          bool has_hardfork( uint32_t hardfork )const;
 

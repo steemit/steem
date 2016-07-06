@@ -49,9 +49,18 @@ namespace steemit { namespace chain {
          account_id_type owner;
          int64_t         steem_volume = 0;
          int64_t         sbd_volume = 0;
+         uint128_t       weight = 0;
 
          /// this is the sort index
-         uint128_t volume_weight()const { return steem_volume * sbd_volume * is_positive(); }
+         uint128_t volume_weight()const { 
+            return steem_volume * sbd_volume * is_positive(); 
+        }
+         uint128_t min_volume_weight()const { 
+            return std::min(steem_volume,sbd_volume) * is_positive(); 
+        }
+         void update_weight( bool hf9 ) {
+             weight = hf9 ? min_volume_weight() : volume_weight();
+         }
 
          inline int is_positive()const { return ( steem_volume > 0 && sbd_volume > 0 ) ? 1 : 0; }
 
@@ -172,7 +181,7 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_owner >, member< liquidity_reward_balance_object, account_id_type, &liquidity_reward_balance_object::owner > >,
          ordered_unique< tag< by_volume_weight >,
             composite_key< liquidity_reward_balance_object,
-                const_mem_fun< liquidity_reward_balance_object, fc::uint128, &liquidity_reward_balance_object::volume_weight >,
+                member< liquidity_reward_balance_object, fc::uint128, &liquidity_reward_balance_object::weight >,
                 member< liquidity_reward_balance_object, account_id_type, &liquidity_reward_balance_object::owner >
             >,
             composite_key_compare< std::greater<fc::uint128>, std::less< account_id_type > >
@@ -219,7 +228,7 @@ FC_REFLECT_DERIVED( steemit::chain::convert_request_object, (graphene::db::objec
                     (owner)(requestid)(amount)(conversion_date) )
 
 FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::db::object),
-                    (owner)(steem_volume)(sbd_volume)(last_update) )
+                    (owner)(steem_volume)(sbd_volume)(weight)(last_update) )
 
 FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db::object),
                     (from_account)(to_account)(percent)(auto_vest) )

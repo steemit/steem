@@ -2055,6 +2055,7 @@ void database::pay_liquidity_reward()
             obj.steem_volume = 0;
             obj.sbd_volume   = 0;
             obj.last_update  = head_block_time();
+            obj.weight = 0;
          } );
          push_applied_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
       }
@@ -2991,12 +2992,15 @@ void database::adjust_liquidity_reward( const account_object& owner, const asset
          {
             r.sbd_volume = 0;
             r.steem_volume = 0;
+            r.weight = 0;
          }
 
          if( is_sdb )
             r.sbd_volume += volume.amount.value;
          else
             r.steem_volume += volume.amount.value;
+
+         r.update_weight( has_hardfork( STEEMIT_HARDFORK_0_9__141 ) );
          r.last_update = head_block_time();
       } );
    }
@@ -3009,6 +3013,8 @@ void database::adjust_liquidity_reward( const account_object& owner, const asset
             r.sbd_volume = volume.amount.value;
          else
             r.steem_volume = volume.amount.value;
+
+         r.update_weight( has_hardfork( STEEMIT_HARDFORK_0_9__141 ) );
          r.last_update = head_block_time();
       } );
    }
@@ -3198,6 +3204,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_8 == 8, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_8 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_8_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_8 ] = STEEMIT_HARDFORK_0_8_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_9 == 9, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_9 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_9_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_9 ] = STEEMIT_HARDFORK_0_9_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3344,6 +3353,9 @@ void database::apply_hardfork( uint32_t hardfork )
 #endif
          retally_witness_vote_counts(true);
          break;
+      case STEEMIT_HARDFORK_0_9:
+         retally_liquidity_weight();
+         break;
       default:
          break;
    }
@@ -3357,6 +3369,15 @@ void database::apply_hardfork( uint32_t hardfork )
       hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
+}
+
+void database::retally_liquidity_weight() {
+   const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_owner>();
+   for( const auto& i : ridx ) {
+      modify( i, []( liquidity_reward_balance_object& o ){
+         o.update_weight(true/*HAS HARDFORK9 if this method is called*/);
+      });
+   }
 }
 
 /**
