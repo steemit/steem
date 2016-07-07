@@ -71,8 +71,8 @@ market_volume market_history_api_impl::get_volume() const
 
    while( itr != bucket_idx.end() && itr->seconds == bucket_size )
    {
-      result.steem_volume += itr->steem_volume;
-      result.sbd_volume += itr->sbd_volume;
+      result.steem_volume.amount += itr->steem_volume;
+      result.sbd_volume.amount += itr->sbd_volume;
 
       ++itr;
    }
