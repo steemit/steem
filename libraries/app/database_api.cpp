@@ -533,7 +533,11 @@ vector<extended_limit_order> database_api::get_open_orders( string owner )const 
    auto itr = idx.lower_bound( owner );
    while( itr != idx.end() && itr->seller == owner ) {
       result.push_back( *itr );
-      result.back().real_price = (~result.back().sell_price).to_real();
+
+      if( itr->sell_price.base.symbol == STEEM_SYMBOL )
+         result.back().real_price = (~result.back().sell_price).to_real();
+      else
+         result.back().real_price = (result.back().sell_price).to_real();
       ++itr;
    }
    return result;

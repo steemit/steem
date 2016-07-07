@@ -182,6 +182,14 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
       }
    }
 
+   /** TODO move category behavior to a plugin, this is not part of consensus */
+   const category_object* cat = db().find_category( comment.category );
+   db().modify( *cat, [&]( category_object& c )
+   {
+      c.discussions--;
+      c.last_update = db().head_block_time();
+   });
+
    db().remove( comment );
 }
 

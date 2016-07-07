@@ -22,25 +22,25 @@ namespace detail
 
 struct market_ticker
 {
-   double     latest = 0;
-   double     lowest_ask = 0;
-   double     highest_bid = 0;
-   double     percent_change = 0;
-   share_type steem_volume = 0;
-   share_type sbd_volume = 0;
+   double      latest = 0;
+   double      lowest_ask = 0;
+   double      highest_bid = 0;
+   double      percent_change = 0;
+   asset       steem_volume = asset( 0 , STEEM_SYMBOL );
+   asset       sbd_volume = asset( 0, SBD_SYMBOL );
 };
 
 struct market_volume
 {
-   share_type steem_volume;
-   share_type sbd_volume;
+   asset       steem_volume = asset( 0, STEEM_SYMBOL );
+   asset       sbd_volume = asset( 0, SBD_SYMBOL );
 };
 
 struct order
 {
-   double     price;
-   share_type steem;
-   share_type sbd;
+   double      price;
+   share_type  steem;
+   share_type  sbd;
 };
 
 struct order_book

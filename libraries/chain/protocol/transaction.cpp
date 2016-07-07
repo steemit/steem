@@ -1,7 +1,12 @@
+
+#include <steemit/chain/protocol/transaction.hpp>
+
 #include <steemit/chain/exceptions.hpp>
+
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
+
 #include <algorithm>
 
 namespace steemit { namespace chain {
@@ -79,107 +84,6 @@ void transaction::get_required_authorities( flat_set<string>& active,
    for( const auto& op : operations )
       operation_get_required_authorities( op, active, owner, posting, other );
 }
-
-
-
-
-struct sign_state
-{
-      /** returns true if we have a signature for this key or can
-       * produce a signature for this key, else returns false.
-       */
-      bool signed_by( const public_key_type& k )
-      {
-         auto itr = provided_signatures.find(k);
-         if( itr == provided_signatures.end() )
-         {
-            auto pk = available_keys.find(k);
-            if( pk  != available_keys.end() )
-               return provided_signatures[k] = true;
-            return false;
-         }
-         return itr->second = true;
-      }
-
-      bool check_authority( string id )
-      {
-         if( approved_by.find(id) != approved_by.end() ) return true;
-         return check_authority( get_active(id) );
-      }
-
-      /**
-       *  Checks to see if we have signatures of the active authorites of
-       *  the accounts specified in authority or the keys specified.
-       */
-      bool check_authority( const authority* au, uint32_t depth = 0 )
-      {
-         if( au == nullptr ) return false;
-         const authority& auth = *au;
-
-         uint32_t total_weight = 0;
-         for( const auto& k : auth.key_auths )
-            if( signed_by( k.first ) )
-            {
-               total_weight += k.second;
-               if( total_weight >= auth.weight_threshold )
-                  return true;
-            }
-
-
-         for( const auto& a : auth.account_auths )
-         {
-            if( approved_by.find(a.first) == approved_by.end() )
-            {
-               if( depth == max_recursion )
-                  continue;
-               if( check_authority( get_active( a.first ), depth+1 ) )
-               {
-                  approved_by.insert( a.first );
-                  total_weight += a.second;
-                  if( total_weight >= auth.weight_threshold )
-                     return true;
-               }
-            }
-            else
-            {
-               total_weight += a.second;
-               if( total_weight >= auth.weight_threshold )
-                  return true;
-            }
-         }
-         return total_weight >= auth.weight_threshold;
-      }
-
-      bool remove_unused_signatures()
-      {
-         vector<public_key_type> remove_sigs;
-         for( const auto& sig : provided_signatures )
-            if( !sig.second ) remove_sigs.push_back( sig.first );
-
-         for( auto& sig : remove_sigs )
-            provided_signatures.erase(sig);
-
-         return remove_sigs.size() != 0;
-      }
-
-      sign_state( const flat_set<public_key_type>& sigs,
-                  const authority_getter& a,
-                  const flat_set<public_key_type>& keys = flat_set<public_key_type>() )
-      :get_active(a),available_keys(keys)
-      {
-         for( const auto& key : sigs )
-            provided_signatures[ key ] = false;
-         approved_by.insert( "temp"  );
-      }
-
-      const authority_getter& get_active;
-      const flat_set<public_key_type>&                        available_keys;
-
-      flat_map<public_key_type,bool>   provided_signatures;
-      flat_set<string>                 approved_by;
-      uint32_t                         max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH;
-};
-
 
 void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
                        const authority_getter& get_active,

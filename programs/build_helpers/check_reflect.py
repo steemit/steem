@@ -104,12 +104,21 @@ def validate_members(name2members_ref, name2members_test):
     for name in sorted(name2members_ref.keys()):
         if name not in name2members_test:
             ne_items.append(name)
+        elif len(set(name2members_test[name])) != len(name2members_test[name]):
+            m2occ = {}
+            for m in name2members_test[name]:
+                m2occ[m] = m2occ.get(m, 0)+1
+            error_items.append(name)
+            print("")
+            print("error in", name)
+            print("dupes  :", [m for m in m2occ if m2occ[m] > 1])
         elif sorted(name2members_ref[name]) != sorted(name2members_test[name]):
             error_items.append(name)
             print("")
             print("error in", name)
             print("doxygen:", name2members_ref[name])
             print("fc     :", name2members_test[name])
+            print("diff   :", set(name2members_ref[name]).symmetric_difference(set(name2members_test[name])) )
         else:
             ok_items.append(name)
 

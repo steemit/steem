@@ -1,5 +1,6 @@
 #pragma once
 #include <steemit/chain/protocol/operations.hpp>
+#include <steemit/chain/protocol/sign_state.hpp>
 #include <steemit/chain/protocol/types.hpp>
 
 #include <numeric>
@@ -46,8 +47,6 @@ namespace steemit { namespace chain {
                                      flat_set<string>& posting,
                                      vector<authority>& other )const;
    };
-
-   typedef std::function<const authority*(const string&)> authority_getter;
 
    struct signed_transaction : public transaction
    {
