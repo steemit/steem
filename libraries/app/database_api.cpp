@@ -65,6 +65,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 
       // Market
       order_book get_order_book( uint32_t limit )const;
+      vector< liquidity_balance > get_liquidity_queue( string start_account, uint32_t limit )const;
 
       // Authority / validation
       std::string get_transaction_hex(const signed_transaction& trx)const;
@@ -583,6 +584,49 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
    return result;
 }
 
+vector< liquidity_balance > database_api::get_liquidity_queue( string start_account, uint32_t limit )const
+{
+   return my->get_liquidity_queue( start_account, limit );
+}
+
+vector< liquidity_balance > database_api_impl::get_liquidity_queue( string start_account, uint32_t limit )const
+{
+   FC_ASSERT( limit <= 1000 );
+
+   const auto& liq_idx = _db.get_index_type< liquidity_reward_index >().indices().get< by_volume_weight >();
+   auto itr = liq_idx.begin();
+   vector< liquidity_balance > result;
+
+   result.reserve( limit );
+
+   if( start_account.length() )
+   {
+      const auto& liq_by_acc = _db.get_index_type< liquidity_reward_index >().indices().get< by_owner >();
+      auto acc = liq_by_acc.find( _db.get_account( start_account ).id );
+
+      if( acc != liq_by_acc.end() )
+      {
+         itr = liq_idx.find( boost::make_tuple( acc->weight, acc->owner ) );
+      }
+      else
+      {
+         itr = liq_idx.end();
+      }
+   }
+
+   while( itr != liq_idx.end() && result.size() < limit )
+   {
+      liquidity_balance bal;
+      bal.account = itr->owner( _db ).name;
+      bal.weight = itr->weight;
+      result.push_back( bal );
+
+      ++itr;
+   }
+
+   return result;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Authority / validation                                           //
@@ -935,7 +979,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
       }
-      ++tidx_itr; 
+      ++tidx_itr;
    }
    return result;
 }
