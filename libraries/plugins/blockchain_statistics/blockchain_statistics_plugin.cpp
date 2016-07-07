@@ -68,7 +68,7 @@ struct operation_process
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
-         b.accounts_created++;
+         b.paid_accounts_created++;
       });
    }
 
@@ -79,7 +79,7 @@ struct operation_process
          auto& worker = _db.get_account( op.worker_account );
 
          if( worker.created == _db.head_block_time() )
-            b.accounts_created++;
+            b.mined_accounts_created++;
 
          b.total_pow++;
 
@@ -104,16 +104,17 @@ struct operation_process
 
          if( comment.created == _db.head_block_time() )
          {
-            b.total_posts++;
-
             if( comment.parent_author.length() )
-               b.top_level_posts++;
-            else
                b.replies++;
+            else
+               b.root_comments++;
          }
          else
          {
-            b.posts_modified++;
+            if( comment.parent_author.length() )
+               b.reply_edits;
+            else
+               b.root_comment_edits++;
          }
       });
    }
@@ -122,7 +123,7 @@ struct operation_process
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
-         b.posts_deleted++;
+         // TODO: Distinguish between root and reply deletions
       });
    }
 
@@ -130,17 +131,25 @@ struct operation_process
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
-         b.total_votes++;
-
          const auto& cv_idx = _db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
          auto& comment = _db.get_comment( op.author, op.permlink );
          auto& voter = _db.get_account( op.voter );
          auto itr = cv_idx.find( boost::make_tuple( comment.id, voter.id ) );
 
          if( itr->num_changes )
-            b.changed_votes++;
+         {
+            if( comment.parent_author.size() )
+               b.new_reply_votes++;
+            else
+               b.new_root_votes++;
+         }
          else
-            b.new_votes++;
+         {
+            if( comment.parent_author.size() )
+               b.changed_reply_votes++;
+            else
+               b.changed_root_votes++;
+         }
       });
    }
 
@@ -149,8 +158,8 @@ struct operation_process
       _db.modify( _bucket, [&]( bucket_object& b )
       {
          b.payouts++;
-         b.sbd_paid_to_comments += op.sbd_payout.amount;
-         b.vests_paid_to_comments += op.vesting_payout.amount;
+         b.sbd_paid_to_authors += op.sbd_payout.amount;
+         b.vests_paid_to_authors += op.vesting_payout.amount;
       });
    }
 
@@ -203,7 +212,7 @@ struct operation_process
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
-         b.limit_orders_filled++;
+         b.limit_orders_filled += 2;
       });
    }
 
