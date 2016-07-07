@@ -341,6 +341,13 @@ const account_object& database::get_account( const string& name )const
    return *itr;
 }
 
+const escrow_object& database::get_escrow( const string& name, uint32_t escrow_id )const {
+   const auto& escrow_idx = get_index_type<escrow_index>().indices().get<by_from_id>();
+   auto itr = escrow_idx.find( boost::make_tuple(name,escrow_id) );
+   FC_ASSERT( itr != escrow_idx.end() );
+   return *itr;
+}
+
 const limit_order_object* database::find_limit_order( const string& name, uint32_t orderid )const
 {
    if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
@@ -2259,6 +2266,9 @@ void database::initialize_evaluators()
     register_evaluator<convert_evaluator>();
     register_evaluator<limit_order_create_evaluator>();
     register_evaluator<limit_order_cancel_evaluator>();
+    register_evaluator<escrow_transfer_evaluator>();
+    register_evaluator<escrow_dispute_evaluator>();
+    register_evaluator<escrow_release_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -2278,6 +2288,7 @@ void database::initialize_indexes()
    add_index< primary_index< convert_index > >();
    add_index< primary_index< liquidity_reward_index > >();
    add_index< primary_index< limit_order_index > >();
+   add_index< primary_index< escrow_index > >();
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();

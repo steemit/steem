@@ -204,6 +204,65 @@ namespace steemit { namespace chain {
    };
 
    /**
+    *  The purpose of this operation is to enable someone to send money contingently to
+    *  another individual. The funds leave the *from* account and go into a temporary balance
+    *  where they are held until *from* releases it to *to*   or *to* refunds it to *from*.
+    *
+    *  In the event of a dispute the *agent* can divide the funds between the to/from account.
+    *
+    *  The escrow agent is paid the fee no matter what. It is up to the escrow agent to determine 
+    *
+    *  Escrow transactions are uniquely identified by 'from' and 'escrow_id', the 'escrow_id' is defined
+    *  by the sender.
+    */
+   struct escrow_transfer_operation : public base_operation {
+      string         from;
+      string         to;
+      asset          amount;
+      string         memo;
+
+      uint32_t        escrow_id;
+      string         agent;
+      asset          fee;
+      string         json_meta;
+      time_point_sec expiration;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
+   };
+
+   /**
+    *  If either the sender or receiver of an escrow payment has an issue, they can
+    *  raise it for dispute. Once a payment is in dispute, the agent has authority over
+    *  who gets what.
+    */
+   struct escrow_dispute_operation : public base_operation {
+      string   from;
+      string   to;
+      uint32_t escrow_id;
+      string   who;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
+   };
+
+   /**
+    *  This operation can be used by anyone associated with the escrow transfer to
+    *  release funds if they have permission.
+    */
+   struct escrow_release_operation : public base_operation {
+      string    from;
+      uint32_t  escrow_id;
+      string    to; ///< the account that should receive funds (might be from, might be to
+      string    who; ///< the account that is attempting to release the funds, determines valid 'to'
+      asset     amount; ///< the amount of funds to release
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
+   };
+
+
+   /**
     *  This operation converts STEEM into VFS (Vesting Fund Shares) at
     *  the current exchange rate. With this operation it is possible to
     *  give another account vesting shares so that faucets can
@@ -543,5 +602,9 @@ FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
+
+FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(amount)(memo)(escrow_id)(agent)(fee)(json_meta)(expiration) );
+FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who) );
+FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(amount) );
 
 FC_REFLECT_TYPENAME( steemit::chain::comment_options )

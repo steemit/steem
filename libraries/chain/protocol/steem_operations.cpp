@@ -227,5 +227,30 @@ namespace steemit { namespace chain {
       FC_ASSERT( first_block.id() != second_block.id() );
    }
 
+   void escrow_transfer_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( agent ) );
+      FC_ASSERT( fee.amount >= 0 );
+      FC_ASSERT( amount.amount >= 0 );
+      FC_ASSERT( from != agent && to != agent );
+      FC_ASSERT( fee.symbol == amount.symbol );
+      FC_ASSERT( amount.symbol != VESTS_SYMBOL );
+   }
+   void escrow_dispute_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( who ) );
+      FC_ASSERT( who == from || who == to );
+   }
+   void escrow_release_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( who ) );
+      FC_ASSERT( who != to );
+      FC_ASSERT( amount.amount > 0 );
+      FC_ASSERT( amount.symbol != VESTS_SYMBOL );
+   }
+
 
 } } // steemit::chain

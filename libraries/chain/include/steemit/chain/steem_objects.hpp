@@ -29,6 +29,21 @@ namespace steemit { namespace chain {
          time_point_sec conversion_date; ///< at this time the feed_history_median_price * amount
    };
 
+   class escrow_object : public abstract_object<escrow_object> {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_escrow_object_type;
+
+         uint32_t       escrow_id;
+         string         from;
+         string         to;
+         string         agent;
+         time_point_sec expiration;
+         asset          balance;
+         bool           disputed = false;
+   };
+
+
 
    /**
     *  If last_update is greater than 1 week, then volume gets reset to 0
@@ -204,6 +219,34 @@ namespace steemit { namespace chain {
       >
    > withdraw_vesting_route_index_type;
 
+   struct by_from_id;
+   struct by_to;
+   struct by_agent;
+   typedef multi_index_container<
+      escrow_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_from_id >,
+            composite_key< escrow_object,
+               member< escrow_object, string,  &escrow_object::from >,
+               member< escrow_object, uint32_t, &escrow_object::escrow_id >
+            >
+         >,
+         ordered_unique< tag< by_to >,
+            composite_key< escrow_object,
+               member< escrow_object, string,  &escrow_object::to >,
+               member< object, object_id_type, &object::id >
+            >
+         >,
+         ordered_unique< tag< by_agent >,
+            composite_key< escrow_object,
+               member< escrow_object, string,  &escrow_object::agent >,
+               member< object, object_id_type, &object::id >
+            >
+         >
+      >
+   > escrow_object_index_type;
+
    /**
     * @ingroup object_index
     */
@@ -211,6 +254,7 @@ namespace steemit { namespace chain {
    typedef generic_index< limit_order_object,                  limit_order_multi_index_type >            limit_order_index;
    typedef generic_index< liquidity_reward_balance_object,     liquidity_reward_balance_index_type >     liquidity_reward_index;
    typedef generic_index< withdraw_vesting_route_object,       withdraw_vesting_route_index_type >       withdraw_vesting_route_index;
+   typedef generic_index< escrow_object,                       escrow_object_index_type >                escrow_index;
 
 } } // steemit::chain
 
@@ -232,3 +276,6 @@ FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::
 
 FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db::object),
                     (from_account)(to_account)(percent)(auto_vest) )
+
+FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object), 
+                    (escrow_id)(from)(to)(agent)(expiration)(balance)(disputed) );

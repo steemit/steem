@@ -38,6 +38,9 @@ namespace steemit { namespace chain {
             custom_json_operation,
             comment_options_operation,
             set_withdraw_vesting_route_operation,
+            escrow_transfer_operation,
+            escrow_dispute_operation,
+            escrow_release_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
