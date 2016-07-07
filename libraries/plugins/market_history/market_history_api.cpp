@@ -36,7 +36,7 @@ market_ticker market_history_api_impl::get_ticker() const
    {
       auto open = ( asset( itr->open_sbd, SBD_SYMBOL ) / asset( itr->open_steem, STEEM_SYMBOL ) ).to_real();
       result.latest = ( asset( itr->close_sbd, SBD_SYMBOL ) / asset( itr->close_steem, STEEM_SYMBOL ) ).to_real();
-      result.percent_change = ( result.latest - open ) / open;
+      result.percent_change = ( ( result.latest - open ) / open ) * 100;
    }
    else
    {

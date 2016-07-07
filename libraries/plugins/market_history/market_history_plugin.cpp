@@ -22,7 +22,7 @@ class market_history_plugin_impl
 
       market_history_plugin& _self;
       flat_set<uint32_t>     _tracked_buckets = { 15, 60, 300, 3600, 86400 };
-      int32_t                _maximum_history_per_bucket_size = 1000;
+      int32_t                _maximum_history_per_bucket_size = 5760;
 };
 
 void market_history_plugin_impl::update_market_histories( const operation_object& o )
@@ -163,8 +163,8 @@ void market_history_plugin::plugin_set_program_options(
    cli.add_options()
          ("bucket-size", boost::program_options::value<string>()->default_value("[15,60,300,3600,86400]"),
            "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
-         ("history-per-size", boost::program_options::value<uint32_t>()->default_value(1000),
-           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 1000)")
+         ("history-per-size", boost::program_options::value<uint32_t>()->default_value(5760),
+           "How far back in time to track history for each bucket size, measured in the number of buckets (default: 5760)")
          ;
    cfg.add(cli);
 }
