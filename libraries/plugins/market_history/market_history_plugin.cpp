@@ -22,7 +22,7 @@ class market_history_plugin_impl
 
       market_history_plugin& _self;
       flat_set<uint32_t>     _tracked_buckets = { 15, 60, 300, 3600, 86400 };
-      int32_t                _maximum_history_per_bucket_size = 1000;
+      int32_t                _maximum_history_per_bucket_size = 5760;
 };
 
 void market_history_plugin_impl::update_market_histories( const operation_object& o )
@@ -173,6 +173,8 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 {
    try
    {
+      ilog( "market_history: plugin_initialize() begin" );
+
       database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->update_market_histories( o ); } );
       database().add_index< primary_index< bucket_index > >();
       database().add_index< primary_index< order_history_index > >();
@@ -184,6 +186,11 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       }
       if( options.count("history-per-size" ) )
          _my->_maximum_history_per_bucket_size = options["history-per-size"].as< uint32_t >();
+
+      wlog( "bucket-size ${b}", ("b", _my->_tracked_buckets) );
+      wlog( "history-per-size ${h}", ("h", _my->_maximum_history_per_bucket_size) );
+
+      ilog( "market_history: plugin_initialize() end" );
    } FC_CAPTURE_AND_RETHROW()
 }
 

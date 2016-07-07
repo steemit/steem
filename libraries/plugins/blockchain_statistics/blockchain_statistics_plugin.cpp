@@ -21,6 +21,7 @@ class blockchain_statistics_plugin_impl
 
       void on_block( const signed_block& b );
       void on_transaction( const signed_transaction& t );
+      void pre_operation( const operation_object& o );
       void on_operation( const operation_object& o );
 
       blockchain_statistics_plugin&       _self;
@@ -112,18 +113,10 @@ struct operation_process
          else
          {
             if( comment.parent_author.length() )
-               b.reply_edits;
+               b.reply_edits++;
             else
                b.root_comment_edits++;
          }
-      });
-   }
-
-   void operator()( const delete_comment_operation& op )const
-   {
-      _db.modify( _bucket, [&]( bucket_object& b )
-      {
-         // TODO: Distinguish between root and reply deletions
       });
    }
 
@@ -312,6 +305,29 @@ void blockchain_statistics_plugin_impl::on_transaction( const signed_transaction
    }
 }
 
+void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o )
+{
+   auto& db = _self.database();
+
+   for( auto bucket_id : _current_buckets )
+   {
+      if( o.op.which() == operation::tag< delete_comment_operation >::value )
+      {
+         delete_comment_operation op = o.op.get< delete_comment_operation >();
+         auto comment = db.get_comment( op.author, op.permlink );
+         const auto& bucket = bucket_id( db );
+
+         db.modify( bucket, [&]( bucket_object& b )
+         {
+            if( comment.parent_author.length() )
+               b.replies_deleted++;
+            else
+               b.root_comments_deleted++;
+         });
+      }
+   }
+}
+
 void blockchain_statistics_plugin_impl::on_operation( const operation_object& o )
 {
    auto& db = _self.database();
@@ -320,11 +336,13 @@ void blockchain_statistics_plugin_impl::on_operation( const operation_object& o 
    {
       const auto& bucket = bucket_id( db );
 
-      db.modify( bucket, [&]( bucket_object& b )
+      if( !is_virtual_operation( o.op ) )
       {
-         b.operations++;
-      });
-
+         db.modify( bucket, [&]( bucket_object& b )
+         {
+            b.operations++;
+         });
+      }
       o.op.visit( operation_process( _self, bucket ) );
    }
 }
@@ -354,8 +372,11 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
 {
    try
    {
+      ilog( "chain_stats_plugin: plugin_initialize() begin" );
+
       database().applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
       database().on_applied_transaction.connect( [&]( const signed_transaction& t ){ _my->on_transaction( t ); } );
+      database().pre_apply_operation.connect( [&]( const operation_object& o ){ _my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
 
       database().add_index< primary_index< bucket_index > >();
@@ -368,6 +389,10 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       if( options.count( "chain-stats-history-per-bucket" ) )
          _my->_maximum_history_per_bucket_size = options[ "chain-stats-history-per-bucket" ].as< uint32_t >();
 
+      wlog( "chain-stats-bucket-size: ${b}", ("b", _my->_tracked_buckets) );
+      wlog( "chain-stats-history-per-bucket: ${h}", ("h", _my->_maximum_history_per_bucket_size) );
+
+      ilog( "chain_stats_plugin: plugin_initialize() end" );
    } FC_CAPTURE_AND_RETHROW()
 }
 
