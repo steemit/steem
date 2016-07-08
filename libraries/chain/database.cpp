@@ -2969,7 +2969,9 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC )
+   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_9__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149) ) 
+   )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
       {
