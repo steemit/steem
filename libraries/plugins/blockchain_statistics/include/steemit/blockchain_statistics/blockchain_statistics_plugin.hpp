@@ -61,6 +61,7 @@ struct bucket_object : public abstract_object< bucket_object >
    fc::time_point_sec   open;                                        ///< Open time of the bucket
    uint32_t             seconds = 0;                                 ///< Seconds accounted for in the bucket
    uint32_t             blocks = 0;                                  ///< Blocks produced
+   uint32_t             bandwidth = 0;                               ///< Bandwidth in bytes
    uint32_t             operations = 0;                              ///< Operations evaluated
    uint32_t             transactions = 0;                            ///< Transactions processed
    uint32_t             transfers = 0;                               ///< Account to account transfers
@@ -121,6 +122,7 @@ FC_REFLECT_DERIVED( steemit::blockchain_statistics::bucket_object, (graphene::db
    (open)
    (seconds)
    (blocks)
+   (bandwidth)
    (operations)
    (transactions)
    (transfers)

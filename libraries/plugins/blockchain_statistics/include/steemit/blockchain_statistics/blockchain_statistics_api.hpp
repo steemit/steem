@@ -18,6 +18,7 @@ namespace detail
 struct statistics
 {
    uint32_t             blocks = 0;                                  ///< Blocks produced
+   uint32_t             bandwidth = 0;                               ///< Bandwidth in bytes
    uint32_t             operations = 0;                              ///< Operations evaluated
    uint32_t             transactions = 0;                            ///< Transactions processed
    uint32_t             transfers = 0;                               ///< Account to account transfers
@@ -100,6 +101,7 @@ class blockchain_statistics_api
 
 FC_REFLECT( steemit::blockchain_statistics::statistics,
    (blocks)
+   (bandwidth)
    (operations)
    (transactions)
    (transfers)

@@ -244,6 +244,15 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
 
    const auto& bucket_idx = db.get_index_type< bucket_index >().indices().get< by_bucket >();
 
+   uint32_t trx_size = 0;
+   uint32_t num_trx =b.transactions.size();
+
+   for( auto trx : b.transactions )
+   {
+      trx_size += fc::raw::pack_size( trx );
+   }
+
+
    for( auto bucket : _tracked_buckets )
    {
       auto open = fc::time_point_sec( ( db.head_block_time().sec_since_epoch() / bucket ) * bucket );
@@ -287,12 +296,19 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
 
          _current_buckets.insert( itr->id );
       }
+
+      db.modify( *itr, [&]( bucket_object& bo )
+      {
+         bo.transactions += num_trx;
+         bo.bandwidth += trx_size;
+      });
    }
 }
 
 void blockchain_statistics_plugin_impl::on_transaction( const signed_transaction& t )
 {
-   auto& db = _self.database();
+   /*auto& db = _self.database();
+   auto trx_size = fc::raw::pack_size( t );
 
    for( auto bucket_id : _current_buckets )
    {
@@ -301,8 +317,9 @@ void blockchain_statistics_plugin_impl::on_transaction( const signed_transaction
       db.modify( bucket, [&]( bucket_object& b )
       {
          b.transactions++;
+         b.bandwidth += trx_size;
       });
-   }
+   }*/
 }
 
 void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o )
@@ -361,7 +378,7 @@ void blockchain_statistics_plugin::plugin_set_program_options(
 {
    cli.add_options()
          ("chain-stats-bucket-size", boost::program_options::value<string>()->default_value("[60,3600,21600,86400,604800,2592000]"),
-           "Track market history by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
+           "Track blockchain statistics by grouping orders into buckets of equal size measured in seconds specified as a JSON array of numbers")
          ("chain-stats-history-per-bucket", boost::program_options::value<uint32_t>()->default_value(100),
            "How far back in time to track history for each bucket size, measured in the number of buckets (default: 100)")
          ;

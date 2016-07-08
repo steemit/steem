@@ -91,6 +91,7 @@ statistics blockchain_statistics_api::get_lifetime_stats()const
 statistics& statistics::operator +=( const bucket_object& b )
 {
    this->blocks                        += b.blocks;
+   this->bandwidth                     += b.bandwidth;
    this->operations                    += b.operations;
    this->transactions                  += b.transactions;
    this->transfers                     += b.transfers;
