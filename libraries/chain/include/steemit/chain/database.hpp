@@ -244,7 +244,7 @@ namespace steemit { namespace chain {
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
          void update_account_activity( const account_object& account );
-         void adjust_total_payout( const comment_object& a, const asset& sbd );
+         void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value );
 
          void update_witness_schedule();
 

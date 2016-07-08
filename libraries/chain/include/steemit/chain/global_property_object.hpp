@@ -52,12 +52,12 @@ namespace steemit { namespace chain {
 
          /**
           *  These fields are used to reward users who remain active. Every block 15% of
-          *  content + curation rewards steem is placed into the activity fund steem.  
+          *  content + curation rewards steem is placed into the activity fund steem.
           *
           *  Every time a user votes they earn activity_fund_shares which are calculated as
           *  min(time_since_last_active,24h) * VESTS.  This is designed to reward those who
           *  check in daily.  Activity rewards can only be earned by accounts with trival
-          *  posting authorities consisting of a single key. 
+          *  posting authorities consisting of a single key.
           */
          //@{
          asset       total_activity_fund_steem  = asset( 0, STEEM_SYMBOL );
@@ -108,6 +108,7 @@ namespace steemit { namespace chain {
           * used to compute witness participation.
           */
          fc::uint128_t recent_slots_filled;
+         uint8_t       participation_count; ///< Divide by 128 to compute participation percentage
 
          uint32_t last_irreversible_block_num = 0;
 
@@ -155,6 +156,7 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (maximum_block_size)
                     (current_aslot)
                     (recent_slots_filled)
+                    (participation_count)
                     (last_irreversible_block_num)
                     (max_virtual_bandwidth)
                     (current_reserve_ratio)

@@ -419,7 +419,7 @@ try {
    FC_ASSERT( e.to == o.to );
 
    db().modify( e, [&]( escrow_object& esc ){
-     esc.disputed = true; 
+     esc.disputed = true;
    });
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
@@ -433,7 +433,7 @@ try {
 
    const auto& e = db().get_escrow( o.from, o.escrow_id );
    FC_ASSERT( e.balance >= o.amount && e.balance.symbol == o.amount.symbol );
-   /// TODO assert o.amount > 0 
+   /// TODO assert o.amount > 0
 
    if( e.expiration > db().head_block_time() ) {
       if( o.who == e.from )    FC_ASSERT( o.to == e.to );
@@ -448,7 +448,7 @@ try {
    db().adjust_balance( to_account, o.amount );
    if( e.balance == o.amount )
       db().remove( e );
-   else { 
+   else {
       db().modify( e, [&]( escrow_object& esc ) {
          esc.balance -= o.amount;
       });
@@ -765,6 +765,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
+      if( db().is_producing() )
+         FC_ASSERT( false, "Cannot vote again on a comment after payout" );
+
       db().remove( *itr );
       itr = comment_vote_idx.end();
    }
@@ -1129,7 +1132,7 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 }
 
 void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o ) {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9__147 ) ); /// TODO remove this check after hardfork 
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9__147 ) ); /// TODO remove this check after hardfork
 
    FC_ASSERT( o.expiration > db().head_block_time() );
 

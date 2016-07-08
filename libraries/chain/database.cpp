@@ -1503,7 +1503,7 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork 
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork
       modify( a, [&](account_object& acc )
       {
          acc.witnesses_voted_for = 0;
@@ -1657,12 +1657,13 @@ void database::process_vesting_withdrawals()
    }
 }
 
-void database::adjust_total_payout( const comment_object& cur, const asset& sbd_created )
+void database::adjust_total_payout( const comment_object& cur, const asset& sbd_created, const asset& curator_sbd_value )
 {
    modify( cur, [&]( comment_object& c )
    {
       if( c.total_payout_value.symbol == sbd_created.symbol )
          c.total_payout_value += sbd_created;
+         c.curator_payout_value += curator_sbd_value;
    } );
    /// TODO: potentially modify author's total payout numbers as well
 }
@@ -1799,7 +1800,7 @@ void database::cashout_comment_helper( const comment_object& comment )
             const auto& author = get_account( comment.author );
             auto vest_created = create_vesting( author, vesting_steem );
             auto sbd_created = create_sbd( author, sbd_steem );
-            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
+            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
 
             push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
 
@@ -1828,7 +1829,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
          adjust_rshares2( comment, old_rshares2, 0 );
 
-          
+
          if( reward_tokens > 0 )
             notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
       }
@@ -2369,6 +2370,7 @@ void database::init_genesis( uint64_t init_supply )
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;
          p.recent_slots_filled = fc::uint128::max_value();
+         p.participation_count = 128;
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
@@ -2784,12 +2786,17 @@ void database::update_global_dynamic_data( const signed_block& b )
    // dynamic global properties updating
    modify( _dgp, [&]( dynamic_global_property_object& dgp )
    {
+      // This is constant time assuming 100% participation. It is O(B) otherwise (B = Num blocks between update)
+      for( uint32_t i = 0; i < missed_blocks + 1; i++ )
+      {
+         dgp.participation_count -= dgp.recent_slots_filled.hi & 0x8000000000000000ULL ? 1 : 0;
+         dgp.recent_slots_filled = ( dgp.recent_slots_filled << 1 ) + ( i == 0 ? 1 : 0 );
+         dgp.participation_count += ( i == 0 ? 1 : 0 );
+      }
+
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.recent_slots_filled = (
-           (dgp.recent_slots_filled << 1)
-           + 1) << missed_blocks;
       dgp.current_aslot += missed_blocks+1;
       dgp.average_block_size = (99 * dgp.average_block_size + block_size)/100;
 
