@@ -20,7 +20,6 @@ class blockchain_statistics_plugin_impl
       virtual ~blockchain_statistics_plugin_impl() {}
 
       void on_block( const signed_block& b );
-      void on_transaction( const signed_transaction& t );
       void pre_operation( const operation_object& o );
       void on_operation( const operation_object& o );
 
@@ -305,23 +304,6 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    }
 }
 
-void blockchain_statistics_plugin_impl::on_transaction( const signed_transaction& t )
-{
-   /*auto& db = _self.database();
-   auto trx_size = fc::raw::pack_size( t );
-
-   for( auto bucket_id : _current_buckets )
-   {
-      const auto& bucket = bucket_id( db );
-
-      db.modify( bucket, [&]( bucket_object& b )
-      {
-         b.transactions++;
-         b.bandwidth += trx_size;
-      });
-   }*/
-}
-
 void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o )
 {
    auto& db = _self.database();
@@ -392,7 +374,6 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       ilog( "chain_stats_plugin: plugin_initialize() begin" );
 
       database().applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-      database().on_applied_transaction.connect( [&]( const signed_transaction& t ){ _my->on_transaction( t ); } );
       database().pre_apply_operation.connect( [&]( const operation_object& o ){ _my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
 
