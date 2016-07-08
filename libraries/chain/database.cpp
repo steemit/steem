@@ -2370,6 +2370,7 @@ void database::init_genesis( uint64_t init_supply )
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;
          p.recent_slots_filled = fc::uint128::max_value();
+         p.participation_count = 128;
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
@@ -2785,12 +2786,17 @@ void database::update_global_dynamic_data( const signed_block& b )
    // dynamic global properties updating
    modify( _dgp, [&]( dynamic_global_property_object& dgp )
    {
+      // This is constant time assuming 100% participation. It is O(B) otherwise (B = Num blocks between update)
+      for( uint32_t i = 0; i < missed_blocks + 1; i++ )
+      {
+         dgp.participation_count -= dgp.recent_slots_filled.hi & 0x8000000000000000ULL ? 1 : 0;
+         dgp.recent_slots_filled = ( dgp.recent_slots_filled << 1 ) + ( i == 0 ? 1 : 0 );
+         dgp.participation_count += ( i == 0 ? 1 : 0 );
+      }
+
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.recent_slots_filled = (
-           (dgp.recent_slots_filled << 1)
-           + 1) << missed_blocks;
       dgp.current_aslot += missed_blocks+1;
       dgp.average_block_size = (99 * dgp.average_block_size + block_size)/100;
 
