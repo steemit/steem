@@ -257,7 +257,6 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( who ) );
-      FC_ASSERT( who != to );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol != VESTS_SYMBOL );
    }
