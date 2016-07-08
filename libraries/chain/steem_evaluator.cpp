@@ -386,7 +386,7 @@ try {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
 
    const auto& from_account = db().get_account(o.from);
-   const auto& to_account = db().get_account(o.to);
+   db().get_account(o.to);
    const auto& agent_account = db().get_account(o.agent);
 
    FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= (o.amount + o.fee) );
@@ -1116,6 +1116,31 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
        obj.sell_price = o.get_price();
+       obj.expiration = o.expiration;
+   });
+
+   bool filled = db().apply_order( order );
+
+   if( o.fill_or_kill ) FC_ASSERT( filled );
+}
+
+void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9__147 ) ); /// TODO remove this check after hardfork 
+
+   FC_ASSERT( o.expiration > db().head_block_time() );
+
+   const auto& owner = db().get_account( o.owner );
+
+   FC_ASSERT( db().get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell );
+
+   db().adjust_balance( owner, -o.amount_to_sell );
+
+   const auto& order = db().create<limit_order_object>( [&]( limit_order_object& obj ) {
+       obj.created    = db().head_block_time();
+       obj.seller     = o.owner;
+       obj.orderid    = o.orderid;
+       obj.for_sale   = o.amount_to_sell.amount;
+       obj.sell_price = o.exchange_rate;
        obj.expiration = o.expiration;
    });
 

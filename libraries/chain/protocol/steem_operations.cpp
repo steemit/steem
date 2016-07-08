@@ -204,6 +204,16 @@ namespace steemit { namespace chain {
          || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) ) );
       (amount_to_sell / min_to_receive).validate();
    }
+   void limit_order_create2_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( owner ) );
+      FC_ASSERT( amount_to_sell.symbol == exchange_rate.base.symbol );
+      exchange_rate.validate();
+
+      FC_ASSERT( ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( exchange_rate.quote, SBD_SYMBOL ) ) ||
+                 ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) ) );
+
+      FC_ASSERT( (amount_to_sell * exchange_rate).amount > 0 ); // must not round to 0
+   }
 
    void limit_order_cancel_operation::validate()const
    {

@@ -2265,6 +2265,7 @@ void database::initialize_evaluators()
     register_evaluator<feed_publish_evaluator>();
     register_evaluator<convert_evaluator>();
     register_evaluator<limit_order_create_evaluator>();
+    register_evaluator<limit_order_create2_evaluator>();
     register_evaluator<limit_order_cancel_evaluator>();
     register_evaluator<escrow_transfer_evaluator>();
     register_evaluator<escrow_dispute_evaluator>();

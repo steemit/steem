@@ -479,6 +479,32 @@ namespace steemit { namespace chain {
       }
    };
 
+   /**
+    *  This operation is identical to limit_order_create except it serializes the price rather
+    *  than calculating it from other fields.
+    */
+   struct limit_order_create2_operation : public base_operation
+   {
+      string           owner;
+      uint32_t         orderid = 0; /// an ID assigned by owner, must be unique
+      asset            amount_to_sell;
+      bool             fill_or_kill = false;
+      price            exchange_rate;
+      time_point_sec   expiration = time_point_sec::maximum();
+
+      void  validate()const;
+      void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
+
+      price           get_price()const { return exchange_rate; } 
+
+      pair<asset_symbol_type,asset_symbol_type> get_market()const
+      {
+         return exchange_rate.base.symbol < exchange_rate.quote.symbol ?
+                std::make_pair(exchange_rate.base.symbol, exchange_rate.quote.symbol) :
+                std::make_pair(exchange_rate.quote.symbol, exchange_rate.base.symbol);
+      }
+   };
+
    struct fill_order_operation : public base_operation {
       fill_order_operation(){}
       fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
@@ -590,6 +616,7 @@ FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
+FC_REFLECT( steemit::chain::limit_order_create2_operation, (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
