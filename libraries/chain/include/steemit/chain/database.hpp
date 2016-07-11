@@ -369,6 +369,11 @@ namespace steemit { namespace chain {
          /**
           * @}
           */
+
+#ifdef IS_TEST_NET
+         bool liquidity_rewards_enabled = true;
+#endif
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }

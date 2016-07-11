@@ -2050,6 +2050,11 @@ asset database::get_pow_reward()const
 
 void database::pay_liquidity_reward()
 {
+#ifdef IS_TEST_NET
+   if( !liquidity_rewards_enabled )
+      return;
+#endif
+
    if( (head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0 )
    {
       const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_volume_weight>();
@@ -2687,6 +2692,8 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       FC_ASSERT( trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
                  ("trx.expiration",trx.expiration)("now",now)("max_til_exp",STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
+      if( is_producing() || has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
+         FC_ASSERT( now < trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
       FC_ASSERT( now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
    }
 
@@ -2977,7 +2984,7 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
 
    auto age = head_block_time() - old_order.created;
    if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_9__149)) ||
-       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149) ) 
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149) )
    )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
