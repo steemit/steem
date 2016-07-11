@@ -6,6 +6,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/tags/tags_plugin.hpp>
+#include <steemit/follow/follow_plugin.hpp>
 
 #include <fc/api.hpp>
 #include <fc/optional.hpp>

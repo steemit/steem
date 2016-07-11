@@ -1238,7 +1238,7 @@ state database_api::get_state( string path )const
       _state.accounts[acnt] = my->_db.get_account(acnt);
       auto& eacnt = _state.accounts[acnt];
       if( part[1] == "recommended" ) {
-          auto discussions = get_recommended_for( acnt, 100 );
+          auto discussions = get_recommended_for( acnt, 50 );
           eacnt.recommended = vector<string>();
           for( const auto& d : discussions ) {
               auto ref = d.author+"/"+d.permlink;
@@ -1295,7 +1295,7 @@ state database_api::get_state( string path )const
         const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
         eacnt.posts = vector<string>();
-        while( itr != pidx.end() && itr->author == acnt && count < 100 ) {
+        while( itr != pidx.end() && itr->author == acnt && count < 20 ) {
            eacnt.posts->push_back(itr->permlink);
            _state.content[acnt+"/"+itr->permlink] = *itr;
            set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
@@ -1307,13 +1307,28 @@ state database_api::get_state( string path )const
            const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
            auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
            eacnt.blog = vector<string>();
-           while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() ) {
+           while( itr != pidx.end() && itr->author == acnt && count < 20 && !itr->parent_author.size() ) {
               eacnt.blog->push_back(itr->permlink);
               _state.content[acnt+"/"+itr->permlink] = *itr;
               set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
               ++itr;
               ++count;
            }
+      } else if( part[1].size() == 0 || part[1] == "feed" ) {
+         const auto& fidxs = my->_db.get_index_type<follow::feed_index>().indices();
+         const auto& fidx = fidxs.get<steemit::follow::by_account>();
+         
+         auto itr = fidx.lower_bound( eacnt.id );
+         int count = 0;
+         while( itr != fidx.end() && itr->account == eacnt.id && count < 100 ) {
+            const auto& c = itr->comment( my->_db );
+            const auto link = c.author + "/" + c.permlink;
+            _state.content[link] = c;
+            eacnt.feed->push_back( link );
+            set_pending_payout( _state.content[link] );
+            ++itr;
+            ++count;
+         }
       }
    }
    /// pull a complete discussion
