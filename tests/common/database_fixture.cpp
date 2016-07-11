@@ -177,11 +177,13 @@ void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_i
          return;
       --slots_to_miss;
       generate_block(0, init_account_priv_key, slots_to_miss);
+      idump( (db.head_block_time())(timestamp) );
       return;
    }
    while( db.head_block_time() < timestamp )
       generate_block();
 
+   idump( (db.head_block_time())(timestamp) );
    BOOST_REQUIRE( db.head_block_time() == timestamp );
 }
 

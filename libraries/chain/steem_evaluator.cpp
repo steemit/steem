@@ -461,6 +461,7 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
    const auto& to_account = db().get_account(o.to);
 
    if( o.amount.symbol != VESTS_SYMBOL ) {
+      idump( (db().get_balance( from_account, o.amount.symbol ))(o.amount) );
       FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount );
       db().adjust_balance( from_account, -o.amount );
       db().adjust_balance( to_account, o.amount );
