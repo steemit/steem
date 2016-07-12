@@ -182,6 +182,8 @@ struct operation_process
 
    void operator()( const fill_vesting_withdraw_operation& op )const
    {
+      auto& account = _db.get_account( op.from_account );
+
       _db.modify( _bucket, [&]( bucket_object& b )
       {
          b.vesting_withdrawals_processed++;
@@ -189,6 +191,9 @@ struct operation_process
             b.vests_withdrawn += op.withdrawn.amount;
          else
             b.vests_transferred += op.withdrawn.amount;
+
+         if( account.vesting_withdraw_rate.amount == 0 )
+            b.finished_vesting_withdrawals++;
       });
    }
 
@@ -213,6 +218,24 @@ struct operation_process
       _db.modify( _bucket, [&]( bucket_object& b )
       {
          b.limit_orders_cancelled++;
+      });
+   }
+
+   void operator()( const convert_operation& op )const
+   {
+      _db.modify( _bucket, [&]( bucket_object& b )
+      {
+         b.sbd_conversion_requests_created++;
+         b.sbd_to_be_converted += op.amount.amount;
+      });
+   }
+
+   void operator()( const fill_convert_request_operation& op )const
+   {
+      _db.modify( _bucket, [&]( bucket_object& b )
+      {
+         b.sbd_conversion_requests_filled++;
+         b.steem_converted += op.amount_out.amount;
       });
    }
 };
@@ -322,6 +345,32 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o
                b.replies_deleted++;
             else
                b.root_comments_deleted++;
+         });
+      }
+      else if( o.op.which() == operation::tag< withdraw_vesting_operation >::value )
+      {
+         withdraw_vesting_operation op = o.op.get< withdraw_vesting_operation >();
+         auto& account = db.get_account( op.account );
+         const auto& bucket = bucket_id( db );
+
+         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS;
+         if( op.vesting_shares.amount > 0 && new_vesting_withdrawal_rate == 0 )
+            new_vesting_withdrawal_rate = 1;
+
+         if( !db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+            new_vesting_withdrawal_rate *= 1000000;
+
+         db.modify( bucket, [&]( bucket_object& b )
+         {
+            if( account.vesting_withdraw_rate.amount > 0 )
+               b.modified_vesting_withdrawal_requests++;
+            else
+               b.new_vesting_withdrawal_requests++;
+
+            if( op.account == "steemit" ) idump( (b.vesting_withdraw_rate_delta)(new_vesting_withdrawal_rate)(account.vesting_withdraw_rate)(op) );
+            // TODO: Figure out how to change delta when a vesting withdraw finishes. Have until March 24th 2018 to figure that out...
+            b.vesting_withdraw_rate_delta += new_vesting_withdrawal_rate - account.vesting_withdraw_rate.amount;
+            if( op.account == "steemit" ) idump( (b.vesting_withdraw_rate_delta) );
          });
       }
    }

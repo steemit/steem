@@ -53,9 +53,17 @@ struct statistics
    share_type           liquidity_rewards_paid = 0;                  ///< Ammount of STEEM paid to market makers
    uint32_t             transfers_to_vesting = 0;                    ///< Transfers of STEEM into VESTS
    share_type           steem_vested = 0;                            ///< Ammount of STEEM vested
+   uint32_t             new_vesting_withdrawal_requests = 0;         ///< New vesting withdrawal requests
+   uint32_t             modified_vesting_withdrawal_requests = 0;    ///< Changes to vesting withdrawal requests
+   share_type           vesting_withdraw_rate_delta = 0;
    uint32_t             vesting_withdrawals_processed = 0;           ///< Number of vesting withdrawals
+   uint32_t             finished_vesting_withdrawals = 0;            ///< Processed vesting withdrawals that are now finished
    share_type           vests_withdrawn = 0;                         ///< Ammount of VESTS withdrawn to STEEM
    share_type           vests_transferred = 0;                       ///< Ammount of VESTS transferred to another account
+   uint32_t             sbd_conversion_requests_created = 0;         ///< SBD conversion requests created
+   share_type           sbd_to_be_converted = 0;                     ///< Amount of SBD to be converted
+   uint32_t             sbd_conversion_requests_filled = 0;          ///< SBD conversion requests filled
+   share_type           steem_converted = 0;                         ///< Amount of STEEM that was converted
    uint32_t             limit_orders_created = 0;                    ///< Limit orders created
    uint32_t             limit_orders_filled = 0;                     ///< Limit orders filled
    uint32_t             limit_orders_cancelled = 0;                  ///< Limit orders cancelled
@@ -136,9 +144,17 @@ FC_REFLECT( steemit::blockchain_statistics::statistics,
    (liquidity_rewards_paid)
    (transfers_to_vesting)
    (steem_vested)
+   (new_vesting_withdrawal_requests)
+   (modified_vesting_withdrawal_requests)
+   (vesting_withdraw_rate_delta)
    (vesting_withdrawals_processed)
+   (finished_vesting_withdrawals)
    (vests_withdrawn)
    (vests_transferred)
+   (sbd_conversion_requests_created)
+   (sbd_to_be_converted)
+   (sbd_conversion_requests_filled)
+   (steem_converted)
    (limit_orders_created)
    (limit_orders_filled)
    (limit_orders_cancelled)
