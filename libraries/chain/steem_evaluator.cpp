@@ -84,7 +84,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    const auto& props = db().get_dynamic_global_properties();
 
-   FC_ASSERT( creator.balance >= o.fee, "Isufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
+   FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )  {
       const witness_schedule_object& wso = db().get_witness_schedule_object();
