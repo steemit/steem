@@ -29,10 +29,10 @@ Steem OS X Build Instructions
    brew install google-perftools
    ```
 
-7. Clone the Graphene repository:
+7. Clone the Steem repository:
    ```
    git clone https://github.com/steemit/steem.git
-   cd graphene
+   cd steem
    ```
 
 8. Build Steem:
