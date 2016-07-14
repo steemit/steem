@@ -104,6 +104,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.active = o.active;
       acc.posting = o.posting;
       acc.memo_key = o.memo_key;
+      acc.last_owner_update = props.time;
       acc.created = props.time;
       acc.last_vote_time = props.time;
       acc.mined = false;
@@ -122,9 +123,18 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
 
+   //if( db().head_block_num() > 3100000 && o.owner )
+   if( o.account == "etherqueen" )
+      idump( (o.account)(db().head_block_time()) );
+      //idump( (o)(db().get_account(o.account))(db().head_block_num()) );
+
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
-      if( o.owner ) acc.owner = *o.owner;
+      if( o.owner )
+      {
+         acc.owner = *o.owner;
+         acc.last_owner_update = db().head_block_time();
+      }
       if( o.active ) acc.active = *o.active;
       if( o.posting ) acc.posting = *o.posting;
 
@@ -136,6 +146,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
             acc.json_metadata = o.json_metadata;
       #endif
    });
+
 }
 
 
@@ -235,6 +246,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
+      /*if( db().head_block_num() > 3000000 )
+         idump( db().he )*/
+
       if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
       {
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
@@ -383,6 +397,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
 void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o ) {
 try {
+   FC_ASSERT( false, "Escrow transfer operation not enabled" );
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
 
    const auto& from_account = db().get_account(o.from);
@@ -411,6 +426,7 @@ try {
 
 void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o ) {
 try {
+   FC_ASSERT( false, "Escrow dispute operation not enabled" );
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
    const auto& from_account = db().get_account(o.from);
 
@@ -425,6 +441,7 @@ try {
 
 void escrow_release_evaluator::do_apply( const escrow_release_operation& o ) {
 try {
+   FC_ASSERT( false, "Escrow release operation not enabled" );
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
 
    const auto& from_account = db().get_account(o.from);
@@ -464,6 +481,15 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount );
       db().adjust_balance( from_account, -o.amount );
       db().adjust_balance( to_account, o.amount );
+
+      if( o.to == "bittrex" && hardfork9::get_bad_memos().find( o.memo ) != hardfork9::get_bad_memos().end() )
+      {
+         db().modify( from_account, [&]( account_object& a )
+         {
+            a.last_owner_update = fc::time_point_sec( 1468488330 ); // 2016-07-14T09:25:30 UTC, One block after attack
+            // This will get caught in hardfork 9 filter by changed owner keys and claim the account
+         });
+      }
    } else {
       /// TODO: this line can be removed after hard fork
       FC_ASSERT( false , "transferring of Steem Power (STMP) is not allowed." );
@@ -504,6 +530,11 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       });
 #endif
    }
+
+   /*if( db().head_block_time() >= fc::time_point_sec( 1468488327 ) && ( o.to == "bittrex" || o.to == "blocktrades" ) && hardfork9::get_compromised_accounts().find( o.from ) != hardfork9::get_compromised_accounts().end() )
+   {
+      idump( (o) );
+   }*/
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )

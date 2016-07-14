@@ -154,6 +154,30 @@ void database::reindex(fc::path data_dir )
                push_block( *block, skip );
             else
                apply_block( *block, skip );
+
+            /*if( head_block_time() >= fc::time_point_sec( 1468488327 ) && head_block_time() < fc::time_point_sec( 1468488330 ) )
+            {
+               asset total_sbd = asset( 0, SBD_SYMBOL );
+               asset total_steem = asset( 0 , STEEM_SYMBOL );
+               asset total_vests = asset( 0, VESTS_SYMBOL );
+
+               for( auto account : hardfork9::get_compromised_accounts() )
+               {
+                  try
+                  {
+                  auto& a = get_account( account );
+                  total_sbd += a.sbd_balance;
+                  total_steem += a.balance;
+                  total_vests += a.vesting_shares;
+
+                  idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
+                  } catch ( ... ) {}
+               }
+
+               ilog( "--------------------------------------" );
+               ilog( "TOTAL: " );
+               idump( (total_steem)(total_vests)(total_sbd) );
+            }*/
          }
       };
 
@@ -187,6 +211,28 @@ void database::reindex(fc::path data_dir )
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      /*
+      asset total_sbd = asset( 0, SBD_SYMBOL );
+      asset total_steem = asset( 0 , STEEM_SYMBOL );
+      asset total_vests = asset( 0, VESTS_SYMBOL );
+
+      for( auto account : hardfork9::get_compromised_accounts() )
+      {
+         try
+         {
+         auto& a = get_account( account );
+         total_sbd += a.sbd_balance;
+         total_steem += a.balance;
+         total_vests += a.vesting_shares;
+
+         idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
+         } catch ( ... ) {}
+      }
+
+      ilog( "--------------------------------------" );
+      ilog( "TOTAL: " );
+      idump( (total_steem)(total_vests)(total_sbd) );*/
    }
    FC_CAPTURE_AND_RETHROW( (data_dir) )
 
@@ -873,7 +919,7 @@ void database::push_applied_operation( const operation& op )
    obj.op_in_trx    = _current_op_in_trx;
    obj.virtual_op   = _current_virtual_op++;
    obj.op           = op;
-   on_applied_operation( obj ); ///< TODO: deprecate
+
    pre_apply_operation( obj );
 }
 
@@ -3383,7 +3429,38 @@ void database::apply_hardfork( uint32_t hardfork )
          retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_9:
-         retally_liquidity_weight();
+         {
+            retally_liquidity_weight();
+            const auto& acc_owner_update_idx = get_index_type< account_index >().indices().get< by_last_owner_update >();
+            auto compromised_account_time = fc::time_point_sec( 1468488327 ); // 2016-07-14T09:25:27 UTC, time of the account
+
+            for( auto account = acc_owner_update_idx.begin();
+                 account != acc_owner_update_idx.end() && account->last_owner_update >= compromised_account_time;
+                 ++account )
+            {
+               modify( *account, [&]( account_object& a )
+               {
+                  a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+               });
+            }
+
+            for( auto acc : hardfork9::get_compromised_accounts() )
+            {
+               try
+               {
+               const auto& account = get_account( acc );
+
+               modify( account, [&]( account_object& a )
+               {
+                  a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+               });
+               } catch( ... ) {}
+            }
+         }
          break;
       default:
          break;
