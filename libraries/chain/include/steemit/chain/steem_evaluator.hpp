@@ -32,5 +32,9 @@ DEFINE_EVALUATOR( convert )
 DEFINE_EVALUATOR( limit_order_create )
 DEFINE_EVALUATOR( limit_order_cancel )
 DEFINE_EVALUATOR( report_over_production )
+DEFINE_EVALUATOR( limit_order_create2 )
+DEFINE_EVALUATOR( escrow_transfer )
+DEFINE_EVALUATOR( escrow_dispute )
+DEFINE_EVALUATOR( escrow_release )
 
 } } // steemit::chain

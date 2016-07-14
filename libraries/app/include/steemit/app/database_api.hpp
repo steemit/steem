@@ -6,6 +6,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/tags/tags_plugin.hpp>
+#include <steemit/follow/follow_plugin.hpp>
 
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
@@ -46,6 +47,12 @@ struct scheduled_hardfork
 {
    hardfork_version     hf_version;
    fc::time_point_sec   live_time;
+};
+
+struct liquidity_balance
+{
+   string               account;
+   fc::uint128_t        weight;
 };
 
 
@@ -242,6 +249,12 @@ class database_api
       order_book get_order_book( uint32_t limit = 1000 )const;
       vector<extended_limit_order> get_open_orders( string owner )const;
 
+      /**
+       * @breif Gets the current liquidity reward queue.
+       * @param start_account The account to start the list from, or "" to get the head of the queue
+       * @param limit Maxmimum number of accounts to return -- Must not exceed 1000
+       */
+      vector< liquidity_balance > get_liquidity_queue( string start_account, uint32_t limit = 1000 )const;
 
       ////////////////////////////
       // Authority / validation //
@@ -372,6 +385,7 @@ class database_api
 FC_REFLECT( steemit::app::order, (order_price)(real_price)(steem)(sbd)(created) );
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
 FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
+FC_REFLECT( steemit::app::liquidity_balance, (account)(weight) );
 
 FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
 
@@ -428,6 +442,7 @@ FC_API(steemit::app::database_api,
    // Market
    (get_order_book)
    (get_open_orders)
+   (get_liquidity_queue)
 
    // Authority / validation
    (get_transaction_hex)

@@ -65,6 +65,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 
       // Market
       order_book get_order_book( uint32_t limit )const;
+      vector< liquidity_balance > get_liquidity_queue( string start_account, uint32_t limit )const;
 
       // Authority / validation
       std::string get_transaction_hex(const signed_transaction& trx)const;
@@ -532,7 +533,11 @@ vector<extended_limit_order> database_api::get_open_orders( string owner )const 
    auto itr = idx.lower_bound( owner );
    while( itr != idx.end() && itr->seller == owner ) {
       result.push_back( *itr );
-      result.back().real_price = (~result.back().sell_price).to_real();
+
+      if( itr->sell_price.base.symbol == STEEM_SYMBOL )
+         result.back().real_price = (~result.back().sell_price).to_real();
+      else
+         result.back().real_price = (result.back().sell_price).to_real();
       ++itr;
    }
    return result;
@@ -579,6 +584,49 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
       ++buy_itr;
    }
 
+
+   return result;
+}
+
+vector< liquidity_balance > database_api::get_liquidity_queue( string start_account, uint32_t limit )const
+{
+   return my->get_liquidity_queue( start_account, limit );
+}
+
+vector< liquidity_balance > database_api_impl::get_liquidity_queue( string start_account, uint32_t limit )const
+{
+   FC_ASSERT( limit <= 1000 );
+
+   const auto& liq_idx = _db.get_index_type< liquidity_reward_index >().indices().get< by_volume_weight >();
+   auto itr = liq_idx.begin();
+   vector< liquidity_balance > result;
+
+   result.reserve( limit );
+
+   if( start_account.length() )
+   {
+      const auto& liq_by_acc = _db.get_index_type< liquidity_reward_index >().indices().get< by_owner >();
+      auto acc = liq_by_acc.find( _db.get_account( start_account ).id );
+
+      if( acc != liq_by_acc.end() )
+      {
+         itr = liq_idx.find( boost::make_tuple( acc->weight, acc->owner ) );
+      }
+      else
+      {
+         itr = liq_idx.end();
+      }
+   }
+
+   while( itr != liq_idx.end() && result.size() < limit )
+   {
+      liquidity_balance bal;
+      bal.account = itr->owner( _db ).name;
+      bal.weight = itr->weight;
+      result.push_back( bal );
+
+      ++itr;
+   }
 
    return result;
 }
@@ -935,7 +983,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
       }
-      ++tidx_itr; 
+      ++tidx_itr;
    }
    return result;
 }
@@ -1190,7 +1238,7 @@ state database_api::get_state( string path )const
       _state.accounts[acnt] = my->_db.get_account(acnt);
       auto& eacnt = _state.accounts[acnt];
       if( part[1] == "recommended" ) {
-          auto discussions = get_recommended_for( acnt, 100 );
+          auto discussions = get_recommended_for( acnt, 50 );
           eacnt.recommended = vector<string>();
           for( const auto& d : discussions ) {
               auto ref = d.author+"/"+d.permlink;
@@ -1247,7 +1295,7 @@ state database_api::get_state( string path )const
         const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
         eacnt.posts = vector<string>();
-        while( itr != pidx.end() && itr->author == acnt && count < 100 ) {
+        while( itr != pidx.end() && itr->author == acnt && count < 20 ) {
            eacnt.posts->push_back(itr->permlink);
            _state.content[acnt+"/"+itr->permlink] = *itr;
            set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
@@ -1259,13 +1307,28 @@ state database_api::get_state( string path )const
            const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
            auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
            eacnt.blog = vector<string>();
-           while( itr != pidx.end() && itr->author == acnt && count < 100 && !itr->parent_author.size() ) {
+           while( itr != pidx.end() && itr->author == acnt && count < 20 && !itr->parent_author.size() ) {
               eacnt.blog->push_back(itr->permlink);
               _state.content[acnt+"/"+itr->permlink] = *itr;
               set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
               ++itr;
               ++count;
            }
+      } else if( part[1].size() == 0 || part[1] == "feed" ) {
+         const auto& fidxs = my->_db.get_index_type<follow::feed_index>().indices();
+         const auto& fidx = fidxs.get<steemit::follow::by_account>();
+         
+         auto itr = fidx.lower_bound( eacnt.id );
+         int count = 0;
+         while( itr != fidx.end() && itr->account == eacnt.id && count < 100 ) {
+            const auto& c = itr->comment( my->_db );
+            const auto link = c.author + "/" + c.permlink;
+            _state.content[link] = c;
+            eacnt.feed->push_back( link );
+            set_pending_payout( _state.content[link] );
+            ++itr;
+            ++count;
+         }
       }
    }
    /// pull a complete discussion

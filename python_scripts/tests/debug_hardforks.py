@@ -83,36 +83,12 @@ def run_steemd_tests( debug_node ):
 
       print( "Setting the hardfork now" ) # TODO: Grab most recent hardfork num from build directory
       sys.stdout.flush()
-      debug_node.debug_set_hardfork( 5 )
-
-      print( "Checking majority version field for WSO on new block production" )
-      assert( debug_node.debug_has_hardfork( 4 ) )
-      assert( not debug_node.debug_has_hardfork( 5 ) )
-      assert( debug_node.debug_get_witness_schedule()[ "majority_version" ] == "0.0.0" )
-
-      debug_node.debug_generate_blocks( 21 )
-      assert( debug_node.debug_has_hardfork( 5 ) )
-      assert( debug_node.debug_get_witness_schedule()[ "majority_version" ] == "0.5.0" )
+      debug_node.debug_set_hardfork( 9 )
 
       print( "Generating blocks after the hardfork" )
       assert( debug_node.debug_generate_blocks( 5000 ) == 5000 )
 
       print( "Done!" )
-      '''print( "Calculating block producer distribution:" )
-      sys.stdout.flush()
-      rpc = SteemNodeRPC( 'ws://127.0.0.1:8090', '', '' )
-      block_producers = {}
-      for i in range( total_blocks + 1 , total_blocks + 5001 ):
-         ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_block",[' + str( i ) + ']], "id":4}' ) )
-         if( ret[ "witness" ] in block_producers ):
-            block_producers[ ret[ "witness" ] ] += 1
-         else:
-            block_producers[ ret[ "witness" ] ] = 1
-
-      sorted_block_producers = sorted( block_producers.items(), key=operator.itemgetter( 1 ) )
-      for (k, v) in sorted_block_producers:
-         ret = rpc.rpcexec( json.loads( '{"jsonrpc": "2.0", "method": "call", "params": [0,"get_witness_by_account",["' + k + '"]], "id":5}' ) )
-         print( '{"witness":"' + k + '","votes":' + str( ret["votes"] ) + ',"blocks":' + str( v ) + '}' )'''
 
    except ValueError as val_err:
       print( str( val_err ) )

@@ -104,6 +104,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.active = o.active;
       acc.posting = o.posting;
       acc.memo_key = o.memo_key;
+      acc.last_owner_update = props.time;
       acc.created = props.time;
       acc.last_vote_time = props.time;
       acc.mined = false;
@@ -124,7 +125,11 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
-      if( o.owner ) acc.owner = *o.owner;
+      if( o.owner )
+      {
+         acc.owner = *o.owner;
+         acc.last_owner_update = db().head_block_time();
+      }
       if( o.active ) acc.active = *o.active;
       if( o.posting ) acc.posting = *o.posting;
 
@@ -136,6 +141,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
             acc.json_metadata = o.json_metadata;
       #endif
    });
+
 }
 
 
@@ -181,6 +187,14 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
             parent = nullptr;
       }
    }
+
+   /** TODO move category behavior to a plugin, this is not part of consensus */
+   const category_object* cat = db().find_category( comment.category );
+   db().modify( *cat, [&]( category_object& c )
+   {
+      c.discussions--;
+      c.last_update = db().head_block_time();
+   });
 
    db().remove( comment );
 }
@@ -373,6 +387,83 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
+void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o ) {
+try {
+   FC_ASSERT( false, "Escrow transfer operation not enabled" );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
+
+   const auto& from_account = db().get_account(o.from);
+   db().get_account(o.to);
+   const auto& agent_account = db().get_account(o.agent);
+
+   FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= (o.amount + o.fee) );
+
+   if( o.fee.amount > 0 ) {
+      db().adjust_balance( from_account, -o.fee );
+      db().adjust_balance( agent_account, o.fee );
+   }
+
+   db().adjust_balance( from_account, -o.amount );
+
+   db().create<escrow_object>([&]( escrow_object& esc ) {
+      esc.escrow_id  = o.escrow_id;
+      esc.from       = o.from;
+      esc.to         = o.to;
+      esc.agent      = o.agent;
+      esc.balance    = o.amount;
+      esc.expiration = o.expiration;
+   });
+
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o ) {
+try {
+   FC_ASSERT( false, "Escrow dispute operation not enabled" );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
+   const auto& from_account = db().get_account(o.from);
+
+   const auto& e = db().get_escrow( o.from, o.escrow_id );
+   FC_ASSERT( !e.disputed );
+   FC_ASSERT( e.to == o.to );
+
+   db().modify( e, [&]( escrow_object& esc ){
+     esc.disputed = true;
+   });
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
+void escrow_release_evaluator::do_apply( const escrow_release_operation& o ) {
+try {
+   FC_ASSERT( false, "Escrow release operation not enabled" );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
+
+   const auto& from_account = db().get_account(o.from);
+   const auto& to_account = db().get_account(o.to);
+   const auto& who_account = db().get_account(o.who);
+
+   const auto& e = db().get_escrow( o.from, o.escrow_id );
+   FC_ASSERT( e.balance >= o.amount && e.balance.symbol == o.amount.symbol );
+   /// TODO assert o.amount > 0
+
+   if( e.expiration > db().head_block_time() ) {
+      if( o.who == e.from )    FC_ASSERT( o.to == e.to );
+      else if( o.who == e.to ) FC_ASSERT( o.to == e.from );
+      else {
+         FC_ASSERT( e.disputed && o.who == e.agent );
+      }
+   } else {
+      FC_ASSERT( o.who == e.to || o.who == e.from );
+   }
+
+   db().adjust_balance( to_account, o.amount );
+   if( e.balance == o.amount )
+      db().remove( e );
+   else {
+      db().modify( e, [&]( escrow_object& esc ) {
+         esc.balance -= o.amount;
+      });
+   }
+} FC_CAPTURE_AND_RETHROW( (o) ) }
+
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
    const auto& from_account = db().get_account(o.from);
@@ -382,6 +473,15 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount );
       db().adjust_balance( from_account, -o.amount );
       db().adjust_balance( to_account, o.amount );
+
+      if( o.to == "bittrex" && hardfork9::get_bad_memos().find( o.memo ) != hardfork9::get_bad_memos().end() )
+      {
+         db().modify( from_account, [&]( account_object& a )
+         {
+            a.last_owner_update = fc::time_point_sec( 1468488330 ); // 2016-07-14T09:25:30 UTC, One block after attack
+            // This will get caught in hardfork 9 filter by changed owner keys and claim the account
+         });
+      }
    } else {
       /// TODO: this line can be removed after hard fork
       FC_ASSERT( false , "transferring of Steem Power (STMP) is not allowed." );
@@ -683,6 +783,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
+      if( db().is_producing() )
+         FC_ASSERT( false, "Cannot vote again on a comment after payout" );
+
       db().remove( *itr );
       itr = comment_vote_idx.end();
    }
@@ -1038,6 +1141,31 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
        obj.orderid    = o.orderid;
        obj.for_sale   = o.amount_to_sell.amount;
        obj.sell_price = o.get_price();
+       obj.expiration = o.expiration;
+   });
+
+   bool filled = db().apply_order( order );
+
+   if( o.fill_or_kill ) FC_ASSERT( filled );
+}
+
+void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9__147 ) ); /// TODO remove this check after hardfork
+
+   FC_ASSERT( o.expiration > db().head_block_time() );
+
+   const auto& owner = db().get_account( o.owner );
+
+   FC_ASSERT( db().get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell );
+
+   db().adjust_balance( owner, -o.amount_to_sell );
+
+   const auto& order = db().create<limit_order_object>( [&]( limit_order_object& obj ) {
+       obj.created    = db().head_block_time();
+       obj.seller     = o.owner;
+       obj.orderid    = o.orderid;
+       obj.for_sale   = o.amount_to_sell.amount;
+       obj.sell_price = o.exchange_rate;
        obj.expiration = o.expiration;
    });
 

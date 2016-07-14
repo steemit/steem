@@ -271,7 +271,7 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
          // ilog("Not producing block because slot has not yet arrived");
          break;
       case block_production_condition::no_private_key:
-         ilog("Not producing block for ${w} because I don't have the private key for ${scheduled_key}", (capture) );
+         ilog("Not producing block for ${scheduled_witness} because I don't have the private key for ${scheduled_key}", (capture) );
          break;
       case block_production_condition::low_participation:
          elog("Not producing block because node appears to be on a minority fork with only ${pct}% witness participation", (capture) );
@@ -343,6 +343,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
 
    if( private_key_itr == _private_keys.end() )
    {
+      capture("scheduled_witness", scheduled_witness);
       capture("scheduled_key", scheduled_key);
       return block_production_condition::no_private_key;
    }

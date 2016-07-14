@@ -289,59 +289,39 @@ BOOST_AUTO_TEST_CASE( mh_test )
       auto order = order_hist_idx.begin();
 
       BOOST_REQUIRE( order->time == fill_order_a_time );
-      BOOST_REQUIRE( order->op.owner == "bob" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "1.500 TESTS" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.750 TBD" ) );
-      order++;
-
-      BOOST_REQUIRE( order->time == fill_order_a_time );
-      BOOST_REQUIRE( order->op.owner == "alice" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.750 TBD" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "1.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.current_owner == "bob" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "1.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.open_owner == "alice" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == ASSET( "0.750 TBD" ) );
       order++;
 
       BOOST_REQUIRE( order->time == fill_order_b_time );
-      BOOST_REQUIRE( order->op.owner == "sam" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.500 TESTS" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.250 TBD" ) );
-      order++;
-
-      BOOST_REQUIRE( order->time == fill_order_b_time );
-      BOOST_REQUIRE( order->op.owner == "alice" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.250 TBD" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.current_owner == "sam" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.open_owner == "alice" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == ASSET( "0.250 TBD" ) );
       order++;
 
       BOOST_REQUIRE( order->time == fill_order_c_time );
-      BOOST_REQUIRE( order->op.owner == "alice" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.250 TBD" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.current_owner == "alice" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.250 TBD" ) );
+      BOOST_REQUIRE( order->op.open_owner == "sam" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == ASSET( "0.500 TESTS" ) );
       order++;
 
       BOOST_REQUIRE( order->time == fill_order_c_time );
-      BOOST_REQUIRE( order->op.owner == "sam" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.500 TESTS" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.250 TBD" ) );
-      order++;
-
-      BOOST_REQUIRE( order->time == fill_order_c_time );
-      BOOST_REQUIRE( order->op.owner == "bob" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.450 TESTS" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.250 TBD" ) );
-      order++;
-
-      BOOST_REQUIRE( order->time == fill_order_c_time );
-      BOOST_REQUIRE( order->op.owner == "alice" );
-      BOOST_REQUIRE( order->op.orderid == 0 );
-      BOOST_REQUIRE( order->op.pays == ASSET( "0.250 TBD" ) );
-      BOOST_REQUIRE( order->op.receives == ASSET( "0.450 TESTS" ) );
+      BOOST_REQUIRE( order->op.current_owner == "bob" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.450 TESTS" ) );
+      BOOST_REQUIRE( order->op.open_owner == "alice" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == ASSET( "0.250 TBD" ) );
       order++;
 
       BOOST_REQUIRE( order == order_hist_idx.end() );

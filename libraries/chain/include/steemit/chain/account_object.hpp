@@ -27,6 +27,8 @@ namespace steemit { namespace chain {
          string          json_metadata = "";
          string          proxy;
 
+         time_point_sec  last_owner_update;
+
          time_point_sec  created;
          bool            mined = true;
          uint32_t        comment_count = 0;
@@ -147,6 +149,7 @@ namespace steemit { namespace chain {
    struct by_smd_balance;
    struct by_post_count;
    struct by_vote_count;
+   struct by_last_owner_update;
 
    /**
     * @ingroup object_index
@@ -211,6 +214,13 @@ namespace steemit { namespace chain {
                member<object, object_id_type, &object::id >
             >,
             composite_key_compare< std::greater< uint32_t >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_last_owner_update >,
+            composite_key< account_object,
+               member<account_object, time_point_sec, &account_object::last_owner_update >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< time_point_sec >, std::less< object_id_type > >
          >
       >
    > account_multi_index_type;
@@ -220,7 +230,7 @@ namespace steemit { namespace chain {
 } }
 
 FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
-                    (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)
+                    (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)
                     (created)(mined)(comment_count)(lifetime_vote_count)(post_count)(voting_power)(last_vote_time)
                     (balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)

@@ -130,7 +130,7 @@ void account_history_plugin::plugin_set_program_options(
 void account_history_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    //ilog("Intializing account history plugin" );
-   database().on_applied_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().pre_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
    database().add_index< primary_index< operation_index  > >();
    database().add_index< primary_index< account_history_index  > >();
 

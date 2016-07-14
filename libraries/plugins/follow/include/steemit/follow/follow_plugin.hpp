@@ -20,7 +20,8 @@ enum follow_object_type
 {
    key_account_object_type = 0,
    bucket_object_type = 1,///< used in market_history_plugin
-   follow_object_type = 6
+   follow_object_type = 6,
+   feed_object_type   = 7
 };
 
 
@@ -35,6 +36,14 @@ class  follow_object : public abstract_object<follow_object> {
       string        follower;
       string        following;
       set<string>   what; /// post, comments, votes, ignore
+};
+
+class feed_object : public abstract_object<feed_object> {
+   public:
+      static const uint8_t space_id = PRIVATE_MESSAGE_SPACE_ID;
+      static const uint8_t type_id  = feed_object_type;
+      account_id_type account;
+      comment_id_type comment;
 };
 
 
@@ -74,6 +83,24 @@ typedef multi_index_container<
 typedef graphene::db::generic_index< follow_object, follow_multi_index_type> follow_index;
 
 
+struct by_account;
+typedef multi_index_container<
+    feed_object,
+    indexed_by<
+      ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_account >, 
+            composite_key< feed_object,
+               member< feed_object, account_id_type, &feed_object::account >,
+               member< object, object_id_type, &object::id >
+            >
+      >
+   >
+> feed_multi_index_type;
+     
+typedef graphene::db::generic_index< feed_object, feed_multi_index_type> feed_index;
+
+
+
 class follow_plugin : public steemit::app::plugin
 {
    public:
@@ -95,6 +122,7 @@ class follow_api : public std::enable_shared_from_this<follow_api> {
       vector<follow_object> get_followers( string to, string start, uint16_t limit )const;
       vector<follow_object> get_following( string from, string start, uint16_t limit )const;
 
+
    private:
       app::application* _app = nullptr;
 };
@@ -106,5 +134,4 @@ FC_API( steemit::follow::follow_api, (get_followers)(get_following) );
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) );
 FC_REFLECT( steemit::follow::follow_operation, (follower)(following)(what) )
-
-
+FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(comment) )

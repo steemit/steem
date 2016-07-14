@@ -36,7 +36,7 @@ market_ticker market_history_api_impl::get_ticker() const
    {
       auto open = ( asset( itr->open_sbd, SBD_SYMBOL ) / asset( itr->open_steem, STEEM_SYMBOL ) ).to_real();
       result.latest = ( asset( itr->close_sbd, SBD_SYMBOL ) / asset( itr->close_steem, STEEM_SYMBOL ) ).to_real();
-      result.percent_change = ( result.latest - open ) / open;
+      result.percent_change = ( ( result.latest - open ) / open ) * 100;
    }
    else
    {
@@ -71,8 +71,8 @@ market_volume market_history_api_impl::get_volume() const
 
    while( itr != bucket_idx.end() && itr->seconds == bucket_size )
    {
-      result.steem_volume += itr->steem_volume;
-      result.sbd_volume += itr->sbd_volume;
+      result.steem_volume.amount += itr->steem_volume;
+      result.sbd_volume.amount += itr->sbd_volume;
 
       ++itr;
    }
