@@ -79,7 +79,7 @@ void private_message_plugin_impl::on_operation( const operation_object& op_obj )
          if( cop.id == "private_message" )  {
             opm = fc::json::from_string(cop.json).as<private_message_operation>();
             FC_ASSERT( cop.required_auths.find( opm->from ) != cop.required_auths.end() ||
-                       cop.required_posting_auths.find( opm->from ) != cop.required_posting_auths.end() 
+                       cop.required_posting_auths.find( opm->from ) != cop.required_posting_auths.end()
                        , "sender didn't sign message" );
          }
       }
@@ -97,7 +97,7 @@ void private_message_plugin_impl::on_operation( const operation_object& op_obj )
 
          if( !_tracked_accounts.size() ||
              (to_itr != _tracked_accounts.end() && pm.to >= to_itr->first && pm.to <= to_itr->second) ||
-             (from_itr != _tracked_accounts.end() && pm.from >= from_itr->first && pm.from <= from_itr->second) ) 
+             (from_itr != _tracked_accounts.end() && pm.from >= from_itr->first && pm.from <= from_itr->second) )
          {
             db.create<message_object>( [&]( message_object& pmo ) {
                pmo.from               = pm.from;
@@ -148,7 +148,7 @@ void private_message_plugin::plugin_set_program_options(
 void private_message_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing private message plugin" );
-   database().on_applied_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().pre_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
    database().add_index< primary_index< private_message_index  > >();
 
    app().register_api_factory<private_message_api>("private_message_api");

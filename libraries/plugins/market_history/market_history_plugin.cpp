@@ -173,7 +173,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 {
    try
    {
-      database().on_applied_operation.connect( [&]( const operation_object& o ){ _my->update_market_histories( o ); } );
+      database().pre_apply_operation.connect( [&]( const operation_object& o ){ _my->update_market_histories( o ); } );
       database().add_index< primary_index< bucket_index > >();
       database().add_index< primary_index< order_history_index > >();
 

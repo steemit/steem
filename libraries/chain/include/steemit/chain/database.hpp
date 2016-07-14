@@ -163,13 +163,6 @@ namespace steemit { namespace chain {
          void notify_post_apply_operation( const operation& op );
 
          /**
-          * This signal is emitted for plugins to process every operation before it gets applied.
-          *
-          *  @deprecated - use pre_apply_operation instead
-          */
-         fc::signal<void(const operation_object&)> on_applied_operation;
-
-         /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
           */
          fc::signal<void(const operation_object&)> pre_apply_operation;
