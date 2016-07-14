@@ -123,11 +123,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
 
-   //if( db().head_block_num() > 3100000 && o.owner )
-   if( o.account == "etherqueen" )
-      idump( (o.account)(db().head_block_time()) );
-      //idump( (o)(db().get_account(o.account))(db().head_block_num()) );
-
    db().modify( db().get_account( o.account ), [&]( account_object& acc )
    {
       if( o.owner )
@@ -246,9 +241,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      /*if( db().head_block_num() > 3000000 )
-         idump( db().he )*/
-
       if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
       {
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
@@ -530,11 +522,6 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       });
 #endif
    }
-
-   /*if( db().head_block_time() >= fc::time_point_sec( 1468488327 ) && ( o.to == "bittrex" || o.to == "blocktrades" ) && hardfork9::get_compromised_accounts().find( o.from ) != hardfork9::get_compromised_accounts().end() )
-   {
-      idump( (o) );
-   }*/
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )

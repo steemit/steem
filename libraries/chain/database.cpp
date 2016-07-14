@@ -3029,8 +3029,8 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_9__149)) ||
-       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149) )
+   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC /*&& !has_hardfork( STEEMIT_HARDFORK_0_9__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149)*/ )
    )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
@@ -3075,7 +3075,7 @@ void database::adjust_liquidity_reward( const account_object& owner, const asset
          else
             r.steem_volume += volume.amount.value;
 
-         r.update_weight( has_hardfork( STEEMIT_HARDFORK_0_9__141 ) );
+         r.update_weight( false );
          r.last_update = head_block_time();
       } );
    }
@@ -3430,7 +3430,6 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_9:
          {
-            retally_liquidity_weight();
             const auto& acc_owner_update_idx = get_index_type< account_index >().indices().get< by_last_owner_update >();
             auto compromised_account_time = fc::time_point_sec( 1468488327 ); // 2016-07-14T09:25:27 UTC, time of the account
 
