@@ -5,6 +5,8 @@
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/history_object.hpp>
+#include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -38,7 +40,7 @@ void follow_plugin_impl::on_operation( const operation_object& op_obj ) {
          if( cop.id == "follow" )  {
             auto op = fc::json::from_string(cop.json).as<follow_operation>();
             FC_ASSERT( cop.required_auths.find( op.follower ) != cop.required_auths.end() ||
-                       cop.required_posting_auths.find( op.follower ) != cop.required_posting_auths.end() 
+                       cop.required_posting_auths.find( op.follower ) != cop.required_posting_auths.end()
                        , "follower didn't sign message" );
 
             FC_ASSERT( op.follower != op.following );
@@ -59,6 +61,20 @@ void follow_plugin_impl::on_operation( const operation_object& op_obj ) {
             }
 
          }
+      } else if ( op_obj.op.which() == operation::tag<comment_operation>::value ) {
+         const auto& op = op_obj.op.get<comment_operation>();
+         const auto& c = db.get_comment( op.author, op.permlink );
+
+
+         const auto& idx = db.get_index_type<follow_index>().indices().get<by_following_follower>();
+         auto itr = idx.find( op.author ); //boost::make_tuple( op.author, op.following ) );
+         while( itr != idx.end() && itr->following == op.author ) {
+            db.create<feed_object>( [&]( feed_object& f ) {
+                f.account = db.get_account( itr->following ).id;
+                f.comment = c.id;
+            });
+            ++itr;
+         }
       }
    } catch ( const fc::exception& ) {
       if( db.is_producing() ) throw;
@@ -78,8 +94,9 @@ std::string follow_plugin::plugin_name()const
 void follow_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing follow plugin" );
-   database().on_applied_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
    database().add_index< primary_index< follow_index  > >();
+   database().add_index< primary_index< feed_index  > >();
 
    app().register_api_factory<follow_api>("follow_api");
 }

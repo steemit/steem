@@ -105,6 +105,7 @@ namespace steemit { namespace chain {
          const witness_object&  get_witness( const string& name )const;
          const account_object&  get_account( const string& name )const;
          const comment_object&  get_comment( const string& author, const string& permlink )const;
+         const escrow_object&   get_escrow( const string& name, uint32_t escrowid )const;
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
          const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
@@ -160,13 +161,6 @@ namespace steemit { namespace chain {
           */
          void push_applied_operation( const operation& op );
          void notify_post_apply_operation( const operation& op );
-
-         /**
-          * This signal is emitted for plugins to process every operation before it gets applied.
-          *
-          *  @deprecated - use pre_apply_operation instead
-          */
-         fc::signal<void(const operation_object&)> on_applied_operation;
 
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
@@ -243,7 +237,7 @@ namespace steemit { namespace chain {
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
          void update_account_activity( const account_object& account );
-         void adjust_total_payout( const comment_object& a, const asset& sbd );
+         void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value );
 
          void update_witness_schedule();
 
@@ -356,6 +350,7 @@ namespace steemit { namespace chain {
          void retally_comment_children();
          void retally_witness_votes();
          void retally_witness_vote_counts( bool force = false );
+         void retally_liquidity_weight();
 
          bool has_hardfork( uint32_t hardfork )const;
 
@@ -367,6 +362,11 @@ namespace steemit { namespace chain {
          /**
           * @}
           */
+
+#ifdef IS_TEST_NET
+         bool liquidity_rewards_enabled = true;
+#endif
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }

@@ -204,6 +204,16 @@ namespace steemit { namespace chain {
          || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) ) );
       (amount_to_sell / min_to_receive).validate();
    }
+   void limit_order_create2_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( owner ) );
+      FC_ASSERT( amount_to_sell.symbol == exchange_rate.base.symbol );
+      exchange_rate.validate();
+
+      FC_ASSERT( ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) && is_asset_type( exchange_rate.quote, SBD_SYMBOL ) ) ||
+                 ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) ) );
+
+      FC_ASSERT( (amount_to_sell * exchange_rate).amount > 0 ); // must not round to 0
+   }
 
    void limit_order_cancel_operation::validate()const
    {
@@ -225,6 +235,30 @@ namespace steemit { namespace chain {
       FC_ASSERT( first_block.timestamp == second_block.timestamp );
       FC_ASSERT( first_block.signee()  == second_block.signee() );
       FC_ASSERT( first_block.id() != second_block.id() );
+   }
+
+   void escrow_transfer_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( agent ) );
+      FC_ASSERT( fee.amount >= 0 );
+      FC_ASSERT( amount.amount >= 0 );
+      FC_ASSERT( from != agent && to != agent );
+      FC_ASSERT( fee.symbol == amount.symbol );
+      FC_ASSERT( amount.symbol != VESTS_SYMBOL );
+   }
+   void escrow_dispute_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( who ) );
+      FC_ASSERT( who == from || who == to );
+   }
+   void escrow_release_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( who ) );
+      FC_ASSERT( amount.amount > 0 );
+      FC_ASSERT( amount.symbol != VESTS_SYMBOL );
    }
 
 

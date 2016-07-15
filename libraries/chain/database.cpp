@@ -154,6 +154,30 @@ void database::reindex(fc::path data_dir )
                push_block( *block, skip );
             else
                apply_block( *block, skip );
+
+            /*if( head_block_time() >= fc::time_point_sec( 1468488327 ) && head_block_time() < fc::time_point_sec( 1468488330 ) )
+            {
+               asset total_sbd = asset( 0, SBD_SYMBOL );
+               asset total_steem = asset( 0 , STEEM_SYMBOL );
+               asset total_vests = asset( 0, VESTS_SYMBOL );
+
+               for( auto account : hardfork9::get_compromised_accounts() )
+               {
+                  try
+                  {
+                  auto& a = get_account( account );
+                  total_sbd += a.sbd_balance;
+                  total_steem += a.balance;
+                  total_vests += a.vesting_shares;
+
+                  idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
+                  } catch ( ... ) {}
+               }
+
+               ilog( "--------------------------------------" );
+               ilog( "TOTAL: " );
+               idump( (total_steem)(total_vests)(total_sbd) );
+            }*/
          }
       };
 
@@ -187,6 +211,28 @@ void database::reindex(fc::path data_dir )
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      /*
+      asset total_sbd = asset( 0, SBD_SYMBOL );
+      asset total_steem = asset( 0 , STEEM_SYMBOL );
+      asset total_vests = asset( 0, VESTS_SYMBOL );
+
+      for( auto account : hardfork9::get_compromised_accounts() )
+      {
+         try
+         {
+         auto& a = get_account( account );
+         total_sbd += a.sbd_balance;
+         total_steem += a.balance;
+         total_vests += a.vesting_shares;
+
+         idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
+         } catch ( ... ) {}
+      }
+
+      ilog( "--------------------------------------" );
+      ilog( "TOTAL: " );
+      idump( (total_steem)(total_vests)(total_sbd) );*/
    }
    FC_CAPTURE_AND_RETHROW( (data_dir) )
 
@@ -338,6 +384,13 @@ const account_object& database::get_account( const string& name )const
    FC_ASSERT(itr != accounts_by_name.end(),
              "Unable to find account '${acct}'. Did you forget to add a record for it?",
              ("acct", name));
+   return *itr;
+}
+
+const escrow_object& database::get_escrow( const string& name, uint32_t escrow_id )const {
+   const auto& escrow_idx = get_index_type<escrow_index>().indices().get<by_from_id>();
+   auto itr = escrow_idx.find( boost::make_tuple(name,escrow_id) );
+   FC_ASSERT( itr != escrow_idx.end() );
    return *itr;
 }
 
@@ -866,7 +919,7 @@ void database::push_applied_operation( const operation& op )
    obj.op_in_trx    = _current_op_in_trx;
    obj.virtual_op   = _current_virtual_op++;
    obj.op           = op;
-   on_applied_operation( obj ); ///< TODO: deprecate
+
    pre_apply_operation( obj );
 }
 
@@ -1496,7 +1549,7 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork 
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork
       modify( a, [&](account_object& acc )
       {
          acc.witnesses_voted_for = 0;
@@ -1650,12 +1703,13 @@ void database::process_vesting_withdrawals()
    }
 }
 
-void database::adjust_total_payout( const comment_object& cur, const asset& sbd_created )
+void database::adjust_total_payout( const comment_object& cur, const asset& sbd_created, const asset& curator_sbd_value )
 {
    modify( cur, [&]( comment_object& c )
    {
       if( c.total_payout_value.symbol == sbd_created.symbol )
          c.total_payout_value += sbd_created;
+         c.curator_payout_value += curator_sbd_value;
    } );
    /// TODO: potentially modify author's total payout numbers as well
 }
@@ -1792,7 +1846,7 @@ void database::cashout_comment_helper( const comment_object& comment )
             const auto& author = get_account( comment.author );
             auto vest_created = create_vesting( author, vesting_steem );
             auto sbd_created = create_sbd( author, sbd_steem );
-            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ) );
+            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
 
             push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
 
@@ -1821,7 +1875,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
          adjust_rshares2( comment, old_rshares2, 0 );
 
-          
+
          if( reward_tokens > 0 )
             notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
       }
@@ -2042,6 +2096,11 @@ asset database::get_pow_reward()const
 
 void database::pay_liquidity_reward()
 {
+#ifdef IS_TEST_NET
+   if( !liquidity_rewards_enabled )
+      return;
+#endif
+
    if( (head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0 )
    {
       const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_volume_weight>();
@@ -2056,6 +2115,7 @@ void database::pay_liquidity_reward()
             obj.steem_volume = 0;
             obj.sbd_volume   = 0;
             obj.last_update  = head_block_time();
+            obj.weight = 0;
          } );
          push_applied_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
       }
@@ -2257,7 +2317,11 @@ void database::initialize_evaluators()
     register_evaluator<feed_publish_evaluator>();
     register_evaluator<convert_evaluator>();
     register_evaluator<limit_order_create_evaluator>();
+    register_evaluator<limit_order_create2_evaluator>();
     register_evaluator<limit_order_cancel_evaluator>();
+    register_evaluator<escrow_transfer_evaluator>();
+    register_evaluator<escrow_dispute_evaluator>();
+    register_evaluator<escrow_release_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -2277,6 +2341,7 @@ void database::initialize_indexes()
    add_index< primary_index< convert_index > >();
    add_index< primary_index< liquidity_reward_index > >();
    add_index< primary_index< limit_order_index > >();
+   add_index< primary_index< escrow_index > >();
 
    //Implementation object indexes
    add_index< primary_index< transaction_index                             > >();
@@ -2356,6 +2421,7 @@ void database::init_genesis( uint64_t init_supply )
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;
          p.recent_slots_filled = fc::uint128::max_value();
+         p.participation_count = 128;
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
@@ -2672,6 +2738,8 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       FC_ASSERT( trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
                  ("trx.expiration",trx.expiration)("now",now)("max_til_exp",STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
+      if( is_producing() || has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
+         FC_ASSERT( now < trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
       FC_ASSERT( now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
    }
 
@@ -2771,12 +2839,17 @@ void database::update_global_dynamic_data( const signed_block& b )
    // dynamic global properties updating
    modify( _dgp, [&]( dynamic_global_property_object& dgp )
    {
+      // This is constant time assuming 100% participation. It is O(B) otherwise (B = Num blocks between update)
+      for( uint32_t i = 0; i < missed_blocks + 1; i++ )
+      {
+         dgp.participation_count -= dgp.recent_slots_filled.hi & 0x8000000000000000ULL ? 1 : 0;
+         dgp.recent_slots_filled = ( dgp.recent_slots_filled << 1 ) + ( i == 0 ? 1 : 0 );
+         dgp.participation_count += ( i == 0 ? 1 : 0 );
+      }
+
       dgp.head_block_number = b.block_num();
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
-      dgp.recent_slots_filled = (
-           (dgp.recent_slots_filled << 1)
-           + 1) << missed_blocks;
       dgp.current_aslot += missed_blocks+1;
       dgp.average_block_size = (99 * dgp.average_block_size + block_size)/100;
 
@@ -2956,7 +3029,9 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC )
+   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC /*&& !has_hardfork( STEEMIT_HARDFORK_0_9__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149)*/ )
+   )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
       {
@@ -2992,12 +3067,15 @@ void database::adjust_liquidity_reward( const account_object& owner, const asset
          {
             r.sbd_volume = 0;
             r.steem_volume = 0;
+            r.weight = 0;
          }
 
          if( is_sdb )
             r.sbd_volume += volume.amount.value;
          else
             r.steem_volume += volume.amount.value;
+
+         r.update_weight( false );
          r.last_update = head_block_time();
       } );
    }
@@ -3010,6 +3088,8 @@ void database::adjust_liquidity_reward( const account_object& owner, const asset
             r.sbd_volume = volume.amount.value;
          else
             r.steem_volume = volume.amount.value;
+
+         r.update_weight( has_hardfork( STEEMIT_HARDFORK_0_9__141 ) );
          r.last_update = head_block_time();
       } );
    }
@@ -3199,6 +3279,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_8 == 8, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_8 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_8_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_8 ] = STEEMIT_HARDFORK_0_8_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_9 == 9, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_9 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_9_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_9 ] = STEEMIT_HARDFORK_0_9_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3345,6 +3428,24 @@ void database::apply_hardfork( uint32_t hardfork )
 #endif
          retally_witness_vote_counts(true);
          break;
+      case STEEMIT_HARDFORK_0_9:
+         {
+            for( auto acc : hardfork9::get_compromised_accounts() )
+            {
+               try
+               {
+                  const auto& account = get_account( acc );
+
+                  modify( account, [&]( account_object& a )
+                  {
+                     a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                     a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                     a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  });
+               } catch( ... ) {}
+            }
+         }
+         break;
       default:
          break;
    }
@@ -3358,6 +3459,15 @@ void database::apply_hardfork( uint32_t hardfork )
       hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
+}
+
+void database::retally_liquidity_weight() {
+   const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_owner>();
+   for( const auto& i : ridx ) {
+      modify( i, []( liquidity_reward_balance_object& o ){
+         o.update_weight(true/*HAS HARDFORK9 if this method is called*/);
+      });
+   }
 }
 
 /**
