@@ -104,7 +104,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.active = o.active;
       acc.posting = o.posting;
       acc.memo_key = o.memo_key;
-      acc.last_owner_update = props.time;
+      acc.last_owner_update = fc::time_point_sec::min();
       acc.created = props.time;
       acc.last_vote_time = props.time;
       acc.mined = false;
@@ -474,14 +474,6 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       db().adjust_balance( from_account, -o.amount );
       db().adjust_balance( to_account, o.amount );
 
-      if( o.to == "bittrex" && hardfork9::get_bad_memos().find( o.memo ) != hardfork9::get_bad_memos().end() )
-      {
-         db().modify( from_account, [&]( account_object& a )
-         {
-            a.last_owner_update = fc::time_point_sec( 1468488330 ); // 2016-07-14T09:25:30 UTC, One block after attack
-            // This will get caught in hardfork 9 filter by changed owner keys and claim the account
-         });
-      }
    } else {
       /// TODO: this line can be removed after hard fork
       FC_ASSERT( false , "transferring of Steem Power (STMP) is not allowed." );
