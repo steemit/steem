@@ -3430,33 +3430,18 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_9:
          {
-            const auto& acc_owner_update_idx = get_index_type< account_index >().indices().get< by_last_owner_update >();
-            auto compromised_account_time = fc::time_point_sec( 1468488327 ); // 2016-07-14T09:25:27 UTC, time of the account
-
-            for( auto account = acc_owner_update_idx.begin();
-                 account != acc_owner_update_idx.end() && account->last_owner_update >= compromised_account_time;
-                 ++account )
-            {
-               modify( *account, [&]( account_object& a )
-               {
-                  a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-               });
-            }
-
             for( auto acc : hardfork9::get_compromised_accounts() )
             {
                try
                {
-               const auto& account = get_account( acc );
+                  const auto& account = get_account( acc );
 
-               modify( account, [&]( account_object& a )
-               {
-                  a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-               });
+                  modify( account, [&]( account_object& a )
+                  {
+                     a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                     a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                     a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  });
                } catch( ... ) {}
             }
          }
