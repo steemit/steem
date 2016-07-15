@@ -340,6 +340,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
+      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_10 ) ) // TODO Remove is_producing after hardfork
+         FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
+
       db().modify( comment, [&]( comment_object& com )
       {
          com.last_update   = db().head_block_time();
@@ -1142,8 +1145,6 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 }
 
 void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o ) {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9__147 ) ); /// TODO remove this check after hardfork
-
    FC_ASSERT( o.expiration > db().head_block_time() );
 
    const auto& owner = db().get_account( o.owner );
