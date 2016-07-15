@@ -6,6 +6,7 @@
 #include <fc/utf8.hpp>
 
 namespace steemit { namespace chain {
+
    struct account_create_operation : public base_operation
    {
       asset             fee;
@@ -20,8 +21,6 @@ namespace steemit { namespace chain {
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(creator); }
    };
-
-
 
    struct account_update_operation : public base_operation
    {
@@ -70,7 +69,8 @@ namespace steemit { namespace chain {
     *  The percent_steem_dollars may be decreased, but never increased
     *
     */
-   struct comment_options_operation : public base_operation {
+   struct comment_options_operation : public base_operation
+   {
       string author;
       string permlink;
 
@@ -84,28 +84,30 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
-   struct challenge_authority_operation : public base_operation {
+   struct challenge_authority_operation : public base_operation
+   {
       string challenger;
       string challenged;
       bool   require_owner = false;
-      
-      void validate()const;  
-       
-      void get_required_active_authorities( flat_set<string>& a )const{ if(!require_owner ) a.insert(challenger); }
-      void get_required_owner_authorities( flat_set<string>& a )const{ if(require_owner ) a.insert(challenged); }
+
+      void validate()const;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ if( require_owner ) a.insert(challenger); }
    };
 
-   struct prove_authority_operation : public base_operation {
+   struct prove_authority_operation : public base_operation
+   {
       string challenged;
       bool   require_owner = false;
-      
-      void validate()const;  
-       
-      void get_required_active_authorities( flat_set<string>& a )const{ if(!require_owner ) a.insert(challenged); }
-      void get_required_owner_authorities( flat_set<string>& a )const{ if(require_owner ) a.insert(challenged); }
+
+      void validate()const;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ if( !require_owner ) a.insert(challenged); }
+      void get_required_owner_authorities( flat_set<string>& a )const{  if(  require_owner ) a.insert(challenged); }
    };
 
-   struct delete_comment_operation : public base_operation {
+   struct delete_comment_operation : public base_operation
+   {
       string author;
       string permlink;
 
@@ -124,7 +126,8 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(voter); }
    };
 
-   struct comment_reward_operation : public base_operation {
+   struct comment_reward_operation : public base_operation
+   {
       comment_reward_operation(){}
       comment_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
          :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
@@ -148,7 +151,8 @@ namespace steemit { namespace chain {
       void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct comment_payout_operation : public base_operation {
+   struct comment_payout_operation : public base_operation
+   {
       comment_payout_operation(){}
       comment_payout_operation( const string& a, const string& pl, const asset& p )
          :author(a),permlink(pl),payout(p){}
@@ -159,7 +163,8 @@ namespace steemit { namespace chain {
       void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct liquidity_reward_operation : public base_operation {
+   struct liquidity_reward_operation : public base_operation
+   {
       liquidity_reward_operation( string o = string(), asset p = asset() )
       :owner(o),payout(p){}
 
@@ -168,7 +173,8 @@ namespace steemit { namespace chain {
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct interest_operation : public base_operation {
+   struct interest_operation : public base_operation
+   {
       interest_operation( const string& o = "", const asset& i = asset(0,SBD_SYMBOL) )
          :owner(o),interest(i){}
 
@@ -178,7 +184,8 @@ namespace steemit { namespace chain {
       void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct fill_convert_request_operation : public base_operation {
+   struct fill_convert_request_operation : public base_operation
+   {
       fill_convert_request_operation(){}
       fill_convert_request_operation( const string& o, const uint32_t id, const asset& in, const asset& out )
          :owner(o), requestid(id), amount_in(in), amount_out(out){}
@@ -231,12 +238,13 @@ namespace steemit { namespace chain {
     *
     *  In the event of a dispute the *agent* can divide the funds between the to/from account.
     *
-    *  The escrow agent is paid the fee no matter what. It is up to the escrow agent to determine 
+    *  The escrow agent is paid the fee no matter what. It is up to the escrow agent to determine
     *
     *  Escrow transactions are uniquely identified by 'from' and 'escrow_id', the 'escrow_id' is defined
     *  by the sender.
     */
-   struct escrow_transfer_operation : public base_operation {
+   struct escrow_transfer_operation : public base_operation
+   {
       string         from;
       string         to;
       asset          amount;
@@ -257,7 +265,8 @@ namespace steemit { namespace chain {
     *  raise it for dispute. Once a payment is in dispute, the agent has authority over
     *  who gets what.
     */
-   struct escrow_dispute_operation : public base_operation {
+   struct escrow_dispute_operation : public base_operation
+   {
       string   from;
       string   to;
       uint32_t escrow_id;
@@ -271,7 +280,8 @@ namespace steemit { namespace chain {
     *  This operation can be used by anyone associated with the escrow transfer to
     *  release funds if they have permission.
     */
-   struct escrow_release_operation : public base_operation {
+   struct escrow_release_operation : public base_operation
+   {
       string    from;
       uint32_t  escrow_id;
       string    to; ///< the account that should receive funds (might be from, might be to
@@ -343,7 +353,8 @@ namespace steemit { namespace chain {
     * and well functioning network.  Any time @owner is in the active set of witnesses these
     * properties will be used to control the blockchain configuration.
     */
-   struct chain_properties {
+   struct chain_properties
+   {
       /**
        *  This fee, paid in STEEM, is converted into VESTING SHARES for the new account. Accounts
        *  without vesting shares cannot earn usage rations and therefore are powerless. This minimum
@@ -437,7 +448,8 @@ namespace steemit { namespace chain {
    /** serves the same purpose as custom_operation but also supports required posting authorities. Unlike custom_operation,
     * this operation is designed to be human readable/developer friendly.
     **/
-   struct custom_json_operation : public base_operation {
+   struct custom_json_operation : public base_operation
+   {
       flat_set<string>  required_auths;
       flat_set<string>  required_posting_auths;
       string            id; ///< must be less than 32 characters long
@@ -516,7 +528,7 @@ namespace steemit { namespace chain {
       void  validate()const;
       void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
 
-      price           get_price()const { return exchange_rate; } 
+      price           get_price()const { return exchange_rate; }
 
       pair<asset_symbol_type,asset_symbol_type> get_market()const
       {
@@ -526,7 +538,8 @@ namespace steemit { namespace chain {
       }
    };
 
-   struct fill_order_operation : public base_operation {
+   struct fill_order_operation : public base_operation
+   {
       fill_order_operation(){}
       fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
       :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
@@ -552,7 +565,8 @@ namespace steemit { namespace chain {
       void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
    };
 
-   struct pow {
+   struct pow
+   {
       public_key_type   worker;
       digest_type       input;
       signature_type    signature;
@@ -590,7 +604,8 @@ namespace steemit { namespace chain {
     * The result of the operation is to transfer the full VESTING STEEM balance
     * of the block producer to the reporter.
     */
-   struct report_over_production_operation : public base_operation {
+   struct report_over_production_operation : public base_operation
+   {
       string              reporter;
       signed_block_header first_block;
       signed_block_header second_block;

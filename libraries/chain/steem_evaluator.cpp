@@ -1030,18 +1030,22 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
 void custom_evaluator::do_apply( const custom_operation& o ){}
 
-void custom_json_evaluator::do_apply( const custom_json_operation& o ){
+void custom_json_evaluator::do_apply( const custom_json_operation& o )
+{
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) ) {
-      for( const auto& auth : o.required_posting_auths ) {
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+   {
+      for( const auto& auth : o.required_posting_auths )
+      {
          const auto& acnt = db().get_account( auth );
-         FC_ASSERT( !acnt.owner_challenge && !acnt.active_challenge );
+         FC_ASSERT( !( acnt.owner_challenged || acnt.active_challenged ) );
       }
    }
 }
 
 
-void pow_evaluator::do_apply( const pow_operation& o ) {
+void pow_evaluator::do_apply( const pow_operation& o )
+{
    const auto& dgp = db().get_dynamic_global_properties();
 
    FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
@@ -1079,7 +1083,8 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
 
    FC_ASSERT( o.work.work < target, "work lacks sufficient difficulty" );
 
-   db().modify( dgp, [&]( dynamic_global_property_object& p ){
+   db().modify( dgp, [&]( dynamic_global_property_object& p )
+   {
       p.total_pow += p.num_pow_witnesses;
       p.num_pow_witnesses++;
    });
@@ -1094,7 +1099,8 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
           w.last_work         = o.work.work;
       });
    } else {
-      db().create<witness_object>( [&]( witness_object& w ) {
+      db().create<witness_object>( [&]( witness_object& w )
+      {
           w.owner             = o.worker_account;
           w.props             = o.props;
           w.signing_key       = o.work.worker;
@@ -1116,7 +1122,8 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
       db().create_vesting( inc_witness, pow_reward );
 }
 
-void feed_publish_evaluator::do_apply( const feed_publish_operation& o ) {
+void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
+{
   const auto& witness = db().get_witness( o.publisher );
   db().modify( witness, [&]( witness_object& w ){
       w.sbd_exchange_rate = o.exchange_rate;
@@ -1124,7 +1131,8 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o ) {
   });
 }
 
-void convert_evaluator::do_apply( const convert_operation& o ) {
+void convert_evaluator::do_apply( const convert_operation& o )
+{
   const auto& owner = db().get_account( o.owner );
   FC_ASSERT( db().get_balance( owner, o.amount.symbol ) >= o.amount );
 
@@ -1133,7 +1141,8 @@ void convert_evaluator::do_apply( const convert_operation& o ) {
   const auto& fhistory = db().get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null() );
 
-  db().create<convert_request_object>( [&]( convert_request_object& obj ){
+  db().create<convert_request_object>( [&]( convert_request_object& obj )
+  {
       obj.owner           = o.owner;
       obj.requestid       = o.requestid;
       obj.amount          = o.amount;
@@ -1142,7 +1151,8 @@ void convert_evaluator::do_apply( const convert_operation& o ) {
 
 }
 
-void limit_order_create_evaluator::do_apply( const limit_order_create_operation& o ) {
+void limit_order_create_evaluator::do_apply( const limit_order_create_operation& o )
+{
    FC_ASSERT( o.expiration > db().head_block_time() );
 
    const auto& owner = db().get_account( o.owner );
@@ -1151,7 +1161,8 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 
    db().adjust_balance( owner, -o.amount_to_sell );
 
-   const auto& order = db().create<limit_order_object>( [&]( limit_order_object& obj ) {
+   const auto& order = db().create<limit_order_object>( [&]( limit_order_object& obj )
+   {
        obj.created    = db().head_block_time();
        obj.seller     = o.owner;
        obj.orderid    = o.orderid;
@@ -1165,7 +1176,8 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
    if( o.fill_or_kill ) FC_ASSERT( filled );
 }
 
-void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o ) {
+void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o )
+{
    FC_ASSERT( o.expiration > db().head_block_time() );
 
    const auto& owner = db().get_account( o.owner );
@@ -1174,7 +1186,8 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 
    db().adjust_balance( owner, -o.amount_to_sell );
 
-   const auto& order = db().create<limit_order_object>( [&]( limit_order_object& obj ) {
+   const auto& order = db().create<limit_order_object>( [&]( limit_order_object& obj )
+   {
        obj.created    = db().head_block_time();
        obj.seller     = o.owner;
        obj.orderid    = o.orderid;
@@ -1188,11 +1201,13 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
    if( o.fill_or_kill ) FC_ASSERT( filled );
 }
 
-void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation& o ) {
+void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation& o )
+{
    db().cancel_order( db().get_limit_order( o.owner, o.orderid ) );
 }
 
-void report_over_production_evaluator::do_apply( const report_over_production_operation& o ) {
+void report_over_production_evaluator::do_apply( const report_over_production_operation& o )
+{
    FC_ASSERT( !db().is_producing(), "this operation is currently disabled" );
    FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_4 ), "this operation is disabled after this hardfork" );
 
@@ -1216,43 +1231,50 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
    */
 }
 
-void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o ) {
-  const auto& challenged = db().get_account( o.challenged );
-  const auto& challenger = db().get_account( o.challenger );
+void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
+{
+   const auto& challenged = db().get_account( o.challenged );
+   const auto& challenger = db().get_account( o.challenger );
 
-  if( o.require_owner ) {
-     FC_ASSERT( challenger.balance >= asset( 30000, STEEM_SYMBOL ) );
-     db().adjust_balance( challenger, asset( -30000, STEEM_SYMBOL ) );
+   if( o.require_owner )
+   {
+      FC_ASSERT( challenger.balance >= STEEMIT_OWNER_CHALLENGE_FEE );
+      FC_ASSERT( !challenged.owner_challenged );
 
-     FC_ASSERT( challenged.owner_challenge == false );
-     db().modify( challenged, [&]( const account_object& a ) {
+      db().adjust_balance( challenger, - STEEMIT_OWNER_CHALLENGE_FEE );
+      db().create_vesting( db().get_account( o.challenged ), STEEMIT_OWNER_CHALLENGE_FEE );
+
+      db().modify( challenged, [&]( account_object& a )
+      {
          a.owner_challenged = true;
-     });
-
-     db().create_vesting( db().get_account( o.challenged ), asset( 30000, STEEM_SYMBOL ) );
-
-  } else {
-     FC_ASSERT( challenger.balance >= asset( 2000, STEEM_SYMBOL ) );
-     db().adjust_balance( challenger, asset( -2000, STEEM_SYMBOL ) );
-
-     FC_ASSERT( challenged.owner_challenge == false );
-     FC_ASSERT( challenged.active_challenge == false );
-     db().modify( challenged, [&]( const account_object& a ) {
-         a.active_challenged = true;
-     });
-     db().create_vesting( db().get_account( o.challenged ), asset( 2000, STEEM_SYMBOL ) );
+      });
   }
+  else
+  {
+      FC_ASSERT( challenger.balance >= STEEMIT_ACTIVE_CHALLENGE_FEE );
+      FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ) );
 
+      db().adjust_balance( challenger, - STEEMIT_ACTIVE_CHALLENGE_FEE );
+      db().create_vesting( db().get_account( o.challenged ), STEEMIT_ACTIVE_CHALLENGE_FEE );
+
+      db().modify( challenged, [&]( account_object& a )
+      {
+         a.active_challenged = true;
+      });
+  }
 }
 
-void prove_authority_evaluator::do_apply( const prove_authority_operation& o ) {
-  const auto& challenged = db().get_account( o.challenged );
-  FC_ASSERT( challenged.owner_challenged || challenged.active_challenged );
-  db.modify( challenged, [&]( account_object& a ) {
-             o.active_challenged = false;
-             if( o.require_owner )
-                o.owner_challenged = false;
-             });
+void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
+{
+   const auto& challenged = db().get_account( o.challenged );
+   FC_ASSERT( challenged.owner_challenged || challenged.active_challenged );
+
+   db().modify( challenged, [&]( account_object& a )
+   {
+      a.active_challenged = false;
+      if( o.require_owner )
+         a.owner_challenged = false;
+   });
 }
 
 } } // steemit::chain

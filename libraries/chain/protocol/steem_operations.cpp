@@ -69,7 +69,8 @@ namespace steemit { namespace chain {
       }
    }
 
-   void comment_options_operation::validate()const {
+   void comment_options_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( author ), "Author name invalid" );
       FC_ASSERT( percent_steem_dollars <= STEEMIT_100_PERCENT );
       FC_ASSERT( max_accepted_payout.symbol == SBD_SYMBOL );
@@ -77,18 +78,21 @@ namespace steemit { namespace chain {
       validate_permlink( permlink );
    }
 
-   void delete_comment_operation::validate()const {
+   void delete_comment_operation::validate()const
+   {
       validate_permlink( permlink );
       FC_ASSERT( is_valid_account_name( author ) );
    }
 
-   void challenge_authority_operation::validate()const {
+   void challenge_authority_operation::validate()const
+    {
       FC_ASSERT( is_valid_account_name( challenger ), "challenger account name invalid" );
       FC_ASSERT( is_valid_account_name( challenged ), "challenged account name invalid" );
       FC_ASSERT( challenged != challenger );
    }
 
-   void prove_authority_operation::validate()const {
+   void prove_authority_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( challenged ), "challenged account name invalid" );
    }
 
@@ -180,7 +184,8 @@ namespace steemit { namespace chain {
       work.validate();
    }
 
-   void pow::create( const fc::ecc::private_key& w, const digest_type& i ) {
+   void pow::create( const fc::ecc::private_key& w, const digest_type& i )
+   {
       input  = i;
       signature = w.sign_compact(input,false);
 
@@ -214,7 +219,8 @@ namespace steemit { namespace chain {
          || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) ) );
       (amount_to_sell / min_to_receive).validate();
    }
-   void limit_order_create2_operation::validate()const {
+   void limit_order_create2_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( owner ) );
       FC_ASSERT( amount_to_sell.symbol == exchange_rate.base.symbol );
       exchange_rate.validate();
@@ -230,7 +236,8 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( owner ) );
    }
 
-   void convert_operation::validate()const {
+   void convert_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( owner ) );
       /// only allow conversion from SBD to STEEM, allowing the opposite can enable traders to abuse
       /// market fluxuations through converting large quantities without moving the price.
@@ -238,7 +245,8 @@ namespace steemit { namespace chain {
       FC_ASSERT( amount.amount > 0 );
    }
 
-   void report_over_production_operation::validate()const {
+   void report_over_production_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( reporter ) );
       FC_ASSERT( is_valid_account_name( first_block.witness ) );
       FC_ASSERT( first_block.witness   == second_block.witness );
@@ -247,7 +255,8 @@ namespace steemit { namespace chain {
       FC_ASSERT( first_block.id() != second_block.id() );
    }
 
-   void escrow_transfer_operation::validate()const {
+   void escrow_transfer_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( agent ) );
@@ -257,19 +266,20 @@ namespace steemit { namespace chain {
       FC_ASSERT( fee.symbol == amount.symbol );
       FC_ASSERT( amount.symbol != VESTS_SYMBOL );
    }
-   void escrow_dispute_operation::validate()const {
+   void escrow_dispute_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( who ) );
       FC_ASSERT( who == from || who == to );
    }
-   void escrow_release_operation::validate()const {
+   void escrow_release_operation::validate()const
+   {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( who ) );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol != VESTS_SYMBOL );
    }
-
 
 } } // steemit::chain

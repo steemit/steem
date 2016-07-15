@@ -107,6 +107,9 @@
 #define STEEMIT_MIN_PRODUCER_REWARD             STEEMIT_MINING_REWARD
 #define STEEMIT_MIN_POW_REWARD                  STEEMIT_MINING_REWARD
 
+#define STEEMIT_ACTIVE_CHALLENGE_FEE            asset( 2000, STEEM_SYMBOL )
+#define STEEMIT_OWNER_CHALLENGE_FEE             asset( 30000, STEEM_SYMBOL )
+
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)
 // we use 100000 here instead of 10000 because we end up creating an additional 9x for vesting
