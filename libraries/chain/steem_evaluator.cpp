@@ -205,7 +205,12 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_6__74 ) );
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+   {
+      const auto& auth = db().get_account( o.author );
+      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ) );
+   }
+
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    if( !o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout )
@@ -1027,6 +1032,12 @@ void custom_evaluator::do_apply( const custom_operation& o ){}
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o ){
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) ) {
+      for( const auto& auth : o.required_posting_auths ) {
+         const auto& acnt = db().get_account( auth );
+         FC_ASSERT( !acnt.owner_challenge && !acnt.active_challenge );
+      }
+   }
 }
 
 
