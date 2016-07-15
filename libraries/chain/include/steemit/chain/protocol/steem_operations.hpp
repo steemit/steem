@@ -84,6 +84,27 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
+   struct challenge_authority_operation : public base_operation {
+      string challenger;
+      string challenged;
+      bool   require_owner = false;
+      
+      void validate()const;  
+       
+      void get_required_active_authorities( flat_set<string>& a )const{ if(!require_owner ) a.insert(challenger); }
+      void get_required_owner_authorities( flat_set<string>& a )const{ if(require_owner ) a.insert(challenged); }
+   };
+
+   struct prove_authority_operation : public base_operation {
+      string challenged;
+      bool   require_owner = false;
+      
+      void validate()const;  
+       
+      void get_required_active_authorities( flat_set<string>& a )const{ if(!require_owner ) a.insert(challenged); }
+      void get_required_owner_authorities( flat_set<string>& a )const{ if(require_owner ) a.insert(challenged); }
+   };
+
    struct delete_comment_operation : public base_operation {
       string author;
       string permlink;
@@ -633,5 +654,7 @@ FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_ac
 FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(amount)(memo)(escrow_id)(agent)(fee)(json_meta)(expiration) );
 FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who) );
 FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(amount) );
+FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
+FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
 
 FC_REFLECT_TYPENAME( steemit::chain::comment_options )

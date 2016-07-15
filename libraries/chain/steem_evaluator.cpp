@@ -149,7 +149,11 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
  *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
  */
 void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5__62) ); /// TODO: remove this check after Hard Fork 5
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+   {
+      const auto& auth = db().get_account( o.author );
+      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ) );
+   }
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    FC_ASSERT( comment.children == 0, "comment cannot have any replies" );
@@ -229,6 +233,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
    const auto& auth = db().get_account( o.author ); /// prove it exists
+
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ) );
 
    comment_id_type id;
 
@@ -762,6 +769,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+      FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ) );
+
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
 
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
@@ -1200,6 +1210,44 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
        a.vesting_shares.amount = 0;
    });
    */
+}
+
+void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o ) {
+  const auto& challenged = db().get_account( o.challenged );
+  const auto& challenger = db().get_account( o.challenger );
+
+  if( o.require_owner ) {
+     FC_ASSERT( challenger.balance >= asset( 30000, STEEM_SYMBOL ) );
+     db().adjust_balance( challenger, asset( -30000, STEEM_SYMBOL ) );
+
+     FC_ASSERT( challenged.owner_challenge == false );
+     db().modify( challenged, [&]( const account_object& a ) {
+         a.owner_challenged = true;
+     });
+
+     db().create_vesting( db().get_account( o.challenged ), asset( 30000, STEEM_SYMBOL ) );
+
+  } else {
+     FC_ASSERT( challenger.balance >= asset( 2000, STEEM_SYMBOL ) );
+     db().adjust_balance( challenger, asset( -2000, STEEM_SYMBOL ) );
+
+     FC_ASSERT( challenged.owner_challenge == false );
+     FC_ASSERT( challenged.active_challenge == false );
+     db().modify( challenged, [&]( const account_object& a ) {
+         a.active_challenged = true;
+     });
+     db().create_vesting( db().get_account( o.challenged ), asset( 2000, STEEM_SYMBOL ) );
+  }
+
+}
+
+void prove_authority_evaluator::do_apply( const prove_authority_operation& o ) {
+  const auto& challenged = db().get_account( o.challenged );
+  db.modify( challenged, [&]( account_object& a ) {
+             o.active_challenged = false;
+             if( o.require_owner )
+                o.owner_challenged = false;
+             });
 }
 
 } } // steemit::chain

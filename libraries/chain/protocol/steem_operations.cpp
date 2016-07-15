@@ -82,6 +82,16 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( author ) );
    }
 
+   void challenge_authority_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( challenger ), "challenger account name invalid" );
+      FC_ASSERT( is_valid_account_name( challenged ), "challenged account name invalid" );
+      FC_ASSERT( challenged != challenger );
+   }
+
+   void prove_authority_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( challenged ), "challenged account name invalid" );
+   }
+
    void vote_operation::validate() const
    {
       FC_ASSERT( is_valid_account_name( voter ), "Voter account name invalid" );
