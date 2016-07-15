@@ -92,7 +92,7 @@ namespace steemit { namespace chain {
 
       void validate()const;
 
-      void get_required_active_authorities( flat_set<string>& a )const{ if( require_owner ) a.insert(challenger); }
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(challenger); }
    };
 
    struct prove_authority_operation : public base_operation

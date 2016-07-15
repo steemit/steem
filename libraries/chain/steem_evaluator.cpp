@@ -484,6 +484,15 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
    const auto& from_account = db().get_account(o.from);
    const auto& to_account = db().get_account(o.to);
 
+   if( from_account.active_challenged )
+   {
+      db().modify( from_account, [&]( account_object& a )
+      {
+         a.active_challenged = false;
+         a.last_active_proved = db().head_block_time();
+      });
+   }
+
    if( o.amount.symbol != VESTS_SYMBOL ) {
       FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount );
       db().adjust_balance( from_account, -o.amount );
@@ -1240,6 +1249,7 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
    {
       FC_ASSERT( challenger.balance >= STEEMIT_OWNER_CHALLENGE_FEE );
       FC_ASSERT( !challenged.owner_challenged );
+      FC_ASSERT( db().head_block_time() - challenged.last_owner_proved < STEEMIT_OWNER_CHALLENGE_COOLDOWN );
 
       db().adjust_balance( challenger, - STEEMIT_OWNER_CHALLENGE_FEE );
       db().create_vesting( db().get_account( o.challenged ), STEEMIT_OWNER_CHALLENGE_FEE );
@@ -1253,6 +1263,7 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
   {
       FC_ASSERT( challenger.balance >= STEEMIT_ACTIVE_CHALLENGE_FEE );
       FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ) );
+      FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
 
       db().adjust_balance( challenger, - STEEMIT_ACTIVE_CHALLENGE_FEE );
       db().create_vesting( db().get_account( o.challenged ), STEEMIT_ACTIVE_CHALLENGE_FEE );
@@ -1272,8 +1283,12 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
    db().modify( challenged, [&]( account_object& a )
    {
       a.active_challenged = false;
+      a.last_active_proved = db().head_block_time();
       if( o.require_owner )
+      {
          a.owner_challenged = false;
+         a.last_owner_proved = db().head_block_time();
+      }
    });
 }
 
