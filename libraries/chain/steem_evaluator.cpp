@@ -1247,6 +1247,8 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
 
    if( o.require_owner )
    {
+      FC_ASSERT( false, "Challenging the owner key is not supported at this time" );
+#if 0
       FC_ASSERT( challenger.balance >= STEEMIT_OWNER_CHALLENGE_FEE );
       FC_ASSERT( !challenged.owner_challenged );
       FC_ASSERT( db().head_block_time() - challenged.last_owner_proved < STEEMIT_OWNER_CHALLENGE_COOLDOWN );
@@ -1258,6 +1260,7 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
       {
          a.owner_challenged = true;
       });
+#endif
   }
   else
   {
