@@ -1247,6 +1247,7 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
 
 void prove_authority_evaluator::do_apply( const prove_authority_operation& o ) {
   const auto& challenged = db().get_account( o.challenged );
+  FC_ASSERT( challenged.owner_challenged || challenged.active_challenged );
   db.modify( challenged, [&]( account_object& a ) {
              o.active_challenged = false;
              if( o.require_owner )
