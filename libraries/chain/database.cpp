@@ -3029,8 +3029,8 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC /*&& !has_hardfork( STEEMIT_HARDFORK_0_9__149)) ||
-       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF9 && has_hardfork( STEEMIT_HARDFORK_0_9__149)*/ )
+   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) )
    )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
@@ -3075,7 +3075,7 @@ void database::adjust_liquidity_reward( const account_object& owner, const asset
          else
             r.steem_volume += volume.amount.value;
 
-         r.update_weight( false );
+         r.update_weight( has_hardfork( STEEMIT_HARDFORK_0_10__141 ) );
          r.last_update = head_block_time();
       } );
    }
@@ -3282,6 +3282,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_9 == 9, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_9 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_9_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_9 ] = STEEMIT_HARDFORK_0_9_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_10 == 10, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_10 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_10_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_10 ] = STEEMIT_HARDFORK_0_10_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3429,6 +3432,9 @@ void database::apply_hardfork( uint32_t hardfork )
          retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_9:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 9" );
+#endif
          {
             for( auto acc : hardfork9::get_compromised_accounts() )
             {
@@ -3445,6 +3451,12 @@ void database::apply_hardfork( uint32_t hardfork )
                } catch( ... ) {}
             }
          }
+         break;
+      case STEEMIT_HARDFORK_0_10:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 9" );
+#endif
+         retally_liquidity_weight();
          break;
       default:
          break;
@@ -3465,7 +3477,7 @@ void database::retally_liquidity_weight() {
    const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_owner>();
    for( const auto& i : ridx ) {
       modify( i, []( liquidity_reward_balance_object& o ){
-         o.update_weight(true/*HAS HARDFORK9 if this method is called*/);
+         o.update_weight(true/*HAS HARDFORK10 if this method is called*/);
       });
    }
 }
