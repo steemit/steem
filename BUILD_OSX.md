@@ -13,13 +13,21 @@ Steem OS X Build Instructions
    brew update
    ```
 
-4. Install dependencies:
+4. Install and fix dependencies:
    ```
    brew install boost cmake git openssl autoconf automake qt5
    brew link --force openssl 
    ```
+   
+   There is a known bug with libtool due to a hardcoded SED path. Fix this by uninstalling & reinstalling:
+   ```
+   brew uninstall libtool
+   export HOMEBREW_BUILD_FROM_SOURCE 
+   brew install libtool
+   ```
 
-5. *Optional.* To support importing Bitcoin wallet files:
+
+.5 *Optional.* To support importing Bitcoin wallet files:
    ```
    brew install berkeley-db
    ```
@@ -29,10 +37,9 @@ Steem OS X Build Instructions
    brew install google-perftools
    ```
 
-7. Clone the Graphene repository:
+7. Clone the main repository:
    ```
    git clone https://github.com/steemit/steem.git
-   cd graphene
    ```
 
 8. Build Steem:
@@ -41,7 +48,10 @@ Steem OS X Build Instructions
    cmake .
    make
    ```
-
+   Note, if you have multiple cores and you'd like to compile faster, you can append a `-j <number of cores>` to your `make`, e.g.:
+   ```
+   make -j 4
+   ```
 Low Memory Mode
 ---------------
 
