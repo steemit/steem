@@ -3456,7 +3456,7 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 9" );
+         elog( "HARDFORK 10" );
 #endif
          retally_liquidity_weight();
          break;
