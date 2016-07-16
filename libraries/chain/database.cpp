@@ -1538,12 +1538,15 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
 
 void database::update_owner_authority( const account_object& account, const authority& owner_authority )
 {
-   create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
+   if( head_block_num() >= 3186477 )
    {
-      hist.account = account.name;
-      hist.previous_owner_authority = account.owner;
-      hist.last_valid_time = head_block_time();
-   });
+      create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
+      {
+         hist.account = account.name;
+         hist.previous_owner_authority = account.owner;
+         hist.last_valid_time = head_block_time();
+      });
+   }
 
    modify( account, [&]( account_object& a )
    {

@@ -126,16 +126,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    const auto& account = db().get_account( o.account );
 
-   if( o.owner && db().head_block_num() >= 3186477 ) // Block num of initial attack
-   {
-      db().create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
-      {
-         hist.account = account.name;
-         hist.previous_owner_authority = account.owner;
-         hist.last_valid_time = db().head_block_time();
-      });
-   }
-
    if( o.owner )
       db().update_owner_authority( account, *o.owner );
 
