@@ -27,7 +27,7 @@ Steem OS X Build Instructions
    ```
 
 
-.5 *Optional.* To support importing Bitcoin wallet files:
+5. *Optional.* To support importing Bitcoin wallet files:
    ```
    brew install berkeley-db
    ```
@@ -44,6 +44,7 @@ Steem OS X Build Instructions
 
 8. Build Steem:
    ```
+   cd steem
    git submodule update --init --recursive
    cmake .
    make
