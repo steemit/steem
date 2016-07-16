@@ -717,6 +717,11 @@ class wallet_api
        */
       annotated_signed_transaction challenge( string challenger, string challenged, bool broadcast );
 
+      annotated_signed_transaction request_account_recovery( string recovery_account, string account_to_recover, authority new_authority, bool broadcast );
+      annotated_signed_transaction recover_account( string account_to_recover, authority recent_authority, authority new_authority, bool broadcast );
+      annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
+
+
       /**
        * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making
        * the account immune to challenge for 24 hours.
@@ -830,6 +835,10 @@ FC_API( steemit::wallet::wallet_api,
         (vote)
         (challenge)
         (prove)
+        (request_account_recovery)
+        (recover_account)
+        (change_recovery_account)
+
 
         // private message api
         (send_private_message)
