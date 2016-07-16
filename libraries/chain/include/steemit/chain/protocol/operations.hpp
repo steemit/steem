@@ -39,6 +39,8 @@ namespace steemit { namespace chain {
             comment_options_operation,
             set_withdraw_vesting_route_operation,
             limit_order_create2_operation,
+            challenge_authority_operation,
+            prove_authority_operation,
             escrow_transfer_operation,
             escrow_dispute_operation,
             escrow_release_operation,

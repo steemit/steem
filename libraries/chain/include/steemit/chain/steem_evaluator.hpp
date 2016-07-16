@@ -36,5 +36,7 @@ DEFINE_EVALUATOR( limit_order_create2 )
 DEFINE_EVALUATOR( escrow_transfer )
 DEFINE_EVALUATOR( escrow_dispute )
 DEFINE_EVALUATOR( escrow_release )
+DEFINE_EVALUATOR( challenge_authority )
+DEFINE_EVALUATOR( prove_authority )
 
 } } // steemit::chain
