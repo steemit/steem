@@ -125,20 +125,21 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    const auto& account = db().get_account( o.account );
 
-   if( o.owner )
+   if( o.owner && db().head_block_num() >= 3186477 ) // Time of initial attack
    {
       db().create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
       {
-         hist.account_id = account.get_id();
+         hist.account = account.name;
          hist.previous_owner_authority = account.owner;
          hist.last_valid_time = db().head_block_time();
       });
 
+      // This can be removed when per block garbage collection is implemented
       auto recovery_cutoff = db().head_block_time() - STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
       const auto& hist_idx = db().get_index_type< owner_authority_history_index >().indices().get< by_account >();
       auto itr = hist_idx.lower_bound( account.get_id() );
 
-      while( itr != hist_idx.end() && itr->account_id == account.get_id() && itr->last_valid_time < recovery_cutoff )
+      while( itr != hist_idx.end() && itr->account == account.name && itr->last_valid_time < recovery_cutoff )
       {
          const auto& current = *itr;
          ++itr;
@@ -158,6 +159,12 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
       if( o.memo_key != public_key_type() )
             acc.memo_key = o.memo_key;
+
+      if( ( o.active || o.owner ) && acc.active_challenged )
+      {
+         acc.active_challenged = false;
+         acc.last_active_proved = db().head_block_time();
+      }
 
       #ifndef IS_LOW_MEM
         if ( o.json_metadata.size() > 0 )
@@ -1322,17 +1329,89 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
 {
+   FC_ASSERT( db().get_account( o.account_to_recover ).recovery_account == o.recovery_account );
 
+   const auto& recovery_request_idx = db().get_index_type< account_recovery_request_index >().indices().get< by_account >();
+   auto request = recovery_request_idx.find( o.account_to_recover );
+
+   if( request == recovery_request_idx.end() ) // New Request
+   {
+      FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover with an impossible authority" );
+      FC_ASSERT( o.new_owner_authority.weight_threshold, "Cannot recover with an open authority" );
+
+      // Check accounts in the new authority exist
+      db().create< account_recovery_request_object >( [&]( account_recovery_request_object& req )
+      {
+         req.account_to_recover = o.account_to_recover;
+         req.new_owner_authority = o.new_owner_authority;
+         req.expires = db().head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD;
+      });
+   }
+   else if( o.new_owner_authority.weight_threshold == 0 ) // Cancel Request
+   {
+      db().remove( *request );
+   }
+   else // Change Request
+   {
+      FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover with an impossible authority" );
+
+      db().modify( *request, [&]( account_recovery_request_object& req )
+      {
+         req.new_owner_authority = o.new_owner_authority;
+         req.expires = db().head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD;
+      });
+   }
 }
 
 void recover_account_evaluator::do_apply( const recover_account_operation& o )
 {
+   const auto& recovery_request_idx = db().get_index_type< account_recovery_request_index >().indices().get< by_account >();
+   auto request = recovery_request_idx.find( o.account_to_recover );
 
+   FC_ASSERT( request != recovery_request_idx.end() );
+
+   const auto& recent_auth_idx = db().get_index_type< owner_authority_history_index >().indices().get< by_account >();
+   auto hist = recent_auth_idx.find( o.account_to_recover );
+   bool found = false;
+
+   while( hist != recent_auth_idx.end() && hist->account == o.account_to_recover && !found )
+   {
+      found = hist->previous_owner_authority == o.recent_owner_authority;
+      ++hist;
+   }
+
+   FC_ASSERT( found, "Recent authority not found in authority history" );
+
+   db().modify( db().get_account( o.account_to_recover), [&]( account_object& a )
+   {
+      a.owner = o.new_owner_authority;
+   });
 }
 
 void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )
 {
+   db().get_account( o.new_recovery_account );
 
+   const auto& change_recovery_idx = db().get_index_type< change_recovery_account_request_index >().indices().get< by_account >();
+   auto request = change_recovery_idx.find( o.account_to_recover );
+
+   if( request == change_recovery_idx.end() ) // New request
+   {
+      db().create< change_recovery_account_request_object >( [&]( change_recovery_account_request_object& req )
+      {
+         req.account_to_recover = o.account_to_recover;
+         req.recovery_account = o.new_recovery_account;
+         req.effective_on = db().head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
+      });
+   }
+   else // Change existing request
+   {
+      db().modify( *request, [&]( change_recovery_account_request_object& req )
+      {
+         req.recovery_account = o.new_recovery_account;
+         req.effective_on = db().head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
+      });
+   }
 }
 
 } } // steemit::chain

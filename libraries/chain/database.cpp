@@ -2211,6 +2211,48 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    } FC_CAPTURE_AND_RETHROW( (rshares)(max_steem) )
 }
 
+void database::account_recovery_processing()
+{
+   // Clear expired recovery requests
+   const auto& rec_req_idx = get_index_type< account_recovery_request_index >().indices().get< by_expiration >();
+   auto rec_req = rec_req_idx.begin();
+
+   while( rec_req != rec_req_idx.end() && rec_req->expires <= head_block_time() )
+   {
+      const auto& current = *rec_req;
+      ++rec_req;
+      remove( current );
+   }
+
+   // Clear invalid historical authorities
+   const auto& hist_idx = get_index_type< owner_authority_history_index >().indices(); //by id
+   auto hist = hist_idx.begin();
+
+   while( hist != hist_idx.end() && time_point_sec( hist->last_valid_time + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD ) < head_block_time() )
+   {
+      const auto& current = *hist;
+      ++hist;
+      remove( current );
+   }
+
+   // Apply effective recovery_account changes
+   const auto& change_req_idx = get_index_type< change_recovery_account_request_index >().indices().get< by_effective_date >();
+   auto change_req = change_req_idx.begin();
+
+   while( change_req != change_req_idx.end() && change_req->effective_on <= head_block_time() )
+   {
+      const auto& current = *change_req;
+      ++change_req;
+
+      modify( get_account( current.account_to_recover ), [&]( account_object& a )
+      {
+         a.recovery_account = current.recovery_account;
+      });
+
+      remove( current );
+   }
+}
+
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
 {
    return get( dynamic_global_property_id_type() );
@@ -2275,9 +2317,9 @@ void database::initialize_evaluators()
     register_evaluator<limit_order_cancel_evaluator>();
     register_evaluator<challenge_authority_evaluator>();
     register_evaluator<prove_authority_evaluator>();
-    register_evaluator<request_account_recovery_operation>();
-    register_evaluator<recover_account_operation>();
-    register_evaluator<change_recovery_account_operation>();
+    register_evaluator<request_account_recovery_evaluator>();
+    register_evaluator<recover_account_evaluator>();
+    register_evaluator<change_recovery_account_evaluator>();
     register_evaluator<escrow_transfer_evaluator>();
     register_evaluator<escrow_dispute_evaluator>();
     register_evaluator<escrow_release_evaluator>();
@@ -2311,6 +2353,8 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< hardfork_property_object        > > >();
    add_index< primary_index< withdraw_vesting_route_index                  > >();
    add_index< primary_index< owner_authority_history_index                 > >();
+   add_index< primary_index< account_recovery_request_index                > >();
+   add_index< primary_index< change_recovery_account_request_index         > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -2533,6 +2577,8 @@ void database::_apply_block( const signed_block& next_block )
    process_vesting_withdrawals();
    pay_liquidity_reward();
    update_virtual_supply();
+
+   account_recovery_processing();
 
    process_hardforks();
 
@@ -3426,25 +3472,13 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 11" );
 #endif
          {
-            for( auto acc : hardfork11::get_compromised_accounts() )
-            {
-               const auto& account = get_account( acc );
-
-               modify( account, [&]( account_object& a )
-               {
-                  a.owner = authority( 3, public_key_type( "STEEM_KEY_1" ), 1, public_key_type( "STEEM_KEY_2" ), 1, public_key_type( "GOOD_OWNER_KEY" ), 1 );
-                  a.active.weight_threshold = 0;
-                  a.posting.weight_threshold = 0;
-               });
-            }
-
             const auto& acc_idx = get_index_type< account_index >().indices();
 
             for( auto account : acc_idx )
             {
                modify( account, [&]( account_object& a )
                {
-                  a.posting.weight_threshold = 0;
+                  a.active_challenged = true;
                });
             }
          }

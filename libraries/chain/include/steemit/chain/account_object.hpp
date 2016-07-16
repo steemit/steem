@@ -151,7 +151,7 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_owner_authority_history_object_type;
 
-         account_id_type   account_id;
+         string            account;
          authority         previous_owner_authority;
          time_point_sec    last_valid_time;
 
@@ -164,8 +164,8 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_recovery_request_object_type;
 
-         string 	      account;
-         authority      new_owner_auth;
+         string 	      account_to_recover;
+         authority      new_owner_authority;
          time_point_sec expires;
 
          account_recovery_request_id_type get_id()const { return id; }
@@ -177,7 +177,7 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_change_recovery_account_request_object_type;
 
-         string         account;
+         string         account_to_recover;
          string         recovery_account;
          time_point_sec effective_on;
 
@@ -270,6 +270,7 @@ namespace steemit { namespace chain {
    > account_multi_index_type;
 
    struct by_account;
+   struct by_last_valid;
 
    typedef multi_index_container <
       owner_authority_history_object,
@@ -278,11 +279,11 @@ namespace steemit { namespace chain {
             member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< owner_authority_history_object,
-               member< owner_authority_history_object, account_id_type, &owner_authority_history_object::account_id >,
+               member< owner_authority_history_object, string, &owner_authority_history_object::account >,
                member< owner_authority_history_object, time_point_sec, &owner_authority_history_object::last_valid_time >,
                member< object, object_id_type, &object::id >
             >,
-            composite_key_compare< std::less< account_id_type >, std::less< time_point_sec >, std::less< object_id_type > >
+            composite_key_compare< std::less< string >, std::less< time_point_sec >, std::less< object_id_type > >
          >
       >
    > owner_authority_history_multi_index_type;
@@ -295,7 +296,12 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >,
             member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_account >,
-            member< account_recovery_request_object, string, &account_recovery_request_object::account > >,
+            composite_key< account_recovery_request_object,
+               member< account_recovery_request_object, string, &account_recovery_request_object::account_to_recover >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< string >, std::less< object_id_type > >
+         >,
          ordered_unique< tag< by_expiration >,
             composite_key< account_recovery_request_object,
                member< account_recovery_request_object, time_point_sec, &account_recovery_request_object::expires >,
@@ -314,9 +320,14 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >,
             member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_account >,
-            member< change_recovery_account_request_object, string, &change_recovery_account_request_object::account > >,
+            composite_key< change_recovery_account_request_object,
+               member< change_recovery_account_request_object, string, &change_recovery_account_request_object::account_to_recover >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< string >, std::less< object_id_type > >
+         >,
          ordered_unique< tag< by_effective_date >,
-            composite_key_compare< change_recovery_account_request_object,
+            composite_key< change_recovery_account_request_object,
                member< change_recovery_account_request_object, time_point_sec, &change_recovery_account_request_object::effective_on >,
                member< object, object_id_type, &object::id >
             >,
@@ -349,13 +360,13 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),
-                     (account_id)(previous_owner_authority)(last_valid_time)
+                     (account)(previous_owner_authority)(last_valid_time)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::account_recovery_request_object, (graphene::db::object),
-                     (account)(new_owner_auth)(expires)
+                     (account_to_recover)(new_owner_authority)(expires)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::change_recovery_account_request_object, (graphene::db::object),
-                     (account)(recovery_account)(effective_on)
+                     (account_to_recover)(recovery_account)(effective_on)
                   )

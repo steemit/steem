@@ -287,18 +287,18 @@ namespace steemit { namespace chain {
    void request_account_recovery_operation::validate()const
    {
       FC_ASSERT( is_valid_account_name( recovery_account ) );
-      FC_ASSERT( is_valid_account_name( to_recover ) );
+      FC_ASSERT( is_valid_account_name( account_to_recover ) );
    }
 
    void recover_account_operation::validate()const
    {
-      FC_ASSERT( is_valid_account_name( to_recover ) );
+      FC_ASSERT( is_valid_account_name( account_to_recover ) );
    }
 
    void change_recovery_account_operation::validate()const
    {
-      FC_ASSERT( is_valid_account_name( account ) );
-      FC_ASSERT( is_valid_account_name( recovery_account ) );
+      FC_ASSERT( is_valid_account_name( account_to_recover ) );
+      FC_ASSERT( is_valid_account_name( new_recovery_account ) );
    }
 
 } } // steemit::chain
