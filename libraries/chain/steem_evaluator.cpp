@@ -108,6 +108,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.created = props.time;
       acc.last_vote_time = props.time;
       acc.mined = false;
+      acc.recovery_account = o.creator;
 
       #ifndef IS_LOW_MEM
          acc.json_metadata = o.json_metadata;
@@ -125,7 +126,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    const auto& account = db().get_account( o.account );
 
-   if( o.owner && db().head_block_num() >= 3186477 ) // Time of initial attack
+   if( o.owner && db().head_block_num() >= 3186477 ) // Block num of initial attack
    {
       db().create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
       {
@@ -133,27 +134,13 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
          hist.previous_owner_authority = account.owner;
          hist.last_valid_time = db().head_block_time();
       });
-
-      // This can be removed when per block garbage collection is implemented
-      auto recovery_cutoff = db().head_block_time() - STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
-      const auto& hist_idx = db().get_index_type< owner_authority_history_index >().indices().get< by_account >();
-      auto itr = hist_idx.lower_bound( account.get_id() );
-
-      while( itr != hist_idx.end() && itr->account == account.name && itr->last_valid_time < recovery_cutoff )
-      {
-         const auto& current = *itr;
-         ++itr;
-         db().remove( current );
-      }
    }
+
+   if( o.owner )
+      db().update_owner_authority( account, *o.owner );
 
    db().modify( account, [&]( account_object& acc )
    {
-      if( o.owner )
-      {
-         acc.owner = *o.owner;
-         acc.last_owner_update = db().head_block_time();
-      }
       if( o.active ) acc.active = *o.active;
       if( o.posting ) acc.posting = *o.posting;
 
@@ -1329,7 +1316,14 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
 {
-   FC_ASSERT( db().get_account( o.account_to_recover ).recovery_account == o.recovery_account );
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
+
+   const auto& account_to_recover = db().get_account( o.account_to_recover );
+
+   if ( account_to_recover.recovery_account.length() )   // Make sure recovery matches expected recovery account
+      FC_ASSERT( account_to_recover.recovery_account == o.recovery_account );
+   else                                                  // Empty string recovery account defaults to top witness
+      FC_ASSERT( db().get_index_type< witness_index >().indices().get< by_vote_name >().begin()->owner == o.recovery_account );
 
    const auto& recovery_request_idx = db().get_index_type< account_recovery_request_index >().indices().get< by_account >();
    auto request = recovery_request_idx.find( o.account_to_recover );
@@ -1347,7 +1341,7 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
          req.expires = db().head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD;
       });
    }
-   else if( o.new_owner_authority.weight_threshold == 0 ) // Cancel Request
+   else if( o.new_owner_authority.weight_threshold == 0 ) // Cancel Request if authority is open
    {
       db().remove( *request );
    }
@@ -1365,6 +1359,8 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
 
 void recover_account_evaluator::do_apply( const recover_account_operation& o )
 {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
+
    const auto& recovery_request_idx = db().get_index_type< account_recovery_request_index >().indices().get< by_account >();
    auto request = recovery_request_idx.find( o.account_to_recover );
 
@@ -1382,14 +1378,13 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
 
    FC_ASSERT( found, "Recent authority not found in authority history" );
 
-   db().modify( db().get_account( o.account_to_recover), [&]( account_object& a )
-   {
-      a.owner = o.new_owner_authority;
-   });
+   db().update_owner_authority( db().get_account( o.account_to_recover ), o.new_owner_authority );
 }
 
 void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )
 {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
+
    db().get_account( o.new_recovery_account );
 
    const auto& change_recovery_idx = db().get_index_type< change_recovery_account_request_index >().indices().get< by_account >();

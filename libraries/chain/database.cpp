@@ -1536,6 +1536,22 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
    }
 }
 
+void database::update_owner_authority( const account_object& account, const authority& owner_authority )
+{
+   create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
+   {
+      hist.account = account.name;
+      hist.previous_owner_authority = account.owner;
+      hist.last_valid_time = head_block_time();
+   });
+
+   modify( account, [&]( account_object& a )
+   {
+      a.owner = owner_authority;
+      a.last_owner_update = head_block_time();
+   });
+}
+
 void database::process_vesting_withdrawals()
 {
    const auto& widx = get_index_type< account_index >().indices().get< by_next_vesting_withdrawal >();
@@ -3451,9 +3467,10 @@ void database::apply_hardfork( uint32_t hardfork )
                {
                   const auto& account = get_account( acc );
 
+                  update_owner_authority( account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
+
                   modify( account, [&]( account_object& a )
                   {
-                     a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                      a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                      a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                   });
