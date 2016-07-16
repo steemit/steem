@@ -154,30 +154,6 @@ void database::reindex(fc::path data_dir )
                push_block( *block, skip );
             else
                apply_block( *block, skip );
-
-            /*if( head_block_time() >= fc::time_point_sec( 1468488327 ) && head_block_time() < fc::time_point_sec( 1468488330 ) )
-            {
-               asset total_sbd = asset( 0, SBD_SYMBOL );
-               asset total_steem = asset( 0 , STEEM_SYMBOL );
-               asset total_vests = asset( 0, VESTS_SYMBOL );
-
-               for( auto account : hardfork9::get_compromised_accounts() )
-               {
-                  try
-                  {
-                  auto& a = get_account( account );
-                  total_sbd += a.sbd_balance;
-                  total_steem += a.balance;
-                  total_vests += a.vesting_shares;
-
-                  idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
-                  } catch ( ... ) {}
-               }
-
-               ilog( "--------------------------------------" );
-               ilog( "TOTAL: " );
-               idump( (total_steem)(total_vests)(total_sbd) );
-            }*/
          }
       };
 
@@ -211,28 +187,6 @@ void database::reindex(fc::path data_dir )
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
-
-      /*
-      asset total_sbd = asset( 0, SBD_SYMBOL );
-      asset total_steem = asset( 0 , STEEM_SYMBOL );
-      asset total_vests = asset( 0, VESTS_SYMBOL );
-
-      for( auto account : hardfork9::get_compromised_accounts() )
-      {
-         try
-         {
-         auto& a = get_account( account );
-         total_sbd += a.sbd_balance;
-         total_steem += a.balance;
-         total_vests += a.vesting_shares;
-
-         idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
-         } catch ( ... ) {}
-      }
-
-      ilog( "--------------------------------------" );
-      ilog( "TOTAL: " );
-      idump( (total_steem)(total_vests)(total_sbd) );*/
    }
    FC_CAPTURE_AND_RETHROW( (data_dir) )
 
@@ -2353,6 +2307,7 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< witness_schedule_object         > > >();
    add_index< primary_index< simple_index< hardfork_property_object        > > >();
    add_index< primary_index< withdraw_vesting_route_index                  > >();
+   add_index< primary_index< owner_authority_history_index                 > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -3287,6 +3242,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_10 == 10, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_10 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_10_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_10 ] = STEEMIT_HARDFORK_0_10_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_11 == 11, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_11 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_11_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_11 ] = STEEMIT_HARDFORK_0_11_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3456,10 +3414,38 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 9" );
+         elog( "HARDFORK 10" );
 #endif
          retally_liquidity_weight();
          break;
+      case STEEMIT_HARDFORK_0_11:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 11" );
+#endif
+         {
+            for( auto acc : hardfork11::get_compromised_accounts() )
+            {
+               const auto& account = get_account( acc );
+
+               modify( account, [&]( account_object& a )
+               {
+                  a.owner = authority( 3, public_key_type( "STEEM_KEY_1" ), 1, public_key_type( "STEEM_KEY_2" ), 1, public_key_type( "GOOD_OWNER_KEY" ), 1 );
+                  a.active.weight_threshold = 0;
+                  a.posting.weight_threshold = 0;
+               });
+            }
+
+            const auto& acc_idx = get_index_type< account_index >().indices();
+
+            for( auto account : acc_idx )
+            {
+               modify( account, [&]( account_object& a )
+               {
+                  a.posting.weight_threshold = 0;
+               });
+            }
+         }
+
       default:
          break;
    }

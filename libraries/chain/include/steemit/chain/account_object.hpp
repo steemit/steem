@@ -144,6 +144,19 @@ namespace steemit { namespace chain {
          set<public_key_type>    before_key_members;
    };
 
+   class owner_authority_history_object : public abstract_object< owner_authority_history_object >
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_owner_authority_history_object_type;
+
+         account_id_type   account_id;
+         authority         previous_owner_authority;
+         time_point_sec    last_valid_time;
+
+         owner_authority_history_id_type get_id()const { return id; }
+   };
+
    struct by_name;
    struct by_proxy;
    struct by_last_post;
@@ -229,7 +242,26 @@ namespace steemit { namespace chain {
       >
    > account_multi_index_type;
 
-   typedef generic_index< account_object,                   account_multi_index_type >             account_index;
+   struct by_account;
+
+   typedef multi_index_container <
+      owner_authority_history_object,
+      indexed_by <
+         ordered_unique< tag< by_id >,
+            member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_account >,
+            composite_key< owner_authority_history_object,
+               member< owner_authority_history_object, account_id_type, &owner_authority_history_object::account_id >,
+               member< owner_authority_history_object, time_point_sec, &owner_authority_history_object::last_valid_time >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< account_id_type >, std::less< time_point_sec >, std::less< object_id_type > >
+         >
+      >
+   > owner_authority_history_multi_index_type;
+
+   typedef generic_index< account_object,                   account_multi_index_type >                   account_index;
+   typedef generic_index< owner_authority_history_object,   owner_authority_history_multi_index_type >   owner_authority_history_index;
 
 } }
 
@@ -248,4 +280,8 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)
                     (last_active)(activity_shares)(last_activity_payout)
+                  )
+
+FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),
+                     (account_id)(previous_owner_authority)(last_valid_time)
                   )

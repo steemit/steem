@@ -123,7 +123,30 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT );
 
-   db().modify( db().get_account( o.account ), [&]( account_object& acc )
+   const auto& account = db().get_account( o.account );
+
+   if( o.owner )
+   {
+      db().create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
+      {
+         hist.account_id = account.get_id();
+         hist.previous_owner_authority = account.owner;
+         hist.last_valid_time = db().head_block_time();
+      });
+
+      auto recovery_cutoff = db().head_block_time() - STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
+      const auto& hist_idx = db().get_index_type< owner_authority_history_index >().indices().get< by_account >();
+      auto itr = hist_idx.lower_bound( account.get_id() );
+
+      while( itr != hist_idx.end() && itr->account_id == account.get_id() && itr->last_valid_time < recovery_cutoff )
+      {
+         const auto& current = *itr;
+         ++itr;
+         db().remove( current );
+      }
+   }
+
+   db().modify( account, [&]( account_object& acc )
    {
       if( o.owner )
       {
@@ -1251,7 +1274,7 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
 #if 0
       FC_ASSERT( challenger.balance >= STEEMIT_OWNER_CHALLENGE_FEE );
       FC_ASSERT( !challenged.owner_challenged );
-      FC_ASSERT( db().head_block_time() - challenged.last_owner_proved < STEEMIT_OWNER_CHALLENGE_COOLDOWN );
+      FC_ASSERT( db().head_block_time() - challenged.last_owner_proved > STEEMIT_OWNER_CHALLENGE_COOLDOWN );
 
       db().adjust_balance( challenger, - STEEMIT_OWNER_CHALLENGE_FEE );
       db().create_vesting( db().get_account( o.challenged ), STEEMIT_OWNER_CHALLENGE_FEE );
@@ -1266,7 +1289,9 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
   {
       FC_ASSERT( challenger.balance >= STEEMIT_ACTIVE_CHALLENGE_FEE );
       FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ) );
-      FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
+      if( !db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) // TODO: Remove after hardfork 11
+         FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
+      FC_ASSERT( db().head_block_time() - challenged.last_active_proved > STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
 
       db().adjust_balance( challenger, - STEEMIT_ACTIVE_CHALLENGE_FEE );
       db().create_vesting( db().get_account( o.challenged ), STEEMIT_ACTIVE_CHALLENGE_FEE );
