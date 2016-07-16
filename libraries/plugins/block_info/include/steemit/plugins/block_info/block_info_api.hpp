@@ -29,6 +29,7 @@ class block_info_api
       void on_api_startup();
 
       std::vector< block_info > get_block_info( get_block_info_args args );
+      std::vector< block_with_info > get_blocks_with_info( get_block_info_args args );
 
    private:
       std::shared_ptr< detail::block_info_api_impl > my;
@@ -43,4 +44,5 @@ FC_REFLECT( steemit::plugin::block_info::get_block_info_args,
 
 FC_API( steemit::plugin::block_info::block_info_api,
    (get_block_info)
+   (get_blocks_with_info)
    )

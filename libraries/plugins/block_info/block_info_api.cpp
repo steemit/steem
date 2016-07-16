@@ -17,6 +17,7 @@ class block_info_api_impl
       std::shared_ptr< steemit::plugin::block_info::block_info_plugin > get_plugin();
 
       void get_block_info( const get_block_info_args& args, std::vector< block_info >& result );
+      void get_blocks_with_info( const get_block_info_args& args, std::vector< block_with_info >& result );
 
       steemit::app::application& app;
 };
@@ -41,6 +42,23 @@ void block_info_api_impl::get_block_info( const get_block_info_args& args, std::
    return;
 }
 
+void block_info_api_impl::get_blocks_with_info( const get_block_info_args& args, std::vector< block_with_info >& result )
+{
+   const std::vector< block_info >& _block_info = get_plugin()->_block_info;
+   const chain::database& db = get_plugin()->database();
+
+   FC_ASSERT( args.start_block_num > 0 );
+   FC_ASSERT( args.count <= 100 );
+   uint32_t n = std::min( uint32_t( _block_info.size() ), args.start_block_num + args.count );
+   for( uint32_t block_num=args.start_block_num; block_num<n; block_num++ )
+   {
+      result.emplace_back();
+      result.back().block = *db.fetch_block_by_number(block_num);
+      result.back().info = _block_info[block_num];
+   }
+   return;
+}
+
 } // detail
 
 block_info_api::block_info_api( const steemit::app::api_context& ctx )
@@ -52,6 +70,13 @@ std::vector< block_info > block_info_api::get_block_info( get_block_info_args ar
 {
    std::vector< block_info > result;
    my->get_block_info( args, result );
+   return result;
+}
+
+std::vector< block_with_info > block_info_api::get_blocks_with_info( get_block_info_args args )
+{
+   std::vector< block_with_info > result;
+   my->get_blocks_with_info( args, result );
    return result;
 }
 
