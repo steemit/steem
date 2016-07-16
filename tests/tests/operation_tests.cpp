@@ -2994,5 +2994,81 @@ BOOST_AUTO_TEST_CASE( pow_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( account_recovery )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: account recovery" );
+
+      ACTORS( (alice) );
+      fund( "alice", 1000000 );
+
+      account_create_operation acc_create;
+      acc_create.fee = ASSET( "10.000 TEST" );
+      acc_create.creator = "alice";
+      acc_create.new_account_name = "bob";
+      acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+      acc_create.active = authority( 1, generate_private_key( "bob_active" ).get_public_key(), 1 );
+      acc_create.posting = authority( 1, generate_private_key( "bob_posting" ).get_public_key(), 1 );
+      acc_create.memo_key = generate_private_key( "bob_memo" ).get_public_key();
+      acc_create.json_metadata = "";
+
+      const auto& bob = db.get_account( "bob" );
+
+      signed_transaction tx;
+      tx.operations.push_back( acc_create );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == acc_create.owner );
+
+      account_update_operation acc_update;
+      acc_update.account = "bob";
+      acc_update.owner = authority( 1, generate_private_key( "bad_key" ).get_public_key(), 1 );
+      acc_update.memo_key = acc_create.memo_key;
+      acc_update.json_metadata = "";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( acc_update );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == acc_update.owner );
+
+      request_account_recovery_operation request;
+      request.recovery_account = "alice";
+      request.account_to_recover = "bob";
+      request.new_owner_authority = authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == acc_update.owner );
+
+      recover_account_operation recover;
+      recover.account_to_recover = "bob";
+      recover.new_owner_authority = request.new_owner_authority;
+      recover.recent_owner_authority = acc_create.owner;
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "new_key" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
