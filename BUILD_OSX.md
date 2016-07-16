@@ -52,16 +52,25 @@ Steem OS X Build Instructions
    ```
    make -j 4
    ```
+
 Low Memory Mode
 ---------------
 
 This mode reduces the amount of RAM it takes to build a validating node
-
+```
 cmake -DLOW_MEMORY_NODE=ON .
+```
 
 Content Patching
 ----------------
 
 If you do not need an API server or to see the result of patching content then you can use this flag. This will also remove the dependency on Qt5
-
+```
 cmake -DENABLE_CONTENT_PATCHING=OFF .
+```
+
+Help
+----
+
+If you are having problems building, come check out the `steemhelp` or `mining` channels on http://steem.slack.com
+There are also lots of guides on steemit.com.
