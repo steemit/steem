@@ -38,5 +38,8 @@ DEFINE_EVALUATOR( escrow_dispute )
 DEFINE_EVALUATOR( escrow_release )
 DEFINE_EVALUATOR( challenge_authority )
 DEFINE_EVALUATOR( prove_authority )
+DEFINE_EVALUATOR( request_account_recovery )
+DEFINE_EVALUATOR( recover_account )
+DEFINE_EVALUATOR( change_recovery_account )
 
 } } // steemit::chain

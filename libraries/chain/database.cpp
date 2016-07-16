@@ -796,7 +796,7 @@ signed_block database::_generate_block(
       const auto& witness = get_witness( witness_owner );
 
       if( witness.running_version != STEEMIT_BLOCKCHAIN_VERSION )
-         pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
+         pending_block.extensions.insert( block_header_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
       const auto& hfp = hardfork_property_id_type()( *this );
 
@@ -804,13 +804,13 @@ signed_block database::_generate_block(
          && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
          // Make vote match binary configuration
-         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
+         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
       }
       else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_HARDFORK_VERSION // Binary does not know of a new hardfork
          && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_HARDFORK_VERSION ) // Voting for hardfork in the future, that we do not know of...
       {
          // Make vote match binary configuration. This is vote to not apply the new hardfork.
-         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
+         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
       }
    }
 
@@ -2275,6 +2275,9 @@ void database::initialize_evaluators()
     register_evaluator<limit_order_cancel_evaluator>();
     register_evaluator<challenge_authority_evaluator>();
     register_evaluator<prove_authority_evaluator>();
+    register_evaluator<request_account_recovery_operation>();
+    register_evaluator<recover_account_operation>();
+    register_evaluator<change_recovery_account_operation>();
     register_evaluator<escrow_transfer_evaluator>();
     register_evaluator<escrow_dispute_evaluator>();
     register_evaluator<escrow_release_evaluator>();

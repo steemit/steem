@@ -1320,4 +1320,19 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
    });
 }
 
+void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
+{
+
+}
+
+void recover_account_evaluator::do_apply( const recover_account_operation& o )
+{
+
+}
+
+void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )
+{
+
+}
+
 } } // steemit::chain

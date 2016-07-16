@@ -266,6 +266,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( fee.symbol == amount.symbol );
       FC_ASSERT( amount.symbol != VESTS_SYMBOL );
    }
+
    void escrow_dispute_operation::validate()const
    {
       FC_ASSERT( is_valid_account_name( from ) );
@@ -273,6 +274,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( who ) );
       FC_ASSERT( who == from || who == to );
    }
+
    void escrow_release_operation::validate()const
    {
       FC_ASSERT( is_valid_account_name( from ) );
@@ -280,6 +282,23 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( who ) );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol != VESTS_SYMBOL );
+   }
+
+   void request_account_recovery_operation::validate()const
+   {
+      FC_ASSERT( is_valid_account_name( recovery_account ) );
+      FC_ASSERT( is_valid_account_name( to_recover ) );
+   }
+
+   void recover_account_operation::validate()const
+   {
+      FC_ASSERT( is_valid_account_name( to_recover ) );
+   }
+
+   void change_recovery_account_operation::validate()const
+   {
+      FC_ASSERT( is_valid_account_name( account ) );
+      FC_ASSERT( is_valid_account_name( recovery_account ) );
    }
 
 } } // steemit::chain
