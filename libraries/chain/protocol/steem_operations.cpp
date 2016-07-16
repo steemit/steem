@@ -288,11 +288,18 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( recovery_account ) );
       FC_ASSERT( is_valid_account_name( account_to_recover ) );
+      new_owner_authority.validate();
    }
 
    void recover_account_operation::validate()const
    {
       FC_ASSERT( is_valid_account_name( account_to_recover ) );
+      FC_ASSERT( !( new_owner_authority == recent_owner_authority) );
+      FC_ASSERT( !new_owner_authority.is_impossible() );
+      FC_ASSERT( !recent_owner_authority.is_impossible() );
+      FC_ASSERT( new_owner_authority.weight_threshold );
+      new_owner_authority.validate();
+      recent_owner_authority.validate();
    }
 
    void change_recovery_account_operation::validate()const

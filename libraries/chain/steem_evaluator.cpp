@@ -1367,17 +1367,19 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
    FC_ASSERT( request != recovery_request_idx.end() );
 
    const auto& recent_auth_idx = db().get_index_type< owner_authority_history_index >().indices().get< by_account >();
-   auto hist = recent_auth_idx.find( o.account_to_recover );
+   auto hist = recent_auth_idx.lower_bound( o.account_to_recover );
    bool found = false;
 
    while( hist != recent_auth_idx.end() && hist->account == o.account_to_recover && !found )
    {
       found = hist->previous_owner_authority == o.recent_owner_authority;
+      if( found ) break;
       ++hist;
    }
 
    FC_ASSERT( found, "Recent authority not found in authority history" );
 
+   db().remove( *hist ); // Remove first, update_owner_authority may invalidate iterator
    db().update_owner_authority( db().get_account( o.account_to_recover ), o.new_owner_authority );
 }
 
@@ -1385,7 +1387,8 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
 {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
 
-   db().get_account( o.new_recovery_account );
+   db().get_account( o.new_recovery_account ); // Simply validate account exists
+   const auto& account_to_recover = db().get_account( o.account_to_recover );
 
    const auto& change_recovery_idx = db().get_index_type< change_recovery_account_request_index >().indices().get< by_account >();
    auto request = change_recovery_idx.find( o.account_to_recover );
@@ -1399,13 +1402,17 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
          req.effective_on = db().head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
       });
    }
-   else // Change existing request
+   else if( account_to_recover.recovery_account != o.new_recovery_account ) // Change existing request
    {
       db().modify( *request, [&]( change_recovery_account_request_object& req )
       {
          req.recovery_account = o.new_recovery_account;
          req.effective_on = db().head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
       });
+   }
+   else // Request exists and changing back to current recovery account
+   {
+      db().remove( *request );
    }
 }
 

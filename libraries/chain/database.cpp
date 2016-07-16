@@ -2235,9 +2235,8 @@ void database::account_recovery_processing()
 
    while( rec_req != rec_req_idx.end() && rec_req->expires <= head_block_time() )
    {
-      const auto& current = *rec_req;
-      ++rec_req;
-      remove( current );
+      remove( *rec_req );
+      rec_req = rec_req_idx.begin();
    }
 
    // Clear invalid historical authorities
@@ -2246,9 +2245,8 @@ void database::account_recovery_processing()
 
    while( hist != hist_idx.end() && time_point_sec( hist->last_valid_time + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD ) < head_block_time() )
    {
-      const auto& current = *hist;
-      ++hist;
-      remove( current );
+      remove( *hist );
+      hist = hist_idx.begin();
    }
 
    // Apply effective recovery_account changes
@@ -2257,15 +2255,13 @@ void database::account_recovery_processing()
 
    while( change_req != change_req_idx.end() && change_req->effective_on <= head_block_time() )
    {
-      const auto& current = *change_req;
-      ++change_req;
-
-      modify( get_account( current.account_to_recover ), [&]( account_object& a )
+      modify( get_account( change_req->account_to_recover ), [&]( account_object& a )
       {
-         a.recovery_account = current.recovery_account;
+         a.recovery_account = change_req->recovery_account;
       });
 
-      remove( current );
+      remove( *change_req );
+      change_req = change_req_idx.begin();
    }
 }
 
