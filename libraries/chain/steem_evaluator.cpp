@@ -109,10 +109,10 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.last_vote_time = props.time;
       acc.mined = false;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
-         acc.recovery_account = o.creator;
-      else
+      if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
          acc.recovery_account = "steem";
+      else
+         acc.recovery_account = o.creator;
 
 
       #ifndef IS_LOW_MEM
@@ -1094,6 +1094,8 @@ void pow_evaluator::do_apply( const pow_operation& o )
 
          if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
             acc.recovery_account = "steem";
+         else
+            acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
    }
 
@@ -1377,7 +1379,7 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
 
    FC_ASSERT( found, "Recent authority not found in authority history" );
 
-   db().remove( *hist ); // Remove first, update_owner_authority may invalidate iterator
+   db().remove( *request ); // Remove first, update_owner_authority may invalidate iterator
    db().update_owner_authority( db().get_account( o.account_to_recover ), o.new_owner_authority );
 }
 
