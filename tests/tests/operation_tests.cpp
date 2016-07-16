@@ -3004,7 +3004,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       fund( "alice", 1000000 );
 
       account_create_operation acc_create;
-      acc_create.fee = ASSET( "10.000 TEST" );
+      acc_create.fee = ASSET( "10.000 TESTS" );
       acc_create.creator = "alice";
       acc_create.new_account_name = "bob";
       acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
@@ -3013,7 +3013,6 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       acc_create.memo_key = generate_private_key( "bob_memo" ).get_public_key();
       acc_create.json_metadata = "";
 
-      const auto& bob = db.get_account( "bob" );
 
       signed_transaction tx;
       tx.operations.push_back( acc_create );
@@ -3021,6 +3020,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
+      const auto& bob = db.get_account( "bob" );
       BOOST_REQUIRE( bob.owner == acc_create.owner );
 
       account_update_operation acc_update;
@@ -3038,6 +3038,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_REQUIRE( bob.owner == acc_update.owner );
 
+
+      ilog( "starting account recovery..." );
       request_account_recovery_operation request;
       request.recovery_account = "alice";
       request.account_to_recover = "bob";

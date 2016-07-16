@@ -108,7 +108,12 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.created = props.time;
       acc.last_vote_time = props.time;
       acc.mined = false;
-      acc.recovery_account = o.creator;
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
+         acc.recovery_account = o.creator;
+      else
+         acc.recovery_account = "steem";
+
 
       #ifndef IS_LOW_MEM
          acc.json_metadata = o.json_metadata;
@@ -1086,6 +1091,9 @@ void pow_evaluator::do_apply( const pow_operation& o )
          acc.memo_key = o.work.worker;
          acc.created = dgp.time;
          acc.last_vote_time = dgp.time;
+
+         if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
+            acc.recovery_account = "steem";
       });
    }
 

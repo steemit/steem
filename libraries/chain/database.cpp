@@ -1538,7 +1538,9 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
 
 void database::update_owner_authority( const account_object& account, const authority& owner_authority )
 {
+#ifndef IS_TEST_NET
    if( head_block_num() >= 3186477 )
+#endif
    {
       create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
       {
@@ -3487,10 +3489,11 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 11" );
 #endif
+         elog( "HARDFORK 11" );
          {
             const auto& acc_idx = get_index_type< account_index >().indices();
 
-            for( auto account : acc_idx )
+            for( const auto& account : acc_idx )
             {
                modify( account, [&]( account_object& a )
                {
