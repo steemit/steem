@@ -149,6 +149,8 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
  *  Because net_rshares is 0 there is no need to update any pending payout calculations or parent posts.
  */
 void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
+   FC_ASSERT( !db().is_producing() );
+
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
    {
       const auto& auth = db().get_account( o.author );
@@ -205,6 +207,8 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
+   FC_ASSERT( !db().is_producing() );
+
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
    {
       const auto& auth = db().get_account( o.author );
@@ -230,7 +234,10 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    });
 }
 void comment_evaluator::do_apply( const comment_operation& o )
-{ try {
+{
+   FC_ASSERT( !db().is_producing() );
+
+   try {
    if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "something should change" );
 
@@ -773,7 +780,9 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
 }
 
 void vote_evaluator::do_apply( const vote_operation& o )
-{ try {
+{
+   FC_ASSERT( !db().is_producing() );
+   try {
 
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
@@ -1037,10 +1046,14 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
 } FC_CAPTURE_AND_RETHROW( (o)) }
 
-void custom_evaluator::do_apply( const custom_operation& o ){}
+void custom_evaluator::do_apply( const custom_operation& o )
+{
+   FC_ASSERT( !db().is_producing() );
+}
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
+   FC_ASSERT( !db().is_producing() );
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
    {
