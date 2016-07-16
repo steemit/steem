@@ -708,6 +708,25 @@ class wallet_api
       annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
 
       /**
+       * Challenge a user's authority. The challenger pays a fee to the challenged which is depositted as
+       * Steem Power. Until the challenged proves their active key, all posting rights are revoked.
+       *
+       * @param challenger The account issuing the challenge
+       * @param challenged The account being challenged
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction challenge( string challenger, string challenged, bool broadcast );
+
+      /**
+       * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making
+       * the account immune to challenge for 24 hours.
+       *
+       * @param challenged The account that was challenged and is proving its authority.
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction prove( string challenged, bool broadcast );
+
+      /**
        *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
        *  returns operations in the range [from-limit, from]
        *
@@ -809,6 +828,8 @@ FC_API( steemit::wallet::wallet_api,
         (cancel_order)
         (post_comment)
         (vote)
+        (challenge)
+        (prove)
 
         // private message api
         (send_private_message)
