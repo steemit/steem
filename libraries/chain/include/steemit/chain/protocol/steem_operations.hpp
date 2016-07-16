@@ -708,6 +708,6 @@ FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who)
 FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(amount) );
 FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
 FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
-FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(extensions) );
-FC_REFLECT( steemit::chain::recover_account_operation, (account_to_recover)(new_owner_authority)(extensions) );
+FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
+FC_REFLECT( steemit::chain::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steemit::chain::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
