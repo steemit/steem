@@ -109,10 +109,10 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.last_vote_time = props.time;
       acc.mined = false;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
-         acc.recovery_account = o.creator;
-      else
+      if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
          acc.recovery_account = "steem";
+      else
+         acc.recovery_account = o.creator;
 
 
       #ifndef IS_LOW_MEM
@@ -272,10 +272,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
-      {
+      //if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
+      //{
           FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
-      }
+      //}
 
       if( o.parent_author.size() != 0 )
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
@@ -806,6 +806,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
+   FC_ASSERT( elapsed_seconds >= STEEMIT_MIN_VOTE_INTERVAL_SEC );
+
    auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
    auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
    FC_ASSERT( current_power > 0 );
@@ -1101,6 +1103,8 @@ void pow_evaluator::do_apply( const pow_operation& o )
 
          if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
             acc.recovery_account = "steem";
+         else
+            acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
    }
 
@@ -1384,7 +1388,7 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
 
    FC_ASSERT( found, "Recent authority not found in authority history" );
 
-   db().remove( *hist ); // Remove first, update_owner_authority may invalidate iterator
+   db().remove( *request ); // Remove first, update_owner_authority may invalidate iterator
    db().update_owner_authority( db().get_account( o.account_to_recover ), o.new_owner_authority );
 }
 

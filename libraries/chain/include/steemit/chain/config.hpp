@@ -76,6 +76,7 @@
 #define STEEMIT_MAX_VOTE_CHANGES                5
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
+#define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
 
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
