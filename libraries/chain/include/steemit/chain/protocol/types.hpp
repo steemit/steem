@@ -115,6 +115,9 @@ namespace steemit { namespace chain {
       impl_category_object_type,
       impl_hardfork_property_object_type,
       impl_withdraw_vesting_route_object_type,
+      impl_owner_authority_history_object_type,
+      impl_account_recovery_request_object_type,
+      impl_change_recovery_account_request_object_type,
       impl_escrow_object_type
    };
 
@@ -140,30 +143,37 @@ namespace steemit { namespace chain {
    class liquidity_reward_balance_object;
    class hardfork_property_object;
    class withdraw_vesting_route_object;
+   class owner_authority_history_object;
+   class account_recovery_request_object;
+   class change_recovery_account_request_object;
    class escrow_object;
 
-   typedef object_id< implementation_ids, impl_operation_object_type,                     operation_object >                     operation_id_type;
-   typedef object_id< implementation_ids, impl_account_history_object_type,               account_history_object >               account_history_id_type;
-   typedef object_id< implementation_ids, impl_comment_object_type,                       comment_object >                       comment_id_type;
-   typedef object_id< implementation_ids, impl_comment_stats_object_type,                 comment_stats_object >                 comment_stats_id_type;
-   typedef object_id< implementation_ids, impl_category_object_type,                      category_object >                      category_id_type;
-   typedef object_id< implementation_ids, impl_comment_vote_object_type,                  comment_vote_object >                  comment_vote_id_type;
-   typedef object_id< implementation_ids, impl_vote_object_type,                          vote_object >                          vote_id_type;
-   typedef object_id< implementation_ids, impl_witness_vote_object_type,                  witness_vote_object >                  witness_vote_id_type;
-   typedef object_id< implementation_ids, impl_limit_order_object_type,                   limit_order_object >                   limit_order_id_type;
-   typedef object_id< implementation_ids, impl_feed_history_object_type,                  feed_history_object >                  feed_history_id_type;
-   typedef object_id< implementation_ids, impl_convert_request_object_type,               convert_request_object >               convert_request_id_type;
-   typedef object_id< implementation_ids, impl_account_object_type,                       account_object >                       account_id_type;
-   typedef object_id< implementation_ids, impl_witness_object_type,                       witness_object >                       witness_id_type;
-   typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,       dynamic_global_property_object >       dynamic_global_property_id_type;
-   typedef object_id< implementation_ids, impl_transaction_object_type,                   transaction_object >                   transaction_obj_id_type;
-   typedef object_id< implementation_ids, impl_block_summary_object_type,                 block_summary_object >                 block_summary_id_type;
-   typedef object_id< implementation_ids, impl_chain_property_object_type,                chain_property_object >                chain_property_id_type;
-   typedef object_id< implementation_ids, impl_witness_schedule_object_type,              witness_schedule_object >              witness_schedule_id_type;
-   typedef object_id< implementation_ids, impl_liquidity_reward_balance_object_type,      liquidity_reward_balance_object >      liquidity_reward_balance_id_type;
-   typedef object_id< implementation_ids, impl_hardfork_property_object_type,             hardfork_property_object >             hardfork_property_id_type;
-   typedef object_id< implementation_ids, impl_withdraw_vesting_route_object_type,        withdraw_vesting_route_object >        withdraw_vesting_route_id_type;
-   typedef object_id< implementation_ids, impl_escrow_object_type,                        escrow_object >                        escrow_id_type;
+
+   typedef object_id< implementation_ids, impl_operation_object_type,                        operation_object >                        operation_id_type;
+   typedef object_id< implementation_ids, impl_account_history_object_type,                  account_history_object >                  account_history_id_type;
+   typedef object_id< implementation_ids, impl_comment_object_type,                          comment_object >                          comment_id_type;
+   typedef object_id< implementation_ids, impl_comment_stats_object_type,                    comment_stats_object >                    comment_stats_id_type;
+   typedef object_id< implementation_ids, impl_category_object_type,                         category_object >                         category_id_type;
+   typedef object_id< implementation_ids, impl_comment_vote_object_type,                     comment_vote_object >                     comment_vote_id_type;
+   typedef object_id< implementation_ids, impl_vote_object_type,                             vote_object >                             vote_id_type;
+   typedef object_id< implementation_ids, impl_witness_vote_object_type,                     witness_vote_object >                     witness_vote_id_type;
+   typedef object_id< implementation_ids, impl_limit_order_object_type,                      limit_order_object >                      limit_order_id_type;
+   typedef object_id< implementation_ids, impl_feed_history_object_type,                     feed_history_object >                     feed_history_id_type;
+   typedef object_id< implementation_ids, impl_convert_request_object_type,                  convert_request_object >                  convert_request_id_type;
+   typedef object_id< implementation_ids, impl_account_object_type,                          account_object >                          account_id_type;
+   typedef object_id< implementation_ids, impl_witness_object_type,                          witness_object >                          witness_id_type;
+   typedef object_id< implementation_ids, impl_dynamic_global_property_object_type,          dynamic_global_property_object >          dynamic_global_property_id_type;
+   typedef object_id< implementation_ids, impl_transaction_object_type,                      transaction_object >                      transaction_obj_id_type;
+   typedef object_id< implementation_ids, impl_block_summary_object_type,                    block_summary_object >                    block_summary_id_type;
+   typedef object_id< implementation_ids, impl_chain_property_object_type,                   chain_property_object >                   chain_property_id_type;
+   typedef object_id< implementation_ids, impl_witness_schedule_object_type,                 witness_schedule_object >                 witness_schedule_id_type;
+   typedef object_id< implementation_ids, impl_liquidity_reward_balance_object_type,         liquidity_reward_balance_object >         liquidity_reward_balance_id_type;
+   typedef object_id< implementation_ids, impl_hardfork_property_object_type,                hardfork_property_object >                hardfork_property_id_type;
+   typedef object_id< implementation_ids, impl_withdraw_vesting_route_object_type,           withdraw_vesting_route_object >           withdraw_vesting_route_id_type;
+   typedef object_id< implementation_ids, impl_owner_authority_history_object_type,          owner_authority_history_object >          owner_authority_history_id_type;
+   typedef object_id< implementation_ids, impl_account_recovery_request_object_type,         account_recovery_request_object >         account_recovery_request_id_type;
+   typedef object_id< implementation_ids, impl_change_recovery_account_request_object_type,  change_recovery_account_request_object >  change_recovery_account_request_id_type;
+   typedef object_id< implementation_ids, impl_escrow_object_type,                           escrow_object >                           escrow_id_type;
 
    typedef fc::ripemd160                                        block_id_type;
    typedef fc::ripemd160                                        checksum_type;
@@ -288,6 +298,9 @@ FC_REFLECT_ENUM( steemit::chain::impl_object_type,
                  (impl_account_history_object_type)
                  (impl_hardfork_property_object_type)
                  (impl_withdraw_vesting_route_object_type)
+                 (impl_owner_authority_history_object_type)
+                 (impl_account_recovery_request_object_type)
+                 (impl_change_recovery_account_request_object_type)
                  (impl_escrow_object_type)
                )
 

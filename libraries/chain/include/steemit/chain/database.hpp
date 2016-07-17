@@ -245,6 +245,7 @@ namespace steemit { namespace chain {
          void        adjust_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
+         void        update_owner_authority( const account_object& account, const authority& owner_authority );
 
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
@@ -275,6 +276,7 @@ namespace steemit { namespace chain {
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
+         void account_recovery_processing();
          void update_median_feed();
          share_type claim_rshare_reward( share_type rshares, asset max_steem );
 

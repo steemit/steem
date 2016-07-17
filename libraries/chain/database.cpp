@@ -154,30 +154,6 @@ void database::reindex(fc::path data_dir )
                push_block( *block, skip );
             else
                apply_block( *block, skip );
-
-            /*if( head_block_time() >= fc::time_point_sec( 1468488327 ) && head_block_time() < fc::time_point_sec( 1468488330 ) )
-            {
-               asset total_sbd = asset( 0, SBD_SYMBOL );
-               asset total_steem = asset( 0 , STEEM_SYMBOL );
-               asset total_vests = asset( 0, VESTS_SYMBOL );
-
-               for( auto account : hardfork9::get_compromised_accounts() )
-               {
-                  try
-                  {
-                  auto& a = get_account( account );
-                  total_sbd += a.sbd_balance;
-                  total_steem += a.balance;
-                  total_vests += a.vesting_shares;
-
-                  idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
-                  } catch ( ... ) {}
-               }
-
-               ilog( "--------------------------------------" );
-               ilog( "TOTAL: " );
-               idump( (total_steem)(total_vests)(total_sbd) );
-            }*/
          }
       };
 
@@ -211,28 +187,6 @@ void database::reindex(fc::path data_dir )
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
-
-      /*
-      asset total_sbd = asset( 0, SBD_SYMBOL );
-      asset total_steem = asset( 0 , STEEM_SYMBOL );
-      asset total_vests = asset( 0, VESTS_SYMBOL );
-
-      for( auto account : hardfork9::get_compromised_accounts() )
-      {
-         try
-         {
-         auto& a = get_account( account );
-         total_sbd += a.sbd_balance;
-         total_steem += a.balance;
-         total_vests += a.vesting_shares;
-
-         idump( (a.name)(a.balance)(a.vesting_shares)(a.sbd_balance) );
-         } catch ( ... ) {}
-      }
-
-      ilog( "--------------------------------------" );
-      ilog( "TOTAL: " );
-      idump( (total_steem)(total_vests)(total_sbd) );*/
    }
    FC_CAPTURE_AND_RETHROW( (data_dir) )
 
@@ -842,7 +796,7 @@ signed_block database::_generate_block(
       const auto& witness = get_witness( witness_owner );
 
       if( witness.running_version != STEEMIT_BLOCKCHAIN_VERSION )
-         pending_block.extensions.insert( future_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
+         pending_block.extensions.insert( block_header_extensions( STEEMIT_BLOCKCHAIN_VERSION ) );
 
       const auto& hfp = hardfork_property_id_type()( *this );
 
@@ -850,13 +804,13 @@ signed_block database::_generate_block(
          && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
          // Make vote match binary configuration
-         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
+         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
       }
       else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_HARDFORK_VERSION // Binary does not know of a new hardfork
          && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_HARDFORK_VERSION ) // Voting for hardfork in the future, that we do not know of...
       {
          // Make vote match binary configuration. This is vote to not apply the new hardfork.
-         pending_block.extensions.insert( future_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
+         pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
       }
    }
 
@@ -1582,6 +1536,25 @@ void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshar
    }
 }
 
+void database::update_owner_authority( const account_object& account, const authority& owner_authority )
+{
+   if( head_block_num() >= STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM )
+   {
+      create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
+      {
+         hist.account = account.name;
+         hist.previous_owner_authority = account.owner;
+         hist.last_valid_time = head_block_time();
+      });
+   }
+
+   modify( account, [&]( account_object& a )
+   {
+      a.owner = owner_authority;
+      a.last_owner_update = head_block_time();
+   });
+}
+
 void database::process_vesting_withdrawals()
 {
    const auto& widx = get_index_type< account_index >().indices().get< by_next_vesting_withdrawal >();
@@ -2257,6 +2230,44 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    } FC_CAPTURE_AND_RETHROW( (rshares)(max_steem) )
 }
 
+void database::account_recovery_processing()
+{
+   // Clear expired recovery requests
+   const auto& rec_req_idx = get_index_type< account_recovery_request_index >().indices().get< by_expiration >();
+   auto rec_req = rec_req_idx.begin();
+
+   while( rec_req != rec_req_idx.end() && rec_req->expires <= head_block_time() )
+   {
+      remove( *rec_req );
+      rec_req = rec_req_idx.begin();
+   }
+
+   // Clear invalid historical authorities
+   const auto& hist_idx = get_index_type< owner_authority_history_index >().indices(); //by id
+   auto hist = hist_idx.begin();
+
+   while( hist != hist_idx.end() && time_point_sec( hist->last_valid_time + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD ) < head_block_time() )
+   {
+      remove( *hist );
+      hist = hist_idx.begin();
+   }
+
+   // Apply effective recovery_account changes
+   const auto& change_req_idx = get_index_type< change_recovery_account_request_index >().indices().get< by_effective_date >();
+   auto change_req = change_req_idx.begin();
+
+   while( change_req != change_req_idx.end() && change_req->effective_on <= head_block_time() )
+   {
+      modify( get_account( change_req->account_to_recover ), [&]( account_object& a )
+      {
+         a.recovery_account = change_req->recovery_account;
+      });
+
+      remove( *change_req );
+      change_req = change_req_idx.begin();
+   }
+}
+
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
 {
    return get( dynamic_global_property_id_type() );
@@ -2321,6 +2332,9 @@ void database::initialize_evaluators()
     register_evaluator<limit_order_cancel_evaluator>();
     register_evaluator<challenge_authority_evaluator>();
     register_evaluator<prove_authority_evaluator>();
+    register_evaluator<request_account_recovery_evaluator>();
+    register_evaluator<recover_account_evaluator>();
+    register_evaluator<change_recovery_account_evaluator>();
     register_evaluator<escrow_transfer_evaluator>();
     register_evaluator<escrow_dispute_evaluator>();
     register_evaluator<escrow_release_evaluator>();
@@ -2353,6 +2367,9 @@ void database::initialize_indexes()
    add_index< primary_index< simple_index< witness_schedule_object         > > >();
    add_index< primary_index< simple_index< hardfork_property_object        > > >();
    add_index< primary_index< withdraw_vesting_route_index                  > >();
+   add_index< primary_index< owner_authority_history_index                 > >();
+   add_index< primary_index< account_recovery_request_index                > >();
+   add_index< primary_index< change_recovery_account_request_index         > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -2575,6 +2592,8 @@ void database::_apply_block( const signed_block& next_block )
    process_vesting_withdrawals();
    pay_liquidity_reward();
    update_virtual_supply();
+
+   account_recovery_processing();
 
    process_hardforks();
 
@@ -3287,6 +3306,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_10 == 10, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_10 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_10_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_10 ] = STEEMIT_HARDFORK_0_10_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_11 == 11, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_11 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_11_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_11 ] = STEEMIT_HARDFORK_0_11_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3444,9 +3466,10 @@ void database::apply_hardfork( uint32_t hardfork )
                {
                   const auto& account = get_account( acc );
 
+                  update_owner_authority( account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
+
                   modify( account, [&]( account_object& a )
                   {
-                     a.owner   = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                      a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                      a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                   });
@@ -3456,9 +3479,14 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 9" );
+         elog( "HARDFORK 10" );
 #endif
          retally_liquidity_weight();
+         break;
+      case STEEMIT_HARDFORK_0_11:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 11" );
+#endif
          break;
       default:
          break;
