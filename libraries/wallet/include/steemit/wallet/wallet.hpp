@@ -717,8 +717,39 @@ class wallet_api
        */
       annotated_signed_transaction challenge( string challenger, string challenged, bool broadcast );
 
+      /**
+       * Create an account recovery request as a recover account. The syntax for this command contains a serialized authority object
+       * so there is an example below on how to pass in the authority.
+       *
+       * request_account_recovery "your_account" "account_to_recover" {"weight_threshold": 1,"account_auths": [], "key_auths": [["new_public_key",1]]} true
+       *
+       * @param recovery_account The name of your account
+       * @param account_to_recover The name of the account you are trying to recover
+       * @param new_authority The new owner authority for the recovered account. This should be given to you by the holder of the compromised or lost account.
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction request_account_recovery( string recovery_account, string account_to_recover, authority new_authority, bool broadcast );
+
+      /**
+       * Recover your account using a recovery request created by your recovery account. The syntax for this commain contains a serialized
+       * authority object, so there is an example below on how to pass in the authority.
+       *
+       * recover_account "your_account" {"weight_threshold": 1,"account_auths": [], "key_auths": [["old_public_key",1]]} {"weight_threshold": 1,"account_auths": [], "key_auths": [["new_public_key",1]]} true
+       *
+       * @param account_to_recover The name of your account
+       * @param recent_authority A recent owner authority on your account
+       * @param new_authority The new authority that your recovery account used in the account recover request.
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction recover_account( string account_to_recover, authority recent_authority, authority new_authority, bool broadcast );
+
+      /**
+       * Change your recovery account after a 30 day delay.
+       *
+       * @param owner The name of your account
+       * @param new_recovery_account The name of the recovery account you wish to have
+       * @param broadcast true if you wish to broadcast the transaction
+       */
       annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
 
 
