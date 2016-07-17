@@ -11,7 +11,7 @@ namespace steemit { namespace chain {
       fc::time_point_sec            timestamp;
       string                        witness;
       checksum_type                 transaction_merkle_root;
-      extensions_type               extensions;
+      block_header_extensions_type  extensions;
 
       static uint32_t num_from_id(const block_id_type& id);
    };
