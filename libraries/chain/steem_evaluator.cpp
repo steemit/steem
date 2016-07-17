@@ -132,7 +132,14 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
    const auto& account = db().get_account( o.account );
 
    if( o.owner )
+   {
+#ifndef IS_TESTNET
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
+         FC_ASSERT( db().head_block_time() - account.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT );
+#endif
+
       db().update_owner_authority( account, *o.owner );
+   }
 
    db().modify( account, [&]( account_object& acc )
    {
