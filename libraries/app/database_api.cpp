@@ -417,6 +417,22 @@ uint64_t database_api_impl::get_account_count()const
    return _db.get_index_type<account_index>().indices().size();
 }
 
+vector< owner_authority_history_object > database_api::get_owner_history( string account )const
+{
+   vector< owner_authority_history_object > results;
+
+   const auto& hist_idx = my->_db.get_index_type< owner_authority_history_index >().indices().get< by_account >();
+   auto itr = hist_idx.lower_bound( account );
+
+   while( itr != hist_idx.end() && itr->account == account )
+   {
+      results.push_back( *itr );
+      ++itr;
+   }
+
+   return results;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
@@ -1317,7 +1333,7 @@ state database_api::get_state( string path )const
       } else if( part[1].size() == 0 || part[1] == "feed" ) {
          const auto& fidxs = my->_db.get_index_type<follow::feed_index>().indices();
          const auto& fidx = fidxs.get<steemit::follow::by_account>();
-         
+
          auto itr = fidx.lower_bound( eacnt.id );
          int count = 0;
          while( itr != fidx.end() && itr->account == eacnt.id && count < 100 ) {
