@@ -114,6 +114,7 @@
 
 #define STEEMIT_OWNER_AUTH_RECOVERY_PERIOD                  fc::days(30)
 #define STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
+#define STEEMIT_OWNER_UPDATE_LIMIT                          fc::minutes(60)
 
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)

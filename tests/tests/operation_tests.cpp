@@ -3003,6 +3003,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       ACTORS( (alice) );
       fund( "alice", 1000000 );
 
+      BOOST_TEST_MESSAGE( "Creating account bob with alice" );
+
       account_create_operation acc_create;
       acc_create.fee = ASSET( "10.000 TESTS" );
       acc_create.creator = "alice";
@@ -3023,6 +3025,9 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       const auto& bob = db.get_account( "bob" );
       BOOST_REQUIRE( bob.owner == acc_create.owner );
 
+
+      BOOST_TEST_MESSAGE( "Changing bob's owner authority" );
+
       account_update_operation acc_update;
       acc_update.account = "bob";
       acc_update.owner = authority( 1, generate_private_key( "bad_key" ).get_public_key(), 1 );
@@ -3039,7 +3044,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       BOOST_REQUIRE( bob.owner == acc_update.owner );
 
 
-      ilog( "starting account recovery..." );
+      BOOST_TEST_MESSAGE( "Creating recover request for bob with alice" );
+
       request_account_recovery_operation request;
       request.recovery_account = "alice";
       request.account_to_recover = "bob";
@@ -3053,6 +3059,9 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( bob.owner == acc_update.owner );
+
+
+      BOOST_TEST_MESSAGE( "Recovering bob's account with original owner auth and new secret" );
 
       recover_account_operation recover;
       recover.account_to_recover = "bob";
@@ -3068,6 +3077,108 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+
+
+      BOOST_TEST_MESSAGE( "Creating new recover request for a bogus key" );
+
+      request.new_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "Testing failure when bob does not have new authority" );
+
+      recover.new_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( bob.owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+
+
+      BOOST_TEST_MESSAGE( "Testing failure when bob does not have old authority" );
+
+      recover.recent_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
+      recover.new_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( bob.owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+
+
+      BOOST_TEST_MESSAGE( "Testing using the same old owner auth again for recovery" );
+
+      recover.recent_owner_authority = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+      recover.new_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+
+      BOOST_TEST_MESSAGE( "Creating a recovery request that will expire" );
+
+      request.new_owner_authority = authority( 1, generate_private_key( "expire" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      const auto& request_idx = db.get_index_type< account_recovery_request_index >().indices();
+      auto req_itr = request_idx.begin();
+
+      BOOST_REQUIRE( req_itr->account_to_recover == "bob" );
+      BOOST_REQUIRE( req_itr->new_owner_authority == authority( 1, generate_private_key( "expire" ).get_public_key(), 1 ) );
+      BOOST_REQUIRE( req_itr->expires == db.head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD );
+      ++req_itr;
+      BOOST_REQUIRE( req_itr == request_idx.end() );
+
+      generate_blocks( time_point_sec( req_itr->expires.sec_since_epoch() - STEEMIT_BLOCK_INTERVAL ), true );
+
+      const auto& new_request_idx = db.get_index_type< account_recovery_request_index >().indices();
+      BOOST_REQUIRE( new_request_idx.begin() != new_request_idx.end() );
+
+      generate_block();
+
+      const auto& final_request_idx = db.get_index_type< account_recovery_request_index >().indices();
+      BOOST_REQUIRE( new_request_idx.begin() == new_request_idx.end() );
+
+      recover.new_owner_authority = authority( 1, generate_private_key( "expire" ).get_public_key(), 1 );
+      recover.recent_owner_authority = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.set_expiration( db.head_block_time() );
+      tx.sign( generate_private_key( "expire" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 ) );
+
+      BOOST_TEST_MESSAGE( "Expiring owner authority history" );
    }
    FC_LOG_AND_RETHROW()
 }
