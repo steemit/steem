@@ -3489,19 +3489,7 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 11" );
 #endif
-         elog( "HARDFORK 11" );
-         {
-            const auto& acc_idx = get_index_type< account_index >().indices();
-
-            for( const auto& account : acc_idx )
-            {
-               modify( account, [&]( account_object& a )
-               {
-                  a.active_challenged = true;
-               });
-            }
-         }
-
+         break;
       default:
          break;
    }

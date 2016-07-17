@@ -1374,6 +1374,7 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
    auto request = recovery_request_idx.find( o.account_to_recover );
 
    FC_ASSERT( request != recovery_request_idx.end() );
+   FC_ASSERT( request->new_owner_authority == o.new_owner_authority );
 
    const auto& recent_auth_idx = db().get_index_type< owner_authority_history_index >().indices().get< by_account >();
    auto hist = recent_auth_idx.lower_bound( o.account_to_recover );

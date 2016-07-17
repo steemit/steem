@@ -3152,10 +3152,11 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       BOOST_REQUIRE( req_itr->account_to_recover == "bob" );
       BOOST_REQUIRE( req_itr->new_owner_authority == authority( 1, generate_private_key( "expire" ).get_public_key(), 1 ) );
       BOOST_REQUIRE( req_itr->expires == db.head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD );
+      auto expires = req_itr->expires;
       ++req_itr;
       BOOST_REQUIRE( req_itr == request_idx.end() );
 
-      generate_blocks( time_point_sec( req_itr->expires.sec_since_epoch() - STEEMIT_BLOCK_INTERVAL ), true );
+      generate_blocks( time_point_sec( expires - STEEMIT_BLOCK_INTERVAL ), true );
 
       const auto& new_request_idx = db.get_index_type< account_recovery_request_index >().indices();
       BOOST_REQUIRE( new_request_idx.begin() != new_request_idx.end() );
@@ -3179,6 +3180,54 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 ) );
 
       BOOST_TEST_MESSAGE( "Expiring owner authority history" );
+
+      acc_update.owner = authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( acc_update );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( db.head_block_time() + ( STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD ) );
+      generate_block();
+
+      request.new_owner_authority = authority( 1, generate_private_key( "last key" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      recover.new_owner_authority = request.new_owner_authority;
+      recover.recent_owner_authority = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+
+      recover.recent_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "last key" ).get_public_key(), 1 ) );
    }
    FC_LOG_AND_RETHROW()
 }
