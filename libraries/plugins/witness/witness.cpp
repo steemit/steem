@@ -420,7 +420,7 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
    auto minutes = uint64_t(seconds / 60.0);
 
 
-   if( uint64_t(hps) > 0 )
+   if( _total_hashes > 0 )
       ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
               ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
          );
