@@ -62,6 +62,52 @@ account_history_plugin_impl::~account_history_plugin_impl()
    return;
 }
 
+struct operation_visitor {
+   operation_visitor( database& db, const operation_object& op, const operation_object*& n, string i ):_db(db),op_obj(op),new_obj(n),item(i){};
+   typedef void result_type;
+
+   database& _db;
+   const operation_object& op_obj;
+   const operation_object*& new_obj;
+   string item;
+
+   /// ignore these ops
+   void operator()( const comment_operation& ) {}
+   void operator()( const vote_operation& ) {}
+   void operator()( const delete_comment_operation& ){} 
+   void operator()( const custom_json_operation& ) {}
+   void operator()( const custom_operation& ) {}
+
+
+   template<typename Op>
+   void operator()( Op&& )const{
+
+         const auto& hist_idx = _db.get_index_type<account_history_index>().indices().get<by_account>();
+         if( !new_obj ) {
+            new_obj = &_db.create<operation_object>( [&]( operation_object& obj ){
+               obj.trx_id       = op_obj.trx_id;
+               obj.block        = op_obj.block;
+               obj.trx_in_block = op_obj.trx_in_block;
+               obj.op_in_trx    = op_obj.op_in_trx;
+               obj.virtual_op   = op_obj.virtual_op;
+               obj.timestamp    = _db.head_block_time();
+               obj.op           = op_obj.op;
+            });
+         }
+
+         auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
+         uint32_t sequence = 0;
+         if( hist_itr != hist_idx.end() && hist_itr->account == item )
+            sequence = hist_itr->sequence + 1;
+
+         /*const auto& ahist = */_db.create<account_history_object>( [&]( account_history_object& ahist ){
+              ahist.account  = item;
+              ahist.sequence = sequence;
+              ahist.op       = new_obj->id;
+         });
+   }
+};
+
 void account_history_plugin_impl::on_operation( const operation_object& op_obj ) {
    flat_set<string> impacted;
    steemit::chain::database& db = database();
@@ -73,28 +119,7 @@ void account_history_plugin_impl::on_operation( const operation_object& op_obj )
    for( const auto& item : impacted ) {
       auto itr = _tracked_accounts.lower_bound( item );
       if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && itr->second < item) ) {
-         if( !new_obj ) {
-            new_obj = &db.create<operation_object>( [&]( operation_object& obj ){
-               obj.trx_id       = op_obj.trx_id;
-               obj.block        = op_obj.block;
-               obj.trx_in_block = op_obj.trx_in_block;
-               obj.op_in_trx    = op_obj.op_in_trx;
-               obj.virtual_op   = op_obj.virtual_op;
-               obj.timestamp    = db.head_block_time();
-               obj.op           = op_obj.op;
-            });
-         }
-
-         auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
-         uint32_t sequence = 0;
-         if( hist_itr != hist_idx.end() && hist_itr->account == item )
-            sequence = hist_itr->sequence + 1;
-
-         const auto& ahist = db.create<account_history_object>( [&]( account_history_object& ahist ){
-              ahist.account  = item;
-              ahist.sequence = sequence;
-              ahist.op       = new_obj->id;
-         });
+         op_obj.op.visit( operation_visitor(db, op_obj, new_obj, item) );
       }
    }
 }

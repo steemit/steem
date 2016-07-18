@@ -260,10 +260,12 @@ struct operation_visitor {
 
    void operator()( const vote_operation& op )const {
       update_tags( _db.get_comment( op.author, op.permlink ) );
+      /*
       update_peer_stats( _db.get_account(op.voter),
                          _db.get_account(op.author),
                          _db.get_comment(op.author, op.permlink),
                          op.weight );
+                         */
    }
 
    void operator()( const delete_comment_operation& op )const {
