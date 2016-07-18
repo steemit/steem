@@ -77,6 +77,7 @@ struct operation_visitor {
    void operator()( const delete_comment_operation& ){} 
    void operator()( const custom_json_operation& ) {}
    void operator()( const custom_operation& ) {}
+   void operator()( const curate_reward_operation& ) {}
 
 
    template<typename Op>
