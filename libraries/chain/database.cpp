@@ -1796,7 +1796,7 @@ void database::cashout_comment_helper( const comment_object& comment )
 
       if( comment.net_rshares > 0 )
       {
-         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
+         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, comment.reward_weight, to_steem( comment.max_accepted_payout ) ).value );
 
          asset total_payout;
          if( reward_tokens > 0 )
@@ -1871,8 +1871,13 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.abs_rshares  = 0;
          c.vote_rshares = 0;
          c.total_vote_weight = 0;
-         c.cashout_time = fc::time_point_sec::maximum();
          c.max_cashout_time = fc::time_point_sec::maximum();
+
+         if( has_hardfork( STEEMIT_HARDFORK_0_12 ) && c.last_payout == fc::time_point_sec::min() )
+            c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
+         else
+            c.cashout_time = fc::time_point_sec::maximum();
+
          c.last_payout = head_block_time();
       } );
 
@@ -2006,6 +2011,9 @@ void database::update_account_activity( const account_object& account ) {
 
 asset database::get_liquidity_reward()const
 {
+   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+      return asset( 0, STEEM_SYMBOL );
+
    const auto& props = get_dynamic_global_properties();
    static_assert( STEEMIT_LIQUIDITY_REWARD_PERIOD_SEC == 60*60, "this code assumes a 1 hour time interval" );
    asset percent( calc_percent_reward_per_hour< STEEMIT_LIQUIDITY_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL );
@@ -2076,11 +2084,15 @@ void database::pay_liquidity_reward()
 
    if( (head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0 )
    {
+      auto reward = get_liquidity_reward();
+
+      if( reward.amount == 0 )
+         return;
+
       const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_volume_weight>();
       auto itr = ridx.begin();
       if( itr != ridx.end() && itr->volume_weight() > 0 )
       {
-         auto reward = get_liquidity_reward();
          adjust_supply( reward, true );
          adjust_balance( itr->owner(*this), reward );
          modify( *itr, [&]( liquidity_reward_balance_object& obj )
@@ -2197,7 +2209,7 @@ asset database::to_steem( const asset& sbd )const
  *  This method reduces the rshare^2 supply and returns the number of tokens are
  *  redeemed.
  */
-share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
+share_type database::claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem )
 {
    try
    {
@@ -2210,6 +2222,7 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    u256 total_rshares2 = to256( props.total_reward_shares2 );
 
    u256 rs2 = to256( calculate_vshares( rshares.value ) );
+   rs2 = ( rs2 * reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
@@ -3050,9 +3063,9 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
-       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) )
-   )
+   if( !has_hardfork( STEEMIT_HARDFORK_0_12 ) &&
+       ( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) ) ) )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
       {
@@ -3309,6 +3322,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_11 == 11, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_11 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_11_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_11 ] = STEEMIT_HARDFORK_0_11_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_12 == 12, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_12 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_12_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_12 ] = STEEMIT_HARDFORK_0_12_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3487,6 +3503,23 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 11" );
 #endif
+         break;
+      case STEEMIT_HARDFORK_0_12:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 12" );
+#endif
+         {
+            const auto& comment_idx = get_index_type< comment_index >().indices();
+
+            for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
+            {
+               if( itr->last_payout > fc::time_point_sec() && itr->last_payout + STEEMIT_SECOND_CASHOUT_WINDOW > head_block_time() )
+               modify( *itr, [&]( comment_object& c )
+               {
+                  c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+               });
+            }
+         }
          break;
       default:
          break;

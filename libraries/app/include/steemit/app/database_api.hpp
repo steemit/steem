@@ -55,7 +55,6 @@ struct liquidity_balance
    fc::uint128_t        weight;
 };
 
-
 class database_api_impl;
 
 /**
@@ -195,6 +194,8 @@ class database_api
        * @brief Get the total number of accounts registered with the blockchain
        */
       uint64_t get_account_count()const;
+
+      vector< owner_authority_history_object > get_owner_history( string account )const;
 
       ///////////////
       // Witnesses //
@@ -436,6 +437,7 @@ FC_API(steemit::app::database_api,
    (get_account_count)
    (get_conversion_requests)
    (get_account_history)
+   (get_owner_history)
 
    // Market
    (get_order_book)

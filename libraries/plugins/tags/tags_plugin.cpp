@@ -152,8 +152,16 @@ struct operation_visitor {
 
       comment_metadata meta;
 
-      if( c.json_metadata.size() ){
-         meta = fc::json::from_string( c.json_metadata ).as<comment_metadata>();
+      if( c.json_metadata.size() )
+      {
+         try
+         {
+            meta = fc::json::from_string( c.json_metadata ).as<comment_metadata>();
+         }
+         catch( const fc::exception& e )
+         {
+            // Do nothing on malformed json_metadata
+         }
       }
 
       set<string> lower_tags;
