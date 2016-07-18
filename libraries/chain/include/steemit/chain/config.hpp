@@ -86,6 +86,10 @@
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
 
+#define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
+#define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
+#define STEEMIT_COMMENT_MAX_REWARD_INTERVAL_SEC (60u*60*6) // 6 hours
+
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
 #define STEEMIT_100_PERCENT                     10000

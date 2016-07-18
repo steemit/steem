@@ -272,24 +272,29 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
-      {
-          FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
-      }
-
       if( o.parent_author.size() != 0 )
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) ) {
          if( o.parent_author.size() == 0 )
-             FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
+             FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
          else
-             FC_ASSERT( (now - auth.last_post) > fc::seconds(20), "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
+             FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
       } else {
          FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       }
 
+      uint16_t reward_weight = STEEMIT_100_PERCENT;
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+      {
+         uint64_t post_delta = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_COMMENT_MAX_REWARD_INTERVAL_SEC );
+         reward_weight = uint16_t( ( post_delta * STEEMIT_100_PERCENT ) / STEEMIT_COMMENT_MAX_REWARD_INTERVAL_SEC );
+      }
+
       db().modify( auth, [&]( account_object& a ) {
+         if( o.parent_author.size() == 0 )
+            a.last_root_post = now;
          a.last_post = now;
          a.post_count++;
       });
@@ -310,6 +315,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.last_payout = fc::time_point_sec::min();
          com.cashout_time = fc::time_point_sec::maximum();
          com.max_cashout_time = fc::time_point_sec::maximum();
+         com.reward_weight = reward_weight;
 
          if ( o.parent_author.size() == 0 )
          {
@@ -807,7 +813,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) 
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
       FC_ASSERT( elapsed_seconds >= STEEMIT_MIN_VOTE_INTERVAL_SEC );
 
    auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;

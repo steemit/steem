@@ -1796,7 +1796,7 @@ void database::cashout_comment_helper( const comment_object& comment )
 
       if( comment.net_rshares > 0 )
       {
-         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
+         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, comment.reward_weight, to_steem( comment.max_accepted_payout ) ).value );
 
          asset total_payout;
          if( reward_tokens > 0 )
@@ -2204,7 +2204,7 @@ asset database::to_steem( const asset& sbd )const
  *  This method reduces the rshare^2 supply and returns the number of tokens are
  *  redeemed.
  */
-share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
+share_type database::claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem )
 {
    try
    {
@@ -2217,6 +2217,7 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    u256 total_rshares2 = to256( props.total_reward_shares2 );
 
    u256 rs2 = to256( calculate_vshares( rshares.value ) );
+   rs2 = ( rs2 * reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
