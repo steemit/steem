@@ -1871,8 +1871,13 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.abs_rshares  = 0;
          c.vote_rshares = 0;
          c.total_vote_weight = 0;
-         c.cashout_time = fc::time_point_sec::maximum();
          c.max_cashout_time = fc::time_point_sec::maximum();
+
+         if( has_hardfork( STEEMIT_HARDFORK_0_12 ) && c.last_payout == fc::time_point_sec::min() )
+            c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
+         else
+            c.cashout_time = fc::time_point_sec::maximum();
+
          c.last_payout = head_block_time();
       } );
 
@@ -3503,6 +3508,18 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 12" );
 #endif
+         {
+            const auto& comment_idx = get_index_type< comment_index >().indices();
+
+            for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
+            {
+               if( itr->last_payout > fc::time_point_sec() && itr->last_payout + STEEMIT_SECOND_CASHOUT_WINDOW > head_block_time() )
+               modify( *itr, [&]( comment_object& c )
+               {
+                  c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+               });
+            }
+         }
          break;
       default:
          break;
