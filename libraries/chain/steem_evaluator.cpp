@@ -807,7 +807,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) 
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
       FC_ASSERT( elapsed_seconds >= STEEMIT_MIN_VOTE_INTERVAL_SEC );
 
    auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;

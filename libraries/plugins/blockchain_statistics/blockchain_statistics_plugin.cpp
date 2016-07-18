@@ -367,10 +367,8 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o
             else
                b.new_vesting_withdrawal_requests++;
 
-            if( op.account == "steemit" ) idump( (b.vesting_withdraw_rate_delta)(new_vesting_withdrawal_rate)(account.vesting_withdraw_rate)(op) );
             // TODO: Figure out how to change delta when a vesting withdraw finishes. Have until March 24th 2018 to figure that out...
             b.vesting_withdraw_rate_delta += new_vesting_withdrawal_rate - account.vesting_withdraw_rate.amount;
-            if( op.account == "steemit" ) idump( (b.vesting_withdraw_rate_delta) );
          });
       }
    }
