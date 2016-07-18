@@ -105,6 +105,7 @@ namespace steemit { namespace chain {
          const witness_object&  get_witness( const string& name )const;
          const account_object&  get_account( const string& name )const;
          const comment_object&  get_comment( const string& author, const string& permlink )const;
+         const escrow_object&   get_escrow( const string& name, uint32_t escrowid )const;
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
          const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
@@ -161,13 +162,6 @@ namespace steemit { namespace chain {
          const operation_object notify_pre_apply_operation( const operation& op );
          void notify_post_apply_operation( const operation_object& op );
          const operation_object push_virtual_operation( const operation& op );
-
-         /**
-          * This signal is emitted for plugins to process every operation before it gets applied.
-          *
-          *  @deprecated - use pre_apply_operation instead
-          */
-         fc::signal<void(const operation_object&)> on_applied_operation;
 
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
@@ -250,7 +244,7 @@ namespace steemit { namespace chain {
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
          void update_account_activity( const account_object& account );
-         void adjust_total_payout( const comment_object& a, const asset& sbd );
+         void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value );
 
          void update_witness_schedule();
 
@@ -258,6 +252,7 @@ namespace steemit { namespace chain {
          void        adjust_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
+         void        update_owner_authority( const account_object& account, const authority& owner_authority );
 
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
@@ -288,6 +283,7 @@ namespace steemit { namespace chain {
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
+         void account_recovery_processing();
          void update_median_feed();
          share_type claim_rshare_reward( share_type rshares, asset max_steem );
 
@@ -363,6 +359,7 @@ namespace steemit { namespace chain {
          void retally_comment_children();
          void retally_witness_votes();
          void retally_witness_vote_counts( bool force = false );
+         void retally_liquidity_weight();
 
          bool has_hardfork( uint32_t hardfork )const;
 
@@ -374,6 +371,11 @@ namespace steemit { namespace chain {
          /**
           * @}
           */
+
+#ifdef IS_TEST_NET
+         bool liquidity_rewards_enabled = true;
+#endif
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          void pop_undo() { object_database::pop_undo(); }

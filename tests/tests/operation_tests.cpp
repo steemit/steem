@@ -2363,9 +2363,8 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      auto recent_ops = get_last_operations( 2 );
-      auto alice_op = recent_ops[0].get< fill_order_operation >();
-      auto bob_op = recent_ops[1].get< fill_order_operation >();
+      auto recent_ops = get_last_operations( 1 );
+      auto fill_order_op = recent_ops[0].get< fill_order_operation >();
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", 1 ) );
       BOOST_REQUIRE( limit_order != limit_order_idx.end() );
@@ -2379,14 +2378,12 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "7.500 TBD" ).amount.value );
       BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "5.000 TESTS" ).amount.value );
       BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "992.500 TBD" ).amount.value );
-      BOOST_REQUIRE_EQUAL( alice_op.owner, "alice" );
-      BOOST_REQUIRE_EQUAL( alice_op.orderid, 1 );
-      BOOST_REQUIRE_EQUAL( alice_op.pays.amount.value, ASSET( "5.000 TESTS").amount.value );
-      BOOST_REQUIRE_EQUAL( alice_op.receives.amount.value, ASSET( "7.500 TBD" ).amount.value );
-      BOOST_REQUIRE_EQUAL( bob_op.owner, "bob" );
-      BOOST_REQUIRE_EQUAL( bob_op.orderid, 1 );
-      BOOST_REQUIRE_EQUAL( bob_op.pays.amount.value, ASSET( "7.500 TBD" ).amount.value );
-      BOOST_REQUIRE_EQUAL( bob_op.receives.amount.value, ASSET( "5.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( fill_order_op.open_owner, "alice" );
+      BOOST_REQUIRE_EQUAL( fill_order_op.open_orderid, 1 );
+      BOOST_REQUIRE_EQUAL( fill_order_op.open_pays.amount.value, ASSET( "5.000 TESTS").amount.value );
+      BOOST_REQUIRE_EQUAL( fill_order_op.current_owner, "bob" );
+      BOOST_REQUIRE_EQUAL( fill_order_op.current_orderid, 1 );
+      BOOST_REQUIRE_EQUAL( fill_order_op.current_pays.amount.value, ASSET( "7.500 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order fully, but the new order partially" );
@@ -2510,6 +2507,340 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE_EQUAL( limit_order->orderid, 5 );
       BOOST_REQUIRE_EQUAL( limit_order->for_sale.value, 9091 );
       BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "20.000 TESTS" ), ASSET( "22.000 TBD" ) ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "955.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "45.500 TBD" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "35.909 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "954.500 TBD" ).amount.value );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( limit_order_create2_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: limit_order_create2_authorities" );
+
+      ACTORS( (alice)(bob) )
+      fund( "alice", 10000 );
+
+      limit_order_create2_operation op;
+      op.owner = "alice";
+      op.amount_to_sell = ASSET( "1.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) );
+
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+
+      BOOST_TEST_MESSAGE( "--- Test failure when no signature." );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+
+      BOOST_TEST_MESSAGE( "--- Test success with account signature" );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, database::skip_transaction_dupe_check );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
+      tx.signatures.clear();
+      tx.sign( alice_private_key, db.get_chain_id() );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
+
+      BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
+      tx.signatures.clear();
+      tx.sign( alice_post_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: limit_order_create2_apply" );
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      ACTORS( (alice)(bob) )
+      fund( "alice", 1000000 );
+      fund( "bob", 1000000 );
+      convert( "bob", ASSET("1000.000 TESTS" ) );
+
+      const auto& limit_order_idx = db.get_index_type< limit_order_index >().indices().get< by_account >();
+
+      BOOST_TEST_MESSAGE( "--- Test failure when account does not have required funds" );
+      limit_order_create2_operation op;
+      signed_transaction tx;
+
+      op.owner = "bob";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      op.fill_or_kill = false;
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "0.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "100.0000 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test failure when price is 0" );
+
+      op.owner = "alice";
+      op.exchange_rate = price( ASSET( "0.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "1000.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test failure when amount to sell is 0" );
+
+      op.amount_to_sell = ASSET( "0.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "1000.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
+
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.exchange_rate = price( ASSET( "2.000 TESTS" ), ASSET( "3.000 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      auto limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
+      BOOST_REQUIRE( limit_order != limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( limit_order->seller, op.owner );
+      BOOST_REQUIRE_EQUAL( limit_order->orderid, op.orderid );
+      BOOST_REQUIRE( limit_order->for_sale == op.amount_to_sell.amount );
+      BOOST_REQUIRE( limit_order->sell_price == op.exchange_rate );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "990.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test failure creating limit order with duplicate id" );
+
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
+      BOOST_REQUIRE( limit_order != limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( limit_order->seller, op.owner );
+      BOOST_REQUIRE_EQUAL( limit_order->orderid, op.orderid );
+      BOOST_REQUIRE( limit_order->for_sale == 10000 );
+      BOOST_REQUIRE( limit_order->sell_price == op.exchange_rate );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "990.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test sucess killing an order that will not be filled" );
+
+      op.orderid = 2;
+      op.fill_or_kill = true;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "990.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "0.000 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test having a partial match to limit order" );
+      // Alice has order for 15 SBD at a price of 2:3
+      // Fill 5 STEEM for 7.5 SBD
+
+      op.owner = "bob";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "7.500 TBD" );
+      op.exchange_rate = price( ASSET( "3.000 TBD" ), ASSET( "2.000 TESTS" ) );
+      op.fill_or_kill = false;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      auto recent_ops = get_last_operations( 1 );
+      auto fill_order_op = recent_ops[0].get< fill_order_operation >();
+
+      limit_order = limit_order_idx.find( std::make_tuple( "alice", 1 ) );
+      BOOST_REQUIRE( limit_order != limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( limit_order->seller, "alice" );
+      BOOST_REQUIRE_EQUAL( limit_order->orderid, op.orderid );
+      BOOST_REQUIRE( limit_order->for_sale == 5000 );
+      BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "2.000 TESTS" ), ASSET( "3.000 TBD" ) ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "990.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "7.500 TBD" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "5.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "992.500 TBD" ).amount.value );
+      BOOST_REQUIRE_EQUAL( fill_order_op.open_owner, "alice" );
+      BOOST_REQUIRE_EQUAL( fill_order_op.open_orderid, 1 );
+      BOOST_REQUIRE_EQUAL( fill_order_op.open_pays.amount.value, ASSET( "5.000 TESTS").amount.value );
+      BOOST_REQUIRE_EQUAL( fill_order_op.current_owner, "bob" );
+      BOOST_REQUIRE_EQUAL( fill_order_op.current_orderid, 1 );
+      BOOST_REQUIRE_EQUAL( fill_order_op.current_pays.amount.value, ASSET( "7.500 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test filling an existing order fully, but the new order partially" );
+
+      op.amount_to_sell = ASSET( "15.000 TBD" );
+      op.exchange_rate = price( ASSET( "3.000 TBD" ), ASSET( "2.000 TESTS" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      limit_order = limit_order_idx.find( std::make_tuple( "bob", 1 ) );
+      BOOST_REQUIRE( limit_order != limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( limit_order->seller, "bob" );
+      BOOST_REQUIRE_EQUAL( limit_order->orderid, 1 );
+      BOOST_REQUIRE_EQUAL( limit_order->for_sale.value, 7500 );
+      BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "3.000 TBD" ), ASSET( "2.000 TESTS" ) ) );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 1 ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "990.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "15.000 TBD" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "10.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "977.500 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
+
+      op.owner = "alice";
+      op.orderid = 3;
+      op.amount_to_sell = ASSET( "5.000 TESTS" );
+      op.exchange_rate = price( ASSET( "2.000 TESTS" ), ASSET( "3.000 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 3 ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", 1 ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "985.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "22.500 TBD" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "15.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "977.500 TBD" ).amount.value );
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is better." );
+
+      op.owner = "alice";
+      op.orderid = 4;
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.100 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      op.owner = "bob";
+      op.orderid = 4;
+      op.amount_to_sell = ASSET( "12.000 TBD" );
+      op.exchange_rate = price( ASSET( "1.200 TBD" ), ASSET( "1.000 TESTS" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      limit_order = limit_order_idx.find( std::make_tuple( "bob", 4 ) );
+      BOOST_REQUIRE( limit_order != limit_order_idx.end() );
+      BOOST_REQUIRE( limit_order_idx.find(std::make_tuple( "alice", 4 ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( limit_order->seller, "bob" );
+      BOOST_REQUIRE_EQUAL( limit_order->orderid, 4 );
+      BOOST_REQUIRE_EQUAL( limit_order->for_sale.value, 1000 );
+      BOOST_REQUIRE( limit_order->sell_price == op.exchange_rate );
+      BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
+      BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "975.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "33.500 TBD" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.balance.amount.value, ASSET( "25.000 TESTS" ).amount.value );
+      BOOST_REQUIRE_EQUAL( bob.sbd_balance.amount.value, ASSET( "965.500 TBD" ).amount.value );
+      validate_database();
+
+      limit_order_cancel_operation can;
+      can.owner = "bob";
+      can.orderid = 4;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( can );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
+
+      auto gpo = db.get_dynamic_global_properties();
+      auto start_sbd = gpo.current_sbd_supply;
+
+      op.owner = "alice";
+      op.orderid = 5;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.100 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      op.owner = "bob";
+      op.orderid = 5;
+      op.amount_to_sell = ASSET( "12.000 TBD" );
+      op.exchange_rate = price( ASSET( "1.200 TBD" ), ASSET( "1.000 TESTS" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      limit_order = limit_order_idx.find( std::make_tuple( "alice", 5 ) );
+      BOOST_REQUIRE( limit_order != limit_order_idx.end() );
+      BOOST_REQUIRE( limit_order_idx.find(std::make_tuple( "bob", 5 ) ) == limit_order_idx.end() );
+      BOOST_REQUIRE_EQUAL( limit_order->seller, "alice" );
+      BOOST_REQUIRE_EQUAL( limit_order->orderid, 5 );
+      BOOST_REQUIRE_EQUAL( limit_order->for_sale.value, 9091 );
+      BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "1.000 TESTS" ), ASSET( "1.100 TBD" ) ) );
       BOOST_REQUIRE( limit_order->get_market() == std::make_pair( SBD_SYMBOL, STEEM_SYMBOL ) );
       BOOST_REQUIRE_EQUAL( alice.balance.amount.value, ASSET( "955.000 TESTS" ).amount.value );
       BOOST_REQUIRE_EQUAL( alice.sbd_balance.amount.value, ASSET( "45.500 TBD" ).amount.value );
@@ -2662,6 +2993,351 @@ BOOST_AUTO_TEST_CASE( pow_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE( account_recovery )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: account recovery" );
+
+      ACTORS( (alice) );
+      fund( "alice", 1000000 );
+
+      BOOST_TEST_MESSAGE( "Creating account bob with alice" );
+
+      account_create_operation acc_create;
+      acc_create.fee = ASSET( "10.000 TESTS" );
+      acc_create.creator = "alice";
+      acc_create.new_account_name = "bob";
+      acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+      acc_create.active = authority( 1, generate_private_key( "bob_active" ).get_public_key(), 1 );
+      acc_create.posting = authority( 1, generate_private_key( "bob_posting" ).get_public_key(), 1 );
+      acc_create.memo_key = generate_private_key( "bob_memo" ).get_public_key();
+      acc_create.json_metadata = "";
+
+
+      signed_transaction tx;
+      tx.operations.push_back( acc_create );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      const auto& bob = db.get_account( "bob" );
+      BOOST_REQUIRE( bob.owner == acc_create.owner );
+
+
+      BOOST_TEST_MESSAGE( "Changing bob's owner authority" );
+
+      account_update_operation acc_update;
+      acc_update.account = "bob";
+      acc_update.owner = authority( 1, generate_private_key( "bad_key" ).get_public_key(), 1 );
+      acc_update.memo_key = acc_create.memo_key;
+      acc_update.json_metadata = "";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( acc_update );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == acc_update.owner );
+
+
+      BOOST_TEST_MESSAGE( "Creating recover request for bob with alice" );
+
+      request_account_recovery_operation request;
+      request.recovery_account = "alice";
+      request.account_to_recover = "bob";
+      request.new_owner_authority = authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == acc_update.owner );
+
+
+      BOOST_TEST_MESSAGE( "Recovering bob's account with original owner auth and new secret" );
+
+      recover_account_operation recover;
+      recover.account_to_recover = "bob";
+      recover.new_owner_authority = request.new_owner_authority;
+      recover.recent_owner_authority = acc_create.owner;
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "new_key" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+
+
+      BOOST_TEST_MESSAGE( "Creating new recover request for a bogus key" );
+
+      request.new_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "Testing failure when bob does not have new authority" );
+
+      recover.new_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( bob.owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+
+
+      BOOST_TEST_MESSAGE( "Testing failure when bob does not have old authority" );
+
+      recover.recent_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
+      recover.new_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( bob.owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+
+
+      BOOST_TEST_MESSAGE( "Testing using the same old owner auth again for recovery" );
+
+      recover.recent_owner_authority = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+      recover.new_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+
+      BOOST_TEST_MESSAGE( "Creating a recovery request that will expire" );
+
+      request.new_owner_authority = authority( 1, generate_private_key( "expire" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      const auto& request_idx = db.get_index_type< account_recovery_request_index >().indices();
+      auto req_itr = request_idx.begin();
+
+      BOOST_REQUIRE( req_itr->account_to_recover == "bob" );
+      BOOST_REQUIRE( req_itr->new_owner_authority == authority( 1, generate_private_key( "expire" ).get_public_key(), 1 ) );
+      BOOST_REQUIRE( req_itr->expires == db.head_block_time() + STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD );
+      auto expires = req_itr->expires;
+      ++req_itr;
+      BOOST_REQUIRE( req_itr == request_idx.end() );
+
+      generate_blocks( time_point_sec( expires - STEEMIT_BLOCK_INTERVAL ), true );
+
+      const auto& new_request_idx = db.get_index_type< account_recovery_request_index >().indices();
+      BOOST_REQUIRE( new_request_idx.begin() != new_request_idx.end() );
+
+      generate_block();
+
+      const auto& final_request_idx = db.get_index_type< account_recovery_request_index >().indices();
+      BOOST_REQUIRE( new_request_idx.begin() == new_request_idx.end() );
+
+      recover.new_owner_authority = authority( 1, generate_private_key( "expire" ).get_public_key(), 1 );
+      recover.recent_owner_authority = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.set_expiration( db.head_block_time() );
+      tx.sign( generate_private_key( "expire" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 ) );
+
+      BOOST_TEST_MESSAGE( "Expiring owner authority history" );
+
+      acc_update.owner = authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( acc_update );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( db.head_block_time() + ( STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD ) );
+      generate_block();
+
+      request.new_owner_authority = authority( 1, generate_private_key( "last key" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( request );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      recover.new_owner_authority = request.new_owner_authority;
+      recover.recent_owner_authority = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+
+      recover.recent_owner_authority = authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( recover );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
+      tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      BOOST_REQUIRE( db.get_account( "bob" ).owner == authority( 1, generate_private_key( "last key" ).get_public_key(), 1 ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( change_recovery_account )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing change_recovery_account_operation" );
+
+      ACTORS( (alice)(bob)(sam)(tyler) )
+
+      auto change_recovery_account = [&]( const std::string& account_to_recover, const std::string& new_recovery_account )
+      {
+         change_recovery_account_operation op;
+         op.account_to_recover = account_to_recover;
+         op.new_recovery_account = new_recovery_account;
+
+         signed_transaction tx;
+         tx.operations.push_back( op );
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+      };
+
+      auto recover_account = [&]( const std::string& account_to_recover, const fc::ecc::private_key& new_owner_key, const fc::ecc::private_key& recent_owner_key )
+      {
+         recover_account_operation op;
+         op.account_to_recover = account_to_recover;
+         op.new_owner_authority = authority( 1, public_key_type( new_owner_key.get_public_key() ), 1 );
+         op.recent_owner_authority = authority( 1, public_key_type( recent_owner_key.get_public_key() ), 1 );
+
+         signed_transaction tx;
+         tx.operations.push_back( op );
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( recent_owner_key, db.get_chain_id() );
+         // only Alice -> throw
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         tx.signatures.clear();
+         tx.sign( new_owner_key, db.get_chain_id() );
+         // only Sam -> throw
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+         tx.sign( recent_owner_key, db.get_chain_id() );
+         // Alice+Sam -> OK
+         db.push_transaction( tx, 0 );
+      };
+
+      auto request_account_recovery = [&]( const std::string& recovery_account, const fc::ecc::private_key& recovery_account_key, const std::string& account_to_recover, const public_key_type& new_owner_key )
+      {
+         request_account_recovery_operation op;
+         op.recovery_account    = recovery_account;
+         op.account_to_recover  = account_to_recover;
+         op.new_owner_authority = authority( 1, new_owner_key, 1 );
+
+         signed_transaction tx;
+         tx.operations.push_back( op );
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( recovery_account_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+      };
+
+      auto change_owner = [&]( const std::string& account, const fc::ecc::private_key& old_private_key, const public_key_type& new_public_key )
+      {
+         account_update_operation op;
+         op.account = account;
+         op.owner = authority( 1, new_public_key, 1 );
+
+         signed_transaction tx;
+         tx.operations.push_back( op );
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( old_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+      };
+
+      // if either/both users do not exist, we shouldn't allow it
+      STEEMIT_REQUIRE_THROW( change_recovery_account("alice", "nobody"), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "sam"   ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "nobody"), fc::assert_exception );
+      change_recovery_account("alice", "sam");
+
+      fc::ecc::private_key alice_priv1 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k1" ) );
+      fc::ecc::private_key alice_priv2 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k2" ) );
+      /*
+      fc::ecc::private_key alice_priv3 = fc::ecc::private_key::regenerate( "alice_k3" );
+      fc::ecc::private_key alice_priv4 = fc::ecc::private_key::regenerate( "alice_k4" );
+      */
+      public_key_type alice_pub1 = public_key_type( alice_priv1.get_public_key() );
+      public_key_type alice_pub2 = public_key_type( alice_priv2.get_public_key() );
+      /*
+      public_key_type alice_pub3 = public_key_type( alice_priv3 );
+      public_key_type alice_pub4 = public_key_type( alice_priv4 );
+      */
+
+      generate_blocks( db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      // cannot request account recovery until recovery account is approved
+      STEEMIT_REQUIRE_THROW( request_account_recovery( "sam", sam_private_key, "alice", alice_pub1 ), fc::exception );
+      generate_blocks(1);
+      // cannot finish account recovery until requested
+      STEEMIT_REQUIRE_THROW( recover_account( "alice", alice_priv1, alice_private_key ), fc::exception );
+      // do the request
+      request_account_recovery( "sam", sam_private_key, "alice", alice_pub1 );
+      // can't recover with the current owner key
+      STEEMIT_REQUIRE_THROW( recover_account( "alice", alice_priv1, alice_private_key ), fc::exception );
+      // unless we change it!
+      change_owner( "alice", alice_private_key, public_key_type( alice_priv2.get_public_key() ) );
+      recover_account( "alice", alice_priv1, alice_private_key );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif
