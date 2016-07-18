@@ -2006,6 +2006,9 @@ void database::update_account_activity( const account_object& account ) {
 
 asset database::get_liquidity_reward()const
 {
+   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+      return asset( 0, STEEM_SYMBOL );
+
    const auto& props = get_dynamic_global_properties();
    static_assert( STEEMIT_LIQUIDITY_REWARD_PERIOD_SEC == 60*60, "this code assumes a 1 hour time interval" );
    asset percent( calc_percent_reward_per_hour< STEEMIT_LIQUIDITY_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL );
@@ -2076,11 +2079,15 @@ void database::pay_liquidity_reward()
 
    if( (head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0 )
    {
+      auto reward = get_liquidity_reward();
+
+      if( reward.amount == 0 )
+         return;
+
       const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_volume_weight>();
       auto itr = ridx.begin();
       if( itr != ridx.end() && itr->volume_weight() > 0 )
       {
-         auto reward = get_liquidity_reward();
          adjust_supply( reward, true );
          adjust_balance( itr->owner(*this), reward );
          modify( *itr, [&]( liquidity_reward_balance_object& obj )
@@ -3050,9 +3057,9 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
-       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) )
-   )
+   if( !has_hardfork( STEEMIT_HARDFORK_0_12 ) &&
+       ( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) ) ) )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
       {
