@@ -1887,10 +1887,17 @@ void database::cashout_comment_helper( const comment_object& comment )
       {
          const auto& cur_vote = *vote_itr;
          ++vote_itr;
-         modify( cur_vote, [&]( comment_vote_object& cvo )
+         if( !has_hardfork( STEEMIT_HARDFORK_0_12__177 ) || comment.cashout_time != fc::time_point_sec::maximum() )
          {
-            cvo.num_changes = -1;
-         });
+            modify( cur_vote, [&]( comment_vote_object& cvo )
+            {
+               cvo.num_changes = -1;
+            });
+         }
+         else
+         {
+            remove( cur_vote );
+         }
       }
    } FC_CAPTURE_AND_RETHROW( (comment) )
 }
