@@ -19,14 +19,6 @@ Steem OS X Build Instructions
    brew link --force openssl 
    ```
    
-   There is a known bug with libtool due to a hardcoded SED path. Fix this by uninstalling & reinstalling:
-   ```
-   brew uninstall libtool
-   export HOMEBREW_BUILD_FROM_SOURCE 
-   brew install libtool
-   ```
-
-
 5. *Optional.* To support importing Bitcoin wallet files:
    ```
    brew install berkeley-db
