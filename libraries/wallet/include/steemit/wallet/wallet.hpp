@@ -708,6 +708,11 @@ class wallet_api
       annotated_signed_transaction vote( string voter, string author, string permlink, int16_t weight, bool broadcast );
 
       /**
+       * Sets the amount of time in the future until a transaction expires.
+       */
+      void set_transaction_expiration(uint32_t seconds);
+
+      /**
        * Challenge a user's authority. The challenger pays a fee to the challenged which is depositted as
        * Steem Power. Until the challenged proves their active key, all posting rights are revoked.
        *
@@ -751,7 +756,6 @@ class wallet_api
        * @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
-
 
       vector< owner_authority_history_object > get_owner_history( string account )const;
 
@@ -866,13 +870,13 @@ FC_API( steemit::wallet::wallet_api,
         (cancel_order)
         (post_comment)
         (vote)
+        (set_transaction_expiration)
         (challenge)
         (prove)
         (request_account_recovery)
         (recover_account)
         (change_recovery_account)
         (get_owner_history)
-
 
         // private message api
         (send_private_message)
