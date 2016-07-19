@@ -2905,7 +2905,8 @@ void database::update_global_dynamic_data( const signed_block& b )
        */
       if( dgp.head_block_number % 20 == 0 )
       {
-         if( dgp.average_block_size > dgp.maximum_block_size/2 )
+         if( ( !has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 2 ) ||
+             (  has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 4 ) )
          {
             dgp.current_reserve_ratio /= 2; /// exponential back up
          }
