@@ -92,7 +92,9 @@
 
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
-#define STEEMIT_COMMENT_MAX_REWARD_INTERVAL_SEC (60u*60*6) // 6 hours
+#define STEEMIT_POST_AVERAGE_WINDOW             (60*60*24u) // 1 hours
+#define STEEMIT_POST_MAX_BANDWIDTH              (4*STEEMIT_100_PERCENT) // 2 posts per 1 days, average 1 every 12 hours
+#define STEEMIT_POST_WEIGHT_CONSTANT            (STEEMIT_POST_MAX_BANDWIDTH * STEEMIT_POST_MAX_BANDWIDTH)
 
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
