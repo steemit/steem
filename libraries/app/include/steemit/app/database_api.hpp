@@ -55,7 +55,6 @@ struct liquidity_balance
    fc::uint128_t        weight;
 };
 
-
 class database_api_impl;
 
 /**
@@ -196,6 +195,8 @@ class database_api
        */
       uint64_t get_account_count()const;
 
+      vector< owner_authority_history_object > get_owner_history( string account )const;
+
       ///////////////
       // Witnesses //
       ///////////////
@@ -307,7 +308,6 @@ class database_api
       vector<discussion> get_discussions_by_children( const discussion_query& query )const;
       vector<discussion> get_discussions_by_hot( const discussion_query& query )const;
 
-      vector<discussion> get_recommended_for( const string& user, uint32_t limit )const;
 
       ///@}
 
@@ -406,7 +406,6 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_votes)
    (get_discussions_by_children)
    (get_discussions_by_hot)
-   (get_recommended_for)
 
    // Blocks and transactions
    (get_block_header)
@@ -438,6 +437,7 @@ FC_API(steemit::app::database_api,
    (get_account_count)
    (get_conversion_requests)
    (get_account_history)
+   (get_owner_history)
 
    // Market
    (get_order_book)

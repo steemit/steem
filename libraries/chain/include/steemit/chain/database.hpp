@@ -278,7 +278,7 @@ namespace steemit { namespace chain {
          void process_conversions();
          void account_recovery_processing();
          void update_median_feed();
-         share_type claim_rshare_reward( share_type rshares, asset max_steem );
+         share_type claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem );
 
          asset get_liquidity_reward()const;
          asset get_content_reward()const;

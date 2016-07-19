@@ -366,7 +366,7 @@ namespace steemit { namespace chain {
        *  This witnesses vote for the maximum_block_size which is used by the network
        *  to tune rate limiting and capacity
        */
-      uint32_t          maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT;
+      uint32_t          maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2;
       uint16_t          sbd_interest_rate  = STEEMIT_DEFAULT_SBD_INTEREST_RATE;
 
       void validate()const {
@@ -611,24 +611,95 @@ namespace steemit { namespace chain {
       void validate()const;
    };
 
+   /**
+    * All account recovery requests come from a listed recovery account. This
+    * is secure based on the assumption that only a trusted account should be
+    * a recovery account. It is the responsibility of the recovery account to
+    * verify the identity of the account holder of the account to recover by
+    * whichever means they have agreed upon. The blockchain assumes identity
+    * has been verified when this operation is broadcast.
+    *
+    * This operation creates an account recovery request which the account to
+    * recover has 24 hours to respond to before the request expires and is
+    * invalidated.
+    *
+    * There can only be one active recovery request per account at any one time.
+    * Pushing this operation for an account to recover when it already has
+    * an active request will either update the request to a new new owner authority
+    * and extend the request expiration to 24 hours from the current head block
+    * time or it will delete the request. To cancel a request, simply set the
+    * weight threshold of the new owner authority to 0, making it an open authority.
+    *
+    * Additionally, the new owner authority must be satisfiable. In other words,
+    * the sum of the key weights must be greater than or equal to the weight
+    * threshold.
+    *
+    * This operation only needs to be signed by the the recovery account.
+    * The account to recover confirms its identity to the blockchain in
+    * the recover account operation.
+    */
    struct request_account_recovery_operation : public base_operation
    {
-      string            recovery_account;
-      string            account_to_recover;
-      authority         new_owner_authority;
-      extensions_type   extensions;
+      string            recovery_account;       ///< The recovery account is listed as the recovery account on the account to recover.
+
+      string            account_to_recover;     ///< The account to recover. This is likely due to a compromised owner authority.
+
+      authority         new_owner_authority;    ///< The new owner authority the account to recover wishes to have. This is secret
+                                                ///< known by the account to recover and will be confirmed in a recover_account_operation
+
+      extensions_type   extensions;             ///< Extensions. Not currently used.
 
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert( recovery_account ); }
 
       void validate() const;
    };
 
+   /**
+    * Recover an account to a new authority using a previous authority and verification
+    * of the recovery account as proof of identity. This operation can only succeed
+    * if there was a recovery request sent by the account's recover account.
+    *
+    * In order to recover the account, the account holder must provide proof
+    * of past ownership and proof of identity to the recovery account. Being able
+    * to satisfy an owner authority that was used in the past 30 days is sufficient
+    * to prove past ownership. The get_owner_history function in the database API
+    * returns past owner authorities that are valid for account recovery.
+    *
+    * Proving identity is an off chain contract between the account holder and
+    * the recovery account. The recovery request contains a new authority which
+    * must be satisfied by the account holder to regain control. The actual process
+    * of verifying authority may become complicated, but that is an application
+    * level concern, not a blockchain concern.
+    *
+    * This operation requires both the past and future owner authorities in the
+    * operation because neither of them can be derived from the current chain state.
+    * The operation must be signed by keys that satisfy both the new owner authority
+    * and the recent owner authority. Failing either fails the operation entirely.
+    *
+    * If a recovery request was made inadvertantly, the account holder should
+    * contact the recovery account to have the request deleted.
+    *
+    * The two setp combination of the account recovery request and recover is
+    * safe because the recovery account never has access to secrets of the account
+    * to recover. They simply act as an on chain endorsement of off chain identity.
+    * In other systems, a fork would be required to enforce such off chain state.
+    * Additionally, an account cannot be permanently recovered to the wrong account.
+    * While any owner authority from the past 30 days can be used, including a compromised
+    * authority, the account can be continually recovered until the recovery account
+    * is confident a combination of uncompromised authorities were used to
+    * recover the account. The actual process of verifying authority may become
+    * complicated, but that is an application level concern, not the blockchain's
+    * concern.
+    */
    struct recover_account_operation : public base_operation
    {
-      string            account_to_recover;
-      authority         new_owner_authority;
-      authority         recent_owner_authority;
-      extensions_type   extensions;
+      string            account_to_recover;        ///< The account to be recovered
+
+      authority         new_owner_authority;       ///< The new owner authority as specified in the request account recovery operation.
+
+      authority         recent_owner_authority;    ///< A previous owner authority that the account holder will use to prove past ownership of the account to be recovered.
+
+      extensions_type   extensions;                ///< Extensions. Not currently used.
 
       void get_required_authorities( vector<authority>& a )const
       {
@@ -639,11 +710,31 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 
+   /**
+    * Each account lists another account as their recovery account.
+    * The recovery account has the ability to create account_recovery_requests
+    * for the account to recover. An account can change their recovery account
+    * at any time with a 30 day delay. This delay is to prevent
+    * an attacker from changing the recovery account to a malicious account
+    * during an attack. These 30 days match the 30 days that an
+    * owner authority is valid for recovery purposes.
+    *
+    * On account creation the recovery account is set either to the creator of
+    * the account (The account that pays the creation fee and is a signer on the transaction)
+    * or to the empty string if the account was mined. An account with no recovery
+    * has the top voted witness as a recovery account, at the time the recover
+    * request is created. Note: This does mean the effective recovery account
+    * of an account with no listed recovery account can change at any time as
+    * witness vote weights. The top voted witness is explicitly the most trusted
+    * witness according to stake.
+    */
    struct change_recovery_account_operation : public base_operation
    {
-      string            account_to_recover;
-      string            new_recovery_account;
-      extensions_type   extensions;
+      string            account_to_recover;     ///< The account that would be recovered in case of compromise
+
+      string            new_recovery_account;   ///< The account that creates the recover request
+
+      extensions_type   extensions;             ///< Extensions. Not currently used.
 
       void get_required_owner_authorities( flat_set<string>& a )const{ a.insert( account_to_recover ); }
 

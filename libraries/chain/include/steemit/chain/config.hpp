@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 11, 0) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 12, 0) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -22,7 +22,9 @@
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1451606400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
-#define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS)
+#define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
+#define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
 
 
@@ -46,7 +48,9 @@
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24)  /// 1 day
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)  /// 1 day
+#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*12)  /// 12 hours
+#define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2) /// 2 hours
 
@@ -85,6 +89,12 @@
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
+
+#define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
+#define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
+#define STEEMIT_POST_AVERAGE_WINDOW             (60*60*24u) // 1 hours
+#define STEEMIT_POST_MAX_BANDWIDTH              (4*STEEMIT_100_PERCENT) // 2 posts per 1 days, average 1 every 12 hours
+#define STEEMIT_POST_WEIGHT_CONSTANT            (STEEMIT_POST_MAX_BANDWIDTH * STEEMIT_POST_MAX_BANDWIDTH)
 
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
@@ -175,7 +185,7 @@
 #define STEEMIT_SECONDS_PER_YEAR                (uint64_t(60*60*24*365ll))
 
 #define STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC  (60*60*24*30)
-#define STEEMIT_MAX_TRANSACTION_SIZE            (1024*128)
+#define STEEMIT_MAX_TRANSACTION_SIZE            (1024*64)
 #define STEEMIT_MIN_BLOCK_SIZE_LIMIT            (STEEMIT_MAX_TRANSACTION_SIZE)
 #define STEEMIT_MAX_BLOCK_SIZE                  (STEEMIT_MAX_TRANSACTION_SIZE*STEEMIT_BLOCK_INTERVAL*2000)
 #define STEEMIT_BLOCKS_PER_HOUR                 (60*60/STEEMIT_BLOCK_INTERVAL)

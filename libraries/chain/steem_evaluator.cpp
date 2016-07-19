@@ -56,6 +56,9 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 
    if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH );
 
+   if( !db().has_hardfork( STEEMIT_HARDFORK_0_12__179) )
+      FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT );
+
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
    if( wit_itr != by_witness_name_idx.end() )
@@ -272,24 +275,35 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      if( db().is_producing() && o.parent_author.size() == 0 ) // TODO: Remove after hardfork
-      {
-          FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
-      }
-
       if( o.parent_author.size() != 0 )
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) ) {
          if( o.parent_author.size() == 0 )
-             FC_ASSERT( (now - auth.last_post) > fc::seconds(60*5), "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
+             FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
          else
-             FC_ASSERT( (now - auth.last_post) > fc::seconds(20), "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
+             FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
       } else {
          FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       }
 
+      uint16_t reward_weight = STEEMIT_100_PERCENT;
+      uint32_t post_bandwidth = auth.post_bandwidth;
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author.size() == 0 )
+      {
+         uint64_t post_delta_time = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
+         uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
+         post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
+         reward_weight = std::min( uint16_t( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth * post_bandwidth ) ), uint16_t( STEEMIT_100_PERCENT ) );
+      }
+
       db().modify( auth, [&]( account_object& a ) {
+         if( o.parent_author.size() == 0 )
+         {
+            a.last_root_post = now;
+            a.post_bandwidth = post_bandwidth;
+         }
          a.last_post = now;
          a.post_count++;
       });
@@ -310,6 +324,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.last_payout = fc::time_point_sec::min();
          com.cashout_time = fc::time_point_sec::maximum();
          com.max_cashout_time = fc::time_point_sec::maximum();
+         com.reward_weight = reward_weight;
 
          if ( o.parent_author.size() == 0 )
          {
@@ -371,7 +386,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_10 ) ) // TODO Remove is_producing after hardfork
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
+         FC_ASSERT( comment.last_payout != fc::time_point_sec::maximum() );
+      else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
 
       db().modify( comment, [&]( comment_object& com )
@@ -797,6 +814,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && comment.cashout_time == fc::time_point_sec::maximum() )
+      return;
+
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
       FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ) );
 
@@ -807,7 +827,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) 
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
       FC_ASSERT( elapsed_seconds >= STEEMIT_MIN_VOTE_INTERVAL_SEC );
 
    auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
@@ -825,7 +845,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
-      if( db().is_producing() )
+      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
          FC_ASSERT( false, "Cannot vote again on a comment after payout" );
 
       db().remove( *itr );
@@ -858,7 +878,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
       auto old_root_abs_rshares = root.children_abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
-      fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+      fc::uint128_t new_cashout_time_sec;
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
+         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+      else
+         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
       auto avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       FC_ASSERT( abs_rshares > 0 );
@@ -880,7 +905,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
+            c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+         else
+            c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
          if( c.max_cashout_time == fc::time_point_sec::maximum() )
             c.max_cashout_time = db().head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
@@ -1010,7 +1038,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
       auto old_root_abs_rshares = root.children_abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
-      fc::uint128_t new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+      fc::uint128_t new_cashout_time_sec;
+
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
+         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+      else
+         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
       auto avg_cashout_sec = (cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       db().modify( comment, [&]( comment_object& c )
@@ -1029,7 +1062,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
+            c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+         else
+            c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
          if( c.max_cashout_time == fc::time_point_sec::maximum() )
             c.max_cashout_time = db().head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
@@ -1089,6 +1125,9 @@ void pow_evaluator::do_apply( const pow_operation& o )
           FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
       }
    }
+
+   if( !db().has_hardfork( STEEMIT_HARDFORK_0_12__179 ) )
+      FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
    const auto& accounts_by_name = db().get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.worker_account);
