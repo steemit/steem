@@ -357,7 +357,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (proxied_vsf_votes)(witnesses_voted_for)
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
-                    (last_post)(last_root_post)
+                    (last_post)(last_root_post)(post_bandwidth)
                     (last_active)(activity_shares)(last_activity_payout)
                   )
 

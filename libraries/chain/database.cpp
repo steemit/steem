@@ -3521,11 +3521,15 @@ void database::apply_hardfork( uint32_t hardfork )
 
             for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
             {
-               if( itr->last_payout > fc::time_point_sec() && itr->last_payout + STEEMIT_SECOND_CASHOUT_WINDOW > head_block_time() )
-               modify( *itr, [&]( comment_object& c )
+               // At the hardfork time, all paid comments are still within their 30 day second cashout window.
+               // If it has been paid, set the second cashout time.
+               if( itr->last_payout > fc::time_point_sec() )
                {
-                  c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
-               });
+                  modify( *itr, [&]( comment_object& c )
+                  {
+                     c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                  });
+               }
             }
          }
          break;

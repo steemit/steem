@@ -295,7 +295,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          uint64_t post_delta_time = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
          uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
          post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
-         reward_weight = std::min( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth * post_bandwidth ), uint32_t( STEEMIT_100_PERCENT ) );
+         reward_weight = std::min( uint16_t( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth * post_bandwidth ) ), uint16_t( STEEMIT_100_PERCENT ) );
       }
 
       db().modify( auth, [&]( account_object& a ) {
@@ -388,7 +388,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
          FC_ASSERT( comment.last_payout != fc::time_point_sec::maximum() );
-      else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) ) // TODO Remove is_producing after hardfork
+      else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
 
       db().modify( comment, [&]( comment_object& com )
