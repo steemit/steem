@@ -1289,6 +1289,11 @@ annotated_signed_transaction wallet_api::change_recovery_account( string owner, 
    return my->sign_transaction( tx, broadcast );
 }
 
+vector< owner_authority_history_object > wallet_api::get_owner_history( string account )const
+{
+   return my->_remote_db->get_owner_history( account );
+}
+
 annotated_signed_transaction wallet_api::update_account(
                                       string account_name,
                                       string json_meta,

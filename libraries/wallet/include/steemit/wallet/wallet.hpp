@@ -753,6 +753,8 @@ class wallet_api
       annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
 
 
+      vector< owner_authority_history_object > get_owner_history( string account )const;
+
       /**
        * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making
        * the account immune to challenge for 24 hours.
@@ -869,6 +871,7 @@ FC_API( steemit::wallet::wallet_api,
         (request_account_recovery)
         (recover_account)
         (change_recovery_account)
+        (get_owner_history)
 
 
         // private message api
