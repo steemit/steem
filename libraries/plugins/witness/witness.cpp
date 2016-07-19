@@ -145,7 +145,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    {
       const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
 
-      if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT )
+      if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 ) // TODO: Remove * 2 after hardfork 12
          wlog( "miner-maximum-block-size is below the minimum block size limit, using default of 128 KB instead" );
       else if ( maximum_block_size > STEEMIT_MAX_BLOCK_SIZE )
       {
