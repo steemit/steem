@@ -1873,7 +1873,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.total_vote_weight = 0;
          c.max_cashout_time = fc::time_point_sec::maximum();
 
-         if( has_hardfork( STEEMIT_HARDFORK_0_12 ) && c.last_payout == fc::time_point_sec::min() )
+         if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
             c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
          else
             c.cashout_time = fc::time_point_sec::maximum();
@@ -2018,7 +2018,7 @@ void database::update_account_activity( const account_object& account ) {
 
 asset database::get_liquidity_reward()const
 {
-   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+   if( has_hardfork( STEEMIT_HARDFORK_0_12__178 ) )
       return asset( 0, STEEM_SYMBOL );
 
    const auto& props = get_dynamic_global_properties();
@@ -3071,7 +3071,7 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( !has_hardfork( STEEMIT_HARDFORK_0_12 ) &&
+   if( !has_hardfork( STEEMIT_HARDFORK_0_12__178 ) &&
        ( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
        (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) ) ) )
    {

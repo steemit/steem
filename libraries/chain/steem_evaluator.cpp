@@ -290,7 +290,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       uint16_t reward_weight = STEEMIT_100_PERCENT;
       uint32_t post_bandwidth = auth.post_bandwidth;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) && o.parent_author.size() == 0 )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author.size() == 0 )
       {
          uint64_t post_delta_time = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
          uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
@@ -814,7 +814,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) && comment.cashout_time == fc::time_point_sec::maximum() )
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && comment.cashout_time == fc::time_point_sec::maximum() )
       return;
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
@@ -880,7 +880,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
@@ -905,7 +905,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) && c.last_payout > fc::time_point_sec::min() )
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
             c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
          else
             c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
@@ -1040,7 +1040,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
@@ -1062,7 +1062,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       db().modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) && c.last_payout > fc::time_point_sec::min() )
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
             c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
          else
             c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
