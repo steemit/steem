@@ -59,8 +59,6 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
    };
 
-   typedef static_variant< void_t > comment_options;
-
    /**
     *  Authors of posts may not want all of the benefits that come from creating a post. This
     *  operation allows authors to update properties associated with their post.
@@ -78,7 +76,7 @@ namespace steemit { namespace chain {
       uint16_t percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
       bool     allow_votes            = true;      /// allows a post to receive votes;
       bool     allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
-      flat_set< comment_options > extensions;
+      extensions_type extensions;
 
       void validate()const;
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
@@ -612,6 +610,45 @@ namespace steemit { namespace chain {
 
       void validate()const;
    };
+
+   struct request_account_recovery_operation : public base_operation
+   {
+      string            recovery_account;
+      string            account_to_recover;
+      authority         new_owner_authority;
+      extensions_type   extensions;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( recovery_account ); }
+
+      void validate() const;
+   };
+
+   struct recover_account_operation : public base_operation
+   {
+      string            account_to_recover;
+      authority         new_owner_authority;
+      authority         recent_owner_authority;
+      extensions_type   extensions;
+
+      void get_required_authorities( vector<authority>& a )const
+      {
+         a.push_back( new_owner_authority );
+         a.push_back( recent_owner_authority );
+      }
+
+      void validate() const;
+   };
+
+   struct change_recovery_account_operation : public base_operation
+   {
+      string            account_to_recover;
+      string            new_recovery_account;
+      extensions_type   extensions;
+
+      void get_required_owner_authorities( flat_set<string>& a )const{ a.insert( account_to_recover ); }
+
+      void validate() const;
+   };
 } } // steemit::chain
 
 FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_block)(second_block) )
@@ -671,5 +708,6 @@ FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who)
 FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(amount) );
 FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
 FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
-
-FC_REFLECT_TYPENAME( steemit::chain::comment_options )
+FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
+FC_REFLECT( steemit::chain::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
+FC_REFLECT( steemit::chain::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
