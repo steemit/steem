@@ -845,7 +845,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
-      if( db().is_producing() )
+      if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
          FC_ASSERT( false, "Cannot vote again on a comment after payout" );
 
       db().remove( *itr );
