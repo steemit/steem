@@ -278,12 +278,22 @@ void comment_evaluator::do_apply( const comment_operation& o )
       if( o.parent_author.size() != 0 )
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) ) {
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
+      {
+         if( o.parent_author.size() == 0 )
+             FC_ASSERT( (now - auth.last_root_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_root_post",auth.last_root_post) );
+         else
+             FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
+      }
+      else if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) )
+      {
          if( o.parent_author.size() == 0 )
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
          else
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
-      } else {
+      }
+      else
+      {
          FC_ASSERT( (now - auth.last_post) > fc::seconds(60), "You may only post once per minute", ("now",now)("auth.last_post",auth.last_post) );
       }
 
