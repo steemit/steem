@@ -3531,6 +3531,24 @@ void database::apply_hardfork( uint32_t hardfork )
                   });
                }
             }
+
+            modify( get_account( STEEMIT_MINER_ACCOUNT ), [&]( account_object& a )
+            {
+               a.posting = authority();
+               a.posting.weight_threshold = 1;
+            });
+
+            modify( get_account( STEEMIT_NULL_ACCOUNT ), [&]( account_object& a )
+            {
+               a.posting = authority();
+               a.posting.weight_threshold = 1;
+            });
+
+            modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
+            {
+               a.posting = authority();
+               a.posting.weight_threshold = 1;
+            });
          }
          break;
       default:
