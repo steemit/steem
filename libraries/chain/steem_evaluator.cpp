@@ -322,7 +322,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.created = com.last_update;
          com.active = com.last_update;
          com.last_payout = fc::time_point_sec::min();
-         com.cashout_time = fc::time_point_sec::maximum();
+         com.cashout_time = db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) ?
+            db().head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS :
+            db().head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
          com.max_cashout_time = fc::time_point_sec::maximum();
          com.reward_weight = reward_weight;
 
