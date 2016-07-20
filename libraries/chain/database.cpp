@@ -1873,11 +1873,13 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.total_vote_weight = 0;
          c.max_cashout_time = fc::time_point_sec::maximum();
 
-         if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
-            c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
-         else
-            c.cashout_time = fc::time_point_sec::maximum();
-
+         if( c.parent_author.size() == 0 )
+         {
+            if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
+               c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
+            else
+               c.cashout_time = fc::time_point_sec::maximum();
+         }
          c.last_payout = head_block_time();
       } );
 
@@ -1887,7 +1889,7 @@ void database::cashout_comment_helper( const comment_object& comment )
       {
          const auto& cur_vote = *vote_itr;
          ++vote_itr;
-         if( !has_hardfork( STEEMIT_HARDFORK_0_12__177 ) || comment.cashout_time != fc::time_point_sec::maximum() )
+         if( !has_hardfork( STEEMIT_HARDFORK_0_12__177 ) || calculate_discussion_payout_time( comment ) != fc::time_point_sec::maximum() )
          {
             modify( cur_vote, [&]( comment_vote_object& cvo )
             {
@@ -3523,7 +3525,7 @@ void database::apply_hardfork( uint32_t hardfork )
             {
                // At the hardfork time, all paid comments are still within their 30 day second cashout window.
                // If it has been paid, set the second cashout time.
-               if( itr->last_payout > fc::time_point_sec() )
+               if( itr->parent_author.size() == 0 && itr->last_payout > fc::time_point_sec() )
                {
                   modify( *itr, [&]( comment_object& c )
                   {

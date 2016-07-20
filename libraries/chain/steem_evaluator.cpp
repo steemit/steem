@@ -322,9 +322,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.created = com.last_update;
          com.active = com.last_update;
          com.last_payout = fc::time_point_sec::min();
-         com.cashout_time = db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) ?
-            db().head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS :
-            db().head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
          com.max_cashout_time = fc::time_point_sec::maximum();
          com.reward_weight = reward_weight;
 
@@ -334,6 +331,9 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_permlink = o.parent_permlink;
             com.category = o.parent_permlink;
             com.root_comment = com.id;
+            com.cashout_time = db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) ?
+               db().head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS :
+               fc::time_point_sec::maximum();
          }
          else
          {
@@ -342,6 +342,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.depth = parent->depth + 1;
             com.category = parent->category;
             com.root_comment = parent->root_comment;
+            com.cashout_time = fc::time_point_sec::maximum();
          }
 
          #ifndef IS_LOW_MEM
@@ -389,7 +390,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       const auto& comment = *itr;
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
-         FC_ASSERT( comment.last_payout != fc::time_point_sec::maximum() );
+         FC_ASSERT( db().calculate_discussion_payout_time( comment ) != fc::time_point_sec::maximum() );
       else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
 
@@ -816,13 +817,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment = db().get_comment( o.author, o.permlink );
    const auto& voter   = db().get_account( o.voter );
 
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && comment.cashout_time == fc::time_point_sec::maximum() )
-      return;
-
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
       FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ) );
 
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
+
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && db().calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
+      return;
 
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
