@@ -1309,21 +1309,27 @@ annotated_signed_transaction wallet_api::update_account(
                                       public_key_type posting,
                                       public_key_type memo,
                                       bool broadcast )const
-{ try {
-    account_update_operation op;
-    op.account = account_name;
-    op.owner  = authority( 1, owner, 1 );
-    op.active = authority( 1, active, 1);
-    op.posting = authority( 1, posting, 1);
-    op.memo_key = memo;
-    op.json_metadata = json_meta;
+{
+   try
+   {
+      FC_ASSERT( !is_locked() );
 
-   signed_transaction tx;
-   tx.operations.push_back(op);
-   tx.validate();
+      account_update_operation op;
+      op.account = account_name;
+      op.owner  = authority( 1, owner, 1 );
+      op.active = authority( 1, active, 1);
+      op.posting = authority( 1, posting, 1);
+      op.memo_key = memo;
+      op.json_metadata = json_meta;
 
-   return my->sign_transaction( tx, broadcast );
-} FC_CAPTURE_AND_RETHROW( (account_name)(json_meta)(owner)(active)(memo)(broadcast) ) }
+      signed_transaction tx;
+      tx.operations.push_back(op);
+      tx.validate();
+
+      return my->sign_transaction( tx, broadcast );
+   }
+   FC_CAPTURE_AND_RETHROW( (account_name)(json_meta)(owner)(active)(memo)(broadcast) )
+}
 
 annotated_signed_transaction wallet_api::update_account_auth_key( string account_name, authority_type type, public_key_type key, weight_type weight, bool broadcast )
 {
