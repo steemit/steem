@@ -2262,101 +2262,157 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( post_rate_limit )
+BOOST_AUTO_TEST_CASE( comment_freeze )
 {
    try
    {
-      ACTORS( (alice) )
-
+      ACTORS( (alice)(bob)(sam)(dave) )
       fund( "alice", 10000 );
-      vest( "alice", 10000 );
+      fund( "bob", 10000 );
+      fund( "sam", 10000 );
+      fund( "dave", 10000 );
 
-      comment_operation op;
-      op.author = "alice";
-      op.permlink = "test1";
-      op.parent_author = "";
-      op.parent_permlink = "test";
-      op.body = "test";
+      vest( "alice", 10000 );
+      vest( "bob", 10000 );
+      vest( "sam", 10000 );
+      vest( "dave", 10000 );
+
+      auto exchange_rate = price( ASSET( "1.250 TESTS" ), ASSET( "1.000 TBD" ) );
+      set_price_feed( exchange_rate );
 
       signed_transaction tx;
 
-      tx.operations.push_back( op );
+      comment_operation comment;
+      comment.author = "alice";
+      comment.parent_author = "";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.body = "test";
+
+      tx.operations.push_back( comment );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      uint64_t alice_post_bandwidth = STEEMIT_100_PERCENT;
-
-      BOOST_REQUIRE( alice.post_bandwidth == alice_post_bandwidth );
-      BOOST_REQUIRE( db.get_comment( "alice", "test1" ).reward_weight == STEEMIT_100_PERCENT );
+      comment.body = "test2";
 
       tx.operations.clear();
       tx.signatures.clear();
 
-      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
-
-      op.permlink = "test2";
-
-      tx.operations.push_back( op );
+      tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
-
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
-      BOOST_REQUIRE( db.get_comment( "alice", "test2" ).reward_weight == STEEMIT_100_PERCENT );
-
-      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      vote_operation vote;
+      vote.weight = STEEMIT_100_PERCENT;
+      vote.voter = "bob";
+      vote.author = "alice";
+      vote.permlink = "test";
 
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.permlink = "test3";
-
-      tx.operations.push_back( op );
-      tx.sign( alice_private_key, db.get_chain_id() );
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).last_payout == fc::time_point_sec::min() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time != fc::time_point_sec::min() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time != fc::time_point_sec::maximum() );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
-      BOOST_REQUIRE( db.get_comment( "alice", "test3" ).reward_weight == STEEMIT_100_PERCENT );
+      generate_blocks( db.get_comment( "alice", "test" ).cashout_time, true );
 
-      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).last_payout == db.head_block_time() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time == db.head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW );
 
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.permlink = "test4";
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
-      tx.operations.push_back( op );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
-
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
-      BOOST_REQUIRE( db.get_comment( "alice", "test4" ).reward_weight == STEEMIT_100_PERCENT );
-
-      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      vote.voter = "sam";
 
       tx.operations.clear();
       tx.signatures.clear();
 
-      op.permlink = "test5";
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
 
-      tx.operations.push_back( op );
+      comment.body = "test3";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
-      auto reward_weight = ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( alice_post_bandwidth * alice_post_bandwidth );
+      generate_blocks( db.get_comment( "alice", "test" ).cashout_time, true );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
-      BOOST_REQUIRE( db.get_comment( "alice", "test5" ).reward_weight == reward_weight );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).last_payout == db.head_block_time() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time == fc::time_point_sec::maximum() );
+
+      vote.voter = "sam";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time == fc::time_point_sec::maximum() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).net_rshares.value == 0 );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).abs_rshares.value == 0 );
+
+      vote.voter = "bob";
+      vote.weight = STEEMIT_100_PERCENT * -1;
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time == fc::time_point_sec::maximum() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).net_rshares.value == 0 );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).abs_rshares.value == 0 );
+
+      vote.voter = "dave";
+      vote.weight = 0;
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( dave_private_key, db.get_chain_id() );
+
+      db.push_transaction( tx, 0 );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).cashout_time == fc::time_point_sec::maximum() );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).net_rshares.value == 0 );
+      BOOST_REQUIRE( db.get_comment( "alice", "test" ).abs_rshares.value == 0 );
+
+      comment.body = "test4";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( comment );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif
