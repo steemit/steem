@@ -298,21 +298,21 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       uint16_t reward_weight = STEEMIT_100_PERCENT;
-      uint32_t post_bandwidth = auth.post_bandwidth;
+      uint64_t post_bandwidth = auth.post_bandwidth;
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author.size() == 0 )
       {
          uint64_t post_delta_time = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
          uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
          post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
-         reward_weight = std::min( uint16_t( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth * post_bandwidth ) ), uint16_t( STEEMIT_100_PERCENT ) );
+         reward_weight = uint16_t( std::min( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth * post_bandwidth ), uint64_t( STEEMIT_100_PERCENT ) ) );
       }
 
       db().modify( auth, [&]( account_object& a ) {
          if( o.parent_author.size() == 0 )
          {
             a.last_root_post = now;
-            a.post_bandwidth = post_bandwidth;
+            a.post_bandwidth = uint32_t( post_bandwidth );
          }
          a.last_post = now;
          a.post_count++;

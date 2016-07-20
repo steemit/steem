@@ -2166,5 +2166,101 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( post_rate_limit )
+{
+   try
+   {
+      ACTORS( (alice) )
+
+      fund( "alice", 10000 );
+      vest( "alice", 10000 );
+
+      comment_operation op;
+      op.author = "alice";
+      op.permlink = "test1";
+      op.parent_author = "";
+      op.parent_permlink = "test";
+      op.body = "test";
+
+      signed_transaction tx;
+
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      uint64_t alice_post_bandwidth = STEEMIT_100_PERCENT;
+
+      BOOST_REQUIRE( alice.post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( db.get_comment( "alice", "test1" ).reward_weight == STEEMIT_100_PERCENT );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+
+      op.permlink = "test2";
+
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( db.get_comment( "alice", "test2" ).reward_weight == STEEMIT_100_PERCENT );
+
+      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.permlink = "test3";
+
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( db.get_comment( "alice", "test3" ).reward_weight == STEEMIT_100_PERCENT );
+
+      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.permlink = "test4";
+
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( db.get_comment( "alice", "test4" ).reward_weight == STEEMIT_100_PERCENT );
+
+      generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      op.permlink = "test5";
+
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+      auto reward_weight = ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( alice_post_bandwidth * alice_post_bandwidth );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( db.get_comment( "alice", "test5" ).reward_weight == reward_weight );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
