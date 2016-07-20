@@ -96,8 +96,8 @@ namespace steemit { namespace chain {
          uint64_t        average_market_bandwidth  = 0;
          time_point_sec  last_market_bandwidth_update;
          time_point_sec  last_post;
-         time_point_sec  last_root_post;
-         uint32_t        post_bandwidth;
+         time_point_sec  last_root_post = fc::time_point_sec::min();
+         uint32_t        post_bandwidth = 0;
 
          /**
           *  Used to track activity rewards, updated on every post and comment
