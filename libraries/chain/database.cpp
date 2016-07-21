@@ -3523,14 +3523,27 @@ void database::apply_hardfork( uint32_t hardfork )
 
             for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
             {
-               // At the hardfork time, all paid comments are still within their 30 day second cashout window.
-               // If it has been paid, set the second cashout time.
-               if( itr->parent_author.size() == 0 && itr->last_payout > fc::time_point_sec() )
+               // At the hardfork time, all new posts with no votes get their cashout time set to +12 hrs from head block time.
+               // All posts with a payout get their cashout time set to +30 days. This hardfork takes place within 30 days
+               // initial payout so we don't have to handle the case of posts that should be frozen that aren't
+               if( itr->parent_author.size() == 0 )
                {
-                  modify( *itr, [&]( comment_object& c )
+                  // Post has not been paid out and has no votes (cashout_time == 0 === net_rshares == 0, under current semmantics)
+                  if( itr->last_payout == fc::time_point_sec::min() && itr->cashout_time == fc::time_point_sec::maximum() )
                   {
-                     c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
-                  });
+                     modify( *itr, [&]( comment_object & c )
+                     {
+                        c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+                     });
+                  }
+                  // Has been paid out, needs to be on second cashout window
+                  else if( itr->last_payout > fc::time_point_sec() )
+                  {
+                     modify( *itr, [&]( comment_object& c )
+                     {
+                        c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                     });
+                  }
                }
             }
 

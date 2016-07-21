@@ -399,9 +399,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
-         FC_ASSERT( db().calculate_discussion_payout_time( comment ) != fc::time_point_sec::maximum() );
-      else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
 
       db().modify( comment, [&]( comment_object& com )
@@ -1424,6 +1422,11 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
 {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
 
+   const auto& account = db().get_account( o.account_to_recover );
+
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+      FC_ASSERT( db().head_block_time() - account.last_account_recovery > STEEMIT_OWNER_UPDATE_LIMIT );
+
    const auto& recovery_request_idx = db().get_index_type< account_recovery_request_index >().indices().get< by_account >();
    auto request = recovery_request_idx.find( o.account_to_recover );
 
@@ -1444,7 +1447,11 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
    FC_ASSERT( found, "Recent authority not found in authority history" );
 
    db().remove( *request ); // Remove first, update_owner_authority may invalidate iterator
-   db().update_owner_authority( db().get_account( o.account_to_recover ), o.new_owner_authority );
+   db().update_owner_authority( account, o.new_owner_authority );
+   db().modify( account, [&]( account_object& a )
+   {
+      a.last_account_recovery = db().head_block_time();
+   });
 }
 
 void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )

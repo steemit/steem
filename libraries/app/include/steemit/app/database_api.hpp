@@ -197,6 +197,8 @@ class database_api
 
       vector< owner_authority_history_object > get_owner_history( string account )const;
 
+      optional< account_recovery_request_object > get_recovery_request( string account ) const;
+
       ///////////////
       // Witnesses //
       ///////////////
@@ -438,6 +440,7 @@ FC_API(steemit::app::database_api,
    (get_conversion_requests)
    (get_account_history)
    (get_owner_history)
+   (get_recovery_request)
 
    // Market
    (get_order_book)

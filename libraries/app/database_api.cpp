@@ -433,6 +433,19 @@ vector< owner_authority_history_object > database_api::get_owner_history( string
    return results;
 }
 
+optional< account_recovery_request_object > database_api::get_recovery_request( string account )const
+{
+   optional< account_recovery_request_object > result;
+
+   const auto& rec_idx = my->_db.get_index_type< account_recovery_request_index >().indices().get< by_account >();
+   auto req = rec_idx.find( account );
+
+   if( req != rec_idx.end() )
+      result = *req;
+
+   return result;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
