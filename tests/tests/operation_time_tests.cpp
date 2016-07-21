@@ -2254,7 +2254,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
       generate_blocks( db.get_comment( "alice", "test" ).cashout_time, true );
 
