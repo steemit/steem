@@ -2584,7 +2584,6 @@ void database::_apply_block( const signed_block& next_block )
 
    for( const auto& trx : next_block.transactions )
    {
-      _current_trx_id = trx.id();
       /* We do not need to push the undo state for each transaction
        * because they either all apply and are valid or the
        * entire block fails to apply.  We only need an "undo" state
@@ -2721,6 +2720,7 @@ void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 
 void database::_apply_transaction(const signed_transaction& trx)
 { try {
+   _current_trx_id = trx.id();
    uint32_t skip = get_node_properties().skip_flags;
 
    if( !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
