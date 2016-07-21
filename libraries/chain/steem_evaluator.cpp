@@ -389,9 +389,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
-         FC_ASSERT( db().calculate_discussion_payout_time( comment ) != fc::time_point_sec::maximum() );
-      else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
 
       db().modify( comment, [&]( comment_object& com )
