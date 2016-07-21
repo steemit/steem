@@ -72,12 +72,14 @@ struct operation_visitor {
    string item;
 
    /// ignore these ops
+   /*
    void operator()( const comment_operation& ) {}
    void operator()( const vote_operation& ) {}
    void operator()( const delete_comment_operation& ){} 
    void operator()( const custom_json_operation& ) {}
    void operator()( const custom_operation& ) {}
    void operator()( const curate_reward_operation& ) {}
+   */
 
 
    template<typename Op>

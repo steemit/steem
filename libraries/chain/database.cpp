@@ -2803,7 +2803,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       ++_current_op_in_trx;
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
-
+   _current_trx_id = transaction_id_type();
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
