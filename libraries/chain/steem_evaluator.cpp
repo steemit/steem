@@ -276,7 +276,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
    if ( itr == by_permlink_idx.end() )
    {
       if( o.parent_author.size() != 0 )
+      {
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
+         if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177) )
+            FC_ASSERT( db().calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum() );
+      }
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
       {
