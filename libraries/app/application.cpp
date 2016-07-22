@@ -211,6 +211,7 @@ namespace detail {
 
       application_impl(application* self)
          : _self(self),
+           _pending_trx_db(std::make_shared<graphene::db::object_database>()),
            _chain_db(std::make_shared<chain::database>())
       {
       }
@@ -232,6 +233,7 @@ namespace detail {
       { try {
          bool clean = !fc::exists(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "blockchain/dblock");
+         fc::create_directories(_data_dir / "node/transaction_history");
 
          register_builtin_apis();
 
@@ -299,6 +301,7 @@ namespace detail {
             wlog("Detected unclean shutdown. Replaying blockchain...");
             _chain_db->reindex(_data_dir / "blockchain" );
          }
+         _pending_trx_db->open(_data_dir / "node/transaction_history" );
 
          if( _options->count("force-validate") )
          {
@@ -787,8 +790,9 @@ namespace detail {
       const bpo::variables_map* _options = nullptr;
       api_access _apiaccess;
 
-      std::shared_ptr<steemit::chain::database>            _chain_db;
-      std::shared_ptr<graphene::net::node>                  _p2p_network;
+      std::shared_ptr<graphene::db::object_database>   _pending_trx_db;
+      std::shared_ptr<steemit::chain::database>        _chain_db;
+      std::shared_ptr<graphene::net::node>             _p2p_network;
       std::shared_ptr<fc::http::websocket_server>      _websocket_server;
       std::shared_ptr<fc::http::websocket_tls_server>  _websocket_tls_server;
 
@@ -817,6 +821,10 @@ application::~application()
    if( my->_chain_db )
    {
       my->_chain_db->close();
+   }
+   if( my->_pending_trx_db )
+   {
+      my->_pending_trx_db->close();
    }
 }
 
@@ -890,6 +898,10 @@ std::shared_ptr<chain::database> application::chain_database() const
 {
    return my->_chain_db;
 }
+std::shared_ptr<graphene::db::object_database> application::pending_trx_database() const
+{
+   return my->_pending_trx_db;
+}
 
 void application::set_block_production(bool producing_blocks)
 {
@@ -933,6 +945,8 @@ void application::shutdown()
       my->_p2p_network->close();
    if( my->_chain_db )
       my->_chain_db->close();
+   if( my->_pending_trx_db )
+      my->_pending_trx_db->close();
 }
 
 void application::register_abstract_plugin( std::shared_ptr< abstract_plugin > plug )
