@@ -2545,13 +2545,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       _apply_block( next_block );
    } );
 
-   try
+   /*try
    {
    /// check invariants
    if( is_producing() || !( skip & skip_validate_invariants ) )
       validate_invariants();
    }
-   FC_CAPTURE_AND_RETHROW( (next_block) );
+   FC_CAPTURE_AND_RETHROW( (next_block) );*/
 }
 
 void database::_apply_block( const signed_block& next_block )
