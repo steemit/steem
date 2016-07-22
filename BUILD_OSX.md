@@ -15,7 +15,7 @@ Steem OS X Build Instructions
 
 4. Install dependencies:
    ```
-   brew install boost cmake git openssl autoconf automake qt5
+   brew install boost cmake git openssl autoconf automake libtool qt5
    brew link --force openssl 
    ```
 
