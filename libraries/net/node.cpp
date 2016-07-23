@@ -1486,7 +1486,7 @@ namespace graphene { namespace net { namespace detail {
 
       if (!_node_is_shutting_down && !_terminate_inactive_connections_loop_done.canceled())
          _terminate_inactive_connections_loop_done = fc::schedule( [this](){ terminate_inactive_connections_loop(); },
-                                                                   fc::time_point::now() + fc::seconds(GRAPHENE_NET_PEER_HANDSHAKE_INACTIVITY_TIMEOUT / 2),
+                                                                   fc::time_point::now() + fc::seconds(1),
                                                                    "terminate_inactive_connections_loop" );
     }
 
