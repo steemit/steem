@@ -645,6 +645,7 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
    {
       try
       {
+         FC_ASSERT( fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256) );
          set_producing( true );
          detail::with_skip_flags( *this, skip, [&]() { _push_transaction( trx ); } );
          set_producing(false);
