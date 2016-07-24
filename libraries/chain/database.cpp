@@ -720,7 +720,7 @@ signed_block database::_generate_block(
       FC_ASSERT( witness_obj.signing_key == block_signing_private_key.get_public_key() );
 
    static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
+   auto maximum_block_size = get_dynamic_global_properties().maximum_block_size; //STEEMIT_MAX_BLOCK_SIZE;
    size_t total_block_size = max_block_header_size;
 
    signed_block pending_block;
@@ -2566,9 +2566,19 @@ void database::_apply_block( const signed_block& next_block )
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
 
+   const auto& gprops = get_dynamic_global_properties();
+   auto block_size = fc::raw::pack_size( next_block );
+   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) ) {
+      FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
+   }
+   else if ( block_size > gprops.maximum_block_size ) {
+ //     idump((next_block_num)(block_size)(next_block.transactions.size()));
+   }
+
+
    /// modify current witness so transaction evaluators can know who included the transaction,
    /// this is mostly for POW operations which must pay the current_witness
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp ){
+   modify( gprops, [&]( dynamic_global_property_object& dgp ){
       dgp.current_witness = next_block.witness;
    });
 
