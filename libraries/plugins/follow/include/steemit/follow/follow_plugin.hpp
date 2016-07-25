@@ -6,7 +6,8 @@
 #include <boost/multi_index/composite_key.hpp>
 
 #include <fc/thread/future.hpp>
-#include <fc/api.hpp>
+
+#include <steemit/follow/follow_api.hpp>
 
 namespace steemit { namespace follow {
 using namespace chain;
@@ -28,7 +29,8 @@ enum follow_object_type
 namespace detail { class follow_plugin_impl; }
 
 
-class  follow_object : public abstract_object<follow_object> {
+class follow_object : public abstract_object<follow_object>
+{
    public:
       static const uint8_t space_id = PRIVATE_MESSAGE_SPACE_ID;
       static const uint8_t type_id  = follow_object_type;
@@ -38,7 +40,8 @@ class  follow_object : public abstract_object<follow_object> {
       set<string>   what; /// post, comments, votes, ignore
 };
 
-class feed_object : public abstract_object<feed_object> {
+class feed_object : public abstract_object<feed_object>
+{
    public:
       static const uint8_t space_id = PRIVATE_MESSAGE_SPACE_ID;
       static const uint8_t type_id  = feed_object_type;
@@ -47,10 +50,11 @@ class feed_object : public abstract_object<feed_object> {
 };
 
 
-struct follow_operation {
+struct follow_operation
+{
     string          follower;
     string          following;
-    set<string>     what; /// post, comments, votes
+    set< string >   what; /// post, comments, votes
 };
 
 struct by_following_follower;
@@ -63,14 +67,14 @@ typedef multi_index_container<
    follow_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_following_follower >, 
+      ordered_unique< tag< by_following_follower >,
             composite_key< follow_object,
                member< follow_object, string, &follow_object::following >,
                member< follow_object, string, &follow_object::follower >
             >,
             composite_key_compare< std::less<string>, std::less<string> >
       >,
-      ordered_unique< tag< by_follower_following >, 
+      ordered_unique< tag< by_follower_following >,
             composite_key< follow_object,
                member< follow_object, string, &follow_object::follower >,
                member< follow_object, string, &follow_object::following >
@@ -88,7 +92,7 @@ typedef multi_index_container<
     feed_object,
     indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_account >, 
+      ordered_unique< tag< by_account >,
             composite_key< feed_object,
                member< feed_object, account_id_type, &feed_object::account >,
                member< object, object_id_type, &object::id >
@@ -96,7 +100,7 @@ typedef multi_index_container<
       >
    >
 > feed_multi_index_type;
-     
+
 typedef graphene::db::generic_index< feed_object, feed_multi_index_type> feed_index;
 
 
@@ -114,23 +118,10 @@ class follow_plugin : public steemit::app::plugin
       std::unique_ptr<detail::follow_plugin_impl> my;
 };
 
-class follow_api : public std::enable_shared_from_this<follow_api> {
-   public:
-      follow_api(){};
-      follow_api(const app::api_context& ctx):_app(&ctx.app){} void on_api_startup(){} 
 
-      vector<follow_object> get_followers( string to, string start, uint16_t limit )const;
-      vector<follow_object> get_following( string from, string start, uint16_t limit )const;
-
-
-   private:
-      app::application* _app = nullptr;
-};
 
 
 } } //steemit::follow
-
-FC_API( steemit::follow::follow_api, (get_followers)(get_following) );
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) );
 FC_REFLECT( steemit::follow::follow_operation, (follower)(following)(what) )

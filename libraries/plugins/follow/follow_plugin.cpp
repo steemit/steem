@@ -1,4 +1,4 @@
-#include <steemit/follow/follow_plugin.hpp>
+#include <steemit/follow/follow_api.hpp>
 
 #include <steemit/app/impacted.hpp>
 
@@ -90,6 +90,7 @@ std::string follow_plugin::plugin_name()const
    return "follow";
 }
 
+void follow_api::on_api_startup() {}
 
 void follow_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
@@ -100,35 +101,6 @@ void follow_plugin::plugin_initialize(const boost::program_options::variables_ma
 
    app().register_api_factory<follow_api>("follow_api");
 }
-
-vector<follow_object> follow_api::get_followers( string following, string start_follower, uint16_t limit )const {
-   FC_ASSERT( limit <= 100 );
-   vector<follow_object> result;
-   const auto& idx = _app->chain_database()->get_index_type<follow_index>().indices().get<by_following_follower>();
-   auto itr = idx.lower_bound( std::make_tuple( following, start_follower ) );
-   while( itr != idx.end() && limit && itr->following == following ) {
-      result.push_back(*itr);
-      ++itr;
-      --limit;
-   }
-
-   return result;
-}
-
-vector<follow_object> follow_api::get_following( string follower, string start_following, uint16_t limit )const {
-   FC_ASSERT( limit <= 100 );
-   vector<follow_object> result;
-   const auto& idx = _app->chain_database()->get_index_type<follow_index>().indices().get<by_follower_following>();
-   auto itr = idx.lower_bound( std::make_tuple( follower, start_following ) );
-   while( itr != idx.end() && limit && itr->follower == follower ) {
-      result.push_back(*itr);
-      ++itr;
-      --limit;
-   }
-
-   return result;
-}
-
 
 } }
 
