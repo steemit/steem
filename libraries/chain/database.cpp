@@ -1980,7 +1980,7 @@ void database::update_account_activity( const account_object& account ) {
    auto delta_time = std::min( fc::days(1), now - account.last_active );
    auto shares = fc::uint128( delta_time.to_seconds() ) * account.vesting_shares.amount.value;
 
-   if( shares == 0 ) return;
+   if (shares == fc::uint128(0)) return;
 
    modify( account, [&]( account_object& a ) {
       a.last_active = now;

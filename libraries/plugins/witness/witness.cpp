@@ -403,7 +403,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
  * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
  * and therefore do not even attempt work that cannot be delivered on time.
  */
-void witness_plugin::on_applied_block( const chain::signed_block& b )
+void witness_plugin::on_applied_block(const steemit::chain::signed_block& b)
 { try {
   if( !_mining_threads || _miners.size() == 0 ) return;
   chain::database& db = database();
