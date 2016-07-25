@@ -114,6 +114,11 @@ struct operation_visitor {
 void account_history_plugin_impl::on_operation( const operation_object& op_obj ) {
    flat_set<string> impacted;
    steemit::chain::database& db = database();
+   auto size = fc::raw::pack_size(op_obj);
+   if( size > 1024*1024*128 ) {
+      ilog("excluding transaction from history due to size ${s}", ("s",size) );
+      return;
+   }
 
    const auto& hist_idx = db.get_index_type<account_history_index>().indices().get<by_account>();
    const operation_object* new_obj = nullptr;

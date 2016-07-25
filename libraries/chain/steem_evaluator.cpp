@@ -361,7 +361,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          #ifndef IS_LOW_MEM
             com.title = o.title;
-            com.body = o.body;
+            if( o.body.size() < 1024*1024*128 )
+            {
+               com.body = o.body;
+            }
             com.json_metadata = o.json_metadata;
          #endif
       });

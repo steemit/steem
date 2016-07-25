@@ -171,16 +171,26 @@ struct operation_visitor {
       lower_tags.insert( fc::to_lower(c.category) );
 
 
+      bool safe_for_work = false;
       /// the universal tag applies to everything safe for work or nsfw with a positive payout
       if( c.net_rshares >= 0 ||
           (lower_tags.find( "spam" ) == lower_tags.end() &&
            lower_tags.find( "nsfw" ) == lower_tags.end() &&
            lower_tags.find( "test" ) == lower_tags.end() )  )
       {
+         safe_for_work = true;
          lower_tags.insert( string() ); /// add it to the universal tag
       }
 
       meta.tags = lower_tags; /// TODO: std::move???
+      if( meta.tags.size() > 7 ) {
+         wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
+         if( safe_for_work ) 
+            meta.tags = set<string>({"", c.parent_permlink});
+         else
+            meta.tags.clear();
+      }
+
 
       const auto& comment_idx = _db.get_index_type<tag_index>().indices().get<by_comment>();
       auto citr = comment_idx.lower_bound( c.id );
@@ -190,7 +200,7 @@ struct operation_visitor {
       while( citr != comment_idx.end() && citr->comment == c.id ) {
          const tag_object* tag = &*citr;
          ++citr;
-         if( meta.tags.find( tag->tag ) == meta.tags.end() ) {
+         if( meta.tags.find( tag->tag ) == meta.tags.end()  ) {
             remove_queue.push_back(tag);
          } else {
             existing_tags[tag->tag] = tag;
