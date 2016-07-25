@@ -870,8 +870,13 @@ void database_api::set_pending_payout( discussion& d )const
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
    }
+
+   if( d.body.size() > 1024*1024*128 )
+      d.body = "body pruned due to size";
+
    set_url(d);
 }
+
 void database_api::set_url( discussion& d )const {
    const comment_object* root = &d;
    while( root->parent_author.size() ) {

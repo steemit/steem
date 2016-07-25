@@ -184,7 +184,7 @@ struct operation_visitor {
 
       meta.tags = lower_tags; /// TODO: std::move???
       if( meta.tags.size() > 7 ) {
-         wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
+         //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
          if( safe_for_work ) 
             meta.tags = set<string>({"", c.parent_permlink});
          else
