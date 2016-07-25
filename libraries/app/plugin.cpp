@@ -24,6 +24,8 @@
 
 #include <steemit/app/plugin.hpp>
 
+#include <fc/vector.hpp>
+
 namespace steemit { namespace app {
 
 plugin::plugin()

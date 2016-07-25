@@ -1,6 +1,7 @@
 #pragma once
 #include <fc/uint128.hpp>
 
+#include <steemit/chain/protocol/asset.hpp>
 #include <steemit/chain/protocol/types.hpp>
 #include <steemit/chain/database.hpp>
 #include <graphene/db/object.hpp>
