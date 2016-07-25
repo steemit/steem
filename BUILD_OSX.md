@@ -16,7 +16,6 @@ Steem OS X Build Instructions
 4. Install dependencies:
    ```
    brew install boost cmake git openssl autoconf automake qt5
-   brew link --force openssl 
    ```
 
 5. *Optional.* To support importing Bitcoin wallet files:
@@ -37,9 +36,12 @@ Steem OS X Build Instructions
 
 8. Build Steem:
    ```
-   git submodule update --init --recursive
-   cmake .
-   make
+   brew install https://gist.github.com/shazow/c71c652409015479a7e6/raw/secp256k1.rb
+   brew install boost cmake git openssl autoconf automake python3
+
+Change the build vars for cmake.
+
+cmake -DENABLE_CONTENT_PATCHING=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_INCLUDE_DIR=/usr/local/opt/openssl/include
    ```
 
 Low Memory Mode
