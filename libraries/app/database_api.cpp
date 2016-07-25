@@ -871,9 +871,9 @@ void database_api::set_pending_payout( discussion& d )const
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
    }
 
-   if( d.body.size() > 1024*1024*128 )
+   if( d.body.size() > 1024*128 )
       d.body = "body pruned due to size";
-   if( d.parent_author.size() > 0 && d.body.size() > 1024*1024*16 ) 
+   if( d.parent_author.size() > 0 && d.body.size() > 1024*16 ) 
       d.body = "comment pruned due to size";
 
    set_url(d);
@@ -1367,6 +1367,7 @@ state database_api::get_state( string path )const
 
       auto key = account +"/" + slug;
       auto dis = get_content( account, slug );
+
       recursively_fetch_content( _state, dis, accounts );
       _state.content[key] = std::move(dis);
    }
