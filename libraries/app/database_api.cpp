@@ -873,6 +873,8 @@ void database_api::set_pending_payout( discussion& d )const
 
    if( d.body.size() > 1024*1024*128 )
       d.body = "body pruned due to size";
+   if( d.parent_author.size() > 0 && d.body.size() > 1024*1024*16 ) 
+      d.body = "comment pruned due to size";
 
    set_url(d);
 }
