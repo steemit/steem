@@ -75,7 +75,7 @@ struct operation_visitor {
    /*
    void operator()( const comment_operation& ) {}
    void operator()( const vote_operation& ) {}
-   void operator()( const delete_comment_operation& ){} 
+   void operator()( const delete_comment_operation& ){}
    void operator()( const custom_json_operation& ) {}
    void operator()( const custom_operation& ) {}
    void operator()( const curate_reward_operation& ) {}

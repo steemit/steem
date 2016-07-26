@@ -14,6 +14,8 @@
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
+#include <memory>
+
 namespace steemit { namespace follow {
 
 namespace detail
@@ -31,14 +33,16 @@ class follow_plugin_impl
 
       void on_operation( const operation_object& op_obj );
 
-      follow_plugin&                                                 _self;
-      evaluator_registry< steemit::follow::follow_plugin_operation > _evaluator_registry;
+      follow_plugin&                                                       _self;
+      std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > >  _evaluator_registry;
 };
 
 follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
-   : _self( _plugin ), _evaluator_registry( _plugin.database() )
+   : _self( _plugin )
 {
-   _evaluator_registry.register_evaluator< follow_evaluator >( &_self );
+   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
+   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
+   //_evaluator_registry.register_evaluator< follow_evaluator >( &_self );
 }
 
 void follow_plugin_impl::on_operation( const operation_object& op_obj ) {
@@ -47,28 +51,33 @@ void follow_plugin_impl::on_operation( const operation_object& op_obj ) {
    try {
       if( op_obj.op.which() == operation::tag< custom_json_operation >::value ) {
          const custom_json_operation& cop = op_obj.op.get< custom_json_operation >();
-        // idump(("json op")(cop));
+         idump(("json op")(cop));
          if( cop.id == "follow" )
          {
             custom_json_operation new_cop;
 
             new_cop.required_auths = cop.required_auths;
             new_cop.required_posting_auths = cop.required_posting_auths;
-            new_cop.id = cop.id;
-            follow_plugin_operation new_op;
+            new_cop.id = _self.plugin_name();
+            follow_operation op;
 
             try
             {
-               auto op = fc::json::from_string( cop.json ).as< follow_operation >();
-               new_op = op;
+               op = fc::json::from_string( cop.json ).as< follow_operation >();
+               idump( (op) );
             }
             catch( fc::assert_exception )
             {
                return;
             }
 
+            auto new_op = follow_plugin_operation( op );
+            FC_ASSERT( new_op.which() == follow_plugin_operation::tag< follow_operation >::value );
+            idump( (new_op.get< follow_operation >()) );
+            idump( (new_op) );
             new_cop.json = fc::json::to_string( new_op );
             std::shared_ptr< generic_json_evaluator_registry > eval = db.get_custom_json_evaluator( cop.id );
+            idump( (new_cop) );
             eval->apply( new_cop );
          }
       }
