@@ -13,10 +13,12 @@ struct signed_block;
 
 namespace steemit { namespace plugin { namespace block_info {
 
+using steemit::app::application;
+
 class block_info_plugin : public steemit::app::plugin
 {
    public:
-      block_info_plugin();
+      block_info_plugin( application* app );
       virtual ~block_info_plugin();
 
       virtual std::string plugin_name()const override;

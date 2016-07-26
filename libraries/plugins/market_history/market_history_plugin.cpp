@@ -151,8 +151,8 @@ void market_history_plugin_impl::update_market_histories( const operation_object
 
 } // detail
 
-market_history_plugin::market_history_plugin() :
-   _my( new detail::market_history_plugin_impl( *this ) ) {}
+market_history_plugin::market_history_plugin( application* app )
+   : plugin( app ), _my( new detail::market_history_plugin_impl( *this ) ) {}
 market_history_plugin::~market_history_plugin() {}
 
 void market_history_plugin::plugin_set_program_options(

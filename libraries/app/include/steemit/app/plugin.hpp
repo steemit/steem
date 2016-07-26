@@ -24,6 +24,7 @@
 #pragma once
 
 #include <steemit/app/application.hpp>
+#include <steemit/chain/evaluator.hpp>
 
 #include <boost/program_options.hpp>
 

@@ -27,6 +27,7 @@ namespace steemit { namespace market_history {
 
 using namespace chain;
 using namespace graphene::db;
+using steemit::app::application;
 
 namespace detail
 {
@@ -36,7 +37,7 @@ namespace detail
 class market_history_plugin : public steemit::app::plugin
 {
    public:
-      market_history_plugin();
+      market_history_plugin( application* app );
       virtual ~market_history_plugin();
 
       virtual std::string plugin_name()const override { return MARKET_HISTORY_PLUGIN_NAME; }

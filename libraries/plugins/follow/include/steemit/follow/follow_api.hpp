@@ -2,7 +2,7 @@
 
 #include <steemit/app/application.hpp>
 
-#include <steemit/follow/follow_plugin.hpp>
+#include <steemit/follow/follow_objects.hpp>
 
 #include <fc/api.hpp>
 
@@ -15,8 +15,6 @@ namespace detail
 {
    class follow_api_impl;
 }
-
-class follow_object;
 
 class follow_api
 {
