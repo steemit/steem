@@ -32,6 +32,7 @@ namespace steemit { namespace witness_plugin {
 
 using std::string;
 using chain::public_key_type;
+using app::application;
 
 namespace block_production_condition
 {
@@ -53,6 +54,7 @@ namespace block_production_condition
 class witness_plugin : public steemit::app::plugin
 {
 public:
+   witness_plugin( application* app ) : plugin( app ) {}
    ~witness_plugin() {
       try {
          if( _block_production_task.valid() )

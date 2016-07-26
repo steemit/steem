@@ -13,6 +13,7 @@ namespace steemit { namespace tags {
 using namespace steemit::chain;
 using namespace boost::multi_index;
 
+using steemit::app::application;
 //
 // Plugins should #define their SPACE_ID's so plugins with
 // conflicting SPACE_ID assignments can be compiled into the
@@ -340,7 +341,7 @@ struct comment_metadata {
 class tags_plugin : public steemit::app::plugin
 {
    public:
-      tags_plugin();
+      tags_plugin( application* app );
       virtual ~tags_plugin();
 
       std::string plugin_name()const override;

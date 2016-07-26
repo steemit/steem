@@ -34,6 +34,7 @@
 
 namespace steemit { namespace private_message {
 using namespace chain;
+using app::application;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -136,7 +137,7 @@ typedef graphene::db::generic_index< message_object, message_multi_index_type> p
 class private_message_plugin : public steemit::app::plugin
 {
    public:
-      private_message_plugin();
+      private_message_plugin( application* app );
       virtual ~private_message_plugin();
 
       std::string plugin_name()const override;

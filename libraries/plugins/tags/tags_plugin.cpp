@@ -314,8 +314,8 @@ void tags_plugin_impl::on_operation( const operation_object& op_obj ) {
 
 } /// end detail namespace
 
-tags_plugin::tags_plugin() :
-   my( new detail::tags_plugin_impl(*this) )
+tags_plugin::tags_plugin( application* app )
+   : plugin( app ), my( new detail::tags_plugin_impl(*this) )
 {
    //ilog("Loading account history plugin" );
 }

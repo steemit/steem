@@ -103,8 +103,8 @@ void private_message_evaluator::do_apply( const private_message_operation& pm )
    }
 }
 
-private_message_plugin::private_message_plugin() :
-   my( new detail::private_message_plugin_impl(*this) )
+private_message_plugin::private_message_plugin( application* app )
+   : plugin( app ), my( new detail::private_message_plugin_impl(*this) )
 {
 }
 

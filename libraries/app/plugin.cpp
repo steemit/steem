@@ -28,9 +28,8 @@
 
 namespace steemit { namespace app {
 
-plugin::plugin()
+plugin::plugin( application* app ) : _app( app )
 {
-   _app = nullptr;
    return;
 }
 

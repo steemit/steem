@@ -106,7 +106,7 @@ class abstract_plugin
 class plugin : public abstract_plugin
 {
    public:
-      plugin();
+      plugin( application* app );
       virtual ~plugin() override;
 
       virtual std::string plugin_name()const override;
@@ -149,8 +149,8 @@ if( options.count(name) ) { \
 
 #define STEEMIT_DEFINE_PLUGIN( plugin_name, plugin_class ) \
    namespace steemit { namespace plugin { \
-   std::shared_ptr< steemit::app::abstract_plugin > create_ ## plugin_name ## _plugin()  \
-   { return std::make_shared< plugin_class >(); } \
+   std::shared_ptr< steemit::app::abstract_plugin > create_ ## plugin_name ## _plugin( app::application* app )  \
+   { return std::make_shared< plugin_class >( app ); } \
    } }
 
 #define DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )                     \

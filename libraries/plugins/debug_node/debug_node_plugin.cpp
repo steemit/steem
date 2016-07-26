@@ -11,7 +11,7 @@
 
 namespace steemit { namespace plugin { namespace debug_node {
 
-debug_node_plugin::debug_node_plugin() {}
+debug_node_plugin::debug_node_plugin( application* app ) : plugin( app ) {}
 debug_node_plugin::~debug_node_plugin() {}
 
 std::string debug_node_plugin::plugin_name()const

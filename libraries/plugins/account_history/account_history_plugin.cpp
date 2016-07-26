@@ -129,8 +129,8 @@ void account_history_plugin_impl::on_operation( const operation_object& op_obj )
 
 } // end namespace detail
 
-account_history_plugin::account_history_plugin() :
-   my( new detail::account_history_plugin_impl(*this) )
+account_history_plugin::account_history_plugin( application* app )
+   : plugin( app ), my( new detail::account_history_plugin_impl(*this) )
 {
    //ilog("Loading account history plugin" );
 }
