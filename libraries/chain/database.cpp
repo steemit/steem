@@ -3437,7 +3437,7 @@ void database::apply_hardfork( uint32_t hardfork )
    {
       case STEEMIT_HARDFORK_0_1:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 1" );
+         elog( "HARDFORK 1 at block ${b}", ("b", head_block_num()) );
 #endif
          perform_vesting_share_split( 1000000 );
 #ifdef IS_TEST_NET
@@ -3453,48 +3453,48 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_2:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 2" );
+         elog( "HARDFORK 2 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_3:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 3" );
+         elog( "HARDFORK 3 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_4:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 4" );
+         elog( "HARDFORK 4 at block ${b}", ("b", head_block_num()) );
 #endif
          reset_virtual_schedule_time();
          break;
       case STEEMIT_HARDFORK_0_5:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 5" );
+         elog( "HARDFORK 5 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_6:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 6" );
+         elog( "HARDFORK 6 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_vote_counts();
          retally_comment_children();
          break;
       case STEEMIT_HARDFORK_0_7:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 7" );
+         elog( "HARDFORK 7 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_8:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 8" );
+         elog( "HARDFORK 8 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_9:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 9" );
+         elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
 #endif
          {
             for( auto acc : hardfork9::get_compromised_accounts() )
@@ -3516,18 +3516,18 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 10" );
+         elog( "HARDFORK 10 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_liquidity_weight();
          break;
       case STEEMIT_HARDFORK_0_11:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 11" );
+         elog( "HARDFORK 11 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_12:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 12" );
+         elog( "HARDFORK 12 at block ${b}", ("b", head_block_num()) );
 #endif
          {
             const auto& comment_idx = get_index_type< comment_index >().indices();
