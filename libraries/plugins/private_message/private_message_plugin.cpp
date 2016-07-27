@@ -52,15 +52,19 @@ class private_message_plugin_impl
          return _self.database();
       }
 
-      private_message_plugin&                                           _self;
-      json_evaluator_registry< steemit::private_message::operation >    _evaluator_registry;
-      flat_map<string,string>                                           _tracked_accounts;
+      private_message_plugin&                                                             _self;
+      std::shared_ptr< json_evaluator_registry< steemit::private_message::operation > >   _evaluator_registry;
+      flat_map<string,string>                                                             _tracked_accounts;
 };
 
 private_message_plugin_impl::private_message_plugin_impl( private_message_plugin& _plugin )
-   : _self( _plugin ), _evaluator_registry( _plugin.database() )
+   : _self( _plugin )
 {
-   _evaluator_registry.register_evaluator< private_message_evaluator >( &_self );
+   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::private_message::operation > >( database() );
+
+   _evaluator_registry->register_evaluator< private_message_evaluator >( &_self );
+
+   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
    return;
 }
 
@@ -180,4 +184,4 @@ flat_map<string,string> private_message_plugin::tracked_accounts() const
 
 STEEMIT_DEFINE_PLUGIN( private_message, steemit::private_message::private_message_plugin )
 
-//DEFINE_OPERATION_TYPE( steemit::private_message::operation )
+DEFINE_OPERATION_TYPE( steemit::private_message::operation )
