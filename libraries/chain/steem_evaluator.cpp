@@ -1129,7 +1129,7 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    }
    catch( const fc::exception& e )
    {
-      elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
    }
 }
 

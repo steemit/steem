@@ -12,7 +12,7 @@ struct follow_operation : base_operation
 {
     string              follower;
     string              following;
-    set< follow_type >  what; /// post, comments, votes
+    set< string >       what; /// blog
 
     void validate()const;
 

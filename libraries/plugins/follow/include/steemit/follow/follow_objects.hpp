@@ -25,10 +25,7 @@ enum follow_object_type
 
 enum follow_type
 {
-   posts,
-   comments,
-   votes,
-   ignore
+   blog
 };
 
 class follow_object : public abstract_object< follow_object >
@@ -100,7 +97,7 @@ typedef graphene::db::generic_index< feed_object, feed_multi_index_type> feed_in
 
 } } // steemit::follow
 
-FC_REFLECT_ENUM( steemit::follow::follow_type, (posts)(comments)(votes)(ignore) )
+FC_REFLECT_ENUM( steemit::follow::follow_type, (blog) )
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) )
 FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(comment) )
