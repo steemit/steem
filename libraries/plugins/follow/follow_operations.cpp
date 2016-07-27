@@ -1,5 +1,7 @@
 #include <steemit/follow/follow_operations.hpp>
 
+#include <steemit/chain/protocol/operation_util_impl.hpp>
+
 namespace steemit { namespace follow {
 
 void follow_operation::validate()const
@@ -13,3 +15,5 @@ void reblog_operation::validate()const
 }
 
 } } //steemit::follow
+
+DEFINE_OPERATION_TYPE( steemit::follow::follow_plugin_operation )

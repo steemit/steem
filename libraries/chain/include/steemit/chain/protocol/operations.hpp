@@ -62,10 +62,22 @@ namespace steemit { namespace chain {
             comment_payout_operation
          > operation;
 
+   /*void operation_get_required_authorities( const operation& op,
+                                            flat_set<string>& active,
+                                            flat_set<string>& owner,
+                                            flat_set<string>& posting,
+                                            vector<authority>&  other );
+
+   void operation_validate( const operation& op );*/
+
    bool is_market_operation( const operation& op );
 
 } } // steemit::chain
 
-DECLARE_OPERATION_TYPE( steemit::chain::operation )
+/*namespace fc {
+    void to_variant( const steemit::chain::operation& var,  fc::variant& vo );
+    void from_variant( const fc::variant& var,  steemit::chain::operation& vo );
+}*/
 
+DECLARE_OPERATION_TYPE( steemit::chain::operation )
 FC_REFLECT_TYPENAME( steemit::chain::operation )

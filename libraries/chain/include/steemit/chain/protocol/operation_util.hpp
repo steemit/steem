@@ -10,12 +10,6 @@
 #include <string>
 #include <vector>
 
-namespace steemit { namespace chain {
-
-std::string name_from_type( const std::string& type_name );
-
-} }
-
 //
 // Place DECLARE_OPERATION_TYPE in a .hpp file to declare
 // functions related to your operation type
@@ -23,8 +17,8 @@ std::string name_from_type( const std::string& type_name );
 #define DECLARE_OPERATION_TYPE( OperationType )                       \
 namespace fc {                                                        \
                                                                       \
-void to_variant( const OperationType& o, fc::variant var );           \
-void from_variant( const fc::variant& var, OperationType& o );        \
+void to_variant( const OperationType&, fc::variant& );                \
+void from_variant( const fc::variant&, OperationType& );              \
                                                                       \
 } /* fc */                                                            \
                                                                       \

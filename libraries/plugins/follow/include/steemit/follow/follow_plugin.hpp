@@ -9,7 +9,7 @@
 namespace steemit { namespace follow {
 using steemit::app::application;
 
-#define FOLLOW_PLUGIN_NAME "follow";
+#define FOLLOW_PLUGIN_NAME "follow"
 
 namespace detail { class follow_plugin_impl; }
 

@@ -1,7 +1,6 @@
-
 #include <string>
 
-namespace steemit { namespace chain {
+namespace fc {
 
 std::string name_from_type( const std::string& type_name )
 {
@@ -10,4 +9,4 @@ std::string name_from_type( const std::string& type_name )
    return type_name.substr( start, end-start );
 }
 
-} } // steemit::chain
+} // fc

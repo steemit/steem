@@ -1,11 +1,10 @@
-
 #include <steemit/chain/protocol/operations.hpp>
+
 #include <steemit/chain/protocol/operation_util_impl.hpp>
 
 namespace steemit { namespace chain {
 
-struct is_market_op_visitor
-{
+struct is_market_op_visitor {
    typedef bool result_type;
 
    template<typename T>
@@ -16,11 +15,10 @@ struct is_market_op_visitor
    bool operator()( const transfer_to_vesting_operation& )const { return true; }
 };
 
-bool is_market_operation( const operation& op )
-{
+bool is_market_operation( const operation& op ) {
    return op.visit( is_market_op_visitor() );
 }
 
-} } // steemit::chain
+} }
 
 DEFINE_OPERATION_TYPE( steemit::chain::operation )
