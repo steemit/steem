@@ -62,6 +62,12 @@ namespace steemit { namespace chain {
       >
    > category_multi_index_type;
 
+   enum comment_mode
+   {
+      first_payout,
+      second_payout,
+      archived
+   };
 
    class comment_object : public abstract_object<comment_object>
    {
@@ -115,6 +121,8 @@ namespace steemit { namespace chain {
          int32_t           net_votes = 0;
 
          comment_id_type   root_comment;
+
+         comment_mode      mode = first_payout;
 
          asset    max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
          uint16_t percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
@@ -256,11 +264,12 @@ namespace steemit { namespace chain {
          /// TOTAL PENDING PAYOUT - this is the default TRENDING ORDER
          ordered_unique< tag< by_total_pending_payout >,
             composite_key< comment_object,
+               member< comment_object, comment_mode, &comment_object::mode >,
                member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
                member< comment_object, fc::uint128_t, &comment_object::children_rshares2 >,
                member< object, object_id_type, &object::id >
             >,
-            composite_key_compare< std::less<string>, std::greater<fc::uint128_t>, std::less<object_id_type> >
+            composite_key_compare< std::less<comment_mode>, std::less<string>, std::greater<fc::uint128_t>, std::less<object_id_type> >
          >,
          /// used to sort all posts by the last time they were edited
          ordered_unique< tag<by_last_update>,
@@ -332,6 +341,8 @@ namespace steemit { namespace chain {
    typedef generic_index< category_object, category_multi_index_type >          category_index;
 } } // steemit::chain
 
+FC_REFLECT_ENUM( steemit::chain::comment_mode, (first_payout)(second_payout)(archived) )
+
 FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (author)(permlink)
                     (category)(parent_author)(parent_permlink)
@@ -339,7 +350,7 @@ FC_REFLECT_DERIVED( steemit::chain::comment_object, (graphene::db::object),
                     (depth)(children)(children_rshares2)
                     (net_rshares)(abs_rshares)(vote_rshares)
                     (children_abs_rshares)(cashout_time)(max_cashout_time)
-                    (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)
+                    (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
                     (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards) )
 
 FC_REFLECT_DERIVED( steemit::chain::comment_vote_object, (graphene::db::object),
