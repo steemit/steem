@@ -12,7 +12,7 @@ struct follow_operation : base_operation
 {
     string              follower;
     string              following;
-    set< string >       what; /// blog
+    set< string >       what; /// blog, mute
 
     void validate()const;
 

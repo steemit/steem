@@ -1,6 +1,9 @@
 #include <steemit/follow/follow_operations.hpp>
 #include <steemit/follow/follow_objects.hpp>
 
+#include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
+
 namespace steemit { namespace follow {
 
 void follow_evaluator::do_apply( const follow_operation& o )
@@ -9,6 +12,7 @@ void follow_evaluator::do_apply( const follow_operation& o )
    {
       map< string, follow_type > follow_map;
       follow_map[ "blog" ] = follow_type::blog;
+      follow_map[ "mute" ] = follow_type::mute;
 
       return follow_map;
    }();
@@ -25,8 +29,11 @@ void follow_evaluator::do_apply( const follow_operation& o )
          case blog:
             what.insert( blog );
             break;
+         case mute:
+            what.insert( mute );
+            break;
          default:
-            return;
+            break;
       }
    }
 
@@ -50,7 +57,54 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
-   return;
+   try
+      {
+         auto& db = _plugin->database();
+         const auto& c = db.get_comment( o.author, o.permlink );
+         if( c.parent_author.size() > 0 ) return;
+
+         const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
+         auto itr = idx.find( c.author );
+
+         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
+         const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+
+         while( itr != idx.end() && itr->following == c.author )
+         {
+            auto account_id = db.get_account( itr->follower ).id;
+
+            if( itr->what.find( follow_type::blog ) != itr->what.end()
+               && comment_idx.find( boost::make_tuple( account_id, c.id ) ) == comment_idx.end() )
+            {
+               uint32_t next_id = 0;
+               auto last_feed = feed_idx.lower_bound( account_id );
+
+               if( last_feed != feed_idx.end() && last_feed->account == account_id )
+               {
+                  next_id = last_feed->account_feed_id + 1;
+               }
+
+               db.create< feed_object >( [&]( feed_object& f )
+               {
+                  f.account = account_id;
+                  f.comment = c.id;
+                  f.account_feed_id = next_id;
+               });
+
+               const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
+               auto old_feed = old_feed_idx.lower_bound( account_id );
+
+               while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
+               {
+                  db.remove( *old_feed );
+                  old_feed = old_feed_idx.lower_bound( account_id );
+               };
+            }
+
+            ++itr;
+         }
+      }
+      FC_LOG_AND_RETHROW()
 }
 
 } } // steemit::follow

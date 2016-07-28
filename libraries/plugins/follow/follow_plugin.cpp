@@ -33,8 +33,8 @@ class follow_plugin_impl
 
       void on_operation( const operation_object& op_obj );
 
-      follow_plugin&                                                       _self;
-      std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > >  _evaluator_registry;
+      follow_plugin&                                                                         _self;
+      std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
 };
 
 follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
@@ -102,16 +102,42 @@ struct operation_visitor
          auto& db = _plugin.database();
          const auto& c = db.get_comment( op.author, op.permlink );
 
+         if( c.created != db.head_block_time() ) return;
+
          const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
-         auto itr = idx.find( op.author ); //boost::make_tuple( op.author, op.following ) );
+         auto itr = idx.find( op.author );
+
+         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
 
          while( itr != idx.end() && itr->following == op.author )
          {
-            db.create< feed_object >( [&]( feed_object& f )
+            if( itr->what.find( follow_type::blog ) != itr->what.end() )
             {
-                f.account = db.get_account( itr->following ).id;
-                f.comment = c.id;
-            });
+               auto account_id = db.get_account( itr->follower ).id;
+               uint32_t next_id = 0;
+               auto last_feed = feed_idx.lower_bound( account_id );
+
+               if( last_feed != feed_idx.end() && last_feed->account == account_id )
+               {
+                  next_id = last_feed->account_feed_id + 1;
+               }
+
+               db.create< feed_object >( [&]( feed_object& f )
+               {
+                  f.account = account_id;
+                  f.comment = c.id;
+                  f.account_feed_id = next_id;
+               });
+
+               const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
+               auto old_feed = old_feed_idx.lower_bound( account_id );
+
+               while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+               {
+                  db.remove( *old_feed );
+                  old_feed = old_feed_idx.lower_bound( account_id );
+               };
+            }
 
             ++itr;
          }
@@ -137,15 +163,37 @@ void follow_plugin_impl::on_operation( const operation_object& op_obj )
 follow_plugin::follow_plugin( application* app )
    : plugin( app ), my( new detail::follow_plugin_impl( *this ) ) {}
 
-void follow_api::on_api_startup() {}
+void follow_plugin::plugin_set_program_options(
+   boost::program_options::options_description& cli,
+   boost::program_options::options_description& cfg
+   )
+{
+   cli.add_options()
+      ("follow-max-feed-size", boost::program_options::value< uint32_t >()->default_value( 500 ), "Set the maximum size of cached feed for an account" )
+      ;
+   cfg.add( cli );
+}
 
 void follow_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-   ilog("Intializing follow plugin" );
-   database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
-   database().add_index< primary_index< follow_index  > >();
-   database().add_index< primary_index< feed_index  > >();
+   try
+   {
+      ilog("Intializing follow plugin" );
+      database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+      database().add_index< primary_index< follow_index > >();
+      database().add_index< primary_index< feed_index > >();
 
+      if( options.count( "follow-max-feed-size" ) )
+      {
+         uint32_t feed_size = options[ "follow-max-feed-size" ].as< uint32_t >();
+         max_feed_size = feed_size;
+      }
+   }
+   FC_CAPTURE_AND_RETHROW()
+}
+
+void follow_plugin::plugin_startup()
+{
    app().register_api_factory<follow_api>("follow_api");
 }
 
