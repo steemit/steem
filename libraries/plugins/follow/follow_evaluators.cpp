@@ -22,9 +22,9 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
    set< follow_type > what;
 
-   for( auto where : o.what )
+   for( auto target : o.what )
    {
-      switch( follow_type_map[ where ] )
+      switch( follow_type_map[ target ] )
       {
          case blog:
             what.insert( blog );
@@ -33,6 +33,7 @@ void follow_evaluator::do_apply( const follow_operation& o )
             what.insert( mute );
             break;
          default:
+            ilog( "Encountered unknown option ${o}", ("o", target) );
             break;
       }
    }

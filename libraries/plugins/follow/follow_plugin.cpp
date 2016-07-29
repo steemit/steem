@@ -32,6 +32,7 @@ class follow_plugin_impl
       }
 
       void on_operation( const operation_object& op_obj );
+      void pre_operation( const operation_object& op_0bj );
 
       follow_plugin&                                                                         _self;
       std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
@@ -51,12 +52,53 @@ follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
    database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
 }
 
-struct operation_visitor
+struct pre_operation_visitor
 {
    follow_plugin& _plugin;
 
-   operation_visitor( follow_plugin& plugin )
-      :_plugin( plugin ) {}
+   pre_operation_visitor( follow_plugin& plugin )
+      : _plugin( plugin ) {}
+
+   typedef void result_type;
+
+   template< typename T >___POSIX_C_DEPRECATED_STARTING_198808L
+   void operator()( const T& )const {}
+
+   void operator()( const vote_operation& op )
+   {
+      try
+      {
+         auto& db = _plugin.database();
+         const auto& c = db.get_comment( op.author, op.permlink );
+
+         if( c.mode != first_payout ) return;
+
+         const auto& a = db.get_account( op.voter );
+
+         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         auto cv = cv_idx.find( boost::make_tuple( c.id, a.id ) );
+
+         if( cv != cv_idx.end() )
+         {
+            const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
+            auto rep = rep_idx.find( cv->voter );
+
+            db.modify( *rep, [&]( reputation_object& r )
+            {
+               r.reputation -= cv->rshares;
+            });
+         }
+      }
+      FC_CAPTURE_AND_RETHROW()
+   }
+};
+
+struct on_operation_visitor
+{
+   follow_plugin& _plugin;
+
+   on_operation_visitor( follow_plugin& plugin )
+      : _plugin( plugin ) {}
 
    typedef void result_type;
 
@@ -91,7 +133,7 @@ struct operation_visitor
             eval->apply( new_cop );
          }
       }
-      FC_LOG_AND_RETHROW()
+      FC_CAPTURE_AND_RETHROW()
    }
 
    void operator()( const comment_operation& op )const
@@ -142,15 +184,68 @@ struct operation_visitor
             ++itr;
          }
       }
-      FC_LOG_AND_RETHROW()
+      FC_CAPTURE_AND_RETHROW()
+   }
+
+   void operator()( const vote_operation& op )const
+   {
+      try
+      {
+         auto& db = _plugin.database();
+         const auto& comment = db.get_comment( op.author, op.permlink );
+
+         if( comment.mode != first_payout )
+            return;
+
+         const auto& voter_id = db.get_account( op.voter ).id;
+         const auto& author_id = db.get_account( op.author ).id;
+         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         auto cv = cv_idx.find( boost::make_tuple( comment.id, voter_id ) );
+
+         const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
+         auto voter = rep_idx.find( voter_id );
+         auto rep = rep_idx.find( author_id );
+
+         if( rep == rep_idx.end() )
+         {
+            db.create< reputation_object >( [&]( reputation_object& r )
+            {
+               r.account = author_id;
+               r.reputation = cv->rshares;
+            });
+         }
+         else
+         {
+            if( cv->rshares < 0 )            {
+               FC_ASSERT( voter != rep_idx.end() && voter->reputation > rep->reputation );
+
+            db.modify( *rep, [&]( reputation_object& r )
+            {
+               r.reputation += cv->rshares;
+            });
+         }
+      }
+      FC_CAPTURE_AND_RETHROW()
    }
 };
+
+void follow_plugin_impl::pre_operation( const operation_object& op_obj )
+{
+   try
+   {
+      op_obj.op.visit( pre_operation_visitor( _self ) );
+   }
+   catch( const fc::assert_exception& )
+   {
+      if( database().is_producing() ) throw;
+   }
+}
 
 void follow_plugin_impl::on_operation( const operation_object& op_obj )
 {
    try
    {
-      op_obj.op.visit( operation_visitor( _self ) );
+      op_obj.op.visit( on_operation_visitor( _self ) );
    }
    catch( fc::assert_exception )
    {
@@ -179,9 +274,11 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
-      database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+      database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
       database().add_index< primary_index< follow_index > >();
       database().add_index< primary_index< feed_index > >();
+      database().add_index< primary_index< reputation_index > >();
 
       if( options.count( "follow-max-feed-size" ) )
       {
