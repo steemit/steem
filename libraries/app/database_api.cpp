@@ -85,8 +85,6 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       steemit::chain::database&                _db;
 
       boost::signals2::scoped_connection       _block_applied_connection;
-
-
 };
 
 void find_accounts( set<string>& accounts, const discussion& d ) {
@@ -167,13 +165,22 @@ void database_api_impl::cancel_all_subscriptions()
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-database_api::database_api( steemit::chain::database& db )
-   : my( new database_api_impl( db ) ) {}
-
 database_api::database_api( const steemit::app::api_context& ctx )
-   : database_api( *ctx.app.chain_database() ) {}
+   : my( new database_api_impl( *ctx.app.chain_database() ) )
+{
+   try
+   {
+      ctx.app.get_plugin( FOLLOW_PLUGIN_NAME );
+      _follow_api = new steemit::follow::follow_api( ctx );
+   }
+   catch( fc::assert_exception ) {}
+}
 
-database_api::~database_api() {}
+database_api::~database_api()
+{
+   if( _follow_api )
+      delete _follow_api;
+}
 
 database_api_impl::database_api_impl( steemit::chain::database& db ):_db(db)
 {
@@ -869,6 +876,11 @@ void database_api::set_pending_payout( discussion& d )const
 
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
+
+      if( _follow_api )
+      {
+         d.author_reputation = _follow_api->get_account_reputations( d.author, 1 )[0].reputation;
+      }
    }
    set_url(d);
 }

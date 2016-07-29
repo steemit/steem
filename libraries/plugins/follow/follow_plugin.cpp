@@ -206,8 +206,17 @@ struct on_operation_visitor
          auto voter = rep_idx.find( voter_id );
          auto rep = rep_idx.find( author_id );
 
+         // Rule #1: Must have non-negative reputation to effect another user's reputation
+         if( voter != rep_idx.end() )
+            FC_ASSERT( voter->reputation >= 0 );
+
          if( rep == rep_idx.end() )
          {
+            // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
+            // User rep is 0, so requires voter having positive rep
+            if( cv->rshares < 0 )
+               FC_ASSERT( voter != rep_idx.end() && voter->reputation > 0 );
+
             db.create< reputation_object >( [&]( reputation_object& r )
             {
                r.account = author_id;
@@ -216,7 +225,8 @@ struct on_operation_visitor
          }
          else
          {
-            if( cv->rshares < 0 )            {
+            // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
+            if( cv->rshares < 0 )
                FC_ASSERT( voter != rep_idx.end() && voter->reputation > rep->reputation );
 
             db.modify( *rep, [&]( reputation_object& r )

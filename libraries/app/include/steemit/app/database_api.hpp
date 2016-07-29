@@ -85,7 +85,6 @@ struct discussion_query {
 class database_api
 {
    public:
-      database_api(steemit::chain::database& db);
       database_api(const steemit::app::api_context& ctx);
       ~database_api();
 
@@ -384,7 +383,9 @@ class database_api
       comment_id_type get_parent( const discussion_query& q )const;
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;
-      std::shared_ptr< database_api_impl > my;
+
+      steemit::follow::follow_api*           _follow_api = nullptr;
+      std::shared_ptr< database_api_impl >   my;
 };
 
 } }
