@@ -75,7 +75,7 @@ struct operation_visitor {
    /*
    void operator()( const comment_operation& ) {}
    void operator()( const vote_operation& ) {}
-   void operator()( const delete_comment_operation& ){} 
+   void operator()( const delete_comment_operation& ){}
    void operator()( const custom_json_operation& ) {}
    void operator()( const custom_operation& ) {}
    void operator()( const curate_reward_operation& ) {}
@@ -134,8 +134,8 @@ void account_history_plugin_impl::on_operation( const operation_object& op_obj )
 
 } // end namespace detail
 
-account_history_plugin::account_history_plugin() :
-   my( new detail::account_history_plugin_impl(*this) )
+account_history_plugin::account_history_plugin( application* app )
+   : plugin( app ), my( new detail::account_history_plugin_impl(*this) )
 {
    //ilog("Loading account history plugin" );
 }

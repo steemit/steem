@@ -30,6 +30,7 @@
 
 namespace steemit { namespace account_history {
 using namespace chain;
+using app::application;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -64,7 +65,7 @@ namespace detail
 class account_history_plugin : public steemit::app::plugin
 {
    public:
-      account_history_plugin();
+      account_history_plugin( application* app );
       virtual ~account_history_plugin();
 
       std::string plugin_name()const override;

@@ -29,11 +29,13 @@
 namespace steemit { namespace delayed_node {
 namespace detail { struct delayed_node_plugin_impl; }
 
+using app::application;
+
 class delayed_node_plugin : public steemit::app::plugin
 {
    std::unique_ptr<detail::delayed_node_plugin_impl> my;
 public:
-   delayed_node_plugin();
+   delayed_node_plugin( application* app );
    virtual ~delayed_node_plugin();
 
    std::string plugin_name()const override { return "delayed_node"; }

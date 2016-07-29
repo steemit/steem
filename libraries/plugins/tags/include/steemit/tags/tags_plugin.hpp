@@ -2,6 +2,7 @@
 
 #include <steemit/app/plugin.hpp>
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/comment_object.hpp>
 
 #include <graphene/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
@@ -13,6 +14,7 @@ namespace steemit { namespace tags {
 using namespace steemit::chain;
 using namespace boost::multi_index;
 
+using steemit::app::application;
 //
 // Plugins should #define their SPACE_ID's so plugins with
 // conflicting SPACE_ID assignments can be compiled into the
@@ -74,10 +76,11 @@ class  tag_object : public abstract_object<tag_object> {
        */
       fc::uint128_t     children_rshares2;
       asset             total_payout = asset( 0, SBD_SYMBOL );
+      comment_mode      mode;
 
-      account_id_type    author;
-      comment_id_type    parent;
-      comment_id_type    comment;
+      account_id_type   author;
+      comment_id_type   parent;
+      comment_id_type   comment;
 };
 
 
@@ -93,6 +96,7 @@ struct by_parent_children; /// all top level posts with the most discussion (rep
 struct by_parent_hot;
 struct by_author_parent_created;  /// all blog posts by author with tag
 struct by_author_comment;
+struct by_mode_parent_children_rshares2;
 struct by_comment;
 struct by_tag;
 
@@ -172,6 +176,16 @@ typedef multi_index_container<
                member<object, object_id_type, &object::id >
             >,
             composite_key_compare< std::less<string>, std::less<comment_id_type>, std::greater< fc::uint128_t >, std::less< object_id_type > >
+      >,
+      ordered_unique< tag< by_mode_parent_children_rshares2 >,
+            composite_key< tag_object,
+               member< tag_object, string, &tag_object::tag >,
+               member< tag_object, comment_mode, &tag_object::mode >,
+               member< tag_object, comment_id_type, &tag_object::parent >,
+               member< tag_object, fc::uint128_t, &tag_object::children_rshares2 >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less<string>, std::less< comment_mode >, std::less<comment_id_type>, std::greater< fc::uint128_t >, std::less< object_id_type > >
       >,
       ordered_unique< tag< by_cashout >,
             composite_key< tag_object,
@@ -340,7 +354,7 @@ struct comment_metadata {
 class tags_plugin : public steemit::app::plugin
 {
    public:
-      tags_plugin();
+      tags_plugin( application* app );
       virtual ~tags_plugin();
 
       std::string plugin_name()const override;

@@ -34,6 +34,7 @@
 
 namespace steemit { namespace private_message {
 using namespace chain;
+using app::application;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -95,16 +96,6 @@ struct extended_message_object : public message_object {
    message_body   message;
 };
 
-struct private_message_operation {
-    string             from;
-    string             to;
-    public_key_type    from_memo_key;
-    public_key_type    to_memo_key;
-    uint64_t           sent_time; /// used as seed to secret generation
-    uint32_t           checksum = 0;
-    vector<char>       encrypted_message;
-};
-
 struct by_to_date;
 struct by_from_date;
 struct by_id;
@@ -115,7 +106,7 @@ typedef multi_index_container<
    message_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
-      ordered_unique< tag< by_to_date >, 
+      ordered_unique< tag< by_to_date >,
             composite_key< message_object,
                member< message_object, string, &message_object::to >,
                member< message_object, time_point_sec, &message_object::receive_time >,
@@ -123,7 +114,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
       >,
-      ordered_unique< tag< by_from_date >, 
+      ordered_unique< tag< by_from_date >,
             composite_key< message_object,
                member< message_object, string, &message_object::from >,
                member< message_object, time_point_sec, &message_object::receive_time >,
@@ -141,12 +132,12 @@ typedef graphene::db::generic_index< message_object, message_multi_index_type> p
 /**
  *   This plugin scans the blockchain for custom operations containing a valid message and authorized
  *   by the posting key.
- *  
+ *
  */
 class private_message_plugin : public steemit::app::plugin
 {
    public:
-      private_message_plugin();
+      private_message_plugin( application* app );
       virtual ~private_message_plugin();
 
       std::string plugin_name()const override;
@@ -155,7 +146,6 @@ class private_message_plugin : public steemit::app::plugin
          boost::program_options::options_description& cfg) override;
       virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
       virtual void plugin_startup() override;
-
 
       flat_map<string,string> tracked_accounts()const; /// map start_range to end_range
 
@@ -172,7 +162,7 @@ class private_message_api : public std::enable_shared_from_this<private_message_
       void on_api_startup(){
          wlog( "on private_message api startup" );
       }
-      
+
       /**
        *
        */
@@ -192,7 +182,3 @@ FC_API( steemit::private_message::private_message_api, (get_inbox)(get_outbox) )
 FC_REFLECT( steemit::private_message::message_body, (thread_start)(subject)(body)(json_meta)(cc) );
 FC_REFLECT_DERIVED( steemit::private_message::message_object, (graphene::db::object), (from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
 FC_REFLECT_DERIVED( steemit::private_message::extended_message_object, (steemit::private_message::message_object), (message) );
-
-FC_REFLECT( steemit::private_message::private_message_operation, (from)(to)(from_memo_key)(to_memo_key)(sent_time)(checksum)(encrypted_message) );
-
-

@@ -18,11 +18,12 @@ namespace graphene { namespace db {
 } }
 
 namespace steemit { namespace plugin { namespace debug_node {
+using app::application;
 
 class debug_node_plugin : public steemit::app::plugin
 {
    public:
-      debug_node_plugin();
+      debug_node_plugin( application* app );
       virtual ~debug_node_plugin();
 
       virtual std::string plugin_name()const override;

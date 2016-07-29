@@ -24,6 +24,7 @@
 #include <steemit/witness/witness.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <graphene/time/time.hpp>
 

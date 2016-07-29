@@ -109,7 +109,6 @@ namespace steemit { namespace chain {
          time_point_sec  last_activity_payout;
          ///@}
 
-
          account_id_type get_id()const { return id; }
          /// This function should be used only when the account votes for a witness directly
          share_type      witness_vote_weight()const {

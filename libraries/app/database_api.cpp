@@ -85,8 +85,6 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       steemit::chain::database&                _db;
 
       boost::signals2::scoped_connection       _block_applied_connection;
-
-
 };
 
 void find_accounts( set<string>& accounts, const discussion& d ) {
@@ -167,13 +165,22 @@ void database_api_impl::cancel_all_subscriptions()
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-database_api::database_api( steemit::chain::database& db )
-   : my( new database_api_impl( db ) ) {}
-
 database_api::database_api( const steemit::app::api_context& ctx )
-   : database_api( *ctx.app.chain_database() ) {}
+   : my( new database_api_impl( *ctx.app.chain_database() ) )
+{
+   try
+   {
+      ctx.app.get_plugin( FOLLOW_PLUGIN_NAME );
+      _follow_api = new steemit::follow::follow_api( ctx );
+   }
+   catch( fc::assert_exception ) {}
+}
 
-database_api::~database_api() {}
+database_api::~database_api()
+{
+   if( _follow_api )
+      delete _follow_api;
+}
 
 database_api_impl::database_api_impl( steemit::chain::database& db ):_db(db)
 {
@@ -869,6 +876,11 @@ void database_api::set_pending_payout( discussion& d )const
 
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
+
+      if( _follow_api )
+      {
+         d.author_reputation = _follow_api->get_account_reputations( d.author, 1 )[0].reputation;
+      }
    }
 
    if( d.body.size() > 1024*128 )
@@ -985,7 +997,8 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
                                                   const Index& tidx, StartItr tidx_itr,
-                                                  const std::function<bool(const comment_object&)>& filter  )const
+                                                  const std::function<bool(const comment_object&)>& filter,
+                                                  const std::function<bool(const comment_object&)>& exit  )const
 {
    idump((query));
    vector<discussion> result;
@@ -1014,6 +1027,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
 
       if( filter( result.back() ) )
          result.pop_back();
+      else if( exit( result.back() ) )
+      {
+         result.pop_back();
+         break;
+      }
       else
          --count;
       } catch ( const fc::exception& e ) {
@@ -1037,13 +1055,22 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    auto tag = fc::to_lower( query.tag );
    auto parent = get_parent( query );
 
-   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_children_rshares2>();
-   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::uint128_t::max_value() )  );
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, filter_default, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
 }
 
+vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
 
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, second_payout, parent, fc::uint128_t::max_value() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr, filter_default, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
+}
 
 vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const {
    query.validate();

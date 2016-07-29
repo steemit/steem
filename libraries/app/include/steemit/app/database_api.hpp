@@ -85,7 +85,6 @@ struct discussion_query {
 class database_api
 {
    public:
-      database_api(steemit::chain::database& db);
       database_api(const steemit::app::api_context& ctx);
       ~database_api();
 
@@ -302,6 +301,7 @@ class database_api
 
       ///@{ tags API
       vector<discussion> get_discussions_by_trending( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_trending30( const discussion_query& query )const;
       vector<discussion> get_discussions_by_created( const discussion_query& query )const;
       vector<discussion> get_discussions_by_active( const discussion_query& query )const;
       vector<discussion> get_discussions_by_cashout( const discussion_query& query )const;
@@ -370,16 +370,22 @@ class database_api
       void set_url( discussion& d )const;
       discussion get_discussion( comment_id_type )const;
 
+      static bool filter_default( const comment_object& c ) { return false; }
+      static bool exit_default( const comment_object& c ) { return false; }
+
       template<typename Index, typename StartItr>
       vector<discussion> get_discussions( const discussion_query& q,
                                           const string& tag,
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr,
-                                          const std::function<bool(const comment_object&)>& filter = []( const comment_object& ){ return false; }  )const;
+                                          const std::function<bool(const comment_object&)>& filter = &database_api::filter_default,
+                                          const std::function<bool(const comment_object&)>& exit = &database_api::exit_default )const;
       comment_id_type get_parent( const discussion_query& q )const;
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;
-      std::shared_ptr< database_api_impl > my;
+
+      steemit::follow::follow_api*           _follow_api = nullptr;
+      std::shared_ptr< database_api_impl >   my;
 };
 
 } }
@@ -401,6 +407,7 @@ FC_API(steemit::app::database_api,
    // tags
    (get_trending_tags)
    (get_discussions_by_trending)
+   (get_discussions_by_trending30)
    (get_discussions_by_created)
    (get_discussions_by_active)
    (get_discussions_by_cashout)

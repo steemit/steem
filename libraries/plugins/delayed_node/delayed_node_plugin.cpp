@@ -49,8 +49,8 @@ struct delayed_node_plugin_impl {
 };
 }
 
-delayed_node_plugin::delayed_node_plugin()
-   : my(new detail::delayed_node_plugin_impl)
+delayed_node_plugin::delayed_node_plugin( application* app )
+   : plugin( app ), my(new detail::delayed_node_plugin_impl)
 {}
 
 delayed_node_plugin::~delayed_node_plugin()

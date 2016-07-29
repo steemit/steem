@@ -24,13 +24,22 @@
 #pragma once
 
 #include <steemit/app/application.hpp>
+#include <steemit/chain/evaluator.hpp>
 
 #include <boost/program_options.hpp>
+
 #include <fc/io/json.hpp>
+#include <fc/static_variant.hpp>
+#include <fc/unique_ptr.hpp>
+#include <fc/vector.hpp>
 
 #include <memory>
 
 namespace steemit { namespace app {
+
+using fc::static_variant;
+using fc::unique_ptr;
+using std::vector;
 
 class abstract_plugin
 {
@@ -95,11 +104,10 @@ class abstract_plugin
 /**
  * Provides basic default implementations of abstract_plugin functions.
  */
-
 class plugin : public abstract_plugin
 {
    public:
-      plugin();
+      plugin( application* app );
       virtual ~plugin() override;
 
       virtual std::string plugin_name()const override;
@@ -114,6 +122,7 @@ class plugin : public abstract_plugin
 
       chain::database& database() { return *app().chain_database(); }
       application& app()const { assert(_app); return *_app; }
+
    protected:
       graphene::net::node& p2p_node() { return *app().p2p_node(); }
 
@@ -141,6 +150,22 @@ if( options.count(name) ) { \
 
 #define STEEMIT_DEFINE_PLUGIN( plugin_name, plugin_class ) \
    namespace steemit { namespace plugin { \
-   std::shared_ptr< steemit::app::abstract_plugin > create_ ## plugin_name ## _plugin()  \
-   { return std::make_shared< plugin_class >(); } \
+   std::shared_ptr< steemit::app::abstract_plugin > create_ ## plugin_name ## _plugin( app::application* app )  \
+   { return std::make_shared< plugin_class >( app ); } \
    } }
+
+#define DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )                     \
+class X ## _evaluator : public steemit::chain::evaluator< X ## _evaluator, OPERATION > \
+{                                                                           \
+   public:                                                                  \
+      typedef X ## _operation operation_type;                               \
+                                                                            \
+      X ## _evaluator( database& db, PLUGIN* plugin )                       \
+         : steemit::chain::evaluator< X ## _evaluator, OPERATION >( db ),   \
+           _plugin( plugin )                                                \
+      {}                                                                    \
+                                                                            \
+      void do_apply( const X ## _operation& o );                            \
+                                                                            \
+      PLUGIN* _plugin;                                                      \
+};

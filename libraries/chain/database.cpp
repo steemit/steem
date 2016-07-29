@@ -10,7 +10,6 @@
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/transaction_evaluation_state.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
 #include <graphene/db/flat_index.hpp>
@@ -62,8 +61,21 @@ inline u256 to256( const fc::uint128& t ) {
    return v;
 }
 
+class database_impl
+{
+   public:
+      database_impl( database& self );
+
+      database&                              _self;
+      evaluator_registry< operation >        _evaluator_registry;
+};
+
+database_impl::database_impl( database& self )
+   : _self(self), _evaluator_registry(self)
+{ }
 
 database::database()
+   : _my( new database_impl(*this) )
 {
    initialize_indexes();
    initialize_evaluators();
@@ -1881,6 +1893,12 @@ void database::cashout_comment_helper( const comment_object& comment )
             else
                c.cashout_time = fc::time_point_sec::maximum();
          }
+
+         if( calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() )
+            c.mode = archived;
+         else
+            c.mode = second_payout;
+
          c.last_payout = head_block_time();
       } );
 
@@ -2328,39 +2346,52 @@ uint32_t database::last_non_undoable_block_num() const
 
 void database::initialize_evaluators()
 {
-    _operation_evaluators.resize(255);
+    _my->_evaluator_registry.register_evaluator<vote_evaluator>();
+    _my->_evaluator_registry.register_evaluator<comment_evaluator>();
+    _my->_evaluator_registry.register_evaluator<comment_options_evaluator>();
+    _my->_evaluator_registry.register_evaluator<delete_comment_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_to_vesting_evaluator>();
+    _my->_evaluator_registry.register_evaluator<withdraw_vesting_evaluator>();
+    _my->_evaluator_registry.register_evaluator<set_withdraw_vesting_route_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_create_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_update_evaluator>();
+    _my->_evaluator_registry.register_evaluator<witness_update_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_witness_vote_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_witness_proxy_evaluator>();
+    _my->_evaluator_registry.register_evaluator<custom_evaluator>();
+    _my->_evaluator_registry.register_evaluator<custom_json_evaluator>();
+    _my->_evaluator_registry.register_evaluator<pow_evaluator>();
+    _my->_evaluator_registry.register_evaluator<report_over_production_evaluator>();
 
-    register_evaluator<vote_evaluator>();
-    register_evaluator<comment_evaluator>();
-    register_evaluator<comment_options_evaluator>();
-    register_evaluator<delete_comment_evaluator>();
-    register_evaluator<transfer_evaluator>();
-    register_evaluator<transfer_to_vesting_evaluator>();
-    register_evaluator<withdraw_vesting_evaluator>();
-    register_evaluator<set_withdraw_vesting_route_evaluator>();
-    register_evaluator<account_create_evaluator>();
-    register_evaluator<account_update_evaluator>();
-    register_evaluator<witness_update_evaluator>();
-    register_evaluator<account_witness_vote_evaluator>();
-    register_evaluator<account_witness_proxy_evaluator>();
-    register_evaluator<custom_evaluator>();
-    register_evaluator<custom_json_evaluator>();
-    register_evaluator<pow_evaluator>();
-    register_evaluator<report_over_production_evaluator>();
+    _my->_evaluator_registry.register_evaluator<feed_publish_evaluator>();
+    _my->_evaluator_registry.register_evaluator<convert_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_create_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_create2_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_cancel_evaluator>();
+    _my->_evaluator_registry.register_evaluator<challenge_authority_evaluator>();
+    _my->_evaluator_registry.register_evaluator<prove_authority_evaluator>();
+    _my->_evaluator_registry.register_evaluator<request_account_recovery_evaluator>();
+    _my->_evaluator_registry.register_evaluator<recover_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<change_recovery_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_transfer_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_dispute_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_release_evaluator>();
+}
 
-    register_evaluator<feed_publish_evaluator>();
-    register_evaluator<convert_evaluator>();
-    register_evaluator<limit_order_create_evaluator>();
-    register_evaluator<limit_order_create2_evaluator>();
-    register_evaluator<limit_order_cancel_evaluator>();
-    register_evaluator<challenge_authority_evaluator>();
-    register_evaluator<prove_authority_evaluator>();
-    register_evaluator<request_account_recovery_evaluator>();
-    register_evaluator<recover_account_evaluator>();
-    register_evaluator<change_recovery_account_evaluator>();
-    register_evaluator<escrow_transfer_evaluator>();
-    register_evaluator<escrow_dispute_evaluator>();
-    register_evaluator<escrow_release_evaluator>();
+void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
+{
+   bool inserted = _custom_json_evaluators.emplace( id, registry ).second;
+   // This assert triggering means we're mis-configured (multiple registrations of custom JSON evaluator for same ID)
+   FC_ASSERT( inserted );
+}
+
+std::shared_ptr< generic_json_evaluator_registry > database::get_custom_json_evaluator( const std::string& id )
+{
+   auto it = _custom_json_evaluators.find( id );
+   if( it != _custom_json_evaluators.end() )
+      return it->second;
+   return std::shared_ptr< generic_json_evaluator_registry >();
 }
 
 void database::initialize_indexes()
@@ -2410,8 +2441,6 @@ void database::init_genesis( uint64_t init_supply )
          database& db;
          uint32_t old_flags;
       } inhibitor(*this);
-
-      transaction_evaluation_state genesis_eval_state(this);
 
       flat_index<block_summary_object>& bsi = get_mutable_index_type< flat_index<block_summary_object> >();
       bsi.resize(0xffff+1);
@@ -2743,8 +2772,6 @@ void database::_apply_transaction(const signed_transaction& trx)
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
-   transaction_evaluation_state eval_state(this);
-   eval_state._trx = &trx;
 
    if( !(skip & (skip_transaction_signatures | skip_authority_check) ) )
    {
@@ -2810,7 +2837,7 @@ void database::_apply_transaction(const signed_transaction& trx)
    _current_op_in_trx = 0;
    for( const auto& op : trx.operations )
    { try {
-      apply_operation(eval_state, op);
+      apply_operation(op);
       ++_current_op_in_trx;
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
@@ -2818,21 +2845,12 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
-{ try {
-   int i_which = op.which();
-   uint64_t u_which = uint64_t( i_which );
-   if( i_which < 0 )
-      assert( "Negative operation tag" && false );
-   if( u_which >= _operation_evaluators.size() )
-      assert( "No registered evaluator for this operation" && false );
-   unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
-   if( !eval )
-      assert( "No registered evaluator for this operation" && false );
+void database::apply_operation(const operation& op)
+{
    push_applied_operation( op );
-   eval->evaluate( eval_state, op, true );
+   _my->_evaluator_registry.get_evaluator( op ).apply( op );
    notify_post_apply_operation( op );
-} FC_CAPTURE_AND_RETHROW(  ) }
+}
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {

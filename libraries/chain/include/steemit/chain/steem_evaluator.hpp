@@ -4,13 +4,6 @@
 
 namespace steemit{ namespace chain {
 
-#define DEFINE_EVALUATOR( X ) \
-class X ## _evaluator : public evaluator< X ## _evaluator > { public: \
-   typedef X ## _operation operation_type; \
-   void do_evaluate( const X ## _operation& o ){};  \
-   void do_apply( const X ## _operation& o ); \
-};
-
 DEFINE_EVALUATOR( account_create )
 DEFINE_EVALUATOR( account_update )
 DEFINE_EVALUATOR( transfer )
