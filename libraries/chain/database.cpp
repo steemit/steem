@@ -1893,6 +1893,12 @@ void database::cashout_comment_helper( const comment_object& comment )
             else
                c.cashout_time = fc::time_point_sec::maximum();
          }
+
+         if( calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() )
+            c.mode = archived;
+         else
+            c.mode = second_payout;
+
          c.last_payout = head_block_time();
       } );
 

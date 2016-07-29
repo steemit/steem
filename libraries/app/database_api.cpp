@@ -978,7 +978,8 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
                                                   const Index& tidx, StartItr tidx_itr,
-                                                  const std::function<bool(const comment_object&)>& filter  )const
+                                                  const std::function<bool(const comment_object&)>& filter,
+                                                  const std::function<bool(const comment_object&)>& exit  )const
 {
    idump((query));
    vector<discussion> result;
@@ -1007,6 +1008,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
 
       if( filter( result.back() ) )
          result.pop_back();
+      else if( exit( result.back() ) )
+      {
+         result.pop_back();
+         break;
+      }
       else
          --count;
       } catch ( const fc::exception& e ) {
@@ -1030,13 +1036,22 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    auto tag = fc::to_lower( query.tag );
    auto parent = get_parent( query );
 
-   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_children_rshares2>();
-   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, fc::uint128_t::max_value() )  );
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, filter_default, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
 }
 
+vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
 
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, second_payout, parent, fc::uint128_t::max_value() )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr, filter_default, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
+}
 
 vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const {
    query.validate();
