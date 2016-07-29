@@ -412,6 +412,18 @@ namespace detail {
                                 std::vector<fc::uint160_t>& contained_transaction_message_ids) override
       { try {
 
+         if (sync_mode)
+            fc_ilog(fc::logger::get("sync"),
+                    "chain pushing sync block #${block_num} ${block_hash}, head is ${head}", 
+                    ("block_num", blk_msg.block.block_num())
+                    ("block_hash", blk_msg.block_id)
+                    ("head", _chain_db->head_block_num()));
+         else
+            fc_ilog(fc::logger::get("sync"),
+                    "chain pushing block #${block_num} ${block_hash}, head is ${head}", 
+                    ("block_num", blk_msg.block.block_num())
+                    ("block_hash", blk_msg.block_id)
+                    ("head", _chain_db->head_block_num()));
          if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
          {
             ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
@@ -442,9 +454,17 @@ namespace detail {
             return result;
          } catch ( const steemit::chain::unlinkable_block_exception& e ) {
             // translate to a graphene::net exception
+            fc_elog(fc::logger::get("sync"), 
+                    "Error when pushing block, current head block is ${head}:\n${e}", 
+                    ("e", e.to_detail_string())
+                    ("head", _chain_db->head_block_num()));
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
          } catch( const fc::exception& e ) {
+            fc_elog(fc::logger::get("sync"), 
+                    "Error when pushing block, current head block is ${head}:\n${e}", 
+                    ("e", e.to_detail_string())
+                    ("head", _chain_db->head_block_num()));
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             throw;
          }
@@ -452,6 +472,9 @@ namespace detail {
 
          if( !_is_finished_syncing && !sync_mode )
          {
+            fc_ilog(fc::logger::get("sync"), 
+                    "Finished syncing, head block is ${head}", 
+                    ("head", _chain_db->head_block_num()));
             _is_finished_syncing = true;
             _self->syncing_finished();
          }
