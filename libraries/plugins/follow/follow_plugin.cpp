@@ -61,7 +61,7 @@ struct pre_operation_visitor
 
    typedef void result_type;
 
-   template< typename T >___POSIX_C_DEPRECATED_STARTING_198808L
+   template< typename T >
    void operator()( const T& )const {}
 
    void operator()( const vote_operation& op )
