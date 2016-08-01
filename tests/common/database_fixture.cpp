@@ -40,7 +40,7 @@ clean_database_fixture::clean_database_fixture()
       if( arg == "--show-test-names" )
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
-   auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
+   auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >( &app );
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    boost::program_options::variables_map options;
@@ -48,7 +48,6 @@ clean_database_fixture::clean_database_fixture()
    open_database();
 
    // app.initialize();
-   ahplugin->plugin_set_app( &app );
    ahplugin->plugin_initialize( options );
 
    generate_block();
@@ -98,8 +97,7 @@ live_database_fixture::live_database_fixture()
       db.open( _chain_dir );
       graphene::time::now();
 
-      auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
-      ahplugin->plugin_set_app( &app );
+      auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >( &app );
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
 
       validate_database();
