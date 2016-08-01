@@ -948,9 +948,36 @@ asset database::create_sbd( const account_object& to_account, asset steem )
       {
          auto sbd = steem * median_price;
 
-         adjust_balance( to_account, sbd );
-         adjust_supply( -steem );
-         adjust_supply( sbd );
+         if( has_hardfork( STEEMIT_HARDFORK_0_13__230 ) )
+         {
+            const auto& gpo = get_dynamic_global_properties();
+            asset sbd_steem_supply = gpo.virtual_supply - gpo.current_supply;
+            asset target_sbd = asset( ( gpo.virtual_supply.amount * 2 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
+
+            if( steem + sbd_steem_supply > target_sbd )
+            {
+               asset to_steem = ( steem + sbd_steem_supply ) - target_sbd;
+               sbd = ( steem - to_steem ) * median_price;
+
+               adjust_balance( to_account, sbd );
+               adjust_balance( to_account, to_steem );
+               adjust_supply( to_steem - steem );
+               adjust_supply( sbd );
+            }
+            else
+            {
+               adjust_balance( to_account, sbd );
+               adjust_supply( -steem );
+               adjust_supply( sbd );
+            }
+         }
+         else
+         {
+            adjust_balance( to_account, sbd );
+            adjust_supply( -steem );
+            adjust_supply( sbd );
+         }
+
          return sbd;
       }
       else
@@ -2117,6 +2144,40 @@ void database::pay_liquidity_reward()
    }
 }
 
+void database::stabalize_sbd()
+{
+   if( !has_hardfork( STEEMIT_HARDFORK_0_13__230 ) ) return;
+
+   const auto& gpo = get_dynamic_global_properties();
+
+   if( gpo.current_supply.amount < ( gpo.virtual_supply.amount * 80 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT )
+   {
+      const auto& sbd_idx = get_index_type< account_index >().indices().get< by_smd_balance >();
+      auto itr = sbd_idx.begin();
+
+      auto median_price = get_feed_history().current_median_history;
+      asset net_sbd = asset(0, SBD_SYMBOL );
+      asset net_steem = asset( 0, STEEM_SYMBOL );
+
+      while( itr != sbd_idx.end() && itr->sbd_balance.amount > 0 )
+      {
+         auto from_sbd = asset( ( itr->sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto to_steem = from_sbd * median_price;
+
+         adjust_balance( *itr, -from_sbd );
+         adjust_balance( *itr, to_steem );
+
+         net_sbd -= from_sbd;
+         net_steem += to_steem;
+
+         ++itr;
+      }
+
+      adjust_supply( net_sbd );
+      adjust_supply( net_steem );
+   }
+}
+
 uint16_t database::get_activity_rewards_percent() const
 {
    return 0;
@@ -2623,6 +2684,7 @@ void database::_apply_block( const signed_block& next_block )
    process_comment_cashout();
    process_vesting_withdrawals();
    pay_liquidity_reward();
+   stabalize_sbd();
    update_virtual_supply();
 
    account_recovery_processing();
