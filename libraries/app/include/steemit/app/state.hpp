@@ -73,6 +73,7 @@ namespace steemit { namespace app {
       extended_account( const account_object& a ):account_object(a){}
 
       asset                              vesting_balance; /// convert vesting_shares to vesting steem
+      share_type                         reputation;
       map<uint64_t,operation_object>     transfer_history; /// transfer to/from vesting
       map<uint64_t,operation_object>     market_history; /// limit order / cancel / fill
       map<uint64_t,operation_object>     post_history;
@@ -162,7 +163,7 @@ namespace steemit { namespace app {
 
 FC_REFLECT_DERIVED( steemit::app::extended_account,
                    (steemit::chain::account_object),
-                   (vesting_balance)
+                   (vesting_balance)(reputation)
                    (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(posts)(feed)(blog)(recent_replies)(blog_category)(recommended) )
 
 

@@ -11,8 +11,9 @@ void follow_evaluator::do_apply( const follow_operation& o )
    static map< string, follow_type > follow_type_map = []()
    {
       map< string, follow_type > follow_map;
+      follow_map[ "undefined" ] = follow_type::undefined;
       follow_map[ "blog" ] = follow_type::blog;
-      follow_map[ "mute" ] = follow_type::mute;
+      follow_map[ "ignore" ] = follow_type::ignore;
 
       return follow_map;
    }();
@@ -29,14 +30,17 @@ void follow_evaluator::do_apply( const follow_operation& o )
          case blog:
             what.insert( blog );
             break;
-         case mute:
-            what.insert( mute );
+         case ignore:
+            what.insert( ignore );
             break;
          default:
-            ilog( "Encountered unknown option ${o}", ("o", target) );
+            //ilog( "Encountered unknown option ${o}", ("o", target) );
             break;
       }
    }
+
+   if( what.find( ignore ) != what.end() )
+      FC_ASSERT( what.find( blog ) == what.end(), "Cannot follow blog and ignore author at the same time" );
 
    if( itr == idx.end() )
    {
