@@ -2173,6 +2173,27 @@ void database::stabalize_sbd()
          ++itr;
       }
 
+      const auto& order_idx = get_index_type< limit_order_index >().indices().get< by_price >();
+      auto order_itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
+
+      while( order_itr != order_idx.end() && order_itr->sell_price.base.symbol == SBD_SYMBOL )
+      {
+         auto from_sbd = asset( ( order_itr->for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto to_steem = from_sbd * median_price;
+
+         adjust_balance( get_account( order_itr->seller ), to_steem );
+
+         modify( *order_itr, [&]( limit_order_object& lo )
+         {
+            lo.for_sale -= from_sbd.amount;
+         });
+
+         net_sbd -= from_sbd;
+         net_steem += to_steem;
+
+         ++order_itr;
+      }
+
       adjust_supply( net_sbd );
       adjust_supply( net_steem );
    }
