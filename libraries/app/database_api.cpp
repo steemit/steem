@@ -83,6 +83,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       std::function<void(const fc::variant&)> _block_applied_callback;
 
       steemit::chain::database&                _db;
+      steemit::follow::follow_api*             _follow_api = nullptr;
 
       boost::signals2::scoped_connection       _block_applied_connection;
 };
@@ -172,6 +173,7 @@ database_api::database_api( const steemit::app::api_context& ctx )
    {
       ctx.app.get_plugin( FOLLOW_PLUGIN_NAME );
       _follow_api = new steemit::follow::follow_api( ctx );
+      my->_follow_api = _follow_api;
    }
    catch( fc::assert_exception ) {}
 }
@@ -342,6 +344,12 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
       if ( itr != idx.end() )
       {
          results.push_back( *itr );
+
+         if( _follow_api )
+         {
+            results.back().reputation = _follow_api->get_account_reputations( itr->name, 1 )[0].reputation;
+         }
+
          auto vitr = vidx.lower_bound( boost::make_tuple( itr->get_id(), witness_id_type() ) );
          while( vitr != vidx.end() && vitr->account == itr->get_id() ) {
             results.back().witness_votes.insert(vitr->witness(_db).owner);
@@ -1299,6 +1307,10 @@ state database_api::get_state( string path )const
    if( part[0].size() && part[0][0] == '@' ) {
       auto acnt = part[0].substr(1);
       _state.accounts[acnt] = my->_db.get_account(acnt);
+      if( _follow_api )
+      {
+         _state.accounts[acnt].reputation = _follow_api->get_account_reputations( acnt, 1 )[0].reputation;
+      }
       auto& eacnt = _state.accounts[acnt];
       if( part[1] == "transfers" ) {
          auto history = get_account_history( acnt, uint64_t(-1), 1000 );
@@ -1501,6 +1513,10 @@ state database_api::get_state( string path )const
    {
       _state.accounts.erase("");
       _state.accounts[a] = my->_db.get_account( a );
+      if( _follow_api )
+      {
+         _state.accounts[a].reputation = _follow_api->get_account_reputations( a, 1 )[0].reputation;
+      }
    }
    for( auto& d : _state.content ) {
       d.second.active_votes = get_active_votes( d.second.author, d.second.permlink );
