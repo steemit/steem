@@ -7,6 +7,6 @@
 
 namespace steemit { namespace private_message {
 
-DEFINE_PLUGIN_EVALUATOR( private_message_plugin, steemit::private_message::operation, private_message )
+DEFINE_PLUGIN_EVALUATOR( private_message_plugin, steemit::private_message::private_message_plugin_operation, private_message )
 
 } }

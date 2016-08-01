@@ -59,7 +59,7 @@ namespace steemit { namespace app {
          template<typename PluginType>
          std::shared_ptr<PluginType> register_plugin()
          {
-            auto plug = std::make_shared<PluginType>();
+            auto plug = std::make_shared<PluginType>( this );
             register_abstract_plugin( plug );
             return plug;
          }

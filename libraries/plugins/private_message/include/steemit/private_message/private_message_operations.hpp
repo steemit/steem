@@ -23,11 +23,11 @@ struct private_message_operation : public steemit::chain::base_operation
     std::vector<char>                  encrypted_message;
 };
 
-typedef fc::static_variant< private_message_operation > operation;
+typedef fc::static_variant< private_message_operation > private_message_plugin_operation;
 
 } }
 
 FC_REFLECT( steemit::private_message::private_message_operation, (from)(to)(from_memo_key)(to_memo_key)(sent_time)(checksum)(encrypted_message) )
 
-DECLARE_OPERATION_TYPE( steemit::private_message::operation )
-FC_REFLECT_TYPENAME( steemit::private_message::operation )
+DECLARE_OPERATION_TYPE( steemit::private_message::private_message_plugin_operation )
+FC_REFLECT_TYPENAME( steemit::private_message::private_message_plugin_operation )
