@@ -89,7 +89,7 @@ struct pre_operation_visitor
             });
          }
       }
-      FC_CAPTURE_AND_RETHROW()
+      catch( const fc::exception& e ) {}
    }
 };
 
@@ -184,7 +184,7 @@ struct on_operation_visitor
             ++itr;
          }
       }
-      FC_CAPTURE_AND_RETHROW()
+      catch( const fc::exception& e ) {}
    }
 
    void operator()( const vote_operation& op )const
@@ -235,7 +235,7 @@ struct on_operation_visitor
             });
          }
       }
-      FC_CAPTURE_AND_RETHROW()
+      catch( const fc::exception& e ) {}
    }
 };
 
