@@ -893,7 +893,7 @@ void database_api::set_pending_payout( discussion& d )const
 
    if( d.body.size() > 1024*128 )
       d.body = "body pruned due to size";
-   if( d.parent_author.size() > 0 && d.body.size() > 1024*16 ) 
+   if( d.parent_author.size() > 0 && d.body.size() > 1024*16 )
       d.body = "comment pruned due to size";
 
    set_url(d);
@@ -1066,7 +1066,7 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, filter_default, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
 }
 
 vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
@@ -1077,7 +1077,7 @@ vector<discussion> database_api::get_discussions_by_trending30( const discussion
    const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, second_payout, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, filter_default, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
 }
 
 vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const {
@@ -1354,6 +1354,10 @@ state database_api::get_state( string path )const
         for( const auto& reply : replies ) {
            auto reply_ref = reply.author+"/"+reply.permlink;
            _state.content[ reply_ref ] = reply;
+           if( _follow_api )
+           {
+              _state.accounts[ reply_ref ].reputation = _follow_api->get_account_reputations( reply.author, 1 )[0].reputation;
+           }
            eacnt.recent_replies->push_back( reply_ref );
         }
       } else if( part[1] == "posts" ) {
@@ -1423,6 +1427,19 @@ state database_api::get_state( string path )const
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
+         didx.trending.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
+   else if( part[0] == "trending30" )
+   {
+      auto trending_disc = get_discussions_by_trending30( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc )
+      {
+         auto key = d.author + "/" + d.permlink;
          didx.trending.push_back( key );
          if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);

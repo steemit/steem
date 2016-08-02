@@ -3563,6 +3563,7 @@ void database::apply_hardfork( uint32_t hardfork )
                      modify( *itr, [&]( comment_object & c )
                      {
                         c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+                        c.mode = first_payout;
                      });
                   }
                   // Has been paid out, needs to be on second cashout window
@@ -3571,6 +3572,7 @@ void database::apply_hardfork( uint32_t hardfork )
                      modify( *itr, [&]( comment_object& c )
                      {
                         c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                        c.mode = second_payout;
                      });
                   }
                }

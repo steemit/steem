@@ -99,6 +99,7 @@ struct operation_visitor {
           obj.children_rshares2 = comment.children_rshares2;
           obj.hot               = hot;
           obj.total_payout      = comment.total_payout_value;
+          obj.mode              = comment.mode;
       });
       add_stats( current, stats );
    }
@@ -126,6 +127,7 @@ struct operation_visitor {
           obj.total_payout      = comment.total_payout_value;
           obj.author            = author;
           obj.net_votes         = comment.net_votes;
+          obj.mode              = comment.mode;
       });
       add_stats( tag_obj, get_stats( tag ) );
    }
@@ -185,7 +187,7 @@ struct operation_visitor {
       meta.tags = lower_tags; /// TODO: std::move???
       if( meta.tags.size() > 7 ) {
          //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
-         if( safe_for_work ) 
+         if( safe_for_work )
             meta.tags = set<string>({"", c.parent_permlink});
          else
             meta.tags.clear();
