@@ -1373,20 +1373,18 @@ state database_api::get_state( string path )const
               ++itr;
               ++count;
            }
-      } else if( part[1].size() == 0 || part[1] == "feed" ) {
-         const auto& fidxs = my->_db.get_index_type<follow::feed_index>().indices();
-         const auto& fidx = fidxs.get<steemit::follow::by_account>();
+      } else if( part[1].size() == 0 || part[1] == "feed" )
+      {
+         if( _follow_api )
+         {
+            auto feed = _follow_api->get_feed_entries( eacnt.name, 0, 20 );
 
-         auto itr = fidx.lower_bound( eacnt.id );
-         int count = 0;
-         while( itr != fidx.end() && itr->account == eacnt.id && count < 100 ) {
-            const auto& c = itr->comment( my->_db );
-            const auto link = c.author + "/" + c.permlink;
-            _state.content[link] = c;
-            eacnt.feed->push_back( link );
-            set_pending_payout( _state.content[link] );
-            ++itr;
-            ++count;
+            for( auto f: feed )
+            {
+               const auto link = f.author + "/" + f.permlink;
+               _state.content[ link ] = my->_db.get_comment( f.author, f.permlink );
+               set_pending_payout( _state.content[ link ] );
+            }
          }
       }
    }

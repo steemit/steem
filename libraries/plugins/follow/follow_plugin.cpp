@@ -61,27 +61,26 @@ struct pre_operation_visitor
 
    typedef void result_type;
 
-   template< typename T >___POSIX_C_DEPRECATED_STARTING_198808L
+   template< typename T >
    void operator()( const T& )const {}
 
    void operator()( const vote_operation& op )
    {
       try
       {
+
          auto& db = _plugin.database();
          const auto& c = db.get_comment( op.author, op.permlink );
 
          if( c.mode != first_payout ) return;
 
-         const auto& a = db.get_account( op.voter );
-
          const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
-         auto cv = cv_idx.find( boost::make_tuple( c.id, a.id ) );
+         auto cv = cv_idx.find( std::make_tuple( c.id, db.get_account( op.voter ).id ) );
 
          if( cv != cv_idx.end() )
          {
             const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
-            auto rep = rep_idx.find( cv->voter );
+            auto rep = rep_idx.find( db.get_account( op.author ).id );
 
             db.modify( *rep, [&]( reputation_object& r )
             {
@@ -206,6 +205,7 @@ struct on_operation_visitor
          auto voter = rep_idx.find( voter_id );
          auto rep = rep_idx.find( author_id );
 
+         // Rules are a plugin, do not effect consensus, and are subject to change.
          // Rule #1: Must have non-negative reputation to effect another user's reputation
          if( voter != rep_idx.end() )
             FC_ASSERT( voter->reputation >= 0 );
