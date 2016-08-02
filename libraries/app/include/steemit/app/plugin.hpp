@@ -77,13 +77,6 @@ class abstract_plugin
       virtual void plugin_shutdown() = 0;
 
       /**
-       * @brief Register the application instance with the plugin.
-       *
-       * This is called by the framework to set the application.
-       */
-      virtual void plugin_set_app( application* a ) = 0;
-
-      /**
        * @brief Fill in command line parameters used by the plugin.
        *
        * @param command_line_options All options this plugin supports taking on the command-line
@@ -114,7 +107,6 @@ class plugin : public abstract_plugin
       virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
-      virtual void plugin_set_app( application* app ) override;
       virtual void plugin_set_program_options(
          boost::program_options::options_description& command_line_options,
          boost::program_options::options_description& config_file_options

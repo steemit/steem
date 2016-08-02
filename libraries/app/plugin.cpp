@@ -58,12 +58,6 @@ void plugin::plugin_shutdown()
    return;
 }
 
-void plugin::plugin_set_app( application* app )
-{
-   _app = app;
-   return;
-}
-
 void plugin::plugin_set_program_options(
    boost::program_options::options_description& command_line_options,
    boost::program_options::options_description& config_file_options

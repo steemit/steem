@@ -952,8 +952,6 @@ void application::shutdown()
 
 void application::register_abstract_plugin( std::shared_ptr< abstract_plugin > plug )
 {
-   plug->plugin_set_app(this);
-
    boost::program_options::options_description plugin_cli_options("Options for plugin " + plug->plugin_name()), plugin_cfg_options;
    plug->plugin_set_program_options(plugin_cli_options, plugin_cfg_options);
    if( !plugin_cli_options.options().empty() )
