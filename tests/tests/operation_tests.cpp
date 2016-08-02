@@ -674,7 +674,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test reduced power for quick voting" );
 
-         old_voting_power = alice.voting_power;
+         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+
+         old_voting_power = db.get_account( "alice" ).voting_power;
 
          comment_op.author = "bob";
          comment_op.permlink = "foo";
@@ -699,17 +701,17 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          const auto& bob_comment = db.get_comment( "bob", "foo" );
          itr = vote_idx.find( std::make_tuple( bob_comment.id, alice.id ) );
 
-         BOOST_REQUIRE_EQUAL( alice.voting_power, old_voting_power - ( old_voting_power * STEEMIT_100_PERCENT / ( 400 * STEEMIT_100_PERCENT ) + 1 ) );
-         BOOST_REQUIRE_EQUAL( bob_comment.net_rshares.value, alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEMIT_100_PERCENT );
+         BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).voting_power, old_voting_power - ( old_voting_power * STEEMIT_100_PERCENT / ( 400 * STEEMIT_100_PERCENT ) + 1 ) );
+         BOOST_REQUIRE_EQUAL( bob_comment.net_rshares.value, alice.vesting_shares.amount.value * ( old_voting_power - db.get_account( "alice" ).voting_power ) / STEEMIT_100_PERCENT );
          BOOST_REQUIRE( bob_comment.cashout_time == db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test payout time extension on vote" );
 
-         uint128_t old_cashout_time = alice_comment.cashout_time.sec_since_epoch();
-         old_voting_power = bob.voting_power;
-         auto old_abs_rshares = alice_comment.abs_rshares.value;
+         uint128_t old_cashout_time = db.get_comment( "alice", "foo" ).cashout_time.sec_since_epoch();
+         old_voting_power = db.get_account( "bob" ).voting_power;
+         auto old_abs_rshares = db.get_comment( "alice", "foo" ).abs_rshares.value;
 
          generate_blocks( db.head_block_time() + fc::seconds( ( STEEMIT_CASHOUT_WINDOW_SECONDS / 2 ) ), true );
 
@@ -813,6 +815,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test increasing vote rshares" );
 
+         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+
          auto new_alice = db.get_account( "alice" );
          auto alice_bob_vote = vote_idx.find( std::make_tuple( new_bob_comment.id, new_alice.id ) );
          auto old_vote_rshares = alice_bob_vote->rshares;
@@ -849,10 +853,13 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test decreasing vote rshares" );
 
+         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
+
          old_vote_rshares = new_rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
          old_abs_rshares = new_bob_comment.abs_rshares.value;
          old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
+         new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
          used_power = ( uint64_t( STEEMIT_1_PERCENT ) * 75 * uint64_t( alice_voting_power ) ) / STEEMIT_100_PERCENT;
          used_power = ( used_power / 200 ) + 1;
          alice_voting_power -= used_power;
@@ -877,6 +884,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test changing a vote to 0 weight (aka: removing a vote)" );
+
+         generate_blocks( db.head_block_time() + STEEMIT_MIN_VOTE_INTERVAL_SEC );
 
          old_vote_rshares = -1 * new_rshares;
          old_net_rshares = new_bob_comment.net_rshares.value;
@@ -913,6 +922,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.signatures.clear();
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
+
          STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
          validate_database();
 
@@ -2137,6 +2147,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
@@ -3063,6 +3074,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Recovering bob's account with original owner auth and new secret" );
 
+      generate_blocks( db.head_block_time() + STEEMIT_OWNER_UPDATE_LIMIT );
+
       recover_account_operation recover;
       recover.account_to_recover = "bob";
       recover.new_owner_authority = request.new_owner_authority;
@@ -3076,7 +3089,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.sign( generate_private_key( "new_key" ), db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+      BOOST_REQUIRE( db.get_account("bob").owner == recover.new_owner_authority );
 
 
       BOOST_TEST_MESSAGE( "Creating new recover request for a bogus key" );
@@ -3093,6 +3106,8 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Testing failure when bob does not have new authority" );
 
+      generate_blocks( db.head_block_time() + STEEMIT_OWNER_UPDATE_LIMIT );
+
       recover.new_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
 
       tx.operations.clear();
@@ -3102,7 +3117,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
       tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
-      BOOST_REQUIRE( bob.owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+      BOOST_REQUIRE( db.get_account("bob").owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
 
       BOOST_TEST_MESSAGE( "Testing failure when bob does not have old authority" );
@@ -3117,7 +3132,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
       tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
-      BOOST_REQUIRE( bob.owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
+      BOOST_REQUIRE( db.get_account("bob").owner == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
 
       BOOST_TEST_MESSAGE( "Testing using the same old owner auth again for recovery" );
@@ -3133,7 +3148,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( bob.owner == recover.new_owner_authority );
+      BOOST_REQUIRE( db.get_account("bob").owner == recover.new_owner_authority );
 
       BOOST_TEST_MESSAGE( "Creating a recovery request that will expire" );
 

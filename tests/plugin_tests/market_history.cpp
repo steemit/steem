@@ -22,7 +22,6 @@ BOOST_AUTO_TEST_CASE( mh_test )
    {
       auto mh_plugin = app.register_plugin< market_history_plugin >();
       boost::program_options::variables_map options;
-      mh_plugin->plugin_set_app( &app );
       mh_plugin->plugin_initialize( options );
 
       ACTORS( (alice)(bob)(sam) );
