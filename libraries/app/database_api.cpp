@@ -1389,6 +1389,7 @@ state database_api::get_state( string path )const
          if( _follow_api )
          {
             auto feed = _follow_api->get_feed_entries( eacnt.name, 0, 20 );
+            eacnt.feed = vector<string>();
 
             for( auto f: feed )
             {
