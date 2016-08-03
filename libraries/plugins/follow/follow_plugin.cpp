@@ -84,7 +84,7 @@ struct pre_operation_visitor
 
             db.modify( *rep, [&]( reputation_object& r )
             {
-               r.reputation -= cv->rshares;
+               r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
             });
          }
       }
@@ -183,7 +183,7 @@ struct on_operation_visitor
             ++itr;
          }
       }
-      catch( const fc::exception& e ) {}
+      FC_CAPTURE_AND_RETHROW()
    }
 
    void operator()( const vote_operation& op )const
@@ -193,7 +193,7 @@ struct on_operation_visitor
          auto& db = _plugin.database();
          const auto& comment = db.get_comment( op.author, op.permlink );
 
-         if( comment.mode != first_payout )
+         if( comment.mode == archived )
             return;
 
          const auto& voter_id = db.get_account( op.voter ).id;
@@ -207,35 +207,32 @@ struct on_operation_visitor
 
          // Rules are a plugin, do not effect consensus, and are subject to change.
          // Rule #1: Must have non-negative reputation to effect another user's reputation
-         if( voter != rep_idx.end() )
-            FC_ASSERT( voter->reputation >= 0 );
+         if( voter != rep_idx.end() && voter->reputation < 0 ) return;
 
          if( rep == rep_idx.end() )
          {
             // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
             // User rep is 0, so requires voter having positive rep
-            if( cv->rshares < 0 )
-               FC_ASSERT( voter != rep_idx.end() && voter->reputation > 0 );
+            if( cv->rshares < 0 && !( voter != rep_idx.end() && voter->reputation > 0 )) return;
 
-            db.create< reputation_object >( [&]( reputation_object& r )
+            auto rep_obj = db.create< reputation_object >( [&]( reputation_object& r )
             {
                r.account = author_id;
-               r.reputation = cv->rshares;
+               r.reputation = ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
             });
          }
          else
          {
             // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
-            if( cv->rshares < 0 )
-               FC_ASSERT( voter != rep_idx.end() && voter->reputation > rep->reputation );
+            if( cv->rshares < 0 && !( voter != rep_idx.end() && voter->reputation > rep->reputation ) ) return;
 
             db.modify( *rep, [&]( reputation_object& r )
             {
-               r.reputation += cv->rshares;
+               r.reputation += ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
             });
          }
       }
-      catch( const fc::exception& e ) {}
+      FC_CAPTURE_AND_RETHROW()
    }
 };
 
