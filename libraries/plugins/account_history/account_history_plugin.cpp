@@ -126,7 +126,7 @@ void account_history_plugin_impl::on_operation( const operation_object& op_obj )
 
    for( const auto& item : impacted ) {
       auto itr = _tracked_accounts.lower_bound( item );
-      if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && itr->second < item) ) {
+      if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) ) {
          op_obj.op.visit( operation_visitor(db, op_obj, new_obj, item) );
       }
    }
@@ -155,7 +155,7 @@ void account_history_plugin::plugin_set_program_options(
    )
 {
    cli.add_options()
-         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to)")
+         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to]")
          ;
    cfg.add(cli);
 }
@@ -168,7 +168,7 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
    database().add_index< primary_index< account_history_index  > >();
 
    typedef pair<string,string> pairstring;
-   LOAD_VALUE_SET(options, "tracked-accounts", my->_tracked_accounts, pairstring);
+   LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
 }
 
 void account_history_plugin::plugin_startup()
