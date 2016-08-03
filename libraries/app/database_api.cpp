@@ -1393,6 +1393,7 @@ state database_api::get_state( string path )const
             for( auto f: feed )
             {
                const auto link = f.author + "/" + f.permlink;
+               eacnt.feed->push_back( link );
                _state.content[ link ] = my->_db.get_comment( f.author, f.permlink );
                set_pending_payout( _state.content[ link ] );
             }
