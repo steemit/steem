@@ -839,7 +839,28 @@ void vote_evaluator::do_apply( const vote_operation& o )
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && db().calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
+   {
+#ifndef CLEAR_VOTES
+      const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+
+      if( itr == comment_vote_idx.end() )
+         db().create< comment_vote_object >( [&]( comment_vote_object& cvo )
+         {
+            cvo.voter = voter.id;
+            cvo.comment = comment.id;
+            cvo.vote_percent = o.weight;
+            cvo.last_update = db().head_block_time();
+         });
+      else
+         db().modify( *itr, [&]( comment_vote_object& cvo )
+         {
+            cvo.vote_percent = o.weight;
+            cvo.last_update = db().head_block_time();
+         });
+#endif
       return;
+   }
 
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );

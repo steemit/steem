@@ -900,6 +900,7 @@ void database::notify_post_apply_operation( const operation& op )
    obj.op_in_trx    = _current_op_in_trx;
    obj.virtual_op   = _current_virtual_op;
    obj.op           = op;
+
    post_apply_operation( obj );
 }
 
@@ -1917,7 +1918,9 @@ void database::cashout_comment_helper( const comment_object& comment )
          }
          else
          {
+#ifdef CLEAR_VOTES
             remove( cur_vote );
+#endif
          }
       }
    } FC_CAPTURE_AND_RETHROW( (comment) )
