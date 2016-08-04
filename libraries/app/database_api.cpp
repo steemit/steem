@@ -1151,7 +1151,47 @@ vector<discussion> database_api::get_discussions_by_hot( const discussion_query&
    return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ) { return c.net_rshares <= 0; } );
 }
 
+vector<discussion> database_api::get_discussions_by_feed( const discussion_query& query )const
+{
+   query.validate();
+   FC_ASSERT( _follow_api, "Node is not running the follow plugin" );
+   auto start_author = query.start_author ? *( query.start_author ) : "";
+   auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
 
+   const auto& account = my->_db.get_account( query.tag );
+
+   const auto& c_idx = my->_db.get_index_type< follow::feed_index >().indices().get< follow::by_comment >();
+   const auto& f_idx = my->_db.get_index_type< follow::feed_index >().indices().get< follow::by_feed >();
+   auto feed_itr = f_idx.lower_bound( account.id );
+
+   if( start_author.size() || start_permlink.size() )
+   {
+      const auto& comment = my->_db.get_comment( start_author, start_permlink );
+      auto start_c = c_idx.find( comment.id );
+      FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
+      feed_itr = f_idx.iterator_to( *start_c );
+   }
+
+   vector< discussion > result;
+
+   uint32_t count = query.limit;
+   while( count > 0 && feed_itr != f_idx.end() )
+   {
+      if( feed_itr->account != account.id )
+         break;
+      try
+      {
+         result.push_back( get_discussion( feed_itr->comment ) );
+      }
+      catch ( const fc::exception& e )
+      {
+         edump((e.to_detail_string()));
+      }
+
+      ++feed_itr;
+   }
+   return result;
+}
 
 vector<category_object> database_api::get_trending_categories( string after, uint32_t limit )const {
    limit = std::min( limit, uint32_t(100) );
