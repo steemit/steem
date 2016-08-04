@@ -62,7 +62,7 @@ namespace steemit { namespace app {
       asset                       total_pending_payout_value; ///< sbd including replies
       vector<vote_state>          active_votes;
       vector<string>              replies; ///< author/slug mapping
-      share_type                  author_reputation;
+      share_type                  author_reputation = 0;
    };
 
    /**
@@ -73,7 +73,7 @@ namespace steemit { namespace app {
       extended_account( const account_object& a ):account_object(a){}
 
       asset                              vesting_balance; /// convert vesting_shares to vesting steem
-      share_type                         reputation;
+      share_type                         reputation = 0;
       map<uint64_t,operation_object>     transfer_history; /// transfer to/from vesting
       map<uint64_t,operation_object>     market_history; /// limit order / cancel / fill
       map<uint64_t,operation_object>     post_history;
