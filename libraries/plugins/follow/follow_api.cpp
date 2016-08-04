@@ -138,7 +138,7 @@ vector< account_reputation > follow_api_impl::get_account_reputations( string lo
       account_reputation rep;
 
       rep.account = acc_itr->name;
-      rep.reputation = itr->reputation;
+      rep.reputation = itr != rep_idx.end() ? itr->reputation : 0;
 
       results.push_back( rep );
 
