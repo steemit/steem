@@ -166,7 +166,7 @@ namespace steemit { namespace app {
     void network_broadcast_api::broadcast_transaction(const signed_transaction& trx)
     {
        trx.validate();
-       FC_ASSERT( (graphene::time::now() - _app.chain_database().head_block_time()) <= fc::seconds(10), "blockchain potentially out of sync, try again later" )
+       FC_ASSERT( (graphene::time::now() - _app.chain_database()->head_block_time()) <= fc::seconds(10), "blockchain potentially out of sync, try again later" );
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }
