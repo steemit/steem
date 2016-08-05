@@ -1172,9 +1172,9 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
    }
 
    vector< discussion > result;
+   result.reserve( query.limit );
 
-   uint32_t count = query.limit;
-   while( count > 0 && feed_itr != f_idx.end() )
+   while( result.size() < query.limit && feed_itr != f_idx.end() )
    {
       if( feed_itr->account != account.id )
          break;
