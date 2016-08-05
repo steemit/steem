@@ -864,7 +864,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
          ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
-         ("bcd-trigger,b", bpo::value< string >()->default_value("[[0,10],[108,385]]"), "JSON list of [nblocks,nseconds] pairs, see doc/bcd-trigger.md")
+         ("bcd-trigger,b", bpo::value< string >()->default_value("[[0,10],[85,300]]"), "JSON list of [nblocks,nseconds] pairs, see doc/bcd-trigger.md")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
