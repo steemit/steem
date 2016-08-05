@@ -32,6 +32,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
+#include <graphene/time/time.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <fc/crypto/hex.hpp>
@@ -112,6 +113,7 @@ namespace steemit { namespace app {
     network_broadcast_api::network_broadcast_api(const api_context& a):_app(a.app)
     {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
+       _app.get_bcd_trigger( _bcd_trigger );
     }
 
     void network_broadcast_api::on_api_startup()
@@ -119,6 +121,35 @@ namespace steemit { namespace app {
        /// note cannot capture shared pointer here, because _applied_block_connection will never
        /// be freed if the lambda holds a reference to it.
        _applied_block_connection = connect_signal( _app.chain_database()->applied_block, *this, &network_broadcast_api::on_applied_block );
+    }
+
+    bool network_broadcast_api::check_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > >& bcd_trigger )
+    {
+       FC_ASSERT( bcd_trigger.size() < 16 );
+       std::shared_ptr< database > db = _app.chain_database();
+       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+       fc::uint128_t slots = db->get_dynamic_global_properties().recent_slots_filled;
+       fc::time_point_sec now = graphene::time::now();
+       for( const std::pair< uint32_t, uint32_t >& trig : bcd_trigger )
+       {
+          uint32_t now_slot = db->get_slot_at_time( now - fc::seconds(trig.second % STEEMIT_BLOCK_INTERVAL) );
+          if( now_slot <= dgpo.current_aslot )
+             continue;
+          fc::uint128_t temp_slots = slots;
+          temp_slots <<= (now_slot - dgpo.current_aslot);
+          fc::uint128_t mask = 1;
+          mask <<= (trig.second / STEEMIT_BLOCK_INTERVAL);
+          mask -= 1;
+          temp_slots &= mask;
+          if( temp_slots.popcount() <= trig.first )
+             return true;
+       }
+       return false;
+    }
+
+    void network_broadcast_api::set_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > >  bcd_trigger )
+    {
+       _bcd_trigger = bcd_trigger;
     }
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
@@ -165,6 +196,7 @@ namespace steemit { namespace app {
     void network_broadcast_api::broadcast_transaction(const signed_transaction& trx)
     {
        trx.validate();
+       FC_ASSERT( !check_bcd_trigger( _bcd_trigger ) );
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }
@@ -185,6 +217,7 @@ namespace steemit { namespace app {
 
     void network_broadcast_api::broadcast_transaction_with_callback(confirmation_callback cb, const signed_transaction& trx)
     {
+       FC_ASSERT( !check_bcd_trigger( _bcd_trigger ) );
        trx.validate();
        _callbacks[trx.id()] = cb;
        _callbacks_expirations[trx.expiration].push_back(trx.id());

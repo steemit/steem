@@ -117,6 +117,8 @@ namespace steemit { namespace app {
          /// Emitted when syncing finishes (is_finished_syncing will return true)
          boost::signals2::signal<void()> syncing_finished;
 
+         void get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result );
+
       private:
          std::shared_ptr<detail::application_impl> my;
 
