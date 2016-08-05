@@ -81,10 +81,13 @@ struct pre_operation_visitor
             const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
             auto rep = rep_idx.find( db.get_account( op.author ).id );
 
-            db.modify( *rep, [&]( reputation_object& r )
+            if( rep != rep_idx.end() )
             {
-               r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
-            });
+               db.modify( *rep, [&]( reputation_object& r )
+               {
+                  r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
+               });
+            }
          }
       }
       catch( const fc::exception& e ) {}
@@ -201,20 +204,20 @@ struct on_operation_visitor
          auto cv = cv_idx.find( boost::make_tuple( comment.id, voter_id ) );
 
          const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
-         auto voter = rep_idx.find( voter_id );
-         auto rep = rep_idx.find( author_id );
+         auto voter_rep = rep_idx.find( voter_id );
+         auto author_rep = rep_idx.find( author_id );
 
          // Rules are a plugin, do not effect consensus, and are subject to change.
          // Rule #1: Must have non-negative reputation to effect another user's reputation
-         if( voter != rep_idx.end() && voter->reputation < 0 ) return;
+         if( voter_rep != rep_idx.end() && voter_rep->reputation < 0 ) return;
 
-         if( rep == rep_idx.end() )
+         if( author_rep == rep_idx.end() )
          {
             // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
             // User rep is 0, so requires voter having positive rep
-            if( cv->rshares < 0 && !( voter != rep_idx.end() && voter->reputation > 0 )) return;
+            if( cv->rshares < 0 && !( voter_rep != rep_idx.end() && voter_rep->reputation > 0 )) return;
 
-            auto rep_obj = db.create< reputation_object >( [&]( reputation_object& r )
+            db.create< reputation_object >( [&]( reputation_object& r )
             {
                r.account = author_id;
                r.reputation = ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
@@ -223,9 +226,9 @@ struct on_operation_visitor
          else
          {
             // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
-            if( cv->rshares < 0 && !( voter != rep_idx.end() && voter->reputation > rep->reputation ) ) return;
+            if( cv->rshares < 0 && !( voter_rep != rep_idx.end() && voter_rep->reputation > author_rep->reputation ) ) return;
 
-            db.modify( *rep, [&]( reputation_object& r )
+            db.modify( *author_rep, [&]( reputation_object& r )
             {
                r.reputation += ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
             });
