@@ -1166,8 +1166,7 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
 
    if( start_author.size() || start_permlink.size() )
    {
-      const auto& comment = my->_db.get_comment( start_author, start_permlink );
-      auto start_c = c_idx.find( comment.id );
+      auto start_c = c_idx.find( boost::make_tuple( account.id, my->_db.get_comment( start_author, start_permlink ).id ) );
       FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
       feed_itr = f_idx.iterator_to( *start_c );
    }
