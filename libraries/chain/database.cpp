@@ -468,7 +468,7 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
                        ("account_vshares",account_vshares)
                        ("account_average_bandwidth",account_average_bandwidth)
                        ("max_virtual_bandwidth",max_virtual_bandwidth)
-                       ("total_vshares",total_vshares) );
+                       ("total_vesting_shares",total_vshares) );
          }
          acnt.last_bandwidth_update = now;
       } );
