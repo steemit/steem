@@ -64,15 +64,14 @@ struct pre_operation_visitor
    template< typename T >
    void operator()( const T& )const {}
 
-   void operator()( const vote_operation& op )
+   void operator()( const vote_operation& op )const
    {
       try
       {
-
          auto& db = _plugin.database();
          const auto& c = db.get_comment( op.author, op.permlink );
 
-         if( c.mode != first_payout ) return;
+         if( c.mode == archived ) return;
 
          const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
          auto cv = cv_idx.find( std::make_tuple( c.id, db.get_account( op.voter ).id ) );
