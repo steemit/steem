@@ -146,7 +146,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
 
       if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT )
-         wlog( "miner-maximum-block-size is below the minimum block size limit, using minimum of 128 KB instead" );
+         wlog( "miner-maximum-block-size is below the minimum block size limit, using default of 128 KB instead" );
       else if ( maximum_block_size > STEEMIT_MAX_BLOCK_SIZE )
       {
          wlog( "miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead" );
@@ -420,7 +420,7 @@ void witness_plugin::on_applied_block( const chain::signed_block& b )
    auto minutes = uint64_t(seconds / 60.0);
 
 
-   if( uint64_t(hps) > 0 )
+   if( _total_hashes > 0 )
       ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
               ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
          );

@@ -645,6 +645,7 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
    {
       try
       {
+         FC_ASSERT( fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256) );
          set_producing( true );
          detail::with_skip_flags( *this, skip, [&]() { _push_transaction( trx ); } );
          set_producing(false);
@@ -720,7 +721,7 @@ signed_block database::_generate_block(
       FC_ASSERT( witness_obj.signing_key == block_signing_private_key.get_public_key() );
 
    static const size_t max_block_header_size = fc::raw::pack_size( signed_block_header() ) + 4;
-   auto maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
+   auto maximum_block_size = get_dynamic_global_properties().maximum_block_size; //STEEMIT_MAX_BLOCK_SIZE;
    size_t total_block_size = max_block_header_size;
 
    signed_block pending_block;
@@ -1802,7 +1803,7 @@ void database::cashout_comment_helper( const comment_object& comment )
 
       if( comment.net_rshares > 0 )
       {
-         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, to_steem( comment.max_accepted_payout ) ).value );
+         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, comment.reward_weight, to_steem( comment.max_accepted_payout ) ).value );
 
          asset total_payout;
          if( reward_tokens > 0 )
@@ -1879,8 +1880,15 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.abs_rshares  = 0;
          c.vote_rshares = 0;
          c.total_vote_weight = 0;
-         c.cashout_time = fc::time_point_sec::maximum();
          c.max_cashout_time = fc::time_point_sec::maximum();
+
+         if( c.parent_author.size() == 0 )
+         {
+            if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
+               c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
+            else
+               c.cashout_time = fc::time_point_sec::maximum();
+         }
          c.last_payout = head_block_time();
       } );
 
@@ -1890,10 +1898,17 @@ void database::cashout_comment_helper( const comment_object& comment )
       {
          const auto& cur_vote = *vote_itr;
          ++vote_itr;
-         modify( cur_vote, [&]( comment_vote_object& cvo )
+         if( !has_hardfork( STEEMIT_HARDFORK_0_12__177 ) || calculate_discussion_payout_time( comment ) != fc::time_point_sec::maximum() )
          {
-            cvo.num_changes = -1;
-         });
+            modify( cur_vote, [&]( comment_vote_object& cvo )
+            {
+               cvo.num_changes = -1;
+            });
+         }
+         else
+         {
+            remove( cur_vote );
+         }
       }
    } FC_CAPTURE_AND_RETHROW( (comment) )
 }
@@ -2014,6 +2029,9 @@ void database::update_account_activity( const account_object& account ) {
 
 asset database::get_liquidity_reward()const
 {
+   if( has_hardfork( STEEMIT_HARDFORK_0_12__178 ) )
+      return asset( 0, STEEM_SYMBOL );
+
    const auto& props = get_dynamic_global_properties();
    static_assert( STEEMIT_LIQUIDITY_REWARD_PERIOD_SEC == 60*60, "this code assumes a 1 hour time interval" );
    asset percent( calc_percent_reward_per_hour< STEEMIT_LIQUIDITY_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL );
@@ -2084,11 +2102,15 @@ void database::pay_liquidity_reward()
 
    if( (head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0 )
    {
+      auto reward = get_liquidity_reward();
+
+      if( reward.amount == 0 )
+         return;
+
       const auto& ridx = get_index_type<liquidity_reward_index>().indices().get<by_volume_weight>();
       auto itr = ridx.begin();
       if( itr != ridx.end() && itr->volume_weight() > 0 )
       {
-         auto reward = get_liquidity_reward();
          adjust_supply( reward, true );
          adjust_balance( itr->owner(*this), reward );
          modify( *itr, [&]( liquidity_reward_balance_object& obj )
@@ -2210,7 +2232,7 @@ asset database::to_steem( const asset& sbd )const
  *  This method reduces the rshare^2 supply and returns the number of tokens are
  *  redeemed.
  */
-share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
+share_type database::claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem )
 {
    try
    {
@@ -2223,6 +2245,7 @@ share_type database::claim_rshare_reward( share_type rshares, asset max_steem )
    u256 total_rshares2 = to256( props.total_reward_shares2 );
 
    u256 rs2 = to256( calculate_vshares( rshares.value ) );
+   rs2 = ( rs2 * reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
@@ -2536,13 +2559,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       _apply_block( next_block );
    } );
 
-   try
+   /*try
    {
    /// check invariants
    if( is_producing() || !( skip & skip_validate_invariants ) )
       validate_invariants();
    }
-   FC_CAPTURE_AND_RETHROW( (next_block) );
+   FC_CAPTURE_AND_RETHROW( (next_block) );*/
 }
 
 void database::_apply_block( const signed_block& next_block )
@@ -2557,9 +2580,19 @@ void database::_apply_block( const signed_block& next_block )
    _current_block_num    = next_block_num;
    _current_trx_in_block = 0;
 
+   const auto& gprops = get_dynamic_global_properties();
+   auto block_size = fc::raw::pack_size( next_block );
+   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) ) {
+      FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
+   }
+   else if ( block_size > gprops.maximum_block_size ) {
+ //     idump((next_block_num)(block_size)(next_block.transactions.size()));
+   }
+
+
    /// modify current witness so transaction evaluators can know who included the transaction,
    /// this is mostly for POW operations which must pay the current_witness
-   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp ){
+   modify( gprops, [&]( dynamic_global_property_object& dgp ){
       dgp.current_witness = next_block.witness;
    });
 
@@ -2575,7 +2608,6 @@ void database::_apply_block( const signed_block& next_block )
 
    for( const auto& trx : next_block.transactions )
    {
-      _current_trx_id = trx.id();
       /* We do not need to push the undo state for each transaction
        * because they either all apply and are valid or the
        * entire block fails to apply.  We only need an "undo" state
@@ -2713,6 +2745,7 @@ void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 
 void database::_apply_transaction(const signed_transaction& trx)
 { try {
+   _current_trx_id = trx.id();
    uint32_t skip = get_node_properties().skip_flags;
 
    if( !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
@@ -2795,7 +2828,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       ++_current_op_in_trx;
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
-
+   _current_trx_id = transaction_id_type();
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
@@ -2906,7 +2939,8 @@ void database::update_global_dynamic_data( const signed_block& b )
        */
       if( dgp.head_block_number % 20 == 0 )
       {
-         if( dgp.average_block_size > dgp.maximum_block_size/2 )
+         if( ( !has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 2 ) ||
+             (  has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 4 ) )
          {
             dgp.current_reserve_ratio /= 2; /// exponential back up
          }
@@ -3064,9 +3098,9 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
            old_order_pays == old_order.amount_for_sale() );
 
    auto age = head_block_time() - old_order.created;
-   if( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
-       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) )
-   )
+   if( !has_hardfork( STEEMIT_HARDFORK_0_12__178 ) &&
+       ( (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC && !has_hardfork( STEEMIT_HARDFORK_0_10__149)) ||
+       (age >= STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10 && has_hardfork( STEEMIT_HARDFORK_0_10__149) ) ) )
    {
       if( old_order_receives.symbol == STEEM_SYMBOL )
       {
@@ -3328,6 +3362,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_11 == 11, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_11 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_11_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_11 ] = STEEMIT_HARDFORK_0_11_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_12 == 12, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_12 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_12_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_12 ] = STEEMIT_HARDFORK_0_12_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3507,6 +3544,58 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 11" );
 #endif
+         break;
+      case STEEMIT_HARDFORK_0_12:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 12" );
+#endif
+         {
+            const auto& comment_idx = get_index_type< comment_index >().indices();
+
+            for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
+            {
+               // At the hardfork time, all new posts with no votes get their cashout time set to +12 hrs from head block time.
+               // All posts with a payout get their cashout time set to +30 days. This hardfork takes place within 30 days
+               // initial payout so we don't have to handle the case of posts that should be frozen that aren't
+               if( itr->parent_author.size() == 0 )
+               {
+                  // Post has not been paid out and has no votes (cashout_time == 0 === net_rshares == 0, under current semmantics)
+                  if( itr->last_payout == fc::time_point_sec::min() && itr->cashout_time == fc::time_point_sec::maximum() )
+                  {
+                     modify( *itr, [&]( comment_object & c )
+                     {
+                        c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+                     });
+                  }
+                  // Has been paid out, needs to be on second cashout window
+                  else if( itr->last_payout > fc::time_point_sec() )
+                  {
+                     modify( *itr, [&]( comment_object& c )
+                     {
+                        c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                     });
+                  }
+               }
+            }
+
+            modify( get_account( STEEMIT_MINER_ACCOUNT ), [&]( account_object& a )
+            {
+               a.posting = authority();
+               a.posting.weight_threshold = 1;
+            });
+
+            modify( get_account( STEEMIT_NULL_ACCOUNT ), [&]( account_object& a )
+            {
+               a.posting = authority();
+               a.posting.weight_threshold = 1;
+            });
+
+            modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
+            {
+               a.posting = authority();
+               a.posting.weight_threshold = 1;
+            });
+         }
          break;
       default:
          break;

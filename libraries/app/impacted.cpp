@@ -171,6 +171,21 @@ struct get_impacted_account_visitor
          _impacted.insert( s );
    }
 
+   void operator()( const request_account_recovery_operation& op )
+   {
+      _impacted.insert( op.account_to_recover );
+   }
+
+   void operator()( const recover_account_operation& op )
+   {
+      _impacted.insert( op.account_to_recover );
+   }
+
+   void operator()( const change_recovery_account_operation& op )
+   {
+      _impacted.insert( op.account_to_recover );
+   }
+
    //void operator()( const operation& op ){}
 };
 
