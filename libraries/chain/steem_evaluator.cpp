@@ -882,6 +882,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( abs_rshares == 0 ) abs_rshares = 1;
 
+   if( db().is_producing() ) {
+      FC_ASSERT( abs_rshares > 5000000, "voting weight is too small, please accumulate more voting power or steem power" );
+   }
+
+
+
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
