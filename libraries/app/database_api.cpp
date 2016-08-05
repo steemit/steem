@@ -1276,34 +1276,44 @@ vector<string> database_api::get_active_witnesses()const {
 
 vector<discussion>  database_api::get_discussions_by_author_before_date(
     string author, string start_permlink, time_point_sec before_date, uint32_t limit )const
-{ try {
-     vector<discussion> result;
+{
+   try
+   {
+      vector<discussion> result;
 
-     FC_ASSERT( limit <= 100 );
-     int count = 0;
-     const auto& didx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
+      FC_ASSERT( limit <= 100 );
+      result.reserve( limit );
+      int count = 0;
+      const auto& didx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
 
-     if( before_date == time_point_sec() )
-        before_date = time_point_sec::maximum();
+      if( before_date == time_point_sec() )
+         before_date = time_point_sec::maximum();
 
-     auto itr = didx.lower_bound( boost::make_tuple( author, time_point_sec::maximum() ) );
-     if( start_permlink.size() ) {
-        const auto& comment = my->_db.get_comment( author, start_permlink );
-        if( comment.created < before_date )
-           itr = didx.iterator_to(comment);
-     }
+      auto itr = didx.lower_bound( boost::make_tuple( author, time_point_sec::maximum() ) );
+      if( start_permlink.size() )
+      {
+         const auto& comment = my->_db.get_comment( author, start_permlink );
+         if( comment.created < before_date )
+            itr = didx.iterator_to(comment);
+      }
 
 
-     while( itr != didx.end() && itr->author ==  author && count < limit ) {
-        result.push_back( *itr );
-        set_pending_payout( result.back() );
-        result.back().active_votes = get_active_votes( itr->author, itr->permlink );
-        ++itr;
-        ++count;
-     }
+      while( itr != didx.end() && itr->author ==  author && count < limit )
+      {
+         if( itr->parent_author.size() == 0 )
+         {
+            result.push_back( *itr );
+            set_pending_payout( result.back() );
+            result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+            ++count;
+         }
+         ++itr;
+      }
 
-     return result;
-} FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) ) }
+      return result;
+   }
+   FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) )
+}
 
 
 state database_api::get_state( string path )const
