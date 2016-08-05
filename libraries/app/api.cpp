@@ -132,13 +132,40 @@ namespace steemit { namespace app {
        fc::time_point_sec now = graphene::time::now();
        for( const std::pair< uint32_t, uint32_t >& trig : bcd_trigger )
        {
-          uint32_t now_slot = db->get_slot_at_time( now - fc::seconds(trig.second % STEEMIT_BLOCK_INTERVAL) );
-          if( now_slot <= dgpo.current_aslot )
+          // trig_slots is the number of slots which will be checked by the trigger.
+          uint32_t trig_slots = (trig.second + STEEMIT_BLOCK_INTERVAL - 1) / STEEMIT_BLOCK_INTERVAL;
+          if( trig_slots > 128 )
+          {
+             elog( "Bad --bcd-trigger parameter specified (trig_slots=${s})", ("s", trig_slots) );
              continue;
+          }
+
+          uint32_t now_slot = db->get_slot_at_time( now );
+
           fc::uint128_t temp_slots = slots;
-          temp_slots <<= (now_slot - dgpo.current_aslot);
+          if( now_slot < dgpo.current_aslot )
+          {
+             // now is in the past, so rewind temp_slots by discarding the slots that will happen in the future
+             uint32_t discarded_slots = dgpo.current_aslot - now_slot;
+             // the blockchain is too far in the future to evaluate the current trigger, fail.
+             if( discarded_slots >= 128 - trig_slots )
+             {
+                elog( "Bailed in check_bcd_trigger because the blockchain extends too far into the future" );
+                continue;
+             }
+             temp_slots >>= discarded_slots;
+          }
+          else
+          {
+             // now is in the future, so add temp_slots by shifting in new empty places
+             uint32_t empty_slots = now_slot - dgpo.current_aslot;
+             // if now is so far in the future that all slots are empty, all triggers should pass
+             if( empty_slots >= 128 )
+                return true;
+             temp_slots <<= empty_slots;
+          }
           fc::uint128_t mask = 1;
-          mask <<= (trig.second / STEEMIT_BLOCK_INTERVAL);
+          mask <<= trig_slots;
           mask -= 1;
           temp_slots &= mask;
           if( temp_slots.popcount() <= trig.first )
