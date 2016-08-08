@@ -108,6 +108,13 @@ namespace steemit { namespace chain {
          fc::uint128_t   activity_shares;
          time_point_sec  last_activity_payout;
          ///@}
+         
+         /** these fields are used to track password reset state */
+         ///@{
+         bool            enable_account_reset = false;
+         authority       pending_reset_authority;
+         time_point_sec  reset_request_time = fc::time_point_sec::maximum();
+         ///@}
 
          account_id_type get_id()const { return id; }
          /// This function should be used only when the account votes for a witness directly
@@ -359,6 +366,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)(last_root_post)(post_bandwidth)
                     (last_active)(activity_shares)(last_activity_payout)
+                    (enable_account_reset)(pending_reset_authority)(reset_request_time)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),

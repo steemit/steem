@@ -710,6 +710,41 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 
+   struct reset_account_operation : public base_operation {
+      string    recovery_account;
+      string    account_to_reset;
+      authority new_owner_authority;
+
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         a.insert( recovery_account );
+      }
+   };
+
+   struct complete_account_reset_operation : public base_operation  {
+      string    account_to_reset;
+      authority new_owner_authority;
+
+      void validate()const;
+      void get_required_authorities( vector<authority>& a )const
+      {
+         a.push_back( new_owner_authority );
+      }
+   };
+
+   struct enable_account_reset_operation : public base_operation {
+      string  account;
+      bool    enable = false;
+      void    validate()const;
+
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         a.insert( account );
+      }
+   };
+
    /**
     * Each account lists another account as their recovery account.
     * The recovery account has the ability to create account_recovery_requests
@@ -741,6 +776,11 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 } } // steemit::chain
+
+FC_REFLECT( steemit::chain::reset_account_operation, (recovery_account)(account_to_reset)(new_owner_authority) )
+FC_REFLECT( steemit::chain::complete_account_reset_operation, (account_to_reset)(new_owner_authority) )
+FC_REFLECT( steemit::chain::enable_account_reset_operation, (account)(enable) )
+
 
 FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_block)(second_block) )
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )

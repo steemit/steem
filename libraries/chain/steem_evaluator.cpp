@@ -1416,8 +1416,6 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
 {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
-
    const auto& account_to_recover = db().get_account( o.account_to_recover );
 
    if ( account_to_recover.recovery_account.length() )   // Make sure recovery matches expected recovery account
@@ -1459,8 +1457,6 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
 
 void recover_account_evaluator::do_apply( const recover_account_operation& o )
 {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
-
    const auto& account = db().get_account( o.account_to_recover );
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_12 ) )
@@ -1495,8 +1491,6 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
 
 void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )
 {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) );
-
    db().get_account( o.new_recovery_account ); // Simply validate account exists
    const auto& account_to_recover = db().get_account( o.account_to_recover );
 
@@ -1524,6 +1518,46 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
    {
       db().remove( *request );
    }
+}
+
+void enable_account_reset_evaluator::do_apply( const enable_account_reset_operation& op ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13_240 ) );
+
+   const auto& acnt = db().get_account( op.account );
+   db().modify( acnt, [&]( account_object& a ){
+      a.enable_account_reset = op.enable;
+   });
+}
+
+void reset_account_evaluator::do_apply( const reset_account_operation& op ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13_240 ) );
+
+   const auto& acnt = db().get_account( op.account_to_reset );
+   FC_ASSERT( (db().head_block_time() - acnt.last_bandwidth_update)  > fc::days(60) );
+   FC_ASSERT( acnt.recovery_account == op.recovery_account );
+
+   db().modify( acnt, [&]( account_object& a ){
+       a.pending_reset_authority = op.new_owner_authority;
+       a.reset_request_time = db().head_block_time();
+   });
+}
+
+
+void complete_account_reset_evaluator::do_apply( const complete_account_reset_operation& op ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13_240 ) );
+   const auto& acnt = db().get_account( op.account_to_reset );
+
+   FC_ASSERT( db().head_block_time() - acnt.reset_request_time  > fc::days(30) );
+   FC_ASSERT( acnt.enable_account_reset );
+   FC_ASSERT( acnt.pending_reset_authority == op.new_owner_authority );
+
+   db().modify( acnt, [&]( account_object& a ){
+      a.last_bandwidth_update = db().head_block_time();
+      a.reset_request_time = fc::time_point_sec::maximum();
+      a.average_bandwidth = 0;
+      a.average_market_bandwidth = 0;
+   });
+   db().update_owner_authority( acnt, op.new_owner_authority );
 }
 
 } } // steemit::chain

@@ -34,5 +34,8 @@ DEFINE_EVALUATOR( prove_authority )
 DEFINE_EVALUATOR( request_account_recovery )
 DEFINE_EVALUATOR( recover_account )
 DEFINE_EVALUATOR( change_recovery_account )
+DEFINE_EVALUATOR( reset_account )
+DEFINE_EVALUATOR( complete_account_reset )
+DEFINE_EVALUATOR( enable_account_reset )
 
 } } // steemit::chain

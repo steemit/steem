@@ -2380,6 +2380,9 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<escrow_transfer_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_dispute_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_release_evaluator>();
+    _my->_evaluator_registry.register_evaluator<reset_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<complete_account_reset_evaluator>();
+    _my->_evaluator_registry.register_evaluator<enable_account_reset_evaluator>();
 }
 
 void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
