@@ -31,6 +31,9 @@ class debug_node_plugin : public steemit::app::plugin
       virtual void plugin_shutdown() override;
 
       void debug_update( const fc::variant_object& update );
+      uint32_t debug_generate_blocks( const std::string& debug_key, uint32_t count );
+      uint32_t debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely );
+
       void set_json_object_stream( const std::string& filename );
       void flush_json_object_stream();
 

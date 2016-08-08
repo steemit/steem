@@ -7,6 +7,8 @@
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
+#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+
 #include <fc/crypto/digest.hpp>
 
 #include "../common/database_fixture.hpp"
@@ -2413,6 +2415,85 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( sbd_stability )
+{
+   try
+   {
+      // Using the debug node plugin to manually set account balances to create required market conditions for this test
+      auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
+      boost::program_options::variables_map options;
+      db_plugin->plugin_initialize( options );
+      db_plugin->plugin_startup();
+      auto debug_key = "5JdouSvkK75TKWrJixYufQgePT21V7BAVWbNUWt3ktqhPmy8Z78"; //get_dev_key debug node
+
+      ACTORS( (alice)(bob)(sam) );
+
+      fund( "alice", 10000 );
+      fund( "bob", 10000 );
+
+      vest( "alice", 10000 );
+      vest( "bob", 10000 );
+
+      auto exchange_rate = price( ASSET( "10.000 TBD" ), ASSET( "1.000 TESTS" ) );
+      set_price_feed( exchange_rate );
+
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "test";
+
+      signed_transaction tx;
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      vote_operation vote;
+      vote.voter = "bob";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = STEEMIT_100_PERCENT;
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "Generating blocks up to comment payout" );
+
+      generate_blocks( fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - STEEMIT_BLOCK_INTERVAL ), true );
+      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - STEEMIT_BLOCK_INTERVAL ), true );
+
+      auto& gpo = db.get_dynamic_global_properties();
+
+      BOOST_TEST_MESSAGE( "Changing sam and gpo to set up market cap conditions" );
+
+      asset sbd_balance = asset( ( gpo.virtual_supply.amount * 2 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+      fc::mutable_variant_object vo;
+      vo("_action", "update")("id", sam_id)("sbd_balance", sbd_balance);
+      db_plugin->debug_update( vo );
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", gpo.id)("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
+      db_plugin->debug_update( vo );
+
+      validate_database();
+
+      auto comment_reward = gpo.total_reward_fund_steem;
+      auto sbd_reward = asset( comment_reward.amount / 2, STEEM_SYMBOL ) * exchange_rate;
+      auto alice_sbd = db.get_account( "alice" ).sbd_balance;
+      auto alice_steem = db.get_account( "alice" ).balance;
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance < alice_sbd + sbd_reward );
+   }
+   FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif
