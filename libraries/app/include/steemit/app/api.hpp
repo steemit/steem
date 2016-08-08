@@ -89,6 +89,11 @@ namespace steemit { namespace app {
 
          void broadcast_block( const signed_block& block );
 
+         void set_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > > bcd_trigger );
+
+         // implementation detail, not reflected
+         bool check_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > >& bcd_trigger );
+
          /**
           * @brief Not reflected, thus not accessible to API clients.
           *
@@ -101,11 +106,14 @@ namespace steemit { namespace app {
 
          /// internal method, not exposed via JSON RPC
          void on_api_startup();
+
       private:
          boost::signals2::scoped_connection             _applied_block_connection;
 
          map<transaction_id_type,confirmation_callback>     _callbacks;
          map<time_point_sec, vector<transaction_id_type> >  _callbacks_expirations;
+
+         std::vector< std::pair< uint32_t, uint32_t > > _bcd_trigger;
 
          application&                                   _app;
    };
@@ -202,6 +210,7 @@ FC_API(steemit::app::network_broadcast_api,
        (broadcast_transaction_with_callback)
        (broadcast_transaction_synchronous)
        (broadcast_block)
+       (set_bcd_trigger)
      )
 FC_API(steemit::app::network_node_api,
        (get_info)
