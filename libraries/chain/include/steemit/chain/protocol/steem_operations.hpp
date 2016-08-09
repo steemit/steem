@@ -740,7 +740,43 @@ namespace steemit { namespace chain {
 
       void validate() const;
    };
+
+
+   struct transfer_to_savings_operation : public base_operation {
+      string from;
+      string to;
+      asset  amount;
+      string memo;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void validate() const;
+   };
+
+   struct transfer_from_savings_operation : public base_operation {
+      string   from;
+      uint16_t request_id = 0;
+      string   to;
+      asset    amount;
+      string   memo;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void validate() const;
+   };
+
+   struct cancel_transfer_from_savings_operation : public base_operation {
+      string   from;
+      uint16_t request_id = 0;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void validate() const;
+   };
+
 } } // steemit::chain
+
+
+FC_REFLECT( steemit::chain::transfer_to_savings_operation, (from)(to)(amount)(memo) )
+FC_REFLECT( steemit::chain::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
+FC_REFLECT( steemit::chain::cancel_transfer_from_savings_operation, (from)(request_id) )
 
 FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_block)(second_block) )
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )

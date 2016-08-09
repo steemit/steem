@@ -308,4 +308,20 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( new_recovery_account ) );
    }
 
+   void transfer_to_savings_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( amount.amount > 0 );
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
+   }
+   void transfer_from_savings_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( amount.amount > 0 );
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
+   }
+   void cancel_transfer_from_savings_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( from ) );
+   }
+
 } } // steemit::chain

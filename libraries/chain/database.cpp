@@ -1993,6 +1993,19 @@ void database::process_funds()
    } );
 }
 
+void database::process_savings_withdraws() 
+{
+  const auto& idx = get_index_type<withdraw_index>().indices().get<by_complete_from_rid>();
+  auto itr = idx.begin();
+  while( itr != idx.end() ) {
+     if( itr->complete > head_block_time() )
+        break;
+     adjust_savings_balance( get_account( itr->to ), itr->amount );
+     remove( *itr );
+     itr = idx.begin();
+  }
+}
+
 void database::update_account_activity( const account_object& account ) {
    if( account.posting.num_auths() > 1 ) return;
    if( account.posting.key_auths.size() != 1 ) return;
@@ -2380,6 +2393,9 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<escrow_transfer_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_dispute_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_release_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_to_savings_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_from_savings_evaluator>();
+    _my->_evaluator_registry.register_evaluator<cancel_transfer_from_savings_evaluator>();
 }
 
 void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
@@ -2427,6 +2443,7 @@ void database::initialize_indexes()
    add_index< primary_index< owner_authority_history_index                 > >();
    add_index< primary_index< account_recovery_request_index                > >();
    add_index< primary_index< change_recovery_account_request_index         > >();
+   add_index< primary_index< withdraw_index                                > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -2654,6 +2671,7 @@ void database::_apply_block( const signed_block& next_block )
    process_conversions();
    process_comment_cashout();
    process_vesting_withdrawals();
+   process_savings_withdraws();
    pay_liquidity_reward();
    update_virtual_supply();
 
@@ -3282,6 +3300,52 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    } );
 }
 
+
+void database::adjust_savings_balance( const account_object& a, const asset& delta )
+{
+   modify( a, [&]( account_object& acnt )
+   {
+      switch( delta.symbol )
+      {
+         case STEEM_SYMBOL:
+            acnt.savings_balance += delta;
+            break;
+         case SBD_SYMBOL:
+            if( a.sbd_seconds_last_update != head_block_time() )
+            {
+               acnt.savings_sbd_seconds += fc::uint128_t(a.savings_sbd_balance.amount.value) * (head_block_time() - a.sbd_seconds_last_update).to_seconds();
+               acnt.savings_sbd_seconds_last_update = head_block_time();
+
+               if( acnt.savings_sbd_seconds > 0 &&
+                   (acnt.savings_sbd_seconds_last_update - acnt.savings_sbd_last_interest_payment).to_seconds() > STEEMIT_SBD_INTEREST_COMPOUND_INTERVAL_SEC )
+               {
+                  auto interest = acnt.sbd_seconds / STEEMIT_SECONDS_PER_YEAR;
+                  interest *= get_dynamic_global_properties().sbd_interest_rate;
+                  interest /= STEEMIT_100_PERCENT;
+                  asset interest_paid(interest.to_uint64(), SBD_SYMBOL);
+                  acnt.savings_sbd_balance += interest_paid;
+                  acnt.savings_sbd_seconds = 0;
+                  acnt.savings_sbd_last_interest_payment = head_block_time();
+                  push_applied_operation( interest_operation( a.name, interest_paid ) );
+
+                  modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
+                  {
+                     props.current_sbd_supply += interest_paid;
+                     props.virtual_supply += interest_paid * get_feed_history().current_median_history;
+                  } );
+               }
+            }
+            acnt.savings_sbd_balance += delta;
+            break;
+         default:
+            FC_ASSERT( !"invalid symbol" );
+      }
+   } );
+}
+
+
+
+
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
 
@@ -3322,6 +3386,19 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
          return a.balance;
       case SBD_SYMBOL:
          return a.sbd_balance;
+      default:
+         FC_ASSERT( !"invalid symbol" );
+   }
+}
+
+asset database::get_savings_balance( const account_object& a, asset_symbol_type symbol )const
+{
+   switch( symbol )
+   {
+      case STEEM_SYMBOL:
+         return a.savings_balance;
+      case SBD_SYMBOL:
+         return a.savings_sbd_balance;
       default:
          FC_ASSERT( !"invalid symbol" );
    }
