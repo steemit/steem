@@ -77,6 +77,8 @@ namespace steemit { namespace chain {
           */
          uint16_t sbd_interest_rate = 0;
 
+         bool printing_sbd = true;
+
          /**
           *  Average block size is updated every block to be:
           *
@@ -152,6 +154,7 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (total_activity_fund_steem)
                     (total_activity_fund_shares)
                     (sbd_interest_rate)
+                    (printing_sbd)
                     (average_block_size)
                     (maximum_block_size)
                     (current_aslot)

@@ -2426,7 +2426,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       db_plugin->plugin_startup();
       auto debug_key = "5JdouSvkK75TKWrJixYufQgePT21V7BAVWbNUWt3ktqhPmy8Z78"; //get_dev_key debug node
 
-      ACTORS( (alice)(bob)(sam) );
+      ACTORS( (alice)(bob)(sam)(dave) );
 
       fund( "alice", 10000 );
       fund( "bob", 10000 );
@@ -2436,6 +2436,8 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       auto exchange_rate = price( ASSET( "10.000 TBD" ), ASSET( "1.000 TESTS" ) );
       set_price_feed( exchange_rate );
+
+      BOOST_REQUIRE( db.get_dynamic_global_properties().printing_sbd );
 
       comment_operation comment;
       comment.author = "alice";
@@ -2465,14 +2467,16 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       BOOST_TEST_MESSAGE( "Generating blocks up to comment payout" );
 
-      generate_blocks( fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - STEEMIT_BLOCK_INTERVAL ), true );
-      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - STEEMIT_BLOCK_INTERVAL ), true );
+      //generate_blocks( fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true );
+      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true );
 
       auto& gpo = db.get_dynamic_global_properties();
 
+      idump( (gpo) );
+
       BOOST_TEST_MESSAGE( "Changing sam and gpo to set up market cap conditions" );
 
-      asset sbd_balance = asset( ( gpo.virtual_supply.amount * 2 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+      asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT + 5 )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
       fc::mutable_variant_object vo;
       vo("_action", "update")("id", sam_id)("sbd_balance", sbd_balance);
       db_plugin->debug_update( vo );
@@ -2490,7 +2494,74 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       db_plugin->debug_generate_blocks( debug_key, 1 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance < alice_sbd + sbd_reward );
+      BOOST_TEST_MESSAGE( "Checking printing SBD has stopped" );
+      BOOST_REQUIRE( !db.get_dynamic_global_properties().printing_sbd );
+
+      BOOST_TEST_MESSAGE( "Pay out comment and check rewards are paid as STEEM" );
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+
+      validate_database();
+
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance > alice_steem );
+
+      BOOST_TEST_MESSAGE( "Letting percent market cap fall to 1.5% to verify printing of SBD turns back on" );
+
+      // Get close to 1.5% for printing SBD to start again, but not all the way
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", sam_id)("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 4, SBD_SYMBOL ) );
+      db_plugin->debug_update( vo );
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", gpo.id)("current_sbd_supply", asset( ( 3 * sbd_balance.amount ) / 4, SBD_SYMBOL ))("virtual_supply", db.get_dynamic_global_properties().virtual_supply - ( sbd_balance - asset( ( 3 * sbd_balance.amount ) / 4, SBD_SYMBOL ) ) * exchange_rate);
+      db_plugin->debug_update( vo );
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+      validate_database();
+
+      // Keep producing blocks until printing SBD is back
+      while( !db.get_dynamic_global_properties().printing_sbd )
+      {
+         auto& gpo = db.get_dynamic_global_properties();
+         BOOST_REQUIRE( ( gpo.current_sbd_supply * exchange_rate ).amount >= ( gpo.virtual_supply.amount * STEEMIT_SBD_START_PERCENT ) / STEEMIT_100_PERCENT );
+         db_plugin->debug_generate_blocks( debug_key, 1 );
+      }
+
+      BOOST_REQUIRE( ( gpo.current_sbd_supply * exchange_rate ).amount < ( gpo.virtual_supply.amount * STEEMIT_SBD_START_PERCENT ) / STEEMIT_100_PERCENT );
+
+      BOOST_TEST_MESSAGE( "Setting SBD percent to 20% market cap." );
+
+      limit_order_create2_operation order;
+      order.owner = "sam";
+      order.orderid = 1;
+      order.fill_or_kill = false;
+      order.amount_to_sell = ASSET( "10.000 TBD" );
+      order.exchange_rate = price( ASSET( "10.000 TBD" ), ASSET( "1.500 TESTS" ) );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( order );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      validate_database();
+
+      idump( (db.get_dynamic_global_properties()) );
+
+      sbd_balance = asset( ( db.get_dynamic_global_properties().virtual_supply.amount * ( STEEMIT_SBD_CONVERT_PERCENT + 5 )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", dave_id)("sbd_balance", sbd_balance);
+      db_plugin->debug_update( vo );
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", db.get_dynamic_global_properties().id)("current_sbd_supply", db.get_dynamic_global_properties().current_sbd_supply + sbd_balance)("virtual_supply", db.get_dynamic_global_properties().virtual_supply + sbd_balance * exchange_rate);
+      db_plugin->debug_update( vo );
+
+      idump( (db.get_dynamic_global_properties()) );
+
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }

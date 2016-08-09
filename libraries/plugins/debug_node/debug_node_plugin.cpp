@@ -144,7 +144,7 @@ uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key,
       fc::time_point_sec scheduled_time = db.get_slot_time( 1 );
       const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
       steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-      wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+      //wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
       if( scheduled_key != debug_public_key )
       {
          wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
@@ -183,7 +183,7 @@ uint32_t debug_node_plugin::debug_generate_blocks_until( const std::string& debu
       const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
       steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
 
-      wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+      //wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
 
       if( scheduled_key != debug_public_key )
       {
