@@ -3606,7 +3606,7 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_13:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 10 at block ${b}", ("b", head_block_num()) );
+         elog( "HARDFORK 13 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       default:
