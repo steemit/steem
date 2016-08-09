@@ -159,6 +159,8 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
          acc.last_active_proved = db().head_block_time();
       }
 
+      acc.last_account_update = db().head_block_time();
+
       #ifndef IS_LOW_MEM
         if ( o.json_metadata.size() > 0 )
             acc.json_metadata = o.json_metadata;
@@ -1205,6 +1207,8 @@ void pow_apply( database& db, Operation o ) {
    FC_ASSERT( worker_account.active.key_auths.size() == 1, "miners may only have one key auth" );
    FC_ASSERT( worker_account.active.key_auths.begin()->first == o.work.worker, "work must be performed by key that signed the work" );
    FC_ASSERT( o.block_id == db.head_block_id() );
+   if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_13__256 ) )
+      FC_ASSERT( worker_account.last_account_update < db.head_block_time(), "worker account must not have updated their account this block" );
 
    fc::sha256 target = db.get_pow_target();
 
