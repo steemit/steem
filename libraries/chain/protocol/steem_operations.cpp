@@ -175,6 +175,12 @@ namespace steemit { namespace chain {
       hash._hash[0] = nonce;
       return fc::sha256::hash( hash );
    }
+   fc::sha256 pow2_operation::work_input()const
+   {
+      auto hash = fc::sha256::hash( block_id );
+      hash._hash[0] = nonce;
+      return fc::sha256::hash( hash );
+   }
 
    void pow_operation::validate()const
    {
