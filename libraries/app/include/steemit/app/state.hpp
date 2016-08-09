@@ -20,6 +20,7 @@ namespace steemit { namespace app {
    struct discussion_index {
       string         category; /// category by which everything is filtered
       vector<string> trending; /// pending lifetime payout
+      vector<string> trending30; /// pending lifetime payout
       vector<string> created; /// creation date
       vector<string> responses; /// creation date
       vector<string> updated; /// creation date
@@ -170,7 +171,7 @@ FC_REFLECT_DERIVED( steemit::app::extended_account,
 FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(time) );
 FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(time) );
 
-FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(cashout) )
+FC_REFLECT( steemit::app::discussion_index, (category)(trending)(trending30)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(cashout) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
 FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation) )
 

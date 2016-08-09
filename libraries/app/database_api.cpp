@@ -1484,7 +1484,7 @@ state database_api::get_state( string path )const
       for( const auto& d : trending_disc )
       {
          auto key = d.author + "/" + d.permlink;
-         didx.trending.push_back( key );
+         didx.trending30.push_back( key );
          if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }
