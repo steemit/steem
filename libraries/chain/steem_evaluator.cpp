@@ -882,7 +882,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( abs_rshares == 0 ) abs_rshares = 1;
 
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13 ) ) {
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) ) {
       FC_ASSERT( abs_rshares > 50000000, "voting weight is too small, please accumulate more voting power or steem power" );
    }
 
@@ -925,7 +925,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !db().has_hardfork( STEEMIT_HARDFORK_0_13)  )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !db().has_hardfork( STEEMIT_HARDFORK_0_13__257)  )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
@@ -1085,7 +1085,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! db().has_hardfork( STEEMIT_HARDFORK_0_13 )  )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! db().has_hardfork( STEEMIT_HARDFORK_0_13__257 )  )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
@@ -1250,13 +1250,13 @@ void pow_apply( database& db, Operation o ) {
 }
 
 
-void pow_evaluator::do_apply( const pow_operation& o ) { 
-   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_13 ) );
-   pow_apply( db(), o ); 
+void pow_evaluator::do_apply( const pow_operation& o ) {
+   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_13__256 ) );
+   pow_apply( db(), o );
 }
-void pow2_evaluator::do_apply( const pow2_operation& o ) { 
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13 ) );
-   pow_apply( db(), o ); 
+void pow2_evaluator::do_apply( const pow2_operation& o ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13__256 ) );
+   pow_apply( db(), o );
 }
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )

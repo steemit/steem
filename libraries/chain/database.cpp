@@ -3608,6 +3608,7 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 13" );
 #endif
+         break;
       default:
          break;
    }
