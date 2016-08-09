@@ -27,7 +27,7 @@ class database_api_impl;
 class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 {
    public:
-      database_api_impl( steemit::chain::database& db );
+      database_api_impl( const steemit::app::api_context& ctx  );
       ~database_api_impl();
 
       // Objects
@@ -83,7 +83,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       std::function<void(const fc::variant&)> _block_applied_callback;
 
       steemit::chain::database&                _db;
-      steemit::follow::follow_api*             _follow_api = nullptr;
+      std::shared_ptr< steemit::follow::follow_api > _follow_api = nullptr;
 
       boost::signals2::scoped_connection       _block_applied_connection;
 };
@@ -167,26 +167,21 @@ void database_api_impl::cancel_all_subscriptions()
 //////////////////////////////////////////////////////////////////////
 
 database_api::database_api( const steemit::app::api_context& ctx )
-   : my( new database_api_impl( *ctx.app.chain_database() ) )
-{
-   try
-   {
-      ctx.app.get_plugin( FOLLOW_PLUGIN_NAME );
-      _follow_api = new steemit::follow::follow_api( ctx );
-      my->_follow_api = _follow_api;
-   }
-   catch( fc::assert_exception ) {}
-}
+   : my( new database_api_impl( ctx ) ) {}
 
-database_api::~database_api()
-{
-   if( _follow_api )
-      delete _follow_api;
-}
+database_api::~database_api() {}
 
-database_api_impl::database_api_impl( steemit::chain::database& db ):_db(db)
+database_api_impl::database_api_impl( const steemit::app::api_context& ctx )
+   : _db( *ctx.app.chain_database() )
 {
    wlog("creating database api ${x}", ("x",int64_t(this)) );
+
+   try
+   {
+      ctx.app.get_plugin< follow::follow_plugin >( FOLLOW_PLUGIN_NAME );
+      _follow_api = std::make_shared< steemit::follow::follow_api >( ctx );
+   }
+   catch( fc::assert_exception ) { ilog("Follow Plugin not loaded"); }
 }
 
 database_api_impl::~database_api_impl()
@@ -885,9 +880,9 @@ void database_api::set_pending_payout( discussion& d )const
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
       d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
 
-      if( _follow_api )
+      if( my->_follow_api )
       {
-         d.author_reputation = _follow_api->get_account_reputations( d.author, 1 )[0].reputation;
+         d.author_reputation = my->_follow_api->get_account_reputations( d.author, 1 )[0].reputation;
       }
    }
 
@@ -1154,7 +1149,7 @@ vector<discussion> database_api::get_discussions_by_hot( const discussion_query&
 vector<discussion> database_api::get_discussions_by_feed( const discussion_query& query )const
 {
    query.validate();
-   FC_ASSERT( _follow_api, "Node is not running the follow plugin" );
+   FC_ASSERT( my->_follow_api, "Node is not running the follow plugin" );
    auto start_author = query.start_author ? *( query.start_author ) : "";
    auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
 
@@ -1356,9 +1351,9 @@ state database_api::get_state( string path )const
    if( part[0].size() && part[0][0] == '@' ) {
       auto acnt = part[0].substr(1);
       _state.accounts[acnt] = my->_db.get_account(acnt);
-      if( _follow_api )
+      if( my->_follow_api )
       {
-         _state.accounts[acnt].reputation = _follow_api->get_account_reputations( acnt, 1 )[0].reputation;
+         _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;
       }
       auto& eacnt = _state.accounts[acnt];
       if( part[1] == "transfers" ) {
@@ -1403,9 +1398,9 @@ state database_api::get_state( string path )const
         for( const auto& reply : replies ) {
            auto reply_ref = reply.author+"/"+reply.permlink;
            _state.content[ reply_ref ] = reply;
-           if( _follow_api )
+           if( my->_follow_api )
            {
-              _state.accounts[ reply_ref ].reputation = _follow_api->get_account_reputations( reply.author, 1 )[0].reputation;
+              _state.accounts[ reply_ref ].reputation = my->_follow_api->get_account_reputations( reply.author, 1 )[0].reputation;
            }
            eacnt.recent_replies->push_back( reply_ref );
         }
@@ -1435,9 +1430,9 @@ state database_api::get_state( string path )const
            }
       } else if( part[1].size() == 0 || part[1] == "feed" )
       {
-         if( _follow_api )
+         if( my->_follow_api )
          {
-            auto feed = _follow_api->get_feed_entries( eacnt.name, 0, 20 );
+            auto feed = my->_follow_api->get_feed_entries( eacnt.name, 0, 20 );
             eacnt.feed = vector<string>();
 
             for( auto f: feed )
@@ -1579,9 +1574,9 @@ state database_api::get_state( string path )const
    {
       _state.accounts.erase("");
       _state.accounts[a] = my->_db.get_account( a );
-      if( _follow_api )
+      if( my->_follow_api )
       {
-         _state.accounts[a].reputation = _follow_api->get_account_reputations( a, 1 )[0].reputation;
+         _state.accounts[a].reputation = my->_follow_api->get_account_reputations( a, 1 )[0].reputation;
       }
    }
    for( auto& d : _state.content ) {

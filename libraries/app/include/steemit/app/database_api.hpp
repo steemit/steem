@@ -385,7 +385,6 @@ class database_api
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;
 
-      steemit::follow::follow_api*           _follow_api = nullptr;
       std::shared_ptr< database_api_impl >   my;
 };
 
