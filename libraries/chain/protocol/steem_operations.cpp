@@ -183,6 +183,13 @@ namespace steemit { namespace chain {
       FC_ASSERT( work_input() == work.input );
       work.validate();
    }
+   void pow2_operation::validate()const
+   {
+      props.validate();
+      FC_ASSERT( is_valid_account_name( worker_account ) );
+      FC_ASSERT( work_input() == work.input );
+      work.validate();
+   }
 
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
    {
@@ -194,6 +201,16 @@ namespace steemit { namespace chain {
 
       work = fc::sha256::hash(recover);
    }
+   void pow2::create( const fc::ecc::private_key& w, const digest_type& i )
+   {
+      input  = i;
+      signature = w.sign_compact(input,false);
+
+      auto sig_hash            = fc::sha256::hash( signature );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+
+      work = fc::sha256::hash(std::make_pair(input,recover));
+   }
 
    void pow::validate()const
    {
@@ -202,6 +219,15 @@ namespace steemit { namespace chain {
       auto sig_hash = fc::sha256::hash( signature );
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
       FC_ASSERT( work == fc::sha256::hash(recover) );
+   }
+   void pow2::validate()const
+   {
+      FC_ASSERT( version == 0 );
+      FC_ASSERT( work != fc::sha256() );
+      FC_ASSERT( public_key_type(fc::ecc::public_key( signature, input, false )) == worker );
+      auto sig_hash = fc::sha256::hash( signature );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+      FC_ASSERT( work == fc::sha256::hash(std::make_pair(input,recover)) );
    }
 
    void feed_publish_operation::validate()const

@@ -574,6 +574,7 @@ namespace steemit { namespace chain {
       void validate()const;
    };
 
+
    struct pow_operation : public base_operation
    {
       string           worker_account;
@@ -588,6 +589,34 @@ namespace steemit { namespace chain {
       /** there is no need to verify authority, the proof of work is sufficient */
       void get_required_active_authorities( flat_set<string>& a )const{  }
    };
+
+   struct pow2
+   {
+      uint8_t           version = 0;
+      public_key_type   worker;
+      digest_type       input;
+      signature_type    signature;
+      digest_type       work;
+
+      void create( const fc::ecc::private_key& w, const digest_type& i );
+      void validate()const;
+   };
+
+   struct pow2_operation : public base_operation
+   {
+      string           worker_account;
+      block_id_type    block_id;
+      uint64_t         nonce = 0;
+      pow2             work;
+      chain_properties props;
+
+      void validate()const;
+      fc::sha256 work_input()const;
+
+      /** there is no need to verify authority, the proof of work is sufficient */
+      void get_required_active_authorities( flat_set<string>& a )const{  }
+   };
+
 
    /**
     * This operation is used to report a miner who signs two blocks
@@ -746,9 +775,11 @@ FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_b
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )
 FC_REFLECT( steemit::chain::feed_publish_operation, (publisher)(exchange_rate) )
 FC_REFLECT( steemit::chain::pow, (worker)(input)(signature)(work) )
+FC_REFLECT( steemit::chain::pow2, (version)(worker)(input)(signature)(work) )
 FC_REFLECT( steemit::chain::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
 FC_REFLECT( steemit::chain::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )
+FC_REFLECT( steemit::chain::pow2_operation, (worker_account)(block_id)(nonce)(work)(props) )
 
 FC_REFLECT( steemit::chain::account_create_operation,
             (fee)

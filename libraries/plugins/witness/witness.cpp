@@ -26,6 +26,7 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/hardfork.hpp>
 #include <graphene/time/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -473,52 +474,101 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
     uint32_t thread_num = 0;
     uint32_t num_threads = _mining_threads;
     for( auto& t : _thread_pool ) {
-       t->async( [=](){
-          chain::pow_operation op;
-          op.block_id = block_id;
-          op.worker_account = miner;
-          op.work.worker = pub;
-          op.nonce = start + thread_num;
-          op.props = _miner_prop_vote;
-          while( true )
-          {
-          //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
-            if( graphene::time::nonblocking_now() > stop )
-            {
-           //     ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
-                return;
-            }
-            if( this->_head_block_num != head_block_num )
-            {
-           //     wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
-                return;
-            }
-            ++this->_total_hashes;
+       if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) ) {
+          t->async( [=](){
+             chain::pow2_operation op;
+             op.block_id = block_id;
+             op.worker_account = miner;
+             op.work.worker = pub;
+             op.nonce = start + thread_num;
+             op.props = _miner_prop_vote;
+             while( true )
+             {
+             //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
+               if( graphene::time::nonblocking_now() > stop )
+               {
+              //     ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
+                   return;
+               }
+               if( this->_head_block_num != head_block_num )
+               {
+              //     wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
+                   return;
+               }
+               ++this->_total_hashes;
 
-            op.nonce += num_threads;
-            op.work.create( pk, op.work_input() );
-            if( op.work.work < target )
-            {
-               ++this->_head_block_num; /// signal other workers to stop
+               op.nonce += num_threads;
+               op.work.create( pk, op.work_input() );
+               if( op.work.work < target )
+               {
+                  ++this->_head_block_num; /// signal other workers to stop
 
-               chain::signed_transaction trx;
-               trx.operations.push_back(op);
-               trx.ref_block_num = head_block_num;
-               trx.ref_block_prefix = op.block_id._hash[1];
-               trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-               mainthread->async( [this,miner,trx](){
-                  try {
-                     database().push_transaction( trx );
-                     ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
-                     p2p_node().broadcast( graphene::net::trx_message(trx) );
-                  } catch ( const fc::exception& e ) {
-                  //   wdump((e.to_detail_string()));
-                  }
-               });
-               return;
-            }
-          }
-       });
+                  chain::signed_transaction trx;
+                  trx.operations.push_back(op);
+                  trx.ref_block_num = head_block_num;
+                  trx.ref_block_prefix = op.block_id._hash[1];
+                  trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+                  mainthread->async( [this,miner,trx](){
+                     try {
+                        database().push_transaction( trx );
+                        ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
+                        p2p_node().broadcast( graphene::net::trx_message(trx) );
+                     } catch ( const fc::exception& e ) {
+                     //   wdump((e.to_detail_string()));
+                     }
+                  });
+                  return;
+               }
+             }
+          });
+       } else  { /// TODO: after Hardfork 13, remove this branch 
+          t->async( [=](){
+             chain::pow_operation op;
+             op.block_id = block_id;
+             op.worker_account = miner;
+             op.work.worker = pub;
+             op.nonce = start + thread_num;
+             op.props = _miner_prop_vote;
+             while( true )
+             {
+             //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
+               if( graphene::time::nonblocking_now() > stop )
+               {
+              //     ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
+                   return;
+               }
+               if( this->_head_block_num != head_block_num )
+               {
+              //     wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
+                   return;
+               }
+               ++this->_total_hashes;
+
+               op.nonce += num_threads;
+               op.work.create( pk, op.work_input() );
+               if( op.work.work < target )
+               {
+                  ++this->_head_block_num; /// signal other workers to stop
+
+                  chain::signed_transaction trx;
+                  trx.operations.push_back(op);
+                  trx.ref_block_num = head_block_num;
+                  trx.ref_block_prefix = op.block_id._hash[1];
+                  trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+                  mainthread->async( [this,miner,trx](){
+                     try {
+                        database().push_transaction( trx );
+                        ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
+                        p2p_node().broadcast( graphene::net::trx_message(trx) );
+                     } catch ( const fc::exception& e ) {
+                     //   wdump((e.to_detail_string()));
+                     }
+                  });
+                  return;
+               }
+             }
+          });
+       }
        ++thread_num;
     }
 }
