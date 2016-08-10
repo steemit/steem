@@ -613,7 +613,11 @@ namespace steemit { namespace chain {
       const string& get_worker_account()const { return work.get<pow2>().worker_account; }
 
       /** there is no need to verify authority, the proof of work is sufficient */
-      void get_required_active_authorities( flat_set<string>& a )const{  }
+      void get_required_active_authorities( flat_set<string>& a )const {  
+         if( !new_owner_key ) {
+            a.insert( work.get<pow2>().worker_account );
+         }
+      }
    };
 
 

@@ -1293,6 +1293,8 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
          acc.last_vote_time = dgp.time;
          acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
+   } else {
+      FC_ASSERT( !o.new_owner_key.valid(), "cannot specify an owner key unless creating ccount" );
    }
 
 
