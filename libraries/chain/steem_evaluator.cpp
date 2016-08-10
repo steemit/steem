@@ -885,7 +885,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    if( abs_rshares == 0 ) abs_rshares = 1;
 
    if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) ) {
-      FC_ASSERT( abs_rshares > 50000000, "voting weight is too small, please accumulate more voting power or steem power" );
+      FC_ASSERT( abs_rshares > 50000000 || abs_rshares == 1, "voting weight is too small, please accumulate more voting power or steem power" );
    }
 
 

@@ -130,10 +130,14 @@ namespace steemit { namespace app {
        const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
        fc::uint128_t slots = db->get_dynamic_global_properties().recent_slots_filled;
        fc::time_point_sec now = graphene::time::now();
+
+       ilog( "Entering check_bcd_trigger: now=${now}", ("now", now) );
+
        for( const std::pair< uint32_t, uint32_t >& trig : bcd_trigger )
        {
           // trig_slots is the number of slots which will be checked by the trigger.
           uint32_t trig_slots = (trig.second + STEEMIT_BLOCK_INTERVAL - 1) / STEEMIT_BLOCK_INTERVAL;
+          ilog( "Testing bcd trigger: ${trig}  trig_slots=${trig_slots}", ("trig", trig)("trig_slots", trig_slots) );
           if( trig_slots > 128 )
           {
              elog( "Bad --bcd-trigger parameter specified (trig_slots=${s})", ("s", trig_slots) );
@@ -141,12 +145,14 @@ namespace steemit { namespace app {
           }
 
           uint32_t now_slot = db->get_slot_at_time( now );
+          ilog( "now_slot: ${now_slot}   current_aslot: ${current_aslot}", ("now_slot", now_slot)("current_aslot", dgpo.current_aslot) );
 
           fc::uint128_t temp_slots = slots;
           if( now_slot < dgpo.current_aslot )
           {
              // now is in the past, so rewind temp_slots by discarding the slots that will happen in the future
              uint32_t discarded_slots = dgpo.current_aslot - now_slot;
+             ilog( "discarded_slots: ${discarded_slots}", ("discarded_slots", discarded_slots) );
              // the blockchain is too far in the future to evaluate the current trigger, fail.
              if( discarded_slots >= 128 - trig_slots )
              {

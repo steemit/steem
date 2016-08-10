@@ -83,7 +83,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       std::function<void(const fc::variant&)> _block_applied_callback;
 
       steemit::chain::database&                _db;
-      std::shared_ptr< steemit::follow::follow_api > _follow_api = nullptr;
+      std::shared_ptr< steemit::follow::follow_api > _follow_api;
 
       boost::signals2::scoped_connection       _block_applied_connection;
 };

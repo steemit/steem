@@ -898,7 +898,13 @@ void application::startup()
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
 {
-   return my->_plugins_enabled[name];
+   try
+   {
+      return my->_plugins_enabled.at( name );
+   }
+   catch ( ... ) {}
+
+   return null_plugin;
 }
 
 graphene::net::node_ptr application::p2p_node()

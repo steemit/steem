@@ -39,6 +39,7 @@ namespace steemit { namespace app {
    using std::string;
 
    class abstract_plugin;
+   class plugin;
    class application;
 
    class application
@@ -124,6 +125,8 @@ namespace steemit { namespace app {
 
          boost::program_options::options_description _cli_options;
          boost::program_options::options_description _cfg_options;
+
+         const std::shared_ptr< plugin > null_plugin;
    };
 
    template< class C, typename... Args >

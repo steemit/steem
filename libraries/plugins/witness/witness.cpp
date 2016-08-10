@@ -478,6 +478,9 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
           t->async( [=](){
              chain::pow2_operation op;
              chain::pow2 work;
+             work.prev_block = block_id;
+             work.worker_account = miner;
+             work.nonce = start + thread_num;
              op.props = _miner_prop_vote;
              while( true )
              {
@@ -495,7 +498,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                ++this->_total_hashes;
 
                work.nonce += num_threads;
-               work.create( block_id, miner, start + thread_num );
+               work.create( block_id, miner, work.nonce );
                if( work.work < target )
                {
                   ++this->_head_block_num; /// signal other workers to stop
@@ -520,7 +523,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                }
              }
           });
-       } else  { /// TODO: after Hardfork 13, remove this branch 
+       } else  { /// TODO: after Hardfork 13, remove this branch
           t->async( [=](){
              chain::pow_operation op;
              op.block_id = block_id;
