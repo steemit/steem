@@ -1030,6 +1030,12 @@ fc::sha256 database::get_pow_target()const
    return target;
 }
 
+uint32_t database::get_difficulty_target()const
+{
+   const dynamic_global_property_object& dgp = get_dynamic_global_properties();
+   return ((dgp.num_pow_witnesses/4)+4);
+}
+
 void database::update_witness_schedule4()
 {
    vector<string> active_witnesses;
@@ -2648,6 +2654,7 @@ void database::_apply_block( const signed_block& next_block )
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_orders();
+   clear_work_nonces();
    update_witness_schedule();
 
    update_median_feed();
@@ -3240,6 +3247,18 @@ void database::clear_expired_orders()
    {
       cancel_order( *itr );
       itr = orders_by_exp.begin();
+   }
+}
+
+void database::clear_work_nonces()
+{
+   auto& idx = get_index_type<work_nonce_index>().indices().get<by_id>();
+   while( true )
+   {
+      auto it = idx.begin();
+      if( it == idx.end() )
+         break;
+      remove(*it);
    }
 }
 

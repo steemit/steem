@@ -463,7 +463,6 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
     auto block_id = b.id();
 
 
-    auto target = db.get_pow_target();
     fc::thread* mainthread = &fc::thread::current();
 
     _total_hashes = 0;
@@ -473,8 +472,11 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
 
     uint32_t thread_num = 0;
     uint32_t num_threads = _mining_threads;
-    for( auto& t : _thread_pool ) {
-       if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) ) {
+    if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) )
+    {
+       uint32_t target = db.get_difficulty_target();
+       for( auto& t : _thread_pool )
+       {
           t->async( [=](){
              chain::pow2_operation op;
              chain::pow2 work;
@@ -499,11 +501,12 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
 
                work.nonce += num_threads;
                work.create( block_id, miner, work.nonce );
-               if( work.work < target )
+               if( work.difficulty < target )
                {
                   ++this->_head_block_num; /// signal other workers to stop
 
                   chain::signed_transaction trx;
+                  work.difficulty = target;
                   op.work = work;
                   op.new_owner_key = pub;
                   trx.operations.push_back(op);
@@ -523,7 +526,13 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                }
              }
           });
-       } else  { /// TODO: after Hardfork 13, remove this branch
+       }
+    }
+    else
+    { /// TODO: after Hardfork 13, remove this branch
+       auto target = db.get_pow_target();
+       for( auto& t : _thread_pool )
+       {
           t->async( [=](){
              chain::pow_operation op;
              op.block_id = block_id;
@@ -570,8 +579,8 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                }
              }
           });
+          ++thread_num;
        }
-       ++thread_num;
     }
 }
 

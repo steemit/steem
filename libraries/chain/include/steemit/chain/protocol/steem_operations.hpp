@@ -597,7 +597,7 @@ namespace steemit { namespace chain {
       string            worker_account;
       block_id_type     prev_block;
       uint64_t          nonce = 0;
-      fc::sha256        work;
+      uint8_t           difficulty = 0;
 
       void create( const block_id_type& prev_block, const string& account_name, uint64_t nonce );
       void validate()const;
@@ -606,11 +606,10 @@ namespace steemit { namespace chain {
    struct pow2_operation : public base_operation
    {
       static_variant<pow2>      work;
-      optional<public_key_type> new_owner_key;    
+      optional<public_key_type> new_owner_key;
       chain_properties          props;
 
       void validate()const;
-      const string& get_worker_account()const { return work.get<pow2>().worker_account; }
 
       /** there is no need to verify authority, the proof of work is sufficient */
       void get_required_active_authorities( flat_set<string>& a )const {  
@@ -778,7 +777,7 @@ FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_b
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )
 FC_REFLECT( steemit::chain::feed_publish_operation, (publisher)(exchange_rate) )
 FC_REFLECT( steemit::chain::pow, (worker)(input)(signature)(work) )
-FC_REFLECT( steemit::chain::pow2, (worker_account)(prev_block)(nonce)(work) )
+FC_REFLECT( steemit::chain::pow2, (worker_account)(prev_block)(nonce)(difficulty) )
 FC_REFLECT( steemit::chain::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
 FC_REFLECT( steemit::chain::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )

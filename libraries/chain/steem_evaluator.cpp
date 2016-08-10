@@ -2,6 +2,7 @@
 #include <steemit/chain/generic_json_evaluator_registry.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/witness_objects.hpp>
 
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
@@ -1171,16 +1172,13 @@ void pow_apply( database& db, Operation o ) {
 
    FC_ASSERT( db.head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
-   if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )  {
-      const auto& witness_by_work = db.get_index_type<witness_index>().indices().get<by_work>();
-      auto work_itr = witness_by_work.find( o.work.work );
-      if( work_itr != witness_by_work.end() ) {
-          FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
-      }
-   }
-
    if( !db.has_hardfork( STEEMIT_HARDFORK_0_12__179 ) )
       FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
+
+   db.create< work_nonce_object >( [&]( work_nonce_object& wno )
+   {
+      wno.nonce = o.nonce;
+   } );
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.get_worker_account());
@@ -1227,7 +1225,6 @@ void pow_apply( database& db, Operation o ) {
       db.modify(*cur_witness, [&]( witness_object& w ){
           w.props             = o.props;
           w.pow_worker        = dgp.total_pow;
-          w.last_work         = o.work.work;
       });
    } else {
       db.create<witness_object>( [&]( witness_object& w )
@@ -1236,7 +1233,6 @@ void pow_apply( database& db, Operation o ) {
           w.props             = o.props;
           w.signing_key       = o.work.worker;
           w.pow_worker        = dgp.total_pow;
-          w.last_work         = o.work.work;
       });
    }
    /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
@@ -1265,26 +1261,30 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
    database& db = this->db();
 
-   fc::sha256 target = db.get_pow_target();
-   FC_ASSERT( work.work < target, "work lacks sufficient difficulty" );
+   uint32_t target = db.get_difficulty_target();
+   FC_ASSERT( work.prev_block == db.head_block_id() );
+   FC_ASSERT( work.difficulty == target, "incorrect work difficulty" );
 
    FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
-   const auto& witness_by_work = db.get_index_type<witness_index>().indices().get<by_work>();
-   auto work_itr = witness_by_work.find( work.work );
-   if( work_itr != witness_by_work.end() ) {
-       FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
-   }
+   // We discard duplicate PoW by enforcing uniqueness of nonce through a unique index,
+   // which we clear on every block (older work cannot be re-used because it will fail block_id check).
+   // If two workers are unlucky enough to discover work with the same nonce on the same block,
+   // one of them will be rejected -- too bad, it's an extremely rare unlucky situation.
+   db.create< work_nonce_object >( [&]( work_nonce_object& wno )
+   {
+      wno.nonce = work.nonce;
+   } );
 
    const auto& dgp = db.get_dynamic_global_properties();
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find(o.get_worker_account());
+   auto itr = accounts_by_name.find( work.worker_account );
    if(itr == accounts_by_name.end()) {
       FC_ASSERT( o.new_owner_key.valid() );
       db.create< account_object >( [&]( account_object& acc )
       {
-         acc.name = o.get_worker_account();
+         acc.name = work.worker_account;
          acc.owner = authority( 1, *o.new_owner_key, 1);
          acc.active = acc.owner;
          acc.posting = acc.owner;
@@ -1311,16 +1311,14 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
       db.modify(*cur_witness, [&]( witness_object& w ){
           w.props             = o.props;
           w.pow_worker        = dgp.total_pow;
-          w.last_work         = work.work;
       });
    } else {
       db.create<witness_object>( [&]( witness_object& w )
       {
-          w.owner             = o.get_worker_account();
+          w.owner             = work.worker_account;
           w.props             = o.props;
           w.signing_key       = *o.new_owner_key;
           w.pow_worker        = dgp.total_pow;
-          w.last_work         = work.work;
       });
    }
    /// POW reward depends upon whether we are before or after MINER_VOTING kicks in

@@ -118,7 +118,8 @@ namespace steemit { namespace chain {
       impl_owner_authority_history_object_type,
       impl_account_recovery_request_object_type,
       impl_change_recovery_account_request_object_type,
-      impl_escrow_object_type
+      impl_escrow_object_type,
+      impl_work_nonce_object_type
    };
 
    class operation_object;
@@ -302,6 +303,7 @@ FC_REFLECT_ENUM( steemit::chain::impl_object_type,
                  (impl_account_recovery_request_object_type)
                  (impl_change_recovery_account_request_object_type)
                  (impl_escrow_object_type)
+                 (impl_work_nonce_object_type)
                )
 
 FC_REFLECT_TYPENAME( steemit::chain::share_type )

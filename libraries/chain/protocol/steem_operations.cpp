@@ -190,6 +190,39 @@ namespace steemit { namespace chain {
       work.get<pow2>().validate();
    }
 
+   uint16_t clz_sha256( const fc::sha256& x )
+   {
+      const char* data = x.data();
+      size_t size = x.data_size();
+      size_t lzbits = 0;
+      static const uint8_t char2lzbits[] = {
+     // 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
+        8, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+       };
+
+      size_t i = 0;
+
+      while( true )
+      {
+         uint8_t c = uint8_t( data[i] );
+         lzbits += char2lzbits[c];
+         if( c != 0 )
+            break;
+         ++i;
+         if( i >= size )
+            return 0x100;
+      }
+
+      return lzbits;
+   }
+
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
    {
       input  = i;
@@ -205,7 +238,6 @@ namespace steemit { namespace chain {
       worker_account = account_name;
       prev_block     = prev;
       nonce          = n;
-      work           = fc::sha256();
 
       auto prv_key = fc::sha256::hash( *this );
       auto input = fc::sha256::hash( prv_key );
@@ -214,7 +246,10 @@ namespace steemit { namespace chain {
       auto sig_hash            = fc::sha256::hash( signature );
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash );
 
-      work = fc::sha256::hash(std::make_pair(input,recover));
+      fc::sha256 work = fc::sha256::hash(std::make_pair(input,recover));
+      uint16_t lzbits = clz_sha256( work );
+      lzbits = (lzbits >= 0x100) ? 0xFF : lzbits;
+      difficulty = uint8_t( lzbits );
    }
 
    void pow::validate()const
@@ -230,7 +265,7 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( worker_account ) );
       pow2 tmp; tmp.create( prev_block, worker_account, nonce );
-      FC_ASSERT( work == tmp.work );
+      FC_ASSERT( difficulty <= tmp.difficulty );
    }
 
    void feed_publish_operation::validate()const
