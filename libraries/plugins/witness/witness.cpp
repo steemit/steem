@@ -477,10 +477,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
        if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) ) {
           t->async( [=](){
              chain::pow2_operation op;
-             op.block_id = block_id;
-             op.worker_account = miner;
-             op.work.worker = pub;
-             op.nonce = start + thread_num;
+             chain::pow2 work;
              op.props = _miner_prop_vote;
              while( true )
              {
@@ -497,16 +494,18 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                }
                ++this->_total_hashes;
 
-               op.nonce += num_threads;
-               op.work.create( pk, op.work_input() );
-               if( op.work.work < target )
+               work.nonce += num_threads;
+               work.create( block_id, miner, start + thread_num );
+               if( work.work < target )
                {
                   ++this->_head_block_num; /// signal other workers to stop
 
                   chain::signed_transaction trx;
+                  op.work = work;
+                  op.new_owner_key = pub;
                   trx.operations.push_back(op);
                   trx.ref_block_num = head_block_num;
-                  trx.ref_block_prefix = op.block_id._hash[1];
+                  trx.ref_block_prefix = work.prev_block._hash[1];
                   trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
                   mainthread->async( [this,miner,trx](){
                      try {

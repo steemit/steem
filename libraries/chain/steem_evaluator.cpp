@@ -1253,14 +1253,84 @@ void pow_apply( database& db, Operation o ) {
       db.create_vesting( inc_witness, pow_reward );
 }
 
-
 void pow_evaluator::do_apply( const pow_operation& o ) {
    FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_13__256 ) );
    pow_apply( db(), o );
 }
+
+
 void pow2_evaluator::do_apply( const pow2_operation& o ) {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13__256 ) );
-   pow_apply( db(), o );
+   const auto& work = o.work.get<pow2>();
+
+   database& db = this->db();
+
+   fc::sha256 target = db.get_pow_target();
+   FC_ASSERT( work.work < target, "work lacks sufficient difficulty" );
+
+   FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
+
+   const auto& witness_by_work = db.get_index_type<witness_index>().indices().get<by_work>();
+   auto work_itr = witness_by_work.find( work.work );
+   if( work_itr != witness_by_work.end() ) {
+       FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
+   }
+
+   const auto& dgp = db.get_dynamic_global_properties();
+
+   const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
+   auto itr = accounts_by_name.find(o.get_worker_account());
+   if(itr == accounts_by_name.end()) {
+      FC_ASSERT( o.new_owner_key.valid() );
+      db.create< account_object >( [&]( account_object& acc )
+      {
+         acc.name = o.get_worker_account();
+         acc.owner = authority( 1, *o.new_owner_key, 1);
+         acc.active = acc.owner;
+         acc.posting = acc.owner;
+         acc.memo_key = *o.new_owner_key;
+         acc.created = dgp.time;
+         acc.last_vote_time = dgp.time;
+         acc.recovery_account = ""; /// highest voted witness at time of recovery
+      });
+   }
+
+
+   db.modify( dgp, [&]( dynamic_global_property_object& p )
+   {
+      p.total_pow += p.num_pow_witnesses;
+      p.num_pow_witnesses++;
+   });
+
+
+   const auto cur_witness = db.find_witness( work.worker_account );
+   if( cur_witness ) {
+      FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
+      db.modify(*cur_witness, [&]( witness_object& w ){
+          w.props             = o.props;
+          w.pow_worker        = dgp.total_pow;
+          w.last_work         = work.work;
+      });
+   } else {
+      db.create<witness_object>( [&]( witness_object& w )
+      {
+          w.owner             = o.get_worker_account();
+          w.props             = o.props;
+          w.signing_key       = *o.new_owner_key;
+          w.pow_worker        = dgp.total_pow;
+          w.last_work         = work.work;
+      });
+   }
+   /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
+   asset pow_reward = db.get_pow_reward();
+   asset inc_reward = pow_reward;
+   inc_reward.amount /= 8;
+
+   db.adjust_supply( inc_reward, true );
+
+   /// pay the witness that includes this POW
+   const auto& inc_witness = db.get_account( dgp.current_witness );
+   db.create_vesting( inc_witness, inc_reward );
 }
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )

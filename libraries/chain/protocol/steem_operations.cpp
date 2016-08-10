@@ -175,12 +175,6 @@ namespace steemit { namespace chain {
       hash._hash[0] = nonce;
       return fc::sha256::hash( hash );
    }
-   fc::sha256 pow2_operation::work_input()const
-   {
-      auto hash = fc::sha256::hash( std::make_pair(block_id,work.worker_account) );
-      hash._hash[0] = nonce;
-      return fc::sha256::hash( hash );
-   }
 
    void pow_operation::validate()const
    {
@@ -192,9 +186,8 @@ namespace steemit { namespace chain {
    void pow2_operation::validate()const
    {
       props.validate();
-      FC_ASSERT( is_valid_account_name( work.worker_account ) );
-      FC_ASSERT( work_input() == work.input );
-      work.validate();
+      FC_ASSERT( is_valid_account_name( work.get<pow2>().worker_account ) );
+      work.get<pow2>().validate();
    }
 
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
@@ -207,13 +200,19 @@ namespace steemit { namespace chain {
 
       work = fc::sha256::hash(recover);
    }
-   void pow2::create( const fc::ecc::private_key& w, const digest_type& i )
+   void pow2::create( const block_id_type& prev, const string& account_name, uint64_t n )
    {
-      input  = i;
-      signature = w.sign_compact(input,false);
+      worker_account = account_name;
+      prev_block     = prev;
+      nonce          = n;
+      work           = fc::sha256();
+
+      auto prv_key = fc::sha256::hash( *this );
+      auto input = fc::sha256::hash( fc::sha256::hash( *this ) );
+      auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact(input);
 
       auto sig_hash            = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
+      public_key_type recover  = fc::ecc::public_key( signature, sig_hash );
 
       work = fc::sha256::hash(std::make_pair(input,recover));
    }
@@ -226,14 +225,12 @@ namespace steemit { namespace chain {
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
       FC_ASSERT( work == fc::sha256::hash(recover) );
    }
+
    void pow2::validate()const
    {
-      FC_ASSERT( version == 0 );
-      FC_ASSERT( work != fc::sha256() );
-      FC_ASSERT( public_key_type(fc::ecc::public_key( signature, input, false )) == worker );
-      auto sig_hash = fc::sha256::hash( signature );
-      public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
-      FC_ASSERT( work == fc::sha256::hash(std::make_pair(input,recover)) );
+      FC_ASSERT( is_valid_account_name( worker_account ) );
+      pow2 tmp; tmp.create( prev_block, worker_account, nonce );
+      FC_ASSERT( work == tmp.work );
    }
 
    void feed_publish_operation::validate()const
