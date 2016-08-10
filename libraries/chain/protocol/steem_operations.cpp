@@ -177,7 +177,7 @@ namespace steemit { namespace chain {
    }
    fc::sha256 pow2_operation::work_input()const
    {
-      auto hash = fc::sha256::hash( block_id );
+      auto hash = fc::sha256::hash( std::make_pair(block_id,work.worker_account) );
       hash._hash[0] = nonce;
       return fc::sha256::hash( hash );
    }
@@ -192,7 +192,7 @@ namespace steemit { namespace chain {
    void pow2_operation::validate()const
    {
       props.validate();
-      FC_ASSERT( is_valid_account_name( worker_account ) );
+      FC_ASSERT( is_valid_account_name( work.worker_account ) );
       FC_ASSERT( work_input() == work.input );
       work.validate();
    }

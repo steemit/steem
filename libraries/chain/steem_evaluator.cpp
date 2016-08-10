@@ -1183,11 +1183,11 @@ void pow_apply( database& db, Operation o ) {
       FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find(o.worker_account);
+   auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end()) {
       db.create< account_object >( [&]( account_object& acc )
       {
-         acc.name = o.worker_account;
+         acc.name = o.get_worker_account();
          acc.owner = authority( 1, o.work.worker, 1);
          acc.active = acc.owner;
          acc.posting = acc.owner;
@@ -1202,7 +1202,7 @@ void pow_apply( database& db, Operation o ) {
       });
    }
 
-   const auto& worker_account = db.get_account( o.worker_account ); // verify it exists
+   const auto& worker_account = db.get_account( o.get_worker_account() ); // verify it exists
    FC_ASSERT( worker_account.active.num_auths() == 1, "miners can only have one key auth" );
    FC_ASSERT( worker_account.active.key_auths.size() == 1, "miners may only have one key auth" );
    FC_ASSERT( worker_account.active.key_auths.begin()->first == o.work.worker, "work must be performed by key that signed the work" );
@@ -1221,7 +1221,7 @@ void pow_apply( database& db, Operation o ) {
    });
 
 
-   const auto cur_witness = db.find_witness( o.worker_account );
+   const auto cur_witness = db.find_witness( worker_account.name );
    if( cur_witness ) {
       FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
       db.modify(*cur_witness, [&]( witness_object& w ){
@@ -1232,7 +1232,7 @@ void pow_apply( database& db, Operation o ) {
    } else {
       db.create<witness_object>( [&]( witness_object& w )
       {
-          w.owner             = o.worker_account;
+          w.owner             = o.get_worker_account();
           w.props             = o.props;
           w.signing_key       = o.work.worker;
           w.pow_worker        = dgp.total_pow;

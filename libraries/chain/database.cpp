@@ -2076,8 +2076,10 @@ asset database::get_producer_reward()
    const auto& witness_account = get_account( props.current_witness );
 
    /// pay witness in vesting shares
-   if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) )
+   if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
+      // const auto& witness_obj = get_witness( props.current_witness );
       create_vesting( witness_account, pay );
+   }
    else
    {
       modify( get_account( witness_account.name), [&]( account_object& a )
