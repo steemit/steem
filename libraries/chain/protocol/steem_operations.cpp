@@ -208,7 +208,7 @@ namespace steemit { namespace chain {
       work           = fc::sha256();
 
       auto prv_key = fc::sha256::hash( *this );
-      auto input = fc::sha256::hash( fc::sha256::hash( *this ) );
+      auto input = fc::sha256::hash( prv_key );
       auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact(input);
 
       auto sig_hash            = fc::sha256::hash( signature );
