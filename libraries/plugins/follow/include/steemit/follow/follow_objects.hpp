@@ -65,7 +65,6 @@ class reputation_object : public abstract_object< reputation_object >
 
 struct by_following_follower;
 struct by_follower_following;
-struct by_id;
 
 using namespace boost::multi_index;
 

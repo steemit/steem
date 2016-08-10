@@ -83,7 +83,6 @@ struct order_history_object : public abstract_object< order_history_object >
    fill_order_operation op;
 };
 
-//struct by_id;
 struct by_bucket;
 typedef multi_index_container<
    bucket_object,

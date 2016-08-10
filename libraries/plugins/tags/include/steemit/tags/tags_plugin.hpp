@@ -84,7 +84,6 @@ class  tag_object : public abstract_object<tag_object> {
 };
 
 
-struct by_id;
 struct by_cashout; /// all posts regardless of depth
 struct by_net_rshares; /// all comments regardless of depth
 struct by_parent_created;
