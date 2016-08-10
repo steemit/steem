@@ -946,12 +946,16 @@ asset database::create_sbd( const account_object& to_account, asset steem )
       const auto& median_price = get_feed_history().current_median_history;
       const auto& gpo = get_dynamic_global_properties();
 
-      if( !median_price.is_null() && gpo.printing_sbd )
+      if( !median_price.is_null() )
       {
-         auto sbd = steem * median_price;
+         auto to_sbd = ( gpo.sbd_print_rate * steem.amount ) / STEEMIT_100_PERCENT;
+         auto to_steem = steem.amount - to_sbd;
+
+         auto sbd = asset( to_sbd, STEEM_SYMBOL ) * median_price;
 
          adjust_balance( to_account, sbd );
-         adjust_supply( -steem );
+         adjust_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
+         adjust_supply( asset( -to_sbd, STEEM_SYMBOL ) );
          adjust_supply( sbd );
          return sbd;
       }
@@ -2125,16 +2129,17 @@ void database::pay_liquidity_reward()
 
 void database::stabalize_sbd()
 {
-   if( !has_hardfork( STEEMIT_HARDFORK_0_13__230 ) ) return;
+   auto median_price = get_feed_history().current_median_history;
+
+   if( !has_hardfork( STEEMIT_HARDFORK_0_13__230 ) || median_price.is_null() ) return;
 
    const auto& gpo = get_dynamic_global_properties();
 
-   if( gpo.current_supply.amount < ( gpo.virtual_supply.amount * 80 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT )
+   if( ( gpo.current_sbd_supply * median_price ).amount > ( ( fc::uint128_t( gpo.virtual_supply.amount.value ) * STEEMIT_SBD_CONVERT_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64() )
    {
       const auto& sbd_idx = get_index_type< account_index >().indices().get< by_smd_balance >();
       auto itr = sbd_idx.begin();
 
-      auto median_price = get_feed_history().current_median_history;
       asset net_sbd = asset(0, SBD_SYMBOL );
       asset net_steem = asset( 0, STEEM_SYMBOL );
 
@@ -3030,6 +3035,17 @@ void database::update_virtual_supply()
 
       if( !median_price.is_null() && has_hardfork( STEEMIT_HARDFORK_0_13__230 ) )
       {
+         auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEMIT_100_PERCENT )
+            / dgp.virtual_supply.amount.value ).to_uint64() );
+
+         if( percent_sbd <= STEEMIT_SBD_START_PERCENT )
+            dgp.sbd_print_rate = STEEMIT_100_PERCENT;
+         else if( percent_sbd >= STEEMIT_SBD_STOP_PERCENT )
+            dgp.sbd_print_rate = 0;
+         else
+            dgp.sbd_print_rate = ( ( STEEMIT_SBD_STOP_PERCENT - percent_sbd ) * STEEMIT_100_PERCENT ) / ( STEEMIT_SBD_STOP_PERCENT - STEEMIT_SBD_START_PERCENT );
+
+         /*
          if( dgp.printing_sbd )
          {
             dgp.printing_sbd = ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount
@@ -3040,6 +3056,7 @@ void database::update_virtual_supply()
             dgp.printing_sbd = ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount
                < ( ( fc::uint128_t( dgp.virtual_supply.amount.value ) * STEEMIT_SBD_START_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
          }
+         */
       }
    });
 }
