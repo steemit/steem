@@ -474,7 +474,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
     uint32_t num_threads = _mining_threads;
     if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) )
     {
-       uint32_t target = db.get_difficulty_target();
+       uint32_t target = db.get_log_target();
        for( auto& t : _thread_pool )
        {
           t->async( [=](){
@@ -501,12 +501,11 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
 
                work.nonce += num_threads;
                work.create( block_id, miner, work.nonce );
-               if( work.difficulty < target )
+               if( work.log_work < target )
                {
                   ++this->_head_block_num; /// signal other workers to stop
 
                   chain::signed_transaction trx;
-                  work.difficulty = target;
                   op.work = work;
                   op.new_owner_key = pub;
                   trx.operations.push_back(op);

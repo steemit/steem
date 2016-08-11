@@ -1261,9 +1261,9 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
    database& db = this->db();
 
-   uint32_t target = db.get_difficulty_target();
+   uint32_t target_log_work = db.get_log_target();
    FC_ASSERT( work.prev_block == db.head_block_id() );
-   FC_ASSERT( work.difficulty == target, "incorrect work difficulty" );
+   FC_ASSERT( work.log_work < target_log_work, "insufficient work difficulty" );
 
    FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 

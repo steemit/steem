@@ -597,7 +597,7 @@ namespace steemit { namespace chain {
       string            worker_account;
       block_id_type     prev_block;
       uint64_t          nonce = 0;
-      uint8_t           difficulty = 0;
+      uint32_t          log_work = 0;
 
       void create( const block_id_type& prev_block, const string& account_name, uint64_t nonce );
       void validate()const;
@@ -777,7 +777,7 @@ FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_b
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )
 FC_REFLECT( steemit::chain::feed_publish_operation, (publisher)(exchange_rate) )
 FC_REFLECT( steemit::chain::pow, (worker)(input)(signature)(work) )
-FC_REFLECT( steemit::chain::pow2, (worker_account)(prev_block)(nonce)(difficulty) )
+FC_REFLECT( steemit::chain::pow2, (worker_account)(prev_block)(nonce)(log_work) )
 FC_REFLECT( steemit::chain::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
 FC_REFLECT( steemit::chain::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )

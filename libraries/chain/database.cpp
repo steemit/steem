@@ -1030,10 +1030,13 @@ fc::sha256 database::get_pow_target()const
    return target;
 }
 
-uint32_t database::get_difficulty_target()const
+uint32_t database::get_log_target()const
 {
    const dynamic_global_property_object& dgp = get_dynamic_global_properties();
-   return ((dgp.num_pow_witnesses/4)+4);
+   if( dgp.num_pow_witnesses >= 1004 )
+      return 0;
+
+   return (0xFB00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
 }
 
 void database::update_witness_schedule4()
@@ -2436,6 +2439,7 @@ void database::initialize_indexes()
    add_index< primary_index< owner_authority_history_index                 > >();
    add_index< primary_index< account_recovery_request_index                > >();
    add_index< primary_index< change_recovery_account_request_index         > >();
+   add_index< primary_index< work_nonce_index                              > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
