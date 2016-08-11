@@ -3353,6 +3353,165 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( pow2_op )
+{
+   try
+   {
+      uint32_t target = db.get_pow_log_target(); // get_pow_log_target
+      idump( (target) );
+      BOOST_REQUIRE( target == 0xfc000000 );
+
+      pow2_operation pow;
+      pow2 work;
+
+      uint64_t nonce = 0;
+
+      auto alice_private_key = generate_private_key( "alice" );
+      auto alice_public_key = alice_private_key.get_public_key();
+
+      auto old_block_id = db.head_block_id();
+
+      do
+      {
+         nonce++;
+         work.create( db.head_block_id(), "alice", nonce );
+      } while( work.pow_summary >= target );
+
+      idump( (nonce) );
+      idump( (work) );
+
+      generate_block();
+
+      do
+      {
+         nonce++;
+         work.create( db.head_block_id(), "alice", nonce );
+      } while( work.pow_summary >= target );
+
+      idump( (nonce) );
+      auto old_work = work.pow_summary;
+
+      // find a collision of lower 24
+      do
+      {
+         nonce++;
+         work.create( db.head_block_id(), "alice", nonce );
+      } while( work.pow_summary >= target );
+
+      idump( (nonce) );
+
+      // find pow that is too easy
+      do
+      {
+         nonce++;
+         work.create( db.head_block_id(), "alice", nonce );
+      } while( work.pow_summary <= target );
+
+      idump( (nonce) );
+
+      // Test with wrong previous block id
+      BOOST_TEST_MESSAGE( "Submit pow with an old block id" );
+
+      signed_transaction tx;
+
+      work.create( old_block_id, "alice", 21 );
+      idump( (work) );
+      pow.work = work;
+      pow.new_owner_key = alice_public_key;
+      tx.operations.push_back( pow );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      pow.validate();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      // Test with nonce that doesn't match work, should fail
+      BOOST_TEST_MESSAGE( "Testing pow with nonce that doesn't match work" );
+
+      work.create( db.head_block_id(), "alice", 31 );
+      work.input.nonce = 35;
+      pow.work = work;
+      STEEMIT_REQUIRE_THROW( pow.validate(), fc::assert_exception );
+
+
+      // Test without owner key, should fail on new account
+      BOOST_TEST_MESSAGE( "Submit pow without a new owner key" );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      work.create( db.head_block_id(), "alice", 31 );
+      pow.work = work;
+      pow.new_owner_key.reset();
+      tx.operations.push_back( pow );
+      pow.validate();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      // Test success when adding owner key
+      BOOST_TEST_MESSAGE( "Testing success" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      work.create( db.head_block_id(), "alice", 31 );
+      pow.work = work;
+      pow.new_owner_key = alice_public_key;
+      tx.operations.push_back( pow );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      const auto& alice = db.get_account( "alice" );
+      authority alice_auth( 1, alice_public_key, 1 );
+      BOOST_REQUIRE( alice.owner == alice_auth );
+      BOOST_REQUIRE( alice.active == alice_auth );
+      BOOST_REQUIRE( alice.posting == alice_auth );
+      BOOST_REQUIRE( alice.memo_key == alice_public_key );
+
+      const auto& alice_witness = db.get_witness( "alice" );
+      idump( (alice_witness.pow_worker) );
+      BOOST_REQUIRE( alice_witness.pow_worker == 1 );
+
+      // Test failure when account is in queue
+      BOOST_TEST_MESSAGE( "Test failure when account is already in queue" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      pow.work = work;
+
+      tx.operations.push_back( pow );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      generate_block();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      ACTORS( (bob) )
+
+      do
+      {
+         nonce++;
+         work.create( db.head_block_id(), "bob", nonce );
+      } while( work.pow_summary >= target );
+
+      idump( (nonce) );
+
+      // Test without owner key, should fail on new account
+      BOOST_TEST_MESSAGE( "Submit pow without a new owner key" );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      work.create( db.head_block_id(), "bob", 31 );
+      pow.work = work;
+      pow.new_owner_key.reset();
+      tx.operations.push_back( pow );
+      pow.validate();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      // bob pow and check bob is #2
+   }
+   FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

@@ -1030,13 +1030,13 @@ fc::sha256 database::get_pow_target()const
    return target;
 }
 
-uint32_t database::get_log_target()const
+uint32_t database::get_pow_log_target()const
 {
    const dynamic_global_property_object& dgp = get_dynamic_global_properties();
    if( dgp.num_pow_witnesses >= 1004 )
       return 0;
 
-   return (0xFB00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
+   return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
 }
 
 void database::update_witness_schedule4()

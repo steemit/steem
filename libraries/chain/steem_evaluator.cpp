@@ -1209,7 +1209,7 @@ void pow_apply( database& db, Operation o ) {
 
    db.modify( dgp, [&]( dynamic_global_property_object& p )
    {
-      p.total_pow += p.num_pow_witnesses;
+      p.total_pow++; // make sure this doesn't break anything...
       p.num_pow_witnesses++;
    });
 
@@ -1256,21 +1256,21 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
    database& db = this->db();
 
-   uint32_t target_log_work = db.get_log_target();
-   FC_ASSERT( work.prev_block == db.head_block_id() );
-   FC_ASSERT( work.log_work < target_log_work, "insufficient work difficulty" );
+   uint32_t target_pow = db.get_pow_log_target();
+   FC_ASSERT( work.input.prev_block == db.head_block_id() );
+   FC_ASSERT( work.pow_summary < target_pow, "insufficient work difficulty" );
 
    FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
    const auto& dgp = db.get_dynamic_global_properties();
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find( work.worker_account );
+   auto itr = accounts_by_name.find( work.input.worker_account );
    if(itr == accounts_by_name.end()) {
       FC_ASSERT( o.new_owner_key.valid() );
       db.create< account_object >( [&]( account_object& acc )
       {
-         acc.name = work.worker_account;
+         acc.name = work.input.worker_account;
          acc.owner = authority( 1, *o.new_owner_key, 1);
          acc.active = acc.owner;
          acc.posting = acc.owner;
@@ -1286,12 +1286,12 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
    db.modify( dgp, [&]( dynamic_global_property_object& p )
    {
-      p.total_pow += p.num_pow_witnesses;
+      p.total_pow++;
       p.num_pow_witnesses++;
    });
 
 
-   const auto cur_witness = db.find_witness( work.worker_account );
+   const auto cur_witness = db.find_witness( work.input.worker_account );
    if( cur_witness ) {
       FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
       db.modify(*cur_witness, [&]( witness_object& w ){
@@ -1301,7 +1301,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
    } else {
       db.create<witness_object>( [&]( witness_object& w )
       {
-          w.owner             = work.worker_account;
+          w.owner             = work.input.worker_account;
           w.props             = o.props;
           w.signing_key       = *o.new_owner_key;
           w.pow_worker        = dgp.total_pow;
