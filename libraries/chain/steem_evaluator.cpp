@@ -1214,7 +1214,7 @@ void pow_apply( database& db, Operation o ) {
    });
 
 
-   const auto cur_witness = db.find_witness( worker_account.name );
+   const witness_object* cur_witness = db.find_witness( worker_account.name );
    if( cur_witness ) {
       FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
       db.modify(*cur_witness, [&]( witness_object& w ){
@@ -1295,8 +1295,8 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
    }
    else
    {
-      FC_ASSERT( !o.new_owner_key.valid(), "cannot specify an owner key unless creating ccount" );
-      const auto cur_witness = db.find_witness( work.input.worker_account );
+      FC_ASSERT( !o.new_owner_key.valid(), "cannot specify an owner key unless creating account" );
+      const witness_object* cur_witness = db.find_witness( work.input.worker_account );
       FC_ASSERT( cur_witness, "Witness must be created for existing account before mining" );
       FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
       db.modify(*cur_witness, [&]( witness_object& w )
@@ -1306,14 +1306,10 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
       });
    }
 
-   /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
-   asset pow_reward = db.get_pow_reward();
-   asset inc_reward = pow_reward;
-   inc_reward.amount /= 8;
-
+   /// pay the witness that includes this POW
+   asset inc_reward = db.get_pow_reward();
    db.adjust_supply( inc_reward, true );
 
-   /// pay the witness that includes this POW
    const auto& inc_witness = db.get_account( dgp.current_witness );
    db.create_vesting( inc_witness, inc_reward );
 }
