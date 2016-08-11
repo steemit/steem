@@ -215,8 +215,6 @@ namespace steemit { namespace chain {
 
       fc::sha256 work = fc::sha256::hash(std::make_pair(input,recover));
       pow_summary = work.approx_log_32();
-      idump( (this->input) );
-      idump( (work)(pow_summary) );
    }
 
    void pow::validate()const
@@ -232,7 +230,6 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( input.worker_account ) );
       pow2 tmp; tmp.create( input.prev_block, input.worker_account, input.nonce );
-      idump( (pow_summary)(tmp.pow_summary) );
       FC_ASSERT( pow_summary == tmp.pow_summary );
    }
 

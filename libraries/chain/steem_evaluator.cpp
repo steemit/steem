@@ -1256,17 +1256,23 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
    database& db = this->db();
 
-   uint32_t target_pow = db.get_pow_log_target();
+   uint32_t target_pow = db.get_pow_summary_target();
    FC_ASSERT( work.input.prev_block == db.head_block_id() );
    FC_ASSERT( work.pow_summary < target_pow, "insufficient work difficulty" );
 
    FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
    const auto& dgp = db.get_dynamic_global_properties();
+   db.modify( dgp, [&]( dynamic_global_property_object& p )
+   {
+      p.total_pow++;
+      p.num_pow_witnesses++;
+   });
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find( work.input.worker_account );
-   if(itr == accounts_by_name.end()) {
+   if(itr == accounts_by_name.end())
+   {
       FC_ASSERT( o.new_owner_key.valid() );
       db.create< account_object >( [&]( account_object& acc )
       {
@@ -1279,26 +1285,6 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
          acc.last_vote_time = dgp.time;
          acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
-   } else {
-      FC_ASSERT( !o.new_owner_key.valid(), "cannot specify an owner key unless creating ccount" );
-   }
-
-
-   db.modify( dgp, [&]( dynamic_global_property_object& p )
-   {
-      p.total_pow++;
-      p.num_pow_witnesses++;
-   });
-
-
-   const auto cur_witness = db.find_witness( work.input.worker_account );
-   if( cur_witness ) {
-      FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
-      db.modify(*cur_witness, [&]( witness_object& w ){
-          w.props             = o.props;
-          w.pow_worker        = dgp.total_pow;
-      });
-   } else {
       db.create<witness_object>( [&]( witness_object& w )
       {
           w.owner             = work.input.worker_account;
@@ -1307,6 +1293,19 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
           w.pow_worker        = dgp.total_pow;
       });
    }
+   else
+   {
+      FC_ASSERT( !o.new_owner_key.valid(), "cannot specify an owner key unless creating ccount" );
+      const auto cur_witness = db.find_witness( work.input.worker_account );
+      FC_ASSERT( cur_witness, "Witness must be created for existing account before mining" );
+      FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
+      db.modify(*cur_witness, [&]( witness_object& w )
+      {
+          w.props             = o.props;
+          w.pow_worker        = dgp.total_pow;
+      });
+   }
+
    /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
    asset pow_reward = db.get_pow_reward();
    asset inc_reward = pow_reward;

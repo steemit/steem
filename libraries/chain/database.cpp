@@ -1030,7 +1030,7 @@ fc::sha256 database::get_pow_target()const
    return target;
 }
 
-uint32_t database::get_pow_log_target()const
+uint32_t database::get_pow_summary_target()const
 {
    const dynamic_global_property_object& dgp = get_dynamic_global_properties();
    if( dgp.num_pow_witnesses >= 1004 )

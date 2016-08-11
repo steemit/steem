@@ -3357,8 +3357,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 {
    try
    {
-      uint32_t target = db.get_pow_log_target(); // get_pow_log_target
-      idump( (target) );
+      uint32_t target = db.get_pow_summary_target(); // get_pow_log_target
       BOOST_REQUIRE( target == 0xfc000000 );
 
       pow2_operation pow;
@@ -3371,43 +3370,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       auto old_block_id = db.head_block_id();
 
-      do
-      {
-         nonce++;
-         work.create( db.head_block_id(), "alice", nonce );
-      } while( work.pow_summary >= target );
-
-      idump( (nonce) );
-      idump( (work) );
-
       generate_block();
-
-      do
-      {
-         nonce++;
-         work.create( db.head_block_id(), "alice", nonce );
-      } while( work.pow_summary >= target );
-
-      idump( (nonce) );
-      auto old_work = work.pow_summary;
-
-      // find a collision of lower 24
-      do
-      {
-         nonce++;
-         work.create( db.head_block_id(), "alice", nonce );
-      } while( work.pow_summary >= target );
-
-      idump( (nonce) );
-
-      // find pow that is too easy
-      do
-      {
-         nonce++;
-         work.create( db.head_block_id(), "alice", nonce );
-      } while( work.pow_summary <= target );
-
-      idump( (nonce) );
 
       // Test with wrong previous block id
       BOOST_TEST_MESSAGE( "Submit pow with an old block id" );
@@ -3415,7 +3378,6 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       signed_transaction tx;
 
       work.create( old_block_id, "alice", 21 );
-      idump( (work) );
       pow.work = work;
       pow.new_owner_key = alice_public_key;
       tx.operations.push_back( pow );
@@ -3469,7 +3431,6 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       BOOST_REQUIRE( alice.memo_key == alice_public_key );
 
       const auto& alice_witness = db.get_witness( "alice" );
-      idump( (alice_witness.pow_worker) );
       BOOST_REQUIRE( alice_witness.pow_worker == 1 );
 
       // Test failure when account is in queue
@@ -3487,28 +3448,28 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       ACTORS( (bob) )
 
-      do
-      {
-         nonce++;
-         work.create( db.head_block_id(), "bob", nonce );
-      } while( work.pow_summary >= target );
-
-      idump( (nonce) );
-
-      // Test without owner key, should fail on new account
-      BOOST_TEST_MESSAGE( "Submit pow without a new owner key" );
+      BOOST_TEST_MESSAGE( "Submit pow from existing account without witness object." );
 
       tx.operations.clear();
       tx.signatures.clear();
 
-      work.create( db.head_block_id(), "bob", 31 );
+      work.create( db.head_block_id(), "bob", 55 );
       pow.work = work;
       pow.new_owner_key.reset();
       tx.operations.push_back( pow );
+      tx.sign( bob_private_key, db.get_chain_id() );
       pow.validate();
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
-      // bob pow and check bob is #2
+
+      BOOST_TEST_MESSAGE( "Submit pow from existing account with witness object." );
+
+      witness_create( "bob", bob_private_key, "bob.com", bob_private_key.get_public_key(), 0 );
+      pow.validate();
+      db.push_transaction( tx, 0 );
+
+      const auto& bob_witness = db.get_witness( "bob" );
+      BOOST_REQUIRE( bob_witness.pow_worker == 2 );
    }
    FC_LOG_AND_RETHROW()
 }
