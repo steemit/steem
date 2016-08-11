@@ -1175,11 +1175,6 @@ void pow_apply( database& db, Operation o ) {
    if( !db.has_hardfork( STEEMIT_HARDFORK_0_12__179 ) )
       FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
-   db.create< work_nonce_object >( [&]( work_nonce_object& wno )
-   {
-      wno.nonce = o.nonce;
-   } );
-
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end()) {
@@ -1266,15 +1261,6 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
    FC_ASSERT( work.log_work < target_log_work, "insufficient work difficulty" );
 
    FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
-
-   // We discard duplicate PoW by enforcing uniqueness of nonce through a unique index,
-   // which we clear on every block (older work cannot be re-used because it will fail block_id check).
-   // If two workers are unlucky enough to discover work with the same nonce on the same block,
-   // one of them will be rejected -- too bad, it's an extremely rare unlucky situation.
-   db.create< work_nonce_object >( [&]( work_nonce_object& wno )
-   {
-      wno.nonce = work.nonce;
-   } );
 
    const auto& dgp = db.get_dynamic_global_properties();
 

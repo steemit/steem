@@ -2439,7 +2439,6 @@ void database::initialize_indexes()
    add_index< primary_index< owner_authority_history_index                 > >();
    add_index< primary_index< account_recovery_request_index                > >();
    add_index< primary_index< change_recovery_account_request_index         > >();
-   add_index< primary_index< work_nonce_index                              > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -2658,7 +2657,6 @@ void database::_apply_block( const signed_block& next_block )
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_orders();
-   clear_work_nonces();
    update_witness_schedule();
 
    update_median_feed();
@@ -3251,18 +3249,6 @@ void database::clear_expired_orders()
    {
       cancel_order( *itr );
       itr = orders_by_exp.begin();
-   }
-}
-
-void database::clear_work_nonces()
-{
-   auto& idx = get_index_type<work_nonce_index>().indices().get<by_id>();
-   while( true )
-   {
-      auto it = idx.begin();
-      if( it == idx.end() )
-         break;
-      remove(*it);
    }
 }
 

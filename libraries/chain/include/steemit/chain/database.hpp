@@ -397,7 +397,6 @@ namespace steemit { namespace chain {
          void update_last_irreversible_block();
          void clear_expired_transactions();
          void clear_expired_orders();
-         void clear_work_nonces();
          void process_header_extensions( const signed_block& next_block );
 
          void reset_virtual_schedule_time();

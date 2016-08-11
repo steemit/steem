@@ -120,15 +120,6 @@ namespace steemit { namespace chain {
          version          majority_version;
    };
 
-   class work_nonce_object : public graphene::db::abstract_object<work_nonce_object>
-   {
-      public:
-         static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id = impl_work_nonce_object_type;
-
-         uint64_t         nonce = 0;
-   };
-
    struct by_vote_name;
    struct by_name;
    struct by_pow;
@@ -182,18 +173,8 @@ namespace steemit { namespace chain {
       > // indexed_by
    > witness_vote_multi_index_type;
 
-   struct by_nonce;
-   typedef multi_index_container<
-      work_nonce_object,
-      indexed_by<
-         ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
-         ordered_unique< tag<by_nonce>, member< work_nonce_object, uint64_t, &work_nonce_object::nonce > >
-      >
-   > work_nonce_multi_index_type;
-
    typedef generic_index< witness_object,         witness_multi_index_type>             witness_index;
    typedef generic_index< witness_vote_object,    witness_vote_multi_index_type >       witness_vote_index;
-   typedef generic_index< work_nonce_object,      work_nonce_multi_index_type >         work_nonce_index;
 } }
 
 FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
@@ -213,10 +194,4 @@ FC_REFLECT_DERIVED(
    (graphene::db::object),
    (current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)
    (majority_version)
-)
-
-FC_REFLECT_DERIVED(
-   steemit::chain::work_nonce_object,
-   (graphene::db::object),
-   (nonce)
 )
