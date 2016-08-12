@@ -23,6 +23,7 @@
  */
 #include <steemit/witness/witness.hpp>
 
+#include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
@@ -475,6 +476,9 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
     if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) )
     {
        uint32_t target = db.get_pow_summary_target();
+       const auto& acct_idx  = db.get_index_type< chain::account_index >().indices().get< chain::by_name >();
+       auto acct_it = acct_idx.find( miner );
+       bool has_account = (acct_it != acct_idx.end());
        for( auto& t : _thread_pool )
        {
           t->async( [=](){
@@ -507,11 +511,13 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
 
                   chain::signed_transaction trx;
                   op.work = work;
-                  op.new_owner_key = pub;
+                  if( !has_account )
+                     op.new_owner_key = pub;
                   trx.operations.push_back(op);
                   trx.ref_block_num = head_block_num;
                   trx.ref_block_prefix = work.input.prev_block._hash[1];
                   trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+                  trx.sign( pk, STEEMIT_CHAIN_ID );
                   mainthread->async( [this,miner,trx](){
                      try {
                         database().push_transaction( trx );
