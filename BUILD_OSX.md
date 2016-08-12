@@ -27,7 +27,7 @@ Steem OS X Build Instructions
 6. Clone the Graphene repository:
    ```
    git clone https://github.com/steemit/steem.git
-   cd graphene
+   cd steem
    ```
 
 7. Build Steem:
