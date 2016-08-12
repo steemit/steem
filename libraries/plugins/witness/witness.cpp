@@ -517,8 +517,7 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                   trx.ref_block_num = head_block_num;
                   trx.ref_block_prefix = work.input.prev_block._hash[1];
                   trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-                  if( has_account )
-                     trx.sign( pk, STEEMIT_CHAIN_ID );
+                  trx.sign( pk, STEEMIT_CHAIN_ID );
                   mainthread->async( [this,miner,trx](){
                      try {
                         database().push_transaction( trx );
