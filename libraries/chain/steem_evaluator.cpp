@@ -1172,6 +1172,16 @@ void pow_apply( database& db, Operation o ) {
 
    FC_ASSERT( db.head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
+   if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )
+   {
+      const auto& witness_by_work = db.get_index_type<witness_index>().indices().get<by_work>();
+      auto work_itr = witness_by_work.find( o.work.work );
+      if( work_itr != witness_by_work.end() )
+      {
+          FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
+      }
+   }
+
    if( !db.has_hardfork( STEEMIT_HARDFORK_0_12__179 ) )
       FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
@@ -1220,6 +1230,7 @@ void pow_apply( database& db, Operation o ) {
       db.modify(*cur_witness, [&]( witness_object& w ){
           w.props             = o.props;
           w.pow_worker        = dgp.total_pow;
+          w.last_work         = o.work.work;
       });
    } else {
       db.create<witness_object>( [&]( witness_object& w )
@@ -1228,6 +1239,7 @@ void pow_apply( database& db, Operation o ) {
           w.props             = o.props;
           w.signing_key       = o.work.worker;
           w.pow_worker        = dgp.total_pow;
+          w.last_work         = o.work.work;
       });
    }
    /// POW reward depends upon whether we are before or after MINER_VOTING kicks in

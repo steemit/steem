@@ -85,6 +85,8 @@ namespace steemit { namespace chain {
          fc::uint128 virtual_scheduled_time = fc::uint128::max_value();
          ///@}
 
+         digest_type last_work;
+
          /**
           * This field represents the Steem blockchain version the witness is running.
           */
@@ -132,6 +134,7 @@ namespace steemit { namespace chain {
       witness_object,
       indexed_by<
          ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_non_unique< tag<by_work>, member<witness_object, digest_type, &witness_object::last_work> >,
          ordered_unique< tag<by_name>, member<witness_object, string, &witness_object::owner> >,
          ordered_non_unique< tag<by_pow>, member<witness_object, uint64_t, &witness_object::pow_worker> >,
          ordered_unique< tag<by_vote_name>,
@@ -184,6 +187,7 @@ FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
                     (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
                     (props)
                     (sbd_exchange_rate)(last_sbd_exchange_update)
+                    (last_work)
                     (running_version)
                     (hardfork_version_vote)(hardfork_time_vote)
                   )
