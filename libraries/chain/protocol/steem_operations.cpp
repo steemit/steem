@@ -186,7 +186,7 @@ namespace steemit { namespace chain {
    void pow2_operation::validate()const
    {
       props.validate();
-      FC_ASSERT( is_valid_account_name( work.get<pow2>().worker_account ) );
+      FC_ASSERT( is_valid_account_name( work.get<pow2>().input.worker_account ) );
       work.get<pow2>().validate();
    }
 
@@ -202,11 +202,11 @@ namespace steemit { namespace chain {
    }
    void pow2::create( const block_id_type& prev, const string& account_name, uint64_t n )
    {
-      worker_account = account_name;
-      prev_block     = prev;
-      nonce          = n;
+      input.worker_account = account_name;
+      input.prev_block     = prev;
+      input.nonce          = n;
 
-      auto prv_key = fc::sha256::hash( *this );
+      auto prv_key = fc::sha256::hash( input );
       auto input = fc::sha256::hash( prv_key );
       auto signature = fc::ecc::private_key::regenerate( prv_key ).sign_compact(input);
 
@@ -214,7 +214,7 @@ namespace steemit { namespace chain {
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash );
 
       fc::sha256 work = fc::sha256::hash(std::make_pair(input,recover));
-      log_work = work.approx_log_32();
+      pow_summary = work.approx_log_32();
    }
 
    void pow::validate()const
@@ -228,9 +228,9 @@ namespace steemit { namespace chain {
 
    void pow2::validate()const
    {
-      FC_ASSERT( is_valid_account_name( worker_account ) );
-      pow2 tmp; tmp.create( prev_block, worker_account, nonce );
-      FC_ASSERT( log_work == tmp.log_work );
+      FC_ASSERT( is_valid_account_name( input.worker_account ) );
+      pow2 tmp; tmp.create( input.prev_block, input.worker_account, input.nonce );
+      FC_ASSERT( pow_summary == tmp.pow_summary );
    }
 
    void feed_publish_operation::validate()const

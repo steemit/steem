@@ -23,6 +23,7 @@
  */
 #include <steemit/witness/witness.hpp>
 
+#include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
@@ -474,15 +475,18 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
     uint32_t num_threads = _mining_threads;
     if( db.has_hardfork( STEEMIT_HARDFORK_0_13 ) )
     {
-       uint32_t target = db.get_log_target();
+       uint32_t target = db.get_pow_summary_target();
+       const auto& acct_idx  = db.get_index_type< chain::account_index >().indices().get< chain::by_name >();
+       auto acct_it = acct_idx.find( miner );
+       bool has_account = (acct_it != acct_idx.end());
        for( auto& t : _thread_pool )
        {
           t->async( [=](){
              chain::pow2_operation op;
              chain::pow2 work;
-             work.prev_block = block_id;
-             work.worker_account = miner;
-             work.nonce = start + thread_num;
+             work.input.prev_block = block_id;
+             work.input.worker_account = miner;
+             work.input.nonce = start + thread_num;
              op.props = _miner_prop_vote;
              while( true )
              {
@@ -499,19 +503,21 @@ void witness_plugin::start_mining( const fc::ecc::public_key& pub, const fc::ecc
                }
                ++this->_total_hashes;
 
-               work.nonce += num_threads;
-               work.create( block_id, miner, work.nonce );
-               if( work.log_work < target )
+               work.input.nonce += num_threads;
+               work.create( block_id, miner, work.input.nonce );
+               if( work.pow_summary < target )
                {
                   ++this->_head_block_num; /// signal other workers to stop
 
                   chain::signed_transaction trx;
                   op.work = work;
-                  op.new_owner_key = pub;
+                  if( !has_account )
+                     op.new_owner_key = pub;
                   trx.operations.push_back(op);
                   trx.ref_block_num = head_block_num;
-                  trx.ref_block_prefix = work.prev_block._hash[1];
+                  trx.ref_block_prefix = work.input.prev_block._hash[1];
                   trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+                  trx.sign( pk, STEEMIT_CHAIN_ID );
                   mainthread->async( [this,miner,trx](){
                      try {
                         database().push_transaction( trx );
