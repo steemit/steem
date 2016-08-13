@@ -284,6 +284,15 @@ fc::optional<fc::logging_config> load_logging_config_from_ini_file(const fc::pat
             file_appender_config.rotate = true;
             file_appender_config.rotation_interval = fc::hours(1);
             file_appender_config.rotation_limit = fc::days(1);
+            try
+            {
+               file_appender_config.rotation_compression = section_tree.get<bool>("compress");
+            }
+            catch (const boost::property_tree::ptree_bad_path& e)
+            {
+               file_appender_config.rotation_compression = false;
+            }
+
             logging_config.appenders.push_back(fc::appender_config(file_appender_name, "file", fc::variant(file_appender_config)));
             found_logging_config = true;
          }
