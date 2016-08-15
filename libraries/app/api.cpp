@@ -201,31 +201,33 @@ namespace steemit { namespace app {
              auto itr = _callbacks.find(id);
              if( itr != _callbacks.end() )
              {
-                auto callback = _callbacks.find(id)->second;
-                fc::async( [capture_this,this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
-                itr->second = []( const variant& ){};
+                confirmation_callback callback = itr->second;
+                fc::async( [capture_this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
+                _callbacks.erase( itr );
              }
           }
        }
 
        /// clear all expirations
-
-       if( _callbacks_expirations.size() ) {
-          auto end = _callbacks_expirations.upper_bound( b.timestamp );
-          auto itr = _callbacks_expirations.begin();
-          while( itr != end ) {
-             for( const auto trx_id : itr->second ) {
-               auto cb_itr = _callbacks.find( trx_id );
-               if( cb_itr != _callbacks.end() ) {
-                   auto capture_this = shared_from_this();
-                   auto callback = _callbacks.find(trx_id)->second; 
-                   fc::async( [capture_this,this,block_num,trx_id,callback](){ callback( fc::variant(transaction_confirmation{ trx_id, block_num, -1, true}) ); } );
-                   _callbacks.erase(cb_itr);
-               }
-             }
-             _callbacks_expirations.erase( itr );
-             itr = _callbacks_expirations.begin();
+       while( true )
+       {
+          auto exp_it = _callbacks_expirations.begin();
+          if( exp_it == _callbacks_expirations.end() )
+             break;
+          if( exp_it->first > b.timestamp )
+             break;
+          for( const transaction_id_type& txid : exp_it->second )
+          {
+             auto cb_it = _callbacks.find( txid );
+             // If it's empty, that means the transaction has been confirmed and has been deleted by the above check.
+             if( cb_it == _callbacks.end() )
+                continue;
+             std::shared_ptr< network_broadcast_api > capture_this = shared_from_this();
+             confirmation_callback callback = cb_it->second;
+             fc::async( [capture_this,block_num,txid,callback](){ callback( fc::variant(transaction_confirmation{ txid, block_num, -1, true}) ); } );
+             _callbacks.erase( cb_it );
           }
+          _callbacks_expirations.erase( exp_it );
        }
     }
 
