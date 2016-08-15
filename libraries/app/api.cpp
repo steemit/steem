@@ -144,17 +144,19 @@ namespace steemit { namespace app {
              continue;
           }
 
-          uint32_t now_slot = db->get_slot_at_time( now );
-          ilog( "now_slot: ${now_slot}   current_aslot: ${current_aslot}", ("now_slot", now_slot)("current_aslot", dgpo.current_aslot) );
-
           fc::uint128_t temp_slots = slots;
-          if( now_slot < dgpo.current_aslot )
+
+          fc::time_point_sec db_now = db->head_block_time();
+          int64_t delta = (now - db_now).to_seconds();
+          ilog( "delta: ${delta}", ("delta", delta) );
+          if( delta > 0 )
+             delta = std::max( delta-STEEMIT_BLOCK_INTERVAL*2, int64_t(0) );
+          int64_t delta_slots = delta / STEEMIT_BLOCK_INTERVAL;
+          if( delta_slots < 0 )
           {
+             uint64_t discarded_slots = uint64_t( -delta_slots );
              // now is in the past, so rewind temp_slots by discarding the slots that will happen in the future
-             uint32_t discarded_slots = dgpo.current_aslot - now_slot;
-             ilog( "discarded_slots: ${discarded_slots}", ("discarded_slots", discarded_slots) );
-             // the blockchain is too far in the future to evaluate the current trigger, fail.
-             if( discarded_slots >= 128 - trig_slots )
+             if( delta_slots >= 128 - trig_slots )
              {
                 elog( "Bailed in check_bcd_trigger because the blockchain extends too far into the future" );
                 continue;
@@ -164,8 +166,8 @@ namespace steemit { namespace app {
           else
           {
              // now is in the future, so add temp_slots by shifting in new empty places
-             uint32_t empty_slots = now_slot - dgpo.current_aslot;
-             // if now is so far in the future that all slots are empty, all triggers should pass
+             uint64_t empty_slots = delta_slots;
+             // if now is so far in the future that all slots are empty, all triggers should trip
              if( empty_slots >= 128 )
                 return true;
              temp_slots <<= empty_slots;
@@ -207,6 +209,7 @@ namespace steemit { namespace app {
        }
 
        /// clear all expirations
+
        if( _callbacks_expirations.size() ) {
           auto end = _callbacks_expirations.upper_bound( b.timestamp );
           auto itr = _callbacks_expirations.begin();
