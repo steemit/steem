@@ -10,7 +10,6 @@
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/transaction_evaluation_state.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
 #include <graphene/db/flat_index.hpp>
@@ -62,8 +61,21 @@ inline u256 to256( const fc::uint128& t ) {
    return v;
 }
 
+class database_impl
+{
+   public:
+      database_impl( database& self );
+
+      database&                              _self;
+      evaluator_registry< operation >        _evaluator_registry;
+};
+
+database_impl::database_impl( database& self )
+   : _self(self), _evaluator_registry(self)
+{ }
 
 database::database()
+   : _my( new database_impl(*this) )
 {
    initialize_indexes();
    initialize_evaluators();
@@ -456,7 +468,7 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
                        ("account_vshares",account_vshares)
                        ("account_average_bandwidth",account_average_bandwidth)
                        ("max_virtual_bandwidth",max_virtual_bandwidth)
-                       ("total_vshares",total_vshares) );
+                       ("total_vesting_shares",total_vshares) );
          }
          acnt.last_bandwidth_update = now;
       } );
@@ -888,6 +900,7 @@ void database::notify_post_apply_operation( const operation& op )
    obj.op_in_trx    = _current_op_in_trx;
    obj.virtual_op   = _current_virtual_op;
    obj.op           = op;
+
    post_apply_operation( obj );
 }
 
@@ -1015,6 +1028,15 @@ fc::sha256 database::get_pow_target()const
    target._hash[3] = -1;
    target = target >> ((dgp.num_pow_witnesses/4)+4);
    return target;
+}
+
+uint32_t database::get_pow_summary_target()const
+{
+   const dynamic_global_property_object& dgp = get_dynamic_global_properties();
+   if( dgp.num_pow_witnesses >= 1004 )
+      return 0;
+
+   return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
 }
 
 void database::update_witness_schedule4()
@@ -1881,6 +1903,12 @@ void database::cashout_comment_helper( const comment_object& comment )
             else
                c.cashout_time = fc::time_point_sec::maximum();
          }
+
+         if( calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() )
+            c.mode = archived;
+         else
+            c.mode = second_payout;
+
          c.last_payout = head_block_time();
       } );
 
@@ -1899,7 +1927,9 @@ void database::cashout_comment_helper( const comment_object& comment )
          }
          else
          {
+#ifdef CLEAR_VOTES
             remove( cur_vote );
+#endif
          }
       }
    } FC_CAPTURE_AND_RETHROW( (comment) )
@@ -2055,8 +2085,10 @@ asset database::get_producer_reward()
    const auto& witness_account = get_account( props.current_witness );
 
    /// pay witness in vesting shares
-   if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) )
+   if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
+      // const auto& witness_obj = get_witness( props.current_witness );
       create_vesting( witness_account, pay );
+   }
    else
    {
       modify( get_account( witness_account.name), [&]( account_object& a )
@@ -2328,39 +2360,53 @@ uint32_t database::last_non_undoable_block_num() const
 
 void database::initialize_evaluators()
 {
-    _operation_evaluators.resize(255);
+    _my->_evaluator_registry.register_evaluator<vote_evaluator>();
+    _my->_evaluator_registry.register_evaluator<comment_evaluator>();
+    _my->_evaluator_registry.register_evaluator<comment_options_evaluator>();
+    _my->_evaluator_registry.register_evaluator<delete_comment_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_evaluator>();
+    _my->_evaluator_registry.register_evaluator<transfer_to_vesting_evaluator>();
+    _my->_evaluator_registry.register_evaluator<withdraw_vesting_evaluator>();
+    _my->_evaluator_registry.register_evaluator<set_withdraw_vesting_route_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_create_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_update_evaluator>();
+    _my->_evaluator_registry.register_evaluator<witness_update_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_witness_vote_evaluator>();
+    _my->_evaluator_registry.register_evaluator<account_witness_proxy_evaluator>();
+    _my->_evaluator_registry.register_evaluator<custom_evaluator>();
+    _my->_evaluator_registry.register_evaluator<custom_json_evaluator>();
+    _my->_evaluator_registry.register_evaluator<pow_evaluator>();
+    _my->_evaluator_registry.register_evaluator<pow2_evaluator>();
+    _my->_evaluator_registry.register_evaluator<report_over_production_evaluator>();
 
-    register_evaluator<vote_evaluator>();
-    register_evaluator<comment_evaluator>();
-    register_evaluator<comment_options_evaluator>();
-    register_evaluator<delete_comment_evaluator>();
-    register_evaluator<transfer_evaluator>();
-    register_evaluator<transfer_to_vesting_evaluator>();
-    register_evaluator<withdraw_vesting_evaluator>();
-    register_evaluator<set_withdraw_vesting_route_evaluator>();
-    register_evaluator<account_create_evaluator>();
-    register_evaluator<account_update_evaluator>();
-    register_evaluator<witness_update_evaluator>();
-    register_evaluator<account_witness_vote_evaluator>();
-    register_evaluator<account_witness_proxy_evaluator>();
-    register_evaluator<custom_evaluator>();
-    register_evaluator<custom_json_evaluator>();
-    register_evaluator<pow_evaluator>();
-    register_evaluator<report_over_production_evaluator>();
+    _my->_evaluator_registry.register_evaluator<feed_publish_evaluator>();
+    _my->_evaluator_registry.register_evaluator<convert_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_create_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_create2_evaluator>();
+    _my->_evaluator_registry.register_evaluator<limit_order_cancel_evaluator>();
+    _my->_evaluator_registry.register_evaluator<challenge_authority_evaluator>();
+    _my->_evaluator_registry.register_evaluator<prove_authority_evaluator>();
+    _my->_evaluator_registry.register_evaluator<request_account_recovery_evaluator>();
+    _my->_evaluator_registry.register_evaluator<recover_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<change_recovery_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_transfer_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_dispute_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_release_evaluator>();
+}
 
-    register_evaluator<feed_publish_evaluator>();
-    register_evaluator<convert_evaluator>();
-    register_evaluator<limit_order_create_evaluator>();
-    register_evaluator<limit_order_create2_evaluator>();
-    register_evaluator<limit_order_cancel_evaluator>();
-    register_evaluator<challenge_authority_evaluator>();
-    register_evaluator<prove_authority_evaluator>();
-    register_evaluator<request_account_recovery_evaluator>();
-    register_evaluator<recover_account_evaluator>();
-    register_evaluator<change_recovery_account_evaluator>();
-    register_evaluator<escrow_transfer_evaluator>();
-    register_evaluator<escrow_dispute_evaluator>();
-    register_evaluator<escrow_release_evaluator>();
+void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
+{
+   bool inserted = _custom_json_evaluators.emplace( id, registry ).second;
+   // This assert triggering means we're mis-configured (multiple registrations of custom JSON evaluator for same ID)
+   FC_ASSERT( inserted );
+}
+
+std::shared_ptr< generic_json_evaluator_registry > database::get_custom_json_evaluator( const std::string& id )
+{
+   auto it = _custom_json_evaluators.find( id );
+   if( it != _custom_json_evaluators.end() )
+      return it->second;
+   return std::shared_ptr< generic_json_evaluator_registry >();
 }
 
 void database::initialize_indexes()
@@ -2410,8 +2456,6 @@ void database::init_genesis( uint64_t init_supply )
          database& db;
          uint32_t old_flags;
       } inhibitor(*this);
-
-      transaction_evaluation_state genesis_eval_state(this);
 
       flat_index<block_summary_object>& bsi = get_mutable_index_type< flat_index<block_summary_object> >();
       bsi.resize(0xffff+1);
@@ -2743,8 +2787,6 @@ void database::_apply_transaction(const signed_transaction& trx)
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
               trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
-   transaction_evaluation_state eval_state(this);
-   eval_state._trx = &trx;
 
    if( !(skip & (skip_transaction_signatures | skip_authority_check) ) )
    {
@@ -2810,7 +2852,7 @@ void database::_apply_transaction(const signed_transaction& trx)
    _current_op_in_trx = 0;
    for( const auto& op : trx.operations )
    { try {
-      apply_operation(eval_state, op);
+      apply_operation(op);
       ++_current_op_in_trx;
      } FC_CAPTURE_AND_RETHROW( (op) );
    }
@@ -2818,21 +2860,12 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
-void database::apply_operation(transaction_evaluation_state& eval_state, const operation& op)
-{ try {
-   int i_which = op.which();
-   uint64_t u_which = uint64_t( i_which );
-   if( i_which < 0 )
-      assert( "Negative operation tag" && false );
-   if( u_which >= _operation_evaluators.size() )
-      assert( "No registered evaluator for this operation" && false );
-   unique_ptr<op_evaluator>& eval = _operation_evaluators[ u_which ];
-   if( !eval )
-      assert( "No registered evaluator for this operation" && false );
+void database::apply_operation(const operation& op)
+{
    push_applied_operation( op );
-   eval->evaluate( eval_state, op, true );
+   _my->_evaluator_registry.get_evaluator( op ).apply( op );
    notify_post_apply_operation( op );
-} FC_CAPTURE_AND_RETHROW(  ) }
+}
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
 {
@@ -3346,6 +3379,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_12 == 12, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_12 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_12_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_12 ] = STEEMIT_HARDFORK_0_12_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_13 == 13, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_13 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_13_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_13 ] = STEEMIT_HARDFORK_0_13_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3437,7 +3473,7 @@ void database::apply_hardfork( uint32_t hardfork )
    {
       case STEEMIT_HARDFORK_0_1:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 1" );
+         elog( "HARDFORK 1 at block ${b}", ("b", head_block_num()) );
 #endif
          perform_vesting_share_split( 1000000 );
 #ifdef IS_TEST_NET
@@ -3453,48 +3489,48 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_2:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 2" );
+         elog( "HARDFORK 2 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_3:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 3" );
+         elog( "HARDFORK 3 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_4:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 4" );
+         elog( "HARDFORK 4 at block ${b}", ("b", head_block_num()) );
 #endif
          reset_virtual_schedule_time();
          break;
       case STEEMIT_HARDFORK_0_5:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 5" );
+         elog( "HARDFORK 5 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_6:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 6" );
+         elog( "HARDFORK 6 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_vote_counts();
          retally_comment_children();
          break;
       case STEEMIT_HARDFORK_0_7:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 7" );
+         elog( "HARDFORK 7 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_8:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 8" );
+         elog( "HARDFORK 8 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_9:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 9" );
+         elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
 #endif
          {
             for( auto acc : hardfork9::get_compromised_accounts() )
@@ -3516,18 +3552,18 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 10" );
+         elog( "HARDFORK 10 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_liquidity_weight();
          break;
       case STEEMIT_HARDFORK_0_11:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 11" );
+         elog( "HARDFORK 11 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_12:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 12" );
+         elog( "HARDFORK 12 at block ${b}", ("b", head_block_num()) );
 #endif
          {
             const auto& comment_idx = get_index_type< comment_index >().indices();
@@ -3545,6 +3581,7 @@ void database::apply_hardfork( uint32_t hardfork )
                      modify( *itr, [&]( comment_object & c )
                      {
                         c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+                        c.mode = first_payout;
                      });
                   }
                   // Has been paid out, needs to be on second cashout window
@@ -3553,6 +3590,7 @@ void database::apply_hardfork( uint32_t hardfork )
                      modify( *itr, [&]( comment_object& c )
                      {
                         c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+                        c.mode = second_payout;
                      });
                   }
                }
@@ -3576,6 +3614,11 @@ void database::apply_hardfork( uint32_t hardfork )
                a.posting.weight_threshold = 1;
             });
          }
+         break;
+      case STEEMIT_HARDFORK_0_13:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 13 at block ${b}", ("b", head_block_num()) );
+#endif
          break;
       default:
          break;

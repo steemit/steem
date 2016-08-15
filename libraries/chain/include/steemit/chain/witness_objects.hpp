@@ -122,7 +122,6 @@ namespace steemit { namespace chain {
          version          majority_version;
    };
 
-
    struct by_vote_name;
    struct by_name;
    struct by_pow;
@@ -176,7 +175,6 @@ namespace steemit { namespace chain {
          >
       > // indexed_by
    > witness_vote_multi_index_type;
-
 
    typedef generic_index< witness_object,         witness_multi_index_type>             witness_index;
    typedef generic_index< witness_vote_object,    witness_vote_multi_index_type >       witness_vote_index;

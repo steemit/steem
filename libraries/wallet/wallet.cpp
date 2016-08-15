@@ -44,6 +44,8 @@
 
 #include <steemit/app/api.hpp>
 #include <steemit/chain/protocol/base.hpp>
+#include <steemit/follow/follow_operations.hpp>
+#include <steemit/private_message/private_message_operations.hpp>
 #include <steemit/wallet/wallet.hpp>
 #include <steemit/wallet/api_documentation.hpp>
 #include <steemit/wallet/reflect_util.hpp>
@@ -1914,10 +1916,11 @@ annotated_signed_transaction wallet_api::follow( string follower, string followi
    fop.follower = follower;
    fop.following = following;
    fop.what = what;
+   follow::follow_plugin_operation op = fop;
 
    custom_json_operation jop;
    jop.id = "follow";
-   jop.json = fc::json::to_string(fop);
+   jop.json = fc::json::to_string(op);
    jop.required_posting_auths.insert(follower);
 
    signed_transaction trx;

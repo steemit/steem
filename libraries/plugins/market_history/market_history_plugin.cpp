@@ -151,8 +151,8 @@ void market_history_plugin_impl::update_market_histories( const operation_object
 
 } // detail
 
-market_history_plugin::market_history_plugin() :
-   _my( new detail::market_history_plugin_impl( *this ) ) {}
+market_history_plugin::market_history_plugin( application* app )
+   : plugin( app ), _my( new detail::market_history_plugin_impl( *this ) ) {}
 market_history_plugin::~market_history_plugin() {}
 
 void market_history_plugin::plugin_set_program_options(
@@ -179,7 +179,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 
       if( options.count("bucket-size" ) )
       {
-         const std::string& buckets = options["bucket-size"].as< string >();
+         std::string buckets = options["bucket-size"].as< string >();
          _my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
       }
       if( options.count("history-per-size" ) )

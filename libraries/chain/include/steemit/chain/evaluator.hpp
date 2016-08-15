@@ -4,70 +4,87 @@
 
 namespace steemit { namespace chain {
 
-   class database;
-   struct signed_transaction;
-   class generic_evaluator;
-   class transaction_evaluation_state;
+class database;
 
-   class generic_evaluator
-   {
+template< typename OperationType=steemit::chain::operation >
+class generic_evaluator
+{
    public:
-      virtual ~generic_evaluator(){}
-
+      virtual void apply(const OperationType& op) = 0;
       virtual int get_type()const = 0;
-      virtual void start_evaluate(transaction_evaluation_state& eval_state, const operation& op, bool apply);
+};
 
-      /**
-       * @note derived classes should ASSUME that the default validation that is
-       * indepenent of chain state should be performed by op.validate() and should
-       * not perform these extra checks.
-       */
-      virtual void evaluate(const operation& op) = 0;
-      virtual void  apply(const operation& op) = 0;
-
-      database& db()const;
-
-      //void check_required_authorities(const operation& op);
-   protected:
-      transaction_evaluation_state*    trx_state;
-   };
-
-   class op_evaluator
-   {
+template< typename EvaluatorType, typename OperationType=steemit::chain::operation >
+class evaluator : public generic_evaluator<OperationType>
+{
    public:
-      virtual ~op_evaluator(){}
-      virtual void  evaluate(transaction_evaluation_state& eval_state, const operation& op, bool apply) = 0;
-   };
+      typedef OperationType operation_sv_type;
+      // typedef typename EvaluatorType::operation_type op_type;
 
-   template<typename T>
-   class op_evaluator_impl : public op_evaluator
-   {
-   public:
-      virtual void  evaluate(transaction_evaluation_state& eval_state, const operation& op, bool apply = true) override
+      evaluator( database& d )
+         : _db(d) {}
+
+      virtual void apply(const OperationType& o) final override
       {
-         T eval;
-         eval.start_evaluate(eval_state, op, apply);
-      }
-   };
-
-   template<typename DerivedEvaluator>
-   class evaluator : public generic_evaluator
-   {
-   public:
-      virtual int get_type()const override { return operation::tag<typename DerivedEvaluator::operation_type>::value; }
-
-      virtual void evaluate(const operation& o) final override
-      {
-         auto* eval = static_cast<DerivedEvaluator*>(this);
-         const auto& op = o.get<typename DerivedEvaluator::operation_type>();
-         eval->do_evaluate(op);
-      }
-
-      virtual void apply(const operation& o) final override
-      {
-         auto* eval = static_cast<DerivedEvaluator*>(this);
-         const auto& op = o.get<typename DerivedEvaluator::operation_type>();
+         auto* eval = static_cast< EvaluatorType* >(this);
+         const auto& op = o.template get< typename EvaluatorType::operation_type >();
          eval->do_apply(op);
       }
-   };
+
+      virtual int get_type()const override { return OperationType::template tag< typename EvaluatorType::operation_type >::value; }
+
+      database& db() { return _db; }
+
+   protected:
+      database& _db;
+};
+
+template< typename OperationType >
+class evaluator_registry
+{
+   public:
+      evaluator_registry( database& d )
+         : _db(d)
+      {
+         for( int i=0; i<OperationType::count(); i++ )
+             _op_evaluators.emplace_back();
+      }
+
+      template< typename EvaluatorType, typename... Args >
+      void register_evaluator( Args... args )
+      {
+         _op_evaluators[ OperationType::template tag< typename EvaluatorType::operation_type >::value ].reset( new EvaluatorType(_db, args...) );
+      }
+
+      generic_evaluator<OperationType>& get_evaluator( const OperationType& op )
+      {
+         int i_which = op.which();
+         uint64_t u_which = uint64_t( i_which );
+         if( i_which < 0 )
+            assert( "Negative operation tag" && false );
+         if( u_which >= _op_evaluators.size() )
+            assert( "No registered evaluator for this operation" && false );
+         unique_ptr< generic_evaluator<OperationType> >& eval = _op_evaluators[ u_which ];
+         if( !eval )
+            assert( "No registered evaluator for this operation" && false );
+         return *eval;
+      }
+
+      std::vector< std::unique_ptr< generic_evaluator<OperationType> > > _op_evaluators;
+      database& _db;
+};
+
 } }
+
+#define DEFINE_EVALUATOR( X ) \
+class X ## _evaluator : public steemit::chain::evaluator< X ## _evaluator > \
+{                                                                           \
+   public:                                                                  \
+      typedef X ## _operation operation_type;                               \
+                                                                            \
+      X ## _evaluator( database& db )                                       \
+         : steemit::chain::evaluator< X ## _evaluator >( db )               \
+      {}                                                                    \
+                                                                            \
+      void do_apply( const X ## _operation& o );                            \
+};

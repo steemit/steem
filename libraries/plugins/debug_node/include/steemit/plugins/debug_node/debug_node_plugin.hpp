@@ -18,21 +18,28 @@ namespace graphene { namespace db {
 } }
 
 namespace steemit { namespace plugin { namespace debug_node {
+using app::application;
 
 class debug_node_plugin : public steemit::app::plugin
 {
    public:
-      debug_node_plugin();
+      debug_node_plugin( application* app );
       virtual ~debug_node_plugin();
 
       virtual std::string plugin_name()const override;
       virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
+      virtual void plugin_set_program_options(
+         boost::program_options::options_description& cli,
+         boost::program_options::options_description& cfg ) override;
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
       void debug_update( const fc::variant_object& update );
       void set_json_object_stream( const std::string& filename );
       void flush_json_object_stream();
+
+      void save_debug_updates( fc::mutable_variant_object& target );
+      void load_debug_updates( const fc::variant_object& target );
 
    private:
       void on_changed_objects( const std::vector<graphene::db::object_id_type>& ids );
@@ -48,6 +55,7 @@ class debug_node_plugin : public steemit::app::plugin
       boost::signals2::scoped_connection _changed_objects_conn;
       boost::signals2::scoped_connection _removed_objects_conn;
 
+      std::vector< std::string > _edit_scripts;
       std::map< chain::block_id_type, std::vector< fc::variant_object > > _debug_updates;
 };
 
