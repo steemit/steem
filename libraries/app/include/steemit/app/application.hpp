@@ -39,6 +39,7 @@ namespace steemit { namespace app {
    using std::string;
 
    class abstract_plugin;
+   class plugin;
    class application;
 
    class application
@@ -59,7 +60,7 @@ namespace steemit { namespace app {
          template<typename PluginType>
          std::shared_ptr<PluginType> register_plugin()
          {
-            auto plug = std::make_shared<PluginType>();
+            auto plug = std::make_shared<PluginType>( this );
             register_abstract_plugin( plug );
             return plug;
          }
@@ -117,11 +118,15 @@ namespace steemit { namespace app {
          /// Emitted when syncing finishes (is_finished_syncing will return true)
          boost::signals2::signal<void()> syncing_finished;
 
+         void get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result );
+
       private:
          std::shared_ptr<detail::application_impl> my;
 
          boost::program_options::options_description _cli_options;
          boost::program_options::options_description _cfg_options;
+
+         const std::shared_ptr< plugin > null_plugin;
    };
 
    template< class C, typename... Args >

@@ -21,7 +21,7 @@ using namespace steemit::chain::test;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
-BOOST_AUTO_TEST_CASE( comment_payout )
+/*BOOST_AUTO_TEST_CASE( comment_payout )
 {
    try
    {
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE( comment_payout )
       validate_database();
    }
    FC_LOG_AND_RETHROW()
-}
+}*/
 
 BOOST_AUTO_TEST_CASE( discussion_rewards )
 {

@@ -76,6 +76,8 @@ namespace fc
 
    void from_variant( const variant& var, steemit::chain::hardfork_version& hv )
    {
-      from_variant( var, (steemit::chain::version&) hv );
+      steemit::chain::version ver;
+      from_variant( var, ver );
+      hv.v_num = ver.v_num & 0xffff0000;
    }
 }
