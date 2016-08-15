@@ -460,82 +460,108 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
 } FC_CAPTURE_AND_RETHROW( (o) ) }
 
-void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o ) {
-try {
-   FC_ASSERT( false, "Escrow transfer operation not enabled" );
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
+void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
+{
+   try
+   {
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ) ); /// TODO: remove this after HF14
 
-   const auto& from_account = db().get_account(o.from);
-   db().get_account(o.to);
-   const auto& agent_account = db().get_account(o.agent);
+      const auto& from_account = db().get_account(o.from);
+      db().get_account(o.to);
+      const auto& agent_account = db().get_account(o.agent);
 
-   FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= (o.amount + o.fee) );
+      FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= (o.amount + o.fee) );
 
-   if( o.fee.amount > 0 ) {
-      db().adjust_balance( from_account, -o.fee );
-      db().adjust_balance( agent_account, o.fee );
-   }
-
-   db().adjust_balance( from_account, -o.amount );
-
-   db().create<escrow_object>([&]( escrow_object& esc ) {
-      esc.escrow_id  = o.escrow_id;
-      esc.from       = o.from;
-      esc.to         = o.to;
-      esc.agent      = o.agent;
-      esc.balance    = o.amount;
-      esc.expiration = o.expiration;
-   });
-
-} FC_CAPTURE_AND_RETHROW( (o) ) }
-
-void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o ) {
-try {
-   FC_ASSERT( false, "Escrow dispute operation not enabled" );
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
-   const auto& from_account = db().get_account(o.from);
-
-   const auto& e = db().get_escrow( o.from, o.escrow_id );
-   FC_ASSERT( !e.disputed );
-   FC_ASSERT( e.to == o.to );
-
-   db().modify( e, [&]( escrow_object& esc ){
-     esc.disputed = true;
-   });
-} FC_CAPTURE_AND_RETHROW( (o) ) }
-
-void escrow_release_evaluator::do_apply( const escrow_release_operation& o ) {
-try {
-   FC_ASSERT( false, "Escrow release operation not enabled" );
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_9 ) ); /// TODO: remove this after HF9
-
-   const auto& from_account = db().get_account(o.from);
-   const auto& to_account = db().get_account(o.to);
-   const auto& who_account = db().get_account(o.who);
-
-   const auto& e = db().get_escrow( o.from, o.escrow_id );
-   FC_ASSERT( e.balance >= o.amount && e.balance.symbol == o.amount.symbol );
-   /// TODO assert o.amount > 0
-
-   if( e.expiration > db().head_block_time() ) {
-      if( o.who == e.from )    FC_ASSERT( o.to == e.to );
-      else if( o.who == e.to ) FC_ASSERT( o.to == e.from );
-      else {
-         FC_ASSERT( e.disputed && o.who == e.agent );
+      if( o.fee.amount > 0 )
+      {
+         db().adjust_balance( from_account, -o.fee );
+         db().adjust_balance( agent_account, o.fee );
       }
-   } else {
-      FC_ASSERT( o.who == e.to || o.who == e.from );
-   }
 
-   db().adjust_balance( to_account, o.amount );
-   if( e.balance == o.amount )
-      db().remove( e );
-   else {
-      db().modify( e, [&]( escrow_object& esc ) {
-         esc.balance -= o.amount;
+      db().adjust_balance( from_account, -o.amount );
+
+      db().create<escrow_object>([&]( escrow_object& esc )
+      {
+         esc.escrow_id  = o.escrow_id;
+         esc.from       = o.from;
+         esc.to         = o.to;
+         esc.agent      = o.agent;
+         esc.balance    = o.amount;
+         esc.expiration = o.expiration;
       });
    }
-} FC_CAPTURE_AND_RETHROW( (o) ) }
+   FC_CAPTURE_AND_RETHROW( (o) )
+}
+
+void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
+{
+   try
+   {
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ) ); /// TODO: remove this after HF14
+      const auto& from_account = db().get_account(o.from);
+
+      const auto& e = db().get_escrow( o.from, o.escrow_id );
+      FC_ASSERT( !e.disputed );
+      FC_ASSERT( e.to == o.to );
+
+      db().modify( e, [&]( escrow_object& esc )
+      {
+         esc.disputed = true;
+      });
+   }
+   FC_CAPTURE_AND_RETHROW( (o) )
+}
+
+void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
+{
+   try
+   {
+      FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ) ); /// TODO: remove this after HF14
+
+      const auto& from_account = db().get_account(o.from);
+      const auto& to_account = db().get_account(o.to);
+      const auto& who_account = db().get_account(o.who);
+
+      const auto& e = db().get_escrow( o.from, o.escrow_id );
+      FC_ASSERT( e.balance >= o.amount && e.balance.symbol == o.amount.symbol );
+      /// TODO assert o.amount > 0
+
+      if( e.expiration > db().head_block_time() )
+      {
+         if( o.who == e.from )
+         {
+            FC_ASSERT( o.to == e.to );
+         }
+         else if( o.who == e.to )
+         {
+            FC_ASSERT( o.to == e.from );
+         }
+         else
+         {
+            FC_ASSERT( e.disputed && o.who == e.agent );
+         }
+      }
+      else
+      {
+         FC_ASSERT( o.who == e.to || o.who == e.from );
+      }
+
+      db().adjust_balance( to_account, o.amount );
+
+      if( e.balance == o.amount )
+      {
+         db().remove( e );
+      }
+      else
+      {
+         db().modify( e, [&]( escrow_object& esc )
+         {
+            esc.balance -= o.amount;
+         });
+      }
+   }
+   FC_CAPTURE_AND_RETHROW( (o) )
+}
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
