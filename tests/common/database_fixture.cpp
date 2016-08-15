@@ -153,7 +153,7 @@ signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::priv
 {
    auto witness = db.get_scheduled_witness(miss_blocks + 1);
    auto time = db.get_slot_time(miss_blocks + 1);
-   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature ;
+   skip |= database::skip_undo_history_check | database::skip_authority_check;
    auto block = db.generate_block(time, witness, key, skip);
    db.clear_pending();
    return block;
