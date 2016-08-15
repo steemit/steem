@@ -108,6 +108,7 @@ namespace steemit { namespace chain {
          const witness_object&  get_witness( const string& name )const;
          const account_object&  get_account( const string& name )const;
          const comment_object&  get_comment( const string& author, const string& permlink )const;
+         const comment_object*  find_comment( const string& author, const string& permlink )const;
          const escrow_object&   get_escrow( const string& name, uint32_t escrowid )const;
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;

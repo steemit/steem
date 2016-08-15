@@ -412,6 +412,13 @@ const comment_object& database::get_comment( const string& author, const string&
    FC_CAPTURE_AND_RETHROW( (author)(permlink) )
 }
 
+const comment_object* database::find_comment( const string& author, const string& permlink )const
+{
+   const auto& by_permlink_idx = get_index_type< comment_index >().indices().get< by_permlink >();
+   auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
+   return itr == by_permlink_idx.end() ? nullptr : &*itr;
+}
+
 const time_point_sec database::calculate_discussion_payout_time( const comment_object& comment )const
 {
    if( comment.parent_author == "" )

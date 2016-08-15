@@ -92,6 +92,28 @@ struct pre_operation_visitor
       }
       catch( const fc::exception& e ) {}
    }
+
+   void operator()( const delete_comment_operation& op )const
+   {
+      try
+      {
+         auto& db = _plugin.database();
+         const auto* comment = db.find_comment( op.author, op.permlink );
+
+         if( comment == nullptr ) return;
+
+         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+         auto itr = feed_idx.lower_bound( comment->id );
+
+         while( itr != feed_idx.end() && itr->comment == comment->id )
+         {
+            const auto& old_feed = *itr;
+            ++itr;
+            db.remove( old_feed );
+         }
+      }
+      FC_CAPTURE_AND_RETHROW()
+   }
 };
 
 struct on_operation_visitor
