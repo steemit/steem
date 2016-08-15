@@ -38,8 +38,13 @@ namespace steemit { namespace chain {
          string         from;
          string         to;
          string         agent;
-         time_point_sec expiration;
-         asset          balance;
+         time_point_sec ratification_expiration;
+         time_point_sec escrow_expiration;
+         asset          sbd_balance;
+         asset          steem_balance;
+         asset          pending_fee;
+         bool           to_approved = false;
+         bool           agent_approved = false;
          bool           disputed = false;
    };
 
@@ -67,11 +72,11 @@ namespace steemit { namespace chain {
          uint128_t       weight = 0;
 
          /// this is the sort index
-         uint128_t volume_weight()const { 
-            return steem_volume * sbd_volume * is_positive(); 
+         uint128_t volume_weight()const {
+            return steem_volume * sbd_volume * is_positive();
         }
-         uint128_t min_volume_weight()const { 
-            return std::min(steem_volume,sbd_volume) * is_positive(); 
+         uint128_t min_volume_weight()const {
+            return std::min(steem_volume,sbd_volume) * is_positive();
         }
          void update_weight( bool hf9 ) {
              weight = hf9 ? min_volume_weight() : volume_weight();
@@ -277,5 +282,8 @@ FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::
 FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db::object),
                     (from_account)(to_account)(percent)(auto_vest) )
 
-FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object), 
-                    (escrow_id)(from)(to)(agent)(expiration)(balance)(disputed) );
+FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
+                    (escrow_id)(from)(to)(agent)
+                    (ratification_expiration)(escrow_expiration)
+                    (sbd_balance)(steem_balance)(pending_fee)
+                    (to_approved)(agent_approved)(disputed) );

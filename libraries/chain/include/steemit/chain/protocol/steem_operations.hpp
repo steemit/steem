@@ -232,11 +232,15 @@ namespace steemit { namespace chain {
    /**
     *  The purpose of this operation is to enable someone to send money contingently to
     *  another individual. The funds leave the *from* account and go into a temporary balance
-    *  where they are held until *from* releases it to *to*   or *to* refunds it to *from*.
+    *  where they are held until *from* releases it to *to* or *to* refunds it to *from*.
     *
     *  In the event of a dispute the *agent* can divide the funds between the to/from account.
     *
-    *  The escrow agent is paid the fee no matter what. It is up to the escrow agent to determine
+    *  This operation only creates a proposed escrow transfer. Both the *agent* and *to* must
+    *  agree to the terms of the arrangement by approving the escrow.
+    *
+    *  The escrow agent is paid the fee on approval of all parties. It is up to the escrow agent
+    *  to determine the fee.
     *
     *  Escrow transactions are uniquely identified by 'from' and 'escrow_id', the 'escrow_id' is defined
     *  by the sender.
@@ -245,17 +249,35 @@ namespace steemit { namespace chain {
    {
       string         from;
       string         to;
-      asset          amount;
-      string         memo;
+      asset          sbd_amount = asset( 0, SBD_SYMBOL );
+      asset          steem_amount = asset( 0, STEEM_SYMBOL );
 
-      uint32_t        escrow_id;
+      uint32_t       escrow_id = 0;
       string         agent;
       asset          fee;
       string         json_meta;
-      time_point_sec expiration;
+      time_point_sec ratification_expiration;
+      time_point_sec escrow_expiration;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
+   };
+
+   /**
+    *  The agent and to accounts must approve an escrow transaction for it to be valid on
+    *  the blockchain.
+    */
+   struct escrow_approve_operation : public base_operation
+   {
+      string         from;
+      string         to;
+      string         agent;
+      string         who; // Either to or agent
+      uint32_t       escrow_id;
+      bool           approve;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
    };
 
    /**
@@ -277,14 +299,20 @@ namespace steemit { namespace chain {
    /**
     *  This operation can be used by anyone associated with the escrow transfer to
     *  release funds if they have permission.
+    *
+    *  If the escrow transfer expires before approval, only *from* can release funds.
+    *  In this event, *sbd_amount* and *steem_amount* will release from the pending fee
+    *  that was to be paid to the agent.
     */
    struct escrow_release_operation : public base_operation
    {
       string    from;
       uint32_t  escrow_id;
       string    to; ///< the account that should receive funds (might be from, might be to
+      string    agent; ///< the account that is acting as the escrow agent
       string    who; ///< the account that is attempting to release the funds, determines valid 'to'
-      asset     amount; ///< the amount of funds to release
+      asset     sbd_amount; ///< the amount of sbd to release
+      asset     steem_amount; ///< the amount of steem to release
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
@@ -302,7 +330,6 @@ namespace steemit { namespace chain {
       string   from;
       string   to; ///< if null, then same as from
       asset    amount; ///< must be STEEM
-
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
@@ -843,9 +870,10 @@ FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_a
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
-FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(amount)(memo)(escrow_id)(agent)(fee)(json_meta)(expiration) );
+FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_expiration)(escrow_expiration) );
+FC_REFLECT( steemit::chain::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
 FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who) );
-FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(amount) );
+FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(agent)(escrow_id)(who)(sbd_amount)(steem_amount) );
 FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
 FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
 FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );

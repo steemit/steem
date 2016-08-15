@@ -524,7 +524,6 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 
       const auto& e = db().get_escrow( o.from, o.escrow_id );
       FC_ASSERT( e.balance >= o.amount && e.balance.symbol == o.amount.symbol );
-      /// TODO assert o.amount > 0
 
       if( e.expiration > db().head_block_time() )
       {
