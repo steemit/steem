@@ -120,8 +120,8 @@ typedef multi_index_container<
       >,
       ordered_unique< tag< by_comment >,
          composite_key< feed_object,
-            member< feed_object, account_id_type, &feed_object::account >,
-            member< feed_object, comment_id_type, &feed_object::comment >
+            member< feed_object, comment_id_type, &feed_object::comment >,
+            member< feed_object, account_id_type, &feed_object::account >
          >
       >
    >
