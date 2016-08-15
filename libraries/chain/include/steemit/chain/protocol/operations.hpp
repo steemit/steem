@@ -1,5 +1,8 @@
+
 #pragma once
+
 #include <steemit/chain/protocol/base.hpp>
+#include <steemit/chain/protocol/operation_util.hpp>
 #include <steemit/chain/protocol/steem_operations.hpp>
 
 namespace steemit { namespace chain {
@@ -47,6 +50,7 @@ namespace steemit { namespace chain {
             escrow_transfer_operation,
             escrow_dispute_operation,
             escrow_release_operation,
+            pow2_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
@@ -56,24 +60,17 @@ namespace steemit { namespace chain {
             liquidity_reward_operation,
             interest_operation,
             fill_vesting_withdraw_operation,
-            fill_order_operation
-
+            fill_order_operation,
+            comment_payout_operation
          > operation;
 
-   void operation_get_required_authorities( const operation& op,
+   /*void operation_get_required_authorities( const operation& op,
                                             flat_set<string>& active,
                                             flat_set<string>& owner,
                                             flat_set<string>& posting,
                                             vector<authority>&  other );
 
-   void operation_validate( const operation& op );
-
-   struct op_wrapper
-   {
-      public:
-         op_wrapper(const operation& op = operation()):op(op){}
-         operation op;
-   };
+   void operation_validate( const operation& op );*/
 
    bool is_market_operation( const operation& op );
 
@@ -81,10 +78,10 @@ namespace steemit { namespace chain {
 
 } } // steemit::chain
 
-namespace fc {
+/*namespace fc {
     void to_variant( const steemit::chain::operation& var,  fc::variant& vo );
     void from_variant( const fc::variant& var,  steemit::chain::operation& vo );
-}
+}*/
 
+DECLARE_OPERATION_TYPE( steemit::chain::operation )
 FC_REFLECT_TYPENAME( steemit::chain::operation )
-FC_REFLECT( steemit::chain::op_wrapper, (op) )

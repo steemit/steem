@@ -20,6 +20,7 @@ namespace steemit { namespace app {
    struct discussion_index {
       string         category; /// category by which everything is filtered
       vector<string> trending; /// pending lifetime payout
+      vector<string> trending30; /// pending lifetime payout
       vector<string> created; /// creation date
       vector<string> responses; /// creation date
       vector<string> updated; /// creation date
@@ -62,6 +63,7 @@ namespace steemit { namespace app {
       asset                       total_pending_payout_value; ///< sbd including replies
       vector<vote_state>          active_votes;
       vector<string>              replies; ///< author/slug mapping
+      share_type                  author_reputation = 0;
    };
 
    /**
@@ -72,6 +74,7 @@ namespace steemit { namespace app {
       extended_account( const account_object& a ):account_object(a){}
 
       asset                              vesting_balance; /// convert vesting_shares to vesting steem
+      share_type                         reputation = 0;
       map<uint64_t,operation_object>     transfer_history; /// transfer to/from vesting
       map<uint64_t,operation_object>     market_history; /// limit order / cancel / fill
       map<uint64_t,operation_object>     post_history;
@@ -161,16 +164,16 @@ namespace steemit { namespace app {
 
 FC_REFLECT_DERIVED( steemit::app::extended_account,
                    (steemit::chain::account_object),
-                   (vesting_balance)
+                   (vesting_balance)(reputation)
                    (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(posts)(feed)(blog)(recent_replies)(blog_category)(recommended) )
 
 
 FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(time) );
 FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(time) );
 
-FC_REFLECT( steemit::app::discussion_index, (category)(trending)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(cashout) )
+FC_REFLECT( steemit::app::discussion_index, (category)(trending)(trending30)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(cashout) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
-FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies) )
+FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation) )
 
 FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data) )
 

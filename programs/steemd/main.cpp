@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
       bpo::variables_map options;
 
       for( const std::string& plugin_name : steemit::plugin::get_available_plugins() )
-         node->register_abstract_plugin( steemit::plugin::create_plugin( plugin_name ) );
+         node->register_abstract_plugin( steemit::plugin::create_plugin( plugin_name, node ) );
 
       try
       {

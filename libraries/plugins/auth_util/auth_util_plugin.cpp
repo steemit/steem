@@ -7,7 +7,7 @@
 
 namespace steemit { namespace plugin { namespace auth_util {
 
-auth_util_plugin::auth_util_plugin() {}
+auth_util_plugin::auth_util_plugin( application* app ) : plugin( app ) {}
 auth_util_plugin::~auth_util_plugin() {}
 
 std::string auth_util_plugin::plugin_name()const
