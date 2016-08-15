@@ -1,4 +1,5 @@
 file(GLOB HEADERS "include/steemit/chain/*.hpp")
+file(GLOB PROTOCOL_HEADERS "include/steemit/chain/protocol/*.hpp")
 
 add_custom_target( build_hardfork_hpp
    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../../programs/build_helpers/cat_parts.py" "${CMAKE_CURRENT_SOURCE_DIR}/hardfork.d" "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp" )
@@ -31,6 +32,7 @@ add_library( steemit_chain
              block_database.cpp
 
              ${HEADERS}
+             ${PROTOCOL_HEADERS}
              "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
            )
 
@@ -50,4 +52,5 @@ INSTALL( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-INSTALL( FILES ${HEADERS} DESTINATION "include/graphene/chain" )
+INSTALL( FILES ${HEADERS} DESTINATION "include/steemit/chain" )
+INSTALL( FILES ${PROTOCOL_HEADERS} DESTINATION "include/steemit/chain/protocol" )

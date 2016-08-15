@@ -38,4 +38,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/graphene/wallet" )
+install( FILES ${HEADERS} DESTINATION "include/steemit/wallet" )
