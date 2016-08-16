@@ -126,7 +126,6 @@ struct operation_visitor {
           obj.children_rshares2 = comment.children_rshares2;
           obj.total_payout      = comment.total_payout_value;
           obj.author            = author;
-          obj.net_votes         = comment.net_votes;
           obj.mode              = comment.mode;
       });
       add_stats( tag_obj, get_stats( tag ) );
@@ -135,9 +134,16 @@ struct operation_visitor {
    /**
     * https://medium.com/hacking-and-gonzo/how-reddit-ranking-algorithms-work-ef111e33d0d9#.lcbj6auuw
     */
-   double calculate_hot( const comment_object& c )const {
-      auto s = c.net_votes;
-      double order = log10( std::max<int32_t>( abs(s), 1) );
+   double calculate_hot( const comment_object& c, const time_point_sec& now )const {
+      /// new algorithm
+      auto s = c.net_rshares.value;
+      auto delta = std::max<int32_t>( (now - c.created).to_seconds(), 20*60 );
+      return s / delta;
+
+
+      /// reddit algorithm
+      s = c.net_votes;
+      double order = log10( std::max<int64_t>( abs(s), 1) );
       int sign = 0;
       if( s > 0 ) sign = 1;
       else if( s < 0 ) sign = -1;
@@ -150,7 +156,7 @@ struct operation_visitor {
    void update_tags( const comment_object& c )const {
       try {
 
-      auto hot = calculate_hot(c);
+      auto hot = calculate_hot(c, _db.head_block_time() );
 
       comment_metadata meta;
 
