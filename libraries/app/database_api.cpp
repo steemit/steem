@@ -1609,5 +1609,8 @@ annotated_signed_transaction database_api::get_transaction( transaction_id_type 
    FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
 }
 
+bool database_api::is_known_transaction( transaction_id_type trx_id )const {
+   return my->_db.is_known_transaction(trx_id);
+}
 
 } } // steemit::app

@@ -35,6 +35,7 @@
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/crypto/aes.hpp>
 #include <fc/crypto/hex.hpp>
+#include <fc/crypto/rand.hpp>
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
@@ -533,6 +534,38 @@ public:
       _tx_expiration_seconds = tx_expiration_seconds;
    }
 
+   // sets the expiration time and reference block
+   void initialize_transaction_header(transaction& tx)
+   {
+      auto dyn_props = _remote_db->get_dynamic_global_properties();
+      tx.set_reference_block( dyn_props.head_block_id );
+      tx.set_expiration( dyn_props.time + fc::seconds(_tx_expiration_seconds) );
+   }
+
+   // if the user rapidly sends two identical transactions (within the same block), 
+   // the second one will fail because it will have the same transaction id.  Waiting
+   // a few seconds before sending the second transaction will allow it to succeed, 
+   // because the second transaction will be assigned a later expiration time.
+   // This isn't a good solution for scripts, so we provide this method which 
+   // adds a do-nothing custom operation to the transaction which contains a
+   // random 64-bit number, which will change the transaction's hash to prevent
+   // collisions.
+   void make_transaction_unique(transaction& tx, const std::string& auth)
+   {
+      initialize_transaction_header(tx);
+      if (_remote_db->is_known_transaction(tx.id()))
+      {
+         // create a custom operation with a random 64-bit integer which will give this 
+         // transaction a new id
+         custom_operation custom_op;
+         custom_op.data.resize(8);
+         fc::rand_bytes(custom_op.data.data(), custom_op.data.size());
+         custom_op.required_auths.insert(auth);
+         tx.operations.push_back(custom_op);
+         tx.validate();
+      }
+   }
+
    annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
    {
       flat_set< string >   req_active_approvals;
@@ -639,9 +672,7 @@ public:
          }
       }
 
-      auto dyn_props = _remote_db->get_dynamic_global_properties();
-      tx.set_reference_block( dyn_props.head_block_id );
-      tx.set_expiration( dyn_props.time + fc::seconds(_tx_expiration_seconds) );
+      initialize_transaction_header(tx);
       tx.signatures.clear();
 
       //idump((_keys));
@@ -1659,6 +1690,8 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
     tx.operations.push_back( op );
     tx.validate();
 
+    my->make_transaction_unique(tx, from);
+
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(memo)(broadcast) ) }
 
@@ -1673,6 +1706,8 @@ annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string
     signed_transaction tx;
     tx.operations.push_back( op );
     tx.validate();
+
+    my->make_transaction_unique(tx, from);
 
    return my->sign_transaction( tx, broadcast );
 }
