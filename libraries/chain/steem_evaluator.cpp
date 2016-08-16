@@ -470,6 +470,9 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       db().get_account(o.to);
       db().get_account(o.agent);
 
+      FC_ASSERT( o.ratification_deadline > db().head_block_time() );
+      FC_ASSERT( o.escrow_expiration > db().head_block_time() );
+
       if( o.fee.symbol == STEEM_SYMBOL )
       {
          FC_ASSERT( from_account.balance >= o.steem_amount + o.fee, "account cannot cover steem costs of escrow" );
@@ -530,7 +533,7 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
             });
          }
       }
-      else if( o.who == o.agent )
+      if( o.who == o.agent )
       {
          FC_ASSERT( !escrow.agent_approved, "'agent' has already approved the escrow" );
 
@@ -541,10 +544,6 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
                esc.agent_approved = true;
             });
          }
-      }
-      else
-      {
-         FC_ASSERT( false, "op 'who' is not 'to' or 'agent'. This should have failed validation. Please create a github issue with this error dump." );
       }
 
       if( reject_escrow )

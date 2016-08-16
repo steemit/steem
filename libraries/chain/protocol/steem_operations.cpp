@@ -295,7 +295,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must transfer a non-zero amount" );
       FC_ASSERT( from != agent && to != agent, "agent must be a third party" );
       FC_ASSERT( fee.symbol != VESTS_SYMBOL, "fee cannot be paid in VESTS" );
-      FC_ASSERT( sbd_amount.symbol == VESTS_SYMBOL, "sbd amount must contain SBD" );
+      FC_ASSERT( sbd_amount.symbol == SBD_SYMBOL, "sbd amount must contain SBD" );
       FC_ASSERT( steem_amount.symbol == STEEM_SYMBOL, "steem amount must contain STEEM" );
       FC_ASSERT( ratification_deadline < escrow_expiration, "ratification deadline must be before escrow expiration" );
    }

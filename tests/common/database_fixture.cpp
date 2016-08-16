@@ -457,6 +457,21 @@ void database_fixture::validate_database( void )
          }
       }
 
+      const auto& escrow_idx = db.get_index_type< escrow_index >().indices().get< by_id >();
+
+      for( auto itr = escrow_idx.begin(); itr != escrow_idx.end(); ++itr )
+      {
+         total_supply += itr->steem_balance;
+         total_sbd += itr->sbd_balance;
+
+         if( itr->pending_fee.symbol == STEEM_SYMBOL )
+            total_supply += itr->pending_fee;
+         else if( itr->pending_fee.symbol == SBD_SYMBOL )
+            total_sbd += itr->pending_fee;
+         else
+            FC_ASSERT( false, "found escrow pending fee that is not SBD or STEEM" );
+      }
+
       fc::uint128_t total_rshares2;
       fc::uint128_t total_children_rshares2;
 

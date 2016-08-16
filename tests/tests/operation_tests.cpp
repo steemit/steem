@@ -3474,5 +3474,285 @@ BOOST_AUTO_TEST_CASE( pow2_op )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( escrow_transfer_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: escrow_transfer_validate" );
+
+      escrow_transfer_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.sbd_amount = ASSET( "1.000 TBD" );
+      op.steem_amount = ASSET( "1.000 TESTS" );
+      op.escrow_id = 0;
+      op.agent = "sam";
+      op.fee = ASSET( "0.100 TESTS" );
+      op.json_meta = "";
+      op.ratification_deadline = db.head_block_time() + 100;
+      op.escrow_expiration = db.head_block_time() + 200;
+
+      BOOST_TEST_MESSAGE( "--- failure when sbd symbol != SBD" );
+      op.sbd_amount.symbol = STEEM_SYMBOL;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when steem symbol != STEEM" );
+      op.sbd_amount.symbol = SBD_SYMBOL;
+      op.steem_amount.symbol = SBD_SYMBOL;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when fee symbol != SBD and fee symbol != STEEM" );
+      op.steem_amount.symbol = STEEM_SYMBOL;
+      op.fee.symbol = VESTS_SYMBOL;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when sbd == 0 and steem == 0" );
+      op.fee.symbol = STEEM_SYMBOL;
+      op.sbd_amount.amount = 0;
+      op.steem_amount.amount = 0;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when sbd < 0" );
+      op.sbd_amount.amount = -100;
+      op.steem_amount.amount = 1000;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when steem < 0" );
+      op.sbd_amount.amount = 1000;
+      op.steem_amount.amount = -100;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when fee < 0" );
+      op.steem_amount.amount = 1000;
+      op.fee.amount = -100;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when ratification deadline == escrow expiration" );
+      op.fee.amount = 100;
+      op.ratification_deadline = op.escrow_expiration;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when ratification deadline > escrow expiration" );
+      op.ratification_deadline = op.escrow_expiration + 100;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- success" );
+      op.ratification_deadline = op.escrow_expiration - 100;
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_transfer_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: escrow_transfer_authorities" );
+
+      escrow_transfer_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.sbd_amount = ASSET( "1.000 TBD" );
+      op.steem_amount = ASSET( "1.000 TESTS" );
+      op.escrow_id = 0;
+      op.agent = "sam";
+      op.fee = ASSET( "0.100 TESTS" );
+      op.json_meta = "";
+      op.ratification_deadline = db.head_block_time() + 100;
+      op.escrow_expiration = db.head_block_time() + 200;
+
+      flat_set< string > auths;
+      flat_set< string > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      expected.insert( "alice" );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(sam) )
+
+      fund( "alice", 10000 );
+
+      escrow_transfer_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.sbd_amount = ASSET( "1.000 TBD" );
+      op.steem_amount = ASSET( "1.000 TESTS" );
+      op.escrow_id = 0;
+      op.agent = "sam";
+      op.fee = ASSET( "0.100 TESTS" );
+      op.json_meta = "";
+      op.ratification_deadline = db.head_block_time() + 100;
+      op.escrow_expiration = db.head_block_time() + 200;
+
+      BOOST_TEST_MESSAGE( "--- failure when from cannot cover sbd amount" );
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- falure when from cannot cover amount + fee" );
+      op.sbd_amount.amount = 0;
+      op.steem_amount.amount = 10000;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when ratification deadline is in the past" );
+      op.steem_amount.amount = 1000;
+      op.ratification_deadline = db.head_block_time() - 200;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when expiration is in the past" );
+      op.escrow_expiration = db.head_block_time() - 100;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- success" );
+      op.ratification_deadline = db.head_block_time() + 100;
+      op.escrow_expiration = db.head_block_time() + 200;
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+
+      auto alice_steem_balance = alice.balance - op.steem_amount - op.fee;
+      auto alice_sbd_balance = alice.sbd_balance - op.sbd_amount;
+      auto bob_steem_balance = bob.balance;
+      auto bob_sbd_balance = bob.sbd_balance;
+      auto sam_steem_balance = sam.balance;
+      auto sam_sbd_balance = sam.sbd_balance;
+
+      db.push_transaction( tx, 0 );
+
+      const auto& escrow = db.get_escrow( op.from, op.escrow_id );
+
+      BOOST_REQUIRE( escrow.escrow_id == op.escrow_id );
+      BOOST_REQUIRE( escrow.from == op.from );
+      BOOST_REQUIRE( escrow.to == op.to );
+      BOOST_REQUIRE( escrow.agent == op.agent );
+      BOOST_REQUIRE( escrow.ratification_deadline == op.ratification_deadline );
+      BOOST_REQUIRE( escrow.escrow_expiration == op.escrow_expiration );
+      BOOST_REQUIRE( escrow.sbd_balance == op.sbd_amount );
+      BOOST_REQUIRE( escrow.steem_balance == op.steem_amount );
+      BOOST_REQUIRE( escrow.pending_fee == op.fee );
+      BOOST_REQUIRE( !escrow.to_approved );
+      BOOST_REQUIRE( !escrow.agent_approved );
+      BOOST_REQUIRE( !escrow.disputed );
+      BOOST_REQUIRE( alice.balance == alice_steem_balance );
+      BOOST_REQUIRE( alice.sbd_balance == alice_sbd_balance );
+      BOOST_REQUIRE( bob.balance == bob_steem_balance );
+      BOOST_REQUIRE( bob.sbd_balance == bob_sbd_balance );
+      BOOST_REQUIRE( sam.balance == sam_steem_balance );
+      BOOST_REQUIRE( sam.sbd_balance == sam_sbd_balance );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_approve_validate )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_approve_authorities )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_approve_apply )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_dispute_validate )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_dispute_authorities )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_release_validate )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_release_authorities )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( escrow_release_apply )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
