@@ -28,6 +28,7 @@ namespace steemit { namespace chain {
          string          proxy;
 
          time_point_sec  last_owner_update;
+         time_point_sec  last_account_update;
 
          time_point_sec  created;
          bool            mined = true;
@@ -108,7 +109,6 @@ namespace steemit { namespace chain {
          fc::uint128_t   activity_shares;
          time_point_sec  last_activity_payout;
          ///@}
-
 
          account_id_type get_id()const { return id; }
          /// This function should be used only when the account votes for a witness directly
@@ -346,7 +346,7 @@ namespace steemit { namespace chain {
 } }
 
 FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
-                    (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)
+                    (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
                     (created)(mined)
                     (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)
                     (comment_count)(lifetime_vote_count)(post_count)(voting_power)(last_vote_time)

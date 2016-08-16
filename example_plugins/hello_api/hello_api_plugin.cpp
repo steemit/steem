@@ -11,12 +11,10 @@ class hello_api_plugin : public steemit::app::plugin
 {
    public:
       /**
-       * The plugin requires a nullary constructor.  This is called regardless of whether the plugin is loaded.
-       * Base class functionality such as app() is not fully initialized when the constructor is called.
-       * Most plugins should have an empty constructor and do initialization logic in plugin_initialize()
-       * or plugin_startup() instead.
+       * The plugin requires a constructor which takes app.  This is called regardless of whether the plugin is loaded.
+       * The app parameter should be passed up to the superclass constructor.
        */
-      hello_api_plugin();
+      hello_api_plugin( steemit::app::application* app );
 
       /**
        * Plugin is destroyed via base class pointer, so a virtual destructor must be provided.
@@ -41,6 +39,7 @@ class hello_api_plugin : public steemit::app::plugin
       std::string get_message();
 
    private:
+      steemit::app::application* _app;
       std::string _message;
       uint32_t _plugin_call_count = 0;
 };
@@ -71,7 +70,7 @@ FC_API( steemit::example_plugin::hello_api_api,
 
 namespace steemit { namespace example_plugin {
 
-hello_api_plugin::hello_api_plugin() {}
+hello_api_plugin::hello_api_plugin( steemit::app::application* app ) : steemit::app::plugin(app) {}
 hello_api_plugin::~hello_api_plugin() {}
 
 std::string hello_api_plugin::plugin_name()const

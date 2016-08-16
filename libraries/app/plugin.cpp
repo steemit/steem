@@ -24,11 +24,12 @@
 
 #include <steemit/app/plugin.hpp>
 
+#include <fc/vector.hpp>
+
 namespace steemit { namespace app {
 
-plugin::plugin()
+plugin::plugin( application* app ) : _app( app )
 {
-   _app = nullptr;
    return;
 }
 
@@ -54,12 +55,6 @@ void plugin::plugin_startup()
 
 void plugin::plugin_shutdown()
 {
-   return;
-}
-
-void plugin::plugin_set_app( application* app )
-{
-   _app = app;
    return;
 }
 

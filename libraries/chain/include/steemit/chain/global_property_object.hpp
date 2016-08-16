@@ -1,6 +1,7 @@
 #pragma once
 #include <fc/uint128.hpp>
 
+#include <steemit/chain/protocol/asset.hpp>
 #include <steemit/chain/protocol/types.hpp>
 #include <steemit/chain/database.hpp>
 #include <graphene/db/object.hpp>
@@ -32,7 +33,7 @@ namespace steemit { namespace chain {
          /**
           *  The total POW accumulated, aka the sum of num_pow_witness at the time new POW is added
           */
-         uint64_t total_pow = 0;
+         uint64_t total_pow = -1;
 
          /**
           * The current count of how many pending POW witnesses there are, determines the difficulty
@@ -76,6 +77,8 @@ namespace steemit { namespace chain {
           *  This property defines the interest rate that SBD deposits receive.
           */
          uint16_t sbd_interest_rate = 0;
+
+         uint16_t sbd_print_rate = STEEMIT_100_PERCENT;
 
          /**
           *  Average block size is updated every block to be:
@@ -152,6 +155,7 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (total_activity_fund_steem)
                     (total_activity_fund_shares)
                     (sbd_interest_rate)
+                    (sbd_print_rate)
                     (average_block_size)
                     (maximum_block_size)
                     (current_aslot)

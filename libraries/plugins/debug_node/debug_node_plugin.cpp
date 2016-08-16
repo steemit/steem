@@ -4,14 +4,18 @@
 #include <steemit/plugins/debug_node/debug_node_api.hpp>
 #include <steemit/plugins/debug_node/debug_node_plugin.hpp>
 
+#include <fc/io/buffered_iostream.hpp>
+#include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
+
+#include <graphene/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>
 
 namespace steemit { namespace plugin { namespace debug_node {
 
-debug_node_plugin::debug_node_plugin() {}
+debug_node_plugin::debug_node_plugin( application* app ) : plugin( app ) {}
 debug_node_plugin::~debug_node_plugin() {}
 
 std::string debug_node_plugin::plugin_name()const
@@ -19,8 +23,20 @@ std::string debug_node_plugin::plugin_name()const
    return "debug_node";
 }
 
+void debug_node_plugin::plugin_set_program_options(
+   boost::program_options::options_description& cli,
+   boost::program_options::options_description& cfg )
+{
+   cli.add_options()
+      ("edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
+   cfg.add(cli);
+}
+
 void debug_node_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
+   if( options.count("edit-script") == 0 )
+      return;
+   _edit_scripts = options.at("edit-script").as< std::vector< std::string > >();
 }
 
 void debug_node_plugin::plugin_startup()
@@ -35,6 +51,14 @@ void debug_node_plugin::plugin_startup()
    _removed_objects_conn = db.removed_objects.connect([this](const std::vector<const graphene::db::object*>& objs){ on_removed_objects(objs); });
 
    app().register_api_factory< debug_node_api >( "debug_node_api" );
+
+   for( const std::string& fn : _edit_scripts )
+   {
+      std::shared_ptr< fc::ifstream > stream = std::make_shared< fc::ifstream >( fc::path(fn) );
+      fc::buffered_istream bstream(stream);
+      fc::variant v = fc::json::from_stream( bstream, fc::json::strict_parser );
+      load_debug_updates( v.get_object() );
+   }
 }
 
 void debug_apply_update( chain::database& db, const fc::variant_object& vo )
@@ -126,6 +150,85 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
    }
 }
 
+uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key, uint32_t count )
+{
+   if( count == 0 )
+      return 0;
+
+   fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
+   FC_ASSERT( debug_private_key.valid() );
+   chain::public_key_type debug_public_key = debug_private_key->get_public_key();
+
+   chain::database& db = database();
+   for( uint32_t i=0; i<count; i++ )
+   {
+      std::string scheduled_witness_name = db.get_scheduled_witness( 1 );
+      fc::time_point_sec scheduled_time = db.get_slot_time( 1 );
+      const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
+      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
+      //wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+      if( scheduled_key != debug_public_key )
+      {
+         wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+         fc::mutable_variant_object update;
+         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
+         debug_update( update );
+      }
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+   }
+
+   return count;
+}
+
+uint32_t debug_node_plugin::debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely )
+{
+  chain::database& db = database();
+
+   if( db.head_block_time() >= head_block_time )
+      return 0;
+
+   uint32_t new_blocks = 0;
+
+   if( generate_sparsely )
+   {
+      auto new_slot = db.get_slot_at_time( head_block_time );
+
+      if( new_slot == 0 )
+         return 0;
+
+      fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
+      FC_ASSERT( debug_private_key.valid() );
+      steemit::chain::public_key_type debug_public_key = debug_private_key->get_public_key();
+
+      std::string scheduled_witness_name = db.get_scheduled_witness( new_slot );
+      fc::time_point_sec scheduled_time = db.get_slot_time( new_slot );
+      const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
+      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
+
+      //wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+
+      if( scheduled_key != debug_public_key )
+      {
+         wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+         fc::mutable_variant_object update;
+         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
+         debug_update( update );
+      }
+
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      new_blocks++;
+
+      FC_ASSERT( head_block_time.sec_since_epoch() - db.head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db.head_block_time()",db.head_block_time()) );
+   }
+   else
+   {
+      while( db.head_block_time() < head_block_time )
+         new_blocks += debug_generate_blocks( debug_key, 1 );
+   }
+
+   return new_blocks;
+}
+
 void debug_node_plugin::apply_debug_updates()
 {
    // this was a method on database in Graphene
@@ -215,6 +318,26 @@ void debug_node_plugin::flush_json_object_stream()
 {
    if( _json_object_stream )
       _json_object_stream->flush();
+}
+
+void debug_node_plugin::save_debug_updates( fc::mutable_variant_object& target )
+{
+   for( const std::pair< chain::block_id_type, std::vector< fc::variant_object > >& update : _debug_updates )
+   {
+      fc::variant v;
+      fc::to_variant( update.second, v );
+      target.set( update.first.str(), v );
+   }
+}
+
+void debug_node_plugin::load_debug_updates( const fc::variant_object& target )
+{
+   for( auto it=target.begin(); it != target.end(); ++it)
+   {
+      std::vector< fc::variant_object > o;
+      fc::from_variant(it->value(), o);
+      _debug_updates[ chain::block_id_type( it->key() ) ] = o;
+   }
 }
 
 void debug_node_plugin::plugin_shutdown()

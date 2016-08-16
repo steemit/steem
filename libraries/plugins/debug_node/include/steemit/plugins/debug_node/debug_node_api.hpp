@@ -63,6 +63,10 @@ class debug_node_api
        */
       void debug_update_object( fc::variant_object update );
 
+      fc::variant_object debug_get_edits();
+
+      void debug_set_edits( fc::variant_object edits );
+
       /**
        * Start a node with given initial path.
        */
@@ -102,6 +106,8 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_pop_block)
        //(debug_push_block)
        (debug_update_object)
+       (debug_get_edits)
+       (debug_set_edits)
        (debug_stream_json_objects)
        (debug_stream_json_objects_flush)
        (debug_set_hardfork)

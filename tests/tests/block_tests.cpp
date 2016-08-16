@@ -997,7 +997,6 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
          open_database();
 
          // app.initialize();
-         ahplugin->plugin_set_app( &app );
          ahplugin->plugin_initialize( options );
 
          generate_block();

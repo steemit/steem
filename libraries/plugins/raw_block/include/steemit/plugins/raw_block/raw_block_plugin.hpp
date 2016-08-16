@@ -5,10 +5,12 @@
 
 namespace steemit { namespace plugin { namespace raw_block {
 
+using steemit::app::application;
+
 class raw_block_plugin : public steemit::app::plugin
 {
    public:
-      raw_block_plugin();
+      raw_block_plugin( application* app );
       virtual ~raw_block_plugin();
 
       virtual std::string plugin_name()const override;
