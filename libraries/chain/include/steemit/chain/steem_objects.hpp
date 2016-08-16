@@ -227,6 +227,7 @@ namespace steemit { namespace chain {
    struct by_from_id;
    struct by_to;
    struct by_agent;
+   struct by_ratification_deadline;
    typedef multi_index_container<
       escrow_object,
       indexed_by<
@@ -248,6 +249,15 @@ namespace steemit { namespace chain {
                member< escrow_object, string,  &escrow_object::agent >,
                member< object, object_id_type, &object::id >
             >
+         >,
+         ordered_unique< tag< by_ratification_deadline >,
+            composite_key< escrow_object,
+               member< escrow_object, bool, &escrow_object::to_approved >,
+               member< escrow_object, bool, &escrow_object::agent_approved >,
+               member< escrow_object, time_point_sec, &escrow_object::ratification_deadline >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< bool >, std::less< bool >, std::less< time_point_sec >, std::less< object_id_type > >
          >
       >
    > escrow_object_index_type;

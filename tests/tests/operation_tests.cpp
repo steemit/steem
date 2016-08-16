@@ -3581,6 +3581,8 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow_transfer_apply" );
+
       ACTORS( (alice)(bob)(sam) )
 
       fund( "alice", 10000 );
@@ -3677,7 +3679,28 @@ BOOST_AUTO_TEST_CASE( escrow_approve_validate )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow_approve_validate" );
 
+      escrow_approve_operation op;
+
+      op.from = "alice";
+      op.to = "bob";
+      op.agent = "sam";
+      op.who = "bob";
+      op.escrow_id = 0;
+      op.approve = true;
+
+      BOOST_TEST_MESSAGE( "--- failure when who is not to or agent" );
+      op.who = "dave";
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- success when who is to" );
+      op.who = op.to;
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- success when who is agent" );
+      op.who = op.agent;
+      op.validate();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3686,7 +3709,37 @@ BOOST_AUTO_TEST_CASE( escrow_approve_authorities )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow_approve_authorities" );
 
+      escrow_approve_operation op;
+
+      op.from = "alice";
+      op.to = "bob";
+      op.agent = "sam";
+      op.who = "bob";
+      op.escrow_id = 0;
+      op.approve = true;
+
+      flat_set< string > auths;
+      flat_set< string > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      expected.insert( "bob" );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.clear();
+      auths.clear();
+
+      op.who = "sam";
+      op.get_required_active_authorities( auths );
+      expected.insert( "sam" );
+      BOOST_REQUIRE( auths == expected );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3695,7 +3748,210 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow_approve_apply" );
+      ACTORS( (alice)(bob)(sam)(dave) )
+      fund( "alice", 10000 );
 
+      escrow_transfer_operation et_op;
+      et_op.from = "alice";
+      et_op.to = "bob";
+      et_op.agent = "sam";
+      et_op.steem_amount = ASSET( "1.000 TESTS" );
+      et_op.fee = ASSET( "0.100 TESTS" );
+      et_op.json_meta = "";
+      et_op.ratification_deadline = db.head_block_time() + 100;
+      et_op.escrow_expiration = db.head_block_time() + 200;
+
+      signed_transaction tx;
+      tx.operations.push_back( et_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      tx.operations.clear();
+      tx.signatures.clear();
+
+
+      BOOST_TEST_MESSAGE( "---failure when to does not match escrow" );
+      escrow_approve_operation op;
+      op.from = "alice";
+      op.to = "dave";
+      op.agent = "sam";
+      op.who = "dave";
+      op.approve = true;
+
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when agent does not match escrow" );
+      op.to = "bob";
+      op.agent = "dave";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success approving to" );
+      op.agent = "sam";
+      op.who = "bob";
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      auto& escrow = db.get_escrow( op.from, op.escrow_id );
+      BOOST_REQUIRE( escrow.to == "bob" );
+      BOOST_REQUIRE( escrow.agent == "sam" );
+      BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
+      BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
+      BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.100 TESTS" ) );
+      BOOST_REQUIRE( escrow.to_approved );
+      BOOST_REQUIRE( !escrow.agent_approved );
+      BOOST_REQUIRE( !escrow.disputed );
+
+
+      BOOST_TEST_MESSAGE( "--- failure on repeat approval" );
+      tx.signatures.clear();
+
+      tx.set_expiration( db.head_block_time() + STEEMIT_BLOCK_INTERVAL );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_REQUIRE( escrow.to == "bob" );
+      BOOST_REQUIRE( escrow.agent == "sam" );
+      BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
+      BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
+      BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.100 TESTS" ) );
+      BOOST_REQUIRE( escrow.to_approved );
+      BOOST_REQUIRE( !escrow.agent_approved );
+      BOOST_REQUIRE( !escrow.disputed );
+
+
+      BOOST_TEST_MESSAGE( "--- failure trying to repeal after approval" );
+      tx.signatures.clear();
+      tx.operations.clear();
+
+      op.approve = false;
+
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_REQUIRE( escrow.to == "bob" );
+      BOOST_REQUIRE( escrow.agent == "sam" );
+      BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
+      BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
+      BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.100 TESTS" ) );
+      BOOST_REQUIRE( escrow.to_approved );
+      BOOST_REQUIRE( !escrow.agent_approved );
+      BOOST_REQUIRE( !escrow.disputed );
+
+
+      BOOST_TEST_MESSAGE( "--- success refunding from because of repeal" );
+      tx.signatures.clear();
+      tx.operations.clear();
+
+      op.who = op.agent;
+
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      BOOST_REQUIRE( alice.balance == ASSET( "10.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- test automatic refund when escrow is not ratified before deadline" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( et_op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- success approving escrow" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      et_op.ratification_deadline = db.head_block_time() + 100;
+      et_op.escrow_expiration = db.head_block_time() + 200;
+      tx.operations.push_back( et_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      op.who = op.to;
+      op.approve = true;
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      op.who = op.agent;
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      {
+         const auto& escrow = db.get_escrow( op.from, op.escrow_id );
+         BOOST_REQUIRE( escrow.to == "bob" );
+         BOOST_REQUIRE( escrow.agent == "sam" );
+         BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
+         BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
+         BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
+         BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+         BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
+         BOOST_REQUIRE( escrow.to_approved );
+         BOOST_REQUIRE( escrow.agent_approved );
+         BOOST_REQUIRE( !escrow.disputed );
+      }
+
+      BOOST_REQUIRE( db.get_account( "sam" ).balance == et_op.fee );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- ratification expiration does not remove an approved escrow" );
+
+      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+      {
+         const auto& escrow = db.get_escrow( op.from, op.escrow_id );
+         BOOST_REQUIRE( escrow.to == "bob" );
+         BOOST_REQUIRE( escrow.agent == "sam" );
+         BOOST_REQUIRE( escrow.ratification_deadline == et_op.ratification_deadline );
+         BOOST_REQUIRE( escrow.escrow_expiration == et_op.escrow_expiration );
+         BOOST_REQUIRE( escrow.sbd_balance == ASSET( "0.000 TBD" ) );
+         BOOST_REQUIRE( escrow.steem_balance == ASSET( "1.000 TESTS" ) );
+         BOOST_REQUIRE( escrow.pending_fee == ASSET( "0.000 TESTS" ) );
+         BOOST_REQUIRE( escrow.to_approved );
+         BOOST_REQUIRE( escrow.agent_approved );
+         BOOST_REQUIRE( !escrow.disputed );
+      }
+
+      BOOST_REQUIRE( db.get_account( "sam" ).balance == et_op.fee );
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }

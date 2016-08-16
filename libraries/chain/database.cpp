@@ -2323,6 +2323,25 @@ void database::account_recovery_processing()
    }
 }
 
+void database::expire_escrow_ratification()
+{
+   const auto& escrow_idx = get_index_type< escrow_index >().indices().get< by_ratification_deadline >();
+   auto escrow_itr = escrow_idx.lower_bound( boost::make_tuple( false, false ) );
+
+   while( escrow_itr != escrow_idx.end() && !escrow_itr->to_approved && !escrow_itr->agent_approved && escrow_itr->ratification_deadline <= head_block_time() )
+   {
+      const auto& old_escrow = *escrow_itr;
+      ++escrow_itr;
+
+      const auto& from_account = get_account( old_escrow.from );
+      adjust_balance( from_account, old_escrow.steem_balance );
+      adjust_balance( from_account, old_escrow.sbd_balance );
+      adjust_balance( from_account, old_escrow.pending_fee );
+
+      remove( old_escrow );
+   }
+}
+
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
 {
    return get( dynamic_global_property_id_type() );
@@ -2390,6 +2409,7 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<recover_account_evaluator>();
     _my->_evaluator_registry.register_evaluator<change_recovery_account_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_transfer_evaluator>();
+    _my->_evaluator_registry.register_evaluator<escrow_approve_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_dispute_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_release_evaluator>();
 }
@@ -2670,6 +2690,7 @@ void database::_apply_block( const signed_block& next_block )
    update_virtual_supply();
 
    account_recovery_processing();
+   expire_escrow_ratification();
 
    process_hardforks();
 
@@ -3708,6 +3729,21 @@ void database::validate_invariants()const
          {
             total_sbd += asset( itr->for_sale, SBD_SYMBOL );
          }
+      }
+
+      const auto& escrow_idx = get_index_type< escrow_index >().indices().get< by_id >();
+
+      for( auto itr = escrow_idx.begin(); itr != escrow_idx.end(); ++itr )
+      {
+         total_supply += itr->steem_balance;
+         total_sbd += itr->sbd_balance;
+
+         if( itr->pending_fee.symbol == STEEM_SYMBOL )
+            total_supply += itr->pending_fee;
+         else if( itr->pending_fee.symbol == SBD_SYMBOL )
+            total_sbd += itr->pending_fee;
+         else
+            FC_ASSERT( false, "found escrow pending fee that is not SBD or STEEM" );
       }
 
       fc::uint128_t total_rshares2;

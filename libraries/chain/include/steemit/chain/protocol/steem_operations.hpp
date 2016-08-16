@@ -276,7 +276,7 @@ namespace steemit { namespace chain {
       string         to;
       string         agent;
       string         who; // Either to or agent
-      uint32_t       escrow_id;
+      uint32_t       escrow_id = 0;
       bool           approve;
 
       void validate()const;
@@ -292,7 +292,7 @@ namespace steemit { namespace chain {
    {
       string   from;
       string   to;
-      uint32_t escrow_id;
+      uint32_t escrow_id = 0;
       string   who;
 
       void validate()const;
@@ -312,11 +312,11 @@ namespace steemit { namespace chain {
    struct escrow_release_operation : public base_operation
    {
       string    from;
-      uint32_t  escrow_id;
+      uint32_t  escrow_id = 0;
       string    to; ///< the account that should receive funds (might be from, might be to
       string    who; ///< the account that is attempting to release the funds, determines valid 'to'
-      asset     sbd_amount; ///< the amount of sbd to release
-      asset     steem_amount; ///< the amount of steem to release
+      asset     sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
+      asset     steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }

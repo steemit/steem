@@ -306,7 +306,6 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( agent) );
       FC_ASSERT( is_valid_account_name( who ) );
-      FC_ASSERT( from != who, "from account implicitly approved escrow" );
       FC_ASSERT( who == to || who == agent, "to or agent must approve escrow" );
    }
 
