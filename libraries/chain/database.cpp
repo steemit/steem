@@ -1051,8 +1051,10 @@ void database::update_witness_schedule4()
         itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
         ++itr )
    {
-      selected_voted.insert(itr->get_id());
-      active_witnesses.push_back(itr->owner);
+      if( has_hardfork( STEEMIT_HARDFORK_0_14 ) || itr->signing_key != public_key_type() ) { 
+         selected_voted.insert(itr->get_id());
+         active_witnesses.push_back(itr->owner);
+      }
    }
 
    /// Add miners from the top of the mining queue
@@ -1063,7 +1065,7 @@ void database::update_witness_schedule4()
    auto mitr = pow_idx.upper_bound(0);
    while( mitr != pow_idx.end() && selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES )
    {
-      // Skip any miner who is a  top voted witness
+      // Skip any miner who is a top voted witness
       if( selected_voted.find(mitr->get_id()) == selected_voted.end() )
       {
          selected_miners.insert(mitr->get_id());
@@ -1091,6 +1093,9 @@ void database::update_witness_schedule4()
         sitr != schedule_idx.end() && witness_count < STEEMIT_MAX_MINERS;
         ++sitr )
    {
+      if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && sitr->signing_key == public_key_type() )
+         continue; /// skip witnesses without a valid block signing key
+
       new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
       processed_witnesses.push_back(sitr);
       if( selected_miners.find(sitr->get_id()) == selected_miners.end()
@@ -2918,6 +2923,12 @@ void database::update_global_dynamic_data( const signed_block& b )
             modify( witness_missed, [&]( witness_object& w )
             {
                w.total_missed++;
+               if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) ) {
+                  if( head_block_num() - w.last_confirmed_block_num  > STEEMIT_BLOCKS_PER_DAY )
+                  {
+                    w.signing_key = public_key_type();
+                  }
+               }
             } );
          }
       }
