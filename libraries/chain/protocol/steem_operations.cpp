@@ -297,6 +297,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( fee.symbol != VESTS_SYMBOL, "fee cannot be paid in VESTS" );
       FC_ASSERT( sbd_amount.symbol == VESTS_SYMBOL, "sbd amount must contain SBD" );
       FC_ASSERT( steem_amount.symbol == STEEM_SYMBOL, "steem amount must contain STEEM" );
+      FC_ASSERT( ratification_deadline < escrow_expiration, "ratification deadline must be before escrow expiration" );
    }
 
    void escrow_approve_operation::validate()const
@@ -321,9 +322,7 @@ namespace steemit { namespace chain {
    {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
-      FC_ASSERT( is_valid_account_name( agent ) );
       FC_ASSERT( is_valid_account_name( who ) );
-      FC_ASSERT( who == from || who == to || who == agent );
       FC_ASSERT( sbd_amount.amount >= 0, "sbd amount cannot be negative" );
       FC_ASSERT( steem_amount.amount >= 0, "steem amount cannot be negative" );
       FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must release a non-zero amount" );

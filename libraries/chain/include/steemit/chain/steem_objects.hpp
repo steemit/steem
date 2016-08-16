@@ -38,7 +38,7 @@ namespace steemit { namespace chain {
          string         from;
          string         to;
          string         agent;
-         time_point_sec ratification_expiration;
+         time_point_sec ratification_deadline;
          time_point_sec escrow_expiration;
          asset          sbd_balance;
          asset          steem_balance;
@@ -284,6 +284,6 @@ FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db
 
 FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
                     (escrow_id)(from)(to)(agent)
-                    (ratification_expiration)(escrow_expiration)
+                    (ratification_deadline)(escrow_expiration)
                     (sbd_balance)(steem_balance)(pending_fee)
                     (to_approved)(agent_approved)(disputed) );

@@ -235,6 +235,8 @@ namespace steemit { namespace chain {
     *  where they are held until *from* releases it to *to* or *to* refunds it to *from*.
     *
     *  In the event of a dispute the *agent* can divide the funds between the to/from account.
+    *  Disputes can be raised any time before or on the dispute deadline time, after the escrow
+    *  has been approved by all parties.
     *
     *  This operation only creates a proposed escrow transfer. Both the *agent* and *to* must
     *  agree to the terms of the arrangement by approving the escrow.
@@ -256,7 +258,7 @@ namespace steemit { namespace chain {
       string         agent;
       asset          fee;
       string         json_meta;
-      time_point_sec ratification_expiration;
+      time_point_sec ratification_deadline;
       time_point_sec escrow_expiration;
 
       void validate()const;
@@ -265,7 +267,8 @@ namespace steemit { namespace chain {
 
    /**
     *  The agent and to accounts must approve an escrow transaction for it to be valid on
-    *  the blockchain.
+    *  the blockchain. Once a part approves the escrow, the cannot revoke their approval.
+    *  Subsequent escrow approve operations, regardless of the approval, will be rejected.
     */
    struct escrow_approve_operation : public base_operation
    {
@@ -300,16 +303,17 @@ namespace steemit { namespace chain {
     *  This operation can be used by anyone associated with the escrow transfer to
     *  release funds if they have permission.
     *
-    *  If the escrow transfer expires before approval, only *from* can release funds.
-    *  In this event, *sbd_amount* and *steem_amount* will release from the pending fee
-    *  that was to be paid to the agent.
+    *  The permission scheme is as follows:
+    *  If there is no dispute and escrow has not expired, either party can release funds to the other.
+    *  If escrow expires and there is no dispute, either party can release funds to either party.
+    *  If there is a dispute regardless of expiration, the agent can release funds to either party
+    *     following whichever agreement was in place between the parties.
     */
    struct escrow_release_operation : public base_operation
    {
       string    from;
       uint32_t  escrow_id;
       string    to; ///< the account that should receive funds (might be from, might be to
-      string    agent; ///< the account that is acting as the escrow agent
       string    who; ///< the account that is attempting to release the funds, determines valid 'to'
       asset     sbd_amount; ///< the amount of sbd to release
       asset     steem_amount; ///< the amount of steem to release
@@ -870,10 +874,10 @@ FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_a
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
-FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_expiration)(escrow_expiration) );
+FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );
 FC_REFLECT( steemit::chain::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
 FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who) );
-FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(agent)(escrow_id)(who)(sbd_amount)(steem_amount) );
+FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(sbd_amount)(steem_amount) );
 FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
 FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
 FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
