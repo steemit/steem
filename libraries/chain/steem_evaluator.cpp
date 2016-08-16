@@ -1,6 +1,8 @@
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/generic_json_evaluator_registry.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/witness_objects.hpp>
 
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
@@ -157,6 +159,8 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
          acc.active_challenged = false;
          acc.last_active_proved = db().head_block_time();
       }
+
+      acc.last_account_update = db().head_block_time();
 
       #ifndef IS_LOW_MEM
         if ( o.json_metadata.size() > 0 )
@@ -838,7 +842,28 @@ void vote_evaluator::do_apply( const vote_operation& o )
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && db().calculate_discussion_payout_time( comment ) == fc::time_point_sec::maximum() )
+   {
+#ifndef CLEAR_VOTES
+      const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+      auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
+
+      if( itr == comment_vote_idx.end() )
+         db().create< comment_vote_object >( [&]( comment_vote_object& cvo )
+         {
+            cvo.voter = voter.id;
+            cvo.comment = comment.id;
+            cvo.vote_percent = o.weight;
+            cvo.last_update = db().head_block_time();
+         });
+      else
+         db().modify( *itr, [&]( comment_vote_object& cvo )
+         {
+            cvo.vote_percent = o.weight;
+            cvo.last_update = db().head_block_time();
+         });
+#endif
       return;
+   }
 
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
@@ -860,6 +885,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( abs_rshares == 0 ) abs_rshares = 1;
 
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) ) {
+      FC_ASSERT( abs_rshares > 50000000 || abs_rshares == 1, "voting weight is too small, please accumulate more voting power or steem power" );
+   }
+
+
+
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
@@ -876,10 +907,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      if( rshares > 0 )
+      if( rshares > 0 && db().has_hardfork( STEEMIT_HARDFORK_0_7 ) )
       {
-         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
-            || db().head_block_time() < fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME ) - STEEMIT_UPVOTE_LOCKOUT );
+         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT );
       }
 
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
@@ -898,10 +928,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !db().has_hardfork( STEEMIT_HARDFORK_0_13__257)  )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+
       auto avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       FC_ASSERT( abs_rshares > 0 );
@@ -1041,9 +1072,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      if( itr->rshares < rshares )
-         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT
-            || db().head_block_time() < fc::time_point_sec( STEEMIT_HARDFORK_0_7_TIME ) - STEEMIT_UPVOTE_LOCKOUT );
+      if( itr->rshares < rshares && db().has_hardfork( STEEMIT_HARDFORK_0_7 ) )
+         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT );
 
       db().modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;
@@ -1058,10 +1088,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t cur_cashout_time_sec = db().calculate_discussion_payout_time( comment ).sec_since_epoch();
       fc::uint128_t new_cashout_time_sec;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! db().has_hardfork( STEEMIT_HARDFORK_0_13__257 )  )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+
       auto avg_cashout_sec = (cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
       db().modify( comment, [&]( comment_object& c )
@@ -1118,41 +1149,48 @@ void custom_evaluator::do_apply( const custom_operation& o ){}
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_5 ) );
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+   database& d = db();
+
+   FC_ASSERT( d.has_hardfork( STEEMIT_HARDFORK_0_5 ) );
+   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   if( !eval )
+      return;
+
+   try
    {
-      for( const auto& auth : o.required_posting_auths )
-      {
-         const auto& acnt = db().get_account( auth );
-         FC_ASSERT( !( acnt.owner_challenged || acnt.active_challenged ) );
-      }
+      eval->apply( o );
+   }
+   catch( const fc::exception& e )
+   {
+      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
    }
 }
 
+template<typename Operation>
+void pow_apply( database& db, Operation o ) {
+   const auto& dgp = db.get_dynamic_global_properties();
 
-void pow_evaluator::do_apply( const pow_operation& o )
-{
-   const auto& dgp = db().get_dynamic_global_properties();
+   FC_ASSERT( db.head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
 
-   FC_ASSERT( db().head_block_time() > STEEMIT_MINING_TIME, "Mining cannot start until ${t}", ("t",STEEMIT_MINING_TIME) );
-
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )  {
-      const auto& witness_by_work = db().get_index_type<witness_index>().indices().get<by_work>();
+   if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )
+   {
+      const auto& witness_by_work = db.get_index_type<witness_index>().indices().get<by_work>();
       auto work_itr = witness_by_work.find( o.work.work );
-      if( work_itr != witness_by_work.end() ) {
+      if( work_itr != witness_by_work.end() )
+      {
           FC_ASSERT( !"DUPLICATE WORK DISCOVERED", "${w}  ${witness}",("w",o)("wit",*work_itr) );
       }
    }
 
-   if( !db().has_hardfork( STEEMIT_HARDFORK_0_12__179 ) )
+   if( !db.has_hardfork( STEEMIT_HARDFORK_0_12__179 ) )
       FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
 
-   const auto& accounts_by_name = db().get_index_type<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find(o.worker_account);
+   const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
+   auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end()) {
-      db().create< account_object >( [&]( account_object& acc )
+      db.create< account_object >( [&]( account_object& acc )
       {
-         acc.name = o.worker_account;
+         acc.name = o.get_worker_account();
          acc.owner = authority( 1, o.work.worker, 1);
          acc.active = acc.owner;
          acc.posting = acc.owner;
@@ -1160,42 +1198,44 @@ void pow_evaluator::do_apply( const pow_operation& o )
          acc.created = dgp.time;
          acc.last_vote_time = dgp.time;
 
-         if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
+         if( !db.has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
             acc.recovery_account = "steem";
          else
             acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
    }
 
-   const auto& worker_account = db().get_account( o.worker_account ); // verify it exists
+   const auto& worker_account = db.get_account( o.get_worker_account() ); // verify it exists
    FC_ASSERT( worker_account.active.num_auths() == 1, "miners can only have one key auth" );
    FC_ASSERT( worker_account.active.key_auths.size() == 1, "miners may only have one key auth" );
    FC_ASSERT( worker_account.active.key_auths.begin()->first == o.work.worker, "work must be performed by key that signed the work" );
-   FC_ASSERT( o.block_id == db().head_block_id() );
+   FC_ASSERT( o.block_id == db.head_block_id() );
+   if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_13__256 ) )
+      FC_ASSERT( worker_account.last_account_update < db.head_block_time(), "worker account must not have updated their account this block" );
 
-   fc::sha256 target = db().get_pow_target();
+   fc::sha256 target = db.get_pow_target();
 
    FC_ASSERT( o.work.work < target, "work lacks sufficient difficulty" );
 
-   db().modify( dgp, [&]( dynamic_global_property_object& p )
+   db.modify( dgp, [&]( dynamic_global_property_object& p )
    {
-      p.total_pow += p.num_pow_witnesses;
+      p.total_pow++; // make sure this doesn't break anything...
       p.num_pow_witnesses++;
    });
 
 
-   const auto cur_witness = db().find_witness( o.worker_account );
+   const witness_object* cur_witness = db.find_witness( worker_account.name );
    if( cur_witness ) {
       FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
-      db().modify(*cur_witness, [&]( witness_object& w ){
+      db.modify(*cur_witness, [&]( witness_object& w ){
           w.props             = o.props;
           w.pow_worker        = dgp.total_pow;
           w.last_work         = o.work.work;
       });
    } else {
-      db().create<witness_object>( [&]( witness_object& w )
+      db.create<witness_object>( [&]( witness_object& w )
       {
-          w.owner             = o.worker_account;
+          w.owner             = o.get_worker_account();
           w.props             = o.props;
           w.signing_key       = o.work.worker;
           w.pow_worker        = dgp.total_pow;
@@ -1203,17 +1243,87 @@ void pow_evaluator::do_apply( const pow_operation& o )
       });
    }
    /// POW reward depends upon whether we are before or after MINER_VOTING kicks in
-   asset pow_reward = db().get_pow_reward();
-   if( db().head_block_num() < STEEMIT_START_MINER_VOTING_BLOCK )
+   asset pow_reward = db.get_pow_reward();
+   if( db.head_block_num() < STEEMIT_START_MINER_VOTING_BLOCK )
       pow_reward.amount *= STEEMIT_MAX_MINERS;
-   db().adjust_supply( pow_reward, true );
+   db.adjust_supply( pow_reward, true );
 
    /// pay the witness that includes this POW
-   const auto& inc_witness = db().get_account( dgp.current_witness );
-   if( db().head_block_num() < STEEMIT_START_MINER_VOTING_BLOCK )
-      db().adjust_balance( inc_witness, pow_reward );
+   const auto& inc_witness = db.get_account( dgp.current_witness );
+   if( db.head_block_num() < STEEMIT_START_MINER_VOTING_BLOCK )
+      db.adjust_balance( inc_witness, pow_reward );
    else
-      db().create_vesting( inc_witness, pow_reward );
+      db.create_vesting( inc_witness, pow_reward );
+}
+
+void pow_evaluator::do_apply( const pow_operation& o ) {
+   FC_ASSERT( !db().has_hardfork( STEEMIT_HARDFORK_0_13__256 ) );
+   pow_apply( db(), o );
+}
+
+
+void pow2_evaluator::do_apply( const pow2_operation& o ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13__256 ) );
+   const auto& work = o.work.get<pow2>();
+
+   database& db = this->db();
+
+   uint32_t target_pow = db.get_pow_summary_target();
+   FC_ASSERT( work.input.prev_block == db.head_block_id() );
+   FC_ASSERT( work.pow_summary < target_pow, "insufficient work difficulty" );
+
+   FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2 );
+
+   const auto& dgp = db.get_dynamic_global_properties();
+   db.modify( dgp, [&]( dynamic_global_property_object& p )
+   {
+      p.total_pow++;
+      p.num_pow_witnesses++;
+   });
+
+   const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
+   auto itr = accounts_by_name.find( work.input.worker_account );
+   if(itr == accounts_by_name.end())
+   {
+      FC_ASSERT( o.new_owner_key.valid() );
+      db.create< account_object >( [&]( account_object& acc )
+      {
+         acc.name = work.input.worker_account;
+         acc.owner = authority( 1, *o.new_owner_key, 1);
+         acc.active = acc.owner;
+         acc.posting = acc.owner;
+         acc.memo_key = *o.new_owner_key;
+         acc.created = dgp.time;
+         acc.last_vote_time = dgp.time;
+         acc.recovery_account = ""; /// highest voted witness at time of recovery
+      });
+      db.create<witness_object>( [&]( witness_object& w )
+      {
+          w.owner             = work.input.worker_account;
+          w.props             = o.props;
+          w.signing_key       = *o.new_owner_key;
+          w.pow_worker        = dgp.total_pow;
+      });
+   }
+   else
+   {
+      FC_ASSERT( !o.new_owner_key.valid(), "cannot specify an owner key unless creating account" );
+      const witness_object* cur_witness = db.find_witness( work.input.worker_account );
+      FC_ASSERT( cur_witness, "Witness must be created for existing account before mining" );
+      FC_ASSERT( cur_witness->pow_worker == 0, "this account is already scheduled for pow block production" );
+      db.modify(*cur_witness, [&]( witness_object& w )
+      {
+          w.props             = o.props;
+          w.pow_worker        = dgp.total_pow;
+      });
+   }
+
+   /// pay the witness that includes this POW
+   asset inc_reward = db.get_pow_reward();
+   db.adjust_supply( inc_reward, true );
+
+   const auto& inc_witness = db.get_account( dgp.current_witness );
+   db.create_vesting( inc_witness, inc_reward );
 }
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )

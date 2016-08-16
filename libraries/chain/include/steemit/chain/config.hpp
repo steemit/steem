@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 12, 2) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 14, 0) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -169,6 +169,10 @@
 #define STEEMIT_POW_APR_PERCENT                  750
 
 #define STEEMIT_MIN_PAYOUT_SBD                  (asset(20,SBD_SYMBOL))
+
+#define STEEMIT_SBD_STOP_PERCENT                (5*STEEMIT_1_PERCENT ) // Stop printing SBD at 5% Market Cap
+#define STEEMIT_SBD_START_PERCENT               (2*STEEMIT_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
+#define STEEMIT_SBD_CONVERT_PERCENT             (20*STEEMIT_1_PERCENT) // Convert SBD into STEEM at 20% Market Cap
 
 #define STEEMIT_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEMIT_MAX_ACCOUNT_NAME_LENGTH         16

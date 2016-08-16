@@ -2,7 +2,6 @@
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
  */
 #pragma once
-#include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
@@ -23,6 +22,9 @@
 namespace steemit { namespace chain {
    using graphene::db::abstract_object;
    using graphene::db::object;
+
+   class database_impl;
+   class generic_json_evaluator_registry;
 
    /**
     *   @class database
@@ -91,6 +93,7 @@ namespace steemit { namespace chain {
          bool                       is_known_block( const block_id_type& id )const;
          bool                       is_known_transaction( const transaction_id_type& id )const;
          fc::sha256                 get_pow_target()const;
+         uint32_t                   get_pow_summary_target()const;
          block_id_type              get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
@@ -105,6 +108,7 @@ namespace steemit { namespace chain {
          const witness_object&  get_witness( const string& name )const;
          const account_object&  get_account( const string& name )const;
          const comment_object&  get_comment( const string& author, const string& permlink )const;
+         const comment_object*  find_comment( const string& author, const string& permlink )const;
          const escrow_object&   get_escrow( const string& name, uint32_t escrowid )const;
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
@@ -279,6 +283,7 @@ namespace steemit { namespace chain {
          void account_recovery_processing();
          void update_median_feed();
          share_type claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem );
+         void stabalize_sbd();
 
          asset get_liquidity_reward()const;
          asset get_content_reward()const;
@@ -320,23 +325,18 @@ namespace steemit { namespace chain {
          //////////////////// db_init.cpp ////////////////////
 
          void initialize_evaluators();
+         void set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry );
+         std::shared_ptr< generic_json_evaluator_registry > get_custom_json_evaluator( const std::string& id );
+
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_genesis(uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
-
-         template<typename EvaluatorType>
-         void register_evaluator()
-         {
-            _operation_evaluators[
-               operation::tag<typename EvaluatorType::operation_type>::value].reset( new op_evaluator_impl<EvaluatorType>() );
-         }
 
          /**
           *  This method validates transactions without adding it to the pending state.
           *  @throw if an error occurs
           */
          void validate_transaction( const signed_transaction& trx );
-
 
          /** when popping a block, the transactions that were removed get cached here so they
           * can be reapplied at the proper time */
@@ -376,14 +376,12 @@ namespace steemit { namespace chain {
 
       private:
          optional<undo_database::session>       _pending_tx_session;
-         vector< unique_ptr<op_evaluator> >     _operation_evaluators;
-
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );
          void _apply_transaction( const signed_transaction& trx );
-         void apply_operation( transaction_evaluation_state& eval_state, const operation& op );
+         void apply_operation( const operation& op );
 
 
          ///Steps involved in applying a new block
@@ -411,6 +409,8 @@ namespace steemit { namespace chain {
 
          ///@}
 
+         std::unique_ptr< database_impl > _my;
+
          vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
@@ -437,6 +437,7 @@ namespace steemit { namespace chain {
 
          node_property_object              _node_property_object;
 
+         flat_map< std::string, std::shared_ptr< generic_json_evaluator_registry > >   _custom_json_evaluators;
    };
 
 

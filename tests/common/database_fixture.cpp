@@ -48,7 +48,6 @@ clean_database_fixture::clean_database_fixture()
    open_database();
 
    // app.initialize();
-   ahplugin->plugin_set_app( &app );
    ahplugin->plugin_initialize( options );
 
    generate_block();
@@ -99,7 +98,6 @@ live_database_fixture::live_database_fixture()
       graphene::time::now();
 
       auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
-      ahplugin->plugin_set_app( &app );
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
 
       validate_database();
@@ -155,7 +153,7 @@ signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::priv
 {
    auto witness = db.get_scheduled_witness(miss_blocks + 1);
    auto time = db.get_slot_time(miss_blocks + 1);
-   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature ;
+   skip |= database::skip_undo_history_check | database::skip_authority_check;
    auto block = db.generate_block(time, witness, key, skip);
    db.clear_pending();
    return block;

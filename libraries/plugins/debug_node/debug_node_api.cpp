@@ -33,6 +33,8 @@ class debug_node_api_impl
       steemit::chain::witness_schedule_object debug_get_witness_schedule();
       steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
       void debug_update_object( const fc::variant_object& update );
+      fc::variant_object debug_get_edits();
+      void debug_set_edits( const fc::variant_object& edits );
       //void debug_save_db( std::string db_path );
       void debug_stream_json_objects( const std::string& filename );
       void debug_stream_json_objects_flush();
@@ -90,84 +92,12 @@ uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename
 
 uint32_t debug_node_api_impl::debug_generate_blocks( const std::string& debug_key, uint32_t count )
 {
-   if( count == 0 )
-      return 0;
-
-   std::shared_ptr< debug_node_plugin > debug_plugin = get_plugin();
-
-   fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
-   FC_ASSERT( debug_private_key.valid() );
-   steemit::chain::public_key_type debug_public_key = debug_private_key->get_public_key();
-
-   std::shared_ptr< steemit::chain::database > db = app.chain_database();
-   for( uint32_t i=0; i<count; i++ )
-   {
-      std::string scheduled_witness_name = db->get_scheduled_witness( 1 );
-      fc::time_point_sec scheduled_time = db->get_slot_time( 1 );
-      const chain::witness_object& scheduled_witness = db->get_witness( scheduled_witness_name );
-      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-      wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
-      if( scheduled_key != debug_public_key )
-      {
-         wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-         fc::mutable_variant_object update;
-         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-         debug_plugin->debug_update( update );
-      }
-      db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
-   }
-
-   return count;
+   return get_plugin()->debug_generate_blocks( debug_key, count );
 }
 
 uint32_t debug_node_api_impl::debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely )
 {
-   std::shared_ptr< steemit::chain::database > db = app.chain_database();
-
-   if( db->head_block_time() >= head_block_time )
-      return 0;
-
-   uint32_t new_blocks = 0;
-
-   if( generate_sparsely )
-   {
-      auto new_slot = db->get_slot_at_time( head_block_time );
-
-      if( new_slot == 0 )
-         return 0;
-
-      std::shared_ptr< debug_node_plugin > debug_plugin = get_plugin();
-      fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
-      FC_ASSERT( debug_private_key.valid() );
-      steemit::chain::public_key_type debug_public_key = debug_private_key->get_public_key();
-
-      std::string scheduled_witness_name = db->get_scheduled_witness( new_slot );
-      fc::time_point_sec scheduled_time = db->get_slot_time( new_slot );
-      const chain::witness_object& scheduled_witness = db->get_witness( scheduled_witness_name );
-      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-
-      wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
-
-      if( scheduled_key != debug_public_key )
-      {
-         wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-         fc::mutable_variant_object update;
-         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-         debug_plugin->debug_update( update );
-      }
-
-      db->generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
-      new_blocks++;
-
-      FC_ASSERT( head_block_time.sec_since_epoch() - db->head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db->head_block_time()",db->head_block_time()) );
-   }
-   else
-   {
-      while( db->head_block_time() < head_block_time )
-         new_blocks += debug_generate_blocks( debug_key, 1 );
-   }
-
-   return new_blocks;
+   return get_plugin()->debug_generate_blocks_until( debug_key, head_block_time, generate_sparsely );
 }
 
 fc::optional< steemit::chain::signed_block > debug_node_api_impl::debug_pop_block()
@@ -194,6 +124,18 @@ steemit::chain::hardfork_property_object debug_node_api_impl::debug_get_hardfork
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
 {
    get_plugin()->debug_update( update );
+}
+
+fc::variant_object debug_node_api_impl::debug_get_edits()
+{
+   fc::mutable_variant_object result;
+   get_plugin()->save_debug_updates( result );
+   return fc::variant_object( std::move( result ) );
+}
+
+void debug_node_api_impl::debug_set_edits( const fc::variant_object& edits )
+{
+   get_plugin()->load_debug_updates( edits );
 }
 
 std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > debug_node_api_impl::get_plugin()
@@ -277,6 +219,16 @@ steemit::chain::hardfork_property_object debug_node_api::debug_get_hardfork_prop
 void debug_node_api::debug_update_object( fc::variant_object update )
 {
    my->debug_update_object( update );
+}
+
+fc::variant_object debug_node_api::debug_get_edits()
+{
+   return my->debug_get_edits();
+}
+
+void debug_node_api::debug_set_edits( fc::variant_object edits )
+{
+   my->debug_set_edits(edits);
 }
 
 void debug_node_api::debug_stream_json_objects( std::string filename )

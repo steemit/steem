@@ -244,7 +244,8 @@ BOOST_AUTO_TEST_CASE( hardfork_version_test )
       STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::assert_exception );
 
       ver_str = fc::variant( "0.0.1" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::assert_exception );
+      fc::from_variant( ver_str, ver );
+      BOOST_REQUIRE( ver == hardfork_version( 0, 0 ) );
 
       ver_str = fc::variant( "1.0" );
       STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::assert_exception );

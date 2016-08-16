@@ -32,6 +32,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
+#include <graphene/time/time.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <fc/crypto/hex.hpp>
@@ -112,6 +113,7 @@ namespace steemit { namespace app {
     network_broadcast_api::network_broadcast_api(const api_context& a):_app(a.app)
     {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
+       _app.get_bcd_trigger( _bcd_trigger );
     }
 
     void network_broadcast_api::on_api_startup()
@@ -119,6 +121,68 @@ namespace steemit { namespace app {
        /// note cannot capture shared pointer here, because _applied_block_connection will never
        /// be freed if the lambda holds a reference to it.
        _applied_block_connection = connect_signal( _app.chain_database()->applied_block, *this, &network_broadcast_api::on_applied_block );
+    }
+
+    bool network_broadcast_api::check_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > >& bcd_trigger )
+    {
+       FC_ASSERT( bcd_trigger.size() < 16 );
+       std::shared_ptr< database > db = _app.chain_database();
+       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+       fc::uint128_t slots = db->get_dynamic_global_properties().recent_slots_filled;
+       fc::time_point_sec now = graphene::time::now();
+
+       ilog( "Entering check_bcd_trigger: now=${now}", ("now", now) );
+
+       for( const std::pair< uint32_t, uint32_t >& trig : bcd_trigger )
+       {
+          // trig_slots is the number of slots which will be checked by the trigger.
+          uint32_t trig_slots = (trig.second + STEEMIT_BLOCK_INTERVAL - 1) / STEEMIT_BLOCK_INTERVAL;
+          ilog( "Testing bcd trigger: ${trig}  trig_slots=${trig_slots}", ("trig", trig)("trig_slots", trig_slots) );
+          if( trig_slots > 128 )
+          {
+             elog( "Bad --bcd-trigger parameter specified (trig_slots=${s})", ("s", trig_slots) );
+             continue;
+          }
+
+          uint32_t now_slot = db->get_slot_at_time( now );
+          ilog( "now_slot: ${now_slot}   current_aslot: ${current_aslot}", ("now_slot", now_slot)("current_aslot", dgpo.current_aslot) );
+
+          fc::uint128_t temp_slots = slots;
+          if( now_slot < dgpo.current_aslot )
+          {
+             // now is in the past, so rewind temp_slots by discarding the slots that will happen in the future
+             uint32_t discarded_slots = dgpo.current_aslot - now_slot;
+             ilog( "discarded_slots: ${discarded_slots}", ("discarded_slots", discarded_slots) );
+             // the blockchain is too far in the future to evaluate the current trigger, fail.
+             if( discarded_slots >= 128 - trig_slots )
+             {
+                elog( "Bailed in check_bcd_trigger because the blockchain extends too far into the future" );
+                continue;
+             }
+             temp_slots >>= discarded_slots;
+          }
+          else
+          {
+             // now is in the future, so add temp_slots by shifting in new empty places
+             uint32_t empty_slots = now_slot - dgpo.current_aslot;
+             // if now is so far in the future that all slots are empty, all triggers should pass
+             if( empty_slots >= 128 )
+                return true;
+             temp_slots <<= empty_slots;
+          }
+          fc::uint128_t mask = 1;
+          mask <<= trig_slots;
+          mask -= 1;
+          temp_slots &= mask;
+          if( temp_slots.popcount() <= trig.first )
+             return true;
+       }
+       return false;
+    }
+
+    void network_broadcast_api::set_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > >  bcd_trigger )
+    {
+       _bcd_trigger = bcd_trigger;
     }
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
@@ -165,6 +229,7 @@ namespace steemit { namespace app {
     void network_broadcast_api::broadcast_transaction(const signed_transaction& trx)
     {
        trx.validate();
+       FC_ASSERT( !check_bcd_trigger( _bcd_trigger ) );
        _app.chain_database()->push_transaction(trx);
        _app.p2p_node()->broadcast_transaction(trx);
     }
@@ -185,6 +250,7 @@ namespace steemit { namespace app {
 
     void network_broadcast_api::broadcast_transaction_with_callback(confirmation_callback cb, const signed_transaction& trx)
     {
+       FC_ASSERT( !check_bcd_trigger( _bcd_trigger ) );
        trx.validate();
        _callbacks[trx.id()] = cb;
        _callbacks_expirations[trx.expiration].push_back(trx.id());

@@ -1,27 +1,3 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #include <steemit/account_history/account_history_plugin.hpp>
 
 #include <steemit/app/impacted.hpp>
@@ -55,6 +31,7 @@ class account_history_plugin_impl
 
       account_history_plugin& _self;
       flat_map<string,string> _tracked_accounts;
+      bool                    _filter_content = false;
 };
 
 account_history_plugin_impl::~account_history_plugin_impl()
@@ -73,12 +50,6 @@ struct operation_visitor {
 
    /// ignore these ops
    /*
-   void operator()( const comment_operation& ) {}
-   void operator()( const vote_operation& ) {}
-   void operator()( const delete_comment_operation& ){} 
-   void operator()( const custom_json_operation& ) {}
-   void operator()( const custom_operation& ) {}
-   void operator()( const curate_reward_operation& ) {}
    */
 
 
@@ -111,6 +82,39 @@ struct operation_visitor {
    }
 };
 
+
+
+struct operation_visitor_filter : operation_visitor {
+   operation_visitor_filter( database& db, const operation_object& op, const operation_object*& n, string i ):operation_visitor(db,op,n,i){}
+
+   void operator()( const comment_operation& )const {}
+   void operator()( const vote_operation& )const {}
+   void operator()( const delete_comment_operation& )const{}
+   void operator()( const custom_json_operation& )const {}
+   void operator()( const custom_operation& )const {}
+   void operator()( const curate_reward_operation& )const {}
+   void operator()( const fill_order_operation& )const {}
+   void operator()( const limit_order_create_operation& )const {}
+   void operator()( const limit_order_cancel_operation& )const {}
+   void operator()( const pow_operation& )const {}
+
+   void operator()( const transfer_operation& op )const {
+      operation_visitor::operator()( op );
+   }
+   void operator()( const transfer_to_vesting_operation& op )const {
+      operation_visitor::operator()( op );
+   }
+   void operator()( const account_create_operation& op )const {
+      operation_visitor::operator()( op );
+   }
+   void operator()( const account_update_operation& op )const {
+      operation_visitor::operator()( op );
+   }
+
+   template<typename Op>
+   void operator()( Op&& op )const{ }
+};
+
 void account_history_plugin_impl::on_operation( const operation_object& op_obj ) {
    flat_set<string> impacted;
    steemit::chain::database& db = database();
@@ -126,16 +130,19 @@ void account_history_plugin_impl::on_operation( const operation_object& op_obj )
 
    for( const auto& item : impacted ) {
       auto itr = _tracked_accounts.lower_bound( item );
-      if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && itr->second < item) ) {
-         op_obj.op.visit( operation_visitor(db, op_obj, new_obj, item) );
+      if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) ) {
+         if( _filter_content )
+            op_obj.op.visit( operation_visitor_filter(db, op_obj, new_obj, item) );
+         else
+            op_obj.op.visit( operation_visitor(db, op_obj, new_obj, item) );
       }
    }
 }
 
 } // end namespace detail
 
-account_history_plugin::account_history_plugin() :
-   my( new detail::account_history_plugin_impl(*this) )
+account_history_plugin::account_history_plugin( application* app )
+   : plugin( app ), my( new detail::account_history_plugin_impl(*this) )
 {
    //ilog("Loading account history plugin" );
 }
@@ -155,7 +162,8 @@ void account_history_plugin::plugin_set_program_options(
    )
 {
    cli.add_options()
-         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to)")
+         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to]")
+         ("filter-posting-ops", "Ignore posting operations, only track transfers and account updates")
          ;
    cfg.add(cli);
 }
@@ -168,7 +176,10 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
    database().add_index< primary_index< account_history_index  > >();
 
    typedef pair<string,string> pairstring;
-   LOAD_VALUE_SET(options, "tracked-accounts", my->_tracked_accounts, pairstring);
+   LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
+   if( options.count( "filter-posting-ops" ) ) {
+      my->_filter_content = true;
+   }
 }
 
 void account_history_plugin::plugin_startup()

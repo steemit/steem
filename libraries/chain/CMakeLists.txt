@@ -15,6 +15,7 @@ add_library( steemit_chain
              protocol/authority.cpp
              protocol/operations.cpp
              protocol/sign_state.cpp
+             protocol/operation_util_impl.cpp
              protocol/steem_operations.cpp
              protocol/transaction.cpp
              protocol/block.cpp
@@ -23,7 +24,6 @@ add_library( steemit_chain
 
              get_config.cpp
 
-             evaluator.cpp
              steem_evaluator.cpp
 
 #             account_object.cpp

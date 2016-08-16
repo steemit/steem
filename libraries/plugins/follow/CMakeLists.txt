@@ -2,6 +2,9 @@ file(GLOB HEADERS "include/steemit/follow/*.hpp")
 
 add_library( steemit_follow
              follow_plugin.cpp
+             follow_api.cpp
+             follow_operations.cpp
+             follow_evaluators.cpp
            )
 
 target_link_libraries( steemit_follow steemit_chain steemit_app graphene_time )
