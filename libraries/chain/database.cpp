@@ -2677,7 +2677,7 @@ void database::_apply_block( const signed_block& next_block )
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = get_node_properties().skip_flags;
 
-   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
+   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
@@ -3393,7 +3393,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
             acnt.sbd_balance += delta;
             break;
          default:
-            FC_ASSERT( !"invalid symbol" );
+            FC_ASSERT( false, "invalid symbol" );
       }
    } );
 }
@@ -3424,7 +3424,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
             assert( props.current_sbd_supply.amount.value >= 0 );
             break;
          default:
-            FC_ASSERT( !"invalid symbol" );
+            FC_ASSERT( false, "invalid symbol" );
       }
    } );
 }
@@ -3439,7 +3439,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       case SBD_SYMBOL:
          return a.sbd_balance;
       default:
-         FC_ASSERT( !"invalid symbol" );
+         FC_ASSERT( false, "invalid symbol" );
    }
 }
 
@@ -3797,7 +3797,7 @@ void database::validate_invariants()const
          else if( itr->amount.symbol == SBD_SYMBOL )
             total_sbd += itr->amount;
          else
-            FC_ASSERT( !"Encountered illegal symbol in convert_request_object" );
+            FC_ASSERT( false, "Encountered illegal symbol in convert_request_object" );
       }
 
       const auto& limit_order_idx = get_index_type< limit_order_index >().indices();

@@ -60,7 +60,7 @@ namespace graphene { namespace db {
             item.id = get_next_id();
             constructor( item );
             auto insert_result = _indices.insert( std::move(item) );
-            FC_ASSERT(insert_result.second, "Could not create object! Most likely a uniqueness constraint is violated.");
+            FC_ASSERT(insert_result.second, "Could not create object, most likely a uniqueness constraint was violated");
             use_next_id();
             return *insert_result.first;
          }
@@ -70,7 +70,7 @@ namespace graphene { namespace db {
             assert( nullptr != dynamic_cast<const ObjectType*>(&obj) );
             auto ok = _indices.modify( _indices.iterator_to( static_cast<const ObjectType&>(obj) ),
                                        [&m]( ObjectType& o ){ m(o); } );
-            FC_ASSERT( ok, "Could not modify object, most likely a index constraint was violated" );
+            FC_ASSERT( ok, "Could not modify object, most likely a uniqueness constraint was violated" );
          }
 
          virtual void remove( const object& obj )override
