@@ -67,3 +67,18 @@ used by the account. This means it does not favor mining pools.
 
 Make sure that your accountname is unique and not already used by someone else or your proof of work
 might not be accepted by the blockchain.
+
+How to Update for Hardfork (Ubuntu)
+-----------------------------------
+
+Stop steemd
+cd into your steem repository
+
+```
+git pull origin master
+git submodule update --init --recursive
+cmake -DENABLE_CONTENT_PATCHING=OFF .
+make
+cd programs/steemd
+sudo ./steemd --rebuild-blockchain --rpc-endpoint
+```
