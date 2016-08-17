@@ -1,4 +1,4 @@
-TODO: add rest of unbuntu instructions here.
+TODO: add rest of unbuntu instructions here: https://steem.io/documentation/how-to-build/
 
 If you want posts to be merged / patched then you will require Qt5 to be installed
 
