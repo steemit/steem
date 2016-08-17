@@ -77,7 +77,7 @@ cd into your steem repository
 ```
 git pull origin master
 git submodule update --init --recursive
-cmake -DENABLE_CONTENT_PATCHING=OFF .
+cmake -DENABLE_CONTENT_PATCHING=OFF -DCMAKE_BUILD_TYPE=Release .
 make
 cd programs/steemd
 sudo ./steemd --rebuild-blockchain --rpc-endpoint
