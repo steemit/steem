@@ -82,5 +82,5 @@ git submodule update --init --recursive
 cmake -DENABLE_CONTENT_PATCHING=OFF -DCMAKE_BUILD_TYPE=Release .
 make
 cd programs/steemd
-./steemd --rebuild-blockchain --rpc-endpoint
+./steemd --replay-blockchain --rpc-endpoint
 ```
