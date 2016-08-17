@@ -71,14 +71,16 @@ might not be accepted by the blockchain.
 How to Update for Hardfork (Ubuntu)
 -----------------------------------
 
-Stop steemd
-cd into your steem repository
+- Stop steemd
+- cd into your steem repository
+- The first command ensures that your steem dir is entirely owned by ubuntu so you don't need to sudo to run it
 
 ```
+sudo chown -R ubuntu .
 git pull origin master
 git submodule update --init --recursive
 cmake -DENABLE_CONTENT_PATCHING=OFF -DCMAKE_BUILD_TYPE=Release .
 make
 cd programs/steemd
-sudo ./steemd --rebuild-blockchain --rpc-endpoint
+./steemd --rebuild-blockchain --rpc-endpoint
 ```
