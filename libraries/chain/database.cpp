@@ -1051,10 +1051,10 @@ void database::update_witness_schedule4()
         itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
         ++itr )
    {
-      if( has_hardfork( STEEMIT_HARDFORK_0_14 ) || itr->signing_key != public_key_type() ) { 
-         selected_voted.insert(itr->get_id());
-         active_witnesses.push_back(itr->owner);
-      }
+      if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && (itr->signing_key == public_key_type()) )
+         continue;
+      selected_voted.insert(itr->get_id());
+      active_witnesses.push_back(itr->owner);
    }
 
    /// Add miners from the top of the mining queue
