@@ -289,11 +289,24 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( agent ) );
-      FC_ASSERT( fee.amount >= 0 );
-      FC_ASSERT( amount.amount >= 0 );
-      FC_ASSERT( from != agent && to != agent );
-      FC_ASSERT( fee.symbol == amount.symbol );
-      FC_ASSERT( amount.symbol != VESTS_SYMBOL );
+      FC_ASSERT( fee.amount >= 0, "fee cannot be negative" );
+      FC_ASSERT( sbd_amount.amount >= 0, "sbd amount cannot be negative" );
+      FC_ASSERT( steem_amount.amount >= 0, "steem amount cannot be negative" );
+      FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must transfer a non-zero amount" );
+      FC_ASSERT( from != agent && to != agent, "agent must be a third party" );
+      FC_ASSERT( fee.symbol != VESTS_SYMBOL, "fee cannot be paid in VESTS" );
+      FC_ASSERT( sbd_amount.symbol == SBD_SYMBOL, "sbd amount must contain SBD" );
+      FC_ASSERT( steem_amount.symbol == STEEM_SYMBOL, "steem amount must contain STEEM" );
+      FC_ASSERT( ratification_deadline < escrow_expiration, "ratification deadline must be before escrow expiration" );
+   }
+
+   void escrow_approve_operation::validate()const
+   {
+      FC_ASSERT( is_valid_account_name( from ) );
+      FC_ASSERT( is_valid_account_name( to ) );
+      FC_ASSERT( is_valid_account_name( agent) );
+      FC_ASSERT( is_valid_account_name( who ) );
+      FC_ASSERT( who == to || who == agent, "to or agent must approve escrow" );
    }
 
    void escrow_dispute_operation::validate()const
@@ -309,8 +322,11 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( from ) );
       FC_ASSERT( is_valid_account_name( to ) );
       FC_ASSERT( is_valid_account_name( who ) );
-      FC_ASSERT( amount.amount > 0 );
-      FC_ASSERT( amount.symbol != VESTS_SYMBOL );
+      FC_ASSERT( sbd_amount.amount >= 0, "sbd amount cannot be negative" );
+      FC_ASSERT( steem_amount.amount >= 0, "steem amount cannot be negative" );
+      FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must release a non-zero amount" );
+      FC_ASSERT( sbd_amount.symbol == SBD_SYMBOL, "sbd amount must contain SBD" );
+      FC_ASSERT( steem_amount.symbol == STEEM_SYMBOL, "steem amount must contain STEEM" );
    }
 
    void request_account_recovery_operation::validate()const

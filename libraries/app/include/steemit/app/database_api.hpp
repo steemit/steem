@@ -198,6 +198,8 @@ class database_api
 
       optional< account_recovery_request_object > get_recovery_request( string account ) const;
 
+      optional< escrow_object > get_escrow( string from, uint32_t escrow_id )const;
+
       ///////////////
       // Witnesses //
       ///////////////
@@ -449,6 +451,7 @@ FC_API(steemit::app::database_api,
    (get_account_history)
    (get_owner_history)
    (get_recovery_request)
+   (get_escrow)
 
    // Market
    (get_order_book)
