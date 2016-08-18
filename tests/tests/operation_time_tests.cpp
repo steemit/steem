@@ -2557,7 +2557,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       et_op.to = "bob";
       et_op.agent = "greg";
       et_op.sbd_amount = ASSET( "1.000 TBD" );
-      et_op.fee = ASSET( "0.200 TBD");
+      et_op.fee = ASSET( "0.100 TBD");
       et_op.ratification_deadline = fc::time_point_sec::maximum() - STEEMIT_BLOCK_INTERVAL;
       et_op.escrow_expiration = fc::time_point_sec::maximum();
 
@@ -2583,17 +2583,17 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       validate_database();
 
       auto sam_order = db.get_limit_order( "sam", 1 );
-      auto sam_order_for_sale = sam_order.for_sale - ( sam_order.for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT;
+      auto sam_order_for_sale = sam_order.for_sale - ( ( sam_order.for_sale + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT;
       auto sam_sbd_balance = db.get_account( "sam" ).sbd_balance;
       auto sam_steem_balance = db.get_account( "sam" ).balance;
-      sam_steem_balance += asset( ( sam_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
-      sam_steem_balance += asset( ( sam_order.for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
-      sam_sbd_balance -= asset( ( sam_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+      sam_steem_balance += asset( ( ( sam_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
+      sam_steem_balance += asset( ( ( sam_order.for_sale + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
+      sam_sbd_balance -= asset( ( ( sam_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
 
       auto dave_sbd_balance = db.get_account( "dave" ).sbd_balance;
       auto dave_steem_balance = db.get_account( "dave" ).balance;
-      dave_steem_balance += asset( ( dave_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
-      dave_sbd_balance -= asset( ( dave_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+      dave_steem_balance += asset( ( ( dave_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
+      dave_sbd_balance -= asset( ( ( dave_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
 
       auto escrow_sbd_balance = db.get_escrow( et_op.from, et_op.escrow_id ).sbd_balance;
       auto escrow_pending_fee = db.get_escrow( et_op.from, et_op.escrow_id ).pending_fee;
@@ -2606,9 +2606,9 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_REQUIRE( db.get_account( "dave" ).balance == dave_steem_balance );
       BOOST_REQUIRE( db.get_account( "dave" ).sbd_balance == dave_sbd_balance );
       BOOST_REQUIRE( db.get_limit_order( "sam", order.orderid ).for_sale == sam_order_for_sale );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).sbd_balance == ASSET( "0.981 TBD" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).pending_fee == ASSET( "0.197 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "greg" ).balance == ASSET( "0.030 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).sbd_balance == ASSET( "0.980 TBD" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).pending_fee == ASSET( "0.098 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "greg" ).balance == ASSET( "0.020 TESTS" ) );
 
       while( ( db.get_dynamic_global_properties().current_sbd_supply * exchange_rate ).amount > ( db.get_dynamic_global_properties().virtual_supply.amount * STEEMIT_SBD_CONVERT_PERCENT ) / STEEMIT_100_PERCENT )
       {

@@ -2177,7 +2177,8 @@ void database::stabalize_sbd()
 
       while( itr != sbd_idx.end() && itr->sbd_balance.amount > 0 )
       {
-         auto from_sbd = asset( ( itr->sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         // Round up how much SBD is converted ceiling( A / B ) === ( A + B - 1 ) / B
+         auto from_sbd = asset( ( ( itr->sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
          auto to_steem = from_sbd * median_price;
 
          adjust_balance( *itr, -from_sbd );
@@ -2194,7 +2195,7 @@ void database::stabalize_sbd()
 
       while( order_itr != order_idx.end() && order_itr->sell_price.base.symbol == SBD_SYMBOL )
       {
-         auto from_sbd = asset( ( order_itr->for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto from_sbd = asset( ( ( order_itr->for_sale + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
          auto to_steem = from_sbd * median_price;
 
          adjust_balance( get_account( order_itr->seller ), to_steem );
@@ -2215,7 +2216,7 @@ void database::stabalize_sbd()
 
       while( escrow_itr != escrow_idx.end() && escrow_itr->sbd_balance.amount > 0 )
       {
-         auto from_sbd = asset( ( escrow_itr->sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto from_sbd = asset( ( ( escrow_itr->sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
          auto to_steem = from_sbd * median_price;
 
          modify( *escrow_itr, [&]( escrow_object& e )
@@ -2230,7 +2231,7 @@ void database::stabalize_sbd()
          // If the pending fee is SBD, convert 1% to steem and pay it to agent
          if( escrow_itr->pending_fee.symbol == SBD_SYMBOL )
          {
-            from_sbd = asset( ( escrow_itr->pending_fee.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+            from_sbd = asset( ( ( escrow_itr->pending_fee.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
             to_steem = from_sbd * median_price;
 
             modify( *escrow_itr, [&]( escrow_object& e )
