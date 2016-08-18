@@ -456,6 +456,19 @@ optional< account_recovery_request_object > database_api::get_recovery_request( 
    return result;
 }
 
+optional< escrow_object > database_api::get_escrow( string from, uint32_t escrow_id )const
+{
+   optional< escrow_object > result;
+
+   try
+   {
+      result = my->_db.get_escrow( from, escrow_id );
+   }
+   catch ( ... ) {}
+
+   return result;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
