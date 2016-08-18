@@ -4192,7 +4192,6 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
          BOOST_REQUIRE( escrow.agent_approved );
          BOOST_REQUIRE( escrow.disputed );
       }
-
    }
    FC_LOG_AND_RETHROW()
 }
@@ -4201,7 +4200,43 @@ BOOST_AUTO_TEST_CASE( escrow_release_validate )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow release validate" );
+      escrow_release_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.who = "alice";
 
+
+      BOOST_TEST_MESSAGE( "--- failure when steem < 0" );
+      op.steem_amount.amount = -1;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when sbd < 0" );
+      op.steem_amount.amount = 0;
+      op.sbd_amount.amount = -1;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when steem == 0 and sbd == 0" );
+      op.sbd_amount.amount = 0;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when sbd is not sbd symbol" );
+      op.sbd_amount = ASSET( "1.000 TESTS" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when steem is not steem symbol" );
+      op.sbd_amount.symbol = SBD_SYMBOL;
+      op.steem_amount = ASSET( "1.000 TBD" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success" );
+      op.steem_amount.symbol = STEEM_SYMBOL;
+      op.validate();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -4210,7 +4245,38 @@ BOOST_AUTO_TEST_CASE( escrow_release_authorities )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow_release_authorities" );
+      escrow_release_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.who = "alice";
 
+      flat_set< string > auths;
+      flat_set< string > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.who = "bob";
+      auths.clear();
+      expected.clear();
+      expected.insert( "bob" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.who = "sam";
+      auths.clear();
+      expected.clear();
+      expected.insert( "sam" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -4219,7 +4285,445 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: escrow_release_apply" );
 
+      ACTORS( (alice)(bob)(sam)(dave) )
+      fund( "alice", 10000 );
+
+      escrow_transfer_operation et_op;
+      et_op.from = "alice";
+      et_op.to = "bob";
+      et_op.agent = "sam";
+      et_op.steem_amount = ASSET( "1.000 TESTS" );
+      et_op.fee = ASSET( "0.100 TESTS" );
+      et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
+      et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+
+      escrow_approve_operation ea_b_op;
+      ea_b_op.from = "alice";
+      ea_b_op.to = "bob";
+      ea_b_op.agent = "sam";
+      ea_b_op.who = "bob";
+
+      escrow_approve_operation ea_s_op;
+      ea_s_op.from = "alice";
+      ea_s_op.to = "bob";
+      ea_s_op.agent = "sam";
+      ea_s_op.who = "sam";
+
+      signed_transaction tx;
+      tx.operations.push_back( et_op );
+      tx.operations.push_back( ea_b_op );
+      tx.operations.push_back( ea_s_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed escrow to 'to'" );
+      escrow_release_operation op;
+      op.from = "alice";
+      op.to = et_op.to;
+      op.who = et_op.agent;
+      op.steem_amount = ASSET( "0.100 TESTS" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE("--- failure when 'agent' attempts to release non-disputed escrow to 'from' " );
+      op.to = et_op.from;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'agent' attempt to release non-disputed escrow to not 'to' or 'from'" );
+      op.to = "dave";
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when other attempts to release non-disputed escrow to 'to'" );
+      op.to = et_op.to;
+      op.who = "dave";
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE("--- failure when other attempts to release non-disputed escrow to 'from' " );
+      op.to = et_op.from;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when other attempt to release non-disputed escrow to not 'to' or 'from'" );
+      op.to = "dave";
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'to' attemtps to release non-disputed escrow to 'to'" );
+      op.to = et_op.to;
+      op.who = et_op.to;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE("--- failure when 'to' attempts to release non-dispured escrow to 'agent' " );
+      op.to = et_op.agent;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-disputed escrow to not 'from'" );
+      op.to = "dave";
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success release non-disputed escrow to 'to' from 'from'" );
+      op.to = et_op.from;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_escrow( op.from, op.escrow_id ).steem_balance == ASSET( "0.900 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.000 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed escrow to 'from'" );
+      op.to = et_op.from;
+      op.who = et_op.from;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE("--- failure when 'from' attempts to release non-disputed escrow to 'agent'" );
+      op.to = et_op.agent;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed escrow to not 'from'" );
+      op.to = "dave";
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success release non-disputed escrow to 'from' from 'to'" );
+      op.to = et_op.to;
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_escrow( op.from, op.escrow_id ).steem_balance == ASSET( "0.800 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.100 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when releasing more sbd than available" );
+      op.steem_amount = ASSET( "1.000 TESTS" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when releasing less steem than available" );
+      op.steem_amount = ASSET( "0.000 TESTS" );
+      op.sbd_amount = ASSET( "1.000 TBD" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release disputed escrow" );
+      escrow_dispute_operation ed_op;
+      ed_op.from = "alice";
+      ed_op.to = "bob";
+      ed_op.who = "alice";
+
+      tx.clear();
+      tx.operations.push_back( ed_op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.clear();
+      op.from = et_op.from;
+      op.to = et_op.from;
+      op.who = et_op.to;
+      op.steem_amount = ASSET( "0.100 TESTS" );
+      op.sbd_amount = ASSET( "0.000 TBD" );
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release disputed escrow" );
+      tx.clear();
+      op.to = et_op.to;
+      op.who = et_op.from;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when releasing disputed escrow to an account not 'to' or 'from'" );
+      tx.clear();
+      op.who = et_op.agent;
+      op.to = "dave";
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when agent does not match escrow" );
+      tx.clear();
+      op.who = "dave";
+      op.to = et_op.from;
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success releasing disputed escrow with agent to 'to'" );
+      tx.clear();
+      op.to = et_op.to;
+      op.who = et_op.agent;
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.200 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.700 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- success releasing disputed escrow with agent to 'from'" );
+      tx.clear();
+      op.to = et_op.from;
+      op.who = et_op.agent;
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.100 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.600 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release disputed expired escrow" );
+      generate_blocks( 2 );
+
+      tx.clear();
+      op.to = et_op.from;
+      op.who = et_op.to;
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release disputed expired escrow" );
+      tx.clear();
+      op.to = et_op.to;
+      op.who = et_op.from;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success releasing disputed expired escrow with agent" );
+      tx.clear();
+      op.to = et_op.from;
+      op.who = et_op.agent;
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.200 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.500 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- success deleting escrow when balances are both zero" );
+      tx.clear();
+      op.steem_amount = ASSET( "0.500 TESTS" );
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.700 TESTS" ) );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::assert_exception );
+
+
+      tx.clear();
+      et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
+      et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
+      tx.operations.push_back( et_op );
+      tx.operations.push_back( ea_b_op );
+      tx.operations.push_back( ea_s_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_blocks( 2 );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed expired escrow to 'to'" );
+      tx.clear();
+      op.to = et_op.to;
+      op.who = et_op.agent;
+      op.steem_amount = ASSET( "0.100 TESTS" );
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed expired escrow to 'from'" );
+      tx.clear();
+      op.to = et_op.from;
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'agent' attempt to release non-disputed expired escrow to not 'to' or 'from'" );
+      tx.clear();
+      op.to = "dave";
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-dispured expired escrow to 'agent'" );
+      tx.clear();
+      op.who = et_op.to;
+      op.to = et_op.agent;
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-disputed expired escrow to not 'from' or 'to'" );
+      tx.clear();
+      op.to = "dave";
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'to' from 'to'" );
+      tx.clear();
+      op.to = et_op.to;
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.300 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.900 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'from' from 'to'" );
+      tx.clear();
+      op.to = et_op.from;
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "8.700 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.800 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed expired escrow to 'agent'" );
+      tx.clear();
+      op.who = et_op.from;
+      op.to = et_op.agent;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed expired escrow to not 'from' or 'to'" );
+      tx.clear();
+      op.to = "dave";
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'to' from 'from'" );
+      tx.clear();
+      op.to = et_op.to;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.400 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.700 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'from' from 'from'" );
+      tx.clear();
+      op.to = et_op.from;
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "8.800 TESTS" ) );
+      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).steem_balance == ASSET( "0.600 TESTS" ) );
+
+
+      BOOST_TEST_MESSAGE( "--- success deleting escrow when balances are zero on non-disputed escrow" );
+      tx.clear();
+      op.steem_amount = ASSET( "0.600 TESTS" );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.400 TESTS" ) );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }

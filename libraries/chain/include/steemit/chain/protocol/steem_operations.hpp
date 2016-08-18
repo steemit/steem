@@ -277,7 +277,7 @@ namespace steemit { namespace chain {
       string         agent;
       string         who; // Either to or agent
       uint32_t       escrow_id = 0;
-      bool           approve;
+      bool           approve = true;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }

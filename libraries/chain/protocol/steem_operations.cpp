@@ -325,7 +325,7 @@ namespace steemit { namespace chain {
       FC_ASSERT( sbd_amount.amount >= 0, "sbd amount cannot be negative" );
       FC_ASSERT( steem_amount.amount >= 0, "steem amount cannot be negative" );
       FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must release a non-zero amount" );
-      FC_ASSERT( sbd_amount.symbol == VESTS_SYMBOL, "sbd amount must contain SBD" );
+      FC_ASSERT( sbd_amount.symbol == SBD_SYMBOL, "sbd amount must contain SBD" );
       FC_ASSERT( steem_amount.symbol == STEEM_SYMBOL, "steem amount must contain STEEM" );
    }
 

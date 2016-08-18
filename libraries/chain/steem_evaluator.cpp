@@ -610,16 +610,21 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       {
          FC_ASSERT( o.who == e.agent, "'agent' must release funds for a disputed escrow" );
       }
-      else if( e.escrow_expiration > db().head_block_time() )
+      else
       {
-         // If there is no dispute and escrow has not expired, either party can release funds to the other.
-         if( o.who == e.from )
+         FC_ASSERT( o.who == e.from || o.who == e.to, "Only 'from' and 'to' can release from a non-disputed escrow" );
+
+         if( e.escrow_expiration > db().head_block_time() )
          {
-            FC_ASSERT( o.to == e.to, "'from' must release funds to 'to'" );
-         }
-         else if( o.who == e.to )
-         {
-            FC_ASSERT( o.to == e.from, "'to' must release funds to 'from'" );
+            // If there is no dispute and escrow has not expired, either party can release funds to the other.
+            if( o.who == e.from )
+            {
+               FC_ASSERT( o.to == e.to, "'from' must release funds to 'to'" );
+            }
+            else if( o.who == e.to )
+            {
+               FC_ASSERT( o.to == e.from, "'to' must release funds to 'from'" );
+            }
          }
       }
       // If escrow expires and there is no dispute, either party can release funds to either party.
