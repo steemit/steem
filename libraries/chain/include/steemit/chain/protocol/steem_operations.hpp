@@ -251,15 +251,17 @@ namespace steemit { namespace chain {
    {
       string         from;
       string         to;
+      string         agent;
+      uint32_t       escrow_id = 0;
+
       asset          sbd_amount = asset( 0, SBD_SYMBOL );
       asset          steem_amount = asset( 0, STEEM_SYMBOL );
-
-      uint32_t       escrow_id = 0;
-      string         agent;
       asset          fee;
-      string         json_meta;
+
       time_point_sec ratification_deadline;
       time_point_sec escrow_expiration;
+
+      string         json_meta;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
@@ -292,8 +294,8 @@ namespace steemit { namespace chain {
    {
       string   from;
       string   to;
-      uint32_t escrow_id = 0;
       string   who;
+      uint32_t escrow_id = 0;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
@@ -312,9 +314,9 @@ namespace steemit { namespace chain {
    struct escrow_release_operation : public base_operation
    {
       string    from;
-      uint32_t  escrow_id = 0;
       string    to; ///< the account that should receive funds (might be from, might be to
       string    who; ///< the account that is attempting to release the funds, determines valid 'to'
+      uint32_t  escrow_id = 0;
       asset     sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
       asset     steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
 
@@ -876,8 +878,8 @@ FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_ac
 
 FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );
 FC_REFLECT( steemit::chain::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
-FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who) );
-FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(sbd_amount)(steem_amount) );
+FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(who)(escrow_id) );
+FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(who)(escrow_id)(sbd_amount)(steem_amount) );
 FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
 FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
 FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );

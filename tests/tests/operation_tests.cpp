@@ -4299,6 +4299,26 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       et_op.ratification_deadline = db.head_block_time() + STEEMIT_BLOCK_INTERVAL;
       et_op.escrow_expiration = db.head_block_time() + 2 * STEEMIT_BLOCK_INTERVAL;
 
+      signed_transaction tx;
+      tx.operations.push_back( et_op );
+
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "--- failure releasing funds prior to approval" );
+      escrow_release_operation op;
+      op.from = et_op.from;
+      op.to = et_op.to;
+      op.who = et_op.from;
+      op.steem_amount = ASSET( "0.100 TESTS" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
       escrow_approve_operation ea_b_op;
       ea_b_op.from = "alice";
       ea_b_op.to = "bob";
@@ -4311,24 +4331,15 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       ea_s_op.agent = "sam";
       ea_s_op.who = "sam";
 
-      signed_transaction tx;
-      tx.operations.push_back( et_op );
+      tx.clear();
       tx.operations.push_back( ea_b_op );
       tx.operations.push_back( ea_s_op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db.get_chain_id() );
       tx.sign( bob_private_key, db.get_chain_id() );
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed escrow to 'to'" );
-      escrow_release_operation op;
-      op.from = "alice";
-      op.to = et_op.to;
       op.who = et_op.agent;
-      op.steem_amount = ASSET( "0.100 TESTS" );
-
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
