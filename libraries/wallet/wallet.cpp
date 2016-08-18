@@ -1662,6 +1662,112 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(memo)(broadcast) ) }
 
+annotated_signed_transaction wallet_api::escrow_transfer(
+      string from,
+      string to,
+      string agent,
+      uint32_t escrow_id,
+      asset sbd_amount,
+      asset steem_amount,
+      asset fee,
+      time_point_sec ratification_deadline,
+      time_point_sec escrow_expiration,
+      string json_meta,
+      bool broadcast
+   )
+{
+   FC_ASSERT( !is_locked() );
+   escrow_transfer_operation op;
+   op.from = from;
+   op.to = to;
+   op.agent = agent;
+   op.escrow_id = escrow_id;
+   op.sbd_amount = sbd_amount;
+   op.steem_amount = steem_amount;
+   op.fee = fee;
+   op.ratification_deadline = ratification_deadline;
+   op.escrow_expiration = escrow_expiration;
+   op.json_meta = json_meta;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::escrow_approve(
+      string from,
+      string to,
+      string agent,
+      string who,
+      uint32_t escrow_id,
+      bool approve,
+      bool broadcast
+   )
+{
+   FC_ASSERT( !is_locked() );
+   escrow_approve_operation op;
+   op.from = from;
+   op.to = to;
+   op.agent = agent;
+   op.who = who;
+   op.escrow_id = escrow_id;
+   op.approve = approve;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::escrow_dispute(
+      string from,
+      string to,
+      string who,
+      uint32_t escrow_id,
+      bool broadcast
+   )
+{
+   escrow_dispute_operation op;
+   op.from = from;
+   op.to = to;
+   op.who = who;
+   op.escrow_id = escrow_id;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::escrow_release(
+   string from,
+   string to,
+   string who,
+   uint32_t escrow_id,
+   asset sbd_amount,
+   asset steem_amount,
+   bool broadcast
+)
+{
+   escrow_release_operation op;
+   op.from = from;
+   op.to = to;
+   op.who = who;
+   op.escrow_id = escrow_id;
+   op.sbd_amount = sbd_amount;
+   op.steem_amount = steem_amount;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
 annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string to, asset amount, bool broadcast )
 {
    FC_ASSERT( !is_locked() );

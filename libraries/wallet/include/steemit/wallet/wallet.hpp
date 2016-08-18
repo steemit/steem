@@ -561,6 +561,95 @@ class wallet_api
       annotated_signed_transaction transfer(string from, string to, asset amount, string memo, bool broadcast = false);
 
       /**
+       * Transfer funds from one account to another using escrow. STEEM and SBD can be transferred.
+       *
+       * @param from The account the funds are coming from
+       * @param to The account the funds are going to
+       * @param agent The account acting as the agent in case of dispute
+       * @param escrow_id A unique id for the escrow transfer. (from, escrow_id) must be a unique pair
+       * @param sbd_amount The amount of SBD to transfer
+       * @param steem_amount The amount of STEEM to transfer
+       * @param fee The fee paid to the agent
+       * @param ratification_deadline The deadline for 'to' and 'agent' to approve the escrow transfer
+       * @param escrow_expiration The expiration of the escrow transfer, after which either party can claim the funds
+       * @param json_meta JSON encoded meta data
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction escrow_transfer(
+         string from,
+         string to,
+         string agent,
+         uint32_t escrow_id,
+         asset sbd_amount,
+         asset steem_amount,
+         asset fee,
+         time_point_sec ratification_deadline,
+         time_point_sec escrow_expiration,
+         string json_meta,
+         bool broadcast = false
+      );
+
+      /**
+       * Approve a proposed escrow transfer. Funds cannot be released until after approval. This is in lieu of requiring
+       * multi-sig on escrow_transfer
+       *
+       * @param from The account that funded the escrow
+       * @param to The destination of the escrow
+       * @param agent The account acting as the agent in case of dispute
+       * @param who The account approving the escrow transfer (either 'to' or 'agent)
+       * @param escrow_id A unique id for the escrow transfer
+       * @param approve true to approve the escrow transfer, otherwise cancels it and refunds 'from'
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction escrow_approve(
+         string from,
+         string to,
+         string agent,
+         string who,
+         uint32_t escrow_id,
+         bool approve,
+         bool broadcast = false
+      );
+
+      /**
+       * Raise a dispute on the escrow transfer before it expires
+       *
+       * @param from The account that funded the escrow
+       * @param to The destination of the escrow
+       * @param who The account raising the dispute (either 'from' or 'to')
+       * @param escrow_id A unique id for the escrow transfer
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction escrow_dispute(
+         string from,
+         string to,
+         string who,
+         uint32_t escrow_id,
+         bool broadcast = false
+      );
+
+      /**
+       * Release funds help in escrow
+       *
+       * @param from The account that funded the escrow
+       * @param to The account that will receive funds being released
+       * @param who The account authorizing the release
+       * @param escrow_id A unique id for the escrow transfer
+       * @param sbd_amount The amount of SBD that will be released
+       * @param steem_amount The amount of STEEM that will be released
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction escrow_release(
+         string from,
+         string to,
+         string who,
+         uint32_t escrow_id,
+         asset sbd_amount,
+         asset steem_amount,
+         bool broadcast = false
+      );
+
+      /**
        * Transfer STEEM into a vesting fund represented by vesting shares (VESTS). VESTS are required to vesting
        * for a minimum of one coin year and can be withdrawn once a week over a two year withdraw period.
        * VESTS are protected against dilution up until 90% of STEEM is vesting.
