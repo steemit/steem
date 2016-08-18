@@ -281,6 +281,7 @@ namespace steemit { namespace chain {
          void process_funds();
          void process_conversions();
          void account_recovery_processing();
+         void expire_escrow_ratification();
          void update_median_feed();
          share_type claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem );
          void stabalize_sbd();
