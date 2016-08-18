@@ -1,11 +1,14 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
+#include <steemit/chain/block_summary_object.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
+
+#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -2413,6 +2416,207 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( sbd_stability )
+{
+   try
+   {
+      // Using the debug node plugin to manually set account balances to create required market conditions for this test
+      auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
+      boost::program_options::variables_map options;
+      db_plugin->plugin_initialize( options );
+      db_plugin->plugin_startup();
+      auto debug_key = "5JdouSvkK75TKWrJixYufQgePT21V7BAVWbNUWt3ktqhPmy8Z78"; //get_dev_key debug node
+
+      ACTORS( (alice)(bob)(sam)(dave) );
+
+      fund( "alice", 10000 );
+      fund( "bob", 10000 );
+
+      vest( "alice", 10000 );
+      vest( "bob", 10000 );
+
+      auto exchange_rate = price( ASSET( "10.000 TBD" ), ASSET( "1.000 TESTS" ) );
+      set_price_feed( exchange_rate );
+
+      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate == STEEMIT_100_PERCENT );
+
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "test";
+
+      signed_transaction tx;
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      vote_operation vote;
+      vote.voter = "bob";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = STEEMIT_100_PERCENT;
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "Generating blocks up to comment payout" );
+
+      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true );
+
+      auto& gpo = db.get_dynamic_global_properties();
+
+      BOOST_TEST_MESSAGE( "Changing sam and gpo to set up market cap conditions" );
+
+      asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+      fc::mutable_variant_object vo;
+      vo("_action", "update")("id", sam_id)("sbd_balance", sbd_balance);
+      db_plugin->debug_update( vo );
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", gpo.id)("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
+      db_plugin->debug_update( vo );
+
+      validate_database();
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+
+      auto comment_reward = ( gpo.total_reward_fund_steem.amount + 2000 ) - ( ( gpo.total_reward_fund_steem.amount + 2000 ) * 25 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT ;
+      comment_reward /= 2;
+      auto sbd_reward = ( comment_reward * gpo.sbd_print_rate ) / STEEMIT_100_PERCENT;
+      auto steem_reward = comment_reward - sbd_reward;
+      auto alice_sbd = db.get_account( "alice" ).sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
+      auto alice_steem = db.get_account( "alice" ).balance + asset( steem_reward, STEEM_SYMBOL );
+
+      BOOST_TEST_MESSAGE( "Checking printing SBD has slowed" );
+      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
+
+      BOOST_TEST_MESSAGE( "Pay out comment and check rewards are paid as STEEM" );
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+
+      validate_database();
+
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_steem );
+
+      BOOST_TEST_MESSAGE( "Letting percent market cap fall to 2% to verify printing of SBD turns back on" );
+
+      // Get close to 1.5% for printing SBD to start again, but not all the way
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", sam_id)("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ) );
+      db_plugin->debug_update( vo );
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", gpo.id)("current_sbd_supply", alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ));
+      db_plugin->debug_update( vo );
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+      validate_database();
+
+      auto last_print_rate = db.get_dynamic_global_properties().sbd_print_rate;
+
+      // Keep producing blocks until printing SBD is back
+      while( ( db.get_dynamic_global_properties().current_sbd_supply * exchange_rate ).amount >= ( db.get_dynamic_global_properties().virtual_supply.amount * STEEMIT_SBD_START_PERCENT ) / STEEMIT_100_PERCENT )
+      {
+         auto& gpo = db.get_dynamic_global_properties();
+         BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
+         last_print_rate = gpo.sbd_print_rate;
+         db_plugin->debug_generate_blocks( debug_key, 1 );
+         validate_database();
+      }
+
+      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate == STEEMIT_100_PERCENT );
+
+      BOOST_TEST_MESSAGE( "Setting SBD percent to 20% market cap." );
+
+      limit_order_create2_operation order;
+      order.owner = "sam";
+      order.orderid = 1;
+      order.fill_or_kill = false;
+      order.amount_to_sell = ASSET( "10.000 TBD" );
+      order.exchange_rate = price( ASSET( "10.000 TBD" ), ASSET( "1.500 TESTS" ) );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( order );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.ref_block_num = db.head_block_num() - 1; // TAPOS is enabled here???
+      tx.ref_block_prefix = block_summary_id_type( tx.ref_block_num )( db ).block_id._hash[1];
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      db.get_limit_order( "sam", 1 );
+
+      validate_database();
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+      validate_database();
+
+      db.get_limit_order( "sam", 1 );
+
+      sbd_balance = asset( ( db.get_dynamic_global_properties().virtual_supply.amount * ( STEEMIT_SBD_CONVERT_PERCENT + 500 )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", dave_id)("sbd_balance", sbd_balance);
+      db_plugin->debug_update( vo );
+
+      vo = fc::mutable_variant_object();
+      vo("_action", "update")("id", db.get_dynamic_global_properties().id)("current_sbd_supply", db.get_dynamic_global_properties().current_sbd_supply + sbd_balance);
+      db_plugin->debug_update( vo );
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+      validate_database();
+
+      auto sam_order = db.get_limit_order( "sam", 1 );
+      auto sam_order_for_sale = sam_order.for_sale - ( sam_order.for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT;
+      auto sam_sbd_balance = db.get_account( "sam" ).sbd_balance;
+      auto sam_steem_balance = db.get_account( "sam" ).balance;
+      sam_steem_balance += asset( ( sam_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
+      sam_steem_balance += asset( ( sam_order.for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
+      sam_sbd_balance -= asset( ( sam_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+
+      auto dave_sbd_balance = db.get_account( "dave" ).sbd_balance;
+      auto dave_steem_balance = db.get_account( "dave" ).balance;
+      dave_steem_balance += asset( ( dave_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
+      dave_sbd_balance -= asset( ( dave_sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+      validate_database();
+
+      BOOST_REQUIRE( db.get_account( "sam" ).balance == sam_steem_balance );
+      BOOST_REQUIRE( db.get_account( "sam" ).sbd_balance == sam_sbd_balance );
+      BOOST_REQUIRE( db.get_account( "dave" ).balance == dave_steem_balance );
+      BOOST_REQUIRE( db.get_account( "dave" ).sbd_balance == dave_sbd_balance );
+      BOOST_REQUIRE( db.get_limit_order( "sam", order.orderid ).for_sale == sam_order_for_sale );
+
+      while( ( db.get_dynamic_global_properties().current_sbd_supply * exchange_rate ).amount > ( db.get_dynamic_global_properties().virtual_supply.amount * STEEMIT_SBD_CONVERT_PERCENT ) / STEEMIT_100_PERCENT )
+      {
+         db_plugin->debug_generate_blocks( debug_key, 1 );
+         validate_database();
+      }
+
+      sam_order = db.get_limit_order( "sam", 1 );
+      sam_sbd_balance = db.get_account( "sam" ).sbd_balance;
+      sam_steem_balance = db.get_account( "sam" ).balance;
+      dave_sbd_balance = db.get_account( "dave" ).sbd_balance;
+      dave_steem_balance = db.get_account( "dave" ).balance;
+
+      db_plugin->debug_generate_blocks( debug_key, 1 );
+      validate_database();
+
+      BOOST_REQUIRE( db.get_account( "sam" ).balance == sam_steem_balance );
+      BOOST_REQUIRE( db.get_account( "sam" ).sbd_balance == sam_sbd_balance );
+      BOOST_REQUIRE( db.get_account( "dave" ).balance == dave_steem_balance );
+      BOOST_REQUIRE( db.get_account( "dave" ).sbd_balance == dave_sbd_balance );
+      BOOST_REQUIRE( db.get_limit_order( "sam", order.orderid ).for_sale == sam_order.for_sale );
+   }
+   FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

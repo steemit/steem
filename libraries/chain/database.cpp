@@ -957,12 +957,18 @@ asset database::create_sbd( const account_object& to_account, asset steem )
          return asset(0, SBD_SYMBOL);
 
       const auto& median_price = get_feed_history().current_median_history;
+      const auto& gpo = get_dynamic_global_properties();
+
       if( !median_price.is_null() )
       {
-         auto sbd = steem * median_price;
+         auto to_sbd = ( gpo.sbd_print_rate * steem.amount ) / STEEMIT_100_PERCENT;
+         auto to_steem = steem.amount - to_sbd;
+
+         auto sbd = asset( to_sbd, STEEM_SYMBOL ) * median_price;
 
          adjust_balance( to_account, sbd );
-         adjust_supply( -steem );
+         adjust_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
+         adjust_supply( asset( -to_sbd, STEEM_SYMBOL ) );
          adjust_supply( sbd );
          return sbd;
       }
@@ -1842,7 +1848,11 @@ void database::cashout_comment_helper( const comment_object& comment )
             const auto& author = get_account( comment.author );
             auto vest_created = create_vesting( author, vesting_steem );
             auto sbd_created = create_sbd( author, sbd_steem );
-            adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+
+            if( sbd_created.symbol == SBD_SYMBOL )
+               adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+            else
+               adjust_total_payout( comment, to_sbd( asset( vesting_steem + sbd_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
 
             push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
 
@@ -2146,6 +2156,62 @@ void database::pay_liquidity_reward()
          } );
          push_applied_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
       }
+   }
+}
+
+void database::stabalize_sbd()
+{
+   auto median_price = get_feed_history().current_median_history;
+
+   if( !has_hardfork( STEEMIT_HARDFORK_0_14__230 ) || median_price.is_null() ) return;
+
+   const auto& gpo = get_dynamic_global_properties();
+
+   if( ( gpo.current_sbd_supply * median_price ).amount > ( ( fc::uint128_t( gpo.virtual_supply.amount.value ) * STEEMIT_SBD_CONVERT_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64() )
+   {
+      const auto& sbd_idx = get_index_type< account_index >().indices().get< by_smd_balance >();
+      auto itr = sbd_idx.begin();
+
+      asset net_sbd = asset(0, SBD_SYMBOL );
+      asset net_steem = asset( 0, STEEM_SYMBOL );
+
+      while( itr != sbd_idx.end() && itr->sbd_balance.amount > 0 )
+      {
+         auto from_sbd = asset( ( itr->sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto to_steem = from_sbd * median_price;
+
+         adjust_balance( *itr, -from_sbd );
+         adjust_balance( *itr, to_steem );
+
+         net_sbd -= from_sbd;
+         net_steem += to_steem;
+
+         ++itr;
+      }
+
+      const auto& order_idx = get_index_type< limit_order_index >().indices().get< by_price >();
+      auto order_itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
+
+      while( order_itr != order_idx.end() && order_itr->sell_price.base.symbol == SBD_SYMBOL )
+      {
+         auto from_sbd = asset( ( order_itr->for_sale * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto to_steem = from_sbd * median_price;
+
+         adjust_balance( get_account( order_itr->seller ), to_steem );
+
+         modify( *order_itr, [&]( limit_order_object& lo )
+         {
+            lo.for_sale -= from_sbd.amount;
+         });
+
+         net_sbd -= from_sbd;
+         net_steem += to_steem;
+
+         ++order_itr;
+      }
+
+      adjust_supply( net_sbd );
+      adjust_supply( net_steem );
    }
 }
 
@@ -2689,6 +2755,9 @@ void database::_apply_block( const signed_block& next_block )
    pay_liquidity_reward();
    update_virtual_supply();
 
+   stabalize_sbd();
+   update_virtual_supply();
+
    account_recovery_processing();
    expire_escrow_ratification();
 
@@ -3015,6 +3084,34 @@ void database::update_virtual_supply()
    {
       dgp.virtual_supply = dgp.current_supply
          + ( get_feed_history().current_median_history.is_null() ? asset( 0, STEEM_SYMBOL ) : dgp.current_sbd_supply * get_feed_history().current_median_history );
+
+      auto median_price = get_feed_history().current_median_history;
+
+      if( !median_price.is_null() && has_hardfork( STEEMIT_HARDFORK_0_14__230 ) )
+      {
+         auto percent_sbd = uint16_t( ( ( fc::uint128_t( ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount.value ) * STEEMIT_100_PERCENT )
+            / dgp.virtual_supply.amount.value ).to_uint64() );
+
+         if( percent_sbd <= STEEMIT_SBD_START_PERCENT )
+            dgp.sbd_print_rate = STEEMIT_100_PERCENT;
+         else if( percent_sbd >= STEEMIT_SBD_STOP_PERCENT )
+            dgp.sbd_print_rate = 0;
+         else
+            dgp.sbd_print_rate = ( ( STEEMIT_SBD_STOP_PERCENT - percent_sbd ) * STEEMIT_100_PERCENT ) / ( STEEMIT_SBD_STOP_PERCENT - STEEMIT_SBD_START_PERCENT );
+
+         /*
+         if( dgp.printing_sbd )
+         {
+            dgp.printing_sbd = ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount
+               < ( ( fc::uint128_t( dgp.virtual_supply.amount.value ) * STEEMIT_SBD_STOP_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
+         }
+         else
+         {
+            dgp.printing_sbd = ( dgp.current_sbd_supply * get_feed_history().current_median_history ).amount
+               < ( ( fc::uint128_t( dgp.virtual_supply.amount.value ) * STEEMIT_SBD_START_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64();
+         }
+         */
+      }
    });
 }
 
