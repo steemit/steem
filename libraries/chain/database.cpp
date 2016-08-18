@@ -2210,6 +2210,43 @@ void database::stabalize_sbd()
          ++order_itr;
       }
 
+      const auto& escrow_idx = get_index_type< escrow_index >().indices().get< by_sbd_balance >();
+      auto escrow_itr = escrow_idx.begin();
+
+      while( escrow_itr != escrow_idx.end() && escrow_itr->sbd_balance.amount > 0 )
+      {
+         auto from_sbd = asset( ( escrow_itr->sbd_balance.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+         auto to_steem = from_sbd * median_price;
+
+         modify( *escrow_itr, [&]( escrow_object& e )
+         {
+            e.sbd_balance -= from_sbd;
+            e.steem_balance += to_steem;
+         });
+
+         net_sbd -= from_sbd;
+         net_steem += to_steem;
+
+         // If the pending fee is SBD, convert 1% to steem and pay it to agent
+         if( escrow_itr->pending_fee.symbol == SBD_SYMBOL )
+         {
+            from_sbd = asset( ( escrow_itr->pending_fee.amount * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
+            to_steem = from_sbd * median_price;
+
+            modify( *escrow_itr, [&]( escrow_object& e )
+            {
+               e.pending_fee -= from_sbd;
+            });
+
+            adjust_balance( get_account( escrow_itr->agent ), to_steem );
+
+            net_sbd -= from_sbd;
+            net_steem += to_steem;
+         }
+
+         ++escrow_itr;
+      }
+
       adjust_supply( net_sbd );
       adjust_supply( net_steem );
    }
