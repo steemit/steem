@@ -2923,10 +2923,11 @@ void database::update_global_dynamic_data( const signed_block& b )
             modify( witness_missed, [&]( witness_object& w )
             {
                w.total_missed++;
-               if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) ) {
+               if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) )
+               {
                   if( head_block_num() - w.last_confirmed_block_num  > STEEMIT_BLOCKS_PER_DAY )
                   {
-                    w.signing_key = public_key_type();
+                     w.signing_key = public_key_type();
                   }
                }
             } );
