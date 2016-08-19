@@ -97,12 +97,17 @@ namespace detail {
             auto seeds = _options->at("seed-node").as<vector<string>>();
             for( const string& endpoint_string : seeds )
             {
-               std::vector<fc::ip::endpoint> endpoints = resolve_string_to_ip_endpoints(endpoint_string);
-               for (const fc::ip::endpoint& endpoint : endpoints)
-               {
-                  ilog("Adding seed node ${endpoint}", ("endpoint", endpoint));
-                  _p2p_network->add_node(endpoint);
-                  _p2p_network->connect_to_endpoint(endpoint);
+               try {
+                  std::vector<fc::ip::endpoint> endpoints = resolve_string_to_ip_endpoints(endpoint_string);
+                  for (const fc::ip::endpoint& endpoint : endpoints)
+                  {
+                     ilog("Adding seed node ${endpoint}", ("endpoint", endpoint));
+                     _p2p_network->add_node(endpoint);
+                     _p2p_network->connect_to_endpoint(endpoint);
+                  }
+               } catch( const fc::exception& e ) {
+                  wlog( "caught exception ${e} while adding seed node ${endpoint}",
+                           ("e", e.to_detail_string())("endpoint", endpoint_string) );
                }
             }
          }
