@@ -880,12 +880,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t  abs_weight    = abs(o.weight);
    auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
    used_power = (used_power/200);
-   if( !db().has_hardfork( STEEMIT_HARDFORK_0_13__259 ) )
+   if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
       used_power += 1;
    FC_ASSERT( used_power <= current_power );
 
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
-   if( !db().has_hardfork( STEEMIT_HARDFORK_0_13__259 ) && abs_rshares == 0 ) abs_rshares = 1;
+   if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
    if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) ) {
       FC_ASSERT( abs_rshares > 50000000 || o.weight == 0, "voting weight is too small, please accumulate more voting power or steem power" );
@@ -1096,7 +1096,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
 
       fc::uint128_t avg_cashout_sec;
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_13__259 ) && abs_rshares == 0 )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 )
          avg_cashout_sec = cur_cashout_time_sec;
       else
          avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
