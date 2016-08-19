@@ -410,8 +410,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
-         FC_ASSERT( comment.last_payout == fc::time_point_sec::min() );
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
+         FC_ASSERT( comment.mode != archived, "comment is archived" );
+      else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+         FC_ASSERT( comment.last_payout == fc::time_point_sec::min(), "Can only edit during the first 24 hours" );
 
       db().modify( comment, [&]( comment_object& com )
       {
