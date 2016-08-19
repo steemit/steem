@@ -881,31 +881,30 @@ void database::clear_pending()
    FC_CAPTURE_AND_RETHROW()
 }
 
-void database::push_applied_operation( const operation& op )
+const operation_object database::notify_pre_apply_operation( const operation& op )
 {
    operation_object obj;
    obj.trx_id       = _current_trx_id;
    obj.block        = _current_block_num;
    obj.trx_in_block = _current_trx_in_block;
    obj.op_in_trx    = _current_op_in_trx;
-   obj.virtual_op   = _current_virtual_op++;
    obj.op           = op;
 
    pre_apply_operation( obj );
+   return obj;
 }
 
-
-void database::notify_post_apply_operation( const operation& op )
+void database::notify_post_apply_operation( const operation_object& obj )
 {
-   operation_object obj;
-   obj.trx_id       = _current_trx_id;
-   obj.block        = _current_block_num;
-   obj.trx_in_block = _current_trx_in_block;
-   obj.op_in_trx    = _current_op_in_trx;
-   obj.virtual_op   = _current_virtual_op;
-   obj.op           = op;
-
    post_apply_operation( obj );
+}
+
+const operation_object database::push_virtual_operation( const operation& op )
+{
+   FC_ASSERT( is_virtual_operation( op ) );
+   auto obj = notify_pre_apply_operation( op );
+   notify_post_apply_operation( obj );
+   return obj;
 }
 
 string database::get_scheduled_witness( uint32_t slot_num )const
@@ -1638,7 +1637,9 @@ void database::process_vesting_withdrawals()
 
                adjust_proxied_witness_votes( to_account, to_deposit );
 
-               push_applied_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL ), asset( to_deposit, VESTS_SYMBOL ) ) );
+               #ifndef IS_LOW_MEM
+                  push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL ), asset( to_deposit, VESTS_SYMBOL ) ) );
+               #endif
             }
          }
       }
@@ -1669,7 +1670,9 @@ void database::process_vesting_withdrawals()
                   o.total_vesting_shares.amount -= to_deposit;
                });
 
-               push_applied_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL), converted_steem ) );
+               #ifndef IS_LOW_MEM
+                  push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, to_account.name, asset( to_deposit, VESTS_SYMBOL), converted_steem ) );
+               #endif
             }
          }
       }
@@ -1705,7 +1708,9 @@ void database::process_vesting_withdrawals()
       if( to_withdraw > 0 )
          adjust_proxied_witness_votes( from_account, -to_withdraw );
 
-      push_applied_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_withdraw, VESTS_SYMBOL ), converted_steem ) );
+      #ifndef IS_LOW_MEM
+         push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_withdraw, VESTS_SYMBOL ), converted_steem ) );
+      #endif
    }
 }
 
@@ -1795,12 +1800,12 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
                unclaimed_rewards -= claim;
                const auto& voter = itr->voter(*this);
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ) );
-               push_applied_operation( curate_reward_operation( voter.name, reward, c.author, c.permlink ) );
                #ifndef IS_LOW_MEM
-               modify( voter, [&]( account_object& a )
-               {
-                  a.curation_rewards += claim;
-               });
+                  push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, c.permlink ) );
+                  modify( voter, [&]( account_object& a )
+                  {
+                     a.curation_rewards += claim;
+                  });
                #endif
             }
             ++itr;
@@ -1858,36 +1863,38 @@ void database::cashout_comment_helper( const comment_object& comment )
             else
                adjust_total_payout( comment, to_sbd( asset( vesting_steem + sbd_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
 
-            push_applied_operation( comment_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
-
             // stats only.. TODO: Move to plugin...
             total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
 
             #ifndef IS_LOW_MEM
-            modify( comment, [&]( comment_object& c )
-            {
-               c.author_rewards += author_tokens;
-            });
+               push_virtual_operation( author_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
+               push_virtual_operation( comment_reward_operation( comment.author, comment.permlink, total_payout ) );
 
-            modify( get_account( comment.author ), [&]( account_object& a )
-            {
-               a.posting_rewards += author_tokens;
-            });
+               modify( comment, [&]( comment_object& c )
+               {
+                  c.author_rewards += author_tokens;
+               });
+
+               modify( get_account( comment.author ), [&]( account_object& a )
+               {
+                  a.posting_rewards += author_tokens;
+               });
             #endif
 
             modify( cat, [&]( category_object& c )
             {
                c.total_payouts += total_payout;
-            } );
+            });
 
          }
 
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
          adjust_rshares2( comment, old_rshares2, 0 );
 
-
+#ifndef IS_LOW_MEM
          if( reward_tokens > 0 )
-            notify_post_apply_operation( comment_payout_operation( comment.author, comment.permlink, total_payout ) );
+            push_virtual_operation( comment_reward_operation( comment.author, comment.permlink, total_payout ) );
+#endif
       }
 
       modify( cat, [&]( category_object& c )
@@ -2158,7 +2165,10 @@ void database::pay_liquidity_reward()
             obj.last_update  = head_block_time();
             obj.weight = 0;
          } );
-         push_applied_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
+
+         #ifndef IS_LOW_MEM
+            push_virtual_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
+         #endif
       }
    }
 }
@@ -2319,7 +2329,9 @@ void database::process_conversions()
       net_sbd   += itr->amount;
       net_steem += amount_to_issue;
 
-      push_applied_operation( fill_convert_request_operation ( user.name, itr->requestid, itr->amount, amount_to_issue ) );
+      #ifndef IS_LOW_MEM
+         push_virtual_operation( fill_convert_request_operation ( user.name, itr->requestid, itr->amount, amount_to_issue ) );
+      #endif
 
       remove( *itr );
       itr = request_by_date.begin();
@@ -2903,6 +2915,7 @@ try {
 void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 {
    detail::with_skip_flags( *this, skip, [&]() { _apply_transaction(trx); });
+   on_applied_transaction( trx );
 }
 
 void database::_apply_transaction(const signed_transaction& trx)
@@ -2994,9 +3007,9 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
-   push_applied_operation( op );
+   auto obj = notify_pre_apply_operation( op );
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
-   notify_post_apply_operation( op );
+   notify_post_apply_operation( obj );
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -3293,7 +3306,9 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
       }
    }
 
-   push_applied_operation( fill_order_operation( new_order.seller, new_order.orderid, new_order_pays, old_order.seller, old_order.orderid, old_order_pays ) );
+   #ifndef IS_LOW_MEM
+      push_virtual_operation( fill_order_operation( new_order.seller, new_order.orderid, new_order_pays, old_order.seller, old_order.orderid, old_order_pays ) );
+   #endif
 
    int result = 0;
    result |= fill_order( new_order, new_order_pays, new_order_receives );
@@ -3437,7 +3452,10 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                   acnt.sbd_balance += interest_paid;
                   acnt.sbd_seconds = 0;
                   acnt.sbd_last_interest_payment = head_block_time();
-                  push_applied_operation( interest_operation( a.name, interest_paid ) );
+
+                  #ifndef IS_LOW_MEM
+                     push_virtual_operation( interest_operation( a.name, interest_paid ) );
+                  #endif
 
                   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {
@@ -3645,7 +3663,8 @@ void database::apply_hardfork( uint32_t hardfork )
             string op_msg = "Testnet: Hardfork applied";
             test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
             test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            push_applied_operation( test_op );
+            auto obj = notify_pre_apply_operation( test_op );
+            notify_post_apply_operation( obj );
          }
          break;
 #endif

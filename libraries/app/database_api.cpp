@@ -1381,8 +1381,8 @@ state database_api::get_state( string path )const
                case operation::tag<interest_operation>::value:
                case operation::tag<transfer_operation>::value:
                case operation::tag<liquidity_reward_operation>::value:
-               case operation::tag<comment_reward_operation>::value:
-               case operation::tag<curate_reward_operation>::value:
+               case operation::tag<author_reward_operation>::value:
+               case operation::tag<curation_reward_operation>::value:
                   eacnt.transfer_history[item.first] =  item.second;
                   break;
                case operation::tag<comment_operation>::value:

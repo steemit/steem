@@ -163,8 +163,9 @@ namespace steemit { namespace chain {
           *  @return the op_id which can be used to set the result after it has finished being applied.
           *  @todo rename this method notify_pre_apply_operation( op )
           */
-         void push_applied_operation( const operation& op );
-         void notify_post_apply_operation( const operation& op );
+         const operation_object notify_pre_apply_operation( const operation& op );
+         void notify_post_apply_operation( const operation_object& op );
+         const operation_object push_virtual_operation( const operation& op );
 
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
@@ -187,6 +188,12 @@ namespace steemit { namespace chain {
           * block state.
           */
          fc::signal<void(const signed_transaction&)>     on_pending_transaction;
+
+         /**
+          * This signal is emitted any time a new transaction has been applied to the
+          * chain state.
+          */
+         fc::signal<void(const signed_transaction&)>     on_applied_transaction;
 
          /**
           *  Emitted After a block has been applied and committed.  The callback
