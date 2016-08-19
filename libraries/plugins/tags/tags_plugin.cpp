@@ -136,20 +136,22 @@ struct operation_visitor {
     */
    double calculate_hot( const comment_object& c, const time_point_sec& now )const {
       /// new algorithm
-      auto s = c.net_rshares.value;
+      auto s = c.net_rshares.value / 10000000;
+      /*
       auto delta = std::max<int32_t>( (now - c.created).to_seconds(), 20*60 );
       return s / delta;
+      */
 
 
       /// reddit algorithm
-      s = c.net_votes;
+      //s = c.net_votes;
       double order = log10( std::max<int64_t>( abs(s), 1) );
       int sign = 0;
       if( s > 0 ) sign = 1;
       else if( s < 0 ) sign = -1;
       auto seconds = c.created.sec_since_epoch();
 
-      return sign * order + double(seconds) / 45000.0;
+      return sign * order + double(seconds) / 10000.0;
    }
 
    /** finds tags that have been added or removed or updated */
