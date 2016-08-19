@@ -92,7 +92,7 @@ struct operation_visitor_filter : operation_visitor {
    void operator()( const delete_comment_operation& )const{}
    void operator()( const custom_json_operation& )const {}
    void operator()( const custom_operation& )const {}
-   void operator()( const curate_reward_operation& )const {}
+   void operator()( const curation_reward_operation& )const {}
    void operator()( const fill_order_operation& )const {}
    void operator()( const limit_order_create_operation& )const {}
    void operator()( const limit_order_cancel_operation& )const {}

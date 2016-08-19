@@ -26,6 +26,7 @@ namespace steemit { namespace blockchain_statistics {
 
 using namespace chain;
 using namespace graphene::db;
+using app::application;
 
 namespace detail
 {
@@ -35,7 +36,7 @@ namespace detail
 class blockchain_statistics_plugin : public steemit::app::plugin
 {
    public:
-      blockchain_statistics_plugin();
+      blockchain_statistics_plugin( application* app );
       virtual ~blockchain_statistics_plugin();
 
       virtual std::string plugin_name()const override { return BLOCKCHAIN_STATISTICS_PLUGIN_NAME; }

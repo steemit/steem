@@ -49,8 +49,8 @@ void account_statistics_plugin_impl::on_operation( const operation_object& o )
 
 } // detail
 
-account_statistics_plugin::account_statistics_plugin()
-   :_my( new detail::account_statistics_plugin_impl( *this ) ) {}
+account_statistics_plugin::account_statistics_plugin( application* app )
+   :plugin( app ), _my( new detail::account_statistics_plugin_impl( *this ) ) {}
 
 account_statistics_plugin::~account_statistics_plugin() {}
 

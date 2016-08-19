@@ -26,6 +26,7 @@ namespace steemit { namespace account_statistics {
 
 using namespace chain;
 using namespace graphene::db;
+using app::application;
 
 namespace detail
 {
@@ -35,7 +36,7 @@ namespace detail
 class account_statistics_plugin : public steemit::app::plugin
 {
    public:
-      account_statistics_plugin();
+      account_statistics_plugin( application* app );
       virtual ~account_statistics_plugin();
 
       virtual std::string plugin_name()const override { return ACCOUNT_STATISTICS_PLUGIN_NAME; }

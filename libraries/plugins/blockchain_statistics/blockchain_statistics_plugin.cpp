@@ -395,8 +395,8 @@ void blockchain_statistics_plugin_impl::on_operation( const operation_object& o 
 
 } // detail
 
-blockchain_statistics_plugin::blockchain_statistics_plugin()
-   :_my( new detail::blockchain_statistics_plugin_impl( *this ) ) {}
+blockchain_statistics_plugin::blockchain_statistics_plugin( application* app )
+   :plugin( app ), _my( new detail::blockchain_statistics_plugin_impl( *this ) ) {}
 
 blockchain_statistics_plugin::~blockchain_statistics_plugin() {}
 
