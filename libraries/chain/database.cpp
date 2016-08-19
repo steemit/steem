@@ -3382,6 +3382,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_13 == 13, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_13 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_13_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_13 ] = STEEMIT_HARDFORK_0_13_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_14 == 14, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_14 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_14_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_14 ] = STEEMIT_HARDFORK_0_14_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3618,6 +3621,11 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEMIT_HARDFORK_0_13:
 #ifndef IS_TEST_NET
          elog( "HARDFORK 13 at block ${b}", ("b", head_block_num()) );
+#endif
+         break;
+      case STEEMIT_HARDFORK_0_14:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       default:
