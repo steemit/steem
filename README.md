@@ -69,3 +69,70 @@ used by the account. This means it does not favor mining pools.
 
 Make sure that your accountname is unique and not already used by someone else or your proof of work
 might not be accepted by the blockchain.
+
+cmake Build Options
+--------------------------
+
+### CMAKE_BUILD_TYPE=[Release/Debug]
+
+Specifies whether to build with or without optimization and without or with the symbol table for debugging. Unless you are specifically
+debugging or running tests, it is recommended to build as release.
+
+### LOW_MEMORY_NODE=[OFF/ON]
+
+Builds steemd to be a consensus only low memory node. Data and fields not needed for consensus are not stored in the object database.
+This option is recommended for witnesses and seed-nodes.
+
+### ENABLE_CONTENT_PATCHING=[ON/OFF]
+
+Allows content to be updated using a patch rather than a complete replacement.
+If you do not need an API server or need to see the result of patching content then you can set this to OFF.
+
+### CLEAR_VOTES=[ON/OFF]
+
+Clears old votes from memory that are not longer required for consensus.
+
+### BUILD_STEEM_TESTNET=[OFF/ON]
+
+Builds steemd for use in a private testnet. Also required for correctly building unit tests
+
+Testing
+-------
+
+The unit test target is `make chain_test`
+This creates an executable `./tests/chain_test` that will run all unit tests.
+
+Tests are broken in several categories:
+```
+basic_tests          // Tests of "basic" functionality
+block_tests          // Tests of the block chain
+live_tests           // Tests on live chain data (currently only past hardfork testing)
+operation_tests      // Unit Tests of Steem operations
+operation_time_tests // Tests of Steem operations that include a time based component (ex. vesting withdrawals)
+serialization_tests  // Tests related of serialization
+```
+
+Code Coverage Testing
+---------------------
+
+```
+cmake -D ENABLE_COVERAGE_TESTING=true -D CMAKE_BUILD_TYPE=Debug .
+make
+lcov --capture --initial --directory . --output-file base.info --no-external
+libraries/fc/bloom_test
+libraries/fc/task_cancel_test
+libraries/fc/api
+libraries/fc/blind
+libraries/fc/ecc_test test
+libraries/fc/real128_test
+libraries/fc/lzma_test README.md
+libraries/fc/ntp_test
+tests/chain_test
+lcov --capture --directory . --output-file test.info --no-external
+lcov --add-tracefile base.info --add-tracefile test.info --output-file total.info
+lcov -o interesting.info -r total.info libraries/fc/vendor/\* libraries/fc/tests/\* tests/\*
+mkdir -p lcov
+genhtml interesting.info --output-directory lcov --prefix `pwd`
+```
+
+Now open `locv/index.html` in a browser
