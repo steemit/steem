@@ -1604,7 +1604,9 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
    }
 }
 
-void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operation& op ) {
+void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operation& op )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account( op.to );
    FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount );
@@ -1613,7 +1615,9 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
    db().adjust_savings_balance( to, op.amount );
 }
 
-void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_operation& op ) {
+void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_operation& op )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
    FC_ASSERT( op.request_id < 100 );
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account( op.to );
@@ -1632,7 +1636,9 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    });
 }
 
-void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_from_savings_operation& op ) {
+void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_from_savings_operation& op )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
    FC_ASSERT( op.request_id < 100 );
 
    const auto& swo_idx = db().get_index_type<withdraw_index>().indices().get<by_from_rid>();
