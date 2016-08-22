@@ -2353,7 +2353,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      db.push_transaction( tx, 0 );
 
       generate_blocks( db.get_comment( "alice", "test" ).cashout_time, true );
 
@@ -2468,7 +2468,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       BOOST_TEST_MESSAGE( "Generating blocks up to comment payout" );
 
-      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true );
+      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true, database::skip_witness_signature );
 
       auto& gpo = db.get_dynamic_global_properties();
 
@@ -2477,15 +2477,15 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
       fc::mutable_variant_object vo;
       vo("_action", "update")("id", sam_id)("sbd_balance", sbd_balance);
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
       vo = fc::mutable_variant_object();
       vo("_action", "update")("id", gpo.id)("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
       validate_database();
 
-      db_plugin->debug_generate_blocks( debug_key, 1 );
+      db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
 
       auto comment_reward = ( gpo.total_reward_fund_steem.amount + 2000 ) - ( ( gpo.total_reward_fund_steem.amount + 2000 ) * 25 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT ;
       comment_reward /= 2;
@@ -2498,7 +2498,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
 
       BOOST_TEST_MESSAGE( "Pay out comment and check rewards are paid as STEEM" );
-      db_plugin->debug_generate_blocks( debug_key, 1 );
+      db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
 
       validate_database();
 
@@ -2510,13 +2510,13 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       // Get close to 1.5% for printing SBD to start again, but not all the way
       vo = fc::mutable_variant_object();
       vo("_action", "update")("id", sam_id)("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ) );
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
       vo = fc::mutable_variant_object();
       vo("_action", "update")("id", gpo.id)("current_sbd_supply", alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ));
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
-      db_plugin->debug_generate_blocks( debug_key, 1 );
+      db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
       validate_database();
 
       auto last_print_rate = db.get_dynamic_global_properties().sbd_print_rate;
@@ -2527,7 +2527,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          auto& gpo = db.get_dynamic_global_properties();
          BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
          last_print_rate = gpo.sbd_print_rate;
-         db_plugin->debug_generate_blocks( debug_key, 1 );
+         db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
          validate_database();
       }
 

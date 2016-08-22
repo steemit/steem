@@ -150,7 +150,7 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
    }
 }
 
-uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key, uint32_t count )
+uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key, uint32_t count, uint32_t skip )
 {
    if( count == 0 )
       return 0;
@@ -172,15 +172,15 @@ uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key,
          wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
          fc::mutable_variant_object update;
          update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-         debug_update( update );
+         debug_update( update, skip );
       }
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
    }
 
    return count;
 }
 
-uint32_t debug_node_plugin::debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely )
+uint32_t debug_node_plugin::debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely, uint32_t skip )
 {
   chain::database& db = database();
 
@@ -212,10 +212,11 @@ uint32_t debug_node_plugin::debug_generate_blocks_until( const std::string& debu
          wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
          fc::mutable_variant_object update;
          update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-         debug_update( update );
+         debug_update( update, skip );
+         ilog( "done" );
       }
 
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
       new_blocks++;
 
       FC_ASSERT( head_block_time.sec_since_epoch() - db.head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db.head_block_time()",db.head_block_time()) );
@@ -241,7 +242,7 @@ void debug_node_plugin::apply_debug_updates()
       debug_apply_update( db, update );
 }
 
-void debug_node_plugin::debug_update( const fc::variant_object& update )
+void debug_node_plugin::debug_update( const fc::variant_object& update, uint32_t skip )
 {
    // this was a method on database in Graphene
    chain::database& db = database();
@@ -256,7 +257,7 @@ void debug_node_plugin::debug_update( const fc::variant_object& update )
 
    // What the last block does has been changed by adding to node_property_object, so we have to re-apply it
    db.pop_block();
-   db.push_block( *head_block );
+   db.push_block( *head_block, skip );
 }
 
 void debug_node_plugin::on_changed_objects( const std::vector<graphene::db::object_id_type>& ids )
