@@ -50,6 +50,7 @@ namespace steemit { namespace chain {
             escrow_transfer_operation,
             escrow_dispute_operation,
             escrow_release_operation,
+            pow2_operation,
             transfer_to_savings_operation,
             transfer_from_savings_operation,
             cancel_transfer_from_savings_operation,

@@ -1030,6 +1030,15 @@ fc::sha256 database::get_pow_target()const
    return target;
 }
 
+uint32_t database::get_pow_summary_target()const
+{
+   const dynamic_global_property_object& dgp = get_dynamic_global_properties();
+   if( dgp.num_pow_witnesses >= 1004 )
+      return 0;
+
+   return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
+}
+
 void database::update_witness_schedule4()
 {
    vector<string> active_witnesses;
@@ -2089,8 +2098,10 @@ asset database::get_producer_reward()
    const auto& witness_account = get_account( props.current_witness );
 
    /// pay witness in vesting shares
-   if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) )
+   if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
+      // const auto& witness_obj = get_witness( props.current_witness );
       create_vesting( witness_account, pay );
+   }
    else
    {
       modify( get_account( witness_account.name), [&]( account_object& a )
@@ -2378,6 +2389,7 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<custom_evaluator>();
     _my->_evaluator_registry.register_evaluator<custom_json_evaluator>();
     _my->_evaluator_registry.register_evaluator<pow_evaluator>();
+    _my->_evaluator_registry.register_evaluator<pow2_evaluator>();
     _my->_evaluator_registry.register_evaluator<report_over_production_evaluator>();
 
     _my->_evaluator_registry.register_evaluator<feed_publish_evaluator>();
@@ -3444,6 +3456,12 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_12 == 12, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_12 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_12_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_12 ] = STEEMIT_HARDFORK_0_12_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_13 == 13, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_13 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_13_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_13 ] = STEEMIT_HARDFORK_0_13_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_14 == 14, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_14 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_14_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_14 ] = STEEMIT_HARDFORK_0_14_VERSION;
 
    const auto& hardforks = hardfork_property_id_type()( *this );
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -3535,7 +3553,7 @@ void database::apply_hardfork( uint32_t hardfork )
    {
       case STEEMIT_HARDFORK_0_1:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 1" );
+         elog( "HARDFORK 1 at block ${b}", ("b", head_block_num()) );
 #endif
          perform_vesting_share_split( 1000000 );
 #ifdef IS_TEST_NET
@@ -3551,48 +3569,48 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_2:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 2" );
+         elog( "HARDFORK 2 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_3:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 3" );
+         elog( "HARDFORK 3 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_4:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 4" );
+         elog( "HARDFORK 4 at block ${b}", ("b", head_block_num()) );
 #endif
          reset_virtual_schedule_time();
          break;
       case STEEMIT_HARDFORK_0_5:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 5" );
+         elog( "HARDFORK 5 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_6:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 6" );
+         elog( "HARDFORK 6 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_vote_counts();
          retally_comment_children();
          break;
       case STEEMIT_HARDFORK_0_7:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 7" );
+         elog( "HARDFORK 7 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_8:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 8" );
+         elog( "HARDFORK 8 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_9:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 9" );
+         elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
 #endif
          {
             for( auto acc : hardfork9::get_compromised_accounts() )
@@ -3614,18 +3632,18 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 10" );
+         elog( "HARDFORK 10 at block ${b}", ("b", head_block_num()) );
 #endif
          retally_liquidity_weight();
          break;
       case STEEMIT_HARDFORK_0_11:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 11" );
+         elog( "HARDFORK 11 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       case STEEMIT_HARDFORK_0_12:
 #ifndef IS_TEST_NET
-         elog( "HARDFORK 12" );
+         elog( "HARDFORK 12 at block ${b}", ("b", head_block_num()) );
 #endif
          {
             const auto& comment_idx = get_index_type< comment_index >().indices();
@@ -3676,6 +3694,16 @@ void database::apply_hardfork( uint32_t hardfork )
                a.posting.weight_threshold = 1;
             });
          }
+         break;
+      case STEEMIT_HARDFORK_0_13:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 13 at block ${b}", ("b", head_block_num()) );
+#endif
+         break;
+      case STEEMIT_HARDFORK_0_14:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
+#endif
          break;
       default:
          break;

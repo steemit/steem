@@ -35,6 +35,7 @@
 namespace steemit { namespace private_message {
 using namespace chain;
 using app::application;
+using graphene::db::by_id;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -98,7 +99,6 @@ struct extended_message_object : public message_object {
 
 struct by_to_date;
 struct by_from_date;
-struct by_id;
 
 using namespace boost::multi_index;
 

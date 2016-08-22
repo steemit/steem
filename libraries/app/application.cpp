@@ -236,6 +236,8 @@ namespace detail {
          fc::create_directories(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "node/transaction_history");
 
+         fc::variant v_bcd_trigger = fc::json::from_string( _options->at("bcd-trigger").as<string>() );
+         fc::from_variant( v_bcd_trigger, _bcd_trigger );
          register_builtin_apis();
 
          if( _options->count("resync-blockchain") )
@@ -785,6 +787,13 @@ namespace detail {
          // notify GUI or something cool
       }
 
+      void get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result )
+      {
+         for( const std::pair< uint32_t, uint32_t >& p : _bcd_trigger )
+            result.push_back(p);
+         return;
+      }
+
       application* _self;
 
       fc::path _data_dir;
@@ -801,6 +810,7 @@ namespace detail {
       std::map<string, std::shared_ptr<abstract_plugin> > _plugins_enabled;
       flat_map< std::string, std::function< fc::api_ptr( const api_context& ) > >   _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
+      std::vector< std::pair< uint32_t, uint32_t > >   _bcd_trigger;
 
       bool _is_finished_syncing = false;
       uint32_t allow_future_time = 5;
@@ -855,6 +865,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
          ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
+         ("bcd-trigger,b", bpo::value< string >()->default_value("[[0,10],[85,300]]"), "JSON list of [nblocks,nseconds] pairs, see doc/bcd-trigger.md")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
@@ -887,7 +898,13 @@ void application::startup()
 
 std::shared_ptr<abstract_plugin> application::get_plugin(const string& name) const
 {
-   return my->_plugins_enabled[name];
+   try
+   {
+      return my->_plugins_enabled.at( name );
+   }
+   catch ( ... ) {}
+
+   return null_plugin;
 }
 
 graphene::net::node_ptr application::p2p_node()
@@ -932,6 +949,11 @@ void application::register_api_factory( const string& name, std::function< fc::a
 fc::api_ptr application::create_api_by_name( const api_context& ctx )
 {
    return my->create_api_by_name( ctx );
+}
+
+void application::get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result )
+{
+   my->get_bcd_trigger( result );
 }
 
 void application::shutdown_plugins()

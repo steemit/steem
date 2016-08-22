@@ -574,6 +574,7 @@ namespace steemit { namespace chain {
       void validate()const;
    };
 
+
    struct pow_operation : public base_operation
    {
       string           worker_account;
@@ -585,9 +586,54 @@ namespace steemit { namespace chain {
       void validate()const;
       fc::sha256 work_input()const;
 
+      const string& get_worker_account()const { return worker_account; }
+
       /** there is no need to verify authority, the proof of work is sufficient */
       void get_required_active_authorities( flat_set<string>& a )const{  }
    };
+
+   struct pow2_input
+   {
+      string            worker_account;
+      block_id_type     prev_block;
+      uint64_t          nonce = 0;
+   };
+
+   struct pow2
+   {
+      pow2_input        input;
+      uint32_t          pow_summary = 0;
+
+      void create( const block_id_type& prev_block, const string& account_name, uint64_t nonce );
+      void validate()const;
+   };
+
+   struct pow2_operation : public base_operation
+   {
+      static_variant<pow2>      work;
+      optional<public_key_type> new_owner_key;
+      chain_properties          props;
+
+      void validate()const;
+
+      /** there is no need to verify authority, the proof of work is sufficient */
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         if( !new_owner_key )
+         {
+            a.insert( work.get<pow2>().input.worker_account );
+         }
+      }
+
+      void get_required_authorities( vector<authority>& a )const
+      {
+         if( new_owner_key )
+         {
+            a.push_back( authority( 1, *new_owner_key, 1 ) );
+         }
+      }
+   };
+
 
    /**
     * This operation is used to report a miner who signs two blocks
@@ -782,9 +828,12 @@ FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_b
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )
 FC_REFLECT( steemit::chain::feed_publish_operation, (publisher)(exchange_rate) )
 FC_REFLECT( steemit::chain::pow, (worker)(input)(signature)(work) )
+FC_REFLECT( steemit::chain::pow2, (input)(pow_summary) )
+FC_REFLECT( steemit::chain::pow2_input, (worker_account)(prev_block)(nonce) )
 FC_REFLECT( steemit::chain::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
 FC_REFLECT( steemit::chain::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )
+FC_REFLECT( steemit::chain::pow2_operation, (work)(new_owner_key)(props) )
 
 FC_REFLECT( steemit::chain::account_create_operation,
             (fee)
