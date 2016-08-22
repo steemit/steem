@@ -291,7 +291,6 @@ namespace steemit { namespace chain {
          void expire_escrow_ratification();
          void update_median_feed();
          share_type claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem );
-         void stabalize_sbd();
 
          asset get_liquidity_reward()const;
          asset get_content_reward()const;
@@ -375,6 +374,7 @@ namespace steemit { namespace chain {
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
+         bool skip_price_feed_limit_check = true;
 #endif
 
    protected:

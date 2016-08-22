@@ -2173,100 +2173,6 @@ void database::pay_liquidity_reward()
    }
 }
 
-void database::stabalize_sbd()
-{
-   auto median_price = get_feed_history().current_median_history;
-
-   if( !has_hardfork( STEEMIT_HARDFORK_0_14__230 ) || median_price.is_null() ) return;
-
-   const auto& gpo = get_dynamic_global_properties();
-
-   if( ( gpo.current_sbd_supply * median_price ).amount > ( ( fc::uint128_t( gpo.virtual_supply.amount.value ) * STEEMIT_SBD_CONVERT_PERCENT ) / STEEMIT_100_PERCENT ).to_uint64() )
-   {
-      const auto& sbd_idx = get_index_type< account_index >().indices().get< by_smd_balance >();
-      auto itr = sbd_idx.begin();
-
-      asset net_sbd = asset(0, SBD_SYMBOL );
-      asset net_steem = asset( 0, STEEM_SYMBOL );
-
-      while( itr != sbd_idx.end() && itr->sbd_balance.amount > 0 )
-      {
-         // Round up how much SBD is converted ceiling( A / B ) === ( A + B - 1 ) / B
-         auto from_sbd = asset( ( ( itr->sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
-         auto to_steem = from_sbd * median_price;
-
-         adjust_balance( *itr, -from_sbd );
-         adjust_balance( *itr, to_steem );
-
-         net_sbd -= from_sbd;
-         net_steem += to_steem;
-
-         ++itr;
-      }
-
-      const auto& order_idx = get_index_type< limit_order_index >().indices().get< by_price >();
-      auto order_itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
-
-      while( order_itr != order_idx.end() && order_itr->sell_price.base.symbol == SBD_SYMBOL )
-      {
-         auto from_sbd = asset( ( ( order_itr->for_sale + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
-         auto to_steem = from_sbd * median_price;
-
-         adjust_balance( get_account( order_itr->seller ), to_steem );
-
-         modify( *order_itr, [&]( limit_order_object& lo )
-         {
-            lo.for_sale -= from_sbd.amount;
-         });
-
-         net_sbd -= from_sbd;
-         net_steem += to_steem;
-
-         ++order_itr;
-      }
-
-      const auto& escrow_idx = get_index_type< escrow_index >().indices().get< by_sbd_balance >();
-      auto escrow_itr = escrow_idx.begin();
-
-      while( escrow_itr != escrow_idx.end() && escrow_itr->sbd_balance.amount > 0 )
-      {
-         auto from_sbd = asset( ( ( escrow_itr->sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
-         auto to_steem = from_sbd * median_price;
-
-         modify( *escrow_itr, [&]( escrow_object& e )
-         {
-            e.sbd_balance -= from_sbd;
-            e.steem_balance += to_steem;
-         });
-
-         net_sbd -= from_sbd;
-         net_steem += to_steem;
-
-         // If the pending fee is SBD, convert 1% to steem and pay it to agent
-         if( escrow_itr->pending_fee.symbol == SBD_SYMBOL )
-         {
-            from_sbd = asset( ( ( escrow_itr->pending_fee.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
-            to_steem = from_sbd * median_price;
-
-            modify( *escrow_itr, [&]( escrow_object& e )
-            {
-               e.pending_fee -= from_sbd;
-            });
-
-            adjust_balance( get_account( escrow_itr->agent ), to_steem );
-
-            net_sbd -= from_sbd;
-            net_steem += to_steem;
-         }
-
-         ++escrow_itr;
-      }
-
-      adjust_supply( net_sbd );
-      adjust_supply( net_steem );
-   }
-}
-
 uint16_t database::get_activity_rewards_percent() const
 {
    return 0;
@@ -2809,9 +2715,6 @@ void database::_apply_block( const signed_block& next_block )
    pay_liquidity_reward();
    update_virtual_supply();
 
-   stabalize_sbd();
-   update_virtual_supply();
-
    account_recovery_processing();
    expire_escrow_ratification();
 
@@ -2894,20 +2797,36 @@ try {
       }
    }
 
-   if( feeds.size() >= STEEMIT_MIN_FEEDS ) {
+   if( feeds.size() >= STEEMIT_MIN_FEEDS )
+   {
       std::sort( feeds.begin(), feeds.end() );
       auto median_feed = feeds[feeds.size()/2];
 
-      modify( get_feed_history(), [&]( feed_history_object& fho ){
-           fho.price_history.push_back( median_feed );
-           if( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
-               fho.price_history.pop_front();
+      modify( get_feed_history(), [&]( feed_history_object& fho )
+      {
+         fho.price_history.push_back( median_feed );
+         if( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+            fho.price_history.pop_front();
 
-           if( fho.price_history.size() ) {
-              std::deque<price> copy = fho.price_history;
-              std::sort( copy.begin(), copy.end() ); /// todo: use nth_item
-              fho.current_median_history = copy[copy.size()/2];
-           }
+         if( fho.price_history.size() )
+         {
+            std::deque<price> copy = fho.price_history;
+            std::sort( copy.begin(), copy.end() ); /// todo: use nth_item
+            fho.current_median_history = copy[copy.size()/2];
+
+#ifdef IS_TEST_NET
+            if( skip_price_feed_limit_check )
+               return;
+#endif
+            if( has_hardfork( STEEMIT_HARDFORK_0_14__230 ) )
+            {
+               const auto& gpo = get_dynamic_global_properties();
+               price min_price( asset( 9 * gpo.current_sbd_supply.amount, SBD_SYMBOL ), gpo.current_supply ); // This price limits SBD to 10% market cap
+
+               if( min_price > fho.current_median_history )
+                  fho.current_median_history = min_price;
+            }
+         }
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
