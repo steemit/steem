@@ -1594,9 +1594,17 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
                                                bool broadcast  )
 {
    FC_ASSERT( !is_locked() );
+
+   fc::optional< witness_object > wit = my->_remote_db->get_witness_by_account( witness_account_name );
+   FC_ASSERT( wit.valid(), "witness account does not exist" );
+   FC_ASSERT( wit->owner == witness_account_name );
+
    witness_update_operation op;
    op.owner = witness_account_name;
-   op.url = url;
+   if( url != "" )
+      op.url = url;
+   else
+      op.url = wit->url;
    op.block_signing_key = block_signing_key;
    op.props = props;
 
