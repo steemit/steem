@@ -2182,7 +2182,7 @@ asset database::get_pow_reward()const
 {
    const auto& props = get_dynamic_global_properties();
 
-#if !IS_TEST_NET
+#ifndef IS_TEST_NET
    /// 0 block rewards until at least STEEMIT_MAX_MINERS have produced a POW
    if( props.num_pow_witnesses < STEEMIT_MAX_MINERS && props.head_block_number < STEEMIT_START_VESTING_BLOCK )
       return asset( 0, STEEM_SYMBOL );
