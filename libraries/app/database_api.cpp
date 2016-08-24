@@ -1040,6 +1040,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
          break;
       try {
       result.push_back( get_discussion( tidx_itr->comment ) );
+      result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL );
 
       if( filter( result.back() ) )
          result.pop_back();
@@ -1075,6 +1076,17 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
 
    return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
+}
+vector<discussion> database_api::get_discussions_by_promoted( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_promoted>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY) )  );
+
+   idump((query));
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
 }
 
 vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
@@ -1505,6 +1517,19 @@ state database_api::get_state( string path )const
          _state.content[key] = std::move(d);
       }
    }
+   else if( part[0] == "promoted" )
+   {
+      auto trending_disc = get_discussions_by_promoted( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc )
+      {
+         auto key = d.author + "/" + d.permlink;
+         didx.promoted.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
    else if( part[0] == "responses"  ) {
       auto trending_disc = get_discussions_by_children( {tag,20} );
 
@@ -1523,6 +1548,17 @@ state database_api::get_state( string path )const
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.hot.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
+   else if( !part[0].size() || part[0] == "promoted" ) {
+      auto trending_disc = get_discussions_by_promoted( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.promoted.push_back( key );
          if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }

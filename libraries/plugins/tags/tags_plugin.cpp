@@ -14,6 +14,9 @@
 #include <fc/io/json.hpp>
 #include <fc/string.hpp>
 
+#include <boost/range/iterator_range.hpp>
+#include <boost/algorithm/string.hpp>
+
 namespace steemit { namespace tags {
 
 namespace detail {
@@ -100,6 +103,8 @@ struct operation_visitor {
           obj.hot               = hot;
           obj.total_payout      = comment.total_payout_value;
           obj.mode              = comment.mode;
+          if( obj.mode != first_payout ) 
+            obj.promoted_balance = 0;
       });
       add_stats( current, stats );
    }
@@ -284,6 +289,34 @@ struct operation_visitor {
 
    void operator()( const comment_operation& op )const {
       update_tags( _db.get_comment( op.author, op.permlink ) );
+   }
+
+   void operator()( const transfer_operation& op )const {
+      if( op.to == "boostit" && op.amount.symbol == SBD_SYMBOL )  {
+         idump((op));
+         vector<string> part; part.reserve(4);
+         auto path = op.memo; 
+         boost::split( part, path, boost::is_any_of("/") );
+         if( part[0].size() && part[0][0] == '@' ) {
+            auto acnt = part[0].substr(1);
+            auto perm = part[1];
+
+            auto c = _db.find_comment( acnt, perm );
+            if( c && c->parent_author.size() == 0 ) {
+               const auto& comment_idx = _db.get_index_type<tag_index>().indices().get<by_comment>();
+               auto citr = comment_idx.lower_bound( c->id );
+               while( citr != comment_idx.end() && citr->comment == c->id ) {
+                  _db.modify( *citr, [&]( tag_object& t ) {
+                        t.promoted_balance += op.amount.amount;
+                        idump((t.promoted_balance));
+                  });
+                  ++citr; 
+               }
+            } else {
+               ilog( "unable to find body" );
+            }
+         }
+      }
    }
 
    void operator()( const vote_operation& op )const {
