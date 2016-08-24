@@ -376,6 +376,7 @@ class database_api
 
       static bool filter_default( const comment_object& c ) { return false; }
       static bool exit_default( const comment_object& c ) { return false; }
+      static bool tag_exit_default( const tags::tag_object& c ) { return false; }
 
       template<typename Index, typename StartItr>
       vector<discussion> get_discussions( const discussion_query& q,
@@ -383,7 +384,9 @@ class database_api
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr,
                                           const std::function<bool(const comment_object&)>& filter = &database_api::filter_default,
-                                          const std::function<bool(const comment_object&)>& exit = &database_api::exit_default )const;
+                                          const std::function<bool(const comment_object&)>& exit = &database_api::exit_default,
+                                          const std::function<bool(const tags::tag_object&)>& tag_exit = &database_api::tag_exit_default
+                                          )const;
       comment_id_type get_parent( const discussion_query& q )const;
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;

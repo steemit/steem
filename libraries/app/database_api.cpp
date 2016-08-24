@@ -1014,7 +1014,9 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   comment_id_type parent,
                                                   const Index& tidx, StartItr tidx_itr,
                                                   const std::function<bool(const comment_object&)>& filter,
-                                                  const std::function<bool(const comment_object&)>& exit  )const
+                                                  const std::function<bool(const comment_object&)>& exit,
+                                                  const std::function<bool(const tags::tag_object&)>& tag_exit
+                                                  )const
 {
    idump((query));
    vector<discussion> result;
@@ -1044,7 +1046,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
 
       if( filter( result.back() ) )
          result.pop_back();
-      else if( exit( result.back() ) )
+      else if( exit( result.back() ) || tag_exit( *tidx_itr )  )
       {
          result.pop_back();
          break;
@@ -1086,7 +1088,7 @@ vector<discussion> database_api::get_discussions_by_promoted( const discussion_q
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY) )  );
 
    idump((query));
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; }, exit_default, []( const tags::tag_object& t ){ return t.promoted_balance == 0; }  );
 }
 
 vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
