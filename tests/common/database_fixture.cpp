@@ -41,6 +41,7 @@ clean_database_fixture::clean_database_fixture()
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
    auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
+   db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    boost::program_options::variables_map options;
@@ -49,9 +50,15 @@ clean_database_fixture::clean_database_fixture()
 
    // app.initialize();
    ahplugin->plugin_initialize( options );
+   db_plugin->plugin_initialize( options );
 
    generate_block();
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );
+   generate_block();
+
+   ahplugin->plugin_startup();
+   db_plugin->plugin_startup();
+
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
@@ -149,14 +156,13 @@ void database_fixture::open_database()
    }
 }
 
-signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
+void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
 {
-   auto witness = db.get_scheduled_witness(miss_blocks + 1);
+   /*auto witness = db.get_scheduled_witness(miss_blocks + 1);
    auto time = db.get_slot_time(miss_blocks + 1);
    skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature ;
    auto block = db.generate_block(time, witness, key, skip);
-   db.clear_pending();
-   return block;
+   db.clear_pending();*/
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )
@@ -286,6 +292,50 @@ void database_fixture::fund(
       transfer( STEEMIT_INIT_MINER_NAME, account_name, amount );
 
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
+}
+
+void database_fixture::fund(
+   const string& account_name,
+   const asset& amount
+   )
+{
+   try
+   {
+      const auto& account = db.get_account( account_name );
+      const auto& gpo = db.get_dynamic_global_properties();
+
+      fc::mutable_variant_object vo;
+      vo("_action", "update")("id", account.id);
+
+      if( amount.symbol == STEEM_SYMBOL )
+      {
+         vo("balance", account.balance + amount);
+         db_plugin->debug_update( vo );
+         vo = fc::mutable_variant_object();
+         vo("_action", "update")("id", gpo.id)("current_supply", gpo.current_supply + amount);
+      }
+      else if( amount.symbol == SBD_SYMBOL )
+      {
+         const auto& median_feed = db.get_feed_history();
+         if( median_feed.current_median_history.is_null() )
+         {
+            fc::mutable_variant_object vo;
+            vo("_action", "update")("id", median_feed.id)("current_median_history", price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL) ) );
+            db_plugin->debug_update( vo );
+         }
+
+         vo("sbd_balance", account.sbd_balance + amount );
+         db_plugin->debug_update( vo );
+         vo = fc::mutable_variant_object();
+         vo("_action", "update")("id", gpo.id)("current_sbd_supply", gpo.current_sbd_supply + amount);
+         db.update_virtual_supply();
+      }
+      else
+      {
+         FC_ASSERT( false, "Can only fund account with TESTS or TBD" );
+      }
+   }
+   FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
 
 void database_fixture::convert(

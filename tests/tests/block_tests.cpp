@@ -741,7 +741,7 @@ BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
       BOOST_CHECK( db.head_block_time() == block_time );
 
       BOOST_TEST_MESSAGE( "Generating a block through fixture" );
-      auto b = generate_block();
+      generate_block();
 
       BOOST_CHECK_EQUAL( db.head_block_num(), init_block_num + 2 );
       BOOST_CHECK( db.head_block_time() == block_time + STEEMIT_BLOCK_INTERVAL );

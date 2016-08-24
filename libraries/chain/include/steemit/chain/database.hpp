@@ -354,6 +354,7 @@ namespace steemit { namespace chain {
          void retally_witness_votes();
          void retally_witness_vote_counts( bool force = false );
          void retally_liquidity_weight();
+         void update_virtual_supply();
 
          bool has_hardfork( uint32_t hardfork )const;
 
@@ -395,7 +396,6 @@ namespace steemit { namespace chain {
          void update_median_witness_props();
 
          void update_global_dynamic_data( const signed_block& b );
-         void update_virtual_supply();
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();

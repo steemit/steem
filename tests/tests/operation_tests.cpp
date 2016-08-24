@@ -3474,5 +3474,148 @@ BOOST_AUTO_TEST_CASE( pow2_op )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: transfer_to_savings_validate" );
+
+      transfer_to_savings_operation op;
+      op.from = "alice";
+      op.to = "alice";
+      op.amount = ASSET( "1.000 TESTS" );
+
+
+      BOOST_TEST_MESSAGE( "failure when 'from' is empty" );
+      op.from = "";
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "failure when 'to' is empty" );
+      op.from = "alice";
+      op.to = "";
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
+      op.to = "alice";
+      op.amount = ASSET( "1.000 VESTS" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "success when amount is SBD" );
+      op.amount = ASSET( "1.000 TBD" );
+      op.validate();
+
+
+      BOOST_TEST_MESSAGE( "success when amount is STEEM" );
+      op.amount = ASSET( "1.000 TESTS" );
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( transfer_to_savings_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: transfer_to_savings_authorities" );
+
+      transfer_to_savings_operation op;
+      op.from = "alice";
+      op.to = "alice";
+      op.amount = ASSET( "1.000 TESTS" );
+
+      flat_set< string > auths;
+      flat_set< string > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      expected.insert( "alice" );
+      BOOST_REQUIRE( auths == expected );
+
+      auths.clear();
+      expected.clear();
+      op.from = "bob";
+      op.get_required_active_authorities( auths );
+      expected.insert( "bob" );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: transfer_to_savings_apply" );
+
+      ACTORS( (alice)(bob) );
+
+      fund( "alice", ASSET( "10.000 TESTS" ) );
+      fund( "alice", ASSET( "10.000 TBD" ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( transfer_from_savings_authorities )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_validate )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_authorities )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
+{
+   try
+   {
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

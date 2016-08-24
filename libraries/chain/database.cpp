@@ -2002,7 +2002,7 @@ void database::process_funds()
    } );
 }
 
-void database::process_savings_withdraws() 
+void database::process_savings_withdraws()
 {
   const auto& idx = get_index_type<withdraw_index>().indices().get<by_complete_from_rid>();
   auto itr = idx.begin();
