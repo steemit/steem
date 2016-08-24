@@ -172,7 +172,6 @@
 
 #define STEEMIT_SBD_STOP_PERCENT                (5*STEEMIT_1_PERCENT ) // Stop printing SBD at 5% Market Cap
 #define STEEMIT_SBD_START_PERCENT               (2*STEEMIT_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
-#define STEEMIT_SBD_CONVERT_PERCENT             (20*STEEMIT_1_PERCENT) // Convert SBD into STEEM at 20% Market Cap
 
 #define STEEMIT_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEMIT_MAX_ACCOUNT_NAME_LENGTH         16

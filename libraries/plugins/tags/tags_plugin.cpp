@@ -344,7 +344,7 @@ struct operation_visitor {
       }
    }
 
-   void operator()( const comment_payout_operation& op )const {
+   void operator()( const comment_reward_operation& op )const {
        const auto& c = _db.get_comment( op.author, op.permlink );
        update_tags( c );
    }

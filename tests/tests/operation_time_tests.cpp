@@ -2353,7 +2353,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      db.push_transaction( tx, 0 );
 
       generate_blocks( db.get_comment( "alice", "test" ).cashout_time, true );
 
@@ -2468,7 +2468,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       BOOST_TEST_MESSAGE( "Generating blocks up to comment payout" );
 
-      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true );
+      db_plugin->debug_generate_blocks_until( debug_key, fc::time_point_sec( db.get_comment( comment.author, comment.permlink ).cashout_time.sec_since_epoch() - 2 * STEEMIT_BLOCK_INTERVAL ), true, database::skip_witness_signature );
 
       auto& gpo = db.get_dynamic_global_properties();
 
@@ -2477,15 +2477,15 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
       fc::mutable_variant_object vo;
       vo("_action", "update")("id", sam_id)("sbd_balance", sbd_balance);
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
       vo = fc::mutable_variant_object();
       vo("_action", "update")("id", gpo.id)("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
       validate_database();
 
-      db_plugin->debug_generate_blocks( debug_key, 1 );
+      db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
 
       auto comment_reward = ( gpo.total_reward_fund_steem.amount + 2000 ) - ( ( gpo.total_reward_fund_steem.amount + 2000 ) * 25 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT ;
       comment_reward /= 2;
@@ -2498,7 +2498,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
 
       BOOST_TEST_MESSAGE( "Pay out comment and check rewards are paid as STEEM" );
-      db_plugin->debug_generate_blocks( debug_key, 1 );
+      db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
 
       validate_database();
 
@@ -2510,13 +2510,13 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       // Get close to 1.5% for printing SBD to start again, but not all the way
       vo = fc::mutable_variant_object();
       vo("_action", "update")("id", sam_id)("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ) );
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
       vo = fc::mutable_variant_object();
       vo("_action", "update")("id", gpo.id)("current_sbd_supply", alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ));
-      db_plugin->debug_update( vo );
+      db_plugin->debug_update( vo, database::skip_witness_signature );
 
-      db_plugin->debug_generate_blocks( debug_key, 1 );
+      db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
       validate_database();
 
       auto last_print_rate = db.get_dynamic_global_properties().sbd_print_rate;
@@ -2527,109 +2527,55 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          auto& gpo = db.get_dynamic_global_properties();
          BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
          last_print_rate = gpo.sbd_print_rate;
-         db_plugin->debug_generate_blocks( debug_key, 1 );
+         db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
          validate_database();
       }
 
       BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate == STEEMIT_100_PERCENT );
+   }
+   FC_LOG_AND_RETHROW()
+}
 
-      BOOST_TEST_MESSAGE( "Setting SBD percent to 20% market cap." );
+BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
+{
+   try
+   {
+      ACTORS( (alice) );
 
-      limit_order_create2_operation order;
-      order.owner = "sam";
-      order.orderid = 1;
-      order.fill_or_kill = false;
-      order.amount_to_sell = ASSET( "10.000 TBD" );
-      order.exchange_rate = price( ASSET( "10.000 TBD" ), ASSET( "1.500 TESTS" ) );
+      price exchange_rate( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) );
+      set_price_feed( exchange_rate );
 
-      tx.operations.clear();
-      tx.signatures.clear();
-      tx.operations.push_back( order );
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "test";
+
+      vote_operation vote;
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = STEEMIT_100_PERCENT;
+
+      signed_transaction tx;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( vote );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      tx.ref_block_num = db.head_block_num() - 1; // TAPOS is enabled here???
-      tx.ref_block_prefix = block_summary_id_type( tx.ref_block_num )( db ).block_id._hash[1];
-      tx.sign( sam_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      tx.clear();
-      escrow_transfer_operation et_op;
-      et_op.from = "alice";
-      et_op.to = "bob";
-      et_op.agent = "greg";
-      et_op.sbd_amount = ASSET( "1.000 TBD" );
-      et_op.fee = ASSET( "0.100 TBD");
-      et_op.ratification_deadline = fc::time_point_sec::maximum() - STEEMIT_BLOCK_INTERVAL;
-      et_op.escrow_expiration = fc::time_point_sec::maximum();
-
-      tx.operations.push_back( et_op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      validate_database();
-      db_plugin->debug_generate_blocks( debug_key, 1 );
-      validate_database();
+      generate_blocks( db.get_comment( "alice", "test" ).cashout_time, true );
 
-      sbd_balance = asset( ( db.get_dynamic_global_properties().virtual_supply.amount * ( STEEMIT_SBD_CONVERT_PERCENT + 500 )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+      BOOST_TEST_MESSAGE( "Setting SBD percent to greater than 10% market cap." );
 
-      vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", dave_id)("sbd_balance", sbd_balance);
-      db_plugin->debug_update( vo );
+      db.skip_price_feed_limit_check = false;
+      const auto& gpo = db.get_dynamic_global_properties();
+      auto new_exchange_rate = price( gpo.current_sbd_supply, asset( ( STEEMIT_100_PERCENT ) * gpo.current_supply.amount ) );
+      set_price_feed( new_exchange_rate );
+      set_price_feed( new_exchange_rate );
 
-      vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", db.get_dynamic_global_properties().id)("current_sbd_supply", db.get_dynamic_global_properties().current_sbd_supply + sbd_balance);
-      db_plugin->debug_update( vo );
-
-      db_plugin->debug_generate_blocks( debug_key, 1 );
-      validate_database();
-
-      auto sam_order = db.get_limit_order( "sam", 1 );
-      auto sam_order_for_sale = sam_order.for_sale - ( ( sam_order.for_sale + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT;
-      auto sam_sbd_balance = db.get_account( "sam" ).sbd_balance;
-      auto sam_steem_balance = db.get_account( "sam" ).balance;
-      sam_steem_balance += asset( ( ( sam_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
-      sam_steem_balance += asset( ( ( sam_order.for_sale + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
-      sam_sbd_balance -= asset( ( ( sam_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
-
-      auto dave_sbd_balance = db.get_account( "dave" ).sbd_balance;
-      auto dave_steem_balance = db.get_account( "dave" ).balance;
-      dave_steem_balance += asset( ( ( dave_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL ) * exchange_rate;
-      dave_sbd_balance -= asset( ( ( dave_sbd_balance.amount + STEEMIT_1_PERCENT - 1 ) * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT, SBD_SYMBOL );
-
-      auto escrow_sbd_balance = db.get_escrow( et_op.from, et_op.escrow_id ).sbd_balance;
-      auto escrow_pending_fee = db.get_escrow( et_op.from, et_op.escrow_id ).pending_fee;
-
-      db_plugin->debug_generate_blocks( debug_key, 1 );
-      validate_database();
-
-      BOOST_REQUIRE( db.get_account( "sam" ).balance == sam_steem_balance );
-      BOOST_REQUIRE( db.get_account( "sam" ).sbd_balance == sam_sbd_balance );
-      BOOST_REQUIRE( db.get_account( "dave" ).balance == dave_steem_balance );
-      BOOST_REQUIRE( db.get_account( "dave" ).sbd_balance == dave_sbd_balance );
-      BOOST_REQUIRE( db.get_limit_order( "sam", order.orderid ).for_sale == sam_order_for_sale );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).sbd_balance == ASSET( "0.980 TBD" ) );
-      BOOST_REQUIRE( db.get_escrow( et_op.from, et_op.escrow_id ).pending_fee == ASSET( "0.098 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "greg" ).balance == ASSET( "0.020 TESTS" ) );
-
-      while( ( db.get_dynamic_global_properties().current_sbd_supply * exchange_rate ).amount > ( db.get_dynamic_global_properties().virtual_supply.amount * STEEMIT_SBD_CONVERT_PERCENT ) / STEEMIT_100_PERCENT )
-      {
-         db_plugin->debug_generate_blocks( debug_key, 1 );
-         validate_database();
-      }
-
-      sam_order = db.get_limit_order( "sam", 1 );
-      sam_sbd_balance = db.get_account( "sam" ).sbd_balance;
-      sam_steem_balance = db.get_account( "sam" ).balance;
-      dave_sbd_balance = db.get_account( "dave" ).sbd_balance;
-      dave_steem_balance = db.get_account( "dave" ).balance;
-
-      db_plugin->debug_generate_blocks( debug_key, 1 );
-      validate_database();
-
-      BOOST_REQUIRE( db.get_account( "sam" ).balance == sam_steem_balance );
-      BOOST_REQUIRE( db.get_account( "sam" ).sbd_balance == sam_sbd_balance );
-      BOOST_REQUIRE( db.get_account( "dave" ).balance == dave_steem_balance );
-      BOOST_REQUIRE( db.get_account( "dave" ).sbd_balance == dave_sbd_balance );
-      BOOST_REQUIRE( db.get_limit_order( "sam", order.orderid ).for_sale == sam_order.for_sale );
+      BOOST_REQUIRE( db.get_feed_history().current_median_history > new_exchange_rate && db.get_feed_history().current_median_history < exchange_rate );
    }
    FC_LOG_AND_RETHROW()
 }

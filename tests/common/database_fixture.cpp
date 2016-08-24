@@ -153,7 +153,7 @@ signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::priv
 {
    auto witness = db.get_scheduled_witness(miss_blocks + 1);
    auto time = db.get_slot_time(miss_blocks + 1);
-   skip |= database::skip_undo_history_check | database::skip_authority_check;
+   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature;
    auto block = db.generate_block(time, witness, key, skip);
    db.clear_pending();
    return block;
@@ -381,7 +381,11 @@ void database_fixture::set_price_feed( const price& new_price )
    } FC_CAPTURE_AND_RETHROW( (new_price) )
 
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
-   BOOST_REQUIRE( feed_history_id_type()( db ).current_median_history == new_price );
+   BOOST_REQUIRE(
+#ifdef IS_TEST_NET
+         !db.skip_price_feed_limit_check ||
+#endif
+         feed_history_id_type()( db ).current_median_history == new_price );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const

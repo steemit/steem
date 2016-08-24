@@ -92,7 +92,7 @@ struct operation_visitor_filter : operation_visitor {
    void operator()( const delete_comment_operation& )const{}
    void operator()( const custom_json_operation& )const {}
    void operator()( const custom_operation& )const {}
-   void operator()( const curate_reward_operation& )const {}
+   void operator()( const curation_reward_operation& )const {}
    void operator()( const fill_order_operation& )const {}
    void operator()( const limit_order_create_operation& )const {}
    void operator()( const limit_order_cancel_operation& )const {}
@@ -184,6 +184,9 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 
 void account_history_plugin::plugin_startup()
 {
+   ilog( "account_history plugin: plugin_startup() begin" );
+
+   ilog( "account_history plugin: plugin_startup() end" );
 }
 
 flat_map<string,string> account_history_plugin::tracked_accounts() const
