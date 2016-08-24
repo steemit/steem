@@ -160,7 +160,7 @@ void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key&
 {
    /*auto witness = db.get_scheduled_witness(miss_blocks + 1);
    auto time = db.get_slot_time(miss_blocks + 1);
-   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature ;
+   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature;
    auto block = db.generate_block(time, witness, key, skip);
    db.clear_pending();*/
 }
@@ -431,7 +431,11 @@ void database_fixture::set_price_feed( const price& new_price )
    } FC_CAPTURE_AND_RETHROW( (new_price) )
 
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
-   BOOST_REQUIRE( feed_history_id_type()( db ).current_median_history == new_price );
+   BOOST_REQUIRE(
+#ifdef IS_TEST_NET
+         !db.skip_price_feed_limit_check ||
+#endif
+         feed_history_id_type()( db ).current_median_history == new_price );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
@@ -505,6 +509,21 @@ void database_fixture::validate_database( void )
          {
             total_sbd += asset( itr->for_sale, SBD_SYMBOL );
          }
+      }
+
+      const auto& escrow_idx = db.get_index_type< escrow_index >().indices().get< by_id >();
+
+      for( auto itr = escrow_idx.begin(); itr != escrow_idx.end(); ++itr )
+      {
+         total_supply += itr->steem_balance;
+         total_sbd += itr->sbd_balance;
+
+         if( itr->pending_fee.symbol == STEEM_SYMBOL )
+            total_supply += itr->pending_fee;
+         else if( itr->pending_fee.symbol == SBD_SYMBOL )
+            total_sbd += itr->pending_fee;
+         else
+            FC_ASSERT( false, "found escrow pending fee that is not SBD or STEEM" );
       }
 
       fc::uint128_t total_rshares2;

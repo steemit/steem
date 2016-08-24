@@ -79,8 +79,10 @@ bool is_valid_account_name( const string& name )
 
 void authority::validate()const
 {
-   for( auto item : account_auths )
+   for( const auto& item : account_auths )
+   {
       FC_ASSERT( is_valid_account_name( item.first ) );
+   }
 }
 
 } } // steemit::chain

@@ -10,11 +10,18 @@ namespace steemit { namespace chain {
 
    struct base_operation
    {
-      void get_required_authorities( vector<authority>& )const{}
-      void get_required_active_authorities( flat_set<string>& )const{}
-      void get_required_posting_authorities( flat_set<string>& )const{}
-      void get_required_owner_authorities( flat_set<string>& )const{}
-      void validate()const{}
+      void get_required_authorities( vector<authority>& )const {}
+      void get_required_active_authorities( flat_set<string>& )const {}
+      void get_required_posting_authorities( flat_set<string>& )const {}
+      void get_required_owner_authorities( flat_set<string>& )const {}
+      virtual bool is_virtual()const { return false; }
+      virtual void validate()const {}
+   };
+
+   struct virtual_operation : public base_operation
+   {
+      bool is_virtual()const { return true; }
+      void validate()const { FC_ASSERT( false, "This is a virtual operation" ); }
    };
 
    typedef static_variant<

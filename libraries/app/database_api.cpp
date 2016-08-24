@@ -456,6 +456,19 @@ optional< account_recovery_request_object > database_api::get_recovery_request( 
    return result;
 }
 
+optional< escrow_object > database_api::get_escrow( string from, uint32_t escrow_id )const
+{
+   optional< escrow_object > result;
+
+   try
+   {
+      result = my->_db.get_escrow( from, escrow_id );
+   }
+   catch ( ... ) {}
+
+   return result;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
@@ -1161,7 +1174,7 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
 
    if( start_author.size() || start_permlink.size() )
    {
-      auto start_c = c_idx.find( boost::make_tuple( account.id, my->_db.get_comment( start_author, start_permlink ).id ) );
+      auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.id ) );
       FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
       feed_itr = f_idx.iterator_to( *start_c );
    }
@@ -1236,19 +1249,23 @@ vector<category_object> database_api::get_recent_categories( string after, uint3
  *
  */
 void database_api::recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const
-{
+{ try {
    if( root.author.size() )
      referenced_accounts.insert(root.author);
 
   auto replies = get_content_replies( root.author, root.permlink );
   for( auto& r : replies ) {
+    try {
     recursively_fetch_content( _state, r, referenced_accounts );
     root.replies.push_back( r.author + "/" + r.permlink  );
     _state.content[r.author+"/"+r.permlink] = std::move(r);
     if( r.author.size() )
        referenced_accounts.insert(r.author);
+    } catch ( const fc::exception& e ) {
+       edump((e.to_detail_string()));
+    }
   }
-}
+} FC_CAPTURE_AND_RETHROW( (root.author)(root.permlink) ) }
 
 vector<string> database_api::get_miner_queue()const {
    vector<string> result;
@@ -1346,7 +1363,6 @@ state database_api::get_state( string path )const
    part.resize(std::max( part.size(), size_t(4) ) ); // at least 4
 
    auto tag = fc::to_lower( part[1] );
-   idump((part[1])(part[1]==string()));
 
    if( part[0].size() && part[0][0] == '@' ) {
       auto acnt = part[0].substr(1);
@@ -1365,8 +1381,8 @@ state database_api::get_state( string path )const
                case operation::tag<interest_operation>::value:
                case operation::tag<transfer_operation>::value:
                case operation::tag<liquidity_reward_operation>::value:
-               case operation::tag<comment_reward_operation>::value:
-               case operation::tag<curate_reward_operation>::value:
+               case operation::tag<author_reward_operation>::value:
+               case operation::tag<curation_reward_operation>::value:
                   eacnt.transfer_history[item.first] =  item.second;
                   break;
                case operation::tag<comment_operation>::value:

@@ -38,8 +38,13 @@ namespace steemit { namespace chain {
          string         from;
          string         to;
          string         agent;
-         time_point_sec expiration;
-         asset          balance;
+         time_point_sec ratification_deadline;
+         time_point_sec escrow_expiration;
+         asset          sbd_balance;
+         asset          steem_balance;
+         asset          pending_fee;
+         bool           to_approved = false;
+         bool           agent_approved = false;
          bool           disputed = false;
    };
 
@@ -79,11 +84,11 @@ namespace steemit { namespace chain {
          uint128_t       weight = 0;
 
          /// this is the sort index
-         uint128_t volume_weight()const { 
-            return steem_volume * sbd_volume * is_positive(); 
+         uint128_t volume_weight()const {
+            return steem_volume * sbd_volume * is_positive();
         }
-         uint128_t min_volume_weight()const { 
-            return std::min(steem_volume,sbd_volume) * is_positive(); 
+         uint128_t min_volume_weight()const {
+            return std::min(steem_volume,sbd_volume) * is_positive();
         }
          void update_weight( bool hf9 ) {
              weight = hf9 ? min_volume_weight() : volume_weight();
@@ -234,6 +239,8 @@ namespace steemit { namespace chain {
    struct by_from_id;
    struct by_to;
    struct by_agent;
+   struct by_ratification_deadline;
+   struct by_sbd_balance;
    typedef multi_index_container<
       escrow_object,
       indexed_by<
@@ -255,6 +262,22 @@ namespace steemit { namespace chain {
                member< escrow_object, string,  &escrow_object::agent >,
                member< object, object_id_type, &object::id >
             >
+         >,
+         ordered_unique< tag< by_ratification_deadline >,
+            composite_key< escrow_object,
+               member< escrow_object, bool, &escrow_object::to_approved >,
+               member< escrow_object, bool, &escrow_object::agent_approved >,
+               member< escrow_object, time_point_sec, &escrow_object::ratification_deadline >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< bool >, std::less< bool >, std::less< time_point_sec >, std::less< object_id_type > >
+         >,
+         ordered_unique< tag< by_sbd_balance >,
+            composite_key< escrow_object,
+               member< escrow_object, asset, &escrow_object::sbd_balance >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::greater< asset >, std::less< object_id_type > >
          >
       >
    > escrow_object_index_type;
@@ -316,8 +339,10 @@ FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::
 FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db::object),
                     (from_account)(to_account)(percent)(auto_vest) )
 
-FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object), 
-                    (escrow_id)(from)(to)(agent)(expiration)(balance)(disputed) );
-
-FC_REFLECT_DERIVED( steemit::chain::savings_withdraw_object,(graphene::db::object), 
+FC_REFLECT_DERIVED( steemit::chain::savings_withdraw_object,(graphene::db::object),
                     (from)(to)(memo)(request_id)(amount)(complete) );
+FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
+                    (escrow_id)(from)(to)(agent)
+                    (ratification_deadline)(escrow_expiration)
+                    (sbd_balance)(steem_balance)(pending_fee)
+                    (to_approved)(agent_approved)(disputed) );
