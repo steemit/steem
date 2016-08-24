@@ -3102,7 +3102,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Testing failure when bob does not have new authority" );
 
-      generate_blocks( db.head_block_time() + STEEMIT_OWNER_UPDATE_LIMIT );
+      generate_blocks( db.head_block_time() + STEEMIT_OWNER_UPDATE_LIMIT + fc::seconds( STEEMIT_BLOCK_INTERVAL ) );
 
       recover.new_owner_authority = authority( 1, generate_private_key( "idontknow" ).get_public_key(), 1 );
 
@@ -4858,6 +4858,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       BOOST_TEST_MESSAGE( "Testing: transfer_to_savings_apply" );
 
       ACTORS( (alice)(bob) );
+      generate_block();
 
       fund( "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "10.000 TBD" ) );

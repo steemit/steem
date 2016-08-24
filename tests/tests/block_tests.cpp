@@ -728,7 +728,7 @@ BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
    try
    {
       BOOST_TEST_MESSAGE( "Skipping blocks through db" );
-      BOOST_REQUIRE( db.head_block_num() == 1 );
+      BOOST_REQUIRE( db.head_block_num() == 2 );
 
       int init_block_num = db.head_block_num();
       fc::time_point_sec init_block_time = db.head_block_time();
@@ -977,40 +977,44 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
 {
    try
    {
-      /* Setup code from clean fixture sans setting hardforks */
       try {
-         int argc = boost::unit_test::framework::master_test_suite().argc;
-         char** argv = boost::unit_test::framework::master_test_suite().argv;
-         for( int i=1; i<argc; i++ )
-         {
-            const std::string arg = argv[i];
-            if( arg == "--record-assert-trip" )
-               fc::enable_record_assert_trip = true;
-            if( arg == "--show-test-names" )
-               std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
-         }
-         auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
-         init_account_pub_key = init_account_priv_key.get_public_key();
+      int argc = boost::unit_test::framework::master_test_suite().argc;
+      char** argv = boost::unit_test::framework::master_test_suite().argv;
+      for( int i=1; i<argc; i++ )
+      {
+         const std::string arg = argv[i];
+         if( arg == "--record-assert-trip" )
+            fc::enable_record_assert_trip = true;
+         if( arg == "--show-test-names" )
+            std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
+      }
+      auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
+      db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
+      init_account_pub_key = init_account_priv_key.get_public_key();
 
-         boost::program_options::variables_map options;
+      boost::program_options::variables_map options;
 
-         open_database();
+      open_database();
 
-         // app.initialize();
-         ahplugin->plugin_initialize( options );
+      // app.initialize();
+      ahplugin->plugin_initialize( options );
+      db_plugin->plugin_initialize( options );
+      generate_blocks( 2 );
 
-         generate_block();
-         vest( "initminer", 10000 );
+      ahplugin->plugin_startup();
+      db_plugin->plugin_startup();
 
-         // Fill up the rest of the required miners
-         for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_MINERS; i++ )
-         {
-            account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-            fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
-            witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
-         }
+      vest( "initminer", 10000 );
 
-         validate_database();
+      // Fill up the rest of the required miners
+      for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_MINERS; i++ )
+      {
+         account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+         fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
+         witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+      }
+
+      validate_database();
       } catch ( const fc::exception& e )
       {
          edump( (e.to_detail_string()) );

@@ -48,7 +48,7 @@ clean_database_fixture::clean_database_fixture()
 
    open_database();
 
-   // app.initialize();
+   db_plugin->logging = false;
    ahplugin->plugin_initialize( options );
    db_plugin->plugin_initialize( options );
 
@@ -56,7 +56,7 @@ clean_database_fixture::clean_database_fixture()
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );
    generate_block();
 
-   ahplugin->plugin_startup();
+   //ahplugin->plugin_startup();
    db_plugin->plugin_startup();
 
    vest( "initminer", 10000 );
@@ -158,35 +158,20 @@ void database_fixture::open_database()
 
 void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
 {
-   /*auto witness = db.get_scheduled_witness(miss_blocks + 1);
-   auto time = db.get_slot_time(miss_blocks + 1);
-   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature;
-   auto block = db.generate_block(time, witness, key, skip);
-   db.clear_pending();*/
+   skip |= default_skip;
+   db_plugin->debug_generate_blocks( graphene::utilities::key_to_wif( key ), 1, skip, miss_blocks );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )
 {
-   for( uint32_t i = 0; i < block_count; ++i )
-      generate_block();
+   auto produced = db_plugin->debug_generate_blocks( debug_key, block_count, default_skip, 0 );
+   BOOST_REQUIRE( produced == block_count );
 }
 
 void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks)
 {
-   if( miss_intermediate_blocks )
-   {
-      generate_block();
-      auto slots_to_miss = db.get_slot_at_time(timestamp);
-      if( slots_to_miss <= 1 )
-         return;
-      --slots_to_miss;
-      generate_block(0, init_account_priv_key, slots_to_miss);
-      return;
-   }
-   while( db.head_block_time() < timestamp )
-      generate_block();
-
-   BOOST_REQUIRE( db.head_block_time() == timestamp );
+   db_plugin->debug_generate_blocks_until( debug_key, timestamp, miss_intermediate_blocks, default_skip );
+   BOOST_REQUIRE( ( db.head_block_time() - timestamp ).to_seconds() < STEEMIT_BLOCK_INTERVAL );
 }
 
 const account_object& database_fixture::account_create(
@@ -282,6 +267,11 @@ const witness_object& database_fixture::witness_create(
    FC_CAPTURE_AND_RETHROW( (owner)(url) )
 }
 
+void database_fixture::update_object( const fc::variant_object& vo )
+{
+   db_plugin->debug_update( vo, default_skip );
+}
+
 void database_fixture::fund(
    const string& account_name,
    const share_type& amount
@@ -302,7 +292,6 @@ void database_fixture::fund(
    try
    {
       const auto& account = db.get_account( account_name );
-      const auto& gpo = db.get_dynamic_global_properties();
 
       fc::mutable_variant_object vo;
       vo("_action", "update")("id", account.id);
@@ -310,24 +299,29 @@ void database_fixture::fund(
       if( amount.symbol == STEEM_SYMBOL )
       {
          vo("balance", account.balance + amount);
-         db_plugin->debug_update( vo );
+         update_object( vo );
+
+         const auto& gpo = db.get_dynamic_global_properties();
          vo = fc::mutable_variant_object();
          vo("_action", "update")("id", gpo.id)("current_supply", gpo.current_supply + amount);
       }
       else if( amount.symbol == SBD_SYMBOL )
       {
+         vo("sbd_balance", account.sbd_balance + amount );
+         update_object( vo );
+
+         const auto& gpo = db.get_dynamic_global_properties();
+         vo = fc::mutable_variant_object();
+         vo("_action", "update")("id", gpo.id)("current_sbd_supply", gpo.current_sbd_supply + amount);
+
          const auto& median_feed = db.get_feed_history();
          if( median_feed.current_median_history.is_null() )
          {
             fc::mutable_variant_object vo;
             vo("_action", "update")("id", median_feed.id)("current_median_history", price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL) ) );
-            db_plugin->debug_update( vo );
+            update_object( vo );
          }
 
-         vo("sbd_balance", account.sbd_balance + amount );
-         db_plugin->debug_update( vo );
-         vo = fc::mutable_variant_object();
-         vo("_action", "update")("id", gpo.id)("current_sbd_supply", gpo.current_sbd_supply + amount);
          db.update_virtual_supply();
       }
       else
@@ -433,9 +427,10 @@ void database_fixture::set_price_feed( const price& new_price )
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
-         !db.skip_price_feed_limit_check ||
+      !db.skip_price_feed_limit_check ||
 #endif
-         feed_history_id_type()( db ).current_median_history == new_price );
+      feed_history_id_type()( db ).current_median_history == new_price
+   );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
