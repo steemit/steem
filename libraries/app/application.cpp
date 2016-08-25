@@ -457,12 +457,6 @@ namespace detail {
             throw;
          }
 
-
-         if( !_is_finished_syncing && !sync_mode )
-         {
-            _is_finished_syncing = true;
-            _self->syncing_finished();
-         }
       } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
@@ -817,7 +811,6 @@ namespace detail {
       std::vector< std::string >                       _public_apis;
       std::vector< std::pair< uint32_t, uint32_t > >   _bcd_trigger;
 
-      bool _is_finished_syncing = false;
       uint32_t allow_future_time = 5;
    };
 
@@ -939,11 +932,6 @@ optional< api_access_info > application::get_api_access_info( const string& user
 void application::set_api_access_info(const string& username, api_access_info&& permissions)
 {
    my->set_api_access_info(username, std::move(permissions));
-}
-
-bool application::is_finished_syncing() const
-{
-   return my->_is_finished_syncing;
 }
 
 void application::register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory )
