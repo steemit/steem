@@ -1249,6 +1249,32 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    }
 }
 
+
+void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__317 ) );
+   /*
+   database& d = db();
+   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   if( !eval )
+      return;
+
+   try
+   {
+      eval->apply( o );
+   }
+   catch( const fc::exception& e )
+   {
+      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+   }
+   catch(...)
+   {
+      elog( "unexpected exception applying custom json evaluator" );
+   }
+   */
+}
+
+
 template<typename Operation>
 void pow_apply( database& db, Operation o ) {
    const auto& dgp = db.get_dynamic_global_properties();

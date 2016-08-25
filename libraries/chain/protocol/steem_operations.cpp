@@ -172,6 +172,12 @@ namespace steemit { namespace chain {
       FC_ASSERT( fc::is_utf8(json), "JSON Metadata not formatted in UTF8" );
       FC_ASSERT( fc::json::is_valid(json), "JSON Metadata not valid JSON" );
    }
+   void custom_binary_operation::validate() const {
+      /// required auth accounts are the ones whose bandwidth is consumed
+      FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least on account must be specified" );
+      for( const auto& a : required_auths ) a.validate();
+   }
+
 
    fc::sha256 pow_operation::work_input()const
    {

@@ -481,6 +481,23 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
    };
 
+   struct custom_binary_operation : public base_operation
+   {
+      flat_set<string>   required_owner_auths;
+      flat_set<string>   required_active_auths;
+      flat_set<string>   required_posting_auths;
+      vector<authority>  required_auths;
+
+      int64_t           id; ///< must be less than 32 characters long
+      vector<char>      data;
+
+      void validate()const;
+      void get_required_owner_authorities( flat_set<string>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+      void get_required_authorities( vector<authority>& a )const{ for( const auto& i : required_auths ) a.push_back(i); }
+   };
+
    /**
     *  Feeds can only be published by the top N witnesses which are included in every round and are
     *  used to define the exchange rate between steem and the dollar.
@@ -850,6 +867,7 @@ FC_REFLECT( steemit::chain::comment_operation, (parent_author)(parent_permlink)(
 FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
+FC_REFLECT( steemit::chain::custom_binary_operation, (required_owner_auths)(required_active_auths)(required_posting_auths)(required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::limit_order_create2_operation, (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );

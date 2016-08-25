@@ -52,6 +52,7 @@ namespace steemit { namespace chain {
             escrow_release_operation,
             pow2_operation,
             escrow_approve_operation,
+            custom_binary_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
