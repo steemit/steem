@@ -166,6 +166,9 @@ namespace steemit { namespace chain {
          const operation_object notify_pre_apply_operation( const operation& op );
          void notify_post_apply_operation( const operation_object& op );
          inline const void push_virtual_operation( const operation& op );
+         void notify_applied_block( const signed_block& block );
+         void notify_on_pending_transaction( const signed_transaction& tx );
+         void notify_on_applied_transaction( const signed_transaction& tx );
 
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.

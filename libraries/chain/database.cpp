@@ -697,7 +697,7 @@ void database::_push_transaction( const signed_transaction& trx )
    temp_session.merge();
 
    // notify anyone listening to pending transactions
-   on_pending_transaction( trx );
+   notify_on_pending_transaction( trx );
 }
 
 signed_block database::generate_block(
@@ -891,13 +891,16 @@ const operation_object database::notify_pre_apply_operation( const operation& op
    obj.op_in_trx    = _current_op_in_trx;
    obj.op           = op;
 
-   pre_apply_operation( obj );
+   //pre_apply_operation( obj );
+   STEEMIT_TRY_NOTIFY( pre_apply_operation, obj )
+
    return obj;
 }
 
 void database::notify_post_apply_operation( const operation_object& obj )
 {
-   post_apply_operation( obj );
+   //post_apply_operation( obj );
+   STEEMIT_TRY_NOTIFY( post_apply_operation, obj )
 }
 
 inline const void database::push_virtual_operation( const operation& op )
@@ -907,6 +910,21 @@ inline const void database::push_virtual_operation( const operation& op )
    auto obj = notify_pre_apply_operation( op );
    notify_post_apply_operation( obj );
 #endif
+}
+
+void database::notify_applied_block( const signed_block& block )
+{
+   STEEMIT_TRY_NOTIFY( applied_block, block )
+}
+
+void database::notify_on_pending_transaction( const signed_transaction& tx )
+{
+   STEEMIT_TRY_NOTIFY( on_pending_transaction, tx )
+}
+
+void database::notify_on_applied_transaction( const signed_transaction& tx )
+{
+   STEEMIT_TRY_NOTIFY( on_applied_transaction, tx )
 }
 
 string database::get_scheduled_witness( uint32_t slot_num )const
@@ -2592,7 +2610,7 @@ void database::notify_changed_objects()
          changed_ids.push_back( item.first );
          removed.emplace_back( item.second.get() );
       }
-      changed_objects(changed_ids);
+      STEEMIT_TRY_NOTIFY( changed_objects, changed_ids )
    }
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -2713,7 +2731,7 @@ void database::_apply_block( const signed_block& next_block )
    process_hardforks();
 
    // notify observers that the block has been applied
-   applied_block( next_block ); //emit
+   notify_applied_block( next_block );
 
    notify_changed_objects();
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
@@ -2826,7 +2844,7 @@ try {
 void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 {
    detail::with_skip_flags( *this, skip, [&]() { _apply_transaction(trx); });
-   on_applied_transaction( trx );
+   notify_on_applied_transaction( trx );
 }
 
 void database::_apply_transaction(const signed_transaction& trx)
