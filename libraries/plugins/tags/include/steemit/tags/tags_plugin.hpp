@@ -391,7 +391,7 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 FC_API( steemit::tags::tag_api, (get_tags) );
 
 FC_REFLECT_DERIVED( steemit::tags::tag_object, (graphene::db::object),
-    (tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(children)(children_rshares2)(total_payout)(author)(parent)(comment) )
+    (tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(children)(children_rshares2)(total_payout)(mode)(author)(parent)(comment) )
 
 FC_REFLECT_DERIVED( steemit::tags::tag_stats_object, (graphene::db::object),
                     (tag)(total_children_rshares2)(total_payout)(net_votes)(top_posts)(comments) );
