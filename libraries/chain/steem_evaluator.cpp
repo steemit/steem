@@ -660,8 +660,6 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       });
    }
 
-   FC_ASSERT( o.amount.symbol != VESTS_SYMBOL, "transferring of Steem Power (STMP) is not allowed." );
-
    FC_ASSERT( db().get_balance( from_account, o.amount.symbol ) >= o.amount, "account does not have sufficient funds for transfer" );
    db().adjust_balance( from_account, -o.amount );
    db().adjust_balance( to_account, o.amount );
