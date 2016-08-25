@@ -59,10 +59,13 @@ namespace steemit { namespace app {
 
          struct transaction_confirmation
          {
+            transaction_confirmation( transaction_id_type txid, int32_t bn, int32_t tn, bool ex )
+            : id(txid), block_num(bn), trx_num(tn), expired(ex) {}
+
             transaction_id_type   id;
-            int32_t               block_num;
-            int32_t               trx_num;
-            bool                  expired;
+            int32_t               block_num = 0;
+            int32_t               trx_num   = 0;
+            bool                  expired   = false;
          };
 
          typedef std::function<void(variant/*transaction_confirmation*/)> confirmation_callback;

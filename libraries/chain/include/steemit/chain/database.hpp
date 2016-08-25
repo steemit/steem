@@ -166,6 +166,9 @@ namespace steemit { namespace chain {
          const operation_object notify_pre_apply_operation( const operation& op );
          void notify_post_apply_operation( const operation_object& op );
          inline const void push_virtual_operation( const operation& op );
+         void notify_applied_block( const signed_block& block );
+         void notify_on_pending_transaction( const signed_transaction& tx );
+         void notify_on_applied_transaction( const signed_transaction& tx );
 
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
@@ -247,7 +250,6 @@ namespace steemit { namespace chain {
          /** @return the sbd created and deposited to_account, may return STEEM if there is no median feed */
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
-         void update_account_activity( const account_object& account );
          void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value );
 
          void update_witness_schedule();
@@ -298,7 +300,6 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
-         uint16_t get_activity_rewards_percent() const;
          uint16_t get_discussion_rewards_percent() const;
          uint16_t get_curation_rewards_percent() const;
 

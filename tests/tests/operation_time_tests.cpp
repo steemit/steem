@@ -193,11 +193,6 @@ BOOST_AUTO_TEST_CASE( discussion_rewards )
 
 }
 
-BOOST_AUTO_TEST_CASE( activity_rewards )
-{
-
-}
-
 /*
 BOOST_AUTO_TEST_CASE( comment_payout )
 {
