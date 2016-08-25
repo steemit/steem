@@ -859,7 +859,6 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
-         ("dbg-init-key", bpo::value<string>(), "Block signing key to use for init witnesses, overrides genesis file")
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
          ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
