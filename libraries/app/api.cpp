@@ -202,7 +202,7 @@ namespace steemit { namespace app {
              if( itr != _callbacks.end() )
              {
                 confirmation_callback callback = itr->second;
-                fc::async( [capture_this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation{ id, block_num, trx_num, false}) ); } );
+                fc::async( [capture_this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation( id, block_num, trx_num, false )) ); } );
                 _callbacks.erase( itr );
              }
           }
