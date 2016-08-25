@@ -1655,7 +1655,7 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
 {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
    const auto& from = db().get_account( op.from );
-   const auto& to   = db().get_account( op.to );
+   const auto& to   = db().get_account(op.to);
    FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount );
 
    db().adjust_balance( from, -op.amount );
@@ -1667,10 +1667,10 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
    FC_ASSERT( op.request_id < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
    const auto& from = db().get_account( op.from );
-   const auto& to   = db().get_account( op.to );
+   const auto& to   = db().get_account(op.to);
 
    FC_ASSERT( db().get_savings_balance( from, op.amount.symbol ) >= op.amount );
-   db().adjust_savings_balance( to, -op.amount );
+   db().adjust_savings_balance( from, -op.amount );
    db().create<savings_withdraw_object>( [&]( savings_withdraw_object& s ) {
       s.from   = op.from;
       s.to     = op.to;

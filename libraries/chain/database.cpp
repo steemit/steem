@@ -416,6 +416,26 @@ const comment_object* database::find_comment( const string& author, const string
    return itr == by_permlink_idx.end() ? nullptr : &*itr;
 }
 
+const savings_withdraw_object& database::get_savings_withdraw( const string& owner, uint32_t request_id )const
+{
+   try
+   {
+      const auto& savings_withdraw_idx = get_index_type< withdraw_index >().indices().get< by_from_rid >();
+      auto itr = savings_withdraw_idx.find( boost::make_tuple( owner, request_id ) );
+      FC_ASSERT( itr != savings_withdraw_idx.end() );
+      return *itr;
+   }
+   FC_CAPTURE_AND_RETHROW( (owner)(request_id) )
+}
+
+const savings_withdraw_object* database::find_savings_withdraw( const string& owner, uint32_t request_id )const
+{
+   const auto& savings_withdraw_idx = get_index_type< withdraw_index >().indices().get< by_from_rid >();
+   auto itr = savings_withdraw_idx.find( boost::make_tuple( owner, request_id ) );
+   return itr == savings_withdraw_idx.end() ? nullptr : &*itr;
+}
+
+
 const time_point_sec database::calculate_discussion_payout_time( const comment_object& comment )const
 {
    if( comment.parent_author == "" )
@@ -2026,7 +2046,7 @@ void database::process_savings_withdraws()
   while( itr != idx.end() ) {
      if( itr->complete > head_block_time() )
         break;
-     adjust_savings_balance( get_account( itr->to ), itr->amount );
+     adjust_balance( get_account( itr->to ), itr->amount );
      remove( *itr );
      itr = idx.begin();
   }
@@ -3839,7 +3859,9 @@ void database::validate_invariants()const
       for( auto itr = account_idx.begin(); itr != account_idx.end(); ++itr )
       {
          total_supply += itr->balance;
+         total_supply += itr->savings_balance;
          total_sbd += itr->sbd_balance;
+         total_sbd += itr->savings_sbd_balance;
          total_vesting += itr->vesting_shares;
          total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
                                  itr->witness_vote_weight() :
@@ -3887,6 +3909,18 @@ void database::validate_invariants()const
             total_sbd += itr->pending_fee;
          else
             FC_ASSERT( false, "found escrow pending fee that is not SBD or STEEM" );
+      }
+
+      const auto& savings_withdraw_idx = get_index_type< withdraw_index >().indices().get< by_id >();
+
+      for( auto itr = savings_withdraw_idx.begin(); itr != savings_withdraw_idx.end(); ++itr )
+      {
+         if( itr->amount.symbol == STEEM_SYMBOL )
+            total_supply += itr->amount;
+         else if( itr->amount.symbol == SBD_SYMBOL )
+            total_sbd += itr->amount;
+         else
+            FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
       }
 
       fc::uint128_t total_rshares2;

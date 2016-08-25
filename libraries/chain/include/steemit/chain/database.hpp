@@ -113,6 +113,8 @@ namespace steemit { namespace chain {
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
          const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
+         const savings_withdraw_object& get_savings_withdraw( const string& owner, uint32_t request_id )const;
+         const savings_withdraw_object* find_savings_withdraw( const string& owner, uint32_t request_id )const;
 
          /**
           *  Deducts fee from the account and the share supply
