@@ -302,48 +302,4 @@ namespace steemit { namespace app {
        return _app.p2p_node()->set_advanced_node_parameters(params);
     }
 
-    vector< string > get_relevant_accounts( const object* obj )
-    {
-       vector< string > result;
-       if( obj->id.space() == protocol_ids )
-       {
-          switch( (object_type)obj->id.type() )
-          {
-            case null_object_type:
-            case base_object_type:
-            case OBJECT_TYPE_COUNT:
-               return result;
-            /*case account_object_type:{
-               result.push_back( obj->id );
-               break;*/ // TODO: Add back in when steem objects are done.
-            /*} case witness_object_type:{
-               const auto& aobj = dynamic_cast<const witness_object*>(obj);
-               assert( aobj != nullptr );
-               result.push_back( aobj->witness_account );
-               break;
-            }*/ // TODO: Add back in when new witness is complete.
-            case impl_comment_object_type:{
-               const auto& aobj = dynamic_cast<const comment_object*>(obj);
-               assert( aobj != nullptr );
-               result.push_back( aobj->author );
-               break;
-            } /* case vote_object_type:{  -- this is commented out until we reflect vote_object in object_type enum in types.hpp
-               const auto& aobj = dynamic_cast<const vote_object*>(obj);
-               assert( aobj != nullptr );
-               result.push_back( aobj->voter );
-               break;
-            } */
-          }
-       }
-       else if( obj->id.space() == implementation_ids )
-       {
-          /*
-          switch( (impl_object_type)obj->id.type() )
-          {
-          }
-          */
-       }
-       return result;
-    } // end get_relevant_accounts( obj )
-
 } } // steemit::app
