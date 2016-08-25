@@ -1243,6 +1243,10 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    {
       //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
    }
+   catch(...)
+   {
+      elog( "unexpected exception applying custom json evaluator" );
+   }
 }
 
 template<typename Operation>
