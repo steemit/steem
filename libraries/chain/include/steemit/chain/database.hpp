@@ -250,7 +250,6 @@ namespace steemit { namespace chain {
          /** @return the sbd created and deposited to_account, may return STEEM if there is no median feed */
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
-         void update_account_activity( const account_object& account );
          void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value );
 
          void update_witness_schedule();
@@ -301,7 +300,6 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
-         uint16_t get_activity_rewards_percent() const;
          uint16_t get_discussion_rewards_percent() const;
          uint16_t get_curation_rewards_percent() const;
 

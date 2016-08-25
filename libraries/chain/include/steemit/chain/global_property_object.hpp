@@ -51,20 +51,6 @@ namespace steemit { namespace chain {
          asset       total_reward_fund_steem    = asset( 0, STEEM_SYMBOL );
          fc::uint128 total_reward_shares2; ///< the running total of REWARD^2
 
-         /**
-          *  These fields are used to reward users who remain active. Every block 15% of
-          *  content + curation rewards steem is placed into the activity fund steem.
-          *
-          *  Every time a user votes they earn activity_fund_shares which are calculated as
-          *  min(time_since_last_active,24h) * VESTS.  This is designed to reward those who
-          *  check in daily.  Activity rewards can only be earned by accounts with trival
-          *  posting authorities consisting of a single key.
-          */
-         //@{
-         asset       total_activity_fund_steem  = asset( 0, STEEM_SYMBOL );
-         fc::uint128 total_activity_fund_shares = 0;
-         //@}
-
          price       get_vesting_share_price() const
          {
             if ( total_vesting_fund_steem.amount == 0 || total_vesting_shares.amount == 0 )
@@ -152,8 +138,6 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (total_vesting_shares)
                     (total_reward_fund_steem)
                     (total_reward_shares2)
-                    (total_activity_fund_steem)
-                    (total_activity_fund_shares)
                     (sbd_interest_rate)
                     (sbd_print_rate)
                     (average_block_size)

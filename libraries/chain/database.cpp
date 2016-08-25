@@ -2020,12 +2020,7 @@ void database::process_funds()
    auto witness_pay = get_producer_reward();
    auto vesting_reward = content_reward + curate_reward + witness_pay;
 
-   /// we decided to redistribute curation rewards between authors and activity rewards.
-   //asset activity_reward = asset(curate_reward.amount.value / 3, STEEM_SYMBOL);
-   //content_reward += curate_reward - activity_reward;
-
-   asset activity_reward( ( ( uint128_t( content_reward.amount.value + curate_reward.amount.value ) * get_activity_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64() , STEEM_SYMBOL );
-   content_reward = content_reward + curate_reward - activity_reward;
+   content_reward = content_reward + curate_reward;
 
    if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
       vesting_reward.amount = 0;
@@ -2036,57 +2031,9 @@ void database::process_funds()
    {
        p.total_vesting_fund_steem += vesting_reward;
        p.total_reward_fund_steem  += content_reward;
-       p.total_activity_fund_steem += activity_reward;
-       p.current_supply += content_reward + activity_reward + witness_pay + vesting_reward;
-       p.virtual_supply += content_reward + activity_reward + witness_pay + vesting_reward;
+       p.current_supply += content_reward + witness_pay + vesting_reward;
+       p.virtual_supply += content_reward + witness_pay + vesting_reward;
    } );
-}
-
-void database::update_account_activity( const account_object& account ) {
-   if( account.posting.num_auths() > 1 ) return;
-   if( account.posting.key_auths.size() != 1 ) return;
-
-   auto now = head_block_time();
-   auto delta_time = std::min( fc::days(1), now - account.last_active );
-   auto shares = fc::uint128( delta_time.to_seconds() ) * account.vesting_shares.amount.value;
-
-   if (shares == fc::uint128(0)) return;
-
-   modify( account, [&]( account_object& a ) {
-      a.last_active = now;
-      a.activity_shares += shares;
-   });
-
-   const auto& props = get_dynamic_global_properties();
-
-   modify( props, [&]( dynamic_global_property_object& gprop ) {
-      gprop.total_activity_fund_shares += shares;
-   });
-
-   if( has_hardfork( STEEMIT_HARDFORK_0_6__101 ) )
-   {
-      if( account.last_active - account.last_activity_payout > fc::days(7) && props.total_activity_fund_steem.amount.value > 0 )
-      {
-         u256 tashares( to256(props.total_activity_fund_shares) );
-         u256 tasteem( props.total_activity_fund_steem.amount.value );
-         u256 ushares( to256(account.activity_shares) );
-
-         auto payout = asset( static_cast<uint64_t>((ushares * tasteem) / tashares), STEEM_SYMBOL);
-
-         modify( props, [&]( dynamic_global_property_object& gprops ){
-            gprops.total_activity_fund_shares -= account.activity_shares;
-            gprops.total_activity_fund_steem -= payout;
-         });
-
-         modify( account, [&]( account_object& a ) {
-            a.last_activity_payout = now;
-            a.activity_shares = 0;
-         });
-
-         auto vests_created = create_vesting( account, payout );
-         /// TODO: create vop
-      }
-   }
 }
 
 asset database::get_liquidity_reward()const
@@ -2188,11 +2135,6 @@ void database::pay_liquidity_reward()
          push_virtual_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
       }
    }
-}
-
-uint16_t database::get_activity_rewards_percent() const
-{
-   return 0;
 }
 
 uint16_t database::get_discussion_rewards_percent() const
@@ -2882,7 +2824,6 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    for( const auto& auth : required ) {
       const auto& acnt = get_account(auth);
-      update_account_activity( acnt );
 
       update_account_bandwidth( acnt, trx_size );
       for( const auto& op : trx.operations ) {
@@ -3857,7 +3798,7 @@ void database::validate_invariants()const
             total_children_rshares2 += itr->children_rshares2;
       }
 
-      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.total_activity_fund_steem;
+      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
       FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );

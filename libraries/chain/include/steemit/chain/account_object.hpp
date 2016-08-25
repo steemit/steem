@@ -101,15 +101,6 @@ namespace steemit { namespace chain {
          time_point_sec  last_root_post = fc::time_point_sec::min();
          uint32_t        post_bandwidth = 0;
 
-         /**
-          *  Used to track activity rewards, updated on every post and comment
-          */
-         ///@{
-         time_point_sec  last_active;
-         fc::uint128_t   activity_shares;
-         time_point_sec  last_activity_payout;
-         ///@}
-
          account_id_type get_id()const { return id; }
          /// This function should be used only when the account votes for a witness directly
          share_type      witness_vote_weight()const {
@@ -359,7 +350,6 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)(last_root_post)(post_bandwidth)
-                    (last_active)(activity_shares)(last_activity_payout)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),
