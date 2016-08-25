@@ -150,7 +150,7 @@ struct operation_visitor {
 
       /// reddit algorithm
       //s = c.net_votes;
-      double order = log10( std::max<int64_t>( abs(s), 1) );
+      double order = log10( std::max<int64_t>( std::abs(s), 1) );
       int sign = 0;
       if( s > 0 ) sign = 1;
       else if( s < 0 ) sign = -1;
@@ -292,8 +292,7 @@ struct operation_visitor {
    }
 
    void operator()( const transfer_operation& op )const {
-      if( op.to == "boostit" && op.amount.symbol == SBD_SYMBOL )  {
-         idump((op));
+      if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )  {
          vector<string> part; part.reserve(4);
          auto path = op.memo; 
          boost::split( part, path, boost::is_any_of("/") );
