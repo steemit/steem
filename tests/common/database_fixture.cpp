@@ -41,17 +41,24 @@ clean_database_fixture::clean_database_fixture()
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
    auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
+   db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    boost::program_options::variables_map options;
 
    open_database();
 
-   // app.initialize();
+   db_plugin->logging = false;
    ahplugin->plugin_initialize( options );
+   db_plugin->plugin_initialize( options );
 
    generate_block();
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );
+   generate_block();
+
+   //ahplugin->plugin_startup();
+   db_plugin->plugin_startup();
+
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
@@ -149,38 +156,22 @@ void database_fixture::open_database()
    }
 }
 
-signed_block database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
+void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
 {
-   auto witness = db.get_scheduled_witness(miss_blocks + 1);
-   auto time = db.get_slot_time(miss_blocks + 1);
-   skip |= database::skip_undo_history_check | database::skip_authority_check | database::skip_witness_signature;
-   auto block = db.generate_block(time, witness, key, skip);
-   db.clear_pending();
-   return block;
+   skip |= default_skip;
+   db_plugin->debug_generate_blocks( graphene::utilities::key_to_wif( key ), 1, skip, miss_blocks );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )
 {
-   for( uint32_t i = 0; i < block_count; ++i )
-      generate_block();
+   auto produced = db_plugin->debug_generate_blocks( debug_key, block_count, default_skip, 0 );
+   BOOST_REQUIRE( produced == block_count );
 }
 
 void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks)
 {
-   if( miss_intermediate_blocks )
-   {
-      generate_block();
-      auto slots_to_miss = db.get_slot_at_time(timestamp);
-      if( slots_to_miss <= 1 )
-         return;
-      --slots_to_miss;
-      generate_block(0, init_account_priv_key, slots_to_miss);
-      return;
-   }
-   while( db.head_block_time() < timestamp )
-      generate_block();
-
-   BOOST_REQUIRE( db.head_block_time() == timestamp );
+   db_plugin->debug_generate_blocks_until( debug_key, timestamp, miss_intermediate_blocks, default_skip );
+   BOOST_REQUIRE( ( db.head_block_time() - timestamp ).to_seconds() < STEEMIT_BLOCK_INTERVAL );
 }
 
 const account_object& database_fixture::account_create(
@@ -276,6 +267,11 @@ const witness_object& database_fixture::witness_create(
    FC_CAPTURE_AND_RETHROW( (owner)(url) )
 }
 
+void database_fixture::update_object( const fc::variant_object& vo )
+{
+   db_plugin->debug_update( vo, default_skip );
+}
+
 void database_fixture::fund(
    const string& account_name,
    const share_type& amount
@@ -286,6 +282,56 @@ void database_fixture::fund(
       transfer( STEEMIT_INIT_MINER_NAME, account_name, amount );
 
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
+}
+
+void database_fixture::fund(
+   const string& account_name,
+   const asset& amount
+   )
+{
+   try
+   {
+      const auto& account = db.get_account( account_name );
+
+      fc::mutable_variant_object vo;
+      vo("_action", "update")("id", account.id);
+
+      if( amount.symbol == STEEM_SYMBOL )
+      {
+         vo("balance", account.balance + amount);
+         update_object( vo );
+
+         const auto& gpo = db.get_dynamic_global_properties();
+         vo = fc::mutable_variant_object();
+         vo("_action", "update")("id", gpo.id)("current_supply", gpo.current_supply + amount );
+         update_object( vo );
+      }
+      else if( amount.symbol == SBD_SYMBOL )
+      {
+         vo("sbd_balance", account.sbd_balance + amount );
+         update_object( vo );
+
+         const auto& gpo = db.get_dynamic_global_properties();
+         vo = fc::mutable_variant_object();
+         vo("_action", "update")("id", gpo.id)("current_sbd_supply", gpo.current_sbd_supply + amount );
+         update_object( vo );
+
+         const auto& median_feed = db.get_feed_history();
+         if( median_feed.current_median_history.is_null() )
+         {
+            fc::mutable_variant_object vo;
+            vo("_action", "update")("id", median_feed.id)("current_median_history", price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL) ) );
+            update_object( vo );
+         }
+      }
+      else
+      {
+         FC_ASSERT( false, "Can only fund account with TESTS or TBD" );
+      }
+
+      db.update_virtual_supply();
+   }
+   FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
 
 void database_fixture::convert(
@@ -383,9 +429,10 @@ void database_fixture::set_price_feed( const price& new_price )
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
-         !db.skip_price_feed_limit_check ||
+      !db.skip_price_feed_limit_check ||
 #endif
-         feed_history_id_type()( db ).current_median_history == new_price );
+      feed_history_id_type()( db ).current_median_history == new_price
+   );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
@@ -417,91 +464,7 @@ void database_fixture::validate_database( void )
 {
    try
    {
-      const auto& account_idx = db.get_index_type< account_index >().indices().get< by_id >();
-      asset total_supply = asset( 0, STEEM_SYMBOL );
-      asset total_sbd = asset( 0, SBD_SYMBOL );
-      asset total_vesting = asset( 0, VESTS_SYMBOL );
-      share_type total_vsf_votes = share_type( 0 );
-
-      for( auto itr = account_idx.begin(); itr != account_idx.end(); itr++ )
-      {
-         total_supply += itr->balance;
-         total_sbd += itr->sbd_balance;
-         total_vesting += itr->vesting_shares;
-         total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
-                                 itr->witness_vote_weight() :
-                                 ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
-                                      itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
-                                      itr->vesting_shares.amount ) );
-      }
-
-      const auto& convert_request_idx = db.get_index_type< convert_index >().indices().get< by_id >();
-
-      for( auto itr = convert_request_idx.begin(); itr != convert_request_idx.end(); itr++ )
-      {
-         if( itr->amount.symbol == STEEM_SYMBOL )
-            total_supply += itr->amount;
-         else if( itr->amount.symbol == SBD_SYMBOL )
-            total_sbd += itr->amount;
-         else
-            BOOST_CHECK( !"Encountered illegal symbol in convert_request_object" );
-      }
-
-      const auto& limit_order_idx = db.get_index_type< limit_order_index >().indices().get< by_id >();
-
-      for( auto itr = limit_order_idx.begin(); itr != limit_order_idx.end(); itr++ )
-      {
-         if( itr->sell_price.base.symbol == STEEM_SYMBOL )
-         {
-            total_supply += asset( itr->for_sale, STEEM_SYMBOL );
-         }
-         else if ( itr->sell_price.base.symbol == SBD_SYMBOL )
-         {
-            total_sbd += asset( itr->for_sale, SBD_SYMBOL );
-         }
-      }
-
-      const auto& escrow_idx = db.get_index_type< escrow_index >().indices().get< by_id >();
-
-      for( auto itr = escrow_idx.begin(); itr != escrow_idx.end(); ++itr )
-      {
-         total_supply += itr->steem_balance;
-         total_sbd += itr->sbd_balance;
-
-         if( itr->pending_fee.symbol == STEEM_SYMBOL )
-            total_supply += itr->pending_fee;
-         else if( itr->pending_fee.symbol == SBD_SYMBOL )
-            total_sbd += itr->pending_fee;
-         else
-            FC_ASSERT( false, "found escrow pending fee that is not SBD or STEEM" );
-      }
-
-      fc::uint128_t total_rshares2;
-      fc::uint128_t total_children_rshares2;
-
-      const auto& comment_idx = db.get_index_type< comment_index >().indices().get< by_id >();
-
-      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); itr++ )
-      {
-         if( itr->net_rshares.value > 0 )
-            total_rshares2 += db.calculate_vshares( itr->net_rshares.value );
-         if( itr->parent_author.size() == 0 )
-            total_children_rshares2 += itr->children_rshares2;
-      }
-
-      auto gpo = db.get_dynamic_global_properties();
-
-      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
-
-      FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
-      FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
-      FC_ASSERT( gpo.total_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
-      FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
-      FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
-      FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
-      if ( !db.get_feed_history().current_median_history.is_null() )
-         BOOST_REQUIRE( gpo.current_sbd_supply * db.get_feed_history().current_median_history + gpo.current_supply
-            == gpo.virtual_supply );
+      db.validate_invariants();
    }
    FC_LOG_AND_RETHROW();
 }

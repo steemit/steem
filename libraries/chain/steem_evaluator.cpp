@@ -1679,4 +1679,50 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
    }
 }
 
+void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operation& op )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
+   const auto& from = db().get_account( op.from );
+   const auto& to   = db().get_account(op.to);
+   FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount );
+
+   db().adjust_balance( from, -op.amount );
+   db().adjust_savings_balance( to, op.amount );
+}
+
+void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_operation& op )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
+   FC_ASSERT( op.request_id < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
+   const auto& from = db().get_account( op.from );
+   const auto& to   = db().get_account(op.to);
+
+   FC_ASSERT( db().get_savings_balance( from, op.amount.symbol ) >= op.amount );
+   db().adjust_savings_balance( from, -op.amount );
+   db().create<savings_withdraw_object>( [&]( savings_withdraw_object& s ) {
+      s.from   = op.from;
+      s.to     = op.to;
+      s.amount = op.amount;
+#ifndef IS_LOW_MEM
+      s.memo   = op.memo;
+#endif
+      s.request_id = op.request_id;
+      s.complete = db().head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME;
+   });
+}
+
+void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_from_savings_operation& op )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
+   FC_ASSERT( op.request_id < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
+
+   const auto& swo_idx = db().get_index_type<withdraw_index>().indices().get<by_from_rid>();
+   auto itr = swo_idx.find( boost::make_tuple( op.from, op.request_id ) );
+   FC_ASSERT( itr != swo_idx.end(), "Invalid withdraw request id" );
+
+   const auto& swo = *itr;
+   db().adjust_savings_balance( db().get_account( swo.from ), swo.amount );
+   db().remove( swo );
+}
+
 } } // steemit::chain

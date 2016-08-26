@@ -367,4 +367,20 @@ namespace steemit { namespace chain {
       validate_account_name( new_recovery_account );
    }
 
+   void transfer_to_savings_operation::validate()const {
+      validate_account_name( from );
+      validate_account_name( to );
+      FC_ASSERT( amount.amount > 0 );
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
+   }
+   void transfer_from_savings_operation::validate()const {
+      validate_account_name( from );
+      validate_account_name( to );
+      FC_ASSERT( amount.amount > 0 );
+      FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
+   }
+   void cancel_transfer_from_savings_operation::validate()const {
+      validate_account_name( from );
+   }
+
 } } // steemit::chain
