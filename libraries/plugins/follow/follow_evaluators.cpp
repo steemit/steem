@@ -94,7 +94,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = account_id;
-                  f.rebloged_by = reblog_account.get_id();
+                  f.reblogged_by = reblog_account.get_id();
                   f.comment = c.id;
                   f.account_feed_id = next_id;
                });
