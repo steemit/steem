@@ -2580,5 +2580,78 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( clear_null_account )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing clearing the null account's balances on block" );
+
+      ACTORS( (alice) );
+      generate_block();
+
+      fund( "alice", ASSET( "10.000 TESTS" ) );
+      fund( "alice", ASSET( "10.000 TBD" ) );
+
+      transfer_operation transfer1;
+      transfer1.from = "alice";
+      transfer1.to = STEEMIT_NULL_ACCOUNT;
+      transfer1.amount = ASSET( "1.000 TESTS" );
+
+      transfer_operation transfer2;
+      transfer2.from = "alice";
+      transfer2.to = STEEMIT_NULL_ACCOUNT;
+      transfer2.amount = ASSET( "2.000 TBD" );
+
+      transfer_to_vesting_operation vest;
+      vest.from = "alice";
+      vest.to = STEEMIT_NULL_ACCOUNT;
+      vest.amount = ASSET( "3.000 TESTS" );
+
+      transfer_to_savings_operation save1;
+      save1.from = "alice";
+      save1.to = STEEMIT_NULL_ACCOUNT;
+      save1.amount = ASSET( "4.000 TESTS" );
+
+      transfer_to_savings_operation save2;
+      save2.from = "alice";
+      save2.to = STEEMIT_NULL_ACCOUNT;
+      save2.amount = ASSET( "5.000 TBD" );
+
+      BOOST_TEST_MESSAGE( "--- Transferring to NULL Account" );
+
+      signed_transaction tx;
+      tx.operations.push_back( transfer1 );
+      tx.operations.push_back( transfer2 );
+      tx.operations.push_back( vest );
+      tx.operations.push_back( save1);
+      tx.operations.push_back( save2 );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      validate_database();
+
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).balance == ASSET( "1.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).sbd_balance == ASSET( "2.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).vesting_shares > ASSET( "0.000000 VESTS" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).savings_balance == ASSET( "4.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).savings_sbd_balance == ASSET( "5.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "2.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "3.000 TBD" ) );
+
+      BOOST_TEST_MESSAGE( "--- Generating block to clear balances" );
+      generate_block();
+      validate_database();
+
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).vesting_shares == ASSET( "0.000000 VESTS" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).savings_balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( STEEMIT_NULL_ACCOUNT ).savings_sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "2.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == ASSET( "3.000 TBD" ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
