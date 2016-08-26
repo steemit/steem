@@ -84,6 +84,8 @@
 #define STEEMIT_VESTING_WITHDRAW_INTERVALS      104
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEMIT_MAX_WITHDRAW_ROUTES             10
+#define STEEMIT_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
+#define STEEMIT_SAVINGS_WITHDRAW_LIMIT          100
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEMIT_MAX_VOTE_CHANGES                5
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))

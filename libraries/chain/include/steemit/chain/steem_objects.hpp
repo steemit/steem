@@ -48,6 +48,18 @@ namespace steemit { namespace chain {
          bool           disputed = false;
    };
 
+   class savings_withdraw_object : public abstract_object<savings_withdraw_object> {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_savings_withdraw_object_type;
+
+         string         from;
+         string         to;
+         string         memo;
+         uint8_t        request_id;
+         asset          amount;
+         time_point_sec complete;
+   };
 
 
    /**
@@ -270,6 +282,32 @@ namespace steemit { namespace chain {
       >
    > escrow_object_index_type;
 
+   struct by_from_rid;
+   struct by_complete_from_rid;
+
+
+   typedef multi_index_container<
+      savings_withdraw_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_from_rid >,
+            composite_key< savings_withdraw_object,
+               member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
+               member< savings_withdraw_object, uint8_t, &savings_withdraw_object::request_id >
+            >
+         >,
+         ordered_unique< tag< by_complete_from_rid >,
+            composite_key< savings_withdraw_object,
+               member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
+               member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
+               member< savings_withdraw_object, uint8_t, &savings_withdraw_object::request_id >
+            >
+         >
+      >
+   > savings_withdraw_index_type;
+
+
+
    /**
     * @ingroup object_index
     */
@@ -278,6 +316,7 @@ namespace steemit { namespace chain {
    typedef generic_index< liquidity_reward_balance_object,     liquidity_reward_balance_index_type >     liquidity_reward_index;
    typedef generic_index< withdraw_vesting_route_object,       withdraw_vesting_route_index_type >       withdraw_vesting_route_index;
    typedef generic_index< escrow_object,                       escrow_object_index_type >                escrow_index;
+   typedef generic_index< savings_withdraw_object,             savings_withdraw_index_type>              withdraw_index;
 
 } } // steemit::chain
 
@@ -300,6 +339,8 @@ FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::
 FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db::object),
                     (from_account)(to_account)(percent)(auto_vest) )
 
+FC_REFLECT_DERIVED( steemit::chain::savings_withdraw_object,(graphene::db::object),
+                    (from)(to)(memo)(request_id)(amount)(complete) );
 FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
                     (escrow_id)(from)(to)(agent)
                     (ratification_deadline)(escrow_expiration)

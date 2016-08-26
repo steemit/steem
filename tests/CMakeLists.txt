@@ -12,7 +12,7 @@ target_link_libraries( chain_test steemit_chain steemit_app steemit_account_hist
 
 file(GLOB PLUGIN_TESTS "plugin_tests/*.cpp")
 add_executable( plugin_test ${PLUGIN_TESTS} ${COMMON_SOURCES} )
-target_link_libraries( plugin_test steemit_chain steemit_app steemit_account_history steemit_market_history fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( plugin_test steemit_chain steemit_app steemit_account_history steemit_market_history steemit_debug_node fc ${PLATFORM_SPECIFIC_LIBS} )
 
 if(MSVC)
   set_source_files_properties( tests/serialization_tests.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )

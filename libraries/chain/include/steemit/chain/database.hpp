@@ -113,6 +113,8 @@ namespace steemit { namespace chain {
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
          const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
+         const savings_withdraw_object& get_savings_withdraw( const string& owner, uint32_t request_id )const;
+         const savings_withdraw_object* find_savings_withdraw( const string& owner, uint32_t request_id )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -256,11 +258,13 @@ namespace steemit { namespace chain {
 
          void        adjust_liquidity_reward( const account_object& owner, const asset& volume, bool is_bid );
          void        adjust_balance( const account_object& a, const asset& delta );
+         void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
          void        update_owner_authority( const account_object& account, const authority& owner_authority );
 
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
+         asset       get_savings_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
 
          /** this updates the votes for witnesses as a result of account voting proxy changing */
@@ -289,6 +293,7 @@ namespace steemit { namespace chain {
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
+         void process_savings_withdraws();
          void account_recovery_processing();
          void expire_escrow_ratification();
          void update_median_feed();
@@ -361,6 +366,7 @@ namespace steemit { namespace chain {
          void retally_witness_votes();
          void retally_witness_vote_counts( bool force = false );
          void retally_liquidity_weight();
+         void update_virtual_supply();
 
          bool has_hardfork( uint32_t hardfork )const;
 
@@ -403,7 +409,6 @@ namespace steemit { namespace chain {
          void update_median_witness_props();
 
          void update_global_dynamic_data( const signed_block& b );
-         void update_virtual_supply();
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();
