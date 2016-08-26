@@ -175,6 +175,7 @@ namespace steemit { namespace chain {
    void custom_binary_operation::validate() const {
       /// required auth accounts are the ones whose bandwidth is consumed
       FC_ASSERT( (required_owner_auths.size() + required_active_auths.size() + required_posting_auths.size()) > 0, "at least on account must be specified" );
+      FC_ASSERT( id.size() <= 32, "id is too long" );
       for( const auto& a : required_auths ) a.validate();
    }
 

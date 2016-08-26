@@ -22,6 +22,46 @@ class json_evaluator_registry
    public:
       json_evaluator_registry( database& db ) : evaluator_registry< CustomOperationType >(db) {}
 
+      void apply_operations( const vector< CustomOperationType >& custom_operations, const base_operation& outer_o )
+      {
+         auto plugin_session = this->_db._undo_db.start_undo_session( true );
+
+         flat_set< string > outer_active;
+         flat_set< string > outer_owner;
+         flat_set< string > outer_posting;
+         std::vector< authority > outer_other;
+
+         flat_set< string > inner_active;
+         flat_set< string > inner_owner;
+         flat_set< string > inner_posting;
+         std::vector< authority > inner_other;
+
+         outer_o.get_required_owner_authorities( outer_owner );
+         outer_o.get_required_active_authorities( outer_active );
+         outer_o.get_required_posting_authorities( outer_posting );
+         outer_o.get_required_authorities( outer_other );
+
+         for( const CustomOperationType& inner_o : custom_operations )
+         {
+            operation_validate( inner_o );
+            operation_get_required_authorities( inner_o, inner_active, inner_owner, inner_posting, inner_other );
+         }
+
+         FC_ASSERT( inner_owner == outer_owner );
+         FC_ASSERT( inner_active == outer_active );
+         FC_ASSERT( inner_posting == outer_posting );
+         FC_ASSERT( inner_other == outer_other );
+
+         for( const CustomOperationType& inner_o : custom_operations )
+         {
+            // gcc errors if this-> is not here
+            // error message is "declarations in dependent base are not found by unqualified lookup"
+            this->get_evaluator( inner_o ).apply( inner_o );
+         }
+
+         plugin_session.merge();
+      }
+
       virtual void apply( const custom_json_operation& outer_o ) override
       {
          try
@@ -40,29 +80,28 @@ class json_evaluator_registry
                from_variant( v, custom_operations[0] );
             }
 
-            flat_set< string > inner_active;
-            flat_set< string > inner_owner;
-            flat_set< string > inner_posting;
-            std::vector< authority > inner_other;
-
-            for( const CustomOperationType& inner_o : custom_operations )
-            {
-               operation_validate( inner_o );
-               operation_get_required_authorities( inner_o, inner_active, inner_owner, inner_posting, inner_other );
-            }
-
-            FC_ASSERT( inner_active == outer_o.required_auths );
-            FC_ASSERT( inner_owner.size() == 0 );
-            FC_ASSERT( inner_posting == outer_o.required_posting_auths );
-            FC_ASSERT( inner_other.size() == 0 );
-
-            for( const CustomOperationType& inner_o : custom_operations )
-            {
-               // gcc errors if this-> is not here
-               // error message is "declarations in dependent base are not found by unqualified lookup"
-               this->get_evaluator( inner_o ).apply( inner_o );
-            }
+            apply_operations( custom_operations, outer_o );
          } FC_CAPTURE_AND_RETHROW( (outer_o) )
+      }
+
+      virtual void apply( const custom_binary_operation& outer_o ) override
+      {
+         try
+         {
+            vector< CustomOperationType > custom_operations;
+
+            try
+            {
+               custom_operations = fc::raw::unpack< vector< CustomOperationType > >( outer_o.data );
+            }
+            catch ( fc::exception& )
+            {
+               custom_operations.push_back( fc::raw::unpack< CustomOperationType >( outer_o.data ) );
+            }
+
+            apply_operations( custom_operations, outer_o );
+         }
+         FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
 };
 
