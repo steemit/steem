@@ -1622,13 +1622,7 @@ annotated_signed_transaction wallet_api::vote_for_witness(string voting_account,
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (voting_account)(witness_to_vote_for)(approve)(broadcast) ) }
 
-annotated_signed_transaction wallet_api::transfer(string from, string to, asset amount, string memo, bool broadcast )
-{ try {
-   FC_ASSERT( !is_locked() );
-    transfer_operation op;
-    op.from = from;
-    op.to = to;
-    op.amount = amount;
+string wallet_api::get_encrypted_memo( string from, string to, string memo ) {
 
     if( memo.size() > 0 && memo[0] == '#' ) {
        memo_data m;
@@ -1650,10 +1644,21 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
 
        m.encrypted = fc::aes_encrypt( encrypt_key, fc::raw::pack(memo.substr(1)) );
        m.check = fc::sha256::hash( encrypt_key )._hash[0];
-       op.memo = m;
+       return m;
     } else {
-       op.memo = memo;
+       return memo;
     }
+}
+
+annotated_signed_transaction wallet_api::transfer(string from, string to, asset amount, string memo, bool broadcast )
+{ try {
+   FC_ASSERT( !is_locked() );
+    transfer_operation op;
+    op.from = from;
+    op.to = to;
+    op.amount = amount;
+
+    op.memo = get_encrypted_memo( from, to, memo );
 
     signed_transaction tx;
     tx.operations.push_back( op );
@@ -1661,6 +1666,165 @@ annotated_signed_transaction wallet_api::transfer(string from, string to, asset 
 
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (from)(to)(amount)(memo)(broadcast) ) }
+
+annotated_signed_transaction wallet_api::escrow_transfer(
+      string from,
+      string to,
+      string agent,
+      uint32_t escrow_id,
+      asset sbd_amount,
+      asset steem_amount,
+      asset fee,
+      time_point_sec ratification_deadline,
+      time_point_sec escrow_expiration,
+      string json_meta,
+      bool broadcast
+   )
+{
+   FC_ASSERT( !is_locked() );
+   escrow_transfer_operation op;
+   op.from = from;
+   op.to = to;
+   op.agent = agent;
+   op.escrow_id = escrow_id;
+   op.sbd_amount = sbd_amount;
+   op.steem_amount = steem_amount;
+   op.fee = fee;
+   op.ratification_deadline = ratification_deadline;
+   op.escrow_expiration = escrow_expiration;
+   op.json_meta = json_meta;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::escrow_approve(
+      string from,
+      string to,
+      string agent,
+      string who,
+      uint32_t escrow_id,
+      bool approve,
+      bool broadcast
+   )
+{
+   FC_ASSERT( !is_locked() );
+   escrow_approve_operation op;
+   op.from = from;
+   op.to = to;
+   op.agent = agent;
+   op.who = who;
+   op.escrow_id = escrow_id;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::escrow_dispute(
+      string from,
+      string to,
+      string who,
+      uint32_t escrow_id,
+      bool broadcast
+   )
+{
+   escrow_dispute_operation op;
+   op.from = from;
+   op.to = to;
+   op.who = who;
+   op.escrow_id = escrow_id;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ *  Transfers into savings happen immediately, transfers from savings take 72 hours
+ */
+annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
+{
+
+   transfer_to_savings_operation op;
+   op.from = from;
+   op.to   = to;
+   op.memo = get_encrypted_memo( from, to, memo );
+   op.amount = amount;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+ */
+annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint16_t request_id, string to, asset amount, string memo, bool broadcast  ) {
+
+   transfer_from_savings_operation op;
+   op.from = from;
+   op.request_id = request_id;
+   op.to = to;
+   op.amount = amount;
+   op.memo = get_encrypted_memo( from, to, memo );
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ *  @param request_id the id used in transfer_from_savings
+ *  @param from the account that initiated the transfer
+ */
+annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint16_t request_id, bool broadcast  ) {
+
+   cancel_transfer_from_savings_operation op;
+   op.from = from;
+   op.request_id = request_id;
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+annotated_signed_transaction wallet_api::escrow_release(
+   string from,
+   string to,
+   string who,
+   uint32_t escrow_id,
+   asset sbd_amount,
+   asset steem_amount,
+   bool broadcast
+)
+{
+   escrow_release_operation op;
+   op.from = from;
+   op.to = to;
+   op.who = who;
+   op.escrow_id = escrow_id;
+   op.sbd_amount = sbd_amount;
+   op.steem_amount = steem_amount;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+   return my->sign_transaction( tx, broadcast );
+}
+
 
 annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string to, asset amount, bool broadcast )
 {
@@ -1740,38 +1904,53 @@ vector< convert_request_object > wallet_api::get_conversion_requests( string own
    return my->_remote_db->get_conversion_requests( owner_account );
 }
 
+string wallet_api::decrypt_memo( string encrypted_memo ) {
+   if( is_locked() ) return encrypted_memo;
+
+   if( encrypted_memo.size() && encrypted_memo[0] == '#' ) {
+      auto m = memo_data::from_string( encrypted_memo );
+      if( m ) {
+         fc::sha512 shared_secret;
+         auto from_key = my->try_get_private_key( m->from );
+         if( !from_key ) {
+            auto to_key   = my->try_get_private_key( m->to );
+            if( !to_key ) return encrypted_memo;
+            shared_secret = to_key->get_shared_secret( m->from );
+         } else {
+            shared_secret = from_key->get_shared_secret( m->to );
+         }
+         fc::sha512::encoder enc;
+         fc::raw::pack( enc, m->nonce );
+         fc::raw::pack( enc, shared_secret );
+         auto encryption_key = enc.result();
+
+         uint32_t check = fc::sha256::hash( encryption_key )._hash[0];
+         if( check != m->check ) return encrypted_memo;
+
+         try {
+            vector<char> decrypted = fc::aes_decrypt( encryption_key, m->encrypted );
+            return fc::raw::unpack<std::string>( decrypted );
+         } catch ( ... ){}
+      }
+   }
+   return encrypted_memo;
+}
+
 map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
    auto result = my->_remote_db->get_account_history(account,from,limit);
    if( !is_locked() ) {
       for( auto& item : result ) {
          if( item.second.op.which() == operation::tag<transfer_operation>::value ) {
             auto& top = item.second.op.get<transfer_operation>();
-            if( top.memo.size() && top.memo[0] == '#' ) {
-               auto m = memo_data::from_string( top.memo );
-               if( m ) {
-                  fc::sha512 shared_secret;
-                  auto from_key = my->try_get_private_key( m->from );
-                  if( !from_key ) {
-                     auto to_key   = my->try_get_private_key( m->to );
-                     if( !to_key ) return result;
-                     shared_secret = to_key->get_shared_secret( m->from );
-                  } else {
-                     shared_secret = from_key->get_shared_secret( m->to );
-                  }
-                  fc::sha512::encoder enc;
-                  fc::raw::pack( enc, m->nonce );
-                  fc::raw::pack( enc, shared_secret );
-                  auto encryption_key = enc.result();
-
-                  uint32_t check = fc::sha256::hash( encryption_key )._hash[0];
-                  if( check != m->check ) return result;
-
-                  try {
-                     vector<char> decrypted = fc::aes_decrypt( encryption_key, m->encrypted );
-                     top.memo = fc::raw::unpack<std::string>( decrypted );
-                  } catch ( ... ){}
-               }
-            }
+            top.memo = decrypt_memo( top.memo );
+         }
+         else if( item.second.op.which() == operation::tag<transfer_from_savings_operation>::value ) {
+            auto& top = item.second.op.get<transfer_from_savings_operation>();
+            top.memo = decrypt_memo( top.memo );
+         }
+         else if( item.second.op.which() == operation::tag<transfer_to_savings_operation>::value ) {
+            auto& top = item.second.op.get<transfer_to_savings_operation>();
+            top.memo = decrypt_memo( top.memo );
          }
       }
    }

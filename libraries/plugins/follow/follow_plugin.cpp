@@ -145,7 +145,7 @@ struct on_operation_visitor
             {
                fop = fc::json::from_string( op.json ).as< follow_operation >();
             }
-            catch( fc::assert_exception )
+            catch( const fc::exception& )
             {
                return;
             }

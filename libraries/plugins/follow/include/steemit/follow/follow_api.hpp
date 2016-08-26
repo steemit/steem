@@ -16,12 +16,14 @@ struct feed_entry
 {
    string   author;
    string   permlink;
+   string   reblog_by;
    uint32_t entry_id;
 };
 
 struct comment_feed_entry
 {
    comment_object comment;
+   string         reblog_by;
    uint32_t       entry_id;
 };
 
@@ -56,8 +58,8 @@ class follow_api
 
 } } // steemit::follow
 
-FC_REFLECT( steemit::follow::feed_entry, (author)(permlink)(entry_id) );
-FC_REFLECT( steemit::follow::comment_feed_entry, (comment)(entry_id) );
+FC_REFLECT( steemit::follow::feed_entry, (author)(permlink)(reblog_by)(entry_id) );
+FC_REFLECT( steemit::follow::comment_feed_entry, (comment)(reblog_by)(entry_id) );
 FC_REFLECT( steemit::follow::account_reputation, (account)(reputation) );
 
 FC_API( steemit::follow::follow_api, (get_followers)(get_following)(get_feed_entries)(get_feed)(get_account_reputations) )

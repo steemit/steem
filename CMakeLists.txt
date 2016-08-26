@@ -105,7 +105,7 @@ if( WIN32 )
    set(CRYPTO_LIB)
 
    if( MSVC )
-
+      add_compile_options(/wd4503 /wd4267 /wd4244)
       #looks like this flag can have different default on some machines.
       SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
       SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
@@ -150,7 +150,7 @@ else( WIN32 ) # Apple AND Linux
     if( APPLE )
         # Apple Specific Options Here
         message( STATUS "Configuring Steem on OS X" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -stdlib=libc++ -Wall" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11 -stdlib=libc++ -Wall -Wno-conversion" )
     else( APPLE )
         # Linux Specific Options Here
         message( STATUS "Configuring Steem on Linux" )

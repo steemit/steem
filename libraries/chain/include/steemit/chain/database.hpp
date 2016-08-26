@@ -113,6 +113,8 @@ namespace steemit { namespace chain {
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
          const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
          const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
+         const savings_withdraw_object& get_savings_withdraw( const string& owner, uint32_t request_id )const;
+         const savings_withdraw_object* find_savings_withdraw( const string& owner, uint32_t request_id )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -163,8 +165,12 @@ namespace steemit { namespace chain {
           *  @return the op_id which can be used to set the result after it has finished being applied.
           *  @todo rename this method notify_pre_apply_operation( op )
           */
-         void push_applied_operation( const operation& op );
-         void notify_post_apply_operation( const operation& op );
+         const operation_object notify_pre_apply_operation( const operation& op );
+         void notify_post_apply_operation( const operation_object& op );
+         inline const void push_virtual_operation( const operation& op );
+         void notify_applied_block( const signed_block& block );
+         void notify_on_pending_transaction( const signed_transaction& tx );
+         void notify_on_applied_transaction( const signed_transaction& tx );
 
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
@@ -187,6 +193,12 @@ namespace steemit { namespace chain {
           * block state.
           */
          fc::signal<void(const signed_transaction&)>     on_pending_transaction;
+
+         /**
+          * This signal is emitted any time a new transaction has been applied to the
+          * chain state.
+          */
+         fc::signal<void(const signed_transaction&)>     on_applied_transaction;
 
          /**
           *  Emitted After a block has been applied and committed.  The callback
@@ -240,18 +252,19 @@ namespace steemit { namespace chain {
          /** @return the sbd created and deposited to_account, may return STEEM if there is no median feed */
          asset create_sbd( const account_object& to_account, asset steem );
          asset create_vesting( const account_object& to_account, asset steem );
-         void update_account_activity( const account_object& account );
          void adjust_total_payout( const comment_object& a, const asset& sbd, const asset& curator_sbd_value );
 
          void update_witness_schedule();
 
          void        adjust_liquidity_reward( const account_object& owner, const asset& volume, bool is_bid );
          void        adjust_balance( const account_object& a, const asset& delta );
+         void        adjust_savings_balance( const account_object& a, const asset& delta );
          void        adjust_supply( const asset& delta, bool adjust_vesting = false );
          void        adjust_rshares2( const comment_object& comment, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 );
          void        update_owner_authority( const account_object& account, const authority& owner_authority );
 
          asset       get_balance( const account_object& a, asset_symbol_type symbol )const;
+         asset       get_savings_balance( const account_object& a, asset_symbol_type symbol )const;
          asset       get_balance( const string& aname, asset_symbol_type symbol )const { return get_balance( get_account(aname), symbol ); }
 
          /** this updates the votes for witnesses as a result of account voting proxy changing */
@@ -280,10 +293,11 @@ namespace steemit { namespace chain {
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
+         void process_savings_withdraws();
          void account_recovery_processing();
+         void expire_escrow_ratification();
          void update_median_feed();
          share_type claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem );
-         void stabalize_sbd();
 
          asset get_liquidity_reward()const;
          asset get_content_reward()const;
@@ -291,7 +305,6 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
-         uint16_t get_activity_rewards_percent() const;
          uint16_t get_discussion_rewards_percent() const;
          uint16_t get_curation_rewards_percent() const;
 
@@ -353,6 +366,7 @@ namespace steemit { namespace chain {
          void retally_witness_votes();
          void retally_witness_vote_counts( bool force = false );
          void retally_liquidity_weight();
+         void update_virtual_supply();
 
          bool has_hardfork( uint32_t hardfork )const;
 
@@ -367,6 +381,7 @@ namespace steemit { namespace chain {
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
+         bool skip_price_feed_limit_check = true;
 #endif
 
    protected:
@@ -394,7 +409,6 @@ namespace steemit { namespace chain {
          void update_median_witness_props();
 
          void update_global_dynamic_data( const signed_block& b );
-         void update_virtual_supply();
          void update_signing_witness(const witness_object& signing_witness, const signed_block& new_block);
          void update_last_irreversible_block();
          void clear_expired_transactions();

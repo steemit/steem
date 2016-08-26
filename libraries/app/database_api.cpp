@@ -456,6 +456,19 @@ optional< account_recovery_request_object > database_api::get_recovery_request( 
    return result;
 }
 
+optional< escrow_object > database_api::get_escrow( string from, uint32_t escrow_id )const
+{
+   optional< escrow_object > result;
+
+   try
+   {
+      result = my->_db.get_escrow( from, escrow_id );
+   }
+   catch ( ... ) {}
+
+   return result;
+}
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Witnesses                                                        //
@@ -594,9 +607,9 @@ order_book database_api_impl::get_order_book( uint32_t limit )const
    auto sell_itr = limit_price_idx.lower_bound(max_sell);
    auto buy_itr  = limit_price_idx.lower_bound(max_buy);
    auto end = limit_price_idx.end();
-   idump((max_sell)(max_buy));
-   if( sell_itr != end ) idump((*sell_itr));
-   if( buy_itr != end ) idump((*buy_itr));
+//   idump((max_sell)(max_buy));
+//   if( sell_itr != end ) idump((*sell_itr));
+//   if( buy_itr != end ) idump((*buy_itr));
 
    while(  sell_itr != end && sell_itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < limit )
    {
@@ -693,14 +706,14 @@ set<public_key_type> database_api::get_required_signatures( const signed_transac
 
 set<public_key_type> database_api_impl::get_required_signatures( const signed_transaction& trx, const flat_set<public_key_type>& available_keys )const
 {
-   wdump((trx)(available_keys));
+//   wdump((trx)(available_keys));
    auto result = trx.get_required_signatures( STEEMIT_CHAIN_ID,
                                               available_keys,
                                               [&]( string account_name ){ return &_db.get_account( account_name ).active; },
                                               [&]( string account_name ){ return &_db.get_account( account_name ).owner; },
                                               [&]( string account_name ){ return &_db.get_account( account_name ).posting; },
                                               STEEMIT_MAX_SIG_CHECK_DEPTH );
-   wdump((result));
+//   wdump((result));
    return result;
 }
 
@@ -711,7 +724,7 @@ set<public_key_type> database_api::get_potential_signatures( const signed_transa
 
 set<public_key_type> database_api_impl::get_potential_signatures( const signed_transaction& trx )const
 {
-   wdump((trx));
+//   wdump((trx));
    set<public_key_type> result;
    trx.get_required_signatures(
       STEEMIT_CHAIN_ID,
@@ -740,7 +753,7 @@ set<public_key_type> database_api_impl::get_potential_signatures( const signed_t
       STEEMIT_MAX_SIG_CHECK_DEPTH
    );
 
-   wdump((result));
+//   wdump((result));
    return result;
 }
 
@@ -854,6 +867,12 @@ u256 to256( const fc::uint128& t ) {
 
 void database_api::set_pending_payout( discussion& d )const
 {
+   const auto& cidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_comment>();
+   auto itr = cidx.lower_bound( d.id );
+   if( itr != cidx.end() && itr->comment == d.id )  {
+      d.promoted = asset( itr->promoted_balance, SBD_SYMBOL );
+   }
+
    const auto& props = my->_db.get_dynamic_global_properties();
    const auto& hist  = my->_db.get_feed_history();
    asset pot = props.total_reward_fund_steem;
@@ -926,7 +945,7 @@ vector<discussion> database_api::get_content_replies( string author, string perm
 
 vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const {
 
-   idump((start_parent_author)(start_permlink)(limit) );
+//   idump((start_parent_author)(start_permlink)(limit) );
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
    auto itr = last_update_idx.begin();
@@ -958,12 +977,12 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
 map<uint32_t,operation_object> database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
    FC_ASSERT( limit <= 2000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
    FC_ASSERT( from >= limit, "From must be greater than limit" );
-   idump((account)(from)(limit));
+//   idump((account)(from)(limit));
    const auto& idx = my->_db.get_index_type<account_history_index>().indices().get<by_account>();
    auto itr = idx.lower_bound( boost::make_tuple( account, from ) );
-   if( itr != idx.end() ) idump((*itr));
+//   if( itr != idx.end() ) idump((*itr));
    auto end = idx.upper_bound( boost::make_tuple( account, std::max( int64_t(0), int64_t(itr->sequence)-limit ) ) );
-   if( end != idx.end() ) idump((*end));
+//   if( end != idx.end() ) idump((*end));
 
    map<uint32_t,operation_object> result;
    while( itr != end ) {
@@ -1001,9 +1020,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   comment_id_type parent,
                                                   const Index& tidx, StartItr tidx_itr,
                                                   const std::function<bool(const comment_object&)>& filter,
-                                                  const std::function<bool(const comment_object&)>& exit  )const
+                                                  const std::function<bool(const comment_object&)>& exit,
+                                                  const std::function<bool(const tags::tag_object&)>& tag_exit
+                                                  )const
 {
-   idump((query));
+//   idump((query));
    vector<discussion> result;
 
    const auto& cidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_comment>();
@@ -1027,10 +1048,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
          break;
       try {
       result.push_back( get_discussion( tidx_itr->comment ) );
+      result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL );
 
       if( filter( result.back() ) )
          result.pop_back();
-      else if( exit( result.back() ) )
+      else if( exit( result.back() ) || tag_exit( *tidx_itr )  )
       {
          result.pop_back();
          break;
@@ -1062,6 +1084,16 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
 
    return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
+}
+vector<discussion> database_api::get_discussions_by_promoted( const discussion_query& query )const {
+   query.validate();
+   auto tag = fc::to_lower( query.tag );
+   auto parent = get_parent( query );
+
+   const auto& tidx = my->_db.get_index_type<tags::tag_index>().indices().get<tags::by_parent_promoted>();
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY) )  );
+
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_object& c ){ return c.children_rshares2 <= 0; }, exit_default, []( const tags::tag_object& t ){ return t.promoted_balance == 0; }  );
 }
 
 vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
@@ -1368,8 +1400,8 @@ state database_api::get_state( string path )const
                case operation::tag<interest_operation>::value:
                case operation::tag<transfer_operation>::value:
                case operation::tag<liquidity_reward_operation>::value:
-               case operation::tag<comment_reward_operation>::value:
-               case operation::tag<curate_reward_operation>::value:
+               case operation::tag<author_reward_operation>::value:
+               case operation::tag<curation_reward_operation>::value:
                   eacnt.transfer_history[item.first] =  item.second;
                   break;
                case operation::tag<comment_operation>::value:
@@ -1492,6 +1524,19 @@ state database_api::get_state( string path )const
          _state.content[key] = std::move(d);
       }
    }
+   else if( part[0] == "promoted" )
+   {
+      auto trending_disc = get_discussions_by_promoted( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc )
+      {
+         auto key = d.author + "/" + d.permlink;
+         didx.promoted.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
    else if( part[0] == "responses"  ) {
       auto trending_disc = get_discussions_by_children( {tag,20} );
 
@@ -1510,6 +1555,17 @@ state database_api::get_state( string path )const
       for( const auto& d : trending_disc ) {
          auto key = d.author +"/" + d.permlink;
          didx.hot.push_back( key );
+         if( d.author.size() ) accounts.insert(d.author);
+         _state.content[key] = std::move(d);
+      }
+   }
+   else if( !part[0].size() || part[0] == "promoted" ) {
+      auto trending_disc = get_discussions_by_promoted( {tag,20} );
+
+      auto& didx = _state.discussion_idx[tag];
+      for( const auto& d : trending_disc ) {
+         auto key = d.author +"/" + d.permlink;
+         didx.promoted.push_back( key );
          if( d.author.size() ) accounts.insert(d.author);
          _state.content[key] = std::move(d);
       }

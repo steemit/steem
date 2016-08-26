@@ -198,6 +198,8 @@ class database_api
 
       optional< account_recovery_request_object > get_recovery_request( string account ) const;
 
+      optional< escrow_object > get_escrow( string from, uint32_t escrow_id )const;
+
       ///////////////
       // Witnesses //
       ///////////////
@@ -310,6 +312,7 @@ class database_api
       vector<discussion> get_discussions_by_children( const discussion_query& query )const;
       vector<discussion> get_discussions_by_hot( const discussion_query& query )const;
       vector<discussion> get_discussions_by_feed( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_promoted( const discussion_query& query )const;
 
 
       ///@}
@@ -373,6 +376,7 @@ class database_api
 
       static bool filter_default( const comment_object& c ) { return false; }
       static bool exit_default( const comment_object& c ) { return false; }
+      static bool tag_exit_default( const tags::tag_object& c ) { return false; }
 
       template<typename Index, typename StartItr>
       vector<discussion> get_discussions( const discussion_query& q,
@@ -380,7 +384,9 @@ class database_api
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr,
                                           const std::function<bool(const comment_object&)>& filter = &database_api::filter_default,
-                                          const std::function<bool(const comment_object&)>& exit = &database_api::exit_default )const;
+                                          const std::function<bool(const comment_object&)>& exit = &database_api::exit_default,
+                                          const std::function<bool(const tags::tag_object&)>& tag_exit = &database_api::tag_exit_default
+                                          )const;
       comment_id_type get_parent( const discussion_query& q )const;
 
       void recursively_fetch_content( state& _state, discussion& root, set<string>& referenced_accounts )const;
@@ -416,6 +422,7 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_children)
    (get_discussions_by_hot)
    (get_discussions_by_feed)
+   (get_discussions_by_promoted)
 
    // Blocks and transactions
    (get_block_header)
@@ -449,6 +456,7 @@ FC_API(steemit::app::database_api,
    (get_account_history)
    (get_owner_history)
    (get_recovery_request)
+   (get_escrow)
 
    // Market
    (get_order_book)

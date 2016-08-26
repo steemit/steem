@@ -62,7 +62,7 @@ class json_evaluator_registry
                // error message is "declarations in dependent base are not found by unqualified lookup"
                this->get_evaluator( inner_o ).apply( inner_o );
             }
-         } FC_CAPTURE_AND_RETHROW()
+         } FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
 };
 

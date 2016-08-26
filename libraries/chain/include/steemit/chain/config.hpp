@@ -84,6 +84,8 @@
 #define STEEMIT_VESTING_WITHDRAW_INTERVALS      104
 #define STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEMIT_MAX_WITHDRAW_ROUTES             10
+#define STEEMIT_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
+#define STEEMIT_SAVINGS_WITHDRAW_LIMIT          100
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEMIT_MAX_VOTE_CHANGES                5
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
@@ -172,7 +174,6 @@
 
 #define STEEMIT_SBD_STOP_PERCENT                (5*STEEMIT_1_PERCENT ) // Stop printing SBD at 5% Market Cap
 #define STEEMIT_SBD_START_PERCENT               (2*STEEMIT_1_PERCENT) // Start reducing printing of SBD at 2% Market Cap
-#define STEEMIT_SBD_CONVERT_PERCENT             (20*STEEMIT_1_PERCENT) // Convert SBD into STEEM at 20% Market Cap
 
 #define STEEMIT_MIN_ACCOUNT_NAME_LENGTH          3
 #define STEEMIT_MAX_ACCOUNT_NAME_LENGTH         16

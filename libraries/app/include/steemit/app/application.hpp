@@ -86,8 +86,6 @@ namespace steemit { namespace app {
          fc::optional< api_access_info > get_api_access_info( const string& username )const;
          void set_api_access_info(const string& username, api_access_info&& permissions);
 
-         bool is_finished_syncing()const;
-
          /**
           * Register a way to instantiate the named API with the application.
           */
@@ -99,7 +97,9 @@ namespace steemit { namespace app {
          template< typename Api >
          void register_api_factory( const string& name )
          {
+#ifndef IS_TEST_NET
             idump((name));
+#endif
             register_api_factory( name, []( const api_context& ctx ) -> fc::api_ptr
             {
                // apparently the compiler is smart enough to downcast shared_ptr< api<Api> > to shared_ptr< api_base > automatically
@@ -114,9 +114,6 @@ namespace steemit { namespace app {
           * Instantiate the named API.  Currently this simply calls the previously registered factory method.
           */
          fc::api_ptr create_api_by_name( const api_context& ctx );
-
-         /// Emitted when syncing finishes (is_finished_syncing will return true)
-         boost::signals2::signal<void()> syncing_finished;
 
          void get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result );
 
