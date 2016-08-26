@@ -1518,6 +1518,7 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
 
 void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
 {
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_14__307 ) ) FC_ASSERT( false, "Challenge authority operation is currently disabled" );
    const auto& challenged = db().get_account( o.challenged );
    const auto& challenger = db().get_account( o.challenger );
 
