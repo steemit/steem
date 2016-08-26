@@ -1587,6 +1587,64 @@ void database::clear_witness_votes( const account_object& a )
       });
 }
 
+void database::clear_null_account_balance()
+{
+   if( !has_hardfork( STEEMIT_HARDFORK_0_14__327 ) ) return;
+
+   const auto& null_account = get_account( STEEMIT_NULL_ACCOUNT );
+   asset total_steem( 0, STEEM_SYMBOL );
+   asset total_sbd( 0, SBD_SYMBOL );
+
+   if( null_account.balance.amount > 0 )
+   {
+      total_steem += null_account.balance;
+      adjust_balance( null_account, -null_account.balance );
+   }
+
+   if( null_account.savings_balance.amount > 0 )
+   {
+      total_steem += null_account.savings_balance;
+      adjust_savings_balance( null_account, -null_account.savings_balance );
+   }
+
+   if( null_account.sbd_balance.amount > 0 )
+   {
+      total_sbd += null_account.sbd_balance;
+      adjust_balance( null_account, -null_account.sbd_balance );
+   }
+
+   if( null_account.savings_sbd_balance.amount > 0 )
+   {
+      total_sbd += null_account.savings_sbd_balance;
+      adjust_savings_balance( null_account, -null_account.savings_sbd_balance );
+   }
+
+   if( null_account.vesting_shares.amount > 0 )
+   {
+      const auto& gpo = get_dynamic_global_properties();
+      auto converted_steem = null_account.vesting_shares * gpo.get_vesting_share_price();
+
+      modify( gpo, [&]( dynamic_global_property_object& g )
+      {
+         g.total_vesting_shares -= null_account.vesting_shares;
+         g.total_vesting_fund_steem -= converted_steem;
+      });
+
+      modify( null_account, [&]( account_object& a )
+      {
+         a.vesting_shares.amount = 0;
+      });
+
+      total_steem += converted_steem;
+   }
+
+   if( total_steem.amount > 0 )
+      adjust_supply( -total_steem );
+
+   if( total_sbd.amount > 0 )
+      adjust_supply( -total_sbd );
+}
+
 /**
  * This method recursively tallies children_rshares2 for this post plus all of its parents,
  * TODO: this method can be skipped for validation-only nodes
@@ -2703,6 +2761,7 @@ void database::_apply_block( const signed_block& next_block )
    update_median_feed();
    update_virtual_supply();
 
+   clear_null_account_balance();
    process_funds();
    process_conversions();
    process_comment_cashout();
