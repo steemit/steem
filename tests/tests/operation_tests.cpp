@@ -1902,11 +1902,85 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( custom_validate ) {}
+BOOST_AUTO_TEST_CASE( custom_authorities )
+{
+   custom_operation op;
+   op.required_auths.insert( "alice" );
+   op.required_auths.insert( "bob" );
 
-BOOST_AUTO_TEST_CASE( custom_authorities ) {}
+   flat_set< string > auths;
+   flat_set< string > expected;
 
-BOOST_AUTO_TEST_CASE( custom_apply ) {}
+   op.get_required_owner_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   op.get_required_posting_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   expected.insert( "alice" );
+   expected.insert( "bob" );
+   op.get_required_active_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
+
+BOOST_AUTO_TEST_CASE( custom_json_authorities )
+{
+   custom_json_operation op;
+   op.required_auths.insert( "alice" );
+   op.required_posting_auths.insert( "bob" );
+
+   flat_set< string > auths;
+   flat_set< string > expected;
+
+   op.get_required_owner_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   expected.insert( "alice" );
+   op.get_required_active_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   auths.clear();
+   expected.clear();
+   expected.insert( "bob" );
+   op.get_required_posting_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
+
+BOOST_AUTO_TEST_CASE( custom_binary_authorities )
+{
+   ACTORS( (alice) )
+
+   custom_binary_operation op;
+   op.required_owner_auths.insert( "alice" );
+   op.required_active_auths.insert( "bob" );
+   op.required_posting_auths.insert( "sam" );
+   op.required_auths.push_back( alice.posting );
+
+   flat_set< string > acc_auths;
+   flat_set< string > acc_expected;
+   vector< authority > auths;
+   vector< authority > expected;
+
+   acc_expected.insert( "alice" );
+   op.get_required_owner_authorities( acc_auths );
+   BOOST_REQUIRE( acc_auths == acc_expected );
+
+   acc_auths.clear();
+   acc_expected.clear();
+   acc_expected.insert( "bob" );
+   op.get_required_active_authorities( acc_auths );
+   BOOST_REQUIRE( acc_auths == acc_expected );
+
+   acc_auths.clear();
+   acc_expected.clear();
+   acc_expected.insert( "sam" );
+   op.get_required_posting_authorities( acc_auths );
+   BOOST_REQUIRE( acc_auths == acc_expected );
+
+   expected.push_back( alice.posting );
+   op.get_required_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
 
 BOOST_AUTO_TEST_CASE( feed_publish_validate )
 {
