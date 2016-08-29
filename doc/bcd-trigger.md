@@ -9,7 +9,7 @@ state of steemd.  This option takes a list of `[nblocks,nseconds]` pairs.
 ### Examples
 
 - For example, `[[0,10]]` means to set the BCD state whenever 0 blocks have been received in the last 10 seconds.
-- For another example, `[[0,10],[85,300]]` means to set the BCD state whenever 0 blocks have been received in the last 10 seconds, *or* when 108 or fewer blocks have been received in the last 385 seconds.  This is the default setting.
+- For another example, `[[0,10],[85,300]]` means to set the BCD state whenever 0 blocks have been received in the last 10 seconds, *or* when 85 or fewer blocks have been received in the last 385 seconds.  This is the default setting.
 
 ### More notes
 
