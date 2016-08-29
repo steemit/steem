@@ -572,6 +572,7 @@ namespace graphene { namespace net { namespace detail {
       unsigned _maximum_blocks_per_peer_during_syncing;
 
       std::list<fc::future<void> > _handle_message_calls_in_progress;
+      std::set<message_hash_type> _message_ids_currently_being_processed;
 
       node_impl(const std::string& user_agent);
       virtual ~node_impl();
@@ -2821,7 +2822,15 @@ namespace graphene { namespace net { namespace detail {
            ( "count", item_ids_inventory_message_received.item_hashes_available.size() )("endpoint", originating_peer->get_remote_endpoint() ) );
       for( const item_hash_t& item_hash : item_ids_inventory_message_received.item_hashes_available )
       {
+        if (_message_ids_currently_being_processed.find(item_hash) != _message_ids_currently_being_processed.end())
+          // we're in the middle of processing this item, no need to fetch it again
+          continue;
         item_id advertised_item_id(item_ids_inventory_message_received.item_type, item_hash);
+
+        if (_new_inventory.find(advertised_item_id) != _new_inventory.end())
+          // we've processed this item but haven't advertised it to our peers yet, don't fetch it again
+          continue;
+
         bool we_advertised_this_item_to_a_peer = false;
         bool we_requested_this_item_from_a_peer = false;
         for (const peer_connection_ptr peer : _active_connections)
@@ -3340,12 +3349,14 @@ namespace graphene { namespace net { namespace detail {
                       block_message_to_process.block_id) == _most_recent_blocks_accepted.end())
         {
           std::vector<fc::uint160_t> contained_transaction_message_ids;
+          _message_ids_currently_being_processed.insert(message_hash);
           fc_ilog(fc::logger::get("sync"),
                   "p2p pushing block #${block_num} ${block_hash} from ${peer} (message_id was ${id})", 
                   ("block_num", block_message_to_process.block.block_num())
                   ("block_hash", block_message_to_process.block_id)
                   ("peer", originating_peer->get_remote_endpoint())("id", message_hash));
           _delegate->handle_block(block_message_to_process, false, contained_transaction_message_ids);
+          _message_ids_currently_being_processed.erase(message_hash);
           message_validated_time = fc::time_point::now();
           ilog("Successfully pushed block ${num} (id:${id})",
                 ("num", block_message_to_process.block.block_num())
