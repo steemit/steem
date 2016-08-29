@@ -97,7 +97,7 @@ namespace steemit { namespace chain {
           * used to compute witness participation.
           */
          fc::uint128_t recent_slots_filled;
-         uint8_t       participation_count; ///< Divide by 128 to compute participation percentage
+         uint8_t       participation_count = 0; ///< Divide by 128 to compute participation percentage
 
          uint32_t last_irreversible_block_num = 0;
 

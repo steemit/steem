@@ -836,7 +836,13 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
    while( itr != idx.end() && itr->comment == cid )
    {
       const auto& vo = itr->voter(my->_db);
-      result.push_back(vote_state{vo.name,itr->weight,itr->rshares,itr->vote_percent,itr->last_update});
+      vote_state vstate;
+      vstate.voter = vo.name;
+      vstate.weight = itr->weight;
+      vstate.rshares = itr->rshares;
+      vstate.percent = itr->vote_percent;
+      vstate.time = itr->last_update;
+      result.push_back(vstate);
       ++itr;
    }
    return result;
@@ -853,7 +859,13 @@ vector<account_vote> database_api::get_account_votes( string voter )const {
    while( itr != end )
    {
       const auto& vo = itr->comment(my->_db);
-      result.push_back(account_vote{(vo.author+"/"+vo.permlink),itr->weight,itr->rshares,itr->vote_percent, itr->last_update});
+      account_vote avote;
+      avote.authorperm = vo.author+"/"+vo.permlink;
+      avote.weight = itr->weight;
+      avote.rshares = itr->rshares;
+      avote.percent = itr->vote_percent;
+      avote.time = itr->last_update;
+      result.push_back(avote);
       ++itr;
    }
    return result;
@@ -1500,8 +1512,12 @@ state database_api::get_state( string path )const
       }
       _state.pow_queue = get_miner_queue();
    }
-   else if( part[0] == "trending"  ) {
-      auto trending_disc = get_discussions_by_trending( {tag,20} );
+   else if( part[0] == "trending"  )
+   {
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_trending( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1513,7 +1529,10 @@ state database_api::get_state( string path )const
    }
    else if( part[0] == "trending30" )
    {
-      auto trending_disc = get_discussions_by_trending30( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_trending30( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc )
@@ -1526,7 +1545,10 @@ state database_api::get_state( string path )const
    }
    else if( part[0] == "promoted" )
    {
-      auto trending_disc = get_discussions_by_promoted( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_promoted( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc )
@@ -1538,7 +1560,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "responses"  ) {
-      auto trending_disc = get_discussions_by_children( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_children( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1549,7 +1574,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( !part[0].size() || part[0] == "hot" ) {
-      auto trending_disc = get_discussions_by_hot( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_hot( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1560,7 +1588,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( !part[0].size() || part[0] == "promoted" ) {
-      auto trending_disc = get_discussions_by_promoted( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_promoted( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1571,7 +1602,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "votes"  ) {
-      auto trending_disc = get_discussions_by_votes( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_votes( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1582,7 +1616,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "cashout"  ) {
-      auto trending_disc = get_discussions_by_cashout( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_cashout( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1593,7 +1630,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "active"  ) {
-      auto trending_disc = get_discussions_by_active( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_active( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1604,7 +1644,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "created"  ) {
-      auto trending_disc = get_discussions_by_created( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_created( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {
@@ -1615,7 +1658,10 @@ state database_api::get_state( string path )const
       }
    }
    else if( part[0] == "recent"  ) {
-      auto trending_disc = get_discussions_by_created( {tag,20} );
+      discussion_query q;
+      q.tag = tag;
+      q.limit = 20;
+      auto trending_disc = get_discussions_by_created( q );
 
       auto& didx = _state.discussion_idx[tag];
       for( const auto& d : trending_disc ) {

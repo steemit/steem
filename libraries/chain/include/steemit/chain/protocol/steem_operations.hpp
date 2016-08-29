@@ -362,8 +362,8 @@ namespace steemit { namespace chain {
    {
       string   from_account;
       string   to_account;
-      uint16_t percent;
-      bool     auto_vest;
+      uint16_t percent = 0;
+      bool     auto_vest = false;
 
       void validate()const;
       void get_required_active_authorities( flat_set< string >& a )const { a.insert( from_account ); }
@@ -583,10 +583,10 @@ namespace steemit { namespace chain {
       :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
 
       string   current_owner;
-      uint32_t current_orderid;
+      uint32_t current_orderid = 0;
       asset    current_pays;
       string   open_owner;
-      uint32_t open_orderid;
+      uint32_t open_orderid = 0;
       asset    open_pays;
    };
 

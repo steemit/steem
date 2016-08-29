@@ -67,7 +67,7 @@ struct discussion_query {
    }
 
    string           tag;
-   uint32_t         limit;
+   uint32_t         limit = 0;
    set<string>      filter_tags;
    optional<string> start_author;
    optional<string> start_permlink;

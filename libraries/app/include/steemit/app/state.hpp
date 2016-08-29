@@ -40,17 +40,17 @@ namespace steemit { namespace app {
    };
    struct vote_state {
       string         voter;
-      uint64_t       weight;
-      int64_t        rshares;
-      int16_t        percent;
+      uint64_t       weight = 0;
+      int64_t        rshares = 0;
+      int16_t        percent = 0;
       time_point_sec time;
    };
 
    struct account_vote {
       string         authorperm;
-      uint64_t       weight;
-      int64_t        rshares;
-      int16_t        percent;
+      uint64_t       weight = 0;
+      int64_t        rshares = 0;
+      int16_t        percent = 0;
       time_point_sec time;
    };
 

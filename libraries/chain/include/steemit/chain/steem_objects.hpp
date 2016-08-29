@@ -34,7 +34,7 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_escrow_object_type;
 
-         uint32_t       escrow_id;
+         uint32_t       escrow_id = 0;
          string         from;
          string         to;
          string         agent;
@@ -56,7 +56,7 @@ namespace steemit { namespace chain {
          string         from;
          string         to;
          string         memo;
-         uint8_t        request_id;
+         uint8_t        request_id = 0;
          asset          amount;
          time_point_sec complete;
    };
@@ -128,7 +128,7 @@ namespace steemit { namespace chain {
          time_point_sec   created;
          time_point_sec   expiration;
          string           seller;
-         uint32_t         orderid;
+         uint32_t         orderid = 0;
          share_type       for_sale; ///< asset id is sell_price.base.symbol
          price            sell_price;
 
@@ -154,8 +154,8 @@ namespace steemit { namespace chain {
 
          account_id_type from_account;
          account_id_type to_account;
-         uint16_t        percent;
-         bool            auto_vest;
+         uint16_t        percent = 0;
+         bool            auto_vest = false;
    };
 
    struct by_price;

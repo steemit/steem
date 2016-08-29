@@ -51,7 +51,7 @@ class feed_object : public abstract_object< feed_object >
       account_id_type account;
       account_id_type reblogged_by;
       comment_id_type comment;
-      uint32_t        account_feed_id;
+      uint32_t        account_feed_id = 0;
 };
 
 class reputation_object : public abstract_object< reputation_object >
