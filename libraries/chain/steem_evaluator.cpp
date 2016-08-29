@@ -933,20 +933,34 @@ void vote_evaluator::do_apply( const vote_operation& o )
    const auto& comment_vote_idx = db().get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
    auto itr = comment_vote_idx.find( std::make_tuple( comment.id, voter.id ) );
 
-   auto elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
+   int64_t elapsed_seconds   = (db().head_block_time() - voter.last_vote_time).to_seconds();
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
       FC_ASSERT( elapsed_seconds >= STEEMIT_MIN_VOTE_INTERVAL_SEC, "Can only vote once every 3 seconds" );
 
-   auto regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) /  STEEMIT_VOTE_REGENERATION_SECONDS;
-   auto current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
+   int64_t regenerated_power = (STEEMIT_100_PERCENT * elapsed_seconds) / STEEMIT_VOTE_REGENERATION_SECONDS;
+   int64_t current_power     = std::min( int64_t(voter.voting_power + regenerated_power), int64_t(STEEMIT_100_PERCENT) );
    FC_ASSERT( current_power > 0, "Account currently does not have voting power" );
 
    int64_t  abs_weight    = abs(o.weight);
-   auto     used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
-   used_power = (used_power/200);
+   int64_t  used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
+
+   const dynamic_global_property_object& dgpo = db().get_dynamic_global_properties();
+
+   // used_power = (current_power * abs_weight / STEEMIT_100_PERCENT) * (reserve / max_vote_denom)
+   // The second multiplication is rounded up as of HF 259
+   int64_t max_vote_denom = dgpo.vote_regeneration_per_day * STEEMIT_VOTE_REGENERATION_SECONDS / (60*60*24);
+   FC_ASSERT( max_vote_denom > 0 );
+
    if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
-      used_power += 1;
+   {
+      FC_ASSERT( max_vote_denom == 200 );   // TODO: Remove this assert
+      used_power = (used_power / max_vote_denom)+1;
+   }
+   else
+   {
+      used_power = (used_power + max_vote_denom - 1) / max_vote_denom;
+   }
    FC_ASSERT( used_power <= current_power, "Account does not have enough power for vote" );
 
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();

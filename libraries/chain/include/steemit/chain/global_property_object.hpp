@@ -119,6 +119,13 @@ namespace steemit { namespace chain {
           *   happen every block.
           */
          uint64_t current_reserve_ratio = 1;
+
+         /**
+          * The number of votes regenerated per day.  Any user voting slower than this rate will be
+          * "wasting" voting power through spillover; any user voting faster than this rate will have
+          * their votes reduced.
+          */
+         uint32_t vote_regeneration_per_day = 40;
    };
 }}
 
@@ -148,5 +155,6 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (last_irreversible_block_num)
                     (max_virtual_bandwidth)
                     (current_reserve_ratio)
+                    (vote_regeneration_per_day)
                   )
 
