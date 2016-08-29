@@ -22,7 +22,7 @@ class json_evaluator_registry
    public:
       json_evaluator_registry( database& db ) : evaluator_registry< CustomOperationType >(db) {}
 
-      void apply_operations( const vector< CustomOperationType >& custom_operations, const base_operation& outer_o )
+      void apply_operations( const vector< CustomOperationType >& custom_operations, const operation& outer_o )
       {
          auto plugin_session = this->_db._undo_db.start_undo_session( true );
 
@@ -36,10 +36,7 @@ class json_evaluator_registry
          flat_set< string > inner_posting;
          std::vector< authority > inner_other;
 
-         outer_o.get_required_owner_authorities( outer_owner );
-         outer_o.get_required_active_authorities( outer_active );
-         outer_o.get_required_posting_authorities( outer_posting );
-         outer_o.get_required_authorities( outer_other );
+         operation_get_required_authorities( outer_o, outer_active, outer_owner, outer_posting, outer_other );
 
          for( const CustomOperationType& inner_o : custom_operations )
          {
@@ -80,7 +77,7 @@ class json_evaluator_registry
                from_variant( v, custom_operations[0] );
             }
 
-            apply_operations( custom_operations, outer_o );
+            apply_operations( custom_operations, operation( outer_o ) );
          } FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
 
@@ -99,7 +96,7 @@ class json_evaluator_registry
                custom_operations.push_back( fc::raw::unpack< CustomOperationType >( outer_o.data ) );
             }
 
-            apply_operations( custom_operations, outer_o );
+            apply_operations( custom_operations, operation( outer_o ) );
          }
          FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
