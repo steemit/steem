@@ -488,7 +488,7 @@ namespace steemit { namespace chain {
       flat_set<string>   required_posting_auths;
       vector<authority>  required_auths;
 
-      int64_t           id; ///< must be less than 32 characters long
+      string            id; ///< must be less than 32 characters long
       vector<char>      data;
 
       void validate()const;
