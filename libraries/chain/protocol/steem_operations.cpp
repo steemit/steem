@@ -337,4 +337,9 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( new_recovery_account ) );
    }
 
+   void decline_voting_rights_operation::validate()const
+   {
+      FC_ASSERT( is_valid_account_name( account ) );
+   }
+
 } } // steemit::chain

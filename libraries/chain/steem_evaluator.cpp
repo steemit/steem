@@ -771,6 +771,9 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    const auto& voter = db().get_account( o.account );
    FC_ASSERT( voter.proxy.size() == 0, "A proxy is currently set, please clear the proxy before voting for a witness" );
 
+   if( o.approve )
+      FC_ASSERT( voter.can_vote, "Account has revoked its voting rights" );
+
    const auto& witness = db().get_witness( o.witness );
 
    const auto& by_account_witness_idx = db().get_index_type< witness_vote_index >().indices().get< by_account_witness >();
@@ -838,6 +841,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
       FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ) );
+
+   if( o.weight ) FC_ASSERT( voter.can_vote, "Voter has revoked their voting rights" );
 
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
 
@@ -1601,6 +1606,31 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
    else // Request exists and changing back to current recovery account
    {
       db().remove( *request );
+   }
+}
+
+void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_operation& o )
+{
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__324 ) );
+
+   const auto& account = db().get_account( o.account );
+   const auto& request_idx = db().get_index_type< decline_voting_rights_request_index >().indices().get< by_account >();
+   auto itr = request_idx.find( account.id );
+
+   if( o.decline )
+   {
+      FC_ASSERT( itr == request_idx.end(), "Cannot create new request because one already exists" );
+
+      db().create< decline_voting_rights_request_object >( [&]( decline_voting_rights_request_object& req )
+      {
+         req.account = account.id;
+         req.effective_date = db().head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
+      });
+   }
+   else
+   {
+      FC_ASSERT( itr != request_idx.end(), "Cannot cancel the request because it does not exist" );
+      db().remove( *itr );
    }
 }
 

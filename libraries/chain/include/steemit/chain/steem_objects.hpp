@@ -67,11 +67,11 @@ namespace steemit { namespace chain {
          uint128_t       weight = 0;
 
          /// this is the sort index
-         uint128_t volume_weight()const { 
-            return steem_volume * sbd_volume * is_positive(); 
+         uint128_t volume_weight()const {
+            return steem_volume * sbd_volume * is_positive();
         }
-         uint128_t min_volume_weight()const { 
-            return std::min(steem_volume,sbd_volume) * is_positive(); 
+         uint128_t min_volume_weight()const {
+            return std::min(steem_volume,sbd_volume) * is_positive();
         }
          void update_weight( bool hf9 ) {
              weight = hf9 ? min_volume_weight() : volume_weight();
@@ -139,6 +139,16 @@ namespace steemit { namespace chain {
          account_id_type to_account;
          uint16_t        percent;
          bool            auto_vest;
+   };
+
+   class decline_voting_rights_request_object : public abstract_object< decline_voting_rights_request_object >
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_decline_voting_rights_request_object_type;
+
+         account_id_type account;
+         time_point_sec  effective_date;
    };
 
    struct by_price;
@@ -247,6 +257,25 @@ namespace steemit { namespace chain {
       >
    > escrow_object_index_type;
 
+   struct by_account;
+   struct by_effective_date;
+   typedef multi_index_container<
+      decline_voting_rights_request_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_account >,
+            member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+         >,
+         ordered_unique< tag< by_effective_date >,
+            composite_key< decline_voting_rights_request_object,
+               member< decline_voting_rights_request_object, time_point_sec, &decline_voting_rights_request_object::effective_date >,
+               member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< account_id_type > >
+         >
+      >
+   > decline_voting_rights_request_object_index_type;
+
    /**
     * @ingroup object_index
     */
@@ -255,6 +284,7 @@ namespace steemit { namespace chain {
    typedef generic_index< liquidity_reward_balance_object,     liquidity_reward_balance_index_type >     liquidity_reward_index;
    typedef generic_index< withdraw_vesting_route_object,       withdraw_vesting_route_index_type >       withdraw_vesting_route_index;
    typedef generic_index< escrow_object,                       escrow_object_index_type >                escrow_index;
+   typedef generic_index< decline_voting_rights_request_object,   decline_voting_rights_request_object_index_type >  decline_voting_rights_request_index;
 
 } } // steemit::chain
 
@@ -277,5 +307,8 @@ FC_REFLECT_DERIVED( steemit::chain::liquidity_reward_balance_object, (graphene::
 FC_REFLECT_DERIVED( steemit::chain::withdraw_vesting_route_object, (graphene::db::object),
                     (from_account)(to_account)(percent)(auto_vest) )
 
-FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object), 
+FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
                     (escrow_id)(from)(to)(agent)(expiration)(balance)(disputed) );
+
+FC_REFLECT_DERIVED( steemit::chain::decline_voting_rights_request_object, (graphene::db::object),
+                     (account)(effective_date) );

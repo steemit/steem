@@ -42,6 +42,7 @@ namespace steemit { namespace chain {
          uint32_t        lifetime_vote_count = 0;
          uint32_t        post_count = 0;
 
+         bool            can_vote = true;
          uint16_t        voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
          time_point_sec  last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
 
@@ -349,7 +350,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
                     (created)(mined)
                     (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)
-                    (comment_count)(lifetime_vote_count)(post_count)(voting_power)(last_vote_time)
+                    (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
                     (balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)

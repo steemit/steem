@@ -2323,6 +2323,23 @@ void database::account_recovery_processing()
    }
 }
 
+void database::process_decline_voting_rights()
+{
+   const auto request_idx = get_index_type< decline_voting_rights_request_index >().indices().get< by_effective_date >();
+   auto itr = request_idx.begin();
+
+   while( itr != request_idx.end() && itr->effective_date <= head_block_time() )
+   {
+      modify( itr->account(*this), [&]( account_object& a )
+      {
+         a.can_vote = false;
+      });
+
+      remove( *itr );
+      itr = request_idx.begin();
+   }
+}
+
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
 {
    return get( dynamic_global_property_id_type() );
@@ -2439,6 +2456,7 @@ void database::initialize_indexes()
    add_index< primary_index< owner_authority_history_index                 > >();
    add_index< primary_index< account_recovery_request_index                > >();
    add_index< primary_index< change_recovery_account_request_index         > >();
+   add_index< primary_index< decline_voting_rights_request_index           > >();
 }
 
 void database::init_genesis( uint64_t init_supply )
@@ -2670,6 +2688,7 @@ void database::_apply_block( const signed_block& next_block )
    update_virtual_supply();
 
    account_recovery_processing();
+   process_decline_voting_rights();
 
    process_hardforks();
 
