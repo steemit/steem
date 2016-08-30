@@ -503,7 +503,7 @@ class wallet_api
        * Update a witness object owned by the given account.
        *
        * @param witness_name The name of the witness account.
-       * @param url Same as for create_witness.  The empty string makes it remain the same.
+       * @param url A URL containing some information about the witness.  The empty string makes it remain the same.
        * @param block_signing_key The new block signing public key.  The empty string disables block production.
        * @param props The chain properties the witness is voting on.
        * @param broadcast true if you wish to broadcast the transaction.
