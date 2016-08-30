@@ -40,5 +40,6 @@ DEFINE_EVALUATOR( change_recovery_account )
 DEFINE_EVALUATOR( transfer_to_savings )
 DEFINE_EVALUATOR( transfer_from_savings )
 DEFINE_EVALUATOR( cancel_transfer_from_savings )
+DEFINE_EVALUATOR( decline_voting_rights )
 
 } } // steemit::chain

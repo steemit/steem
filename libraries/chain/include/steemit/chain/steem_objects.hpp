@@ -158,6 +158,16 @@ namespace steemit { namespace chain {
          bool            auto_vest = false;
    };
 
+   class decline_voting_rights_request_object : public abstract_object< decline_voting_rights_request_object >
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_decline_voting_rights_request_object_type;
+
+         account_id_type account;
+         time_point_sec  effective_date;
+   };
+
    struct by_price;
    struct by_expiration;
    struct by_account;
@@ -284,8 +294,6 @@ namespace steemit { namespace chain {
 
    struct by_from_rid;
    struct by_complete_from_rid;
-
-
    typedef multi_index_container<
       savings_withdraw_object,
       indexed_by<
@@ -306,7 +314,24 @@ namespace steemit { namespace chain {
       >
    > savings_withdraw_index_type;
 
-
+   struct by_account;
+   struct by_effective_date;
+   typedef multi_index_container<
+      decline_voting_rights_request_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_account >,
+            member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+         >,
+         ordered_unique< tag< by_effective_date >,
+            composite_key< decline_voting_rights_request_object,
+               member< decline_voting_rights_request_object, time_point_sec, &decline_voting_rights_request_object::effective_date >,
+               member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< account_id_type > >
+         >
+      >
+   > decline_voting_rights_request_object_index_type;
 
    /**
     * @ingroup object_index
@@ -317,6 +342,7 @@ namespace steemit { namespace chain {
    typedef generic_index< withdraw_vesting_route_object,       withdraw_vesting_route_index_type >       withdraw_vesting_route_index;
    typedef generic_index< escrow_object,                       escrow_object_index_type >                escrow_index;
    typedef generic_index< savings_withdraw_object,             savings_withdraw_index_type>              withdraw_index;
+   typedef generic_index< decline_voting_rights_request_object,   decline_voting_rights_request_object_index_type >  decline_voting_rights_request_index;
 
 } } // steemit::chain
 
@@ -346,3 +372,5 @@ FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
                     (ratification_deadline)(escrow_expiration)
                     (sbd_balance)(steem_balance)(pending_fee)
                     (to_approved)(agent_approved)(disputed) );
+FC_REFLECT_DERIVED( steemit::chain::decline_voting_rights_request_object, (graphene::db::object),
+                     (account)(effective_date) );

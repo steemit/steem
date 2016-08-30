@@ -384,4 +384,9 @@ namespace steemit { namespace chain {
       validate_account_name( from );
    }
 
+   void decline_voting_rights_operation::validate()const
+   {
+      FC_ASSERT( is_valid_account_name( account ) );
+   }
+
 } } // steemit::chain
