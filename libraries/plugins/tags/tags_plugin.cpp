@@ -306,8 +306,8 @@ struct operation_visitor {
                auto citr = comment_idx.lower_bound( c->id );
                while( citr != comment_idx.end() && citr->comment == c->id ) {
                   _db.modify( *citr, [&]( tag_object& t ) {
-                        t.promoted_balance += op.amount.amount;
-                        idump((t.promoted_balance));
+                      if( t.mode == first_payout )
+                          t.promoted_balance += op.amount.amount;
                   });
                   ++citr; 
                }
