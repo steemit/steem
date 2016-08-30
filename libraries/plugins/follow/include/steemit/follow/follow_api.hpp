@@ -17,14 +17,14 @@ struct feed_entry
    string   author;
    string   permlink;
    string   reblog_by;
-   uint32_t entry_id;
+   uint32_t entry_id = 0;
 };
 
 struct comment_feed_entry
 {
    comment_object comment;
    string         reblog_by;
-   uint32_t       entry_id;
+   uint32_t       entry_id = 0;
 };
 
 struct account_reputation

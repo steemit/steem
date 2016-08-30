@@ -34,7 +34,7 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_escrow_object_type;
 
-         uint32_t       escrow_id;
+         uint32_t       escrow_id = 0;
          string         from;
          string         to;
          string         agent;
@@ -56,7 +56,7 @@ namespace steemit { namespace chain {
          string         from;
          string         to;
          string         memo;
-         uint8_t        request_id;
+         uint8_t        request_id = 0;
          asset          amount;
          time_point_sec complete;
    };
@@ -128,7 +128,7 @@ namespace steemit { namespace chain {
          time_point_sec   created;
          time_point_sec   expiration;
          string           seller;
-         uint32_t         orderid;
+         uint32_t         orderid = 0;
          share_type       for_sale; ///< asset id is sell_price.base.symbol
          price            sell_price;
 
@@ -154,8 +154,18 @@ namespace steemit { namespace chain {
 
          account_id_type from_account;
          account_id_type to_account;
-         uint16_t        percent;
-         bool            auto_vest;
+         uint16_t        percent = 0;
+         bool            auto_vest = false;
+   };
+
+   class decline_voting_rights_request_object : public abstract_object< decline_voting_rights_request_object >
+   {
+      public:
+         static const uint8_t space_id = implementation_ids;
+         static const uint8_t type_id  = impl_decline_voting_rights_request_object_type;
+
+         account_id_type account;
+         time_point_sec  effective_date;
    };
 
    struct by_price;
@@ -284,8 +294,6 @@ namespace steemit { namespace chain {
 
    struct by_from_rid;
    struct by_complete_from_rid;
-
-
    typedef multi_index_container<
       savings_withdraw_object,
       indexed_by<
@@ -306,7 +314,24 @@ namespace steemit { namespace chain {
       >
    > savings_withdraw_index_type;
 
-
+   struct by_account;
+   struct by_effective_date;
+   typedef multi_index_container<
+      decline_voting_rights_request_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag< by_account >,
+            member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+         >,
+         ordered_unique< tag< by_effective_date >,
+            composite_key< decline_voting_rights_request_object,
+               member< decline_voting_rights_request_object, time_point_sec, &decline_voting_rights_request_object::effective_date >,
+               member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< account_id_type > >
+         >
+      >
+   > decline_voting_rights_request_object_index_type;
 
    /**
     * @ingroup object_index
@@ -317,6 +342,7 @@ namespace steemit { namespace chain {
    typedef generic_index< withdraw_vesting_route_object,       withdraw_vesting_route_index_type >       withdraw_vesting_route_index;
    typedef generic_index< escrow_object,                       escrow_object_index_type >                escrow_index;
    typedef generic_index< savings_withdraw_object,             savings_withdraw_index_type>              withdraw_index;
+   typedef generic_index< decline_voting_rights_request_object,   decline_voting_rights_request_object_index_type >  decline_voting_rights_request_index;
 
 } } // steemit::chain
 
@@ -346,3 +372,5 @@ FC_REFLECT_DERIVED( steemit::chain::escrow_object, (graphene::db::object),
                     (ratification_deadline)(escrow_expiration)
                     (sbd_balance)(steem_balance)(pending_fee)
                     (to_approved)(agent_approved)(disputed) );
+FC_REFLECT_DERIVED( steemit::chain::decline_voting_rights_request_object, (graphene::db::object),
+                     (account)(effective_date) );

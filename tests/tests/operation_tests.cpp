@@ -1902,11 +1902,85 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( custom_validate ) {}
+BOOST_AUTO_TEST_CASE( custom_authorities )
+{
+   custom_operation op;
+   op.required_auths.insert( "alice" );
+   op.required_auths.insert( "bob" );
 
-BOOST_AUTO_TEST_CASE( custom_authorities ) {}
+   flat_set< string > auths;
+   flat_set< string > expected;
 
-BOOST_AUTO_TEST_CASE( custom_apply ) {}
+   op.get_required_owner_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   op.get_required_posting_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   expected.insert( "alice" );
+   expected.insert( "bob" );
+   op.get_required_active_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
+
+BOOST_AUTO_TEST_CASE( custom_json_authorities )
+{
+   custom_json_operation op;
+   op.required_auths.insert( "alice" );
+   op.required_posting_auths.insert( "bob" );
+
+   flat_set< string > auths;
+   flat_set< string > expected;
+
+   op.get_required_owner_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   expected.insert( "alice" );
+   op.get_required_active_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+
+   auths.clear();
+   expected.clear();
+   expected.insert( "bob" );
+   op.get_required_posting_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
+
+BOOST_AUTO_TEST_CASE( custom_binary_authorities )
+{
+   ACTORS( (alice) )
+
+   custom_binary_operation op;
+   op.required_owner_auths.insert( "alice" );
+   op.required_active_auths.insert( "bob" );
+   op.required_posting_auths.insert( "sam" );
+   op.required_auths.push_back( alice.posting );
+
+   flat_set< string > acc_auths;
+   flat_set< string > acc_expected;
+   vector< authority > auths;
+   vector< authority > expected;
+
+   acc_expected.insert( "alice" );
+   op.get_required_owner_authorities( acc_auths );
+   BOOST_REQUIRE( acc_auths == acc_expected );
+
+   acc_auths.clear();
+   acc_expected.clear();
+   acc_expected.insert( "bob" );
+   op.get_required_active_authorities( acc_auths );
+   BOOST_REQUIRE( acc_auths == acc_expected );
+
+   acc_auths.clear();
+   acc_expected.clear();
+   acc_expected.insert( "sam" );
+   op.get_required_posting_authorities( acc_auths );
+   BOOST_REQUIRE( acc_auths == acc_expected );
+
+   expected.push_back( alice.posting );
+   op.get_required_authorities( auths );
+   BOOST_REQUIRE( auths == expected );
+}
 
 BOOST_AUTO_TEST_CASE( feed_publish_validate )
 {
@@ -5326,6 +5400,167 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
       BOOST_REQUIRE( db.get_account( "bob" ).balance == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).savings_balance == ASSET( "0.000 TESTS" ) );
       validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( decline_voting_rights_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: decline_voting_rights_authorities" );
+
+      decline_voting_rights_operation op;
+      op.account = "alice";
+
+      flat_set< string > auths;
+      flat_set< string > expected;
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: decline_voting_rights_apply" );
+
+      ACTORS( (alice)(bob) );
+      generate_block();
+
+      decline_voting_rights_operation op;
+      op.account = "alice";
+
+
+      BOOST_TEST_MESSAGE( "--- success" );
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      const auto& request_idx = db.get_index_type< decline_voting_rights_request_index >().indices().get< by_account >();
+      auto itr = request_idx.find( db.get_account( "alice" ).id );
+      BOOST_REQUIRE( itr != request_idx.end() );
+      BOOST_REQUIRE( itr->effective_date == db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD );
+
+
+      BOOST_TEST_MESSAGE( "--- failure revoking voting rights with existing request" );
+      generate_block();
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- successs cancelling a request" );
+      op.decline = false;
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      itr = request_idx.find( db.get_account( "alice" ).id );
+      BOOST_REQUIRE( itr == request_idx.end() );
+
+
+      BOOST_TEST_MESSAGE( "--- failure cancelling a request that doesn't exist" );
+      generate_block();
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- check account can vote during waiting period" );
+      op.decline = true;
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
+      BOOST_REQUIRE( db.get_account( "alice" ).can_vote );
+      witness_create( "alice", alice_private_key, "foo.bar", alice_private_key.get_public_key(), 0 );
+
+      account_witness_vote_operation witness_vote;
+      witness_vote.account = "alice";
+      witness_vote.witness = "alice";
+      tx.clear();
+      tx.operations.push_back( witness_vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "test";
+      vote_operation vote;
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = STEEMIT_100_PERCENT;
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.operations.push_back( vote );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+
+      BOOST_TEST_MESSAGE( "--- check account cannot vote after request is processed" );
+      generate_block();
+      BOOST_REQUIRE( !db.get_account( "alice" ).can_vote );
+
+      itr = request_idx.find( db.get_account( "alice" ).id );
+      BOOST_REQUIRE( itr == request_idx.end() );
+
+      const auto& witness_idx = db.get_index_type< witness_vote_index >().indices().get< by_account_witness >();
+      auto witness_itr = witness_idx.find( boost::make_tuple( db.get_account( "alice" ).id, db.get_witness( "alice" ).id ) );
+      BOOST_REQUIRE( witness_itr == witness_idx.end() );
+
+      tx.clear();
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( witness_vote );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      const auto& vote_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+      auto vote_itr = vote_idx.find( boost::make_tuple( db.get_comment( "alice", "test" ).id, db.get_account( "alice" ).id ) );
+
+      vote.weight = 0;
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      vote.weight = STEEMIT_1_PERCENT * 50;
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+      account_witness_proxy_operation proxy;
+      proxy.account = "alice";
+      proxy.proxy = "bob";
+      tx.clear();
+      tx.operations.push_back( proxy );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }

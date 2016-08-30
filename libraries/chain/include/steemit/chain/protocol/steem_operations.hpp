@@ -362,8 +362,8 @@ namespace steemit { namespace chain {
    {
       string   from_account;
       string   to_account;
-      uint16_t percent;
-      bool     auto_vest;
+      uint16_t percent = 0;
+      bool     auto_vest = false;
 
       void validate()const;
       void get_required_active_authorities( flat_set< string >& a )const { a.insert( from_account ); }
@@ -488,7 +488,7 @@ namespace steemit { namespace chain {
       flat_set<string>   required_posting_auths;
       vector<authority>  required_auths;
 
-      int64_t           id; ///< must be less than 32 characters long
+      string            id; ///< must be less than 32 characters long
       vector<char>      data;
 
       void validate()const;
@@ -583,10 +583,10 @@ namespace steemit { namespace chain {
       :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
 
       string   current_owner;
-      uint32_t current_orderid;
+      uint32_t current_orderid = 0;
       asset    current_pays;
       string   open_owner;
-      uint32_t open_orderid;
+      uint32_t open_orderid = 0;
       asset    open_pays;
    };
 
@@ -826,7 +826,6 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 
-
    struct transfer_to_savings_operation : public base_operation {
       string from;
       string to;
@@ -856,6 +855,15 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 
+   struct decline_voting_rights_operation : public base_operation
+   {
+      string account;
+      bool   decline = true;
+
+      void get_required_owner_authorities( flat_set< string >& a )const{ a.insert( account ); }
+
+      void validate() const;
+   };
 } } // steemit::chain
 
 
@@ -928,3 +936,4 @@ FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owne
 FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
 FC_REFLECT( steemit::chain::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steemit::chain::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
+FC_REFLECT( steemit::chain::decline_voting_rights_operation, (account)(decline) );

@@ -216,7 +216,7 @@
 
 #define GRAPHENE_CURRENT_DB_VERSION             "GPH2.4"
 
-#define STEEMIT_IRREVERSIBLE_THRESHOLD          (51 * STEEMIT_1_PERCENT)
+#define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
 
 /**
  *  Reserved Account IDs with special meaning

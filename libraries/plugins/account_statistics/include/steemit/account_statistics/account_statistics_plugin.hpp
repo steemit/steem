@@ -124,7 +124,7 @@ struct account_stats_bucket_object
 struct account_activity_bucket_object
 {
    fc::time_point_sec   open;                                  ///< Open time for the bucket
-   uint32_t             seconds;                               ///< Seconds accounted for in the bucket
+   uint32_t             seconds = 0;                           ///< Seconds accounted for in the bucket
    uint32_t             active_market_accounts = 0;            ///< Active market accounts in the bucket
    uint32_t             active_forum_accounts = 0;             ///< Active forum accounts in the bucket
    uint32_t             active_market_and_forum_accounts = 0;  ///< Active accounts in both the market and the forum

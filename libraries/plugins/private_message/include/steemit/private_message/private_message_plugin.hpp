@@ -85,7 +85,7 @@ class  message_object : public abstract_object<message_object> {
       string             to;
       public_key_type    from_memo_key;
       public_key_type    to_memo_key;
-      uint64_t           sent_time; /// used as seed to secret generation
+      uint64_t           sent_time = 0; /// used as seed to secret generation
       fc::time_point_sec receive_time; /// time received by blockchain
       uint32_t           checksum = 0;
       vector<char>       encrypted_message;
