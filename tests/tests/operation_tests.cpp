@@ -663,8 +663,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto& alice_comment = db.get_comment( "alice", "foo" );
          auto itr = vote_idx.find( std::make_tuple( alice_comment.id, alice.id ) );
+         int64_t max_vote_denom = ( db.get_dynamic_global_properties().vote_regeneration_per_day * STEEMIT_VOTE_REGENERATION_SECONDS ) / (60*60*24);
 
-         BOOST_REQUIRE_EQUAL( alice.voting_power, old_voting_power - ( old_voting_power / 200 ) );
+         BOOST_REQUIRE_EQUAL( alice.voting_power, old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) / max_vote_denom ) );
          BOOST_REQUIRE( alice.last_vote_time == db.head_block_time() );
          BOOST_REQUIRE_EQUAL( alice_comment.net_rshares.value, alice.vesting_shares.amount.value * ( old_voting_power - alice.voting_power ) / STEEMIT_100_PERCENT );
          BOOST_REQUIRE( alice_comment.cashout_time == db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) );
@@ -701,7 +702,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          const auto& bob_comment = db.get_comment( "bob", "foo" );
          itr = vote_idx.find( std::make_tuple( bob_comment.id, alice.id ) );
 
-         BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).voting_power, old_voting_power - ( old_voting_power * STEEMIT_100_PERCENT / ( 400 * STEEMIT_100_PERCENT ) ) );
+         BOOST_REQUIRE_EQUAL( db.get_account( "alice" ).voting_power, old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) * STEEMIT_100_PERCENT / ( 2 * max_vote_denom * STEEMIT_100_PERCENT ) ) );
          BOOST_REQUIRE_EQUAL( bob_comment.net_rshares.value, alice.vesting_shares.amount.value * ( old_voting_power - db.get_account( "alice" ).voting_power ) / STEEMIT_100_PERCENT );
          BOOST_REQUIRE( bob_comment.cashout_time == db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) );
          BOOST_REQUIRE( itr != vote_idx.end() );
@@ -731,9 +732,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          itr = vote_idx.find( std::make_tuple( new_alice_comment.id, new_bob.id ) );
          uint128_t new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-         const auto& bob_vote_abs_rshares = ( ( uint128_t( new_bob.vesting_shares.amount.value ) * ( STEEMIT_100_PERCENT / 200 ) ) / ( STEEMIT_100_PERCENT ) ).to_uint64();
+         const auto& bob_vote_abs_rshares = ( ( uint128_t( new_bob.vesting_shares.amount.value + max_vote_denom - 1 ) * ( STEEMIT_100_PERCENT / max_vote_denom ) ) / ( STEEMIT_100_PERCENT ) ).to_uint64();
 
-         BOOST_REQUIRE_EQUAL( new_bob.voting_power, STEEMIT_100_PERCENT - ( STEEMIT_100_PERCENT / 200 ) );
+         BOOST_REQUIRE_EQUAL( new_bob.voting_power, STEEMIT_100_PERCENT - ( ( STEEMIT_100_PERCENT + max_vote_denom - 1 ) / max_vote_denom ) );
          BOOST_REQUIRE_EQUAL( new_alice_comment.net_rshares.value, old_abs_rshares + new_bob.vesting_shares.amount.value * ( old_voting_power - new_bob.voting_power ) / STEEMIT_100_PERCENT );
          BOOST_REQUIRE_EQUAL( new_alice_comment.cashout_time.sec_since_epoch(),
                               ( ( old_cashout_time * old_abs_rshares + new_cashout_time * bob_vote_abs_rshares )
@@ -762,9 +763,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          itr = vote_idx.find( std::make_tuple( new_bob_comment.id, new_sam.id ) );
          new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
          auto sam_weight /*= ( ( uint128_t( new_sam.vesting_shares.amount.value ) ) / 400 + 1 ).to_uint64();*/
-                         = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( STEEMIT_100_PERCENT / 400 ) ) / STEEMIT_100_PERCENT ).to_uint64();
+                         = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEMIT_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEMIT_100_PERCENT ).to_uint64();
 
-         BOOST_REQUIRE_EQUAL( new_sam.voting_power, STEEMIT_100_PERCENT - ( STEEMIT_100_PERCENT / 400 ) );
+         BOOST_REQUIRE_EQUAL( new_sam.voting_power, STEEMIT_100_PERCENT - ( ( STEEMIT_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
          BOOST_REQUIRE_EQUAL( new_bob_comment.net_rshares.value, old_abs_rshares - sam_weight );
          BOOST_REQUIRE_EQUAL( new_bob_comment.abs_rshares.value, old_abs_rshares + sam_weight );
          BOOST_REQUIRE_EQUAL( new_bob_comment.cashout_time.sec_since_epoch(),
@@ -778,7 +779,9 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_abs_rshares = new_alice_comment.children_abs_rshares.value;
          old_cashout_time = new_alice_comment.cashout_time.sec_since_epoch();
          new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-         int64_t used_power = db.get_account( "alice" ).voting_power / 200;
+         int64_t regenerated_power = (STEEMIT_100_PERCENT * ( db.head_block_time() - db.get_account( "alice").last_vote_time ).to_seconds() ) / STEEMIT_VOTE_REGENERATION_SECONDS;
+         int64_t used_power = ( db.get_account( "alice" ).voting_power + regenerated_power + max_vote_denom - 1 ) / max_vote_denom;
+         idump( (db.get_account( "alice" ).voting_power)(used_power) );
 
          comment_op.author = "sam";
          comment_op.permlink = "foo";
@@ -824,7 +827,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_abs_rshares = new_bob_comment.abs_rshares.value;
          old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
          new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-         used_power = ( ( STEEMIT_1_PERCENT * 25 * new_alice.voting_power ) / STEEMIT_100_PERCENT ) / 200;
+         used_power = ( ( STEEMIT_1_PERCENT * 25 * ( new_alice.voting_power ) / STEEMIT_100_PERCENT ) + max_vote_denom - 1 ) / max_vote_denom;
          auto alice_voting_power = new_alice.voting_power - used_power;
 
          op.voter = "alice";
@@ -861,7 +864,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          old_cashout_time = new_bob_comment.cashout_time.sec_since_epoch();
          new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
          used_power = ( uint64_t( STEEMIT_1_PERCENT ) * 75 * uint64_t( alice_voting_power ) ) / STEEMIT_100_PERCENT;
-         used_power = used_power / 200;
+         used_power = ( used_power + max_vote_denom - 1 ) / max_vote_denom;
          alice_voting_power -= used_power;
 
          op.weight = STEEMIT_1_PERCENT * -75;
