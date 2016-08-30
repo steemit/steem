@@ -790,7 +790,7 @@ namespace steemit { namespace chain {
    struct decline_voting_rights_operation : public base_operation
    {
       string account;
-      bool   decline;
+      bool   decline = true;
 
       void get_required_owner_authorities( flat_set< string >& a )const{ a.insert( account ); }
 

@@ -2325,14 +2325,20 @@ void database::account_recovery_processing()
 
 void database::process_decline_voting_rights()
 {
-   const auto request_idx = get_index_type< decline_voting_rights_request_index >().indices().get< by_effective_date >();
+   const auto& request_idx = get_index_type< decline_voting_rights_request_index >().indices().get< by_effective_date >();
    auto itr = request_idx.begin();
 
    while( itr != request_idx.end() && itr->effective_date <= head_block_time() )
    {
+      const auto& account = itr->account(*this);
+
+      adjust_proxied_witness_votes( account, -account.witness_vote_weight() );
+      clear_witness_votes( account );
+
       modify( itr->account(*this), [&]( account_object& a )
       {
          a.can_vote = false;
+         a.proxy = a.name;
       });
 
       remove( *itr );
@@ -2409,6 +2415,7 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<escrow_transfer_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_dispute_evaluator>();
     _my->_evaluator_registry.register_evaluator<escrow_release_evaluator>();
+    _my->_evaluator_registry.register_evaluator<decline_voting_rights_evaluator>();
 }
 
 void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )

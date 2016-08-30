@@ -726,6 +726,8 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
    const auto& account = db().get_account( o.account );
    FC_ASSERT( account.proxy != o.proxy, "something must change" );
 
+   FC_ASSERT( account.can_vote, "Account has declined the ability to vote and cannot proxy votes" );
+
    /// remove all current votes
    std::array<share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1> delta;
    delta[0] = -account.vesting_shares.amount;
@@ -772,7 +774,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    FC_ASSERT( voter.proxy.size() == 0, "A proxy is currently set, please clear the proxy before voting for a witness" );
 
    if( o.approve )
-      FC_ASSERT( voter.can_vote, "Account has revoked its voting rights" );
+      FC_ASSERT( voter.can_vote, "Account has declined its voting rights" );
 
    const auto& witness = db().get_witness( o.witness );
 
@@ -842,7 +844,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
       FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ) );
 
-   if( o.weight ) FC_ASSERT( voter.can_vote, "Voter has revoked their voting rights" );
+   if( o.weight ) FC_ASSERT( voter.can_vote, "Voter has declined their voting rights" );
 
    if( o.weight > 0 ) FC_ASSERT( comment.allow_votes );
 
