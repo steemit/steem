@@ -163,6 +163,14 @@ class wallet_api
       app::state                          get_state( string url );
 
       /**
+       * Returns vesting withdraw routes for an account.
+       *
+       * @param account Account to query routes
+       * @param type Withdraw type type [incoming, outgoing, all]
+       */
+      vector< withdraw_route >            get_withdraw_routes( string account, withdraw_route_type type = all )const;
+
+      /**
        *  Gets the account information for all accounts for which this wallet has a private key
        */
       vector<account_object>              list_my_accounts();
@@ -844,6 +852,7 @@ FC_API( steemit::wallet::wallet_api,
         (get_conversion_requests)
         (get_account_history)
         (get_state)
+        (get_withdraw_routes)
 
         /// transaction api
         (create_account)
