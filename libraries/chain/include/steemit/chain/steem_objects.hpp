@@ -232,6 +232,7 @@ namespace steemit { namespace chain {
    > liquidity_reward_balance_index_type;
 
    struct by_withdraw_route;
+   struct by_destination;
    typedef multi_index_container<
       withdraw_vesting_route_object,
       indexed_by<
@@ -242,6 +243,12 @@ namespace steemit { namespace chain {
                member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::to_account >
             >,
             composite_key_compare< std::less< account_id_type >, std::less< account_id_type > >
+         >,
+         ordered_unique< tag< by_destination >,
+            composite_key< withdraw_vesting_route_object,
+               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::to_account >,
+               member< object, object_id_type, &object::id >
+            >
          >
       >
    > withdraw_vesting_route_index_type;
