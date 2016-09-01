@@ -1142,11 +1142,12 @@ void database::update_witness_schedule4()
         sitr != schedule_idx.end() && witness_count < STEEMIT_MAX_MINERS;
         ++sitr )
    {
+      new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
+      processed_witnesses.push_back(sitr);
+
       if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && sitr->signing_key == public_key_type() )
          continue; /// skip witnesses without a valid block signing key
 
-      new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
-      processed_witnesses.push_back(sitr);
       if( selected_miners.find(sitr->get_id()) == selected_miners.end()
           && selected_voted.find(sitr->get_id()) == selected_voted.end() )
       {
