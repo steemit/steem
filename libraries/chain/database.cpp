@@ -3067,6 +3067,7 @@ void database::update_global_dynamic_data( const signed_block& b )
                   if( head_block_num() - w.last_confirmed_block_num  > STEEMIT_BLOCKS_PER_DAY )
                   {
                      w.signing_key = public_key_type();
+                     push_virtual_operation( shutdown_witness_operation( w.owner ) );
                   }
                }
             } );

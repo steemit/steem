@@ -197,6 +197,13 @@ namespace steemit { namespace chain {
       asset  deposited;
    };
 
+   struct shutdown_witness_operation : public virtual_operation
+   {
+      shutdown_witness_operation(){}
+      shutdown_witness_operation( const string& o ):owner(o) {}
+      string owner;
+   };
+
    /**
     * @ingroup operations
     *
@@ -924,6 +931,7 @@ FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(a
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
+FC_REFLECT( steemit::chain::shutdown_witness_operation, (owner) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 

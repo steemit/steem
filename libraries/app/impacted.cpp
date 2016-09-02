@@ -165,6 +165,11 @@ struct get_impacted_account_visitor
       _impacted.insert( op.to_account );
    }
 
+   void operator()( const shutdown_witness_operation& op )
+   {
+      _impacted.insert( op.owner );
+   }
+
    void operator()( const custom_operation& op )
    {
       for( auto s: op.required_auths )
