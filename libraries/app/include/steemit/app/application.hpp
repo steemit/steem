@@ -115,7 +115,7 @@ namespace steemit { namespace app {
           */
          fc::api_ptr create_api_by_name( const api_context& ctx );
 
-         void get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result );
+         void get_max_block_age( int32_t& result );
 
       private:
          std::shared_ptr<detail::application_impl> my;
