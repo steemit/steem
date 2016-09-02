@@ -829,6 +829,27 @@ public:
 
          return ss.str();
       };
+      m["get_withdraw_routes"] = []( variant result, const fc::variants& a )
+      {
+         auto routes = result.as< vector< withdraw_route > >();
+         std::stringstream ss;
+
+         ss << ' ' << std::left << std::setw( 20 ) << "From";
+         ss << ' ' << std::left << std::setw( 20 ) << "To";
+         ss << ' ' << std::right << std::setw( 8 ) << "Percent";
+         ss << ' ' << std::right << std::setw( 9 ) << "Auto-Vest";
+         ss << "\n==============================================================\n";
+
+         for( auto r : routes )
+         {
+            ss << ' ' << std::left << std::setw( 20 ) << r.from_account;
+            ss << ' ' << std::left << std::setw( 20 ) << r.to_account;
+            ss << ' ' << std::right << std::setw( 8 ) << std::setprecision( 2 ) << std::fixed << double( r.percent ) / 100;
+            ss << ' ' << std::right << std::setw( 9 ) << ( r.auto_vest ? "true" : "false" ) << std::endl;
+         }
+
+         return ss.str();
+      };
 
       return m;
    }
@@ -1595,16 +1616,22 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
 {
    FC_ASSERT( !is_locked() );
 
-   fc::optional< witness_object > wit = my->_remote_db->get_witness_by_account( witness_account_name );
-   FC_ASSERT( wit.valid(), "witness account does not exist" );
-   FC_ASSERT( wit->owner == witness_account_name );
-
    witness_update_operation op;
-   op.owner = witness_account_name;
-   if( url != "" )
+
+   fc::optional< witness_object > wit = my->_remote_db->get_witness_by_account( witness_account_name );
+   if( !wit.valid() )
+   {
       op.url = url;
+   }
    else
-      op.url = wit->url;
+   {
+      FC_ASSERT( wit->owner == witness_account_name );
+      if( url != "" )
+         op.url = url;
+      else
+         op.url = wit->url;
+   }
+   op.owner = witness_account_name;
    op.block_signing_key = block_signing_key;
    op.props = props;
 
@@ -1967,6 +1994,11 @@ map<uint32_t,operation_object> wallet_api::get_account_history( string account, 
 
 app::state wallet_api::get_state( string url ) {
    return my->_remote_db->get_state(url);
+}
+
+vector< withdraw_route > wallet_api::get_withdraw_routes( string account, withdraw_route_type type )const
+{
+   return my->_remote_db->get_withdraw_routes( account, type );
 }
 
 order_book wallet_api::get_order_book( uint32_t limit )

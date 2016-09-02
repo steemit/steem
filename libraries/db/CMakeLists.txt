@@ -10,3 +10,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+install( FILES ${HEADERS} DESTINATION "include/graphene/db" )

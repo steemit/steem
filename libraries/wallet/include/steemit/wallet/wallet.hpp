@@ -163,6 +163,14 @@ class wallet_api
       app::state                          get_state( string url );
 
       /**
+       * Returns vesting withdraw routes for an account.
+       *
+       * @param account Account to query routes
+       * @param type Withdraw type type [incoming, outgoing, all]
+       */
+      vector< withdraw_route >            get_withdraw_routes( string account, withdraw_route_type type = all )const;
+
+      /**
        *  Gets the account information for all accounts for which this wallet has a private key
        */
       vector<account_object>              list_my_accounts();
@@ -503,7 +511,7 @@ class wallet_api
        * Update a witness object owned by the given account.
        *
        * @param witness_name The name of the witness account.
-       * @param url Same as for create_witness.  The empty string makes it remain the same.
+       * @param url A URL containing some information about the witness.  The empty string makes it remain the same.
        * @param block_signing_key The new block signing public key.  The empty string disables block production.
        * @param props The chain properties the witness is voting on.
        * @param broadcast true if you wish to broadcast the transaction.
@@ -960,6 +968,7 @@ FC_API( steemit::wallet::wallet_api,
         (get_conversion_requests)
         (get_account_history)
         (get_state)
+        (get_withdraw_routes)
 
         /// transaction api
         (create_account)

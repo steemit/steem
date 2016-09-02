@@ -55,6 +55,21 @@ struct liquidity_balance
    fc::uint128_t        weight;
 };
 
+struct withdraw_route
+{
+   string               from_account;
+   string               to_account;
+   uint16_t             percent;
+   bool                 auto_vest;
+};
+
+enum withdraw_route_type
+{
+   incoming,
+   outgoing,
+   all
+};
+
 class database_api_impl;
 
 /**
@@ -199,6 +214,8 @@ class database_api
       optional< account_recovery_request_object > get_recovery_request( string account ) const;
 
       optional< escrow_object > get_escrow( string from, uint32_t escrow_id )const;
+
+      vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
       ///////////////
       // Witnesses //
@@ -400,8 +417,11 @@ FC_REFLECT( steemit::app::order, (order_price)(real_price)(steem)(sbd)(created) 
 FC_REFLECT( steemit::app::order_book, (asks)(bids) );
 FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
 FC_REFLECT( steemit::app::liquidity_balance, (account)(weight) );
+FC_REFLECT( steemit::app::withdraw_route, (from_account)(to_account)(percent)(auto_vest) );
 
 FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
+
+FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
 
 FC_API(steemit::app::database_api,
    // Subscriptions
@@ -457,6 +477,7 @@ FC_API(steemit::app::database_api,
    (get_owner_history)
    (get_recovery_request)
    (get_escrow)
+   (get_withdraw_routes)
 
    // Market
    (get_order_book)
