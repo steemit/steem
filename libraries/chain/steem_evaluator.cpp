@@ -1718,6 +1718,8 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account(op.to);
 
+   FC_ASSERT( from.transfer_from_savings_requests < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
+
    FC_ASSERT( db().get_savings_balance( from, op.amount.symbol ) >= op.amount );
    db().adjust_savings_balance( from, -op.amount );
    db().create<savings_withdraw_object>( [&]( savings_withdraw_object& s ) {
@@ -1729,6 +1731,11 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
 #endif
       s.request_id = op.request_id;
       s.complete = db().head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME;
+   });
+
+   db().modify( from, [&]( account_object& a )
+   {
+      a.transfer_from_savings_requests++;
    });
 }
 
@@ -1744,6 +1751,12 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
    const auto& swo = *itr;
    db().adjust_savings_balance( db().get_account( swo.from ), swo.amount );
    db().remove( swo );
+
+   const auto& from = db().get_account( op.from );
+   db().modify( from, [&]( account_object& a )
+   {
+      a.transfer_from_savings_requests++;
+   });
 }
 
 void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_operation& o )

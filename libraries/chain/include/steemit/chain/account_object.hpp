@@ -74,6 +74,8 @@ namespace steemit { namespace chain {
          fc::uint128_t      savings_sbd_seconds; ///< total sbd * how long it has been hel
          fc::time_point_sec savings_sbd_seconds_last_update; ///< the last time the sbd_seconds was updated
          fc::time_point_sec savings_sbd_last_interest_payment; ///< used to pay interest at most once per month
+
+         uint8_t            transfer_from_savings_requests = 0;
          ///@}
 
          share_type      curation_rewards = 0;
@@ -110,7 +112,7 @@ namespace steemit { namespace chain {
          time_point_sec  last_root_post = fc::time_point_sec::min();
          uint32_t        post_bandwidth = 0;
 
-         
+
          /** these fields are used to track password reset state */
          ///@{
          authority       pending_reset_authority;
@@ -368,7 +370,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (balance)
                     (savings_balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
-                    (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)
+                    (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(transfer_from_savings_requests)
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
                     (curation_rewards)
                     (posting_rewards)

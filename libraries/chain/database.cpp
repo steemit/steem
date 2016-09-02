@@ -2140,6 +2140,12 @@ void database::process_savings_withdraws()
      if( itr->complete > head_block_time() )
         break;
      adjust_balance( get_account( itr->to ), itr->amount );
+
+     modify( get_account( itr->from ), [&]( account_object& a )
+     {
+        a.transfer_from_savings_requests--;
+     });
+
      remove( *itr );
      itr = idx.begin();
   }

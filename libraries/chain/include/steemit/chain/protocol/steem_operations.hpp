@@ -803,7 +803,7 @@ namespace steemit { namespace chain {
    };
 
    /**
-    *  This operation allows recovery_accoutn to change account_to_reset's owner authority to 
+    *  This operation allows recovery_accoutn to change account_to_reset's owner authority to
     *  new_owner_authority after 60 days of inactivity.
     */
    struct reset_account_operation : public base_operation {
@@ -877,7 +877,7 @@ namespace steemit { namespace chain {
 
    struct transfer_from_savings_operation : public base_operation {
       string   from;
-      uint16_t request_id = 0;
+      uint32_t request_id = 0;
       string   to;
       asset    amount;
       string   memo;
@@ -888,7 +888,7 @@ namespace steemit { namespace chain {
 
    struct cancel_transfer_from_savings_operation : public base_operation {
       string   from;
-      uint16_t request_id = 0;
+      uint32_t request_id = 0;
 
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
       void validate() const;

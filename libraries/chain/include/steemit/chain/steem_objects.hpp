@@ -56,7 +56,7 @@ namespace steemit { namespace chain {
          string         from;
          string         to;
          string         memo;
-         uint8_t        request_id = 0;
+         uint32_t       request_id = 0;
          asset          amount;
          time_point_sec complete;
    };
@@ -309,7 +309,7 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_from_rid >,
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
-               member< savings_withdraw_object, uint8_t, &savings_withdraw_object::request_id >
+               member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
             >
          >,
          ordered_unique< tag< by_to_complete >,
@@ -323,7 +323,7 @@ namespace steemit { namespace chain {
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
                member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
-               member< savings_withdraw_object, uint8_t, &savings_withdraw_object::request_id >
+               member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
             >
          >
       >
