@@ -217,6 +217,9 @@ class database_api
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
+      vector< savings_withdraw_object > get_savings_withdraw_from( string account )const;
+      vector< savings_withdraw_object > get_savings_withdraw_to( string account )const;
+
       ///////////////
       // Witnesses //
       ///////////////
@@ -478,6 +481,8 @@ FC_API(steemit::app::database_api,
    (get_recovery_request)
    (get_escrow)
    (get_withdraw_routes)
+   (get_savings_withdraw_from)
+   (get_savings_withdraw_to)
 
    // Market
    (get_order_book)

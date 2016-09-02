@@ -300,6 +300,7 @@ namespace steemit { namespace chain {
    > escrow_object_index_type;
 
    struct by_from_rid;
+   struct by_to_complete;
    struct by_complete_from_rid;
    typedef multi_index_container<
       savings_withdraw_object,
@@ -309,6 +310,13 @@ namespace steemit { namespace chain {
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
                member< savings_withdraw_object, uint8_t, &savings_withdraw_object::request_id >
+            >
+         >,
+         ordered_unique< tag< by_to_complete >,
+            composite_key< savings_withdraw_object,
+               member< savings_withdraw_object, string,  &savings_withdraw_object::to >,
+               member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
+               member< object, object_id_type, &object::id >
             >
          >,
          ordered_unique< tag< by_complete_from_rid >,
