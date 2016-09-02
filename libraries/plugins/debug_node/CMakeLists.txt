@@ -9,3 +9,10 @@ add_library( steemit_debug_node
 target_link_libraries( steemit_debug_node steemit_app steemit_chain fc graphene_db )
 target_include_directories( steemit_debug_node
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+
+install( TARGETS steemit_debug_node
+         RUNTIME DESTINATION bin
+         LIBRARY DESTINATION lib
+         ARCHIVE DESTINATION lib
+       )
+INSTALL( FILES ${HEADERS} DESTINATION "include/steemit/plugins/debug_node" )

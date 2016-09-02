@@ -1,4 +1,5 @@
 file(GLOB HEADERS "include/steemit/chain/*.hpp")
+file(GLOB PROTOCOL_HEADERS "include/steemit/chain/protocol/*.hpp")
 
 if( MSVC )
    set( hardfork_hpp_file "${CMAKE_CURRENT_SOURCE_DIR}/include/steemit/chain/hardfork.hpp" )
@@ -42,6 +43,8 @@ add_library( steemit_chain
 
              ${HEADERS}
              ${hardfork_hpp_file}
+             ${PROTOCOL_HEADERS}
+             "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
            )
 
 add_dependencies( steemit_chain build_hardfork_hpp )
@@ -60,3 +63,5 @@ INSTALL( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+INSTALL( FILES ${HEADERS} DESTINATION "include/steemit/chain" )
+INSTALL( FILES ${PROTOCOL_HEADERS} DESTINATION "include/steemit/chain/protocol" )
