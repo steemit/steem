@@ -1772,7 +1772,7 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
 }
 
 void reset_account_evaluator::do_apply( const reset_account_operation& op ) {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__240 ) );
+   FC_ASSERT( false, "Reset Account Operation is currently disabled." );
 
    const auto& acnt = db().get_account( op.account_to_reset );
    FC_ASSERT( (db().head_block_time() - acnt.last_bandwidth_update)  > fc::days(60) );
@@ -1785,7 +1785,7 @@ void reset_account_evaluator::do_apply( const reset_account_operation& op ) {
 }
 
 void set_reset_account_evaluator::do_apply( const set_reset_account_operation& op ) {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__240 ) );
+   FC_ASSERT( false, "Set Reset Account Operation is currently disabled." );
 
    const auto& acnt = db().get_account( op.account );
    const auto& rsa = db().get_account( op.reset_account );
