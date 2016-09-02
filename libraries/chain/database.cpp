@@ -495,6 +495,7 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
                        ("total_vesting_shares",total_vshares) );
          }
          acnt.last_bandwidth_update = now;
+         acnt.reset_request_time = time_point_sec::maximum(); ///< cancel any pending reset requests
       } );
    }
 }
@@ -1142,11 +1143,12 @@ void database::update_witness_schedule4()
         sitr != schedule_idx.end() && witness_count < STEEMIT_MAX_MINERS;
         ++sitr )
    {
+      new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
+      processed_witnesses.push_back(sitr);
+
       if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && sitr->signing_key == public_key_type() )
          continue; /// skip witnesses without a valid block signing key
 
-      new_virtual_time = sitr->virtual_scheduled_time; /// everyone advances to at least this time
-      processed_witnesses.push_back(sitr);
       if( selected_miners.find(sitr->get_id()) == selected_miners.end()
           && selected_voted.find(sitr->get_id()) == selected_voted.end() )
       {
@@ -1688,6 +1690,22 @@ void database::update_owner_authority( const account_object& account, const auth
       a.owner = owner_authority;
       a.last_owner_update = head_block_time();
    });
+}
+
+void database::process_reset_requests() {
+   const auto& aidx = get_index_type< account_index >().indices().get<by_reset_request_time>();
+   auto now = head_block_time();
+   auto valid_time = now - fc::days(30);
+
+   auto itr = aidx.begin();
+   while( itr != aidx.end() && itr->reset_request_time < valid_time ) {
+      modify( *itr, [&]( account_object& a ) {
+         a.owner = a.pending_reset_authority;
+         a.last_bandwidth_update = now;
+         a.reset_request_time = fc::time_point_sec::maximum();
+      });
+      itr = aidx.begin();
+   }
 }
 
 void database::process_vesting_withdrawals()
@@ -2514,6 +2532,8 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<transfer_from_savings_evaluator>();
     _my->_evaluator_registry.register_evaluator<cancel_transfer_from_savings_evaluator>();
     _my->_evaluator_registry.register_evaluator<decline_voting_rights_evaluator>();
+    _my->_evaluator_registry.register_evaluator<reset_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
 }
 
 void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
@@ -2792,6 +2812,7 @@ void database::_apply_block( const signed_block& next_block )
    process_comment_cashout();
    process_vesting_withdrawals();
    process_savings_withdraws();
+   process_reset_requests();
    pay_liquidity_reward();
    update_virtual_supply();
 

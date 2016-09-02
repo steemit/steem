@@ -1771,4 +1771,49 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
    }
 }
 
+void reset_account_evaluator::do_apply( const reset_account_operation& op ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__240 ) );
+
+   const auto& acnt = db().get_account( op.account_to_reset );
+   FC_ASSERT( (db().head_block_time() - acnt.last_bandwidth_update)  > fc::days(60) );
+   FC_ASSERT( acnt.reset_account == op.reset_account );
+
+   db().modify( acnt, [&]( account_object& a ){
+       a.pending_reset_authority = op.new_owner_authority;
+       a.reset_request_time = db().head_block_time();
+   });
+}
+
+void set_reset_account_evaluator::do_apply( const set_reset_account_operation& op ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__240 ) );
+
+   const auto& acnt = db().get_account( op.account );
+   const auto& rsa = db().get_account( op.reset_account );
+
+   FC_ASSERT( acnt.reset_account != op.reset_account );
+
+   db().modify( acnt, [&]( account_object& a ){
+       a.reset_account = op.reset_account;
+   });
+}
+
+/*
+void complete_account_reset_evaluator::do_apply( const complete_account_reset_operation& op ) {
+   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13_240 ) );
+   const auto& acnt = db().get_account( op.account_to_reset );
+
+   FC_ASSERT( db().head_block_time() - acnt.reset_request_time  > fc::days(30) );
+   FC_ASSERT( acnt.enable_account_reset );
+   FC_ASSERT( acnt.pending_reset_authority == op.new_owner_authority );
+
+   db().modify( acnt, [&]( account_object& a ){
+      a.last_bandwidth_update = db().head_block_time();
+      a.reset_request_time = fc::time_point_sec::maximum();
+      a.average_bandwidth = 0;
+      a.average_market_bandwidth = 0;
+   });
+   db().update_owner_authority( acnt, op.new_owner_authority );
+}
+*/
+
 } } // steemit::chain

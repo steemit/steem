@@ -37,6 +37,7 @@ namespace steemit { namespace chain {
          time_point_sec  last_owner_proved = time_point_sec::min();
          time_point_sec  last_active_proved = time_point_sec::min();
          string          recovery_account = "";
+         string          reset_account = STEEMIT_NULL_ACCOUNT;
          time_point_sec  last_account_recovery;
          uint32_t        comment_count = 0;
          uint32_t        lifetime_vote_count = 0;
@@ -108,6 +109,13 @@ namespace steemit { namespace chain {
          time_point_sec  last_post;
          time_point_sec  last_root_post = fc::time_point_sec::min();
          uint32_t        post_bandwidth = 0;
+
+         
+         /** these fields are used to track password reset state */
+         ///@{
+         authority       pending_reset_authority;
+         time_point_sec  reset_request_time = fc::time_point_sec::maximum();
+         ///@}
 
          account_id_type get_id()const { return id; }
          /// This function should be used only when the account votes for a witness directly
@@ -196,6 +204,7 @@ namespace steemit { namespace chain {
    struct by_post_count;
    struct by_vote_count;
    struct by_last_owner_update;
+   struct by_reset_request_time;
 
    /**
     * @ingroup object_index
@@ -218,6 +227,13 @@ namespace steemit { namespace chain {
                member<account_object, time_point_sec, &account_object::next_vesting_withdrawal >,
                member<object, object_id_type, &object::id >
             > /// composite key by_next_vesting_withdrawal
+         >,
+         ordered_unique< tag< by_reset_request_time >,
+            composite_key< account_object,
+               member<account_object, time_point_sec, &account_object::reset_request_time >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< object_id_type > >
          >,
          ordered_unique< tag< by_last_post >,
             composite_key< account_object,
@@ -347,7 +363,7 @@ namespace steemit { namespace chain {
 FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
                     (created)(mined)
-                    (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)
+                    (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
                     (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
                     (balance)
                     (savings_balance)
@@ -360,6 +376,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)(last_root_post)(post_bandwidth)
+                    (pending_reset_authority)(reset_request_time)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),

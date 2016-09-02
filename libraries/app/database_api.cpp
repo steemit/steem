@@ -1404,6 +1404,29 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
    FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) )
 }
 
+vector< savings_withdraw_object > database_api::get_savings_withdraw_from( string account )const {
+  vector<savings_withdraw_object> result;
+
+  const auto& from_rid_idx = my->_db.get_index_type<withdraw_index>().indices().get<by_from_rid>();
+  auto itr = from_rid_idx.lower_bound( account );
+  while( itr != from_rid_idx.end() && itr->from == account ) {
+     result.push_back( *itr );
+     ++itr;
+  }
+  return result;
+}
+vector< savings_withdraw_object > database_api::get_savings_withdraw_to( string account )const {
+  vector<savings_withdraw_object> result;
+
+  const auto& to_complete_idx = my->_db.get_index_type<withdraw_index>().indices().get<by_to_complete>();
+  auto itr = to_complete_idx.lower_bound( account );
+  while( itr != to_complete_idx.end() && itr->to == account ) {
+     result.push_back( *itr );
+     ++itr;
+  }
+  return result;
+}
+
 
 state database_api::get_state( string path )const
 {

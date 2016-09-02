@@ -389,4 +389,16 @@ namespace steemit { namespace chain {
       FC_ASSERT( is_valid_account_name( account ) );
    }
 
+   void reset_account_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( reset_account ) );
+      FC_ASSERT( is_valid_account_name( account_to_reset ) );
+      new_owner_authority.validate();
+   }
+
+   void set_reset_account_operation::validate()const {
+      FC_ASSERT( is_valid_account_name( account ) );
+      FC_ASSERT( is_valid_account_name( reset_account ) );
+   }
+
+
 } } // steemit::chain

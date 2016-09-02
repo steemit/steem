@@ -57,6 +57,8 @@ namespace steemit { namespace chain {
             cancel_transfer_from_savings_operation,
             custom_binary_operation,
             decline_voting_rights_operation,
+            reset_account_operation,
+            set_reset_account_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
