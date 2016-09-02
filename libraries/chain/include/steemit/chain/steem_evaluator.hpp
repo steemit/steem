@@ -41,5 +41,7 @@ DEFINE_EVALUATOR( transfer_to_savings )
 DEFINE_EVALUATOR( transfer_from_savings )
 DEFINE_EVALUATOR( cancel_transfer_from_savings )
 DEFINE_EVALUATOR( decline_voting_rights )
+DEFINE_EVALUATOR( reset_account )
+DEFINE_EVALUATOR( set_reset_account )
 
 } } // steemit::chain

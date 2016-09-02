@@ -796,6 +796,38 @@ namespace steemit { namespace chain {
    };
 
    /**
+    *  This operation allows recovery_accoutn to change account_to_reset's owner authority to 
+    *  new_owner_authority after 60 days of inactivity.
+    */
+   struct reset_account_operation : public base_operation {
+      string    reset_account;
+      string    account_to_reset;
+      authority new_owner_authority;
+
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         a.insert( reset_account );
+      }
+   };
+
+   /**
+    * This operation allows 'account' owner to control which account has the power
+    * to execute the 'reset_account_operation' after 60 days.
+    */
+   struct set_reset_account_operation : public base_operation {
+      string account;
+      string reset_account;
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         a.insert( account );
+      }
+   };
+
+
+   /**
     * Each account lists another account as their recovery account.
     * The recovery account has the ability to create account_recovery_requests
     * for the account to recover. An account can change their recovery account
@@ -870,6 +902,10 @@ namespace steemit { namespace chain {
 FC_REFLECT( steemit::chain::transfer_to_savings_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::cancel_transfer_from_savings_operation, (from)(request_id) )
+
+FC_REFLECT( steemit::chain::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
+FC_REFLECT( steemit::chain::set_reset_account_operation, (account)(reset_account) )
+
 
 FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_block)(second_block) )
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )

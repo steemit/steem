@@ -2514,6 +2514,8 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<transfer_from_savings_evaluator>();
     _my->_evaluator_registry.register_evaluator<cancel_transfer_from_savings_evaluator>();
     _my->_evaluator_registry.register_evaluator<decline_voting_rights_evaluator>();
+    _my->_evaluator_registry.register_evaluator<reset_account_evaluator>();
+    _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
 }
 
 void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
