@@ -113,7 +113,6 @@ namespace steemit { namespace chain {
          
          /** these fields are used to track password reset state */
          ///@{
-         bool            enable_account_reset = false;
          authority       pending_reset_authority;
          time_point_sec  reset_request_time = fc::time_point_sec::maximum();
          ///@}
@@ -205,6 +204,7 @@ namespace steemit { namespace chain {
    struct by_post_count;
    struct by_vote_count;
    struct by_last_owner_update;
+   struct by_reset_request_time;
 
    /**
     * @ingroup object_index
@@ -227,6 +227,13 @@ namespace steemit { namespace chain {
                member<account_object, time_point_sec, &account_object::next_vesting_withdrawal >,
                member<object, object_id_type, &object::id >
             > /// composite key by_next_vesting_withdrawal
+         >,
+         ordered_unique< tag< by_reset_request_time >,
+            composite_key< account_object,
+               member<account_object, time_point_sec, &account_object::reset_request_time >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< object_id_type > >
          >,
          ordered_unique< tag< by_last_post >,
             composite_key< account_object,
@@ -369,7 +376,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)(last_root_post)(post_bandwidth)
-                    (enable_account_reset)(pending_reset_authority)(reset_request_time)
+                    (pending_reset_authority)(reset_request_time)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),

@@ -495,6 +495,7 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
                        ("total_vesting_shares",total_vshares) );
          }
          acnt.last_bandwidth_update = now;
+         acnt.reset_request_time = time_point_sec::maximum(); ///< cancel any pending reset requests
       } );
    }
 }
@@ -1691,6 +1692,22 @@ void database::update_owner_authority( const account_object& account, const auth
    });
 }
 
+void database::process_reset_requests() {
+   const auto& aidx = get_index_type< account_index >().indices().get<by_reset_request_time>();
+   auto now = head_block_time();
+   auto valid_time = now - fc::days(30);
+
+   auto itr = aidx.begin();
+   while( itr != aidx.end() && itr->reset_request_time < valid_time ) {
+      modify( *itr, [&]( account_object& a ) {
+         a.owner = a.pending_reset_authority;
+         a.last_bandwidth_update = now;
+         a.reset_request_time = fc::time_point_sec::maximum();
+      });
+      itr = aidx.begin();
+   }
+}
+
 void database::process_vesting_withdrawals()
 {
    const auto& widx = get_index_type< account_index >().indices().get< by_next_vesting_withdrawal >();
@@ -2795,6 +2812,7 @@ void database::_apply_block( const signed_block& next_block )
    process_comment_cashout();
    process_vesting_withdrawals();
    process_savings_withdraws();
+   process_reset_requests();
    pay_liquidity_reward();
    update_virtual_supply();
 
