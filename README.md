@@ -70,6 +70,11 @@ used by the account. This means it does not favor mining pools.
 Make sure that your accountname is unique and not already used by someone else or your proof of work
 might not be accepted by the blockchain.
 
+OS-specific build instructions
+------------------------------
+
+See [here](doc/build-ubuntu.md) for Linux and [here](doc/build-osx.md) for OSX (Apple).
+
 cmake Build Options
 --------------------------
 
