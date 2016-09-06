@@ -1115,12 +1115,17 @@ void database::update_witness_schedule4()
    auto mitr = pow_idx.upper_bound(0);
    while( mitr != pow_idx.end() && selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES )
    {
-      // Skip any miner who is a top voted witness
+      // Only consider a miner who is not a top voted witness
       if( selected_voted.find(mitr->get_id()) == selected_voted.end() )
       {
-         selected_miners.insert(mitr->get_id());
-         active_witnesses.push_back(mitr->owner);
+         // Only consider a miner who has a valid block signing key
+         if( !( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && get_witness( mitr->owner ).signing_key == public_key_type() ) )
+         {
+            selected_miners.insert(mitr->get_id());
+            active_witnesses.push_back(mitr->owner);
+         }
       }
+      // Remove processed miner from the queue
       auto itr = mitr;
       ++mitr;
       modify( *itr, [&](witness_object& wit )
