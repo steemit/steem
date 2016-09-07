@@ -889,6 +889,14 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
       vstate.rshares = itr->rshares;
       vstate.percent = itr->vote_percent;
       vstate.time = itr->last_update;
+
+      if( my->_follow_api )
+      {
+         auto reps = my->_follow_api->get_account_reputations( vo.name, 1 );
+         if( reps.size() )
+            vstate.reputation = reps[0].reputation;
+      }
+
       result.push_back(vstate);
       ++itr;
    }
