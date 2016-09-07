@@ -2148,7 +2148,7 @@ void database::process_savings_withdraws()
 
      modify( get_account( itr->from ), [&]( account_object& a )
      {
-        a.transfer_from_savings_requests--;
+        a.savings_withdraw_requests--;
      });
 
      remove( *itr );

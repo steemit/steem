@@ -1714,11 +1714,10 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
 void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_operation& op )
 {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
-   FC_ASSERT( op.request_id < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account(op.to);
 
-   FC_ASSERT( from.transfer_from_savings_requests < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
+   FC_ASSERT( from.savings_withdraw_requests < STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT );
 
    FC_ASSERT( db().get_savings_balance( from, op.amount.symbol ) >= op.amount );
    db().adjust_savings_balance( from, -op.amount );
@@ -1735,14 +1734,13 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
 
    db().modify( from, [&]( account_object& a )
    {
-      a.transfer_from_savings_requests++;
+      a.savings_withdraw_requests++;
    });
 }
 
 void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_from_savings_operation& op )
 {
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
-   FC_ASSERT( op.request_id < STEEMIT_SAVINGS_WITHDRAW_LIMIT );
 
    const auto& swo_idx = db().get_index_type<withdraw_index>().indices().get<by_from_rid>();
    auto itr = swo_idx.find( boost::make_tuple( op.from, op.request_id ) );
@@ -1755,7 +1753,7 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
    const auto& from = db().get_account( op.from );
    db().modify( from, [&]( account_object& a )
    {
-      a.transfer_from_savings_requests++;
+      a.savings_withdraw_requests++;
    });
 }
 

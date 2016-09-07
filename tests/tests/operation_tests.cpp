@@ -5275,7 +5275,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       op.to = "alice";
       op.amount = ASSET( "0.001 TESTS" );
 
-      for( int i = 0; i < STEEMIT_SAVINGS_WITHDRAW_LIMIT; i++ )
+      for( int i = 0; i < STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT; i++ )
       {
          op.request_id = i;
          tx.clear();
@@ -5284,7 +5284,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
          db.push_transaction( tx, 0 );
       }
 
-      op.request_id = STEEMIT_SAVINGS_WITHDRAW_LIMIT;
+      op.request_id = STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT;
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
