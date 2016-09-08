@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 from time import sleep
+from time import time
 
 # local imports
 from steemdebugnode import DebugNode
@@ -62,7 +63,7 @@ def main( ):
    if( not data_dir.is_dir() ):
       print( 'Error: data_dir is not a directory' )
 
-   plguins = list()
+   plugins = list()
    if( args.plugins ):
       plugins = args.plugins.split()
 
@@ -76,7 +77,7 @@ def main( ):
    debug_node = DebugNode( str( steemd ), str( data_dir ), plugins=plugins, apis=apis, args='--replay', steemd_err=sys.stderr )
 
    with debug_node:
-      debug_node.debug_generate_blocks( 1 )
+      debug_node.debug_generate_blocks_until( int( time() ), True )
       debug_node.debug_set_hardfork( 14 )
       print( 'Done!' )
       print( 'Feel free to interact with this node via RPC calls for the cli wallet.' )
