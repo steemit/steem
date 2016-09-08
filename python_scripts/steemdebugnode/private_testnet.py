@@ -37,6 +37,10 @@ def main( ):
    parser.add_argument( '--data-dir', '-d', type=str, required=True, help='The location of an existing data directory. ' + \
                         'The debug node will pull blocks from this directory when replaying the chain. The directory ' + \
                         'will not be changed.' )
+   parser.add_argument( '--plugins', '-p', type=str, required=False, help='A list of plugins to load. witness and ' + \
+                        'debug_node are always loaded.' )
+   parser.add_argument( '--apis', '-a', type=str, required=False, help='A list of apis to load. database_api, login_api, ' + \
+                        'and debug_node_api are always loaded' )
 
    args = parser.parse_args()
 
@@ -58,10 +62,18 @@ def main( ):
    if( not data_dir.is_dir() ):
       print( 'Error: data_dir is not a directory' )
 
+   plguins = list()
+   if( args.plugins ):
+      plugins = args.plugins.split()
+
+   apis = list()
+   if( args.apis ):
+      apis = args.apis.split()
+
    signal.signal( signal.SIGINT, sigint_handler )
 
    print( 'Creating and starting debug node' )
-   debug_node = DebugNode( str( steemd ), str( data_dir ), args='--replay', steemd_err=sys.stderr )
+   debug_node = DebugNode( str( steemd ), str( data_dir ), plugins=plugins, apis=apis, args='--replay', steemd_err=sys.stderr )
 
    with debug_node:
       debug_node.debug_generate_blocks( 1 )
