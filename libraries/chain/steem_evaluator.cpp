@@ -1705,7 +1705,7 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__239 ), "operation not active until next hardfork" ); // TODO: Remove after hf14
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account(op.to);
-   FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount );
+   FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds for transfer." );
 
    db().adjust_balance( from, -op.amount );
    db().adjust_savings_balance( to, op.amount );
@@ -1717,7 +1717,7 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account(op.to);
 
-   FC_ASSERT( from.savings_withdraw_requests < STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT );
+   FC_ASSERT( from.savings_withdraw_requests < STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT, "Account has reached limit for pending withdraw requests." );
 
    FC_ASSERT( db().get_savings_balance( from, op.amount.symbol ) >= op.amount );
    db().adjust_savings_balance( from, -op.amount );

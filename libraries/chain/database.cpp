@@ -1356,18 +1356,6 @@ void database::update_witness_schedule()
                   wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
             } );
          }
-
-         /* TODO: delete this if we can reindex without it through HF4 */
-         if( !has_hardfork( STEEMIT_HARDFORK_0_4 ) )
-         {
-            while( sitr != schedule_idx.end() && sitr->pow_worker )
-            {
-               modify( *sitr, [&]( witness_object& wo ) {
-                       wo.virtual_last_update = new_virtual_time;
-                       });
-               ++sitr;
-            }
-         }
       }
 
       /// Add the next POW witness to the active set if there is one...
@@ -2783,8 +2771,7 @@ void database::_apply_block( const signed_block& next_block )
    });
 
    /// parse witness version reporting
-   if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // TODO: Remove after hardfork
-      process_header_extensions( next_block );
+   process_header_extensions( next_block );
 
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
