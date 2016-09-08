@@ -9,6 +9,8 @@
 #include <fstream>
 
 namespace steemit { namespace chain {
+   struct chain_properties;
+   struct pow2;
    struct signed_block;
 } }
 
@@ -19,6 +21,20 @@ namespace graphene { namespace db {
 
 namespace steemit { namespace plugin { namespace debug_node {
 using app::application;
+
+namespace detail { class debug_node_plugin_impl; }
+
+class private_key_storage
+{
+   public:
+      private_key_storage();
+      virtual ~private_key_storage();
+      virtual void maybe_get_private_key(
+         fc::optional< fc::ecc::private_key >& result,
+         const steemit::chain::public_key_type& pubkey,
+         const std::string& account_name
+         ) = 0;
+};
 
 class debug_node_plugin : public steemit::app::plugin
 {
@@ -35,14 +51,31 @@ class debug_node_plugin : public steemit::app::plugin
       virtual void plugin_shutdown() override;
 
       void debug_update( const fc::variant_object& update, uint32_t skip = steemit::chain::database::skip_nothing );
-      uint32_t debug_generate_blocks( const std::string& debug_key, uint32_t count, uint32_t skip = steemit::chain::database::skip_nothing, uint32_t miss_blocks = 0 );
-      uint32_t debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely, uint32_t skip = steemit::chain::database::skip_nothing );
+      uint32_t debug_generate_blocks(
+         const std::string& debug_key,
+         uint32_t count,
+         uint32_t skip = steemit::chain::database::skip_nothing,
+         uint32_t miss_blocks = 0,
+         private_key_storage* key_storage = nullptr
+         );
+      uint32_t debug_generate_blocks_until(
+         const std::string& debug_key,
+         const fc::time_point_sec& head_block_time,
+         bool generate_sparsely,
+         uint32_t skip = steemit::chain::database::skip_nothing,
+         private_key_storage* key_storage = nullptr
+         );
 
       void set_json_object_stream( const std::string& filename );
       void flush_json_object_stream();
 
       void save_debug_updates( fc::mutable_variant_object& target );
       void load_debug_updates( const fc::variant_object& target );
+
+      void debug_mine_work(
+         chain::pow2& work,
+         uint32_t summary_target
+         );
 
       bool logging = true;
 
@@ -52,6 +85,8 @@ class debug_node_plugin : public steemit::app::plugin
       void on_applied_block( const chain::signed_block& b );
 
       void apply_debug_updates();
+
+      std::shared_ptr< detail::debug_node_plugin_impl > _my;
 
       std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
 
