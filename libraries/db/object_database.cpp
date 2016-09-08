@@ -53,18 +53,18 @@ const object& object_database::get_object( object_id_type id )const
 
 const index& object_database::get_index(uint8_t space_id, uint8_t type_id)const
 {
-   FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
-   FC_ASSERT( _index[space_id].size() > type_id, "", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
+   FC_ASSERT( _index.size() > space_id, "space_id out of bounds in get_index(${space_id}.${type_id}.*)", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
+   FC_ASSERT( _index[space_id].size() > type_id, "type_id out of bounds in get_index(${space_id}.${type_id}.*)", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
    const auto& tmp = _index[space_id][type_id];
-   FC_ASSERT( tmp, "unkown index" );
+   FC_ASSERT( tmp, "unknown object type in get_index(${space_id}.${type_id}.*)", ("space_id",space_id)("type_id",type_id) );
    return *tmp;
 }
 index& object_database::get_mutable_index(uint8_t space_id, uint8_t type_id)
 {
-   FC_ASSERT( _index.size() > space_id, "", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
-   FC_ASSERT( _index[space_id].size() > type_id , "", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
+   FC_ASSERT( _index.size() > space_id, "space_id out of bounds in get_mutable_index(${space_id}.${type_id}.*)", ("space_id",space_id)("type_id",type_id)("index.size",_index.size()) );
+   FC_ASSERT( _index[space_id].size() > type_id , "type_id out of bounds in get_mutable_index(${space_id}.${type_id}.*)", ("space_id",space_id)("type_id",type_id)("index[space_id].size",_index[space_id].size()) );
    const auto& idx = _index[space_id][type_id];
-   FC_ASSERT( idx, "", ("space",space_id)("type",type_id) );
+   FC_ASSERT( idx, "unknown object type in get_mutable_index(${space_id}.${type_id}.*)", ("space_id",space_id)("type_id",type_id) );
    return *idx;
 }
 

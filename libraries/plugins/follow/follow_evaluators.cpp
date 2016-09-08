@@ -74,6 +74,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
          const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
 
+         const auto& reblog_account = db.get_account( o.account );
+
          while( itr != idx.end() && itr->following == c.author )
          {
             auto account_id = db.get_account( itr->follower ).id;
@@ -92,6 +94,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = account_id;
+                  f.reblogged_by = reblog_account.get_id();
                   f.comment = c.id;
                   f.account_feed_id = next_id;
                });

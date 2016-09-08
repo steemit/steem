@@ -51,20 +51,6 @@ namespace steemit { namespace chain {
          asset       total_reward_fund_steem    = asset( 0, STEEM_SYMBOL );
          fc::uint128 total_reward_shares2; ///< the running total of REWARD^2
 
-         /**
-          *  These fields are used to reward users who remain active. Every block 15% of
-          *  content + curation rewards steem is placed into the activity fund steem.
-          *
-          *  Every time a user votes they earn activity_fund_shares which are calculated as
-          *  min(time_since_last_active,24h) * VESTS.  This is designed to reward those who
-          *  check in daily.  Activity rewards can only be earned by accounts with trival
-          *  posting authorities consisting of a single key.
-          */
-         //@{
-         asset       total_activity_fund_steem  = asset( 0, STEEM_SYMBOL );
-         fc::uint128 total_activity_fund_shares = 0;
-         //@}
-
          price       get_vesting_share_price() const
          {
             if ( total_vesting_fund_steem.amount == 0 || total_vesting_shares.amount == 0 )
@@ -77,6 +63,8 @@ namespace steemit { namespace chain {
           *  This property defines the interest rate that SBD deposits receive.
           */
          uint16_t sbd_interest_rate = 0;
+
+         uint16_t sbd_print_rate = STEEMIT_100_PERCENT;
 
          /**
           *  Average block size is updated every block to be:
@@ -109,7 +97,7 @@ namespace steemit { namespace chain {
           * used to compute witness participation.
           */
          fc::uint128_t recent_slots_filled;
-         uint8_t       participation_count; ///< Divide by 128 to compute participation percentage
+         uint8_t       participation_count = 0; ///< Divide by 128 to compute participation percentage
 
          uint32_t last_irreversible_block_num = 0;
 
@@ -131,6 +119,13 @@ namespace steemit { namespace chain {
           *   happen every block.
           */
          uint64_t current_reserve_ratio = 1;
+
+         /**
+          * The number of votes regenerated per day.  Any user voting slower than this rate will be
+          * "wasting" voting power through spillover; any user voting faster than this rate will have
+          * their votes reduced.
+          */
+         uint32_t vote_regeneration_per_day = 40;
    };
 }}
 
@@ -150,9 +145,8 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (total_vesting_shares)
                     (total_reward_fund_steem)
                     (total_reward_shares2)
-                    (total_activity_fund_steem)
-                    (total_activity_fund_shares)
                     (sbd_interest_rate)
+                    (sbd_print_rate)
                     (average_block_size)
                     (maximum_block_size)
                     (current_aslot)
@@ -161,5 +155,6 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (last_irreversible_block_num)
                     (max_virtual_bandwidth)
                     (current_reserve_ratio)
+                    (vote_regeneration_per_day)
                   )
 

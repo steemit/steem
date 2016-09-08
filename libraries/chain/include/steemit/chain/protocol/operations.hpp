@@ -51,16 +51,25 @@ namespace steemit { namespace chain {
             escrow_dispute_operation,
             escrow_release_operation,
             pow2_operation,
+            escrow_approve_operation,
+            transfer_to_savings_operation,
+            transfer_from_savings_operation,
+            cancel_transfer_from_savings_operation,
+            custom_binary_operation,
+            decline_voting_rights_operation,
+            reset_account_operation,
+            set_reset_account_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
+            author_reward_operation,
+            curation_reward_operation,
             comment_reward_operation,
-            curate_reward_operation,
             liquidity_reward_operation,
             interest_operation,
             fill_vesting_withdraw_operation,
             fill_order_operation,
-            comment_payout_operation
+            shutdown_witness_operation
          > operation;
 
    /*void operation_get_required_authorities( const operation& op,
@@ -72,6 +81,8 @@ namespace steemit { namespace chain {
    void operation_validate( const operation& op );*/
 
    bool is_market_operation( const operation& op );
+
+   bool is_virtual_operation( const operation& op );
 
 } } // steemit::chain
 

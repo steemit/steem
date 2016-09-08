@@ -59,10 +59,13 @@ namespace steemit { namespace app {
 
          struct transaction_confirmation
          {
+            transaction_confirmation( transaction_id_type txid, int32_t bn, int32_t tn, bool ex )
+            : id(txid), block_num(bn), trx_num(tn), expired(ex) {}
+
             transaction_id_type   id;
-            int32_t               block_num;
-            int32_t               trx_num;
-            bool                  expired;
+            int32_t               block_num = 0;
+            int32_t               trx_num   = 0;
+            bool                  expired   = false;
          };
 
          typedef std::function<void(variant/*transaction_confirmation*/)> confirmation_callback;
@@ -89,10 +92,10 @@ namespace steemit { namespace app {
 
          void broadcast_block( const signed_block& block );
 
-         void set_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > > bcd_trigger );
+         void set_max_block_age( int32_t max_block_age );
 
          // implementation detail, not reflected
-         bool check_bcd_trigger( const std::vector< std::pair< uint32_t, uint32_t > >& bcd_trigger );
+         bool check_max_block_age( int32_t max_block_age );
 
          /**
           * @brief Not reflected, thus not accessible to API clients.
@@ -113,7 +116,7 @@ namespace steemit { namespace app {
          map<transaction_id_type,confirmation_callback>     _callbacks;
          map<time_point_sec, vector<transaction_id_type> >  _callbacks_expirations;
 
-         std::vector< std::pair< uint32_t, uint32_t > > _bcd_trigger;
+         int32_t                                        _max_block_age = -1;
 
          application&                                   _app;
    };
@@ -210,7 +213,7 @@ FC_API(steemit::app::network_broadcast_api,
        (broadcast_transaction_with_callback)
        (broadcast_transaction_synchronous)
        (broadcast_block)
-       (set_bcd_trigger)
+       (set_max_block_age)
      )
 FC_API(steemit::app::network_node_api,
        (get_info)

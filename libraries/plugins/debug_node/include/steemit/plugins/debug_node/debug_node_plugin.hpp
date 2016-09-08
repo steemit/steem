@@ -34,12 +34,17 @@ class debug_node_plugin : public steemit::app::plugin
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
-      void debug_update( const fc::variant_object& update );
+      void debug_update( const fc::variant_object& update, uint32_t skip = steemit::chain::database::skip_nothing );
+      uint32_t debug_generate_blocks( const std::string& debug_key, uint32_t count, uint32_t skip = steemit::chain::database::skip_nothing, uint32_t miss_blocks = 0 );
+      uint32_t debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely, uint32_t skip = steemit::chain::database::skip_nothing );
+
       void set_json_object_stream( const std::string& filename );
       void flush_json_object_stream();
 
       void save_debug_updates( fc::mutable_variant_object& target );
       void load_debug_updates( const fc::variant_object& target );
+
+      bool logging = true;
 
    private:
       void on_changed_objects( const std::vector<graphene::db::object_id_type>& ids );

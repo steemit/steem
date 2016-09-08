@@ -124,65 +124,58 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(voter); }
    };
 
-   struct comment_reward_operation : public base_operation
-   {
-      comment_reward_operation(){}
-      comment_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
+   struct author_reward_operation : public virtual_operation {
+      author_reward_operation(){}
+      author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
          :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
       string author;
       string permlink;
       asset  sbd_payout;
       asset  vesting_payout;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct curate_reward_operation : public base_operation
+   struct curation_reward_operation : public virtual_operation
    {
-      curate_reward_operation(){}
-      curate_reward_operation( const string& c, const asset& r, const string& a, const string& p )
+      curation_reward_operation(){}
+      curation_reward_operation( const string& c, const asset& r, const string& a, const string& p )
          :curator(c),reward(r),comment_author(a),comment_permlink(p){}
 
       string curator;
       asset  reward;
       string comment_author;
       string comment_permlink;
-      void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct comment_payout_operation : public base_operation
+   struct comment_reward_operation : public virtual_operation
    {
-      comment_payout_operation(){}
-      comment_payout_operation( const string& a, const string& pl, const asset& p )
+      comment_reward_operation(){}
+      comment_reward_operation( const string& a, const string& pl, const asset& p )
          :author(a),permlink(pl),payout(p){}
 
       string author;
       string permlink;
       asset  payout;
-      void   validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct liquidity_reward_operation : public base_operation
+   struct liquidity_reward_operation : public virtual_operation
    {
       liquidity_reward_operation( string o = string(), asset p = asset() )
       :owner(o),payout(p){}
 
       string owner;
       asset  payout;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct interest_operation : public base_operation
+   struct interest_operation : public virtual_operation
    {
       interest_operation( const string& o = "", const asset& i = asset(0,SBD_SYMBOL) )
          :owner(o),interest(i){}
 
       string owner;
       asset  interest;
-
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct fill_convert_request_operation : public base_operation
+   struct fill_convert_request_operation : public virtual_operation
    {
       fill_convert_request_operation(){}
       fill_convert_request_operation( const string& o, const uint32_t id, const asset& in, const asset& out )
@@ -191,10 +184,9 @@ namespace steemit { namespace chain {
       uint32_t requestid = 0;
       asset    amount_in;
       asset    amount_out;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
-   struct fill_vesting_withdraw_operation : public base_operation
+   struct fill_vesting_withdraw_operation : public virtual_operation
    {
       fill_vesting_withdraw_operation(){}
       fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
@@ -203,8 +195,13 @@ namespace steemit { namespace chain {
       string to_account;
       asset  withdrawn;
       asset  deposited;
+   };
 
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
+   struct shutdown_witness_operation : public virtual_operation
+   {
+      shutdown_witness_operation(){}
+      shutdown_witness_operation( const string& o ):owner(o) {}
+      string owner;
    };
 
    /**
@@ -232,11 +229,17 @@ namespace steemit { namespace chain {
    /**
     *  The purpose of this operation is to enable someone to send money contingently to
     *  another individual. The funds leave the *from* account and go into a temporary balance
-    *  where they are held until *from* releases it to *to*   or *to* refunds it to *from*.
+    *  where they are held until *from* releases it to *to* or *to* refunds it to *from*.
     *
     *  In the event of a dispute the *agent* can divide the funds between the to/from account.
+    *  Disputes can be raised any time before or on the dispute deadline time, after the escrow
+    *  has been approved by all parties.
     *
-    *  The escrow agent is paid the fee no matter what. It is up to the escrow agent to determine
+    *  This operation only creates a proposed escrow transfer. Both the *agent* and *to* must
+    *  agree to the terms of the arrangement by approving the escrow.
+    *
+    *  The escrow agent is paid the fee on approval of all parties. It is up to the escrow agent
+    *  to determine the fee.
     *
     *  Escrow transactions are uniquely identified by 'from' and 'escrow_id', the 'escrow_id' is defined
     *  by the sender.
@@ -245,17 +248,38 @@ namespace steemit { namespace chain {
    {
       string         from;
       string         to;
-      asset          amount;
-      string         memo;
-
-      uint32_t        escrow_id;
       string         agent;
+      uint32_t       escrow_id = 0;
+
+      asset          sbd_amount = asset( 0, SBD_SYMBOL );
+      asset          steem_amount = asset( 0, STEEM_SYMBOL );
       asset          fee;
+
+      time_point_sec ratification_deadline;
+      time_point_sec escrow_expiration;
+
       string         json_meta;
-      time_point_sec expiration;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
+   };
+
+   /**
+    *  The agent and to accounts must approve an escrow transaction for it to be valid on
+    *  the blockchain. Once a part approves the escrow, the cannot revoke their approval.
+    *  Subsequent escrow approve operations, regardless of the approval, will be rejected.
+    */
+   struct escrow_approve_operation : public base_operation
+   {
+      string         from;
+      string         to;
+      string         agent;
+      string         who; // Either to or agent
+      uint32_t       escrow_id = 0;
+      bool           approve = true;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
    };
 
    /**
@@ -267,8 +291,8 @@ namespace steemit { namespace chain {
    {
       string   from;
       string   to;
-      uint32_t escrow_id;
       string   who;
+      uint32_t escrow_id = 0;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
@@ -277,14 +301,21 @@ namespace steemit { namespace chain {
    /**
     *  This operation can be used by anyone associated with the escrow transfer to
     *  release funds if they have permission.
+    *
+    *  The permission scheme is as follows:
+    *  If there is no dispute and escrow has not expired, either party can release funds to the other.
+    *  If escrow expires and there is no dispute, either party can release funds to either party.
+    *  If there is a dispute regardless of expiration, the agent can release funds to either party
+    *     following whichever agreement was in place between the parties.
     */
    struct escrow_release_operation : public base_operation
    {
       string    from;
-      uint32_t  escrow_id;
       string    to; ///< the account that should receive funds (might be from, might be to
       string    who; ///< the account that is attempting to release the funds, determines valid 'to'
-      asset     amount; ///< the amount of funds to release
+      uint32_t  escrow_id = 0;
+      asset     sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
+      asset     steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
@@ -302,7 +333,6 @@ namespace steemit { namespace chain {
       string   from;
       string   to; ///< if null, then same as from
       asset    amount; ///< must be STEEM
-
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
@@ -339,8 +369,8 @@ namespace steemit { namespace chain {
    {
       string   from_account;
       string   to_account;
-      uint16_t percent;
-      bool     auto_vest;
+      uint16_t percent = 0;
+      bool     auto_vest = false;
 
       void validate()const;
       void get_required_active_authorities( flat_set< string >& a )const { a.insert( from_account ); }
@@ -458,6 +488,23 @@ namespace steemit { namespace chain {
       void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
    };
 
+   struct custom_binary_operation : public base_operation
+   {
+      flat_set<string>   required_owner_auths;
+      flat_set<string>   required_active_auths;
+      flat_set<string>   required_posting_auths;
+      vector<authority>  required_auths;
+
+      string            id; ///< must be less than 32 characters long
+      vector<char>      data;
+
+      void validate()const;
+      void get_required_owner_authorities( flat_set<string>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+      void get_required_authorities( vector<authority>& a )const{ for( const auto& i : required_auths ) a.push_back(i); }
+   };
+
    /**
     *  Feeds can only be published by the top N witnesses which are included in every round and are
     *  used to define the exchange rate between steem and the dollar.
@@ -536,19 +583,18 @@ namespace steemit { namespace chain {
       }
    };
 
-   struct fill_order_operation : public base_operation
+   struct fill_order_operation : public virtual_operation
    {
       fill_order_operation(){}
       fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
       :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
 
       string   current_owner;
-      uint32_t current_orderid;
+      uint32_t current_orderid = 0;
       asset    current_pays;
       string   open_owner;
-      uint32_t open_orderid;
+      uint32_t open_orderid = 0;
       asset    open_pays;
-      void  validate()const { FC_ASSERT( false, "this is a virtual operation" ); }
    };
 
    /**
@@ -757,6 +803,38 @@ namespace steemit { namespace chain {
    };
 
    /**
+    *  This operation allows recovery_accoutn to change account_to_reset's owner authority to
+    *  new_owner_authority after 60 days of inactivity.
+    */
+   struct reset_account_operation : public base_operation {
+      string    reset_account;
+      string    account_to_reset;
+      authority new_owner_authority;
+
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         a.insert( reset_account );
+      }
+   };
+
+   /**
+    * This operation allows 'account' owner to control which account has the power
+    * to execute the 'reset_account_operation' after 60 days.
+    */
+   struct set_reset_account_operation : public base_operation {
+      string account;
+      string reset_account;
+      void validate()const;
+      void get_required_active_authorities( flat_set<string>& a )const
+      {
+         a.insert( account );
+      }
+   };
+
+
+   /**
     * Each account lists another account as their recovery account.
     * The recovery account has the ability to create account_recovery_requests
     * for the account to recover. An account can change their recovery account
@@ -786,7 +864,55 @@ namespace steemit { namespace chain {
 
       void validate() const;
    };
+
+   struct transfer_to_savings_operation : public base_operation {
+      string from;
+      string to;
+      asset  amount;
+      string memo;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void validate() const;
+   };
+
+   struct transfer_from_savings_operation : public base_operation {
+      string   from;
+      uint32_t request_id = 0;
+      string   to;
+      asset    amount;
+      string   memo;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void validate() const;
+   };
+
+   struct cancel_transfer_from_savings_operation : public base_operation {
+      string   from;
+      uint32_t request_id = 0;
+
+      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void validate() const;
+   };
+
+   struct decline_voting_rights_operation : public base_operation
+   {
+      string account;
+      bool   decline = true;
+
+      void get_required_owner_authorities( flat_set< string >& a )const{ a.insert( account ); }
+
+      void validate() const;
+   };
 } } // steemit::chain
+
+
+FC_REFLECT( steemit::chain::transfer_to_savings_operation, (from)(to)(amount)(memo) )
+FC_REFLECT( steemit::chain::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
+FC_REFLECT( steemit::chain::cancel_transfer_from_savings_operation, (from)(request_id) )
+
+FC_REFLECT( steemit::chain::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
+FC_REFLECT( steemit::chain::set_reset_account_operation, (account)(reset_account) )
+
 
 FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_block)(second_block) )
 FC_REFLECT( steemit::chain::convert_operation, (owner)(requestid)(amount) )
@@ -828,26 +954,30 @@ FC_REFLECT( steemit::chain::comment_operation, (parent_author)(parent_permlink)(
 FC_REFLECT( steemit::chain::vote_operation, (voter)(author)(permlink)(weight) )
 FC_REFLECT( steemit::chain::custom_operation, (required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
+FC_REFLECT( steemit::chain::custom_binary_operation, (required_owner_auths)(required_active_auths)(required_posting_auths)(required_auths)(id)(data) )
 FC_REFLECT( steemit::chain::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::limit_order_create2_operation, (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration) )
 FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
-FC_REFLECT( steemit::chain::curate_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
-FC_REFLECT( steemit::chain::comment_payout_operation, (author)(permlink)(payout) )
+FC_REFLECT( steemit::chain::author_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
+FC_REFLECT( steemit::chain::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
+FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
 FC_REFLECT( steemit::chain::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::chain::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::chain::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
+FC_REFLECT( steemit::chain::shutdown_witness_operation, (owner) )
 FC_REFLECT( steemit::chain::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steemit::chain::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
-FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(amount)(memo)(escrow_id)(agent)(fee)(json_meta)(expiration) );
-FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(escrow_id)(who) );
-FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(escrow_id)(who)(amount) );
+FC_REFLECT( steemit::chain::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );
+FC_REFLECT( steemit::chain::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
+FC_REFLECT( steemit::chain::escrow_dispute_operation, (from)(to)(who)(escrow_id) );
+FC_REFLECT( steemit::chain::escrow_release_operation, (from)(to)(who)(escrow_id)(sbd_amount)(steem_amount) );
 FC_REFLECT( steemit::chain::challenge_authority_operation, (challenger)(challenged)(require_owner) );
 FC_REFLECT( steemit::chain::prove_authority_operation, (challenged)(require_owner) );
 FC_REFLECT( steemit::chain::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
 FC_REFLECT( steemit::chain::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steemit::chain::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
+FC_REFLECT( steemit::chain::decline_voting_rights_operation, (account)(decline) );

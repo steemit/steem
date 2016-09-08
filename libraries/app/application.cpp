@@ -97,12 +97,17 @@ namespace detail {
             auto seeds = _options->at("seed-node").as<vector<string>>();
             for( const string& endpoint_string : seeds )
             {
-               std::vector<fc::ip::endpoint> endpoints = resolve_string_to_ip_endpoints(endpoint_string);
-               for (const fc::ip::endpoint& endpoint : endpoints)
-               {
-                  ilog("Adding seed node ${endpoint}", ("endpoint", endpoint));
-                  _p2p_network->add_node(endpoint);
-                  _p2p_network->connect_to_endpoint(endpoint);
+               try {
+                  std::vector<fc::ip::endpoint> endpoints = resolve_string_to_ip_endpoints(endpoint_string);
+                  for (const fc::ip::endpoint& endpoint : endpoints)
+                  {
+                     ilog("Adding seed node ${endpoint}", ("endpoint", endpoint));
+                     _p2p_network->add_node(endpoint);
+                     _p2p_network->connect_to_endpoint(endpoint);
+                  }
+               } catch( const fc::exception& e ) {
+                  wlog( "caught exception ${e} while adding seed node ${endpoint}",
+                           ("e", e.to_detail_string())("endpoint", endpoint_string) );
                }
             }
          }
@@ -236,8 +241,7 @@ namespace detail {
          fc::create_directories(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "node/transaction_history");
 
-         fc::variant v_bcd_trigger = fc::json::from_string( _options->at("bcd-trigger").as<string>() );
-         fc::from_variant( v_bcd_trigger, _bcd_trigger );
+         _max_block_age =_options->at("max-block-age").as<int32_t>();
          register_builtin_apis();
 
          if( _options->count("resync-blockchain") )
@@ -415,6 +419,18 @@ namespace detail {
                                 std::vector<fc::uint160_t>& contained_transaction_message_ids) override
       { try {
 
+         if (sync_mode)
+            fc_ilog(fc::logger::get("sync"),
+                    "chain pushing sync block #${block_num} ${block_hash}, head is ${head}", 
+                    ("block_num", blk_msg.block.block_num())
+                    ("block_hash", blk_msg.block_id)
+                    ("head", _chain_db->head_block_num()));
+         else
+            fc_ilog(fc::logger::get("sync"),
+                    "chain pushing block #${block_num} ${block_hash}, head is ${head}", 
+                    ("block_num", blk_msg.block.block_num())
+                    ("block_hash", blk_msg.block_id)
+                    ("head", _chain_db->head_block_num()));
          if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
          {
             ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
@@ -445,19 +461,21 @@ namespace detail {
             return result;
          } catch ( const steemit::chain::unlinkable_block_exception& e ) {
             // translate to a graphene::net exception
+            fc_elog(fc::logger::get("sync"), 
+                    "Error when pushing block, current head block is ${head}:\n${e}", 
+                    ("e", e.to_detail_string())
+                    ("head", _chain_db->head_block_num()));
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
          } catch( const fc::exception& e ) {
+            fc_elog(fc::logger::get("sync"), 
+                    "Error when pushing block, current head block is ${head}:\n${e}", 
+                    ("e", e.to_detail_string())
+                    ("head", _chain_db->head_block_num()));
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             throw;
          }
 
-
-         if( !_is_finished_syncing && !sync_mode )
-         {
-            _is_finished_syncing = true;
-            _self->syncing_finished();
-         }
       } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
@@ -787,10 +805,9 @@ namespace detail {
          // notify GUI or something cool
       }
 
-      void get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result )
+      void get_max_block_age( int32_t& result )
       {
-         for( const std::pair< uint32_t, uint32_t >& p : _bcd_trigger )
-            result.push_back(p);
+         result = _max_block_age;
          return;
       }
 
@@ -810,9 +827,8 @@ namespace detail {
       std::map<string, std::shared_ptr<abstract_plugin> > _plugins_enabled;
       flat_map< std::string, std::function< fc::api_ptr( const api_context& ) > >   _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
-      std::vector< std::pair< uint32_t, uint32_t > >   _bcd_trigger;
+      int32_t                                          _max_block_age = -1;
 
-      bool _is_finished_syncing = false;
       uint32_t allow_future_time = 5;
    };
 
@@ -861,11 +877,10 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
-         ("dbg-init-key", bpo::value<string>(), "Block signing key to use for init witnesses, overrides genesis file")
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
          ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
-         ("bcd-trigger,b", bpo::value< string >()->default_value("[[0,10],[85,300]]"), "JSON list of [nblocks,nseconds] pairs, see doc/bcd-trigger.md")
+         ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
@@ -936,11 +951,6 @@ void application::set_api_access_info(const string& username, api_access_info&& 
    my->set_api_access_info(username, std::move(permissions));
 }
 
-bool application::is_finished_syncing() const
-{
-   return my->_is_finished_syncing;
-}
-
 void application::register_api_factory( const string& name, std::function< fc::api_ptr( const api_context& ) > factory )
 {
    return my->register_api_factory( name, factory );
@@ -951,9 +961,9 @@ fc::api_ptr application::create_api_by_name( const api_context& ctx )
    return my->create_api_by_name( ctx );
 }
 
-void application::get_bcd_trigger( std::vector< std::pair< uint32_t, uint32_t > >& result )
+void application::get_max_block_age( int32_t& result )
 {
-   my->get_bcd_trigger( result );
+   my->get_max_block_age( result );
 }
 
 void application::shutdown_plugins()

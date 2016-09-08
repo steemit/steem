@@ -49,8 +49,9 @@ class feed_object : public abstract_object< feed_object >
       static const uint8_t type_id  = feed_object_type;
 
       account_id_type account;
+      account_id_type reblogged_by;
       comment_id_type comment;
-      uint32_t        account_feed_id;
+      uint32_t        account_feed_id = 0;
 };
 
 class reputation_object : public abstract_object< reputation_object >
@@ -120,8 +121,8 @@ typedef multi_index_container<
       >,
       ordered_unique< tag< by_comment >,
          composite_key< feed_object,
-            member< feed_object, account_id_type, &feed_object::account >,
-            member< feed_object, comment_id_type, &feed_object::comment >
+            member< feed_object, comment_id_type, &feed_object::comment >,
+            member< feed_object, account_id_type, &feed_object::account >
          >
       >
    >
@@ -153,5 +154,5 @@ typedef graphene::db::generic_index< reputation_object,  reputation_multi_index_
 FC_REFLECT_ENUM( steemit::follow::follow_type, (undefined)(blog)(ignore) )
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) )
-FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(comment)(account_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(reblogged_by)(comment)(account_feed_id) )
 FC_REFLECT_DERIVED( steemit::follow::reputation_object, (graphene::db::object), (account)(reputation) )

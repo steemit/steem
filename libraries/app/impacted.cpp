@@ -70,12 +70,12 @@ struct get_impacted_account_visitor
       _impacted.insert( op.author );
    }
 
-   void operator()( const comment_reward_operation& op )
+   void operator()( const author_reward_operation& op )
    {
       _impacted.insert( op.author );
    }
 
-   void operator()( const curate_reward_operation& op )
+   void operator()( const curation_reward_operation& op )
    {
       _impacted.insert( op.curator );
    }
@@ -163,6 +163,11 @@ struct get_impacted_account_visitor
    {
       _impacted.insert( op.from_account );
       _impacted.insert( op.to_account );
+   }
+
+   void operator()( const shutdown_witness_operation& op )
+   {
+      _impacted.insert( op.owner );
    }
 
    void operator()( const custom_operation& op )

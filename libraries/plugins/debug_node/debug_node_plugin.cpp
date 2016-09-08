@@ -8,6 +8,8 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 
+#include <graphene/utilities/key_conversion.hpp>
+
 #include <sstream>
 #include <string>
 
@@ -39,7 +41,7 @@ void debug_node_plugin::plugin_initialize( const boost::program_options::variabl
 
 void debug_node_plugin::plugin_startup()
 {
-   ilog("debug_node_plugin::plugin_startup() begin");
+   if( logging ) ilog("debug_node_plugin::plugin_startup() begin");
    chain::database& db = database();
 
    // connect needed signals
@@ -59,7 +61,7 @@ void debug_node_plugin::plugin_startup()
    }
 }
 
-void debug_apply_update( chain::database& db, const fc::variant_object& vo )
+void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool logging )
 {
    static const uint8_t
       db_action_nil = 0,
@@ -69,7 +71,7 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
       db_action_delete = 4,
       db_action_set_hardfork = 5;
 
-   wlog( "debug_apply_update:  ${o}", ("o", vo) );
+   if( logging ) wlog( "debug_apply_update:  ${o}", ("o", vo) );
 
    // "_action" : "create"   object must not exist, unspecified fields take defaults
    // "_action" : "write"    object may exist, is replaced entirely, unspecified fields take defaults
@@ -148,6 +150,66 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo )
    }
 }
 
+uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key, uint32_t count, uint32_t skip, uint32_t miss_blocks )
+{
+   if( count == 0 )
+      return 0;
+
+   fc::optional<fc::ecc::private_key> debug_private_key = graphene::utilities::wif_to_key( debug_key );
+   FC_ASSERT( debug_private_key.valid() );
+   chain::public_key_type debug_public_key = debug_private_key->get_public_key();
+
+   chain::database& db = database();
+   for( uint32_t i=0; i<count; i++ )
+   {
+      std::string scheduled_witness_name = db.get_scheduled_witness( miss_blocks + 1 );
+      fc::time_point_sec scheduled_time = db.get_slot_time( miss_blocks + 1 );
+      const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
+      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
+      //wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+      if( scheduled_key != debug_public_key )
+      {
+         if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+         fc::mutable_variant_object update;
+         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
+         debug_update( update, skip );
+      }
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
+   }
+
+   return count;
+}
+
+uint32_t debug_node_plugin::debug_generate_blocks_until( const std::string& debug_key, const fc::time_point_sec& head_block_time, bool generate_sparsely, uint32_t skip )
+{
+  chain::database& db = database();
+
+   if( db.head_block_time() >= head_block_time )
+      return 0;
+
+   uint32_t new_blocks = 0;
+
+   if( generate_sparsely )
+   {
+      new_blocks += debug_generate_blocks( debug_key, 1, skip );
+
+      auto slots_to_miss = db.get_slot_at_time( head_block_time );
+      if( slots_to_miss > 1 )
+      {
+         slots_to_miss--;
+         new_blocks += debug_generate_blocks( debug_key, 1, skip, slots_to_miss );
+      }
+   }
+   else
+   {
+      while( db.head_block_time() < head_block_time )
+         new_blocks += debug_generate_blocks( debug_key, 1 );
+   }
+
+   FC_ASSERT( head_block_time.sec_since_epoch() - db.head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db.head_block_time()",db.head_block_time()) );
+   return new_blocks;
+}
+
 void debug_node_plugin::apply_debug_updates()
 {
    // this was a method on database in Graphene
@@ -157,10 +219,10 @@ void debug_node_plugin::apply_debug_updates()
    if( it == _debug_updates.end() )
       return;
    for( const fc::variant_object& update : it->second )
-      debug_apply_update( db, update );
+      debug_apply_update( db, update, logging );
 }
 
-void debug_node_plugin::debug_update( const fc::variant_object& update )
+void debug_node_plugin::debug_update( const fc::variant_object& update, uint32_t skip )
 {
    // this was a method on database in Graphene
    chain::database& db = database();
@@ -175,7 +237,7 @@ void debug_node_plugin::debug_update( const fc::variant_object& update )
 
    // What the last block does has been changed by adding to node_property_object, so we have to re-apply it
    db.pop_block();
-   db.push_block( *head_block );
+   db.push_block( *head_block, skip );
 }
 
 void debug_node_plugin::on_changed_objects( const std::vector<graphene::db::object_id_type>& ids )

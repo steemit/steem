@@ -12,7 +12,7 @@ namespace steemit { namespace chain {
  */
 struct version
 {
-   version():v_num(0) {}
+   version() {}
    version( uint8_t m, uint8_t h, uint16_t r );
    virtual ~version() {}
 
@@ -25,7 +25,7 @@ struct version
 
    operator fc::string()const;
 
-   uint32_t v_num;
+   uint32_t v_num = 0;
 };
 
 struct hardfork_version : version

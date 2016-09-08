@@ -37,15 +37,18 @@ namespace steemit { namespace chain {
          time_point_sec  last_owner_proved = time_point_sec::min();
          time_point_sec  last_active_proved = time_point_sec::min();
          string          recovery_account = "";
+         string          reset_account = STEEMIT_NULL_ACCOUNT;
          time_point_sec  last_account_recovery;
          uint32_t        comment_count = 0;
          uint32_t        lifetime_vote_count = 0;
          uint32_t        post_count = 0;
 
+         bool            can_vote = true;
          uint16_t        voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
          time_point_sec  last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
 
          asset           balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
+         asset           savings_balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
 
          /**
           *  SBD Deposits pay interest based upon the interest rate set by witnesses. The purpose of these
@@ -65,6 +68,14 @@ namespace steemit { namespace chain {
          fc::uint128_t      sbd_seconds; ///< total sbd * how long it has been hel
          fc::time_point_sec sbd_seconds_last_update; ///< the last time the sbd_seconds was updated
          fc::time_point_sec sbd_last_interest_payment; ///< used to pay interest at most once per month
+
+
+         asset              savings_sbd_balance = asset( 0, SBD_SYMBOL ); /// total sbd balance
+         fc::uint128_t      savings_sbd_seconds; ///< total sbd * how long it has been hel
+         fc::time_point_sec savings_sbd_seconds_last_update; ///< the last time the sbd_seconds was updated
+         fc::time_point_sec savings_sbd_last_interest_payment; ///< used to pay interest at most once per month
+
+         uint8_t            savings_withdraw_requests = 0;
          ///@}
 
          share_type      curation_rewards = 0;
@@ -101,13 +112,11 @@ namespace steemit { namespace chain {
          time_point_sec  last_root_post = fc::time_point_sec::min();
          uint32_t        post_bandwidth = 0;
 
-         /**
-          *  Used to track activity rewards, updated on every post and comment
-          */
+
+         /** these fields are used to track password reset state */
          ///@{
-         time_point_sec  last_active;
-         fc::uint128_t   activity_shares;
-         time_point_sec  last_activity_payout;
+         authority       pending_reset_authority;
+         time_point_sec  reset_request_time = fc::time_point_sec::maximum();
          ///@}
 
          account_id_type get_id()const { return id; }
@@ -197,6 +206,7 @@ namespace steemit { namespace chain {
    struct by_post_count;
    struct by_vote_count;
    struct by_last_owner_update;
+   struct by_reset_request_time;
 
    /**
     * @ingroup object_index
@@ -219,6 +229,13 @@ namespace steemit { namespace chain {
                member<account_object, time_point_sec, &account_object::next_vesting_withdrawal >,
                member<object, object_id_type, &object::id >
             > /// composite key by_next_vesting_withdrawal
+         >,
+         ordered_unique< tag< by_reset_request_time >,
+            composite_key< account_object,
+               member<account_object, time_point_sec, &account_object::reset_request_time >,
+               member<object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< object_id_type > >
          >,
          ordered_unique< tag< by_last_post >,
             composite_key< account_object,
@@ -348,10 +365,12 @@ namespace steemit { namespace chain {
 FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
                     (created)(mined)
-                    (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)
-                    (comment_count)(lifetime_vote_count)(post_count)(voting_power)(last_vote_time)
+                    (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
+                    (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
                     (balance)
+                    (savings_balance)
                     (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
+                    (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
                     (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
                     (curation_rewards)
                     (posting_rewards)
@@ -359,7 +378,7 @@ FC_REFLECT_DERIVED( steemit::chain::account_object, (graphene::db::object),
                     (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
                     (average_market_bandwidth)(last_market_bandwidth_update)
                     (last_post)(last_root_post)(post_bandwidth)
-                    (last_active)(activity_shares)(last_activity_payout)
+                    (pending_reset_authority)(reset_request_time)
                   )
 
 FC_REFLECT_DERIVED( steemit::chain::owner_authority_history_object, (graphene::db::object),
