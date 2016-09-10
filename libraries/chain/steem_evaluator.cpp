@@ -517,6 +517,7 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
       FC_ASSERT( escrow.to == o.to, "op 'to' does not match escrow 'to'" );
       FC_ASSERT( escrow.agent == o.agent, "op 'agent' does not match escrow 'agent'" );
+      FC_ASSERT( escrow.ratification_deadline >= db().head_block_time(), "escrow ratification deadline is before head block time" );
 
       bool reject_escrow = !o.approve;
 
