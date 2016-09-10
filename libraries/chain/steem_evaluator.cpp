@@ -581,6 +581,7 @@ void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
       FC_ASSERT( e.to_approved && e.agent_approved, "escrow must be approved by all parties before a dispute can be raised" );
       FC_ASSERT( !e.disputed, "escrow is already under dispute" );
       FC_ASSERT( e.to == o.to, "op 'to' does not match escrow 'to'");
+      FC_ASSERT( e.agent == o.agent, "op 'agent' does not match escrow 'agent'" );
 
       db().modify( e, [&]( escrow_object& esc )
       {
@@ -604,6 +605,7 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       FC_ASSERT( e.steem_balance >= o.steem_amount, "Release amount exceeds escrow balance" );
       FC_ASSERT( e.sbd_balance >= o.sbd_amount, "Release amount exceeds escrow balance" );
       FC_ASSERT( o.to == e.from || o.to == e.to, "Funds must be released to 'from' or 'to'" );
+      FC_ASSERT( e.agent == o.agent, "op 'agent' does not match escrow 'agent'" );
       FC_ASSERT( e.to_approved && e.agent_approved, "Funds cannot be released prior to escrow approval" );
 
       // If there is a dispute regardless of expiration, the agent can release funds to either party

@@ -624,6 +624,7 @@ class wallet_api
        *
        * @param from The account that funded the escrow
        * @param to The destination of the escrow
+       * @param agent The account acting as the agent in case of dispute
        * @param who The account raising the dispute (either 'from' or 'to')
        * @param escrow_id A unique id for the escrow transfer
        * @param broadcast true if you wish to broadcast the transaction
@@ -631,6 +632,7 @@ class wallet_api
       annotated_signed_transaction escrow_dispute(
          string from,
          string to,
+         string agent,
          string who,
          uint32_t escrow_id,
          bool broadcast = false
@@ -641,6 +643,7 @@ class wallet_api
        *
        * @param from The account that funded the escrow
        * @param to The account that will receive funds being released
+       * @param agent The account acting as the agent in case of dispute
        * @param who The account authorizing the release
        * @param escrow_id A unique id for the escrow transfer
        * @param sbd_amount The amount of SBD that will be released
@@ -650,6 +653,7 @@ class wallet_api
       annotated_signed_transaction escrow_release(
          string from,
          string to,
+         string agent,
          string who,
          uint32_t escrow_id,
          asset sbd_amount,
