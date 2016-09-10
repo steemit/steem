@@ -196,6 +196,32 @@ struct get_impacted_account_visitor
       _impacted.insert( op.account_to_recover );
    }
 
+   void operator()( const escrow_transfer_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+      _impacted.insert( op.agent );
+   }
+
+   void operator()( const escrow_approve_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+      _impacted.insert( op.agent );
+   }
+
+   void operator()( const escrow_dispute_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
+   void operator()( const escrow_release_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
    //void operator()( const operation& op ){}
 };
 
