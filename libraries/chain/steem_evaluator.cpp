@@ -973,8 +973,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) ) {
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
+   {
       FC_ASSERT( abs_rshares > 50000000 || o.weight == 0, "voting weight is too small, please accumulate more voting power or steem power" );
+   }
+   else if( db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) )
+   {
+      FC_ASSERT( abs_rshares > 50000000 || abs_rshares == 1, "voting weight is too small, please accumulate more voting power or steem power" );
    }
 
 
