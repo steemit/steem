@@ -64,6 +64,11 @@ struct get_impacted_account_visitor
          _impacted.insert( op.parent_author );
    }
 
+   void operator()( const delete_comment_operation& op )
+   {
+      _impacted.insert( op.author );
+   }
+
    void operator()( const vote_operation& op )
    {
       _impacted.insert( op.voter );
