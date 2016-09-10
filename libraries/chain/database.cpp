@@ -2000,9 +2000,6 @@ void database::cashout_comment_helper( const comment_object& comment )
 
          fc::uint128_t old_rshares2 = calculate_vshares( comment.net_rshares.value );
          adjust_rshares2( comment, old_rshares2, 0 );
-
-         if( reward_tokens > 0 )
-            push_virtual_operation( comment_reward_operation( comment.author, comment.permlink, total_payout ) );
       }
 
       modify( cat, [&]( category_object& c )
