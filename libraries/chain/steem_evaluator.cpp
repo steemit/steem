@@ -1568,9 +1568,9 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
   {
       FC_ASSERT( challenger.balance >= STEEMIT_ACTIVE_CHALLENGE_FEE, "account does not have sufficient funds to pay challenge fee" );
       FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "account is already challenged" );
-      FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN, "account cannot be challenged because it was recently challenged" );
-      if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__307 ) ) // This assert should have been removed during hf11 TODO: Remove after HF 14
-         FC_ASSERT( db().head_block_time() - challenged.last_active_proved > STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
+      if( !db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) // This check and the assert below should have been removed during hf11 TODO: Remove after HF 14
+         FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
+      FC_ASSERT( db().head_block_time() - challenged.last_active_proved > STEEMIT_ACTIVE_CHALLENGE_COOLDOWN, "account cannot be challenged because it was recently challenged" );
 
       db().adjust_balance( challenger, - STEEMIT_ACTIVE_CHALLENGE_FEE );
       db().create_vesting( db().get_account( o.challenged ), STEEMIT_ACTIVE_CHALLENGE_FEE );
