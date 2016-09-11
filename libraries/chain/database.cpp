@@ -170,7 +170,7 @@ void database::reindex(fc::path data_dir )
       };
 
       const uint32_t last_block_num_in_file = last_block->block_num();
-      const uint32_t initial_undo_blocks = 100;
+      const uint32_t initial_undo_blocks = STEEMIT_MAX_TIME_UNTIL_EXPIRATION / STEEMIT_BLOCK_INTERVAL + 5;
 
       uint32_t first = 1;
 
