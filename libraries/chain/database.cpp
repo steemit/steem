@@ -170,7 +170,7 @@ void database::reindex(fc::path data_dir )
       };
 
       const uint32_t last_block_num_in_file = last_block->block_num();
-      const uint32_t initial_undo_blocks = 100;
+      const uint32_t initial_undo_blocks = STEEMIT_MAX_TIME_UNTIL_EXPIRATION / STEEMIT_BLOCK_INTERVAL + 5;
 
       uint32_t first = 1;
 
@@ -3432,8 +3432,8 @@ void database::clear_expired_transactions()
    //Transactions must have expired by at least two forking windows in order to be removed.
    auto& transaction_idx = static_cast<transaction_index&>(get_mutable_index(implementation_ids, impl_transaction_object_type));
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
-   while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->trx.expiration) )
-      transaction_idx.remove(*dedupe_index.rbegin());
+   while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.begin()->trx.expiration) )
+      transaction_idx.remove(*dedupe_index.begin());
 }
 
 void database::clear_expired_orders()
