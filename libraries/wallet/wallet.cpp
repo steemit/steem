@@ -1843,6 +1843,7 @@ annotated_signed_transaction wallet_api::escrow_release(
    string to,
    string agent,
    string who,
+   string receiver,
    uint32_t escrow_id,
    asset sbd_amount,
    asset steem_amount,
@@ -1854,6 +1855,7 @@ annotated_signed_transaction wallet_api::escrow_release(
    op.to = to;
    op.agent = agent;
    op.who = who;
+   op.receiver = receiver;
    op.escrow_id = escrow_id;
    op.sbd_amount = sbd_amount;
    op.steem_amount = steem_amount;

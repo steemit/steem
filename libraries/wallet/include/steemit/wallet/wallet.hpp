@@ -642,9 +642,10 @@ class wallet_api
        * Release funds help in escrow
        *
        * @param from The account that funded the escrow
-       * @param to The account that will receive funds being released
+       * @param to The account the funds are originally going to
        * @param agent The account acting as the agent in case of dispute
        * @param who The account authorizing the release
+       * @param receiver The account that will receive funds being released
        * @param escrow_id A unique id for the escrow transfer
        * @param sbd_amount The amount of SBD that will be released
        * @param steem_amount The amount of STEEM that will be released
@@ -655,6 +656,7 @@ class wallet_api
          string to,
          string agent,
          string who,
+         string receiver,
          uint32_t escrow_id,
          asset sbd_amount,
          asset steem_amount,
