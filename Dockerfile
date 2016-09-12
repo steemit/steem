@@ -123,13 +123,17 @@ RUN \
         /usr/include \
         /usr/local/include
 
+RUN useradd -s /bin/bash -m -d /var/lib/steemd steemd
+
+RUN mkdir /var/cache/steemd && \
+    chown steemd:steemd -R /var/cache/steemd
+
 # add blockchain cache to image
 #ADD $STEEMD_BLOCKCHAIN /var/cache/steemd/blocks.tbz2
 
 RUN chmod a+rx /var/cache/steemd /var/cache/steemd/*
 
 ENV HOME /var/lib/steemd
-RUN useradd -s /bin/bash -m -d /var/lib/steemd steemd
 RUN chown steemd:steemd -R /var/lib/steemd
 
 VOLUME ["/var/lib/steemd"]
