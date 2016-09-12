@@ -3885,10 +3885,6 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
 #endif
-         modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgpo )
-         {
-            dgpo.vote_regeneration_per_day = 5;
-         });
          break;
       default:
          break;
