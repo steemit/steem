@@ -1,0 +1,8 @@
+machine:
+  services:
+      - docker
+
+test:
+    override:
+        - docker info
+        - docker build --rm=false -t steemit/steem .
