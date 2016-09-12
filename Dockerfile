@@ -2,10 +2,6 @@ FROM phusion/baseimage:0.9.19
 
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
-# secp256k1:master as of 2016-09-12
-ARG SECP256K1_REPO=https://github.com/bitcoin/secp256k1
-ARG SECP256K1_REV=7a49cacd3937311fcb1cb36b6ba3336fca811991
-
 RUN \
     apt-get update && \
     apt-get install -y \
@@ -28,20 +24,6 @@ RUN \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-RUN \
-    git clone \
-        $SECP256K1_REPO \
-        /usr/local/src/secp256k1 && \
-    cd /usr/local/src/secp256k1 && \
-    git checkout $SECP256K1_REV && \
-    ./autogen.sh && \
-    ./configure && \
-    make -j$(nproc) && \
-    ./tests && \
-    make install && \
-    cd / && \
-    rm -rfv /usr/local/src/secp256k1
 
 ADD . /usr/local/src/steem
 
@@ -130,8 +112,6 @@ RUN mkdir /var/cache/steemd && \
 
 # add blockchain cache to image
 #ADD $STEEMD_BLOCKCHAIN /var/cache/steemd/blocks.tbz2
-
-RUN chmod a+rx /var/cache/steemd /var/cache/steemd/*
 
 ENV HOME /var/lib/steemd
 RUN chown steemd:steemd -R /var/lib/steemd
