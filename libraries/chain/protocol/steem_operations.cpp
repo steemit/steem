@@ -319,7 +319,7 @@ namespace steemit { namespace chain {
    {
       validate_account_name( from );
       validate_account_name( to );
-      FC_ASSERT( is_valid_account_name( agent) );
+      validate_account_name( agent );
       validate_account_name( who );
       FC_ASSERT( who == to || who == agent, "to or agent must approve escrow" );
    }
@@ -328,6 +328,7 @@ namespace steemit { namespace chain {
    {
       validate_account_name( from );
       validate_account_name( to );
+      validate_account_name( agent );
       validate_account_name( who );
       FC_ASSERT( who == from || who == to, "who must be from or to" );
    }
@@ -336,7 +337,11 @@ namespace steemit { namespace chain {
    {
       validate_account_name( from );
       validate_account_name( to );
+      validate_account_name( agent );
       validate_account_name( who );
+      validate_account_name( receiver );
+      FC_ASSERT( who == from || who == to || who == agent, "who must be from or to or agent" );
+      FC_ASSERT( receiver == from || receiver == to, "receiver must be from or to" );
       FC_ASSERT( sbd_amount.amount >= 0, "sbd amount cannot be negative" );
       FC_ASSERT( steem_amount.amount >= 0, "steem amount cannot be negative" );
       FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must release a non-zero amount" );

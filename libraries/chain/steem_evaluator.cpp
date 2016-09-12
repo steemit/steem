@@ -517,6 +517,7 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
       FC_ASSERT( escrow.to == o.to, "op 'to' does not match escrow 'to'" );
       FC_ASSERT( escrow.agent == o.agent, "op 'agent' does not match escrow 'agent'" );
+      FC_ASSERT( escrow.ratification_deadline >= db().head_block_time(), "escrow ratification deadline is before head block time" );
 
       bool reject_escrow = !o.approve;
 
@@ -580,6 +581,7 @@ void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
       FC_ASSERT( e.to_approved && e.agent_approved, "escrow must be approved by all parties before a dispute can be raised" );
       FC_ASSERT( !e.disputed, "escrow is already under dispute" );
       FC_ASSERT( e.to == o.to, "op 'to' does not match escrow 'to'");
+      FC_ASSERT( e.agent == o.agent, "op 'agent' does not match escrow 'agent'" );
 
       db().modify( e, [&]( escrow_object& esc )
       {
@@ -596,13 +598,14 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ), "op is not valid until next hardfork" ); /// TODO: remove this after HF14
 
       const auto& from_account = db().get_account(o.from);
-      const auto& to_account = db().get_account(o.to);
-      const auto& who_account = db().get_account(o.who);
+      const auto& receiver_account = db().get_account(o.receiver);
 
       const auto& e = db().get_escrow( o.from, o.escrow_id );
       FC_ASSERT( e.steem_balance >= o.steem_amount, "Release amount exceeds escrow balance" );
       FC_ASSERT( e.sbd_balance >= o.sbd_amount, "Release amount exceeds escrow balance" );
-      FC_ASSERT( o.to == e.from || o.to == e.to, "Funds must be released to 'from' or 'to'" );
+      FC_ASSERT( e.to == o.to, "op 'to' does not match escrow 'to'");
+      FC_ASSERT( e.agent == o.agent, "op 'agent' does not match escrow 'agent'" );
+      FC_ASSERT( o.receiver == e.from || o.receiver == e.to, "Funds must be released to 'from' or 'to'" );
       FC_ASSERT( e.to_approved && e.agent_approved, "Funds cannot be released prior to escrow approval" );
 
       // If there is a dispute regardless of expiration, the agent can release funds to either party
@@ -619,18 +622,18 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
             // If there is no dispute and escrow has not expired, either party can release funds to the other.
             if( o.who == e.from )
             {
-               FC_ASSERT( o.to == e.to, "'from' must release funds to 'to'" );
+               FC_ASSERT( o.receiver == e.to, "'from' must release funds to 'to'" );
             }
             else if( o.who == e.to )
             {
-               FC_ASSERT( o.to == e.from, "'to' must release funds to 'from'" );
+               FC_ASSERT( o.receiver == e.from, "'to' must release funds to 'from'" );
             }
          }
       }
       // If escrow expires and there is no dispute, either party can release funds to either party.
 
-      db().adjust_balance( to_account, o.steem_amount );
-      db().adjust_balance( to_account, o.sbd_amount );
+      db().adjust_balance( receiver_account, o.steem_amount );
+      db().adjust_balance( receiver_account, o.sbd_amount );
 
       db().modify( e, [&]( escrow_object& esc )
       {
@@ -973,8 +976,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
-   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) ) {
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
+   {
       FC_ASSERT( abs_rshares > 50000000 || o.weight == 0, "voting weight is too small, please accumulate more voting power or steem power" );
+   }
+   else if( db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) )
+   {
+      FC_ASSERT( abs_rshares > 50000000 || abs_rshares == 1, "voting weight is too small, please accumulate more voting power or steem power" );
    }
 
 
@@ -1563,9 +1571,9 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
   {
       FC_ASSERT( challenger.balance >= STEEMIT_ACTIVE_CHALLENGE_FEE, "account does not have sufficient funds to pay challenge fee" );
       FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "account is already challenged" );
-      FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN, "account cannot be challenged because it was recently challenged" );
-      if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__307 ) ) // This assert should have been removed during hf11 TODO: Remove after HF 14
-         FC_ASSERT( db().head_block_time() - challenged.last_active_proved > STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
+      if( !db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) // This check and the assert below should have been removed during hf11 TODO: Remove after HF 14
+         FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
+      FC_ASSERT( db().head_block_time() - challenged.last_active_proved > STEEMIT_ACTIVE_CHALLENGE_COOLDOWN, "account cannot be challenged because it was recently challenged" );
 
       db().adjust_balance( challenger, - STEEMIT_ACTIVE_CHALLENGE_FEE );
       db().create_vesting( db().get_account( o.challenged ), STEEMIT_ACTIVE_CHALLENGE_FEE );
