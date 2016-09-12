@@ -8,9 +8,6 @@ namespace steemit { namespace follow {
 
 void follow_evaluator::do_apply( const follow_operation& o )
 {
-   if( o.follower == "roadscape" && o.following == "test-safari" )
-      idump( (o) );
-
    static map< string, follow_type > follow_type_map = []()
    {
       map< string, follow_type > follow_map;
@@ -65,7 +62,6 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
-   idump( (o) );
    try
    {
       auto& db = _plugin->database();
@@ -86,10 +82,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, reblog_account.id ) );
 
-      ilog( "Should create blog entry" );
       if( blog_itr == blog_comment_idx.end() )
       {
-         ilog( "creating..." );
          db.create< blog_object >( [&]( blog_object& b )
          {
             b.account = reblog_account.id;
@@ -105,7 +99,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       while( itr != idx.end() && itr->following == o.account )
       {
-         idump( (*itr) );
 
          if( itr->what.find( follow_type::blog ) != itr->what.end() )
          {
@@ -122,7 +115,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
             if( feed_itr == comment_idx.end() )
             {
-               ilog("reblogging to ${f}", ("f", itr->follower) );
                auto& fd = db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = account_id;
@@ -132,8 +124,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   f.account_feed_id = next_id;
                });
 
-               if( o.account == "test-safari" )
-                  idump( (fd) );
             }
             else
             {
