@@ -3,7 +3,7 @@
 For Ubuntu 16.04 users, after installing the right packages with `apt` Steem will build out of the box without further effort:
 
     # Required packages
-    sudo apt-get install git make cmake g++ libssl-dev autoconf libtool
+    sudo apt-get install git make automake cmake g++ libssl-dev autoconf libtool
 
     # Boost packages (also required)
     sudo apt-get install libboost-thread-dev libboost-date-time-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-signals-dev libboost-serialization-dev libboost-chrono-dev libboost-test-dev libboost-context-dev libboost-locale-dev libboost-coroutine-dev libboost-iostreams-dev
