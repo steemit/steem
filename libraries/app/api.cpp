@@ -177,7 +177,8 @@ namespace steemit { namespace app {
                 continue;
              std::shared_ptr< network_broadcast_api > capture_this = shared_from_this();
              confirmation_callback callback = cb_it->second;
-             fc::async( [capture_this,block_num,txid,callback](){ callback( fc::variant(transaction_confirmation{ txid, block_num, -1, true}) ); } );
+             transaction_id_type txid_byval = txid;    // can't pass in by reference as it's going to be deleted
+             fc::async( [capture_this,block_num,txid_byval,callback](){ callback( fc::variant(transaction_confirmation{ txid_byval, block_num, -1, true}) ); } );
              _callbacks.erase( cb_it );
           }
           _callbacks_expirations.erase( exp_it );
