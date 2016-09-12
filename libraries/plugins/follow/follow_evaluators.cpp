@@ -8,6 +8,9 @@ namespace steemit { namespace follow {
 
 void follow_evaluator::do_apply( const follow_operation& o )
 {
+   if( o.follower == "roadscape" && o.following == "test-safari" )
+      idump( (o) );
+
    static map< string, follow_type > follow_type_map = []()
    {
       map< string, follow_type > follow_map;
@@ -62,57 +65,98 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
+   idump( (o) );
    try
+   {
+      auto& db = _plugin->database();
+      const auto& c = db.get_comment( o.author, o.permlink );
+      if( c.parent_author.size() > 0 ) return;
+
+      const auto& reblog_account = db.get_account( o.account );
+      const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
+      const auto& blog_comment_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+
+      auto next_blog_id = 0;
+      auto last_blog = blog_idx.lower_bound( reblog_account.id );
+
+      if( last_blog != blog_idx.end() && last_blog->account == reblog_account.id )
       {
-         auto& db = _plugin->database();
-         const auto& c = db.get_comment( o.author, o.permlink );
-         if( c.parent_author.size() > 0 ) return;
+         next_blog_id = last_blog->blog_feed_id + 1;
+      }
 
-         const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
-         auto itr = idx.find( c.author );
+      auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, reblog_account.id ) );
 
-         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
-         const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+      ilog( "Should create blog entry" );
+      if( blog_itr == blog_comment_idx.end() )
+      {
+         ilog( "creating..." );
+         db.create< blog_object >( [&]( blog_object& b )
+         {
+            b.account = reblog_account.id;
+            b.comment = c.id;
+            b.blog_feed_id = next_blog_id;
+         });
+      }
 
-         const auto& reblog_account = db.get_account( o.account );
+      const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
+      const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+      const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
+      auto itr = idx.find( o.account );
 
-         while( itr != idx.end() && itr->following == c.author )
+      while( itr != idx.end() && itr->following == o.account )
+      {
+         idump( (*itr) );
+
+         if( itr->what.find( follow_type::blog ) != itr->what.end() )
          {
             auto account_id = db.get_account( itr->follower ).id;
+            uint32_t next_id = 0;
+            auto last_feed = feed_idx.lower_bound( account_id );
 
-            if( itr->what.find( follow_type::blog ) != itr->what.end()
-               && comment_idx.find( boost::make_tuple( account_id, c.id ) ) == comment_idx.end() )
+            if( last_feed != feed_idx.end() && last_feed->account == account_id )
             {
-               uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( account_id );
+               next_id = last_feed->account_feed_id + 1;
+            }
 
-               if( last_feed != feed_idx.end() && last_feed->account == account_id )
-               {
-                  next_id = last_feed->account_feed_id + 1;
-               }
+            auto feed_itr = comment_idx.find( boost::make_tuple( c.id, account_id ) );
 
-               db.create< feed_object >( [&]( feed_object& f )
+            if( feed_itr == comment_idx.end() )
+            {
+               ilog("reblogging to ${f}", ("f", itr->follower) );
+               auto& fd = db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = account_id;
-                  f.reblogged_by = reblog_account.get_id();
+                  f.first_reblogged_by = reblog_account.id;
                   f.comment = c.id;
+                  f.reblogs = 1;
                   f.account_feed_id = next_id;
                });
 
-               const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
-               auto old_feed = old_feed_idx.lower_bound( account_id );
-
-               while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
+               if( o.account == "test-safari" )
+                  idump( (fd) );
+            }
+            else
+            {
+               db.modify( *feed_itr, [&]( feed_object& f )
                {
-                  db.remove( *old_feed );
-                  old_feed = old_feed_idx.lower_bound( account_id );
-               };
+                  f.reblogs++;
+               });
             }
 
-            ++itr;
+            const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
+            auto old_feed = old_feed_idx.lower_bound( account_id );
+
+            while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
+            {
+               db.remove( *old_feed );
+               old_feed = old_feed_idx.lower_bound( account_id );
+            };
          }
+
+         ++itr;
       }
-      FC_LOG_AND_RETHROW()
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 } } // steemit::follow

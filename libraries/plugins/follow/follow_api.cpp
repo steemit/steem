@@ -18,6 +18,10 @@ class follow_api_impl
 
       vector< feed_entry > get_feed_entries( string account, uint32_t entry_id, uint16_t limit )const;
       vector< comment_feed_entry > get_feed( string account, uint32_t entry_id, uint16_t limit )const;
+
+      vector< blog_entry > get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const;
+      vector< comment_blog_entry > get_blog( string account, uint32_t entry_id, uint16_t limit )const;
+
       vector< account_reputation > get_account_reputations( string lower_bound_name, uint32_t limit )const;
 
       steemit::app::application& app;
@@ -85,8 +89,8 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
       entry.author = comment.author;
       entry.permlink = comment.permlink;
       entry.entry_id = itr->account_feed_id;
-      if( itr->reblogged_by != account_id_type() )
-         entry.reblog_by = itr->reblogged_by(db).get_id();
+      if( itr->first_reblogged_by != account_id_type() )
+         entry.reblog_by = itr->first_reblogged_by(db).name;
       results.push_back( entry );
 
       ++itr;
@@ -116,8 +120,71 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
       comment_feed_entry entry;
       entry.comment = comment;
       entry.entry_id = itr->account_feed_id;
-      if( itr->reblogged_by != account_id_type() )
-         entry.reblog_by = itr->reblogged_by(db).get_id();
+      if( itr->first_reblogged_by != account_id_type() )
+         entry.reblog_by = itr->first_reblogged_by(db).name;
+      results.push_back( entry );
+
+      ++itr;
+   }
+
+   return results;
+}
+
+vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const
+{
+   FC_ASSERT( limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
+
+   if( entry_id == 0 )
+      entry_id = ~0;
+
+   vector< blog_entry > results;
+   results.reserve( limit );
+
+   const auto& db = *app.chain_database();
+   const auto& acc_id = db.get_account( account ).id;
+   const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
+   auto itr = blog_idx.lower_bound( boost::make_tuple( acc_id, entry_id ) );
+
+   while( itr != blog_idx.end() && itr->account == acc_id && results.size() < limit )
+   {
+      const auto& comment = itr->comment( db );
+      blog_entry entry;
+      entry.author = comment.author;
+      entry.permlink = comment.permlink;
+      entry.blog = account;
+      entry.entry_id = itr->blog_feed_id;
+
+      results.push_back( entry );
+
+      ++itr;
+   }
+
+   return results;
+}
+
+vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t entry_id, uint16_t limit )const
+{
+   FC_ASSERT( limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
+
+   if( entry_id == 0 )
+      entry_id = ~0;
+
+   vector< comment_blog_entry > results;
+   results.reserve( limit );
+
+   const auto& db = *app.chain_database();
+   const auto& acc_id = db.get_account( account ).id;
+   const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
+   auto itr = blog_idx.lower_bound( boost::make_tuple( acc_id, entry_id ) );
+
+   while( itr != blog_idx.end() && itr->account == acc_id && results.size() < limit )
+   {
+      const auto& comment = itr->comment( db );
+      comment_blog_entry entry;
+      entry.comment = comment;
+      entry.blog = account;
+      entry.entry_id = itr->blog_feed_id;
+
       results.push_back( entry );
 
       ++itr;
@@ -181,6 +248,16 @@ vector< feed_entry > follow_api::get_feed_entries( string account, uint32_t entr
 vector< comment_feed_entry > follow_api::get_feed( string account, uint32_t entry_id, uint16_t limit )const
 {
    return my->get_feed( account, entry_id, limit );
+}
+
+vector< blog_entry > follow_api::get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const
+{
+   return my->get_blog_entries( account, entry_id, limit );
+}
+
+vector< comment_blog_entry > follow_api::get_blog( string account, uint32_t entry_id, uint16_t limit )const
+{
+   return my->get_blog( account, entry_id, limit );
 }
 
 vector< account_reputation > follow_api::get_account_reputations( string lower_bound_name, uint32_t limit )const
