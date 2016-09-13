@@ -48,6 +48,11 @@ RUN \
 
 RUN \
     cd /usr/local/src/steem && \
+    doxygen && \
+    programs/build_helpers/check_reflect.py
+
+RUN \
+    cd /usr/local/src/steem && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
