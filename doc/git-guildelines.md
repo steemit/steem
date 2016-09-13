@@ -1,4 +1,4 @@
-The git guidelines for Steemit are influenced by the
+The git guidelines for SteemIt are influenced by the
 [Graphene](https://github.com/cryptonomex/graphene/wiki/How-we-use-version-control)
 git guidelines as well as [Git
 Flow](http://nvie.com/posts/a-successful-git-branching-model/) and [this
@@ -31,14 +31,14 @@ dependency, branch from `develop`, merge the dependent issue branch into the
 new branch, and begin development. The naming scheme we use is the issue
 number, then a dash, followed by a shorthand description of the issue. For
 example, issue 22 is to allow the removal of an upvote. Branch
-`22-undo-vote` was used to devlop the patch for this issue.
+`22-undo-vote` was used to develop the patch for this issue.
 
 ### Non-Issue Branches
 
 Some changes are so minor as to not require an issue, e.g. changes to
 logging. Because the requirement of automated testing, create an issue for
-them. We err on the side of overdocumentation rather than
-underdocumentation.  Branch from `develop`, make your fix, and create a pull
+them. We err on the side of over-documentation rather than
+under-documentation.  Branch from `develop`, make your fix, and create a pull
 request into `develop`.
 
 Suggested formatting for such branches missing an issue is
@@ -76,11 +76,11 @@ pull request.
 
 ## Policies
 
-### Force-push Policy
+### Force-Push Policy
 
 - `origin/master` should never be force pushed.
 - `origin/develop` should never be force pushed. All updates to `develop`
-  are done through pull requests so force pushing is not allowed.
+  are done through PRs so force pushing is not allowed.
 - Individual patch branches may be force-pushed at any time, at the
   discretion of the developer or team working on the patch.
 
@@ -90,7 +90,7 @@ pull request.
   `vMajor.Hardfork.Release` (Ex. v0.5.0 is the version for the Hardfork 5
   release). Releases should be made only on `master`.
 
-### Code review policy
+### Code Review Policy / PR Merge Process
 
 - Two developers *must* review *every* release before merging it into
   `master`, enforced through pull requests.
@@ -105,7 +105,7 @@ pull request.
   what the patch does and check its correctness based only on its commit
   message and diff? Does it break any existing tests, or need new tests to
   be written? Is it stylistically sloppy -- trailing whitespace, multiple
-  unrelated changes in a single patch, mixing bugfixes and features, or
+  unrelated changes in a single patch, mixing bug fixes and features, or
   overly verbose debug logging?
 - Having multiple people look at a patch reduces the probability it will
   contain uncaught bugs.
