@@ -1573,6 +1573,8 @@ state database_api::get_state( string path )const
                eacnt.feed->push_back( link );
                _state.content[ link ] = my->_db.get_comment( f.author, f.permlink );
                set_pending_payout( _state.content[ link ] );
+               if( f.reblog_by.size() )
+                  _state.content[link].first_reblogged_by = f.reblog_by;
             }
          }
       }
