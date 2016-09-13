@@ -1,0 +1,8 @@
+#ifndef STEEMIT_HARDFORK_0_15
+#define STEEMIT_HARDFORK_0_15 15
+
+#define STEEMIT_HARDFORK_0_15_TIME  1574383600 // TBD Future Date
+
+#define STEEMIT_HARDFORK_0_15_VERSION hardfork_version( 0, 15 )
+
+#endif
