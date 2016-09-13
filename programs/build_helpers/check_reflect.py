@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import sys
 import xml.etree.ElementTree as etree
 
 def process_node(path, node):
@@ -137,6 +138,12 @@ def validate_members(name2members_ref, name2members_test):
     for item in error_items:
         print(item)
 
-    return
+    return {"ok_items" : ok_items, "ne_items" : ne_items, "error_items" : error_items}
 
-validate_members(name2members_doxygen, name2members_re)
+if __name__ == "__main__":
+    result = validate_members(name2members_doxygen, name2members_re)
+    if len(result["error_items"]) == 0:
+        exit_code = 0
+    else:
+        exit_code = 1
+    sys.exit(exit_code)
