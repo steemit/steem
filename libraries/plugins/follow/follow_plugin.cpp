@@ -111,6 +111,16 @@ struct pre_operation_visitor
             ++itr;
             db.remove( old_feed );
          }
+
+         const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+         auto blog_itr = blog_idx.lower_bound( comment->id );
+
+         while( blog_itr != blog_idx.end() && itr->comment == comment->id )
+         {
+            const auto& old_blog = *blog_itr;
+            ++blog_itr;
+            db.remove( old_blog );
+         }
       }
       FC_CAPTURE_AND_RETHROW()
    }
@@ -170,6 +180,7 @@ struct on_operation_visitor
          if( c.created != db.head_block_time() ) return;
 
          const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
+         const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
          auto itr = idx.find( op.author );
 
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
@@ -187,27 +198,60 @@ struct on_operation_visitor
                   next_id = last_feed->account_feed_id + 1;
                }
 
-               db.create< feed_object >( [&]( feed_object& f )
+               if( comment_idx.find( boost::make_tuple( c.id, account_id ) ) == comment_idx.end() )
                {
-                  f.account = account_id;
-                  f.comment = c.id;
-                  f.account_feed_id = next_id;
-               });
+                  db.create< feed_object >( [&]( feed_object& f )
+                  {
+                     f.account = account_id;
+                     f.comment = c.id;
+                     f.account_feed_id = next_id;
+                  });
 
-               const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
-               auto old_feed = old_feed_idx.lower_bound( account_id );
+                  const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
+                  auto old_feed = old_feed_idx.lower_bound( account_id );
 
-               while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
-               {
-                  db.remove( *old_feed );
-                  old_feed = old_feed_idx.lower_bound( account_id );
-               };
+                  while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                  {
+                     db.remove( *old_feed );
+                     old_feed = old_feed_idx.lower_bound( account_id );
+                  }
+               }
             }
 
             ++itr;
          }
+
+         const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
+         const auto& comment_blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+         auto author_id = db.get_account( op.author ).id;
+         auto last_blog = blog_idx.lower_bound( author_id );
+         uint32_t next_id = 0;
+
+         if( last_blog != blog_idx.end() && last_blog->account == author_id )
+         {
+            next_id = last_blog->blog_feed_id + 1;
+         }
+
+         if( comment_blog_idx.find( boost::make_tuple( c.id, author_id ) ) == comment_blog_idx.end() )
+         {
+            db.create< blog_object >( [&]( blog_object& b)
+            {
+               b.account = author_id;
+               b.comment = c.id;
+               b.blog_feed_id = next_id;
+            });
+
+            const auto& old_blog_idx = db.get_index_type< blog_index >().indices().get< by_old_blog >();
+            auto old_blog = old_blog_idx.lower_bound( author_id );
+
+            while( old_blog->account == author_id && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
+            {
+               db.remove( *old_blog );
+               old_blog = old_blog_idx.lower_bound( author_id );
+            }
+         }
       }
-      FC_CAPTURE_AND_RETHROW()
+      FC_LOG_AND_RETHROW()
    }
 
    void operator()( const vote_operation& op )const
@@ -309,6 +353,7 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
       database().add_index< primary_index< follow_index > >();
       database().add_index< primary_index< feed_index > >();
+      database().add_index< primary_index< blog_index > >();
       database().add_index< primary_index< reputation_index > >();
 
       if( options.count( "follow-max-feed-size" ) )

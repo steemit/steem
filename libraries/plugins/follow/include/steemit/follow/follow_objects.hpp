@@ -21,7 +21,8 @@ enum follow_object_type
 {
    follow_object_type,
    feed_object_type,
-   reputation_object_type
+   reputation_object_type,
+   blog_object_type
 };
 
 enum follow_type
@@ -49,9 +50,21 @@ class feed_object : public abstract_object< feed_object >
       static const uint8_t type_id  = feed_object_type;
 
       account_id_type account;
-      account_id_type reblogged_by;
+      account_id_type first_reblogged_by;
       comment_id_type comment;
+      uint32_t        reblogs;
       uint32_t        account_feed_id = 0;
+};
+
+class blog_object : public abstract_object< blog_object >
+{
+   public:
+      static const uint8_t space_id = FOLLOW_SPACE_ID;
+      static const uint8_t type_id  = blog_object_type;
+
+      account_id_type account;
+      comment_id_type comment;
+      uint32_t        blog_feed_id = 0;
 };
 
 class reputation_object : public abstract_object< reputation_object >
@@ -128,6 +141,36 @@ typedef multi_index_container<
    >
 > feed_multi_index_type;
 
+struct by_blog;
+struct by_old_blog;
+
+typedef multi_index_container<
+   blog_object,
+   indexed_by<
+      ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_blog >,
+         composite_key< blog_object,
+            member< blog_object, account_id_type, &blog_object::account >,
+            member< blog_object, uint32_t, &blog_object::blog_feed_id >
+         >,
+         composite_key_compare< std::less< account_id_type >, std::greater< uint32_t > >
+      >,
+      ordered_unique< tag< by_old_blog >,
+         composite_key< blog_object,
+            member< blog_object, account_id_type, &blog_object::account >,
+            member< blog_object, uint32_t, &blog_object::blog_feed_id >
+         >,
+         composite_key_compare< std::less< account_id_type >, std::less< uint32_t > >
+      >,
+      ordered_unique< tag< by_comment >,
+         composite_key< blog_object,
+            member< blog_object, comment_id_type, &blog_object::comment >,
+            member< blog_object, account_id_type, &blog_object::account >
+         >
+      >
+   >
+> blog_multi_index_type;
+
 struct by_reputation;
 
 typedef multi_index_container<
@@ -147,6 +190,7 @@ typedef multi_index_container<
 
 typedef graphene::db::generic_index< follow_object,      follow_multi_index_type >     follow_index;
 typedef graphene::db::generic_index< feed_object,        feed_multi_index_type >       feed_index;
+typedef graphene::db::generic_index< blog_object,        blog_multi_index_type >       blog_index;
 typedef graphene::db::generic_index< reputation_object,  reputation_multi_index_type > reputation_index;
 
 } } // steemit::follow
@@ -154,5 +198,6 @@ typedef graphene::db::generic_index< reputation_object,  reputation_multi_index_
 FC_REFLECT_ENUM( steemit::follow::follow_type, (undefined)(blog)(ignore) )
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) )
-FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(reblogged_by)(comment)(account_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(first_reblogged_by)(comment)(reblogs)(account_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::blog_object, (graphene::db::object), (account)(comment)(blog_feed_id) )
 FC_REFLECT_DERIVED( steemit::follow::reputation_object, (graphene::db::object), (account)(reputation) )

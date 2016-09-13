@@ -64,6 +64,11 @@ struct get_impacted_account_visitor
          _impacted.insert( op.parent_author );
    }
 
+   void operator()( const delete_comment_operation& op )
+   {
+      _impacted.insert( op.author );
+   }
+
    void operator()( const vote_operation& op )
    {
       _impacted.insert( op.voter );
@@ -189,6 +194,56 @@ struct get_impacted_account_visitor
    void operator()( const change_recovery_account_operation& op )
    {
       _impacted.insert( op.account_to_recover );
+   }
+
+   void operator()( const escrow_transfer_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+      _impacted.insert( op.agent );
+   }
+
+   void operator()( const escrow_approve_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+      _impacted.insert( op.agent );
+   }
+
+   void operator()( const escrow_dispute_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+      _impacted.insert( op.agent );
+   }
+
+   void operator()( const escrow_release_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+      _impacted.insert( op.agent );
+   }
+
+   void operator()( const transfer_to_savings_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
+   void operator()( const transfer_from_savings_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
+   void operator()( const cancel_transfer_from_savings_operation& op )
+   {
+      _impacted.insert( op.from );
+   }
+
+   void operator()( const decline_voting_rights_operation& op )
+   {
+      _impacted.insert( op.account );
    }
 
    //void operator()( const operation& op ){}

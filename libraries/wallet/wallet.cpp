@@ -1764,6 +1764,7 @@ annotated_signed_transaction wallet_api::escrow_approve(
 annotated_signed_transaction wallet_api::escrow_dispute(
       string from,
       string to,
+      string agent,
       string who,
       uint32_t escrow_id,
       bool broadcast
@@ -1772,6 +1773,7 @@ annotated_signed_transaction wallet_api::escrow_dispute(
    escrow_dispute_operation op;
    op.from = from;
    op.to = to;
+   op.agent = agent;
    op.who = who;
    op.escrow_id = escrow_id;
 
@@ -1839,7 +1841,9 @@ annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string fr
 annotated_signed_transaction wallet_api::escrow_release(
    string from,
    string to,
+   string agent,
    string who,
+   string receiver,
    uint32_t escrow_id,
    asset sbd_amount,
    asset steem_amount,
@@ -1849,7 +1853,9 @@ annotated_signed_transaction wallet_api::escrow_release(
    escrow_release_operation op;
    op.from = from;
    op.to = to;
+   op.agent = agent;
    op.who = who;
+   op.receiver = receiver;
    op.escrow_id = escrow_id;
    op.sbd_amount = sbd_amount;
    op.steem_amount = steem_amount;
