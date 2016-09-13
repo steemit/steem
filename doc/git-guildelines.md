@@ -51,21 +51,21 @@ repo tidy.)
 All changes to `develop` and `master` are done through GitHub Pull Requests
 (PRs). This is done for several reasons:
 
-1. It enforces two factor authentication. GitHub will only allow merging of a
-   pull request through their interface, which requires the dev to be logged
-   in.
-1. If enforces testing. All pull requests undergo automated testing before
-    they are allowed to be merged.
-1. It enforces best practices. Becuase of the cost of a pull request,
-   developers are encouraged to do more testing themselves and be certain of
-   the correctness of their solutions.
-1. If enforces code review. All pull requests must be reviewed by a developer
-   other than the creator of the request. Pull requests made by external
-   developers should be reviewed by two internal developers. When a developer
-   reviews and approves a pull request they should +1 the request or leave a
-   comment mentioning their approval of the request. Otherwise they should
-   describe what the problem is with the request so the developer can make
-   changes and resubmit the request.
+- It enforces two factor authentication. GitHub will only allow merging of a
+  pull request through their interface, which requires the dev to be logged
+  in.
+- If enforces testing. All pull requests undergo automated testing before
+  they are allowed to be merged.
+- It enforces best practices. Because of the cost of a pull request,
+  developers are encouraged to do more testing themselves and be certain of
+  the correctness of their solutions.
+- If enforces code review. All pull requests must be reviewed by a developer
+  other than the creator of the request. Pull requests made by external
+  developers should be reviewed by two internal developers. When a developer
+  reviews and approves a pull request they should +1 the request or leave a
+  comment mentioning their approval of the request. Otherwise they should
+  describe what the problem is with the request so the developer can make
+  changes and resubmit the request.
 
 All pull requests should reference the issue(s) they relate to in order to
 create a chain of documentation.
@@ -76,7 +76,7 @@ pull request.
 
 ## Policies
 
-### Force-push policy
+### Force-push Policy
 
 - `origin/master` should never be force pushed.
 - `origin/develop` should never be force pushed. All updates to `develop`
