@@ -4,36 +4,19 @@
 *.cmake
 CMakeCache.txt
 CMakeFiles
-Makefile
 compile_commands.json
 moc_*
 *.moc
 hardfork.hpp
 
+build/
 lcov
 
 libraries/utilities/git_revision.cpp
-
 libraries/wallet/Doxyfile
 libraries/wallet/api_documentation.cpp
 libraries/wallet/doxygen
 
-programs/cli_wallet/cli_wallet
-programs/js_operation_serializer/js_operation_serializer
-programs/steemd/steemd
-programs/steemd/test
-programs/delayed_node
-programs/build_helpers/cat-parts
-programs/size_checker/size_checker
-programs/util/get_dev_key
-programs/util/inflation_model
-
-tests/app_test
-tests/chain_bench
-tests/chain_test
-tests/plugin_test
-tests/intense_test
-tests/performance_test
 
 doxygen
 
