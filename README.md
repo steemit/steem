@@ -36,7 +36,7 @@ Seed Nodes
     ihashfury        104.168.154.160:40696
     lafona           52.4.250.181:39705
     steempty         109.74.206.93:2001       steem.clawmap.com  (UK)
-    steem-id         45.114.118.146:2001                         (Indonesia)
+    steem-id         steem-id.altexplorer.xyz:2001               (France)
     cyrano.witness   81.89.101.133:2001                          (Jena, Germany)
     kushed           40.76.37.6:2001          steem.kushed.com   (Azure)
     nextgencrypto    104.207.152.44:2201      steemwitness.com   (Los Angeles, USA)
@@ -58,6 +58,7 @@ Seed Nodes
     seed.steemwitness.com:2001
     steem-seed1.abit-more.com:2001
 
+Visit STEEM [Seed Nodes Status Monitoring](https://status.steemnodes.com/) page for more up-to-date seed-node list.
 
 How to Mine
 -----------
