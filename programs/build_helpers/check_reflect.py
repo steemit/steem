@@ -84,7 +84,7 @@ for root, dirs, files in os.walk("."):
         if not (filename.endswith(".cpp") or filename.endswith(".hpp")):
             continue
         try:
-            with open( os.path.join(root, filename), "r" ) as f:
+            with open( os.path.join(root, filename), "r", encoding="utf8" ) as f:
                 content = f.read()
                 for m in re_reflect.finditer(content):
                     cname = m.group(1)
