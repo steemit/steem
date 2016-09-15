@@ -5536,13 +5536,23 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       ACTORS( (alice)(bob) );
       generate_block();
 
+      account_witness_proxy_operation proxy;
+      proxy.account = "bob";
+      proxy.proxy = "alice";
+
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( proxy );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+
       decline_voting_rights_operation op;
       op.account = "alice";
 
 
       BOOST_TEST_MESSAGE( "--- success" );
-      signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
@@ -5618,11 +5628,13 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.operations.push_back( vote );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
+      validate_database();
 
 
       BOOST_TEST_MESSAGE( "--- check account cannot vote after request is processed" );
       generate_block();
       BOOST_REQUIRE( !db.get_account( "alice" ).can_vote );
+      validate_database();
 
       itr = request_idx.find( db.get_account( "alice" ).id );
       BOOST_REQUIRE( itr == request_idx.end() );
@@ -5652,7 +5664,6 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
-      account_witness_proxy_operation proxy;
       proxy.account = "alice";
       proxy.proxy = "bob";
       tx.clear();
