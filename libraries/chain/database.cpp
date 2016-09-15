@@ -2414,9 +2414,9 @@ void database::account_recovery_processing()
 void database::expire_escrow_ratification()
 {
    const auto& escrow_idx = get_index_type< escrow_index >().indices().get< by_ratification_deadline >();
-   auto escrow_itr = escrow_idx.lower_bound( boost::make_tuple( false, false ) );
+   auto escrow_itr = escrow_idx.lower_bound( false );
 
-   while( escrow_itr != escrow_idx.end() && !escrow_itr->to_approved && !escrow_itr->agent_approved && escrow_itr->ratification_deadline <= head_block_time() )
+   while( escrow_itr != escrow_idx.end() && !escrow_itr->is_approved() && escrow_itr->ratification_deadline <= head_block_time() )
    {
       const auto& old_escrow = *escrow_itr;
       ++escrow_itr;

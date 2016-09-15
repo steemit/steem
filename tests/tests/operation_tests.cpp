@@ -4004,7 +4004,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       validate_database();
 
 
-      BOOST_TEST_MESSAGE( "--- success approving escrow" );
+      BOOST_TEST_MESSAGE( "--- test ratification expiration when escrow is only approved by to" );
       tx.operations.clear();
       tx.signatures.clear();
       et_op.ratification_deadline = db.head_block_time() + 100;
@@ -4018,6 +4018,54 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.signatures.clear();
       op.who = op.to;
       op.approve = true;
+      tx.operations.push_back( op );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- test ratification expiration when escrow is only approved by agent" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      et_op.ratification_deadline = db.head_block_time() + 100;
+      et_op.escrow_expiration = db.head_block_time() + 200;
+      tx.operations.push_back( et_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      op.who = op.agent;
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
+
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- success approving escrow" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      et_op.ratification_deadline = db.head_block_time() + 100;
+      et_op.escrow_expiration = db.head_block_time() + 200;
+      tx.operations.push_back( et_op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      op.who = op.to;
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );

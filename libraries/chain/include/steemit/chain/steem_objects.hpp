@@ -46,6 +46,8 @@ namespace steemit { namespace chain {
          bool           to_approved = false;
          bool           agent_approved = false;
          bool           disputed = false;
+
+         bool           is_approved()const { return to_approved && agent_approved; }
    };
 
    class savings_withdraw_object : public abstract_object<savings_withdraw_object> {
@@ -282,12 +284,11 @@ namespace steemit { namespace chain {
          >,
          ordered_unique< tag< by_ratification_deadline >,
             composite_key< escrow_object,
-               member< escrow_object, bool, &escrow_object::to_approved >,
-               member< escrow_object, bool, &escrow_object::agent_approved >,
+               const_mem_fun< escrow_object, bool, &escrow_object::is_approved >,
                member< escrow_object, time_point_sec, &escrow_object::ratification_deadline >,
                member< object, object_id_type, &object::id >
             >,
-            composite_key_compare< std::less< bool >, std::less< bool >, std::less< time_point_sec >, std::less< object_id_type > >
+            composite_key_compare< std::less< bool >, std::less< time_point_sec >, std::less< object_id_type > >
          >,
          ordered_unique< tag< by_sbd_balance >,
             composite_key< escrow_object,
