@@ -56,6 +56,7 @@ class account_statistics_plugin : public steemit::app::plugin
 };
 
 struct account_stats_bucket_object
+   : public abstract_object< account_stats_bucket_object >
 {
    fc::time_point_sec   open;                                     ///< Open time of the bucket
    uint32_t             seconds = 0;                              ///< Seconds accounted for in the bucket
@@ -122,6 +123,7 @@ struct account_stats_bucket_object
 };
 
 struct account_activity_bucket_object
+   : public abstract_object< account_activity_bucket_object >
 {
    fc::time_point_sec   open;                                  ///< Open time for the bucket
    uint32_t             seconds = 0;                           ///< Seconds accounted for in the bucket
@@ -132,7 +134,9 @@ struct account_activity_bucket_object
 
 } } // steemit::account_statistics
 
-FC_REFLECT( steemit::account_statistics::account_stats_bucket_object,
+FC_REFLECT_DERIVED(
+   steemit::account_statistics::account_stats_bucket_object,
+   (graphene::db::object),
    (open)
    (seconds)
    (name)
@@ -195,4 +199,15 @@ FC_REFLECT( steemit::account_statistics::account_stats_bucket_object,
    (limit_order_sbd_received)
    (total_pow)
    (estimated_hashpower)
+)
+
+FC_REFLECT_DERIVED(
+   steemit::account_statistics::account_activity_bucket_object,
+   (graphene::db::object),
+
+   (open)
+   (seconds)
+   (active_market_accounts)
+   (active_forum_accounts)
+   (active_market_and_forum_accounts)
 )

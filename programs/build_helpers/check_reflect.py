@@ -3,7 +3,10 @@
 import json
 import os
 import re
+import sys
 import xml.etree.ElementTree as etree
+
+other_issues = []
 
 def process_node(path, node):
     """
@@ -81,14 +84,15 @@ for root, dirs, files in os.walk("."):
         if not (filename.endswith(".cpp") or filename.endswith(".hpp")):
             continue
         try:
-            with open( os.path.join(root, filename), "r" ) as f:
+            with open( os.path.join(root, filename), "r", encoding="utf8" ) as f:
                 content = f.read()
                 for m in re_reflect.finditer(content):
                     cname = m.group(1)
                     members = bubble_list(m.group(2))
                     name2members_re[cname] = members
                     if cname.endswith("_object"):
-                       print("FC_REFLECT on {} should be FC_REFLECT_DERIVED".format(cname))
+                        other_issues.append("FC_REFLECT on {} should be FC_REFLECT_DERIVED".format(cname))
+                        print(other_issues[-1])
                 for m in re_reflect_derived.finditer(content):
                     cname = m.group(1)
                     members = bubble_list(m.group(3))
@@ -137,6 +141,12 @@ def validate_members(name2members_ref, name2members_test):
     for item in error_items:
         print(item)
 
-    return
+    return {"ok_items" : ok_items, "ne_items" : ne_items, "error_items" : error_items, "other_issues" : other_issues}
 
-validate_members(name2members_doxygen, name2members_re)
+if __name__ == "__main__":
+    result = validate_members(name2members_doxygen, name2members_re)
+    if len(result["error_items"]) + len(result["other_issues"]) == 0:
+        exit_code = 0
+    else:
+        exit_code = 1
+    sys.exit(exit_code)
