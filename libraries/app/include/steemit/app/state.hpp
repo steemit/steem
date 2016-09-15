@@ -155,7 +155,7 @@ namespace steemit { namespace app {
         /**
          * The list of miners who are queued to produce work
          */
-        vector<string>                pow_queue;
+        vector<account_name_type>     pow_queue;
         map<string, witness_object>   witnesses;
         witness_schedule_object       witness_schedule;
         price                         feed_price;

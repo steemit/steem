@@ -1,5 +1,6 @@
 #pragma once
 #include <steemit/chain/config.hpp>
+#include <fc/fixed_string.hpp>
 
 #include <graphene/db/object_id.hpp>
 #include <graphene/db/object.hpp>
@@ -71,8 +72,10 @@ namespace steemit { namespace chain {
    using                               fc::ecc::commitment_type;
    struct void_t{};
 
-   typedef fc::ecc::private_key        private_key_type;
-   typedef fc::sha256 chain_id_type;
+   typedef fc::ecc::private_key                   private_key_type;
+   typedef fc::sha256                             chain_id_type;
+   typedef fc::fixed_string<>                     account_name_type;
+//   typedef std::string                            account_name_type;
 
 
    enum reserved_spaces

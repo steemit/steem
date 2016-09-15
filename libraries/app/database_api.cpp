@@ -60,7 +60,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // Witnesses
       vector<optional<witness_object>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
       fc::optional<witness_object> get_witness_by_account( string account_name )const;
-      set<string> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
+      set<account_name_type> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_witness_count()const;
 
       // Market
@@ -581,12 +581,12 @@ fc::optional<witness_object> database_api_impl::get_witness_by_account( string a
    return {};
 }
 
-set< string > database_api::lookup_witness_accounts( const string& lower_bound_name, uint32_t limit ) const
+set< account_name_type > database_api::lookup_witness_accounts( const string& lower_bound_name, uint32_t limit ) const
 {
    return my->lookup_witness_accounts( lower_bound_name, limit );
 }
 
-set< string > database_api_impl::lookup_witness_accounts( const string& lower_bound_name, uint32_t limit ) const
+set< account_name_type > database_api_impl::lookup_witness_accounts( const string& lower_bound_name, uint32_t limit ) const
 {
    FC_ASSERT( limit <= 1000 );
    const auto& witnesses_by_id = _db.get_index_type< witness_index >().indices().get< by_id >();
@@ -594,7 +594,7 @@ set< string > database_api_impl::lookup_witness_accounts( const string& lower_bo
    // get all the names and look them all up, sort them, then figure out what
    // records to return.  This could be optimized, but we expect the
    // number of witnesses to be few and the frequency of calls to be rare
-   set< std::string > witnesses_by_account_name;
+   set< account_name_type > witnesses_by_account_name;
    for ( const witness_object& witness : witnesses_by_id )
       if ( witness.owner >= lower_bound_name ) // we can ignore anything below lower_bound_name
          witnesses_by_account_name.insert( witness.owner );
@@ -843,7 +843,7 @@ bool database_api_impl::verify_account_authority( const string& name_or_id, cons
    /// reuse trx.verify_authority by creating a dummy transfer
    signed_transaction trx;
    transfer_operation op;
-   op.from = account->id;
+   op.from = account->name;
    trx.operations.emplace_back(op);
 
    return verify_authority( trx );
@@ -1013,6 +1013,8 @@ vector<discussion> database_api::get_content_replies( string author, string perm
 vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const {
 
 //   idump((start_parent_author)(start_permlink)(limit) );
+   vector<discussion> result;
+   /*
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
 
    auto itr = last_update_idx.begin();
@@ -1026,7 +1028,6 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
       filter_by_parent_author = true;
    }
 
-   vector<discussion> result;
    while( itr != last_update_idx.end() && result.size() < limit  ) {
       if( filter_by_parent_author && itr->parent_author != start_parent_author ) {
          return result;
@@ -1037,6 +1038,7 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
       result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
+   */
    return result;
 }
 
@@ -1353,8 +1355,8 @@ void database_api::recursively_fetch_content( state& _state, discussion& root, s
   }
 } FC_CAPTURE_AND_RETHROW( (root.author)(root.permlink) ) }
 
-vector<string> database_api::get_miner_queue()const {
-   vector<string> result;
+vector<account_name_type> database_api::get_miner_queue()const {
+   vector<account_name_type> result;
    const auto& pow_idx = my->_db.get_index_type<witness_index>().indices().get<by_pow>();
 
    auto itr = pow_idx.upper_bound(0);
@@ -1366,7 +1368,7 @@ vector<string> database_api::get_miner_queue()const {
    return result;
 }
 
-vector<string> database_api::get_active_witnesses()const {
+vector<account_name_type> database_api::get_active_witnesses()const {
    const auto& wso = my->_db.get_witness_schedule_object();
    return wso.current_shuffled_witnesses;
 }
@@ -1378,6 +1380,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
    {
       vector<discussion> result;
 
+      /*
       FC_ASSERT( limit <= 100 );
       result.reserve( limit );
       int count = 0;
@@ -1406,6 +1409,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
          }
          ++itr;
       }
+      */
 
       return result;
    }
@@ -1518,6 +1522,7 @@ state database_api::get_state( string path )const
             }
          }
       } else if( part[1] == "recent-replies" ) {
+         /*
         auto replies = get_replies_by_last_update( acnt, "", 50 );
         eacnt.recent_replies = vector<string>();
         for( const auto& reply : replies ) {
@@ -1529,7 +1534,9 @@ state database_api::get_state( string path )const
            }
            eacnt.recent_replies->push_back( reply_ref );
         }
+        */
       } else if( part[1] == "posts" ) {
+         /*
         int count = 0;
         const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
         auto itr = pidx.lower_bound( boost::make_tuple(acnt, time_point_sec::maximum() ) );
@@ -1541,7 +1548,9 @@ state database_api::get_state( string path )const
            ++itr;
            ++count;
         }
+        */
       } else if( part[1].size() == 0 || part[1] == "blog" ) {
+         /*
            int count = 0;
            const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
            auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
@@ -1553,6 +1562,7 @@ state database_api::get_state( string path )const
               ++itr;
               ++count;
            }
+           */
       } else if( part[1].size() == 0 || part[1] == "feed" )
       {
          if( my->_follow_api )

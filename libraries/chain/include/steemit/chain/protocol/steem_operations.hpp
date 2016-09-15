@@ -6,12 +6,13 @@
 #include <fc/utf8.hpp>
 
 namespace steemit { namespace chain {
+   typedef string aname_type;
 
    struct account_create_operation : public base_operation
    {
       asset             fee;
-      string            creator;
-      string            new_account_name;
+      aname_type        creator;
+      aname_type        new_account_name;
       authority         owner;
       authority         active;
       authority         posting;
@@ -24,7 +25,7 @@ namespace steemit { namespace chain {
 
    struct account_update_operation : public base_operation
    {
-      string                        account;
+      aname_type             account;
       optional< authority >         owner;
       optional< authority >         active;
       optional< authority >         posting;
@@ -45,10 +46,10 @@ namespace steemit { namespace chain {
 
    struct comment_operation : public base_operation
    {
-      string            parent_author;
+      aname_type parent_author;
       string            parent_permlink;
 
-      string            author;
+      aname_type author;
       string            permlink;
 
       string            title;
@@ -69,8 +70,8 @@ namespace steemit { namespace chain {
     */
    struct comment_options_operation : public base_operation
    {
-      string author;
-      string permlink;
+      aname_type author;
+      string            permlink;
 
       asset    max_accepted_payout    = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
       uint16_t percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
@@ -84,8 +85,8 @@ namespace steemit { namespace chain {
 
    struct challenge_authority_operation : public base_operation
    {
-      string challenger;
-      string challenged;
+      aname_type challenger;
+      aname_type challenged;
       bool   require_owner = false;
 
       void validate()const;
@@ -95,7 +96,7 @@ namespace steemit { namespace chain {
 
    struct prove_authority_operation : public base_operation
    {
-      string challenged;
+      aname_type challenged;
       bool   require_owner = false;
 
       void validate()const;
@@ -106,7 +107,7 @@ namespace steemit { namespace chain {
 
    struct delete_comment_operation : public base_operation
    {
-      string author;
+      aname_type author;
       string permlink;
 
       void validate()const;
@@ -115,8 +116,8 @@ namespace steemit { namespace chain {
 
    struct vote_operation : public base_operation
    {
-      string    voter;
-      string    author;
+      aname_type    voter;
+      aname_type    author;
       string    permlink;
       int16_t   weight = 0;
 
@@ -128,7 +129,7 @@ namespace steemit { namespace chain {
       author_reward_operation(){}
       author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
          :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
-      string author;
+      aname_type author;
       string permlink;
       asset  sbd_payout;
       asset  vesting_payout;
@@ -140,9 +141,9 @@ namespace steemit { namespace chain {
       curation_reward_operation( const string& c, const asset& r, const string& a, const string& p )
          :curator(c),reward(r),comment_author(a),comment_permlink(p){}
 
-      string curator;
+      aname_type curator;
       asset  reward;
-      string comment_author;
+      aname_type comment_author;
       string comment_permlink;
    };
 
@@ -152,7 +153,7 @@ namespace steemit { namespace chain {
       comment_reward_operation( const string& a, const string& pl, const asset& p )
          :author(a),permlink(pl),payout(p){}
 
-      string author;
+      aname_type author;
       string permlink;
       asset  payout;
    };
@@ -162,7 +163,7 @@ namespace steemit { namespace chain {
       liquidity_reward_operation( string o = string(), asset p = asset() )
       :owner(o),payout(p){}
 
-      string owner;
+      aname_type owner;
       asset  payout;
    };
 
@@ -171,7 +172,7 @@ namespace steemit { namespace chain {
       interest_operation( const string& o = "", const asset& i = asset(0,SBD_SYMBOL) )
          :owner(o),interest(i){}
 
-      string owner;
+      aname_type owner;
       asset  interest;
    };
 
@@ -180,7 +181,7 @@ namespace steemit { namespace chain {
       fill_convert_request_operation(){}
       fill_convert_request_operation( const string& o, const uint32_t id, const asset& in, const asset& out )
          :owner(o), requestid(id), amount_in(in), amount_out(out){}
-      string   owner;
+      aname_type   owner;
       uint32_t requestid = 0;
       asset    amount_in;
       asset    amount_out;
@@ -191,8 +192,8 @@ namespace steemit { namespace chain {
       fill_vesting_withdraw_operation(){}
       fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
          :from_account(f), to_account(t), withdrawn(w), deposited(d){}
-      string from_account;
-      string to_account;
+      aname_type from_account;
+      aname_type to_account;
       asset  withdrawn;
       asset  deposited;
    };
@@ -201,7 +202,7 @@ namespace steemit { namespace chain {
    {
       shutdown_witness_operation(){}
       shutdown_witness_operation( const string& o ):owner(o) {}
-      string owner;
+      aname_type owner;
    };
 
    /**
@@ -211,9 +212,9 @@ namespace steemit { namespace chain {
     */
    struct transfer_operation : public base_operation
    {
-      string            from;
+      aname_type            from;
       /// Account to transfer asset to
-      string            to;
+      aname_type            to;
       /// The amount of asset to transfer from @ref from to @ref to
       asset             amount;
 
@@ -246,9 +247,9 @@ namespace steemit { namespace chain {
     */
    struct escrow_transfer_operation : public base_operation
    {
-      string         from;
-      string         to;
-      string         agent;
+      aname_type         from;
+      aname_type         to;
+      aname_type         agent;
       uint32_t       escrow_id = 0;
 
       asset          sbd_amount = asset( 0, SBD_SYMBOL );
@@ -271,10 +272,10 @@ namespace steemit { namespace chain {
     */
    struct escrow_approve_operation : public base_operation
    {
-      string         from;
-      string         to;
-      string         agent;
-      string         who; // Either to or agent
+      aname_type         from;
+      aname_type         to;
+      aname_type         agent;
+      aname_type         who; // Either to or agent
       uint32_t       escrow_id = 0;
       bool           approve = true;
 
@@ -289,10 +290,10 @@ namespace steemit { namespace chain {
     */
    struct escrow_dispute_operation : public base_operation
    {
-      string   from;
-      string   to;
-      string   agent;
-      string   who;
+      aname_type   from;
+      aname_type   to;
+      aname_type   agent;
+      aname_type   who;
       uint32_t escrow_id = 0;
 
       void validate()const;
@@ -311,11 +312,11 @@ namespace steemit { namespace chain {
     */
    struct escrow_release_operation : public base_operation
    {
-      string    from;
-      string    to; ///< the original 'to'
-      string    agent;
-      string    who; ///< the account that is attempting to release the funds, determines valid 'receiver'
-      string    receiver; ///< the account that should receive funds (might be from, might be to)
+      aname_type    from;
+      aname_type    to; ///< the original 'to'
+      aname_type    agent;
+      aname_type    who; ///< the account that is attempting to release the funds, determines valid 'receiver'
+      aname_type    receiver; ///< the account that should receive funds (might be from, might be to)
       uint32_t  escrow_id = 0;
       asset     sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
       asset     steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
@@ -333,8 +334,8 @@ namespace steemit { namespace chain {
     */
    struct transfer_to_vesting_operation : public base_operation
    {
-      string   from;
-      string   to; ///< if null, then same as from
+      aname_type   from;
+      aname_type   to; ///< if null, then same as from
       asset    amount; ///< must be STEEM
 
       void validate()const;
@@ -354,7 +355,7 @@ namespace steemit { namespace chain {
     */
    struct withdraw_vesting_operation : public base_operation
    {
-      string      account;
+      aname_type      account;
       asset       vesting_shares;
 
       void validate()const;
@@ -370,8 +371,8 @@ namespace steemit { namespace chain {
     */
    struct set_withdraw_vesting_route_operation : public base_operation
    {
-      string   from_account;
-      string   to_account;
+      aname_type   from_account;
+      aname_type   to_account;
       uint16_t percent = 0;
       bool     auto_vest = false;
 
@@ -426,7 +427,7 @@ namespace steemit { namespace chain {
     */
    struct witness_update_operation : public base_operation
    {
-      string            owner;
+      aname_type            owner;
       string            url;
       public_key_type   block_signing_key;
       chain_properties  props;
@@ -443,8 +444,8 @@ namespace steemit { namespace chain {
     */
    struct account_witness_vote_operation : public base_operation
    {
-      string  account;
-      string  witness;
+      aname_type  account;
+      aname_type  witness;
       bool    approve = true;
 
       void validate() const;
@@ -453,8 +454,8 @@ namespace steemit { namespace chain {
 
    struct account_witness_proxy_operation : public base_operation
    {
-      string  account;
-      string  proxy;
+      aname_type  account;
+      aname_type  proxy;
 
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert(account); }
@@ -468,7 +469,7 @@ namespace steemit { namespace chain {
     */
    struct custom_operation : public base_operation
    {
-      flat_set<string>  required_auths;
+      flat_set<aname_type>  required_auths;
       uint16_t          id = 0;
       vector<char>      data;
 
@@ -481,8 +482,8 @@ namespace steemit { namespace chain {
     **/
    struct custom_json_operation : public base_operation
    {
-      flat_set<string>  required_auths;
-      flat_set<string>  required_posting_auths;
+      flat_set<aname_type>  required_auths;
+      flat_set<aname_type>  required_posting_auths;
       string            id; ///< must be less than 32 characters long
       string            json; ///< must be proper utf8 / JSON string.
 
@@ -493,9 +494,9 @@ namespace steemit { namespace chain {
 
    struct custom_binary_operation : public base_operation
    {
-      flat_set<string>   required_owner_auths;
-      flat_set<string>   required_active_auths;
-      flat_set<string>   required_posting_auths;
+      flat_set<aname_type>   required_owner_auths;
+      flat_set<aname_type>   required_active_auths;
+      flat_set<aname_type>   required_posting_auths;
       vector<authority>  required_auths;
 
       string            id; ///< must be less than 32 characters long
@@ -514,7 +515,7 @@ namespace steemit { namespace chain {
     */
    struct feed_publish_operation : public base_operation
    {
-      string   publisher;
+      aname_type   publisher;
       price    exchange_rate;
 
       void  validate()const;
@@ -527,7 +528,7 @@ namespace steemit { namespace chain {
     */
    struct convert_operation : public base_operation
    {
-      string   owner;
+      aname_type   owner;
       uint32_t requestid = 0;
       asset    amount;
 
@@ -540,7 +541,7 @@ namespace steemit { namespace chain {
     */
    struct limit_order_create_operation : public base_operation
    {
-      string           owner;
+      aname_type           owner;
       uint32_t         orderid = 0; /// an ID assigned by owner, must be unique
       asset            amount_to_sell;
       asset            min_to_receive;
@@ -566,7 +567,7 @@ namespace steemit { namespace chain {
     */
    struct limit_order_create2_operation : public base_operation
    {
-      string           owner;
+      aname_type           owner;
       uint32_t         orderid = 0; /// an ID assigned by owner, must be unique
       asset            amount_to_sell;
       bool             fill_or_kill = false;
@@ -592,10 +593,10 @@ namespace steemit { namespace chain {
       fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
       :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
 
-      string   current_owner;
+      aname_type   current_owner;
       uint32_t current_orderid = 0;
       asset    current_pays;
-      string   open_owner;
+      aname_type   open_owner;
       uint32_t open_orderid = 0;
       asset    open_pays;
    };
@@ -605,7 +606,7 @@ namespace steemit { namespace chain {
     */
    struct limit_order_cancel_operation : public base_operation
    {
-      string   owner;
+      aname_type   owner;
       uint32_t orderid = 0;
 
       void  validate()const;
@@ -626,7 +627,7 @@ namespace steemit { namespace chain {
 
    struct pow_operation : public base_operation
    {
-      string           worker_account;
+      aname_type           worker_account;
       block_id_type    block_id;
       uint64_t         nonce = 0;
       pow              work;
@@ -635,7 +636,7 @@ namespace steemit { namespace chain {
       void validate()const;
       fc::sha256 work_input()const;
 
-      const string& get_worker_account()const { return worker_account; }
+      const aname_type& get_worker_account()const { return worker_account; }
 
       /** there is no need to verify authority, the proof of work is sufficient */
       void get_required_active_authorities( flat_set<string>& a )const{  }
@@ -643,7 +644,7 @@ namespace steemit { namespace chain {
 
    struct pow2_input
    {
-      string            worker_account;
+      aname_type            worker_account;
       block_id_type     prev_block;
       uint64_t          nonce = 0;
    };
@@ -653,7 +654,7 @@ namespace steemit { namespace chain {
       pow2_input        input;
       uint32_t          pow_summary = 0;
 
-      void create( const block_id_type& prev_block, const string& account_name, uint64_t nonce );
+      void create( const block_id_type& prev_block, const aname_type& account_name, uint64_t nonce );
       void validate()const;
    };
 
@@ -699,7 +700,7 @@ namespace steemit { namespace chain {
     */
    struct report_over_production_operation : public base_operation
    {
-      string              reporter;
+      aname_type              reporter;
       signed_block_header first_block;
       signed_block_header second_block;
 
@@ -735,9 +736,9 @@ namespace steemit { namespace chain {
     */
    struct request_account_recovery_operation : public base_operation
    {
-      string            recovery_account;       ///< The recovery account is listed as the recovery account on the account to recover.
+      aname_type            recovery_account;       ///< The recovery account is listed as the recovery account on the account to recover.
 
-      string            account_to_recover;     ///< The account to recover. This is likely due to a compromised owner authority.
+      aname_type            account_to_recover;     ///< The account to recover. This is likely due to a compromised owner authority.
 
       authority         new_owner_authority;    ///< The new owner authority the account to recover wishes to have. This is secret
                                                 ///< known by the account to recover and will be confirmed in a recover_account_operation
@@ -788,7 +789,7 @@ namespace steemit { namespace chain {
     */
    struct recover_account_operation : public base_operation
    {
-      string            account_to_recover;        ///< The account to be recovered
+      aname_type            account_to_recover;        ///< The account to be recovered
 
       authority         new_owner_authority;       ///< The new owner authority as specified in the request account recovery operation.
 
@@ -810,8 +811,8 @@ namespace steemit { namespace chain {
     *  new_owner_authority after 60 days of inactivity.
     */
    struct reset_account_operation : public base_operation {
-      string    reset_account;
-      string    account_to_reset;
+      aname_type    reset_account;
+      aname_type    account_to_reset;
       authority new_owner_authority;
 
 
@@ -827,8 +828,8 @@ namespace steemit { namespace chain {
     * to execute the 'reset_account_operation' after 60 days.
     */
    struct set_reset_account_operation : public base_operation {
-      string account;
-      string reset_account;
+      aname_type account;
+      aname_type reset_account;
       void validate()const;
       void get_required_active_authorities( flat_set<string>& a )const
       {
@@ -857,9 +858,9 @@ namespace steemit { namespace chain {
     */
    struct change_recovery_account_operation : public base_operation
    {
-      string            account_to_recover;     ///< The account that would be recovered in case of compromise
+      aname_type            account_to_recover;     ///< The account that would be recovered in case of compromise
 
-      string            new_recovery_account;   ///< The account that creates the recover request
+      aname_type            new_recovery_account;   ///< The account that creates the recover request
 
       extensions_type   extensions;             ///< Extensions. Not currently used.
 
@@ -869,8 +870,8 @@ namespace steemit { namespace chain {
    };
 
    struct transfer_to_savings_operation : public base_operation {
-      string from;
-      string to;
+      aname_type from;
+      aname_type to;
       asset  amount;
       string memo;
 
@@ -879,9 +880,9 @@ namespace steemit { namespace chain {
    };
 
    struct transfer_from_savings_operation : public base_operation {
-      string   from;
+      aname_type   from;
       uint32_t request_id = 0;
-      string   to;
+      aname_type   to;
       asset    amount;
       string   memo;
 
@@ -890,7 +891,7 @@ namespace steemit { namespace chain {
    };
 
    struct cancel_transfer_from_savings_operation : public base_operation {
-      string   from;
+      aname_type   from;
       uint32_t request_id = 0;
 
       void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
@@ -899,7 +900,7 @@ namespace steemit { namespace chain {
 
    struct decline_voting_rights_operation : public base_operation
    {
-      string account;
+      aname_type account;
       bool   decline = true;
 
       void get_required_owner_authorities( flat_set< string >& a )const{ a.insert( account ); }

@@ -110,7 +110,7 @@ struct get_impacted_account_visitor
    {
       _impacted.insert( op.from );
 
-      if ( !op.to.empty() && op.to != op.from )
+      if ( op.to != account_name_type() && op.to != op.from )
       {
          _impacted.insert( op.to );
       }

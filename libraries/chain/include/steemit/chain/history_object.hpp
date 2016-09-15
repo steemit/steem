@@ -59,7 +59,7 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_history_object_type;
 
-         string            account;
+         account_name_type account;
          uint32_t          sequence = 0;
          operation_id_type op;
    };
@@ -71,10 +71,10 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< account_history_object,
-               member< account_history_object, string, &account_history_object::account>,
+               member< account_history_object, account_name_type, &account_history_object::account>,
                member< account_history_object, uint32_t, &account_history_object::sequence>
             >,
-            composite_key_compare< std::less<string>, std::greater<uint32_t> >
+            composite_key_compare< std::less<account_name_type>, std::greater<uint32_t> >
          >
       >
    > account_history_multi_index_type;

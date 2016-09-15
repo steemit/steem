@@ -44,8 +44,10 @@ namespace steemit { namespace chain {
       validate_account_name( account );
       if( owner )
          owner->validate();
-      if (active)
+      if( active )
          active->validate();
+      if( posting ) 
+         posting->validate();
 
       if ( json_metadata.size() > 0 )
       {
@@ -122,7 +124,7 @@ namespace steemit { namespace chain {
    {
       validate_account_name( from );
       FC_ASSERT( is_asset_type( amount, STEEM_SYMBOL ), "Amount must be STEEM" );
-      if ( !to.empty() ) validate_account_name( to );
+      if ( to != aname_type() ) validate_account_name( to );
       FC_ASSERT( amount > asset( 0, STEEM_SYMBOL ), "Must transfer a nonzero amount" );
    }
 
@@ -212,7 +214,7 @@ namespace steemit { namespace chain {
 
       work = fc::sha256::hash(recover);
    }
-   void pow2::create( const block_id_type& prev, const string& account_name, uint64_t n )
+   void pow2::create( const block_id_type& prev, const aname_type& account_name, uint64_t n )
    {
       input.worker_account = account_name;
       input.prev_block     = prev;

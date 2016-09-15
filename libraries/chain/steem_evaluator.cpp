@@ -419,7 +419,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          if( !parent )
          {
-            FC_ASSERT( com.parent_author == "", "The parent of a comment cannot change" );
+            FC_ASSERT( com.parent_author == account_name_type(), "The parent of a comment cannot change" );
             FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change" );
          }
          else
@@ -1316,6 +1316,7 @@ void pow_apply( database& db, Operation o ) {
    }
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
+
    auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end()) {
       db.create< account_object >( [&]( account_object& acc )

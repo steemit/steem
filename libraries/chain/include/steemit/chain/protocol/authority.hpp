@@ -24,7 +24,7 @@ namespace steemit { namespace chain {
       {
          key_auths[k] = w;
       }
-      void add_authority( string k, weight_type w )
+      void add_authority( const account_name_type& k, weight_type w )
       {
          account_auths[k] = w;
       }
@@ -66,9 +66,16 @@ namespace steemit { namespace chain {
       uint32_t num_auths()const { return account_auths.size() + key_auths.size(); }
       void     clear() { account_auths.clear(); key_auths.clear(); }
 
-      uint32_t                              weight_threshold = 0;
-      flat_map<string,weight_type>          account_auths;
-      flat_map<public_key_type,weight_type> key_auths;
+
+      struct string_less {
+         bool operator()( const account_name_type& a, const account_name_type& b )const {
+            return string(a) < string(b); 
+         }
+      };
+
+      uint32_t                                                         weight_threshold = 0;
+      flat_map<account_name_type,weight_type,string_less>  account_auths;
+      flat_map<public_key_type,weight_type>                            key_auths;
 
       void validate()const;
    };

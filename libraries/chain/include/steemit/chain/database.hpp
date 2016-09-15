@@ -102,19 +102,19 @@ namespace steemit { namespace chain {
 
          chain_id_type             get_chain_id()const;
 
-         const witness_object* find_witness( const string& name )const;
+         const witness_object* find_witness( const account_name_type& name )const;
          const category_object* find_category( const string& name )const;
          const category_object& get_category( const string& name )const;
-         const witness_object&  get_witness( const string& name )const;
-         const account_object&  get_account( const string& name )const;
-         const comment_object&  get_comment( const string& author, const string& permlink )const;
-         const comment_object*  find_comment( const string& author, const string& permlink )const;
-         const escrow_object&   get_escrow( const string& name, uint32_t escrowid )const;
+         const witness_object&  get_witness( const account_name_type& name )const;
+         const account_object&  get_account( const account_name_type& name )const;
+         const comment_object&  get_comment( const account_name_type& author, const string& permlink )const;
+         const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
+         const escrow_object&   get_escrow( const account_name_type& name, uint32_t escrowid )const;
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
-         const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
-         const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
-         const savings_withdraw_object& get_savings_withdraw( const string& owner, uint32_t request_id )const;
-         const savings_withdraw_object* find_savings_withdraw( const string& owner, uint32_t request_id )const;
+         const limit_order_object& get_limit_order( const account_name_type& owner, uint32_t id )const;
+         const limit_order_object* find_limit_order( const account_name_type& owner, uint32_t id )const;
+         const savings_withdraw_object& get_savings_withdraw( const account_name_type& owner, uint32_t request_id )const;
+         const savings_withdraw_object* find_savings_withdraw( const account_name_type& owner, uint32_t request_id )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -142,13 +142,13 @@ namespace steemit { namespace chain {
 
          signed_block generate_block(
             const fc::time_point_sec when,
-            const string& witness_owner,
+            const account_name_type& witness_owner,
             const fc::ecc::private_key& block_signing_private_key,
             uint32_t skip
             );
          signed_block _generate_block(
             const fc::time_point_sec when,
-            const string& witness_owner,
+            const account_name_type& witness_owner,
             const fc::ecc::private_key& block_signing_private_key
             );
 
@@ -227,7 +227,7 @@ namespace steemit { namespace chain {
           *
           * Passing slot_num == 0 returns STEEMIT_NULL_WITNESS
           */
-         string get_scheduled_witness(uint32_t slot_num)const;
+         account_name_type get_scheduled_witness(uint32_t slot_num)const;
 
          /**
           * Get the time at which the given slot occurs.

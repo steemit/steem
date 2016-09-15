@@ -23,10 +23,10 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_convert_request_object_type;
 
-         string         owner;
-         uint32_t       requestid = 0; ///< id set by owner, the owner,requestid pair must be unique
-         asset          amount;
-         time_point_sec conversion_date; ///< at this time the feed_history_median_price * amount
+         account_name_type  owner;
+         uint32_t           requestid = 0; ///< id set by owner, the owner,requestid pair must be unique
+         asset              amount;
+         time_point_sec     conversion_date; ///< at this time the feed_history_median_price * amount
    };
 
    class escrow_object : public abstract_object<escrow_object> {
@@ -34,18 +34,18 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_escrow_object_type;
 
-         uint32_t       escrow_id = 0;
-         string         from;
-         string         to;
-         string         agent;
-         time_point_sec ratification_deadline;
-         time_point_sec escrow_expiration;
-         asset          sbd_balance;
-         asset          steem_balance;
-         asset          pending_fee;
-         bool           to_approved = false;
-         bool           agent_approved = false;
-         bool           disputed = false;
+         uint32_t           escrow_id = 0;
+         account_name_type  from;
+         account_name_type  to;
+         account_name_type  agent;
+         time_point_sec     ratification_deadline;
+         time_point_sec     escrow_expiration;
+         asset              sbd_balance;
+         asset              steem_balance;
+         asset              pending_fee;
+         bool               to_approved = false;
+         bool               agent_approved = false;
+         bool               disputed = false;
    };
 
    class savings_withdraw_object : public abstract_object<savings_withdraw_object> {
@@ -53,12 +53,12 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_savings_withdraw_object_type;
 
-         string         from;
-         string         to;
-         string         memo;
-         uint32_t       request_id = 0;
-         asset          amount;
-         time_point_sec complete;
+         account_name_type  from;
+         account_name_type  to;
+         string             memo;
+         uint32_t           request_id = 0;
+         asset              amount;
+         time_point_sec     complete;
    };
 
 
@@ -125,12 +125,12 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_limit_order_object_type;
 
-         time_point_sec   created;
-         time_point_sec   expiration;
-         string           seller;
-         uint32_t         orderid = 0;
-         share_type       for_sale; ///< asset id is sell_price.base.symbol
-         price            sell_price;
+         time_point_sec    created;
+         time_point_sec    expiration;
+         account_name_type seller;
+         uint32_t          orderid = 0;
+         share_type        for_sale; ///< asset id is sell_price.base.symbol
+         price             sell_price;
 
          pair<asset_symbol_type,asset_symbol_type> get_market()const
          {
@@ -185,7 +185,7 @@ namespace steemit { namespace chain {
          >,
          ordered_unique< tag<by_account>,
             composite_key< limit_order_object,
-               member< limit_order_object, string, &limit_order_object::seller>,
+               member< limit_order_object, account_name_type, &limit_order_object::seller>,
                member< limit_order_object, uint32_t, &limit_order_object::orderid>
             >
          >
@@ -206,7 +206,7 @@ namespace steemit { namespace chain {
          >,
          ordered_unique< tag< by_owner >,
             composite_key< convert_request_object,
-               member< convert_request_object, string, &convert_request_object::owner>,
+               member< convert_request_object, account_name_type, &convert_request_object::owner>,
                member< convert_request_object, uint32_t, &convert_request_object::requestid >
             >
          >
@@ -264,19 +264,19 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_from_id >,
             composite_key< escrow_object,
-               member< escrow_object, string,  &escrow_object::from >,
+               member< escrow_object, account_name_type,  &escrow_object::from >,
                member< escrow_object, uint32_t, &escrow_object::escrow_id >
             >
          >,
          ordered_unique< tag< by_to >,
             composite_key< escrow_object,
-               member< escrow_object, string,  &escrow_object::to >,
+               member< escrow_object, account_name_type,  &escrow_object::to >,
                member< object, object_id_type, &object::id >
             >
          >,
          ordered_unique< tag< by_agent >,
             composite_key< escrow_object,
-               member< escrow_object, string,  &escrow_object::agent >,
+               member< escrow_object, account_name_type,  &escrow_object::agent >,
                member< object, object_id_type, &object::id >
             >
          >,
@@ -308,13 +308,13 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_from_rid >,
             composite_key< savings_withdraw_object,
-               member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
+               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::from >,
                member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
             >
          >,
          ordered_unique< tag< by_to_complete >,
             composite_key< savings_withdraw_object,
-               member< savings_withdraw_object, string,  &savings_withdraw_object::to >,
+               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::to >,
                member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
                member< object, object_id_type, &object::id >
             >
@@ -322,7 +322,7 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_complete_from_rid >,
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
-               member< savings_withdraw_object, string,  &savings_withdraw_object::from >,
+               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::from >,
                member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
             >
          >

@@ -11,6 +11,12 @@ install( TARGETS
    ARCHIVE DESTINATION lib
 )
 
+
+add_executable( test_shared_mem test_shared_mem.cpp )
+
+target_link_libraries( test_shared_mem
+                       PRIVATE steemit_app steemit_chain graphene_utilities fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+
 add_executable( sign_digest sign_digest.cpp )
 
 target_link_libraries( sign_digest

@@ -41,15 +41,6 @@ class follow_plugin_impl
 follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
    : _self( _plugin )
 {
-   // Each plugin needs its own evaluator registry.
-   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
-
-   // Add each operation evaluator to the registry
-   _evaluator_registry->register_evaluator<follow_evaluator>( &_self );
-   _evaluator_registry->register_evaluator<reblog_evaluator>( &_self );
-
-   // Add the registry to the database so the database can delegate custom ops to the plugin
-   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
 }
 
 struct pre_operation_visitor
@@ -349,6 +340,18 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
+      wdump(("register follow evaluator" ));
+      // Each plugin needs its own evaluator registry.
+      my->_evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
+
+      // Add each operation evaluator to the registry
+      my->_evaluator_registry->register_evaluator<follow_evaluator>( this );
+      my->_evaluator_registry->register_evaluator<reblog_evaluator>( this );
+
+      // Add the registry to the database so the database can delegate custom ops to the plugin
+      database().set_custom_json_evaluator( plugin_name(), my->_evaluator_registry );
+
+
       database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
       database().add_index< primary_index< follow_index > >();

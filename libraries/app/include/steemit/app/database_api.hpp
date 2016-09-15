@@ -129,8 +129,8 @@ class database_api
       vector<category_object> get_active_categories( string after, uint32_t limit )const;
       vector<category_object> get_recent_categories( string after, uint32_t limit )const;
 
-      vector<string> get_active_witnesses()const;
-      vector<string> get_miner_queue()const;
+      vector<account_name_type> get_active_witnesses()const;
+      vector<account_name_type> get_miner_queue()const;
 
       /////////////////////////////
       // Blocks and transactions //
@@ -255,7 +255,7 @@ class database_api
        * @param limit Maximum number of results to return -- must not exceed 1000
        * @return Map of witness names to corresponding IDs
        */
-      set<string> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
+      set<account_name_type> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
 
       /**
        * @brief Get the total number of witnesses registered with the blockchain

@@ -3,7 +3,7 @@
 namespace steemit { namespace chain {
 
 void add_authority_accounts(
-   flat_set<string>& result,
+   flat_set<account_name_type>& result,
    const authority& a
    )
 {

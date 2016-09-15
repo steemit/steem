@@ -145,7 +145,7 @@ void database::reindex(fc::path data_dir )
             if( !block.valid() )
             {
                // TODO gap handling may not properly init fork db
-               wlog( "Reindexing terminated due to gap:  Block ${i} does not exist!", ("i", i) );
+               wlog( "Reindexing terminated due to error unpacking block:  Block ${i}", ("i", i) );
                uint32_t dropped_count = 0;
                while( true )
                {
@@ -182,6 +182,7 @@ void database::reindex(fc::path data_dir )
             skip_transaction_signatures |
             skip_transaction_dupe_check |
             skip_tapos_check |
+            skip_merkle_check |
             skip_witness_schedule_check |
             skip_authority_check |
             skip_validate | /// no need to validate operations
@@ -340,7 +341,7 @@ chain_id_type database::get_chain_id() const
    return STEEMIT_CHAIN_ID;
 }
 
-const account_object& database::get_account( const string& name )const
+const account_object& database::get_account( const account_name_type& name )const
 {
    const auto& accounts_by_name = get_index_type<account_index>().indices().get<by_name>();
    auto itr = accounts_by_name.find(name);
@@ -350,14 +351,14 @@ const account_object& database::get_account( const string& name )const
    return *itr;
 }
 
-const escrow_object& database::get_escrow( const string& name, uint32_t escrow_id )const {
+const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const {
    const auto& escrow_idx = get_index_type<escrow_index>().indices().get<by_from_id>();
    auto itr = escrow_idx.find( boost::make_tuple(name,escrow_id) );
    FC_ASSERT( itr != escrow_idx.end() );
    return *itr;
 }
 
-const limit_order_object* database::find_limit_order( const string& name, uint32_t orderid )const
+const limit_order_object* database::find_limit_order( const account_name_type& name, uint32_t orderid )const
 {
    if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
       orderid = orderid & 0x0000FFFF;
@@ -367,7 +368,7 @@ const limit_order_object* database::find_limit_order( const string& name, uint32
    return &*itr;
 }
 
-const limit_order_object& database::get_limit_order( const string& name, uint32_t orderid )const
+const limit_order_object& database::get_limit_order( const account_name_type& name, uint32_t orderid )const
 {
    if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
       orderid = orderid & 0x0000FFFF;
@@ -379,7 +380,7 @@ const limit_order_object& database::get_limit_order( const string& name, uint32_
    return *itr;
 }
 
-const witness_object& database::get_witness( const string& name ) const
+const witness_object& database::get_witness( const account_name_type& name ) const
 {
    const auto& witnesses_by_name = get_index_type< witness_index >().indices().get< by_name >();
    auto itr = witnesses_by_name.find( name );
@@ -389,7 +390,7 @@ const witness_object& database::get_witness( const string& name ) const
    return *itr;
 }
 
-const witness_object* database::find_witness( const string& name ) const
+const witness_object* database::find_witness( const account_name_type& name ) const
 {
    const auto& witnesses_by_name = get_index_type< witness_index >().indices().get< by_name >();
    auto itr = witnesses_by_name.find( name );
@@ -397,7 +398,7 @@ const witness_object* database::find_witness( const string& name ) const
    return &*itr;
 }
 
-const comment_object& database::get_comment( const string& author, const string& permlink )const
+const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
 {
    try
    {
@@ -409,14 +410,14 @@ const comment_object& database::get_comment( const string& author, const string&
    FC_CAPTURE_AND_RETHROW( (author)(permlink) )
 }
 
-const comment_object* database::find_comment( const string& author, const string& permlink )const
+const comment_object* database::find_comment( const account_name_type& author, const string& permlink )const
 {
    const auto& by_permlink_idx = get_index_type< comment_index >().indices().get< by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( author, permlink ) );
    return itr == by_permlink_idx.end() ? nullptr : &*itr;
 }
 
-const savings_withdraw_object& database::get_savings_withdraw( const string& owner, uint32_t request_id )const
+const savings_withdraw_object& database::get_savings_withdraw( const account_name_type& owner, uint32_t request_id )const
 {
    try
    {
@@ -428,7 +429,7 @@ const savings_withdraw_object& database::get_savings_withdraw( const string& own
    FC_CAPTURE_AND_RETHROW( (owner)(request_id) )
 }
 
-const savings_withdraw_object* database::find_savings_withdraw( const string& owner, uint32_t request_id )const
+const savings_withdraw_object* database::find_savings_withdraw( const account_name_type& owner, uint32_t request_id )const
 {
    const auto& savings_withdraw_idx = get_index_type< withdraw_index >().indices().get< by_from_rid >();
    auto itr = savings_withdraw_idx.find( boost::make_tuple( owner, request_id ) );
@@ -438,7 +439,7 @@ const savings_withdraw_object* database::find_savings_withdraw( const string& ow
 
 const time_point_sec database::calculate_discussion_payout_time( const comment_object& comment )const
 {
-   if( comment.parent_author == "" )
+   if( comment.parent_author == account_name_type() )
       return comment.cashout_time;
    else
       return comment.root_comment( *this ).cashout_time;
@@ -723,7 +724,7 @@ void database::_push_transaction( const signed_transaction& trx )
 
 signed_block database::generate_block(
    fc::time_point_sec when,
-   const string& witness_owner,
+   const account_name_type& witness_owner,
    const fc::ecc::private_key& block_signing_private_key,
    uint32_t skip /* = 0 */
    )
@@ -743,7 +744,7 @@ signed_block database::generate_block(
 
 signed_block database::_generate_block(
    fc::time_point_sec when,
-   const string& witness_owner,
+   const account_name_type& witness_owner,
    const fc::ecc::private_key& block_signing_private_key
    )
 {
@@ -948,7 +949,7 @@ void database::notify_on_applied_transaction( const signed_transaction& tx )
    STEEMIT_TRY_NOTIFY( on_applied_transaction, tx )
 }
 
-string database::get_scheduled_witness( uint32_t slot_num )const
+account_name_type database::get_scheduled_witness( uint32_t slot_num )const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    const witness_schedule_object& wso = witness_schedule_id_type()(*this);
@@ -1091,7 +1092,7 @@ uint32_t database::get_pow_summary_target()const
 
 void database::update_witness_schedule4()
 {
-   vector<string> active_witnesses;
+   vector<account_name_type> active_witnesses;
 
    /// Add the highest voted witnesses
    flat_set<witness_id_type> selected_voted;
@@ -1193,7 +1194,7 @@ void database::update_witness_schedule4()
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
    {
       flat_map< version, uint32_t, std::greater< version > > witness_versions;
-      flat_map< std::tuple< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
+      flat_map< std::pair< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
 
       for( uint32_t i = 0; i < wso.current_shuffled_witnesses.size(); i++ )
       {
@@ -1233,12 +1234,16 @@ void database::update_witness_schedule4()
       {
          if( hf_itr->second >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
          {
-            modify( hardfork_property_id_type()( *this ), [&]( hardfork_property_object& hpo )
-            {
-               hpo.next_hardfork = std::get<0>( hf_itr->first );
-               hpo.next_hardfork_time = std::get<1>( hf_itr->first );
-            } );
+            const auto& hfp = hardfork_property_id_type()( *this );
+            if( hfp.next_hardfork != std::get<0>( hf_itr->first ) || 
+                hfp.next_hardfork_time != std::get<1>( hf_itr->first ) ) {
 
+               modify( hfp, [&]( hardfork_property_object& hpo )
+               {
+                  hpo.next_hardfork = std::get<0>( hf_itr->first );
+                  hpo.next_hardfork_time = std::get<1>( hf_itr->first );
+               } );
+            }
             break;
          }
 
@@ -1304,7 +1309,7 @@ void database::update_witness_schedule()
       const witness_schedule_object& wso = witness_schedule_id_type()(*this);
 
 
-      vector<string> active_witnesses;
+      vector<account_name_type> active_witnesses;
       active_witnesses.reserve( STEEMIT_MAX_MINERS );
 
       fc::uint128 new_virtual_time;
@@ -2701,7 +2706,7 @@ void database::notify_changed_objects()
 //////////////////// private methods ////////////////////
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
-{
+{ try {
    auto block_num = next_block.block_num();
    if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
    {
@@ -2737,7 +2742,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (next_block) );*/
-}
+} FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
 void database::_apply_block( const signed_block& next_block )
 { try {
@@ -2772,8 +2777,12 @@ void database::_apply_block( const signed_block& next_block )
 
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) ) // Cannot remove after hardfork
    {
-      FC_ASSERT( get_witness( next_block.witness ).running_version >= hardfork_property_id_type()( *this ).current_hardfork_version,
-         "Block produced by witness that is not running current hardfork" );
+      const auto& witness = get_witness( next_block.witness );
+      const auto& hardfork_state = hardfork_property_id_type()( *this );
+      FC_ASSERT( witness.running_version >= hardfork_state.current_hardfork_version,
+         "Block produced by witness that is not running current hardfork",
+         ("witness",witness)("next_block.witness",next_block.witness)("hardfork_state", hardfork_state)
+      );
    }
 
    for( const auto& trx : next_block.transactions )
@@ -2838,6 +2847,7 @@ void database::process_header_extensions( const signed_block& next_block )
          {
             auto reported_version = itr->get< version >();
             const auto& signing_witness = get_witness( next_block.witness );
+            //idump( (next_block.witness)(signing_witness.running_version)(reported_version) );
 
             if( reported_version != signing_witness.running_version )
             {
@@ -2852,6 +2862,7 @@ void database::process_header_extensions( const signed_block& next_block )
          {
             auto hfv = itr->get< hardfork_version_vote >();
             const auto& signing_witness = get_witness( next_block.witness );
+            //idump( (next_block.witness)(signing_witness.running_version)(hfv) );
 
             if( hfv.hf_version != signing_witness.hardfork_version_vote || hfv.hf_time != signing_witness.hardfork_time_vote )
                modify( signing_witness, [&]( witness_object& wo )
@@ -3681,8 +3692,9 @@ void database::process_hardforks()
          while( _hardfork_versions[ hardforks.last_hardfork ] < hardforks.next_hardfork
             && hardforks.next_hardfork_time <= head_block_time() )
          {
-            if( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS )
+            if( hardforks.last_hardfork < STEEMIT_NUM_HARDFORKS ) {
                apply_hardfork( hardforks.last_hardfork + 1 );
+            }
             else
                throw unknown_hardfork_exception();
          }

@@ -27,7 +27,7 @@ namespace steemit { namespace chain {
          uint32_t          head_block_number = 0;
          block_id_type     head_block_id;
          time_point_sec    time;
-         string            current_witness;
+         account_name_type current_witness;
 
 
          /**

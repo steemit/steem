@@ -172,11 +172,13 @@ optional<signed_block> block_database::fetch_by_number( uint32_t block_num )cons
       FC_ASSERT( result.id() == e.block_id );
       return result;
    }
-   catch (const fc::exception&)
+   catch (const fc::exception& e)
    {
+      idump((e.to_detail_string()));
    }
-   catch (const std::exception&)
+   catch (const std::exception& e)
    {
+      idump((e.what()));
    }
    return optional<signed_block>();
 }
