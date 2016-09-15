@@ -68,9 +68,9 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 
    if ( db().has_hardfork( STEEMIT_HARDFORK_0_14__410 ) )
    {
-      FC_ASSERT( o.fee.symbol == STEEM_SYMBOL );
+      FC_ASSERT( o.props.account_creation_fee.symbol == STEEM_SYMBOL );
    }
-   else if( o.fee.symbol != STEEM_SYMBOL )
+   else if( o.props.account_creation_fee.symbol != STEEM_SYMBOL )
    {
       // after HF, above check can be moved to validate() if reindex doesn't show this warning
       wlog( "Wrong fee symbol in block ${b}", ("b", db().head_block_num()+1) );
