@@ -491,11 +491,11 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
          esc.from                   = o.from;
          esc.to                     = o.to;
          esc.agent                  = o.agent;
+         esc.ratification_deadline  = o.ratification_deadline;
+         esc.escrow_expiration      = o.escrow_expiration;
          esc.sbd_balance            = o.sbd_amount;
          esc.steem_balance          = o.steem_amount;
          esc.pending_fee            = o.fee;
-         esc.ratification_deadline  = o.ratification_deadline;
-         esc.escrow_expiration      = o.escrow_expiration;
       });
    }
    FC_CAPTURE_AND_RETHROW( (o) )
