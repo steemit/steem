@@ -62,7 +62,8 @@ namespace steemit { namespace chain {
       FC_ASSERT( fc::is_utf8( body ), "Body not formatted in UTF8" );
 
 
-      FC_ASSERT( !parent_author.size() || is_valid_account_name( parent_author ), "Parent author name invalid" );
+      if( parent_author.size() )
+         validate_account_name( parent_author );
       validate_account_name( author );
       validate_permlink( parent_permlink );
       validate_permlink( permlink );
@@ -198,7 +199,7 @@ namespace steemit { namespace chain {
    void pow2_operation::validate()const
    {
       props.validate();
-      FC_ASSERT( is_valid_account_name( work.get<pow2>().input.worker_account ), "Account name ${w} is invalid", ("w",work.get<pow2>().input.worker_account) );
+      validate_account_name( work.get<pow2>().input.worker_account );
       work.get<pow2>().validate();
    }
 
@@ -240,7 +241,7 @@ namespace steemit { namespace chain {
 
    void pow2::validate()const
    {
-      FC_ASSERT( is_valid_account_name( input.worker_account ), "Account name ${w} is invalid", ("w",input.worker_account) );
+      validate_account_name( input.worker_account );
       pow2 tmp; tmp.create( input.prev_block, input.worker_account, input.nonce );
       FC_ASSERT( pow_summary == tmp.pow_summary, "reported work does not match calculated work" );
    }
@@ -292,7 +293,7 @@ namespace steemit { namespace chain {
    void report_over_production_operation::validate()const
    {
       validate_account_name( reporter );
-      FC_ASSERT( is_valid_account_name( first_block.witness ) );
+      validate_account_name( first_block.witness );
       FC_ASSERT( first_block.witness   == second_block.witness );
       FC_ASSERT( first_block.timestamp == second_block.timestamp );
       FC_ASSERT( first_block.signee()  == second_block.signee() );
@@ -391,18 +392,25 @@ namespace steemit { namespace chain {
 
    void decline_voting_rights_operation::validate()const
    {
-      FC_ASSERT( is_valid_account_name( account ) );
+      validate_account_name( account );
    }
 
-   void reset_account_operation::validate()const {
-      FC_ASSERT( is_valid_account_name( reset_account ) );
-      FC_ASSERT( is_valid_account_name( account_to_reset ) );
+   void reset_account_operation::validate()const
+   {
+      validate_account_name( reset_account );
+      validate_account_name( account_to_reset );
+      FC_ASSERT( !new_owner_authority.is_impossible(), "new owner authority cannot be impossible" );
+      FC_ASSERT( new_owner_authority.weight_threshold, "new owner authority cannot be trivial" );
       new_owner_authority.validate();
    }
 
-   void set_reset_account_operation::validate()const {
-      FC_ASSERT( is_valid_account_name( account ) );
-      FC_ASSERT( is_valid_account_name( reset_account ) );
+   void set_reset_account_operation::validate()const
+   {
+      validate_account_name( account );
+      if( current_reset_account.size() )
+         validate_account_name( current_reset_account );
+      validate_account_name( reset_account );
+      FC_ASSERT( current_reset_account != reset_account, "new reset account cannot be current reset account" );
    }
 
 

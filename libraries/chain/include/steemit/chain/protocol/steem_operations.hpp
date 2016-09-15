@@ -828,11 +828,19 @@ namespace steemit { namespace chain {
     */
    struct set_reset_account_operation : public base_operation {
       string account;
+      string current_reset_account;
       string reset_account;
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const
+      void get_required_owner_authorities( flat_set<string>& a )const
       {
-         a.insert( account );
+         if( current_reset_account.size() )
+            a.insert( account );
+      }
+
+      void get_required_posting_authorities( flat_set<string>& a )const
+      {
+         if( !current_reset_account.size() )
+            a.insert( account );
       }
    };
 
@@ -914,7 +922,7 @@ FC_REFLECT( steemit::chain::transfer_from_savings_operation, (from)(request_id)(
 FC_REFLECT( steemit::chain::cancel_transfer_from_savings_operation, (from)(request_id) )
 
 FC_REFLECT( steemit::chain::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
-FC_REFLECT( steemit::chain::set_reset_account_operation, (account)(reset_account) )
+FC_REFLECT( steemit::chain::set_reset_account_operation, (account)(current_reset_account)(reset_account) )
 
 
 FC_REFLECT( steemit::chain::report_over_production_operation, (reporter)(first_block)(second_block) )

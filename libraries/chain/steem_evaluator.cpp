@@ -1552,8 +1552,7 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
 
    if( o.require_owner )
    {
-      FC_ASSERT( false, "Challenging the owner key is not supported at this time" );
-#if 0
+      FC_ASSERT( challenged.reset_account == o.challenger, "Owner authority can only be challenged by the reset account" );
       FC_ASSERT( challenger.balance >= STEEMIT_OWNER_CHALLENGE_FEE );
       FC_ASSERT( !challenged.owner_challenged );
       FC_ASSERT( db().head_block_time() - challenged.last_owner_proved > STEEMIT_OWNER_CHALLENGE_COOLDOWN );
@@ -1565,14 +1564,11 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
       {
          a.owner_challenged = true;
       });
-#endif
   }
   else
   {
       FC_ASSERT( challenger.balance >= STEEMIT_ACTIVE_CHALLENGE_FEE, "account does not have sufficient funds to pay challenge fee" );
       FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "account is already challenged" );
-      if( !db().has_hardfork( STEEMIT_HARDFORK_0_11 ) ) // This check and the assert below should have been removed during hf11 TODO: Remove after HF 14
-         FC_ASSERT( db().head_block_time() - challenged.last_active_proved < STEEMIT_ACTIVE_CHALLENGE_COOLDOWN );
       FC_ASSERT( db().head_block_time() - challenged.last_active_proved > STEEMIT_ACTIVE_CHALLENGE_COOLDOWN, "account cannot be challenged because it was recently challenged" );
 
       db().adjust_balance( challenger, - STEEMIT_ACTIVE_CHALLENGE_FEE );
@@ -1790,49 +1786,31 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
    }
 }
 
-void reset_account_evaluator::do_apply( const reset_account_operation& op ) {
+void reset_account_evaluator::do_apply( const reset_account_operation& op )
+{
    FC_ASSERT( false, "Reset Account Operation is currently disabled." );
 
    const auto& acnt = db().get_account( op.account_to_reset );
-   FC_ASSERT( (db().head_block_time() - acnt.last_bandwidth_update)  > fc::days(60) );
-   FC_ASSERT( acnt.reset_account == op.reset_account );
+   FC_ASSERT( (db().head_block_time() - acnt.last_bandwidth_update)  > fc::days(60), "Account must be inactive for 60 days to be eligible for reset" );
+   FC_ASSERT( acnt.reset_account == op.reset_account, "Reset account does not match reset account on account." );
 
-   db().modify( acnt, [&]( account_object& a ){
-       a.pending_reset_authority = op.new_owner_authority;
-       a.reset_request_time = db().head_block_time();
-   });
+   db().update_owner_authority( acnt, op.new_owner_authority );
 }
 
-void set_reset_account_evaluator::do_apply( const set_reset_account_operation& op ) {
+void set_reset_account_evaluator::do_apply( const set_reset_account_operation& op )
+{
    FC_ASSERT( false, "Set Reset Account Operation is currently disabled." );
 
    const auto& acnt = db().get_account( op.account );
-   const auto& rsa = db().get_account( op.reset_account );
+   db().get_account( op.reset_account );
 
-   FC_ASSERT( acnt.reset_account != op.reset_account );
+   FC_ASSERT( acnt.reset_account == op.current_reset_account, "Current reset account does not match reset account on account." );
+   FC_ASSERT( acnt.reset_account != op.reset_account, "Reset account must change" );
 
-   db().modify( acnt, [&]( account_object& a ){
+   db().modify( acnt, [&]( account_object& a )
+   {
        a.reset_account = op.reset_account;
    });
 }
-
-/*
-void complete_account_reset_evaluator::do_apply( const complete_account_reset_operation& op ) {
-   FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_13_240 ) );
-   const auto& acnt = db().get_account( op.account_to_reset );
-
-   FC_ASSERT( db().head_block_time() - acnt.reset_request_time  > fc::days(30) );
-   FC_ASSERT( acnt.enable_account_reset );
-   FC_ASSERT( acnt.pending_reset_authority == op.new_owner_authority );
-
-   db().modify( acnt, [&]( account_object& a ){
-      a.last_bandwidth_update = db().head_block_time();
-      a.reset_request_time = fc::time_point_sec::maximum();
-      a.average_bandwidth = 0;
-      a.average_market_bandwidth = 0;
-   });
-   db().update_owner_authority( acnt, op.new_owner_authority );
-}
-*/
 
 } } // steemit::chain

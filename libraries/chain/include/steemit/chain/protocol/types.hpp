@@ -178,7 +178,7 @@ namespace steemit { namespace chain {
    typedef object_id< implementation_ids, impl_account_recovery_request_object_type,         account_recovery_request_object >         account_recovery_request_id_type;
    typedef object_id< implementation_ids, impl_change_recovery_account_request_object_type,  change_recovery_account_request_object >  change_recovery_account_request_id_type;
    typedef object_id< implementation_ids, impl_escrow_object_type,                           escrow_object >                           escrow_id_type;
-   typedef object_id< implementation_ids, impl_savings_withdraw_object_type,                 savings_withdraw_object>                  savings_withdraw_id_type;
+   typedef object_id< implementation_ids, impl_savings_withdraw_object_type,                 savings_withdraw_object >                  savings_withdraw_id_type;
    typedef object_id< implementation_ids, impl_decline_voting_rights_request_object_type,    decline_voting_rights_request_object >    decline_voting_rights_request_id_type;
 
    typedef fc::ripemd160                                        block_id_type;
