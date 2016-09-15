@@ -1761,7 +1761,7 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
    const auto& from = db().get_account( op.from );
    db().modify( from, [&]( account_object& a )
    {
-      a.savings_withdraw_requests++;
+      a.savings_withdraw_requests--;
    });
 }
 
