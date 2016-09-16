@@ -1,7 +1,10 @@
 #pragma once
 #include <steemit/chain/protocol/types.hpp>
+#include <fc/interprocess/container.hpp>
+#include <boost/interprocess/managed_mapped_file.hpp>
 
 namespace steemit { namespace chain {
+   namespace bip = boost::interprocess;
 
    struct authority
    {
@@ -73,15 +76,70 @@ namespace steemit { namespace chain {
          }
       };
 
-      uint32_t                                                         weight_threshold = 0;
+      uint32_t                                             weight_threshold = 0;
       flat_map<account_name_type,weight_type,string_less>  account_auths;
-      flat_map<public_key_type,weight_type>                            key_auths;
+      flat_map<public_key_type,weight_type>                key_auths;
 
       void validate()const;
    };
 
+   /**
+    *  The purpose of this class is to represent an authority object in a manner compatiable with
+    *  shared memory storage.  This requires all dynamic fields to be allocated with the same allocator
+    *  that allocated the shared_authority.
+    */
+   struct shared_authority {
+      typedef bip::allocator<std::pair<account_name_type,weight_type>, bip::managed_mapped_file::segment_manager> account_pair_allocator_type;
+      typedef bip::allocator<std::pair<public_key_type,weight_type>, bip::managed_mapped_file::segment_manager> key_pair_allocator_type;
+
+      template<typename Allocator>
+      shared_authority( const authority& a, const Allocator& alloc )
+      :account_auths( account_pair_allocator_type( alloc.get_segment_manager() )  ), key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) ) {
+         account_auths.reserve( a.account_auths.size() );
+         key_auths.reserve( a.key_auths.size() );
+         for( const auto& item : a.account_auths )
+            account_auths.insert( item );
+         for( const auto& item : a.key_auths )
+            key_auths.insert( item );
+         weight_threshold = a.weight_threshold;
+      }
+
+      shared_authority( const shared_authority& cpy )
+      :weight_threshold(cpy.weight_threshold),account_auths(cpy.account_auths), key_auths( cpy.key_auths ){}
+
+      template<typename Allocator>
+      shared_authority( const Allocator& alloc )
+      :account_auths( account_pair_allocator_type( alloc.get_segment_manager() )  ), 
+       key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) ){}
+
+      operator authority()const {
+         authority result;
+         result.account_auths.reserve( account_auths.size() );
+         for( const auto& item : account_auths )
+            result.account_auths.insert( item );
+         result.key_auths.reserve( key_auths.size() );
+         for( const auto& item : key_auths )
+            result.key_auths.insert( item );
+         result.weight_threshold = weight_threshold;
+         return result;
+      }
+
+      shared_authority& operator=( const authority& a ) {
+         for( const auto& item : a.account_auths )
+            account_auths.insert( item );
+         for( const auto& item : a.key_auths )
+            key_auths.insert( item );
+         weight_threshold = a.weight_threshold;
+         return *this; 
+      }
+
+      uint32_t                                                                                weight_threshold = 0;
+      bip::flat_map<account_name_type, weight_type, authority::string_less, account_pair_allocator_type>   account_auths;
+      bip::flat_map<public_key_type, weight_type, std::less<public_key_type>, key_pair_allocator_type> key_auths;
+   };
+
 void add_authority_accounts(
-   flat_set<string>& result,
+   flat_set<account_name_type>& result,
    const authority& a
    );
 
@@ -120,5 +178,6 @@ bool is_valid_account_name( const string& name );
 } } // namespace steemit::chain
 
 FC_REFLECT( steemit::chain::authority, (weight_threshold)(account_auths)(key_auths) )
+FC_REFLECT( steemit::chain::shared_authority, (weight_threshold)(account_auths)(key_auths) )
 FC_REFLECT_TYPENAME( steemit::chain::authority::classification )
 FC_REFLECT_ENUM( steemit::chain::authority::classification, (owner)(active)(key)(posting) )
