@@ -66,7 +66,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
    {
       auto& db = _plugin->database();
       const auto& c = db.get_comment( o.author, o.permlink );
-      if( c.parent_author.size() > 0 ) return;
+      FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
       const auto& reblog_account = db.get_account( o.account );
       const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
@@ -82,15 +82,13 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, reblog_account.id ) );
 
-      if( blog_itr == blog_comment_idx.end() )
+      FC_ASSERT( blog_itr == blog_comment_idx.end(), "Account has already reblogged this post" );
+      db.create< blog_object >( [&]( blog_object& b )
       {
-         db.create< blog_object >( [&]( blog_object& b )
-         {
-            b.account = reblog_account.id;
-            b.comment = c.id;
-            b.blog_feed_id = next_blog_id;
-         });
-      }
+         b.account = reblog_account.id;
+         b.comment = c.id;
+         b.blog_feed_id = next_blog_id;
+      });
 
       const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();

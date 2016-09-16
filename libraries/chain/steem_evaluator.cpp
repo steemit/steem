@@ -1268,7 +1268,8 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
@@ -1292,7 +1293,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
