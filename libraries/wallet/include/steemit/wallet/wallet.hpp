@@ -150,12 +150,12 @@ class wallet_api
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
        */
-      vector<string>                      get_active_witnesses()const;
+      vector<aname_type>                      get_active_witnesses()const;
 
       /**
        * Returns the queue of pow miners waiting to produce blocks.
        */
-      vector<string>                      get_miner_queue()const;
+      vector<aname_type>                      get_miner_queue()const;
 
       /**
        * Returns the state info associated with the URL
@@ -490,7 +490,7 @@ class wallet_api
        * @param limit the maximum number of witnesss to return (max: 1000)
        * @returns a list of witnesss mapping witness names to witness ids
        */
-      set<string>       list_witnesses(const string& lowerbound, uint32_t limit);
+      set<account_name_type>       list_witnesses(const string& lowerbound, uint32_t limit);
 
       /** Returns information about the given witness.
        * @param owner_account the name or id of the witness account owner, or the id of the witness

@@ -116,7 +116,7 @@ struct operation_visitor_filter : operation_visitor {
 };
 
 void account_history_plugin_impl::on_operation( const operation_object& op_obj ) {
-   flat_set<string> impacted;
+   flat_set<aname_type> impacted;
    steemit::chain::database& db = database();
    auto size = fc::raw::pack_size(op_obj);
    if( size > 1024*1024*128 ) {

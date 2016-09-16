@@ -35,8 +35,8 @@ using namespace steemit::chain;
 // TODO:  Review all of these, especially no-ops
 struct get_impacted_account_visitor
 {
-   flat_set< string >& _impacted;
-   get_impacted_account_visitor( flat_set< string >& impact ):_impacted( impact ) {}
+   flat_set<aname_type>& _impacted;
+   get_impacted_account_visitor( flat_set<aname_type>& impact ):_impacted( impact ) {}
    typedef void result_type;
 
    template<typename T>
@@ -227,13 +227,13 @@ struct get_impacted_account_visitor
    //void operator()( const operation& op ){}
 };
 
-void operation_get_impacted_accounts( const operation& op, flat_set< string >& result )
+void operation_get_impacted_accounts( const operation& op, flat_set<aname_type>& result )
 {
    get_impacted_account_visitor vtor = get_impacted_account_visitor( result );
    op.visit( vtor );
 }
 
-void transaction_get_impacted_accounts( const transaction& tx, flat_set< string >& result )
+void transaction_get_impacted_accounts( const transaction& tx, flat_set<aname_type>& result )
 {
    for( const auto& op : tx.operations )
       operation_get_impacted_accounts( op, result );

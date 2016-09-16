@@ -52,15 +52,15 @@ struct operation_get_required_auth_visitor
 {
    typedef void result_type;
 
-   flat_set< string >&        active;
-   flat_set< string >&        owner;
-   flat_set< string >&        posting;
+   flat_set< aname_type >&        active;
+   flat_set< aname_type >&        owner;
+   flat_set< aname_type >&        posting;
    std::vector< authority >&  other;
 
    operation_get_required_auth_visitor(
-         flat_set<string>& a,
-         flat_set<string>& own,
-         flat_set<string>& post,
+         flat_set<aname_type>& a,
+         flat_set<aname_type>& own,
+         flat_set<aname_type>& post,
          std::vector< authority >& oth )
       : active( a ), owner( own ), posting( post ), other( oth ) {}
 
@@ -126,9 +126,9 @@ void operation_validate( const OperationType& op )                         \
 }                                                                          \
                                                                            \
 void operation_get_required_authorities( const OperationType& op,          \
-                                         flat_set<string>& active,         \
-                                         flat_set<string>& owner,          \
-                                         flat_set<string>& posting,        \
+                                         flat_set<aname_type>& active,         \
+                                         flat_set<aname_type>& owner,          \
+                                         flat_set<aname_type>& posting,        \
                                          std::vector<authority>& other )   \
 {                                                                          \
    op.visit( steemit::chain::operation_get_required_auth_visitor( active, owner, posting, other ) ); \

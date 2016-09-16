@@ -10,24 +10,24 @@ using namespace std;
 
 struct follow_operation : base_operation
 {
-    string              follower;
-    string              following;
+    aname_type              follower;
+    aname_type              following;
     set< string >       what; /// blog, mute
 
     void validate()const;
 
-    void get_required_posting_authorities( flat_set< string >& a )const { a.insert( follower ); }
+    void get_required_posting_authorities( flat_set<aname_type>& a )const { a.insert( follower ); }
 };
 
 struct reblog_operation : base_operation
 {
-   string account;
-   string author;
+   aname_type account;
+   aname_type author;
    string permlink;
 
    void validate()const;
 
-   void get_required_posting_authorities( flat_set< string >& a )const { a.insert( account ); }
+   void get_required_posting_authorities( flat_set<aname_type>& a )const { a.insert( account ); }
 };
 
 typedef fc::static_variant<

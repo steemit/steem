@@ -6,13 +6,12 @@
 #include <fc/utf8.hpp>
 
 namespace steemit { namespace chain {
-   typedef string aname_type;
 
    struct account_create_operation : public base_operation
    {
       asset             fee;
-      aname_type        creator;
-      aname_type        new_account_name;
+      account_name_type creator;
+      account_name_type new_account_name;
       authority         owner;
       authority         active;
       authority         posting;
@@ -20,7 +19,7 @@ namespace steemit { namespace chain {
       string            json_metadata;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(creator); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(creator); }
    };
 
    struct account_update_operation : public base_operation
@@ -34,13 +33,13 @@ namespace steemit { namespace chain {
 
       void validate()const;
 
-      void get_required_owner_authorities( flat_set<string>& a )const
+      void get_required_owner_authorities( flat_set<aname_type>& a )const
       { if( owner ) a.insert( account ); }
 
-      void get_required_active_authorities( flat_set<string>& a )const
+      void get_required_active_authorities( flat_set<aname_type>& a )const
       { if( !owner /*&& active*/) a.insert( account ); }
 
-      //void get_required_posting_authorities( flat_set<string>& a )const
+      //void get_required_posting_authorities( flat_set<aname_type>& a )const
       //{ if( !active && !owner && posting ) a.insert( account ); }
    };
 
@@ -57,7 +56,7 @@ namespace steemit { namespace chain {
       string            json_metadata;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
+      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(author); }
    };
 
    /**
@@ -80,7 +79,7 @@ namespace steemit { namespace chain {
       extensions_type extensions;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
+      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(author); }
    };
 
    struct challenge_authority_operation : public base_operation
@@ -91,7 +90,7 @@ namespace steemit { namespace chain {
 
       void validate()const;
 
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(challenger); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(challenger); }
    };
 
    struct prove_authority_operation : public base_operation
@@ -101,8 +100,8 @@ namespace steemit { namespace chain {
 
       void validate()const;
 
-      void get_required_active_authorities( flat_set<string>& a )const{ if( !require_owner ) a.insert(challenged); }
-      void get_required_owner_authorities( flat_set<string>& a )const{  if(  require_owner ) a.insert(challenged); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ if( !require_owner ) a.insert(challenged); }
+      void get_required_owner_authorities( flat_set<aname_type>& a )const{  if(  require_owner ) a.insert(challenged); }
    };
 
    struct delete_comment_operation : public base_operation
@@ -111,7 +110,7 @@ namespace steemit { namespace chain {
       string permlink;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(author); }
+      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(author); }
    };
 
    struct vote_operation : public base_operation
@@ -122,7 +121,7 @@ namespace steemit { namespace chain {
       int16_t   weight = 0;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<string>& a )const{ a.insert(voter); }
+      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(voter); }
    };
 
    struct author_reward_operation : public virtual_operation {
@@ -223,8 +222,8 @@ namespace steemit { namespace chain {
       string            memo;
 
       void              validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ if(amount.symbol != VESTS_SYMBOL) a.insert(from); }
-      void get_required_owner_authorities( flat_set<string>& a )const { if(amount.symbol == VESTS_SYMBOL) a.insert(from); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ if(amount.symbol != VESTS_SYMBOL) a.insert(from); }
+      void get_required_owner_authorities( flat_set<aname_type>& a )const { if(amount.symbol == VESTS_SYMBOL) a.insert(from); }
    };
 
    /**
@@ -262,7 +261,7 @@ namespace steemit { namespace chain {
       string         json_meta;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(from); }
    };
 
    /**
@@ -280,7 +279,7 @@ namespace steemit { namespace chain {
       bool           approve = true;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(who); }
    };
 
    /**
@@ -297,7 +296,7 @@ namespace steemit { namespace chain {
       uint32_t escrow_id = 0;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(who); }
    };
 
    /**
@@ -322,7 +321,7 @@ namespace steemit { namespace chain {
       asset     steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(who); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(who); }
    };
 
 
@@ -339,7 +338,7 @@ namespace steemit { namespace chain {
       asset    amount; ///< must be STEEM
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(from); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(from); }
    };
 
    /**
@@ -359,7 +358,7 @@ namespace steemit { namespace chain {
       asset       vesting_shares;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(account); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(account); }
    };
 
    /**
@@ -377,7 +376,7 @@ namespace steemit { namespace chain {
       bool     auto_vest = false;
 
       void validate()const;
-      void get_required_active_authorities( flat_set< string >& a )const { a.insert( from_account ); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const { a.insert( from_account ); }
    };
 
    /**
@@ -434,7 +433,7 @@ namespace steemit { namespace chain {
       asset             fee; ///< the fee paid to register a new witness, should be 10x current block production pay
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
    };
 
    /**
@@ -449,7 +448,7 @@ namespace steemit { namespace chain {
       bool    approve = true;
 
       void validate() const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(account); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(account); }
    };
 
    struct account_witness_proxy_operation : public base_operation
@@ -458,7 +457,7 @@ namespace steemit { namespace chain {
       aname_type  proxy;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert(account); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(account); }
    };
 
    /**
@@ -474,7 +473,7 @@ namespace steemit { namespace chain {
       vector<char>      data;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
    };
 
    /** serves the same purpose as custom_operation but also supports required posting authorities. Unlike custom_operation,
@@ -488,8 +487,8 @@ namespace steemit { namespace chain {
       string            json; ///< must be proper utf8 / JSON string.
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
-      void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
    };
 
    struct custom_binary_operation : public base_operation
@@ -503,9 +502,9 @@ namespace steemit { namespace chain {
       vector<char>      data;
 
       void validate()const;
-      void get_required_owner_authorities( flat_set<string>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
-      void get_required_active_authorities( flat_set<string>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
-      void get_required_posting_authorities( flat_set<string>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+      void get_required_owner_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
       void get_required_authorities( vector<authority>& a )const{ for( const auto& i : required_auths ) a.push_back(i); }
    };
 
@@ -519,7 +518,7 @@ namespace steemit { namespace chain {
       price    exchange_rate;
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(publisher); }
+      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(publisher); }
    };
 
    /**
@@ -533,7 +532,7 @@ namespace steemit { namespace chain {
       asset    amount;
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
    };
 
    /**
@@ -549,7 +548,7 @@ namespace steemit { namespace chain {
       time_point_sec   expiration = time_point_sec::maximum();
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
 
       price           get_price()const { return amount_to_sell / min_to_receive; }
 
@@ -575,7 +574,7 @@ namespace steemit { namespace chain {
       time_point_sec   expiration = time_point_sec::maximum();
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
 
       price           get_price()const { return exchange_rate; }
 
@@ -610,7 +609,7 @@ namespace steemit { namespace chain {
       uint32_t orderid = 0;
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<string>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
    };
 
    struct pow
@@ -639,7 +638,7 @@ namespace steemit { namespace chain {
       const aname_type& get_worker_account()const { return worker_account; }
 
       /** there is no need to verify authority, the proof of work is sufficient */
-      void get_required_active_authorities( flat_set<string>& a )const{  }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{  }
    };
 
    struct pow2_input
@@ -667,7 +666,7 @@ namespace steemit { namespace chain {
       void validate()const;
 
       /** there is no need to verify authority, the proof of work is sufficient */
-      void get_required_active_authorities( flat_set<string>& a )const
+      void get_required_active_authorities( flat_set<aname_type>& a )const
       {
          if( !new_owner_key )
          {
@@ -745,7 +744,7 @@ namespace steemit { namespace chain {
 
       extensions_type   extensions;             ///< Extensions. Not currently used.
 
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( recovery_account ); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( recovery_account ); }
 
       void validate() const;
    };
@@ -817,7 +816,7 @@ namespace steemit { namespace chain {
 
 
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const
+      void get_required_active_authorities( flat_set<aname_type>& a )const
       {
          a.insert( reset_account );
       }
@@ -831,7 +830,7 @@ namespace steemit { namespace chain {
       aname_type account;
       aname_type reset_account;
       void validate()const;
-      void get_required_active_authorities( flat_set<string>& a )const
+      void get_required_active_authorities( flat_set<aname_type>& a )const
       {
          a.insert( account );
       }
@@ -864,7 +863,7 @@ namespace steemit { namespace chain {
 
       extensions_type   extensions;             ///< Extensions. Not currently used.
 
-      void get_required_owner_authorities( flat_set<string>& a )const{ a.insert( account_to_recover ); }
+      void get_required_owner_authorities( flat_set<aname_type>& a )const{ a.insert( account_to_recover ); }
 
       void validate() const;
    };
@@ -875,7 +874,7 @@ namespace steemit { namespace chain {
       asset  amount;
       string memo;
 
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( from ); }
       void validate() const;
    };
 
@@ -886,7 +885,7 @@ namespace steemit { namespace chain {
       asset    amount;
       string   memo;
 
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( from ); }
       void validate() const;
    };
 
@@ -894,7 +893,7 @@ namespace steemit { namespace chain {
       aname_type   from;
       uint32_t request_id = 0;
 
-      void get_required_active_authorities( flat_set<string>& a )const{ a.insert( from ); }
+      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( from ); }
       void validate() const;
    };
 
@@ -903,7 +902,7 @@ namespace steemit { namespace chain {
       aname_type account;
       bool   decline = true;
 
-      void get_required_owner_authorities( flat_set< string >& a )const{ a.insert( account ); }
+      void get_required_owner_authorities( flat_set<aname_type>& a )const{ a.insert( account ); }
 
       void validate() const;
    };

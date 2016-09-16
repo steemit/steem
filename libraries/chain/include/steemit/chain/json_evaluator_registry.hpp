@@ -26,14 +26,14 @@ class json_evaluator_registry
       {
          auto plugin_session = this->_db._undo_db.start_undo_session( true );
 
-         flat_set< string > outer_active;
-         flat_set< string > outer_owner;
-         flat_set< string > outer_posting;
+         flat_set<aname_type> outer_active;
+         flat_set<aname_type> outer_owner;
+         flat_set<aname_type> outer_posting;
          std::vector< authority > outer_other;
 
-         flat_set< string > inner_active;
-         flat_set< string > inner_owner;
-         flat_set< string > inner_posting;
+         flat_set<aname_type> inner_active;
+         flat_set<aname_type> inner_owner;
+         flat_set<aname_type> inner_posting;
          std::vector< authority > inner_other;
 
          operation_get_required_authorities( outer_o, outer_active, outer_owner, outer_posting, outer_other );

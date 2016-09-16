@@ -2968,7 +2968,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
    }
-   flat_set<string> required; vector<authority> other;
+   flat_set<aname_type> required; vector<authority> other;
    trx.get_required_authorities( required, required, required, other );
 
    auto trx_size = fc::raw::pack_size(trx);

@@ -26,9 +26,9 @@ namespace steemit { namespace chain {                                 \
                                                                       \
 void operation_validate( const OperationType& o );                    \
 void operation_get_required_authorities( const OperationType& op,     \
-                                         flat_set<string>& active,    \
-                                         flat_set<string>& owner,     \
-                                         flat_set<string>& posting,   \
+                                         flat_set<aname_type>& active,    \
+                                         flat_set<aname_type>& owner,     \
+                                         flat_set<aname_type>& posting,   \
                                          vector<authority>& other );  \
                                                                       \
 } } /* steemit::chain */

@@ -535,9 +535,9 @@ public:
 
    annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
    {
-      flat_set< string >   req_active_approvals;
-      flat_set< string >   req_owner_approvals;
-      flat_set< string >   req_posting_approvals;
+      flat_set< account_name_type >   req_active_approvals;
+      flat_set< account_name_type >   req_owner_approvals;
+      flat_set< account_name_type >   req_posting_approvals;
       vector< authority >  other_auths;
 
       tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
@@ -587,7 +587,7 @@ public:
       };
 
       flat_set<public_key_type> approving_key_set;
-      for( string& acct_name : req_active_approvals )
+      for( account_name_type& acct_name : req_active_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
@@ -602,7 +602,7 @@ public:
          }
       }
 
-      for( string& acct_name : req_posting_approvals )
+      for( account_name_type& acct_name : req_posting_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
@@ -617,7 +617,7 @@ public:
          }
       }
 
-      for( const string& acct_name : req_owner_approvals )
+      for( const account_name_type& acct_name : req_owner_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
@@ -719,7 +719,7 @@ public:
             total_steem += a.balance;
             total_vest  += a.vesting_shares;
             total_sbd  += a.sbd_balance;
-            out << std::left << std::setw( 17 ) << a.name
+            out << std::left << std::setw( 17 ) << std::string(a.name)
                 << std::right << std::setw(20) << fc::variant(a.balance).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.vesting_shares).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.sbd_balance).as_string() <<"\n";
@@ -992,10 +992,10 @@ set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
    return my->_remote_db->lookup_accounts(lowerbound, limit);
 }
 
-vector<string> wallet_api::get_miner_queue()const {
+vector<aname_type> wallet_api::get_miner_queue()const {
    return my->_remote_db->get_miner_queue();
 }
-vector<string> wallet_api::get_active_witnesses()const {
+vector<aname_type> wallet_api::get_active_witnesses()const {
    return my->_remote_db->get_active_witnesses();
 }
 
@@ -1086,7 +1086,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 }
 */
 
-set<string> wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
+set<account_name_type> wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
 {
    return my->_remote_db->lookup_witness_accounts(lowerbound, limit);
 }

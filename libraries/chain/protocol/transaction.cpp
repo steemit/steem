@@ -76,9 +76,9 @@ void transaction::set_reference_block( const block_id_type& reference_block )
    ref_block_prefix = reference_block._hash[1];
 }
 
-void transaction::get_required_authorities( flat_set<string>& active,
-                                            flat_set<string>& owner,
-                                            flat_set<string>& posting,
+void transaction::get_required_authorities( flat_set<aname_type>& active,
+                                            flat_set<aname_type>& owner,
+                                            flat_set<aname_type>& posting,
                                             vector<authority>& other )const
 {
    for( const auto& op : operations )
@@ -91,14 +91,14 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                        const authority_getter& get_posting,
                        uint32_t max_recursion_depth,
                        bool  allow_committe,
-                       const flat_set<string>& active_aprovals,
-                       const flat_set<string>& owner_approvals,
-                       const flat_set<string>& posting_approvals
+                       const flat_set<aname_type>& active_aprovals,
+                       const flat_set<aname_type>& owner_approvals,
+                       const flat_set<aname_type>& posting_approvals
                        )
 { try {
-   flat_set<string> required_active;
-   flat_set<string> required_owner;
-   flat_set<string> required_posting;
+   flat_set<aname_type> required_active;
+   flat_set<aname_type> required_owner;
+   flat_set<aname_type> required_posting;
    vector<authority> other;
 
    for( const auto& op : ops )
@@ -198,9 +198,9 @@ set<public_key_type> signed_transaction::get_required_signatures(
    const authority_getter& get_posting,
    uint32_t max_recursion_depth )const
 {
-   flat_set<string> required_active;
-   flat_set<string> required_owner;
-   flat_set<string> required_posting;
+   flat_set<aname_type> required_active;
+   flat_set<aname_type> required_owner;
+   flat_set<aname_type> required_posting;
    vector<authority> other;
    get_required_authorities( required_active, required_owner, required_posting, other );
 
