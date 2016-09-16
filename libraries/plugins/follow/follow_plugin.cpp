@@ -24,7 +24,9 @@ namespace detail
 class follow_plugin_impl
 {
    public:
-      follow_plugin_impl( follow_plugin& _plugin );
+      follow_plugin_impl( follow_plugin& _plugin ) : _self( _plugin ) {}
+
+      void plugin_initialize();
 
       steemit::chain::database& database()
       {
@@ -38,8 +40,7 @@ class follow_plugin_impl
       std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
 };
 
-follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
-   : _self( _plugin )
+void follow_plugin_impl::plugin_initialize()
 {
    // Each plugin needs its own evaluator registry.
    _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
@@ -349,6 +350,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
+      my->plugin_initialize();
+
       database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
       database().add_index< primary_index< follow_index > >();
