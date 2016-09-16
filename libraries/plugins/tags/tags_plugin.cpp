@@ -93,20 +93,25 @@ struct operation_visitor {
    {
        const auto& stats = get_stats( current.tag );
        remove_stats( current, stats );
-       _db.modify( current, [&]( tag_object& obj ) {
-          obj.active            = comment.active;
-          obj.cashout           = comment.cashout_time;
-          obj.children          = comment.children;
-          obj.net_rshares       = comment.net_rshares.value;
-          obj.net_votes         = comment.net_votes;
-          obj.children_rshares2 = comment.children_rshares2;
-          obj.hot               = hot;
-          obj.total_payout      = comment.total_payout_value;
-          obj.mode              = comment.mode;
-          if( obj.mode != first_payout ) 
-            obj.promoted_balance = 0;
-      });
-      add_stats( current, stats );
+
+       if( comment.mode != archived ) {
+          _db.modify( current, [&]( tag_object& obj ) {
+             obj.active            = comment.active;
+             obj.cashout           = comment.cashout_time;
+             obj.children          = comment.children;
+             obj.net_rshares       = comment.net_rshares.value;
+             obj.net_votes         = comment.net_votes;
+             obj.children_rshares2 = comment.children_rshares2;
+             obj.hot               = hot;
+             obj.total_payout      = comment.total_payout_value;
+             obj.mode              = comment.mode;
+             if( obj.mode != first_payout ) 
+               obj.promoted_balance = 0;
+         });
+         add_stats( current, stats );
+       } else {
+          _db.remove( current );
+       }
    }
 
    void create_tag( const string& tag, const comment_object& comment, double hot )const {
@@ -198,7 +203,7 @@ struct operation_visitor {
       }
 
       meta.tags = lower_tags; /// TODO: std::move???
-      if( meta.tags.size() > 7 ) {
+      if( meta.tags.size() > 5 ) {
          //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
          if( safe_for_work )
             meta.tags = set<string>({"", c.parent_permlink});
