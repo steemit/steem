@@ -16,4 +16,5 @@ RUN \
     make -j$(nproc) chain_test && \
     ./tests/chain_test && \
     cd /usr/local/src/steem && \
+    doxygen && \
     programs/build_helpers/check_reflect.py
