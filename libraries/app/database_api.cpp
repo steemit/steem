@@ -1275,6 +1275,49 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
       try
       {
          result.push_back( get_discussion( feed_itr->comment ) );
+         if( feed_itr->first_reblogged_by != account_id_type() )
+            result.back().first_reblogged_by = feed_itr->first_reblogged_by( my->_db ).name;
+      }
+      catch ( const fc::exception& e )
+      {
+         edump((e.to_detail_string()));
+      }
+
+      ++feed_itr;
+   }
+   return result;
+}
+
+vector<discussion> database_api::get_discussions_by_blog( const discussion_query& query )const
+{
+   query.validate();
+   FC_ASSERT( my->_follow_api, "Node is not running the follow plugin" );
+   auto start_author = query.start_author ? *( query.start_author ) : "";
+   auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
+
+   const auto& account = my->_db.get_account( query.tag );
+
+   const auto& c_idx = my->_db.get_index_type< follow::blog_index >().indices().get< follow::by_comment >();
+   const auto& b_idx = my->_db.get_index_type< follow::blog_index >().indices().get< follow::by_blog >();
+   auto feed_itr = b_idx.lower_bound( account.id );
+
+   if( start_author.size() || start_permlink.size() )
+   {
+      auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.id ) );
+      FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
+      feed_itr = b_idx.iterator_to( *start_c );
+   }
+
+   vector< discussion > result;
+   result.reserve( query.limit );
+
+   while( result.size() < query.limit && feed_itr != b_idx.end() )
+   {
+      if( feed_itr->account != account.id )
+         break;
+      try
+      {
+         result.push_back( get_discussion( feed_itr->comment ) );
       }
       catch ( const fc::exception& e )
       {
@@ -1548,19 +1591,24 @@ state database_api::get_state( string path )const
            ++itr;
            ++count;
         }
-      } else if( part[1].size() == 0 || part[1] == "blog" ) {
-           int count = 0;
-           const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_blog>();
-           auto itr = pidx.lower_bound( boost::make_tuple(acnt, std::string(""), time_point_sec::maximum() ) );
-           eacnt.blog = vector<string>();
-           while( itr != pidx.end() && itr->author == acnt && count < 20 && !itr->parent_author.size() ) {
-              eacnt.blog->push_back(itr->permlink);
-              _state.content[acnt+"/"+itr->permlink] = *itr;
-              set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
-              ++itr;
-              ++count;
-           }
-      } else if( part[1].size() == 0 || part[1] == "feed" )
+      }
+      else if( part[1].size() == 0 || part[1] == "blog" )
+      {
+         if( my->_follow_api )
+         {
+            auto blog = my->_follow_api->get_blog_entries( eacnt.name, 0, 20 );
+            eacnt.blog = vector< string >();
+
+            for( auto b: blog )
+            {
+               const auto link = b.author + "/" + b.permlink;
+               eacnt.blog->push_back( link );
+               _state.content[ link ] = my->_db.get_comment( b.author, b.permlink );
+               set_pending_payout( _state.content[ link ] );
+            }
+         }
+      }
+      else if( part[1].size() == 0 || part[1] == "feed" )
       {
          if( my->_follow_api )
          {

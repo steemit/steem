@@ -101,6 +101,7 @@ struct pre_operation_visitor
          const auto* comment = db.find_comment( op.author, op.permlink );
 
          if( comment == nullptr ) return;
+         if( comment->parent_author.size() ) return;
 
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
