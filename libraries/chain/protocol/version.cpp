@@ -54,7 +54,7 @@ namespace fc
    void from_variant( const variant& var, steemit::chain::version& v )
    {
       uint32_t major = 0, hardfork = 0, revision = 0;
-      char dot_a, dot_b;
+      char dot_a = 0, dot_b = 0;
 
       std::stringstream s( var.as_string() );
       s >> major >> dot_a >> hardfork >> dot_b >> revision;
