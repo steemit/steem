@@ -351,7 +351,17 @@ const account_object& database::get_account( const account_name_type& name )cons
    return *itr;
 }
 
-const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const {
+const account_object* database::find_account( const account_name_type& name )const
+{
+   const auto& accounts_by_name = get_index_type<account_index>().indices().get<by_name>();
+   auto itr = accounts_by_name.find(name);
+   if( itr == accounts_by_name.end() )
+      return nullptr;
+   return &*itr;
+}
+
+const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
+{
    const auto& escrow_idx = get_index_type<escrow_index>().indices().get<by_from_id>();
    auto itr = escrow_idx.find( boost::make_tuple(name,escrow_id) );
    FC_ASSERT( itr != escrow_idx.end() );
@@ -3812,20 +3822,19 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
 #endif
          {
-            for( auto acc : hardfork9::get_compromised_accounts() )
+            for( const std::string& acc : hardfork9::get_compromised_accounts() )
             {
-               try
+               const account_object* account = find_account( acc );
+               if( account == nullptr )
+                  continue;
+
+               update_owner_authority( *account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
+
+               modify( *account, [&]( account_object& a )
                {
-                  const auto& account = get_account( acc );
-
-                  update_owner_authority( account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
-
-                  modify( account, [&]( account_object& a )
-                  {
-                     a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                     a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  });
-               } catch( ... ) {}
+                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+               });
             }
          }
          break;
