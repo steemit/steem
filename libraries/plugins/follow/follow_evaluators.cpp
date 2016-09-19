@@ -8,9 +8,6 @@ namespace steemit { namespace follow {
 
 void follow_evaluator::do_apply( const follow_operation& o )
 {
-   if( o.follower == "roadscape" && o.following == "test-safari" )
-      idump( (o) );
-
    static map< string, follow_type > follow_type_map = []()
    {
       map< string, follow_type > follow_map;
@@ -65,12 +62,11 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
-   idump( (o) );
    try
    {
       auto& db = _plugin->database();
       const auto& c = db.get_comment( o.author, o.permlink );
-      if( c.parent_author.size() > 0 ) return;
+      FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
       const auto& reblog_account = db.get_account( o.account );
       const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
@@ -86,17 +82,13 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, reblog_account.id ) );
 
-      ilog( "Should create blog entry" );
-      if( blog_itr == blog_comment_idx.end() )
+      FC_ASSERT( blog_itr == blog_comment_idx.end(), "Account has already reblogged this post" );
+      db.create< blog_object >( [&]( blog_object& b )
       {
-         ilog( "creating..." );
-         db.create< blog_object >( [&]( blog_object& b )
-         {
-            b.account = reblog_account.id;
-            b.comment = c.id;
-            b.blog_feed_id = next_blog_id;
-         });
-      }
+         b.account = reblog_account.id;
+         b.comment = c.id;
+         b.blog_feed_id = next_blog_id;
+      });
 
       const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
@@ -105,7 +97,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       while( itr != idx.end() && itr->following == o.account )
       {
-         idump( (*itr) );
 
          if( itr->what.find( follow_type::blog ) != itr->what.end() )
          {
@@ -122,7 +113,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
             if( feed_itr == comment_idx.end() )
             {
-               ilog("reblogging to ${f}", ("f", itr->follower) );
                auto& fd = db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = account_id;
@@ -132,8 +122,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   f.account_feed_id = next_id;
                });
 
-               if( o.account == "test-safari" )
-                  idump( (fd) );
             }
             else
             {

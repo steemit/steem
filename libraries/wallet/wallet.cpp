@@ -1770,6 +1770,7 @@ annotated_signed_transaction wallet_api::escrow_dispute(
       bool broadcast
    )
 {
+   FC_ASSERT( !is_locked() );
    escrow_dispute_operation op;
    op.from = from;
    op.to = to;
@@ -1777,60 +1778,6 @@ annotated_signed_transaction wallet_api::escrow_dispute(
    op.who = who;
    op.escrow_id = escrow_id;
 
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-/**
- *  Transfers into savings happen immediately, transfers from savings take 72 hours
- */
-annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
-{
-
-   transfer_to_savings_operation op;
-   op.from = from;
-   op.to   = to;
-   op.memo = get_encrypted_memo( from, to, memo );
-   op.amount = amount;
-
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-/**
- * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
- */
-annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint16_t request_id, string to, asset amount, string memo, bool broadcast  ) {
-
-   transfer_from_savings_operation op;
-   op.from = from;
-   op.request_id = request_id;
-   op.to = to;
-   op.amount = amount;
-   op.memo = get_encrypted_memo( from, to, memo );
-
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-/**
- *  @param request_id the id used in transfer_from_savings
- *  @param from the account that initiated the transfer
- */
-annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint16_t request_id, bool broadcast  ) {
-
-   cancel_transfer_from_savings_operation op;
-   op.from = from;
-   op.request_id = request_id;
    signed_transaction tx;
    tx.operations.push_back( op );
    tx.validate();
@@ -1850,6 +1797,7 @@ annotated_signed_transaction wallet_api::escrow_release(
    bool broadcast
 )
 {
+   FC_ASSERT( !is_locked() );
    escrow_release_operation op;
    op.from = from;
    op.to = to;
@@ -1866,6 +1814,61 @@ annotated_signed_transaction wallet_api::escrow_release(
    return my->sign_transaction( tx, broadcast );
 }
 
+/**
+ *  Transfers into savings happen immediately, transfers from savings take 72 hours
+ */
+annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
+{
+   FC_ASSERT( !is_locked() );
+   transfer_to_savings_operation op;
+   op.from = from;
+   op.to   = to;
+   op.memo = get_encrypted_memo( from, to, memo );
+   op.amount = amount;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+ */
+annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast  )
+{
+   FC_ASSERT( !is_locked() );
+   transfer_from_savings_operation op;
+   op.from = from;
+   op.request_id = request_id;
+   op.to = to;
+   op.amount = amount;
+   op.memo = get_encrypted_memo( from, to, memo );
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ *  @param request_id the id used in transfer_from_savings
+ *  @param from the account that initiated the transfer
+ */
+annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast  )
+{
+   FC_ASSERT( !is_locked() );
+   cancel_transfer_from_savings_operation op;
+   op.from = from;
+   op.request_id = request_id;
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
 
 annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string to, asset amount, bool broadcast )
 {
@@ -1881,6 +1884,7 @@ annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string
 
    return my->sign_transaction( tx, broadcast );
 }
+
 annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset vesting_shares, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
@@ -1975,6 +1979,20 @@ string wallet_api::decrypt_memo( string encrypted_memo ) {
       }
    }
    return encrypted_memo;
+}
+
+annotated_signed_transaction wallet_api::decline_voting_rights( string account, bool decline, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+   decline_voting_rights_operation op;
+   op.account = account;
+   op.decline = decline;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
 }
 
 map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {

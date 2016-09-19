@@ -311,10 +311,15 @@ namespace steemit { namespace chain {
       FC_ASSERT( steem_amount.amount >= 0, "steem amount cannot be negative" );
       FC_ASSERT( sbd_amount.amount > 0 || steem_amount.amount > 0, "escrow must transfer a non-zero amount" );
       FC_ASSERT( from != agent && to != agent, "agent must be a third party" );
-      FC_ASSERT( fee.symbol != VESTS_SYMBOL, "fee cannot be paid in VESTS" );
+      FC_ASSERT( (fee.symbol == STEEM_SYMBOL) || (fee.symbol == SBD_SYMBOL), "fee must be STEEM or SBD" );
       FC_ASSERT( sbd_amount.symbol == SBD_SYMBOL, "sbd amount must contain SBD" );
       FC_ASSERT( steem_amount.symbol == STEEM_SYMBOL, "steem amount must contain STEEM" );
       FC_ASSERT( ratification_deadline < escrow_expiration, "ratification deadline must be before escrow expiration" );
+      if ( json_meta.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(json_meta), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(json_meta), "JSON Metadata not valid JSON" );
+      }
    }
 
    void escrow_approve_operation::validate()const
@@ -380,12 +385,16 @@ namespace steemit { namespace chain {
       validate_account_name( to );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
+      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
+      FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
    }
    void transfer_from_savings_operation::validate()const {
       validate_account_name( from );
       validate_account_name( to );
       FC_ASSERT( amount.amount > 0 );
       FC_ASSERT( amount.symbol == STEEM_SYMBOL || amount.symbol == SBD_SYMBOL );
+      FC_ASSERT( memo.size() < STEEMIT_MAX_MEMO_SIZE, "Memo is too large" );
+      FC_ASSERT( fc::is_utf8( memo ), "Memo is not UTF8" );
    }
    void cancel_transfer_from_savings_operation::validate()const {
       validate_account_name( from );

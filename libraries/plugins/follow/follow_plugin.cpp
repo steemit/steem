@@ -24,7 +24,9 @@ namespace detail
 class follow_plugin_impl
 {
    public:
-      follow_plugin_impl( follow_plugin& _plugin );
+      follow_plugin_impl( follow_plugin& _plugin ) : _self( _plugin ) {}
+
+      void plugin_initialize();
 
       steemit::chain::database& database()
       {
@@ -38,9 +40,17 @@ class follow_plugin_impl
       std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
 };
 
-follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
-   : _self( _plugin )
+void follow_plugin_impl::plugin_initialize()
 {
+   // Each plugin needs its own evaluator registry.
+   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
+
+   // Add each operation evaluator to the registry
+   _evaluator_registry->register_evaluator<follow_evaluator>( &_self );
+   _evaluator_registry->register_evaluator<reblog_evaluator>( &_self );
+
+   // Add the registry to the database so the database can delegate custom ops to the plugin
+   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
 }
 
 struct pre_operation_visitor
@@ -92,6 +102,7 @@ struct pre_operation_visitor
          const auto* comment = db.find_comment( op.author, op.permlink );
 
          if( comment == nullptr ) return;
+         if( comment->parent_author.size() ) return;
 
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
@@ -340,17 +351,7 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
-      wdump(("register follow evaluator" ));
-      // Each plugin needs its own evaluator registry.
-      my->_evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
-
-      // Add each operation evaluator to the registry
-      my->_evaluator_registry->register_evaluator<follow_evaluator>( this );
-      my->_evaluator_registry->register_evaluator<reblog_evaluator>( this );
-
-      // Add the registry to the database so the database can delegate custom ops to the plugin
-      database().set_custom_json_evaluator( plugin_name(), my->_evaluator_registry );
-
+      my->plugin_initialize();
 
       database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );

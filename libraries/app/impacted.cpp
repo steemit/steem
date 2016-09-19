@@ -224,6 +224,28 @@ struct get_impacted_account_visitor
       _impacted.insert( op.agent );
    }
 
+   void operator()( const transfer_to_savings_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
+   void operator()( const transfer_from_savings_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
+   void operator()( const cancel_transfer_from_savings_operation& op )
+   {
+      _impacted.insert( op.from );
+   }
+
+   void operator()( const decline_voting_rights_operation& op )
+   {
+      _impacted.insert( op.account );
+   }
+
    //void operator()( const operation& op ){}
 };
 

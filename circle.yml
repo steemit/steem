@@ -1,0 +1,14 @@
+machine:
+    services:
+        - docker
+
+dependencies:
+    cache_directories:
+        - "~/docker"
+    override:
+        - docker info
+        - time bash tests/scripts/create-ci-docker-image.sh
+
+test:
+    override:
+        - time docker build --rm=false -t steemitinc/steem-test -f Dockerfile.test .

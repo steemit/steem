@@ -56,7 +56,25 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    db().get_account( o.owner ); // verify owner exists
 
-   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "url is too long" );
+   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+   {
+      FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "url is too long" );
+   }
+   else if( o.url.size() > STEEMIT_MAX_WITNESS_URL_LENGTH )
+   {
+      // after HF, above check can be moved to validate() if reindex doesn't show this warning
+      wlog( "URL is too long in block ${b}", ("b", db().head_block_num()+1) );
+   }
+
+   if ( db().has_hardfork( STEEMIT_HARDFORK_0_14__410 ) )
+   {
+      FC_ASSERT( o.props.account_creation_fee.symbol == STEEM_SYMBOL );
+   }
+   else if( o.props.account_creation_fee.symbol != STEEM_SYMBOL )
+   {
+      // after HF, above check can be moved to validate() if reindex doesn't show this warning
+      wlog( "Wrong fee symbol in block ${b}", ("b", db().head_block_num()+1) );
+   }
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -472,24 +490,18 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       FC_ASSERT( o.ratification_deadline > db().head_block_time(), "ratification deadline must be after head block time" );
       FC_ASSERT( o.escrow_expiration > db().head_block_time(), "escrow expiration must be after head block time" );
 
+      asset steem_spent = o.steem_amount;
+      asset sbd_spent = o.sbd_amount;
       if( o.fee.symbol == STEEM_SYMBOL )
-      {
-         FC_ASSERT( from_account.balance >= o.steem_amount + o.fee, "account cannot cover steem costs of escrow" );
-         FC_ASSERT( from_account.sbd_balance >= o.sbd_amount, "account cannot cover sbd costs of escrow" );
-      }
+         steem_spent += o.fee;
       else
-      {
-         FC_ASSERT( from_account.balance >= o.steem_amount, "account cannot cover steem costs of escrow" );
-         FC_ASSERT( from_account.sbd_balance >= o.sbd_amount + o.fee, "account cannot cover sbd costs of escrow" );
-      }
+         sbd_spent += o.fee;
 
-      if( o.fee.amount > 0 )
-      {
-         db().adjust_balance( from_account, -o.fee );
-      }
+      FC_ASSERT( from_account.balance >= steem_spent, "account cannot cover steem costs of escrow" );
+      FC_ASSERT( from_account.sbd_balance >= sbd_spent, "account cannot cover sbd costs of escrow" );
 
-      db().adjust_balance( from_account, -o.steem_amount );
-      db().adjust_balance( from_account, -o.sbd_amount );
+      db().adjust_balance( from_account, -steem_spent );
+      db().adjust_balance( from_account, -sbd_spent );
 
       db().create<escrow_object>([&]( escrow_object& esc )
       {
@@ -497,11 +509,11 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
          esc.from                   = o.from;
          esc.to                     = o.to;
          esc.agent                  = o.agent;
+         esc.ratification_deadline  = o.ratification_deadline;
+         esc.escrow_expiration      = o.escrow_expiration;
          esc.sbd_balance            = o.sbd_amount;
          esc.steem_balance          = o.steem_amount;
          esc.pending_fee            = o.fee;
-         esc.ratification_deadline  = o.ratification_deadline;
-         esc.escrow_expiration      = o.escrow_expiration;
       });
    }
    FC_CAPTURE_AND_RETHROW( (o) )
@@ -1268,7 +1280,8 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
@@ -1292,7 +1305,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
@@ -1762,7 +1776,7 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
    const auto& from = db().get_account( op.from );
    db().modify( from, [&]( account_object& a )
    {
-      a.savings_withdraw_requests++;
+      a.savings_withdraw_requests--;
    });
 }
 

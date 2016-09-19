@@ -683,14 +683,14 @@ class wallet_api
       /**
        * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
        */
-      annotated_signed_transaction transfer_from_savings( string from, uint16_t request_id, string to, asset amount, string memo, bool broadcast = false );
+      annotated_signed_transaction transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast = false );
 
       /**
        *  @param request_id the id used in transfer_from_savings
        *  @param from the account that initiated the transfer
        */
-      annotated_signed_transaction cancel_transfer_from_savings( string from, uint16_t request_id, bool broadcast = false );
-      
+      annotated_signed_transaction cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast = false );
+
 
       /**
        * Set up a vesting withdraw request. The request is fulfilled once a week over the next two year (104 weeks).
@@ -922,6 +922,8 @@ class wallet_api
        * Returns the decrypted memo if possible given wallet's known private keys
        */
       string decrypt_memo( string memo );
+
+      annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
 };
 
 struct plain_keys {
@@ -1013,6 +1015,7 @@ FC_API( steemit::wallet::wallet_api,
         (cancel_transfer_from_savings)
         (get_encrypted_memo)
         (decrypt_memo)
+        (decline_voting_rights)
 
         // private message api
         (send_private_message)
