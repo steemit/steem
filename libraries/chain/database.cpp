@@ -1194,7 +1194,7 @@ void database::update_witness_schedule4()
    if( has_hardfork( STEEMIT_HARDFORK_0_5__54 ) )
    {
       flat_map< version, uint32_t, std::greater< version > > witness_versions;
-      flat_map< std::pair< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
+      flat_map< std::tuple< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
 
       for( uint32_t i = 0; i < wso.current_shuffled_witnesses.size(); i++ )
       {
