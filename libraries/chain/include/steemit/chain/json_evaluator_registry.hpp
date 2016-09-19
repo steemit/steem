@@ -2,6 +2,7 @@
 #pragma once
 
 #include <steemit/chain/evaluator.hpp>
+#include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/generic_json_evaluator_registry.hpp>
 #include <steemit/chain/protocol/steem_operations.hpp>
 #include <steemit/chain/protocol/operation_util_impl.hpp>

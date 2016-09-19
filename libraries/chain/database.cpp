@@ -5,6 +5,7 @@
 #include <steemit/chain/compound.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/db_with.hpp>
+#include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/history_object.hpp>
