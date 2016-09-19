@@ -117,7 +117,7 @@ struct pre_operation_visitor
          const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
          auto blog_itr = blog_idx.lower_bound( comment->id );
 
-         while( blog_itr != blog_idx.end() && itr->comment == comment->id )
+         while( blog_itr != blog_idx.end() && blog_itr->comment == comment->id )
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
