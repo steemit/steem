@@ -1333,7 +1333,7 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
 
 vector<discussion> database_api::get_discussions_by_comments( const discussion_query& query )const
 {
-   query.validate();
+   /*query.validate();
    FC_ASSERT( query.start_author, "Must get comments for a specific author" );
    auto start_author = *( query.start_author );
    auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
@@ -1350,8 +1350,9 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
       FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's comments" );
       comment_itr = t_idx.iterator_to( *start_c );
    }
-
+   */
    vector< discussion > result;
+   /*
    result.reserve( query.limit );
 
    while( result.size() < query.limit && comment_itr != t_idx.end() )
@@ -1371,7 +1372,7 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
       }
 
       ++comment_itr;
-   }
+   }*/
    return result;
 }
 
@@ -1630,7 +1631,7 @@ state database_api::get_state( string path )const
       }
       else if( part[1] == "posts" || part[1] == "comments" )
       {
-         int count = 0;
+         /*int count = 0;
          const auto& pidx = my->_db.get_index_type<comment_index>().indices().get<by_author_last_update>();
          auto itr = pidx.lower_bound( acnt );
          eacnt.posts = vector<string>();
@@ -1646,7 +1647,7 @@ state database_api::get_state( string path )const
             }
 
             ++itr;
-         }
+         }*/
       }
       else if( part[1].size() == 0 || part[1] == "blog" )
       {
