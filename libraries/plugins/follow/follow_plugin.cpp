@@ -178,44 +178,44 @@ struct on_operation_visitor
          if( op.parent_author.size() > 0 ) return;
          auto& db = _plugin.database();
          const auto& c = db.get_comment( op.author, op.permlink );
+         const auto& author = db.get_account( op.author );
 
          if( c.created != db.head_block_time() ) return;
 
          const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
-         auto itr = idx.find( op.author );
+         auto itr = idx.find( author.id );
 
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
 
-         while( itr != idx.end() && itr->following == op.author )
+         while( itr != idx.end() && itr->following == author.id )
          {
             if( itr->what.find( follow_type::blog ) != itr->what.end() )
             {
-               auto account_id = db.get_account( itr->follower ).id;
                uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( account_id );
+               auto last_feed = feed_idx.lower_bound( itr->follower );
 
-               if( last_feed != feed_idx.end() && last_feed->account == account_id )
+               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
                {
                   next_id = last_feed->account_feed_id + 1;
                }
 
-               if( comment_idx.find( boost::make_tuple( c.id, account_id ) ) == comment_idx.end() )
+               if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                {
                   db.create< feed_object >( [&]( feed_object& f )
                   {
-                     f.account = account_id;
+                     f.account = itr->follower;
                      f.comment = c.id;
                      f.account_feed_id = next_id;
                   });
 
                   const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
-                  auto old_feed = old_feed_idx.lower_bound( account_id );
+                  auto old_feed = old_feed_idx.lower_bound( itr->follower );
 
-                  while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                  while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
                   {
                      db.remove( *old_feed );
-                     old_feed = old_feed_idx.lower_bound( account_id );
+                     old_feed = old_feed_idx.lower_bound( itr->follower );
                   }
                }
             }

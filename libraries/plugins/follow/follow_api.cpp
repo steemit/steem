@@ -32,12 +32,14 @@ vector< follow_object > follow_api_impl::get_followers( string following, string
    FC_ASSERT( limit <= 100 );
    vector<follow_object> result;
    const auto& idx = app.chain_database()->get_index_type<follow_index>().indices().get<by_following_follower>();
-   auto itr = idx.lower_bound( std::make_tuple( following, start_follower ) );
-   while( itr != idx.end() && limit && itr->following == following )
+   const auto& following_obj = app.chain_database()->get_account( following );
+   const auto& start_follower_obj = app.chain_database()->get_account( start_follower );
+   auto itr = idx.lower_bound( std::make_tuple( following_obj.id, start_follower_obj.id ) );
+   while( itr != idx.end() && limit && itr->following == following_obj.id )
    {
       if( itr->what.find( type ) != itr->what.end() )
       {
-         result.push_back(*itr);
+         result.push_back( *itr );
          --limit;
       }
 
@@ -52,12 +54,14 @@ vector< follow_object > follow_api_impl::get_following( string follower, string 
    FC_ASSERT( limit <= 100 );
    vector<follow_object> result;
    const auto& idx = app.chain_database()->get_index_type<follow_index>().indices().get<by_follower_following>();
-   auto itr = idx.lower_bound( std::make_tuple( follower, start_following ) );
-   while( itr != idx.end() && limit && itr->follower == follower )
+   const auto& follower_obj = app.chain_database()->get_account( follower );
+   const auto& start_following_obj = app.chain_database()->get_account( start_following );
+   auto itr = idx.lower_bound( std::make_tuple( follower_obj.id, start_following_obj.id ) );
+   while( itr != idx.end() && limit && itr->follower == follower_obj.id )
    {
       if( itr->what.find( type ) != itr->what.end() )
       {
-         result.push_back(*itr);
+         result.push_back( *itr );
          --limit;
       }
 
