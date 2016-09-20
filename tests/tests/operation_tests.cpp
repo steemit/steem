@@ -781,7 +781,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
          int64_t regenerated_power = (STEEMIT_100_PERCENT * ( db.head_block_time() - db.get_account( "alice").last_vote_time ).to_seconds() ) / STEEMIT_VOTE_REGENERATION_SECONDS;
          int64_t used_power = ( db.get_account( "alice" ).voting_power + regenerated_power + max_vote_denom - 1 ) / max_vote_denom;
-         idump( (db.get_account( "alice" ).voting_power)(used_power) );
 
          comment_op.author = "sam";
          comment_op.permlink = "foo";

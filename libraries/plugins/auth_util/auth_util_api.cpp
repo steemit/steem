@@ -66,10 +66,11 @@ void auth_util_api_impl::check_authority_signature( const check_authority_signat
       signing_keys.insert( result.keys.back() );
    }
 
+   flat_set< chain::public_key_type > avail;
    chain::sign_state ss( signing_keys, [&db]( const std::string& account_name ) -> const chain::authority*
    {
       return &db->get_account( account_name ).active;
-   } );
+   }, avail );
 
    bool has_authority = ss.check_authority( auth );
    FC_ASSERT( has_authority );

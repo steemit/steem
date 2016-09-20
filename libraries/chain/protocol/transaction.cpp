@@ -115,14 +115,14 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
       FC_ASSERT( required_owner.size() == 0 );
       FC_ASSERT( other.size() == 0 );
 
-      sign_state s(sigs,get_posting);
+      flat_set< public_key_type > avail;
+      sign_state s(sigs,get_active,avail);
       s.max_recursion = max_recursion_depth;
       for( auto& id : posting_approvals )
          s.approved_by.insert( id );
-
       for( auto id : required_posting )
       {
-         STEEMIT_ASSERT( s.check_authority(id) ||
+         STEEMIT_ASSERT( s.check_authority(get_posting(id)) ||
                           s.check_authority(get_active(id)) ||
                           s.check_authority(get_owner(id)),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
@@ -139,7 +139,8 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
       return;
    }
 
-   sign_state s(sigs,get_active);
+   flat_set< public_key_type > avail;
+   sign_state s(sigs,get_active,avail);
    s.max_recursion = max_recursion_depth;
    for( auto& id : active_aprovals )
       s.approved_by.insert( id );

@@ -25,7 +25,7 @@ struct sign_state
 
       sign_state( const flat_set<public_key_type>& sigs,
                   const authority_getter& a,
-                  const flat_set<public_key_type>& keys = flat_set<public_key_type>() );
+                  const flat_set<public_key_type>& keys );
 
       const authority_getter&          get_active;
       const flat_set<public_key_type>& available_keys;
