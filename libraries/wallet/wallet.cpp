@@ -1995,7 +1995,7 @@ annotated_signed_transaction wallet_api::decline_voting_rights( string account, 
    return my->sign_transaction( tx, broadcast );
 }
 
-map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
+map<uint32_t,full_operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
    auto result = my->_remote_db->get_account_history(account,from,limit);
    if( !is_locked() ) {
       for( auto& item : result ) {

@@ -1,4 +1,6 @@
 #pragma once
+#include <steemit/app/full_operation_object.hpp>
+
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
@@ -77,22 +79,22 @@ namespace steemit { namespace app {
       extended_account(){}
       extended_account( const account_object& a ):account_object(a){}
 
-      asset                              vesting_balance; /// convert vesting_shares to vesting steem
-      share_type                         reputation = 0;
-      map<uint64_t,operation_object>     transfer_history; /// transfer to/from vesting
-      map<uint64_t,operation_object>     market_history; /// limit order / cancel / fill
-      map<uint64_t,operation_object>     post_history;
-      map<uint64_t,operation_object>     vote_history;
-      map<uint64_t,operation_object>     other_history;
-      set<string>                        witness_votes;
+      asset                                   vesting_balance; /// convert vesting_shares to vesting steem
+      share_type                              reputation = 0;
+      map<uint64_t,full_operation_object>     transfer_history; /// transfer to/from vesting
+      map<uint64_t,full_operation_object>     market_history; /// limit order / cancel / fill
+      map<uint64_t,full_operation_object>     post_history;
+      map<uint64_t,full_operation_object>     vote_history;
+      map<uint64_t,full_operation_object>     other_history;
+      set<string>                             witness_votes;
 
       optional<map<uint32_t,extended_limit_order>> open_orders;
-      optional<vector<string>>           posts; /// permlinks for this user
-      optional<vector<string>>           blog; /// blog posts for this user
-      optional<vector<string>>           feed; /// feed posts for this user
-      optional<vector<string>>           recent_replies; /// blog posts for this user
-      map<string,vector<string>>         blog_category; /// blog posts for this user
-      optional<vector<string>>           recommended; /// posts recommened for this user
+      optional<vector<string>>                posts; /// permlinks for this user
+      optional<vector<string>>                blog; /// blog posts for this user
+      optional<vector<string>>                feed; /// feed posts for this user
+      optional<vector<string>>                recent_replies; /// blog posts for this user
+      map<string,vector<string>>              blog_category; /// blog posts for this user
+      optional<vector<string>>                recommended; /// posts recommened for this user
    };
 
 

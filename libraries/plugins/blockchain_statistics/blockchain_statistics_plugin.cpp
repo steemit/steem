@@ -6,6 +6,7 @@
 #include <steemit/chain/history_object.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/operation_notification.hpp>
 
 namespace steemit { namespace blockchain_statistics {
 
@@ -20,8 +21,8 @@ class blockchain_statistics_plugin_impl
       virtual ~blockchain_statistics_plugin_impl() {}
 
       void on_block( const signed_block& b );
-      void pre_operation( const operation_object& o );
-      void on_operation( const operation_object& o );
+      void pre_operation( const operation_notification& o );
+      void post_operation( const operation_notification& o );
 
       blockchain_statistics_plugin&       _self;
       flat_set< uint32_t >                _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
@@ -327,7 +328,7 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    }
 }
 
-void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o )
+void blockchain_statistics_plugin_impl::pre_operation( const operation_notification& o )
 {
    auto& db = _self.database();
 
@@ -374,7 +375,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o
    }
 }
 
-void blockchain_statistics_plugin_impl::on_operation( const operation_object& o )
+void blockchain_statistics_plugin_impl::post_operation( const operation_notification& o )
 {
    auto& db = _self.database();
 
@@ -421,8 +422,8 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       ilog( "chain_stats_plugin: plugin_initialize() begin" );
 
       database().applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-      database().pre_apply_operation.connect( [&]( const operation_object& o ){ _my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
+      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
 
       database().add_index< primary_index< bucket_index > >();
 

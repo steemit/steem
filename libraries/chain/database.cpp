@@ -12,6 +12,8 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
+#include <steemit/chain/operation_notification.hpp>
+
 #include <graphene/db/flat_index.hpp>
 
 #include <fc/smart_ref_impl.hpp>
@@ -904,33 +906,28 @@ void database::clear_pending()
    FC_CAPTURE_AND_RETHROW()
 }
 
-const operation_object database::notify_pre_apply_operation( const operation& op )
+void database::notify_pre_apply_operation( operation_notification& note )
 {
-   operation_object obj;
-   obj.trx_id       = _current_trx_id;
-   obj.block        = _current_block_num;
-   obj.trx_in_block = _current_trx_in_block;
-   obj.op_in_trx    = _current_op_in_trx;
-   obj.op           = op;
+   note.trx_id       = _current_trx_id;
+   note.block        = _current_block_num;
+   note.trx_in_block = _current_trx_in_block;
+   note.op_in_trx    = _current_op_in_trx;
 
-   //pre_apply_operation( obj );
-   STEEMIT_TRY_NOTIFY( pre_apply_operation, obj )
-
-   return obj;
+   STEEMIT_TRY_NOTIFY( pre_apply_operation, note )
 }
 
-void database::notify_post_apply_operation( const operation_object& obj )
+void database::notify_post_apply_operation( const operation_notification& note )
 {
-   //post_apply_operation( obj );
-   STEEMIT_TRY_NOTIFY( post_apply_operation, obj )
+   STEEMIT_TRY_NOTIFY( post_apply_operation, note )
 }
 
 inline const void database::push_virtual_operation( const operation& op )
 {
 #if ! defined( IS_LOW_MEM ) || defined( IS_TEST_NET )
    FC_ASSERT( is_virtual_operation( op ) );
-   auto obj = notify_pre_apply_operation( op );
-   notify_post_apply_operation( obj );
+   operation_notification note(op);
+   notify_pre_apply_operation( note );
+   notify_post_apply_operation( note );
 #endif
 }
 
@@ -3039,9 +3036,10 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
-   auto obj = notify_pre_apply_operation( op );
+   operation_notification note(op);
+   notify_pre_apply_operation( note );
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
-   notify_post_apply_operation( obj );
+   notify_post_apply_operation( note );
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -3760,8 +3758,10 @@ void database::apply_hardfork( uint32_t hardfork )
             string op_msg = "Testnet: Hardfork applied";
             test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
             test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            auto obj = notify_pre_apply_operation( test_op );
-            notify_post_apply_operation( obj );
+            operation op = test_op;   // we need the operation object to live to the end of this scope
+            operation_notification note( op );
+            notify_pre_apply_operation( note );
+            notify_post_apply_operation( note );
          }
          break;
 #endif

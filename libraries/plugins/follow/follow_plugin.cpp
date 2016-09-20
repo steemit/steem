@@ -6,10 +6,11 @@
 
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steemit/chain/json_evaluator_registry.hpp>
+#include <steemit/chain/operation_notification.hpp>
+
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/json_evaluator_registry.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -33,8 +34,8 @@ class follow_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
-      void pre_operation( const operation_object& op_0bj );
+      void pre_operation( const operation_notification& op_obj );
+      void post_operation( const operation_notification& op_obj );
 
       follow_plugin&                                                                         _self;
       std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
@@ -128,11 +129,11 @@ struct pre_operation_visitor
    }
 };
 
-struct on_operation_visitor
+struct post_operation_visitor
 {
    follow_plugin& _plugin;
 
-   on_operation_visitor( follow_plugin& plugin )
+   post_operation_visitor( follow_plugin& plugin )
       : _plugin( plugin ) {}
 
    typedef void result_type;
@@ -306,11 +307,11 @@ struct on_operation_visitor
    }
 };
 
-void follow_plugin_impl::pre_operation( const operation_object& op_obj )
+void follow_plugin_impl::pre_operation( const operation_notification& note )
 {
    try
    {
-      op_obj.op.visit( pre_operation_visitor( _self ) );
+      note.op.visit( pre_operation_visitor( _self ) );
    }
    catch( const fc::assert_exception& )
    {
@@ -318,11 +319,11 @@ void follow_plugin_impl::pre_operation( const operation_object& op_obj )
    }
 }
 
-void follow_plugin_impl::on_operation( const operation_object& op_obj )
+void follow_plugin_impl::post_operation( const operation_notification& note )
 {
    try
    {
-      op_obj.op.visit( on_operation_visitor( _self ) );
+      note.op.visit( post_operation_visitor( _self ) );
    }
    catch( fc::assert_exception )
    {
@@ -353,8 +354,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       ilog("Intializing follow plugin" );
       my->plugin_initialize();
 
-      database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
+      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
       database().add_index< primary_index< follow_index > >();
       database().add_index< primary_index< feed_index > >();
       database().add_index< primary_index< blog_index > >();

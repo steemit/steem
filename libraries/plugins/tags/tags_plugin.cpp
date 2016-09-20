@@ -4,10 +4,11 @@
 
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/account_object.hpp>
 #include <steemit/chain/hardfork.hpp>
+#include <steemit/chain/operation_notification.hpp>
+
+#include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -34,7 +35,7 @@ class tags_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
+      void on_operation( const operation_notification& note );
 
       tags_plugin& _self;
 };
@@ -359,12 +360,18 @@ struct operation_visitor {
 
 
 
-void tags_plugin_impl::on_operation( const operation_object& op_obj ) {
-   try { /// plugins shouldn't ever throw
-      op_obj.op.visit( operation_visitor( database() ) );
-   } catch ( const fc::exception& e ) {
+void tags_plugin_impl::on_operation( const operation_notification& note ) {
+   try
+   {
+      /// plugins shouldn't ever throw
+      note.op.visit( operation_visitor( database() ) );
+   }
+   catch ( const fc::exception& e )
+   {
       edump( (e.to_detail_string()) );
-   } catch ( ... ) {
+   }
+   catch ( ... )
+   {
       elog( "unhandled exception" );
    }
 }
@@ -396,7 +403,7 @@ void tags_plugin::plugin_set_program_options(
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing tags plugin" );
-   database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
    database().add_index< primary_index< tag_index  > >();
    database().add_index< primary_index< tag_stats_index > >();
    database().add_index< primary_index< peer_stats_index > >();
