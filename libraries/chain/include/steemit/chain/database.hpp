@@ -106,6 +106,7 @@ namespace steemit { namespace chain {
          const category_object* find_category( const string& name )const;
          const category_object& get_category( const string& name )const;
          const witness_object&  get_witness( const account_name_type& name )const;
+         const account_object*  find_account( const account_name_type& name )const;
          const account_object&  get_account( const account_name_type& name )const;
          const comment_object&  get_comment( const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
