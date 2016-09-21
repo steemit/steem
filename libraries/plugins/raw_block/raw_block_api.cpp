@@ -44,9 +44,9 @@ get_raw_block_result raw_block_api::get_raw_block( get_raw_block_args args )
    {
       return result;
    }
-   std::stringstream ss;
-   auto rest = fc::raw::pack( *block );
-   result.raw_block = fc::base64_encode( std::string( &rest[0], &rest[0] + rest.size()) ); //ss.str() );
+   std::vector<char> serialized_block = fc::raw::pack( *block );
+   result.raw_block = fc::base64_encode( std::string(
+      &serialized_block[0], &serialized_block[0] + serialized_block.size()) );
    result.block_id = block->id();
    result.previous = block->previous;
    result.timestamp = block->timestamp;
