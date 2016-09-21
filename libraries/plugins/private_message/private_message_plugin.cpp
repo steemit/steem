@@ -30,13 +30,14 @@
 
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
 #include <steemit/chain/json_evaluator_registry.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
 namespace steemit { namespace private_message {
+
+using namespace graphene::db;
 
 namespace detail
 {

@@ -95,12 +95,6 @@ namespace detail {
 class wallet_api_impl;
 }
 
-struct operation_detail {
-   string               memo;
-   string               description;
-   operation_object     op;
-};
-
 /**
  * This wallet assumes it is connected to the database server with a high-bandwidth, low-latency connection and
  * performs minimal caching. This API could be provided locally to be used by a web interface.
@@ -896,7 +890,7 @@ class wallet_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map<uint32_t,operation_object> get_account_history( string account, uint32_t from, uint32_t limit );
+      map<uint32_t,applied_operation> get_account_history( string account, uint32_t from, uint32_t limit );
 
 
       /**
@@ -945,7 +939,6 @@ FC_REFLECT( steemit::wallet::brain_key_info, (brain_priv_key)(wif_priv_key) (pub
 FC_REFLECT_DERIVED( steemit::wallet::signed_block_with_info, (steemit::chain::signed_block),
    (block_id)(signing_key)(transaction_ids) )
 
-FC_REFLECT( steemit::wallet::operation_detail, (memo)(description)(op) )
 FC_REFLECT( steemit::wallet::plain_keys, (checksum)(keys) )
 
 FC_REFLECT_ENUM( steemit::wallet::authority_type, (owner)(active)(posting) )

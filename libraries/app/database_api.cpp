@@ -88,6 +88,20 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       boost::signals2::scoped_connection       _block_applied_connection;
 };
 
+applied_operation::applied_operation() {}
+
+applied_operation::applied_operation( const operation_object& op_obj )
+ : trx_id( op_obj.trx_id ),
+   block( op_obj.block ),
+   trx_in_block( op_obj.trx_in_block ),
+   op_in_trx( op_obj.op_in_trx ),
+   virtual_op( op_obj.virtual_op ),
+   timestamp( op_obj.timestamp )
+{
+   // fc::raw::unpack( op_obj.serialized_op, op );     // g++ refuses to compile this as ambiguous
+   op = fc::raw::unpack<operation>( op_obj.serialized_op );
+}
+
 void find_accounts( set<string>& accounts, const discussion& d ) {
    accounts.insert( d.author );
 }
@@ -1042,8 +1056,7 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
    return result;
 }
 
-
-map<uint32_t,operation_object> database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
+map< uint32_t, applied_operation > database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
    FC_ASSERT( limit <= 2000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
    FC_ASSERT( from >= limit, "From must be greater than limit" );
 //   idump((account)(from)(limit));
@@ -1053,8 +1066,9 @@ map<uint32_t,operation_object> database_api::get_account_history( string account
    auto end = idx.upper_bound( boost::make_tuple( account, std::max( int64_t(0), int64_t(itr->sequence)-limit ) ) );
 //   if( end != idx.end() ) idump((*end));
 
-   map<uint32_t,operation_object> result;
-   while( itr != end ) {
+   map<uint32_t, applied_operation> result;
+   while( itr != end )
+   {
       result[itr->sequence] = itr->op(my->_db);
       ++itr;
    }

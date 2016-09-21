@@ -4,6 +4,8 @@
 
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/operation_notification.hpp>
+
 #include <steemit/chain/history_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
@@ -27,7 +29,7 @@ class account_history_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
+      void on_operation( const operation_notification& note );
 
       account_history_plugin& _self;
       flat_map<string,string> _tracked_accounts;
@@ -39,12 +41,13 @@ account_history_plugin_impl::~account_history_plugin_impl()
    return;
 }
 
-struct operation_visitor {
-   operation_visitor( database& db, const operation_object& op, const operation_object*& n, string i ):_db(db),op_obj(op),new_obj(n),item(i){};
+struct operation_visitor
+{
+   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, string i ):_db(db),_note(note),new_obj(n),item(i){};
    typedef void result_type;
 
    database& _db;
-   const operation_object& op_obj;
+   const operation_notification& _note;
    const operation_object*& new_obj;
    string item;
 
@@ -54,18 +57,21 @@ struct operation_visitor {
 
 
    template<typename Op>
-   void operator()( Op&& )const{
-
+   void operator()( Op&& )const
+   {
          const auto& hist_idx = _db.get_index_type<account_history_index>().indices().get<by_account>();
-         if( !new_obj ) {
-            new_obj = &_db.create<operation_object>( [&]( operation_object& obj ){
-               obj.trx_id       = op_obj.trx_id;
-               obj.block        = op_obj.block;
-               obj.trx_in_block = op_obj.trx_in_block;
-               obj.op_in_trx    = op_obj.op_in_trx;
-               obj.virtual_op   = op_obj.virtual_op;
+         if( !new_obj )
+         {
+            new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
+            {
+               obj.trx_id       = _note.trx_id;
+               obj.block        = _note.block;
+               obj.trx_in_block = _note.trx_in_block;
+               obj.op_in_trx    = _note.op_in_trx;
+               obj.virtual_op   = _note.virtual_op;
                obj.timestamp    = _db.head_block_time();
-               obj.op           = op_obj.op;
+               obj.serialized_op = fc::raw::pack( _note.op );
+               // TODO: Check size of serialized_op
             });
          }
 
@@ -74,10 +80,11 @@ struct operation_visitor {
          if( hist_itr != hist_idx.end() && hist_itr->account == item )
             sequence = hist_itr->sequence + 1;
 
-         /*const auto& ahist = */_db.create<account_history_object>( [&]( account_history_object& ahist ){
-              ahist.account  = item;
-              ahist.sequence = sequence;
-              ahist.op       = new_obj->id;
+         _db.create<account_history_object>( [&]( account_history_object& ahist )
+         {
+            ahist.account  = item;
+            ahist.sequence = sequence;
+            ahist.op       = new_obj->id;
          });
    }
 };
@@ -85,7 +92,7 @@ struct operation_visitor {
 
 
 struct operation_visitor_filter : operation_visitor {
-   operation_visitor_filter( database& db, const operation_object& op, const operation_object*& n, string i ):operation_visitor(db,op,n,i){}
+   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, string i ):operation_visitor(db,note,n,i){}
 
    void operator()( const comment_operation& )const {}
    void operator()( const vote_operation& )const {}
@@ -115,26 +122,22 @@ struct operation_visitor_filter : operation_visitor {
    void operator()( Op&& op )const{ }
 };
 
-void account_history_plugin_impl::on_operation( const operation_object& op_obj ) {
+void account_history_plugin_impl::on_operation( const operation_notification& note )
+{
    flat_set<aname_type> impacted;
    steemit::chain::database& db = database();
-   auto size = fc::raw::pack_size(op_obj);
-   if( size > 1024*1024*128 ) {
-      ilog("excluding transaction from history due to size ${s}", ("s",size) );
-      return;
-   }
 
    const auto& hist_idx = db.get_index_type<account_history_index>().indices().get<by_account>();
    const operation_object* new_obj = nullptr;
-   app::operation_get_impacted_accounts( op_obj.op, impacted );
+   app::operation_get_impacted_accounts( note.op, impacted );
 
    for( const auto& item : impacted ) {
       auto itr = _tracked_accounts.lower_bound( item );
       if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) ) {
          if( _filter_content )
-            op_obj.op.visit( operation_visitor_filter(db, op_obj, new_obj, item) );
+            note.op.visit( operation_visitor_filter(db, note, new_obj, item) );
          else
-            op_obj.op.visit( operation_visitor(db, op_obj, new_obj, item) );
+            note.op.visit( operation_visitor(db, note, new_obj, item) );
       }
    }
 }
@@ -171,7 +174,7 @@ void account_history_plugin::plugin_set_program_options(
 void account_history_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    //ilog("Intializing account history plugin" );
-   database().pre_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
    database().add_index< primary_index< operation_index  > >();
    database().add_index< primary_index< account_history_index  > >();
 
