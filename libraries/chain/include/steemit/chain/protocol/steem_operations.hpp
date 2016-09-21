@@ -897,6 +897,19 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 
+   struct fill_transfer_from_savings_operation : public virtual_operation
+   {
+      fill_transfer_from_savings_operation() {}
+      fill_transfer_from_savings_operation( const string& f, const string& t, const asset& a, const uint32_t r, const string& m )
+         :from(f), to(t), amount(a), request_id(r), memo(m) {}
+
+      string   from;
+      string   to;
+      asset    amount;
+      uint32_t request_id = 0;
+      string   memo;
+   };
+
    struct decline_voting_rights_operation : public base_operation
    {
       string account;
@@ -912,6 +925,7 @@ namespace steemit { namespace chain {
 FC_REFLECT( steemit::chain::transfer_to_savings_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::cancel_transfer_from_savings_operation, (from)(request_id) )
+FC_REFLECT( steemit::chain::fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )
 
 FC_REFLECT( steemit::chain::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
 FC_REFLECT( steemit::chain::set_reset_account_operation, (account)(reset_account) )
