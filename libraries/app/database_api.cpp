@@ -1012,6 +1012,7 @@ vector<discussion> database_api::get_content_replies( string author, string perm
  */
 vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const
 {
+   FC_ASSERT( limit <= 100 );
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
    auto itr = last_update_idx.begin();
    const string* parent_author = &start_parent_author;
@@ -1028,6 +1029,8 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
    }
 
    vector<discussion> result;
+   result.reserve( limit );
+
    while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author )
    {
       result.push_back( *itr );
