@@ -15,13 +15,13 @@ class evaluator_base
 };
 
 template< typename EvaluatorType, typename OperationType=steemit::chain::operation >
-class evaluator : public evaluator_base<OperationType>
+class evaluator_impl : public evaluator_base<OperationType>
 {
    public:
       typedef OperationType operation_sv_type;
       // typedef typename EvaluatorType::operation_type op_type;
 
-      evaluator( database& d )
+      evaluator_impl( database& d )
          : _db(d) {}
 
       virtual void apply(const OperationType& o) final override
@@ -42,13 +42,13 @@ class evaluator : public evaluator_base<OperationType>
 } }
 
 #define DEFINE_EVALUATOR( X ) \
-class X ## _evaluator : public steemit::chain::evaluator< X ## _evaluator > \
+class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator > \
 {                                                                           \
    public:                                                                  \
       typedef X ## _operation operation_type;                               \
                                                                             \
       X ## _evaluator( database& db )                                       \
-         : steemit::chain::evaluator< X ## _evaluator >( db )               \
+         : steemit::chain::evaluator_impl< X ## _evaluator >( db )          \
       {}                                                                    \
                                                                             \
       void do_apply( const X ## _operation& o );                            \

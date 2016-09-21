@@ -147,13 +147,13 @@ if( options.count(name) ) { \
    } }
 
 #define DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )                     \
-class X ## _evaluator : public steemit::chain::evaluator< X ## _evaluator, OPERATION > \
+class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator, OPERATION > \
 {                                                                           \
    public:                                                                  \
       typedef X ## _operation operation_type;                               \
                                                                             \
       X ## _evaluator( database& db, PLUGIN* plugin )                       \
-         : steemit::chain::evaluator< X ## _evaluator, OPERATION >( db ),   \
+         : steemit::chain::evaluator_impl< X ## _evaluator, OPERATION >( db ), \
            _plugin( plugin )                                                \
       {}                                                                    \
                                                                             \
