@@ -5,7 +5,7 @@ namespace steemit { namespace chain {
 
 struct custom_json_operation;
 
-class generic_json_evaluator_registry
+class custom_operation_interpreter
 {
    public:
       virtual void apply( const custom_json_operation& op ) = 0;
