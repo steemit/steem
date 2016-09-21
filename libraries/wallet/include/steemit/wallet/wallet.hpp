@@ -522,6 +522,15 @@ class wallet_api
                                         const chain_properties& props,
                                         bool broadcast = false);
 
+      /**
+       * Shutdown a witness.
+       *
+       * @param witness_name The name of the witness account.
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      annotated_signed_transaction shutdown_witness(string witness_name, bool broadcast = false);
+
+
       /** Set the voting proxy for an account.
        *
        * If a user does not wish to take an active part in voting, they can choose
@@ -988,6 +997,7 @@ FC_API( steemit::wallet::wallet_api,
         (update_account_meta)
         (update_account_memo_key)
         (update_witness)
+        (shutdown_witness)
         (set_voting_proxy)
         (vote_for_witness)
         (follow)
