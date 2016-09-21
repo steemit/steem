@@ -7,7 +7,7 @@ namespace steemit { namespace chain {
 class database;
 
 template< typename OperationType=steemit::chain::operation >
-class evaluator_base
+class evaluator
 {
    public:
       virtual void apply(const OperationType& op) = 0;
@@ -15,7 +15,7 @@ class evaluator_base
 };
 
 template< typename EvaluatorType, typename OperationType=steemit::chain::operation >
-class evaluator_impl : public evaluator_base<OperationType>
+class evaluator_impl : public evaluator<OperationType>
 {
    public:
       typedef OperationType operation_sv_type;
