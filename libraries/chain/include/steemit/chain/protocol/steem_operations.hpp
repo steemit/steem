@@ -126,11 +126,12 @@ namespace steemit { namespace chain {
 
    struct author_reward_operation : public virtual_operation {
       author_reward_operation(){}
-      author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
-         :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
+      author_reward_operation( const string& a, const string& p, const asset& s, const asset& st, const asset& v )
+         :author(a),permlink(p),sbd_payout(s),steem_payout(st),vesting_payout(v){}
       string author;
       string permlink;
       asset  sbd_payout;
+      asset  steem_payout;
       asset  vesting_payout;
    };
 
@@ -977,7 +978,7 @@ FC_REFLECT( steemit::chain::limit_order_create2_operation, (owner)(orderid)(amou
 FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::chain::author_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
+FC_REFLECT( steemit::chain::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steemit::chain::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
 FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
