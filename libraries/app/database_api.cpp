@@ -88,9 +88,9 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       boost::signals2::scoped_connection       _block_applied_connection;
 };
 
-full_operation_object::full_operation_object() {}
+applied_operation::applied_operation() {}
 
-full_operation_object::full_operation_object( const operation_object& op_obj )
+applied_operation::applied_operation( const operation_object& op_obj )
  : trx_id( op_obj.trx_id ),
    block( op_obj.block ),
    trx_in_block( op_obj.trx_in_block ),
@@ -1056,7 +1056,7 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
    return result;
 }
 
-map< uint32_t, full_operation_object > database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
+map< uint32_t, applied_operation > database_api::get_account_history( string account, uint64_t from, uint32_t limit )const {
    FC_ASSERT( limit <= 2000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
    FC_ASSERT( from >= limit, "From must be greater than limit" );
 //   idump((account)(from)(limit));
@@ -1066,7 +1066,7 @@ map< uint32_t, full_operation_object > database_api::get_account_history( string
    auto end = idx.upper_bound( boost::make_tuple( account, std::max( int64_t(0), int64_t(itr->sequence)-limit ) ) );
 //   if( end != idx.end() ) idump((*end));
 
-   map<uint32_t, full_operation_object> result;
+   map<uint32_t, applied_operation> result;
    while( itr != end )
    {
       result[itr->sequence] = itr->op(my->_db);

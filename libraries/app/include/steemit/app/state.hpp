@@ -1,5 +1,5 @@
 #pragma once
-#include <steemit/app/full_operation_object.hpp>
+#include <steemit/app/applied_operation.hpp>
 
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/account_object.hpp>
@@ -81,11 +81,11 @@ namespace steemit { namespace app {
 
       asset                                   vesting_balance; /// convert vesting_shares to vesting steem
       share_type                              reputation = 0;
-      map<uint64_t,full_operation_object>     transfer_history; /// transfer to/from vesting
-      map<uint64_t,full_operation_object>     market_history; /// limit order / cancel / fill
-      map<uint64_t,full_operation_object>     post_history;
-      map<uint64_t,full_operation_object>     vote_history;
-      map<uint64_t,full_operation_object>     other_history;
+      map<uint64_t,applied_operation>         transfer_history; /// transfer to/from vesting
+      map<uint64_t,applied_operation>         market_history; /// limit order / cancel / fill
+      map<uint64_t,applied_operation>         post_history;
+      map<uint64_t,applied_operation>         vote_history;
+      map<uint64_t,applied_operation>         other_history;
       set<string>                             witness_votes;
 
       optional<map<uint32_t,extended_limit_order>> open_orders;

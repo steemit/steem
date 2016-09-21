@@ -5,10 +5,10 @@
 
 namespace steemit { namespace app {
 
-struct full_operation_object
+struct applied_operation
 {
-   full_operation_object();
-   full_operation_object( const steemit::chain::operation_object& op_obj );
+   applied_operation();
+   applied_operation( const steemit::chain::operation_object& op_obj );
 
    steemit::chain::transaction_id_type trx_id;
    uint32_t                            block = 0;
@@ -21,7 +21,7 @@ struct full_operation_object
 
 } }
 
-FC_REFLECT( steemit::app::full_operation_object,
+FC_REFLECT( steemit::app::applied_operation,
    (trx_id)
    (block)
    (trx_in_block)

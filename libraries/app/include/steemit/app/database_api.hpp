@@ -1,5 +1,5 @@
 #pragma once
-#include <steemit/app/full_operation_object.hpp>
+#include <steemit/app/applied_operation.hpp>
 #include <steemit/app/state.hpp>
 #include <steemit/chain/protocol/types.hpp>
 
@@ -384,7 +384,7 @@ class database_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map<uint32_t, full_operation_object> get_account_history( string account, uint64_t from, uint32_t limit )const;
+      map<uint32_t, applied_operation> get_account_history( string account, uint64_t from, uint32_t limit )const;
 
       ////////////////////////////
       // Handlers - not exposed //
