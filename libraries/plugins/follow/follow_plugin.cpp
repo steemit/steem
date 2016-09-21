@@ -6,10 +6,11 @@
 
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steemit/chain/json_evaluator_registry.hpp>
+#include <steemit/chain/operation_notification.hpp>
+
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/json_evaluator_registry.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -33,8 +34,8 @@ class follow_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
-      void pre_operation( const operation_object& op_0bj );
+      void pre_operation( const operation_notification& op_obj );
+      void post_operation( const operation_notification& op_obj );
 
       follow_plugin&                                                                         _self;
       std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
@@ -128,11 +129,11 @@ struct pre_operation_visitor
    }
 };
 
-struct on_operation_visitor
+struct post_operation_visitor
 {
    follow_plugin& _plugin;
 
-   on_operation_visitor( follow_plugin& plugin )
+   post_operation_visitor( follow_plugin& plugin )
       : _plugin( plugin ) {}
 
    typedef void result_type;
@@ -178,44 +179,44 @@ struct on_operation_visitor
          if( op.parent_author.size() > 0 ) return;
          auto& db = _plugin.database();
          const auto& c = db.get_comment( op.author, op.permlink );
+         const auto& author = db.get_account( op.author );
 
          if( c.created != db.head_block_time() ) return;
 
          const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
-         auto itr = idx.find( op.author );
+         auto itr = idx.find( author.id );
 
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
 
-         while( itr != idx.end() && itr->following == op.author )
+         while( itr != idx.end() && itr->following == author.id )
          {
             if( itr->what.find( follow_type::blog ) != itr->what.end() )
             {
-               auto account_id = db.get_account( itr->follower ).id;
                uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( account_id );
+               auto last_feed = feed_idx.lower_bound( itr->follower );
 
-               if( last_feed != feed_idx.end() && last_feed->account == account_id )
+               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
                {
                   next_id = last_feed->account_feed_id + 1;
                }
 
-               if( comment_idx.find( boost::make_tuple( c.id, account_id ) ) == comment_idx.end() )
+               if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                {
                   db.create< feed_object >( [&]( feed_object& f )
                   {
-                     f.account = account_id;
+                     f.account = itr->follower;
                      f.comment = c.id;
                      f.account_feed_id = next_id;
                   });
 
                   const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
-                  auto old_feed = old_feed_idx.lower_bound( account_id );
+                  auto old_feed = old_feed_idx.lower_bound( itr->follower );
 
-                  while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                  while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
                   {
                      db.remove( *old_feed );
-                     old_feed = old_feed_idx.lower_bound( account_id );
+                     old_feed = old_feed_idx.lower_bound( itr->follower );
                   }
                }
             }
@@ -306,11 +307,11 @@ struct on_operation_visitor
    }
 };
 
-void follow_plugin_impl::pre_operation( const operation_object& op_obj )
+void follow_plugin_impl::pre_operation( const operation_notification& note )
 {
    try
    {
-      op_obj.op.visit( pre_operation_visitor( _self ) );
+      note.op.visit( pre_operation_visitor( _self ) );
    }
    catch( const fc::assert_exception& )
    {
@@ -318,11 +319,11 @@ void follow_plugin_impl::pre_operation( const operation_object& op_obj )
    }
 }
 
-void follow_plugin_impl::on_operation( const operation_object& op_obj )
+void follow_plugin_impl::post_operation( const operation_notification& note )
 {
    try
    {
-      op_obj.op.visit( on_operation_visitor( _self ) );
+      note.op.visit( post_operation_visitor( _self ) );
    }
    catch( fc::assert_exception )
    {
@@ -353,8 +354,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       ilog("Intializing follow plugin" );
       my->plugin_initialize();
 
-      database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
+      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
       database().add_index< primary_index< follow_index > >();
       database().add_index< primary_index< feed_index > >();
       database().add_index< primary_index< blog_index > >();

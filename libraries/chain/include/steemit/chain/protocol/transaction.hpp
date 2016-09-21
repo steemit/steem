@@ -42,9 +42,9 @@ namespace steemit { namespace chain {
          return results;
       }
 
-      void get_required_authorities( flat_set<aname_type>& active,
-                                     flat_set<aname_type>& owner,
-                                     flat_set<aname_type>& posting,
+      void get_required_authorities( flat_set<account_name_type>& active,
+                                     flat_set<account_name_type>& owner,
+                                     flat_set<account_name_type>& posting,
                                      vector<authority>& other )const;
    };
 
@@ -97,9 +97,9 @@ namespace steemit { namespace chain {
                           const authority_getter& get_posting,
                           uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH,
                           bool allow_committe = false,
-                          const flat_set<aname_type>& active_aprovals = flat_set<aname_type>(),
-                          const flat_set<aname_type>& owner_aprovals = flat_set<aname_type>(),
-                          const flat_set<aname_type>& posting_approvals = flat_set<aname_type>());
+                          const flat_set<account_name_type>& active_aprovals = flat_set<account_name_type>(),
+                          const flat_set<account_name_type>& owner_aprovals = flat_set<account_name_type>(),
+                          const flat_set<account_name_type>& posting_approvals = flat_set<account_name_type>());
 
 
    struct annotated_signed_transaction : public signed_transaction {

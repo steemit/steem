@@ -454,7 +454,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
    while( itr != acc_hist_idx.begin() && ops.size() < num_ops )
    {
       itr--;
-      ops.push_back( itr->op(db).op );
+      ops.push_back( fc::raw::unpack< steemit::chain::operation >( itr->op(db).serialized_op ) );
    }
 
    return ops;

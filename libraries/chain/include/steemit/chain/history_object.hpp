@@ -27,7 +27,7 @@ namespace steemit { namespace chain {
          uint16_t            op_in_trx = 0;
          uint64_t            virtual_op = 0;
          time_point_sec      timestamp;
-         operation           op;
+         std::vector<char>   serialized_op;
    };
 
    struct by_location;
@@ -83,5 +83,5 @@ namespace steemit { namespace chain {
    typedef generic_index< account_history_object, account_history_multi_index_type >  account_history_index;
 } }
 
-FC_REFLECT_DERIVED( steemit::chain::operation_object, (graphene::db::object), (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
+FC_REFLECT_DERIVED( steemit::chain::operation_object, (graphene::db::object), (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op) )
 FC_REFLECT_DERIVED( steemit::chain::account_history_object, (graphene::db::object), (account)(sequence)(op) )

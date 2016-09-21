@@ -12,6 +12,8 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
+#include <steemit/chain/operation_notification.hpp>
+
 #include <graphene/db/flat_index.hpp>
 
 #include <fc/smart_ref_impl.hpp>
@@ -351,7 +353,17 @@ const account_object& database::get_account( const account_name_type& name )cons
    return *itr;
 }
 
-const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const {
+const account_object* database::find_account( const account_name_type& name )const
+{
+   const auto& accounts_by_name = get_index_type<account_index>().indices().get<by_name>();
+   auto itr = accounts_by_name.find(name);
+   if( itr == accounts_by_name.end() )
+      return nullptr;
+   return &*itr;
+}
+
+const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
+{
    const auto& escrow_idx = get_index_type<escrow_index>().indices().get<by_from_id>();
    auto itr = escrow_idx.find( boost::make_tuple(name,escrow_id) );
    FC_ASSERT( itr != escrow_idx.end() );
@@ -904,33 +916,28 @@ void database::clear_pending()
    FC_CAPTURE_AND_RETHROW()
 }
 
-const operation_object database::notify_pre_apply_operation( const operation& op )
+void database::notify_pre_apply_operation( operation_notification& note )
 {
-   operation_object obj;
-   obj.trx_id       = _current_trx_id;
-   obj.block        = _current_block_num;
-   obj.trx_in_block = _current_trx_in_block;
-   obj.op_in_trx    = _current_op_in_trx;
-   obj.op           = op;
+   note.trx_id       = _current_trx_id;
+   note.block        = _current_block_num;
+   note.trx_in_block = _current_trx_in_block;
+   note.op_in_trx    = _current_op_in_trx;
 
-   //pre_apply_operation( obj );
-   STEEMIT_TRY_NOTIFY( pre_apply_operation, obj )
-
-   return obj;
+   STEEMIT_TRY_NOTIFY( pre_apply_operation, note )
 }
 
-void database::notify_post_apply_operation( const operation_object& obj )
+void database::notify_post_apply_operation( const operation_notification& note )
 {
-   //post_apply_operation( obj );
-   STEEMIT_TRY_NOTIFY( post_apply_operation, obj )
+   STEEMIT_TRY_NOTIFY( post_apply_operation, note )
 }
 
 inline const void database::push_virtual_operation( const operation& op )
 {
 #if ! defined( IS_LOW_MEM ) || defined( IS_TEST_NET )
    FC_ASSERT( is_virtual_operation( op ) );
-   auto obj = notify_pre_apply_operation( op );
-   notify_post_apply_operation( obj );
+   operation_notification note(op);
+   notify_pre_apply_operation( note );
+   notify_post_apply_operation( note );
 #endif
 }
 
@@ -1235,7 +1242,7 @@ void database::update_witness_schedule4()
          if( hf_itr->second >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
          {
             const auto& hfp = hardfork_property_id_type()( *this );
-            if( hfp.next_hardfork != std::get<0>( hf_itr->first ) || 
+            if( hfp.next_hardfork != std::get<0>( hf_itr->first ) ||
                 hfp.next_hardfork_time != std::get<1>( hf_itr->first ) ) {
 
                modify( hfp, [&]( hardfork_property_object& hpo )
@@ -1956,7 +1963,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          {
             share_type discussion_tokens = 0;
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-            if( comment.parent_author.size() == 0 )
+            if( comment.parent_author == STEEMIT_ROOT_POST_PARENT )
                discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
 
             share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
@@ -2027,7 +2034,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.total_vote_weight = 0;
          c.max_cashout_time = fc::time_point_sec::maximum();
 
-         if( c.parent_author.size() == 0 )
+         if( c.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
                c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
@@ -2974,7 +2981,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
    }
-   flat_set<aname_type> required; vector<authority> other;
+   flat_set<account_name_type> required; vector<authority> other;
    trx.get_required_authorities( required, required, required, other );
 
    auto trx_size = fc::raw::pack_size(trx);
@@ -3039,9 +3046,10 @@ void database::_apply_transaction(const signed_transaction& trx)
 
 void database::apply_operation(const operation& op)
 {
-   auto obj = notify_pre_apply_operation( op );
+   operation_notification note(op);
+   notify_pre_apply_operation( note );
    _my->_evaluator_registry.get_evaluator( op ).apply( op );
-   notify_post_apply_operation( obj );
+   notify_post_apply_operation( note );
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
@@ -3760,8 +3768,10 @@ void database::apply_hardfork( uint32_t hardfork )
             string op_msg = "Testnet: Hardfork applied";
             test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
             test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            auto obj = notify_pre_apply_operation( test_op );
-            notify_post_apply_operation( obj );
+            operation op = test_op;   // we need the operation object to live to the end of this scope
+            operation_notification note( op );
+            notify_pre_apply_operation( note );
+            notify_post_apply_operation( note );
          }
          break;
 #endif
@@ -3812,20 +3822,19 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
 #endif
          {
-            for( auto acc : hardfork9::get_compromised_accounts() )
+            for( const std::string& acc : hardfork9::get_compromised_accounts() )
             {
-               try
+               const account_object* account = find_account( acc );
+               if( account == nullptr )
+                  continue;
+
+               update_owner_authority( *account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
+
+               modify( *account, [&]( account_object& a )
                {
-                  const auto& account = get_account( acc );
-
-                  update_owner_authority( account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
-
-                  modify( account, [&]( account_object& a )
-                  {
-                     a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                     a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  });
-               } catch( ... ) {}
+                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+               });
             }
          }
          break;
@@ -3852,7 +3861,7 @@ void database::apply_hardfork( uint32_t hardfork )
                // At the hardfork time, all new posts with no votes get their cashout time set to +12 hrs from head block time.
                // All posts with a payout get their cashout time set to +30 days. This hardfork takes place within 30 days
                // initial payout so we don't have to handle the case of posts that should be frozen that aren't
-               if( itr->parent_author.size() == 0 )
+               if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
                {
                   // Post has not been paid out and has no votes (cashout_time == 0 === net_rshares == 0, under current semmantics)
                   if( itr->last_payout == fc::time_point_sec::min() && itr->cashout_time == fc::time_point_sec::maximum() )
@@ -4027,7 +4036,7 @@ void database::validate_invariants()const
             auto delta = calculate_vshares( itr->net_rshares.value );
             total_rshares2 += delta;
          }
-         if( itr->parent_author.size() == 0 )
+         if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
             total_children_rshares2 += itr->children_rshares2;
       }
 
@@ -4127,7 +4136,7 @@ void database::retally_comment_children()
 
    for( auto itr = cidx.begin(); itr != cidx.end(); ++itr )
    {
-      if( itr->parent_author.size() )
+      if( itr->parent_author != STEEMIT_ROOT_POST_PARENT )
       {
 // Low memory nodes only need immediate child count, full nodes track total children
 #ifdef IS_LOW_MEM
@@ -4144,7 +4153,7 @@ void database::retally_comment_children()
                c.children++;
             });
 
-            if( parent->parent_author.size() )
+            if( parent->parent_author != STEEMIT_ROOT_POST_PARENT )
                parent = &get_comment( parent->parent_author, parent->parent_permlink );
             else
                parent = nullptr;

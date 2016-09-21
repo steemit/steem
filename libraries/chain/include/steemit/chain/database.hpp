@@ -25,6 +25,7 @@ namespace steemit { namespace chain {
 
    class database_impl;
    class generic_json_evaluator_registry;
+   struct operation_notification;
 
    /**
     *   @class database
@@ -106,6 +107,7 @@ namespace steemit { namespace chain {
          const category_object* find_category( const string& name )const;
          const category_object& get_category( const string& name )const;
          const witness_object&  get_witness( const account_name_type& name )const;
+         const account_object*  find_account( const account_name_type& name )const;
          const account_object&  get_account( const account_name_type& name )const;
          const comment_object&  get_comment( const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
@@ -156,17 +158,13 @@ namespace steemit { namespace chain {
          void clear_pending();
 
          /**
-          *  This method is used to track appied operations during the evaluation of a block, these
+          *  This method is used to track applied operations during the evaluation of a block, these
           *  operations should include any operation actually included in a transaction as well
-          *  as any implied/virtual operations that resulted, such as filling an order.  The
-          *  applied operations is cleared after applying each block and calling the block
-          *  observers which may want to index these operations.
-          *
-          *  @return the op_id which can be used to set the result after it has finished being applied.
-          *  @todo rename this method notify_pre_apply_operation( op )
+          *  as any implied/virtual operations that resulted, such as filling an order.
+          *  The applied operations are cleared after post_apply_operation.
           */
-         const operation_object notify_pre_apply_operation( const operation& op );
-         void notify_post_apply_operation( const operation_object& op );
+         void notify_pre_apply_operation( operation_notification& note );
+         void notify_post_apply_operation( const operation_notification& note );
          inline const void push_virtual_operation( const operation& op );
          void notify_applied_block( const signed_block& block );
          void notify_on_pending_transaction( const signed_transaction& tx );
@@ -175,8 +173,8 @@ namespace steemit { namespace chain {
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
           */
-         fc::signal<void(const operation_object&)> pre_apply_operation;
-         fc::signal<void(const operation_object&)> post_apply_operation;
+         fc::signal<void(const operation_notification&)> pre_apply_operation;
+         fc::signal<void(const operation_notification&)> post_apply_operation;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
@@ -456,6 +454,5 @@ namespace steemit { namespace chain {
 
          flat_map< std::string, std::shared_ptr< generic_json_evaluator_registry > >   _custom_json_evaluators;
    };
-
 
 } }

@@ -230,4 +230,6 @@
 #define STEEMIT_TEMP_ACCOUNT                    "temp"
 /// Represents the canonical account for specifying you will vote for directly (as opposed to a proxy)
 #define STEEMIT_PROXY_TO_SELF_ACCOUNT           ""
+/// Represents the canonical root post parent account
+#define STEEMIT_ROOT_POST_PARENT                (account_name_type())
 ///@}

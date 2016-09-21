@@ -38,8 +38,8 @@ class follow_object : public abstract_object< follow_object >
       static const uint8_t space_id = FOLLOW_SPACE_ID;
       static const uint8_t type_id  = follow_object_type;
 
-      string               follower;
-      string               following;
+      account_id_type      follower;
+      account_id_type      following;
       set< follow_type >   what; /// blog
 };
 
@@ -88,17 +88,15 @@ typedef multi_index_container<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_unique< tag< by_following_follower >,
          composite_key< follow_object,
-            member< follow_object, string, &follow_object::following >,
-            member< follow_object, string, &follow_object::follower >
-         >,
-         composite_key_compare< std::less<string>, std::less<string> >
+            member< follow_object, account_id_type, &follow_object::following >,
+            member< follow_object, account_id_type, &follow_object::follower >
+         >
       >,
       ordered_unique< tag< by_follower_following >,
          composite_key< follow_object,
-            member< follow_object, string, &follow_object::follower >,
-            member< follow_object, string, &follow_object::following >
-         >,
-         composite_key_compare< std::less<string>, std::less<string> >
+            member< follow_object, account_id_type, &follow_object::follower >,
+            member< follow_object, account_id_type, &follow_object::following >
+         >
       >
    >
 > follow_multi_index_type;

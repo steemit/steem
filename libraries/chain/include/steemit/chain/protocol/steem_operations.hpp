@@ -19,12 +19,12 @@ namespace steemit { namespace chain {
       string            json_metadata;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(creator); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(creator); }
    };
 
    struct account_update_operation : public base_operation
    {
-      aname_type             account;
+      account_name_type             account;
       optional< authority >         owner;
       optional< authority >         active;
       optional< authority >         posting;
@@ -33,22 +33,22 @@ namespace steemit { namespace chain {
 
       void validate()const;
 
-      void get_required_owner_authorities( flat_set<aname_type>& a )const
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const
       { if( owner ) a.insert( account ); }
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const
+      void get_required_active_authorities( flat_set<account_name_type>& a )const
       { if( !owner /*&& active*/) a.insert( account ); }
 
-      //void get_required_posting_authorities( flat_set<aname_type>& a )const
+      //void get_required_posting_authorities( flat_set<account_name_type>& a )const
       //{ if( !active && !owner && posting ) a.insert( account ); }
    };
 
    struct comment_operation : public base_operation
    {
-      aname_type parent_author;
+      account_name_type parent_author;
       string            parent_permlink;
 
-      aname_type author;
+      account_name_type author;
       string            permlink;
 
       string            title;
@@ -56,7 +56,7 @@ namespace steemit { namespace chain {
       string            json_metadata;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(author); }
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
    };
 
    /**
@@ -69,101 +69,103 @@ namespace steemit { namespace chain {
     */
    struct comment_options_operation : public base_operation
    {
-      aname_type author;
+      account_name_type author;
       string            permlink;
 
-      asset    max_accepted_payout    = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
-      uint16_t percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
-      bool     allow_votes            = true;      /// allows a post to receive votes;
-      bool     allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
-      extensions_type extensions;
+      asset             max_accepted_payout    = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
+      uint16_t          percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
+      bool              allow_votes            = true;      /// allows a post to receive votes;
+      bool              allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
+      extensions_type   extensions;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(author); }
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
    };
 
    struct challenge_authority_operation : public base_operation
    {
-      aname_type challenger;
-      aname_type challenged;
-      bool   require_owner = false;
+      account_name_type challenger;
+      account_name_type challenged;
+      bool              require_owner = false;
 
       void validate()const;
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(challenger); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(challenger); }
    };
 
    struct prove_authority_operation : public base_operation
    {
-      aname_type challenged;
-      bool   require_owner = false;
+      account_name_type challenged;
+      bool              require_owner = false;
 
       void validate()const;
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ if( !require_owner ) a.insert(challenged); }
-      void get_required_owner_authorities( flat_set<aname_type>& a )const{  if(  require_owner ) a.insert(challenged); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ if( !require_owner ) a.insert(challenged); }
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const{  if(  require_owner ) a.insert(challenged); }
    };
 
    struct delete_comment_operation : public base_operation
    {
-      aname_type author;
-      string permlink;
+      account_name_type author;
+      string            permlink;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(author); }
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
    };
 
    struct vote_operation : public base_operation
    {
-      aname_type    voter;
-      aname_type    author;
-      string    permlink;
-      int16_t   weight = 0;
+      account_name_type    voter;
+      account_name_type    author;
+      string               permlink;
+      int16_t              weight = 0;
 
       void validate()const;
-      void get_required_posting_authorities( flat_set<aname_type>& a )const{ a.insert(voter); }
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(voter); }
    };
 
-   struct author_reward_operation : public virtual_operation {
+   struct author_reward_operation : public virtual_operation
+   {
       author_reward_operation(){}
       author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
-         :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
-      aname_type author;
-      string permlink;
-      asset  sbd_payout;
-      asset  vesting_payout;
+         :author(a), permlink(p), sbd_payout(s), vesting_payout(v) {}
+
+      account_name_type author;
+      string            permlink;
+      asset             sbd_payout;
+      asset             vesting_payout;
    };
 
    struct curation_reward_operation : public virtual_operation
    {
       curation_reward_operation(){}
       curation_reward_operation( const string& c, const asset& r, const string& a, const string& p )
-         :curator(c),reward(r),comment_author(a),comment_permlink(p){}
+         :curator(c), reward(r), comment_author(a), comment_permlink(p) {}
 
-      aname_type curator;
-      asset  reward;
-      aname_type comment_author;
-      string comment_permlink;
+      account_name_type curator;
+      asset             reward;
+      account_name_type comment_author;
+      string            comment_permlink;
    };
 
    struct comment_reward_operation : public virtual_operation
    {
       comment_reward_operation(){}
       comment_reward_operation( const string& a, const string& pl, const asset& p )
-         :author(a),permlink(pl),payout(p){}
+         :author(a), permlink(pl), payout(p){}
 
-      aname_type author;
-      string permlink;
-      asset  payout;
+      account_name_type author;
+      string            permlink;
+      asset             payout;
    };
 
    struct liquidity_reward_operation : public virtual_operation
    {
       liquidity_reward_operation( string o = string(), asset p = asset() )
-      :owner(o),payout(p){}
+      :owner(o), payout(p) {}
 
-      aname_type owner;
-      asset  payout;
+      account_name_type owner;
+      asset             payout;
    };
 
    struct interest_operation : public virtual_operation
@@ -171,37 +173,40 @@ namespace steemit { namespace chain {
       interest_operation( const string& o = "", const asset& i = asset(0,SBD_SYMBOL) )
          :owner(o),interest(i){}
 
-      aname_type owner;
-      asset  interest;
+      account_name_type owner;
+      asset             interest;
    };
 
    struct fill_convert_request_operation : public virtual_operation
    {
       fill_convert_request_operation(){}
       fill_convert_request_operation( const string& o, const uint32_t id, const asset& in, const asset& out )
-         :owner(o), requestid(id), amount_in(in), amount_out(out){}
-      aname_type   owner;
-      uint32_t requestid = 0;
-      asset    amount_in;
-      asset    amount_out;
+         :owner(o), requestid(id), amount_in(in), amount_out(out) {}
+
+      account_name_type owner;
+      uint32_t          requestid = 0;
+      asset             amount_in;
+      asset             amount_out;
    };
 
    struct fill_vesting_withdraw_operation : public virtual_operation
    {
       fill_vesting_withdraw_operation(){}
       fill_vesting_withdraw_operation( const string& f, const string& t, const asset& w, const asset& d )
-         :from_account(f), to_account(t), withdrawn(w), deposited(d){}
-      aname_type from_account;
-      aname_type to_account;
-      asset  withdrawn;
-      asset  deposited;
+         :from_account(f), to_account(t), withdrawn(w), deposited(d) {}
+
+      account_name_type from_account;
+      account_name_type to_account;
+      asset             withdrawn;
+      asset             deposited;
    };
 
    struct shutdown_witness_operation : public virtual_operation
    {
       shutdown_witness_operation(){}
       shutdown_witness_operation( const string& o ):owner(o) {}
-      aname_type owner;
+
+      account_name_type owner;
    };
 
    /**
@@ -211,9 +216,9 @@ namespace steemit { namespace chain {
     */
    struct transfer_operation : public base_operation
    {
-      aname_type            from;
+      account_name_type from;
       /// Account to transfer asset to
-      aname_type            to;
+      account_name_type to;
       /// The amount of asset to transfer from @ref from to @ref to
       asset             amount;
 
@@ -222,8 +227,8 @@ namespace steemit { namespace chain {
       string            memo;
 
       void              validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ if(amount.symbol != VESTS_SYMBOL) a.insert(from); }
-      void get_required_owner_authorities( flat_set<aname_type>& a )const { if(amount.symbol == VESTS_SYMBOL) a.insert(from); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ if(amount.symbol != VESTS_SYMBOL) a.insert(from); }
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const { if(amount.symbol == VESTS_SYMBOL) a.insert(from); }
    };
 
    /**
@@ -246,22 +251,22 @@ namespace steemit { namespace chain {
     */
    struct escrow_transfer_operation : public base_operation
    {
-      aname_type         from;
-      aname_type         to;
-      aname_type         agent;
-      uint32_t       escrow_id = 0;
+      account_name_type from;
+      account_name_type to;
+      account_name_type agent;
+      uint32_t          escrow_id = 0;
 
-      asset          sbd_amount = asset( 0, SBD_SYMBOL );
-      asset          steem_amount = asset( 0, STEEM_SYMBOL );
-      asset          fee;
+      asset             sbd_amount = asset( 0, SBD_SYMBOL );
+      asset             steem_amount = asset( 0, STEEM_SYMBOL );
+      asset             fee;
 
-      time_point_sec ratification_deadline;
-      time_point_sec escrow_expiration;
+      time_point_sec    ratification_deadline;
+      time_point_sec    escrow_expiration;
 
-      string         json_meta;
+      string            json_meta;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(from); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(from); }
    };
 
    /**
@@ -271,15 +276,16 @@ namespace steemit { namespace chain {
     */
    struct escrow_approve_operation : public base_operation
    {
-      aname_type         from;
-      aname_type         to;
-      aname_type         agent;
-      aname_type         who; // Either to or agent
-      uint32_t       escrow_id = 0;
-      bool           approve = true;
+      account_name_type from;
+      account_name_type to;
+      account_name_type agent;
+      account_name_type who; // Either to or agent
+
+      uint32_t          escrow_id = 0;
+      bool              approve = true;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(who); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(who); }
    };
 
    /**
@@ -289,14 +295,15 @@ namespace steemit { namespace chain {
     */
    struct escrow_dispute_operation : public base_operation
    {
-      aname_type   from;
-      aname_type   to;
-      aname_type   agent;
-      aname_type   who;
-      uint32_t escrow_id = 0;
+      account_name_type from;
+      account_name_type to;
+      account_name_type agent;
+      account_name_type who;
+
+      uint32_t          escrow_id = 0;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(who); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(who); }
    };
 
    /**
@@ -311,17 +318,18 @@ namespace steemit { namespace chain {
     */
    struct escrow_release_operation : public base_operation
    {
-      aname_type    from;
-      aname_type    to; ///< the original 'to'
-      aname_type    agent;
-      aname_type    who; ///< the account that is attempting to release the funds, determines valid 'receiver'
-      aname_type    receiver; ///< the account that should receive funds (might be from, might be to)
-      uint32_t  escrow_id = 0;
-      asset     sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
-      asset     steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
+      account_name_type from;
+      account_name_type to; ///< the original 'to'
+      account_name_type agent;
+      account_name_type who; ///< the account that is attempting to release the funds, determines valid 'receiver'
+      account_name_type receiver; ///< the account that should receive funds (might be from, might be to)
+
+      uint32_t          escrow_id = 0;
+      asset             sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
+      asset             steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(who); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(who); }
    };
 
 
@@ -333,12 +341,12 @@ namespace steemit { namespace chain {
     */
    struct transfer_to_vesting_operation : public base_operation
    {
-      aname_type   from;
-      aname_type   to; ///< if null, then same as from
-      asset    amount; ///< must be STEEM
+      account_name_type from;
+      account_name_type to; ///< if null, then same as from
+      asset             amount; ///< must be STEEM
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(from); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(from); }
    };
 
    /**
@@ -354,11 +362,11 @@ namespace steemit { namespace chain {
     */
    struct withdraw_vesting_operation : public base_operation
    {
-      aname_type      account;
-      asset       vesting_shares;
+      account_name_type account;
+      asset             vesting_shares;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(account); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(account); }
    };
 
    /**
@@ -370,13 +378,13 @@ namespace steemit { namespace chain {
     */
    struct set_withdraw_vesting_route_operation : public base_operation
    {
-      aname_type   from_account;
-      aname_type   to_account;
-      uint16_t percent = 0;
-      bool     auto_vest = false;
+      account_name_type from_account;
+      account_name_type to_account;
+      uint16_t          percent = 0;
+      bool              auto_vest = false;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const { a.insert( from_account ); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const { a.insert( from_account ); }
    };
 
    /**
@@ -402,7 +410,8 @@ namespace steemit { namespace chain {
       uint32_t          maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2;
       uint16_t          sbd_interest_rate  = STEEMIT_DEFAULT_SBD_INTEREST_RATE;
 
-      void validate()const {
+      void validate()const
+      {
          FC_ASSERT( account_creation_fee.amount >= STEEMIT_MIN_ACCOUNT_CREATION_FEE);
          FC_ASSERT( maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT);
          FC_ASSERT( sbd_interest_rate >= 0 );
@@ -426,14 +435,14 @@ namespace steemit { namespace chain {
     */
    struct witness_update_operation : public base_operation
    {
-      aname_type            owner;
+      account_name_type owner;
       string            url;
       public_key_type   block_signing_key;
       chain_properties  props;
       asset             fee; ///< the fee paid to register a new witness, should be 10x current block production pay
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
    };
 
    /**
@@ -443,21 +452,21 @@ namespace steemit { namespace chain {
     */
    struct account_witness_vote_operation : public base_operation
    {
-      aname_type  account;
-      aname_type  witness;
-      bool    approve = true;
+      account_name_type account;
+      account_name_type witness;
+      bool              approve = true;
 
       void validate() const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(account); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(account); }
    };
 
    struct account_witness_proxy_operation : public base_operation
    {
-      aname_type  account;
-      aname_type  proxy;
+      account_name_type account;
+      account_name_type proxy;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(account); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(account); }
    };
 
    /**
@@ -468,12 +477,12 @@ namespace steemit { namespace chain {
     */
    struct custom_operation : public base_operation
    {
-      flat_set<aname_type>  required_auths;
-      uint16_t          id = 0;
-      vector<char>      data;
+      flat_set< account_name_type > required_auths;
+      uint16_t                      id = 0;
+      vector< char >                data;
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
    };
 
    /** serves the same purpose as custom_operation but also supports required posting authorities. Unlike custom_operation,
@@ -481,30 +490,30 @@ namespace steemit { namespace chain {
     **/
    struct custom_json_operation : public base_operation
    {
-      flat_set<aname_type>  required_auths;
-      flat_set<aname_type>  required_posting_auths;
-      string            id; ///< must be less than 32 characters long
-      string            json; ///< must be proper utf8 / JSON string.
+      flat_set< account_name_type > required_auths;
+      flat_set< account_name_type > required_posting_auths;
+      string                        id; ///< must be less than 32 characters long
+      string                        json; ///< must be proper utf8 / JSON string.
 
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
-      void get_required_posting_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
    };
 
    struct custom_binary_operation : public base_operation
    {
-      flat_set<aname_type>   required_owner_auths;
-      flat_set<aname_type>   required_active_auths;
-      flat_set<aname_type>   required_posting_auths;
-      vector<authority>  required_auths;
+      flat_set< account_name_type > required_owner_auths;
+      flat_set< account_name_type > required_active_auths;
+      flat_set< account_name_type > required_posting_auths;
+      vector< authority >           required_auths;
 
-      string            id; ///< must be less than 32 characters long
-      vector<char>      data;
+      string                        id; ///< must be less than 32 characters long
+      vector< char >                data;
 
       void validate()const;
-      void get_required_owner_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
-      void get_required_posting_authorities( flat_set<aname_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
+      void get_required_posting_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
       void get_required_authorities( vector<authority>& a )const{ for( const auto& i : required_auths ) a.push_back(i); }
    };
 
@@ -514,11 +523,11 @@ namespace steemit { namespace chain {
     */
    struct feed_publish_operation : public base_operation
    {
-      aname_type   publisher;
-      price    exchange_rate;
+      account_name_type publisher;
+      price             exchange_rate;
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(publisher); }
+      void  get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(publisher); }
    };
 
    /**
@@ -527,12 +536,12 @@ namespace steemit { namespace chain {
     */
    struct convert_operation : public base_operation
    {
-      aname_type   owner;
-      uint32_t requestid = 0;
-      asset    amount;
+      account_name_type owner;
+      uint32_t          requestid = 0;
+      asset             amount;
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
    };
 
    /**
@@ -540,19 +549,19 @@ namespace steemit { namespace chain {
     */
    struct limit_order_create_operation : public base_operation
    {
-      aname_type           owner;
-      uint32_t         orderid = 0; /// an ID assigned by owner, must be unique
-      asset            amount_to_sell;
-      asset            min_to_receive;
-      bool             fill_or_kill = false;
-      time_point_sec   expiration = time_point_sec::maximum();
+      account_name_type owner;
+      uint32_t          orderid = 0; /// an ID assigned by owner, must be unique
+      asset             amount_to_sell;
+      asset             min_to_receive;
+      bool              fill_or_kill = false;
+      time_point_sec    expiration = time_point_sec::maximum();
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
 
-      price           get_price()const { return amount_to_sell / min_to_receive; }
+      price             get_price()const { return amount_to_sell / min_to_receive; }
 
-      pair<asset_symbol_type,asset_symbol_type> get_market()const
+      pair< asset_symbol_type, asset_symbol_type > get_market()const
       {
          return amount_to_sell.symbol < min_to_receive.symbol ?
                 std::make_pair(amount_to_sell.symbol, min_to_receive.symbol) :
@@ -566,19 +575,19 @@ namespace steemit { namespace chain {
     */
    struct limit_order_create2_operation : public base_operation
    {
-      aname_type           owner;
-      uint32_t         orderid = 0; /// an ID assigned by owner, must be unique
-      asset            amount_to_sell;
-      bool             fill_or_kill = false;
-      price            exchange_rate;
-      time_point_sec   expiration = time_point_sec::maximum();
+      account_name_type owner;
+      uint32_t          orderid = 0; /// an ID assigned by owner, must be unique
+      asset             amount_to_sell;
+      bool              fill_or_kill = false;
+      price             exchange_rate;
+      time_point_sec    expiration = time_point_sec::maximum();
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
 
-      price           get_price()const { return exchange_rate; }
+      price             get_price()const { return exchange_rate; }
 
-      pair<asset_symbol_type,asset_symbol_type> get_market()const
+      pair< asset_symbol_type, asset_symbol_type > get_market()const
       {
          return exchange_rate.base.symbol < exchange_rate.quote.symbol ?
                 std::make_pair(exchange_rate.base.symbol, exchange_rate.quote.symbol) :
@@ -590,14 +599,14 @@ namespace steemit { namespace chain {
    {
       fill_order_operation(){}
       fill_order_operation( const string& c_o, uint32_t c_id, const asset& c_p, const string& o_o, uint32_t o_id, const asset& o_p )
-      :current_owner(c_o),current_orderid(c_id),current_pays(c_p),open_owner(o_o),open_orderid(o_id),open_pays(o_p){}
+      :current_owner(c_o), current_orderid(c_id), current_pays(c_p), open_owner(o_o), open_orderid(o_id), open_pays(o_p) {}
 
-      aname_type   current_owner;
-      uint32_t current_orderid = 0;
-      asset    current_pays;
-      aname_type   open_owner;
-      uint32_t open_orderid = 0;
-      asset    open_pays;
+      account_name_type current_owner;
+      uint32_t          current_orderid = 0;
+      asset             current_pays;
+      account_name_type open_owner;
+      uint32_t          open_orderid = 0;
+      asset             open_pays;
    };
 
    /**
@@ -605,19 +614,19 @@ namespace steemit { namespace chain {
     */
    struct limit_order_cancel_operation : public base_operation
    {
-      aname_type   owner;
-      uint32_t orderid = 0;
+      account_name_type owner;
+      uint32_t          orderid = 0;
 
       void  validate()const;
-      void  get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert(owner); }
+      void  get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
    };
 
    struct pow
    {
-      public_key_type   worker;
-      digest_type       input;
-      signature_type    signature;
-      digest_type       work;
+      public_key_type worker;
+      digest_type     input;
+      signature_type  signature;
+      digest_type     work;
 
       void create( const fc::ecc::private_key& w, const digest_type& i );
       void validate()const;
@@ -626,24 +635,24 @@ namespace steemit { namespace chain {
 
    struct pow_operation : public base_operation
    {
-      aname_type           worker_account;
-      block_id_type    block_id;
-      uint64_t         nonce = 0;
-      pow              work;
-      chain_properties props;
+      account_name_type worker_account;
+      block_id_type     block_id;
+      uint64_t          nonce = 0;
+      pow               work;
+      chain_properties  props;
 
       void validate()const;
       fc::sha256 work_input()const;
 
-      const aname_type& get_worker_account()const { return worker_account; }
+      const account_name_type& get_worker_account()const { return worker_account; }
 
       /** there is no need to verify authority, the proof of work is sufficient */
-      void get_required_active_authorities( flat_set<aname_type>& a )const{  }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{  }
    };
 
    struct pow2_input
    {
-      aname_type            worker_account;
+      account_name_type worker_account;
       block_id_type     prev_block;
       uint64_t          nonce = 0;
    };
@@ -653,20 +662,20 @@ namespace steemit { namespace chain {
       pow2_input        input;
       uint32_t          pow_summary = 0;
 
-      void create( const block_id_type& prev_block, const aname_type& account_name, uint64_t nonce );
+      void create( const block_id_type& prev_block, const account_name_type& account_name, uint64_t nonce );
       void validate()const;
    };
 
    struct pow2_operation : public base_operation
    {
-      static_variant<pow2>      work;
-      optional<public_key_type> new_owner_key;
-      chain_properties          props;
+      static_variant< pow2 >        work;
+      optional< public_key_type >   new_owner_key;
+      chain_properties              props;
 
       void validate()const;
 
       /** there is no need to verify authority, the proof of work is sufficient */
-      void get_required_active_authorities( flat_set<aname_type>& a )const
+      void get_required_active_authorities( flat_set<account_name_type>& a )const
       {
          if( !new_owner_key )
          {
@@ -699,9 +708,9 @@ namespace steemit { namespace chain {
     */
    struct report_over_production_operation : public base_operation
    {
-      aname_type              reporter;
-      signed_block_header first_block;
-      signed_block_header second_block;
+      account_name_type    reporter;
+      signed_block_header  first_block;
+      signed_block_header  second_block;
 
       void validate()const;
    };
@@ -735,16 +744,16 @@ namespace steemit { namespace chain {
     */
    struct request_account_recovery_operation : public base_operation
    {
-      aname_type            recovery_account;       ///< The recovery account is listed as the recovery account on the account to recover.
+      account_name_type recovery_account;       ///< The recovery account is listed as the recovery account on the account to recover.
 
-      aname_type            account_to_recover;     ///< The account to recover. This is likely due to a compromised owner authority.
+      account_name_type account_to_recover;     ///< The account to recover. This is likely due to a compromised owner authority.
 
       authority         new_owner_authority;    ///< The new owner authority the account to recover wishes to have. This is secret
                                                 ///< known by the account to recover and will be confirmed in a recover_account_operation
 
       extensions_type   extensions;             ///< Extensions. Not currently used.
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( recovery_account ); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert( recovery_account ); }
 
       void validate() const;
    };
@@ -788,7 +797,7 @@ namespace steemit { namespace chain {
     */
    struct recover_account_operation : public base_operation
    {
-      aname_type            account_to_recover;        ///< The account to be recovered
+      account_name_type account_to_recover;        ///< The account to be recovered
 
       authority         new_owner_authority;       ///< The new owner authority as specified in the request account recovery operation.
 
@@ -810,16 +819,12 @@ namespace steemit { namespace chain {
     *  new_owner_authority after 60 days of inactivity.
     */
    struct reset_account_operation : public base_operation {
-      aname_type    reset_account;
-      aname_type    account_to_reset;
-      authority new_owner_authority;
+      account_name_type reset_account;
+      account_name_type account_to_reset;
+      authority         new_owner_authority;
 
-
+      void get_required_active_authorities( flat_set<account_name_type>& a )const { a.insert( reset_account ); }
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const
-      {
-         a.insert( reset_account );
-      }
    };
 
    /**
@@ -827,13 +832,11 @@ namespace steemit { namespace chain {
     * to execute the 'reset_account_operation' after 60 days.
     */
    struct set_reset_account_operation : public base_operation {
-      aname_type account;
-      aname_type reset_account;
+      account_name_type account;
+      account_name_type reset_account;
+
+      void get_required_active_authorities( flat_set<account_name_type>& a )const { a.insert( account ); }
       void validate()const;
-      void get_required_active_authorities( flat_set<aname_type>& a )const
-      {
-         a.insert( account );
-      }
    };
 
 
@@ -857,53 +860,49 @@ namespace steemit { namespace chain {
     */
    struct change_recovery_account_operation : public base_operation
    {
-      aname_type            account_to_recover;     ///< The account that would be recovered in case of compromise
-
-      aname_type            new_recovery_account;   ///< The account that creates the recover request
-
+      account_name_type account_to_recover;     ///< The account that would be recovered in case of compromise
+      account_name_type new_recovery_account;   ///< The account that creates the recover request
       extensions_type   extensions;             ///< Extensions. Not currently used.
 
-      void get_required_owner_authorities( flat_set<aname_type>& a )const{ a.insert( account_to_recover ); }
-
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const{ a.insert( account_to_recover ); }
       void validate() const;
    };
 
    struct transfer_to_savings_operation : public base_operation {
-      aname_type from;
-      aname_type to;
-      asset  amount;
-      string memo;
+      account_name_type from;
+      account_name_type to;
+      asset             amount;
+      string            memo;
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( from ); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert( from ); }
       void validate() const;
    };
 
    struct transfer_from_savings_operation : public base_operation {
-      aname_type   from;
-      uint32_t request_id = 0;
-      aname_type   to;
-      asset    amount;
-      string   memo;
+      account_name_type from;
+      uint32_t          request_id = 0;
+      account_name_type to;
+      asset             amount;
+      string            memo;
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( from ); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert( from ); }
       void validate() const;
    };
 
    struct cancel_transfer_from_savings_operation : public base_operation {
-      aname_type   from;
-      uint32_t request_id = 0;
+      account_name_type from;
+      uint32_t          request_id = 0;
 
-      void get_required_active_authorities( flat_set<aname_type>& a )const{ a.insert( from ); }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert( from ); }
       void validate() const;
    };
 
    struct decline_voting_rights_operation : public base_operation
    {
-      aname_type account;
-      bool   decline = true;
+      account_name_type account;
+      bool              decline = true;
 
-      void get_required_owner_authorities( flat_set<aname_type>& a )const{ a.insert( account ); }
-
+      void get_required_owner_authorities( flat_set<account_name_type>& a )const{ a.insert( account ); }
       void validate() const;
    };
 } } // steemit::chain
