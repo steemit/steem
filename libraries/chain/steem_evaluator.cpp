@@ -214,7 +214,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
    }
 
    /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_6__80 ) && comment.parent_author.size() != 0 )
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_6__80 ) && comment.parent_author != STEEMIT_ROOT_POST_PARENT )
    {
       auto parent = &db().get_comment( comment.parent_author, comment.parent_permlink );
       auto now = db().head_block_time();
@@ -225,7 +225,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
             p.active = now;
          });
    #ifndef IS_LOW_MEM
-         if( parent->parent_author.size() )
+         if( parent->parent_author != STEEMIT_ROOT_POST_PARENT )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
          else
    #endif
@@ -286,7 +286,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    comment_id_type id;
 
    const comment_object* parent = nullptr;
-   if( o.parent_author.size() != 0 ) {
+   if( o.parent_author != STEEMIT_ROOT_POST_PARENT ) {
       parent = &db().get_comment( o.parent_author, o.parent_permlink );
       FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
@@ -294,7 +294,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      if( o.parent_author.size() != 0 )
+      if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
       {
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
          if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177) )
@@ -303,14 +303,14 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
       {
-         if( o.parent_author.size() == 0 )
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
              FC_ASSERT( (now - auth.last_root_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_root_post",auth.last_root_post) );
          else
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
       }
       else if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) )
       {
-         if( o.parent_author.size() == 0 )
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
          else
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
@@ -323,7 +323,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       uint16_t reward_weight = STEEMIT_100_PERCENT;
       uint64_t post_bandwidth = auth.post_bandwidth;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author.size() == 0 )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author == STEEMIT_ROOT_POST_PARENT )
       {
          uint64_t post_delta_time = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
          uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
@@ -332,7 +332,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       db().modify( auth, [&]( account_object& a ) {
-         if( o.parent_author.size() == 0 )
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             a.last_root_post = now;
             a.post_bandwidth = uint32_t( post_bandwidth );
@@ -358,7 +358,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.max_cashout_time = fc::time_point_sec::maximum();
          com.reward_weight = reward_weight;
 
-         if ( o.parent_author.size() == 0 )
+         if ( o.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             com.parent_author = "";
             com.parent_permlink = o.parent_permlink;
@@ -413,7 +413,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             p.active = now;
          });
 #ifndef IS_LOW_MEM
-         if( parent->parent_author.size() )
+         if( parent->parent_author != STEEMIT_ROOT_POST_PARENT )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
          else
 #endif

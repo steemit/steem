@@ -992,10 +992,10 @@ set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
    return my->_remote_db->lookup_accounts(lowerbound, limit);
 }
 
-vector<aname_type> wallet_api::get_miner_queue()const {
+vector<account_name_type> wallet_api::get_miner_queue()const {
    return my->_remote_db->get_miner_queue();
 }
-vector<aname_type> wallet_api::get_active_witnesses()const {
+vector<account_name_type> wallet_api::get_active_witnesses()const {
    return my->_remote_db->get_active_witnesses();
 }
 

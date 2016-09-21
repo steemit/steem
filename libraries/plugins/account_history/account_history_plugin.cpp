@@ -124,7 +124,7 @@ struct operation_visitor_filter : operation_visitor {
 
 void account_history_plugin_impl::on_operation( const operation_notification& note )
 {
-   flat_set<aname_type> impacted;
+   flat_set<account_name_type> impacted;
    steemit::chain::database& db = database();
 
    const auto& hist_idx = db.get_index_type<account_history_index>().indices().get<by_account>();

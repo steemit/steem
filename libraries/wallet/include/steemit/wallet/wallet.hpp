@@ -144,12 +144,12 @@ class wallet_api
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
        */
-      vector<aname_type>                      get_active_witnesses()const;
+      vector<account_name_type>                      get_active_witnesses()const;
 
       /**
        * Returns the queue of pow miners waiting to produce blocks.
        */
-      vector<aname_type>                      get_miner_queue()const;
+      vector<account_name_type>                      get_miner_queue()const;
 
       /**
        * Returns the state info associated with the URL

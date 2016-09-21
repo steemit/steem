@@ -1242,7 +1242,7 @@ void database::update_witness_schedule4()
          if( hf_itr->second >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
          {
             const auto& hfp = hardfork_property_id_type()( *this );
-            if( hfp.next_hardfork != std::get<0>( hf_itr->first ) || 
+            if( hfp.next_hardfork != std::get<0>( hf_itr->first ) ||
                 hfp.next_hardfork_time != std::get<1>( hf_itr->first ) ) {
 
                modify( hfp, [&]( hardfork_property_object& hpo )
@@ -1963,7 +1963,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          {
             share_type discussion_tokens = 0;
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
-            if( comment.parent_author.size() == 0 )
+            if( comment.parent_author == STEEMIT_ROOT_POST_PARENT )
                discussion_tokens = ( ( reward_tokens * get_discussion_rewards_percent() ) / STEEMIT_100_PERCENT ).to_uint64();
 
             share_type author_tokens = reward_tokens.to_uint64() - discussion_tokens - curation_tokens;
@@ -2034,7 +2034,7 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.total_vote_weight = 0;
          c.max_cashout_time = fc::time_point_sec::maximum();
 
-         if( c.parent_author.size() == 0 )
+         if( c.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
                c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
@@ -2981,7 +2981,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
    }
-   flat_set<aname_type> required; vector<authority> other;
+   flat_set<account_name_type> required; vector<authority> other;
    trx.get_required_authorities( required, required, required, other );
 
    auto trx_size = fc::raw::pack_size(trx);
@@ -3861,7 +3861,7 @@ void database::apply_hardfork( uint32_t hardfork )
                // At the hardfork time, all new posts with no votes get their cashout time set to +12 hrs from head block time.
                // All posts with a payout get their cashout time set to +30 days. This hardfork takes place within 30 days
                // initial payout so we don't have to handle the case of posts that should be frozen that aren't
-               if( itr->parent_author.size() == 0 )
+               if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
                {
                   // Post has not been paid out and has no votes (cashout_time == 0 === net_rshares == 0, under current semmantics)
                   if( itr->last_payout == fc::time_point_sec::min() && itr->cashout_time == fc::time_point_sec::maximum() )
@@ -4036,7 +4036,7 @@ void database::validate_invariants()const
             auto delta = calculate_vshares( itr->net_rshares.value );
             total_rshares2 += delta;
          }
-         if( itr->parent_author.size() == 0 )
+         if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
             total_children_rshares2 += itr->children_rshares2;
       }
 
@@ -4136,7 +4136,7 @@ void database::retally_comment_children()
 
    for( auto itr = cidx.begin(); itr != cidx.end(); ++itr )
    {
-      if( itr->parent_author.size() )
+      if( itr->parent_author != STEEMIT_ROOT_POST_PARENT )
       {
 // Low memory nodes only need immediate child count, full nodes track total children
 #ifdef IS_LOW_MEM
@@ -4153,7 +4153,7 @@ void database::retally_comment_children()
                c.children++;
             });
 
-            if( parent->parent_author.size() )
+            if( parent->parent_author != STEEMIT_ROOT_POST_PARENT )
                parent = &get_comment( parent->parent_author, parent->parent_permlink );
             else
                parent = nullptr;

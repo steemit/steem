@@ -36,11 +36,11 @@ using namespace fc;
 
 void operation_get_impacted_accounts(
    const steemit::chain::operation& op,
-   fc::flat_set<chain::aname_type>& result );
+   fc::flat_set<chain::account_name_type>& result );
 
 void transaction_get_impacted_accounts(
    const steemit::chain::transaction& tx,
-   fc::flat_set<chain::aname_type>& result
+   fc::flat_set<chain::account_name_type>& result
    );
 
 } } // steemit::app
