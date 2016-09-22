@@ -51,6 +51,7 @@ class feed_object : public abstract_object< feed_object >
 
       account_id_type account;
       account_id_type first_reblogged_by;
+      time_point_sec  first_reblogged_on;
       comment_id_type comment;
       uint32_t        reblogs;
       uint32_t        account_feed_id = 0;
@@ -64,6 +65,7 @@ class blog_object : public abstract_object< blog_object >
 
       account_id_type account;
       comment_id_type comment;
+      time_point_sec  reblogged_on;
       uint32_t        blog_feed_id = 0;
 };
 
@@ -196,6 +198,6 @@ typedef graphene::db::generic_index< reputation_object,  reputation_multi_index_
 FC_REFLECT_ENUM( steemit::follow::follow_type, (undefined)(blog)(ignore) )
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) )
-FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(first_reblogged_by)(comment)(reblogs)(account_feed_id) )
-FC_REFLECT_DERIVED( steemit::follow::blog_object, (graphene::db::object), (account)(comment)(blog_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(first_reblogged_by)(first_reblogged_on)(comment)(reblogs)(account_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::blog_object, (graphene::db::object), (account)(comment)(reblogged_on)(blog_feed_id) )
 FC_REFLECT_DERIVED( steemit::follow::reputation_object, (graphene::db::object), (account)(reputation) )

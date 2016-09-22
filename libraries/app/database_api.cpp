@@ -1292,7 +1292,10 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
       {
          result.push_back( get_discussion( feed_itr->comment ) );
          if( feed_itr->first_reblogged_by != account_id_type() )
+         {
             result.back().first_reblogged_by = feed_itr->first_reblogged_by( my->_db ).name;
+            result.back().first_reblogged_on = feed_itr->first_reblogged_on;
+         }
       }
       catch ( const fc::exception& e )
       {
@@ -1334,6 +1337,10 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
       try
       {
          result.push_back( get_discussion( blog_itr->comment ) );
+         if( blog_itr->reblogged_on > time_point_sec() )
+         {
+            result.back().first_reblogged_on = blog_itr->reblogged_on;
+         }
       }
       catch ( const fc::exception& e )
       {
@@ -1676,6 +1683,11 @@ state database_api::get_state( string path )const
                eacnt.blog->push_back( link );
                _state.content[ link ] = my->_db.get_comment( b.author, b.permlink );
                set_pending_payout( _state.content[ link ] );
+
+               if( b.reblog_on > time_point_sec() )
+               {
+                  _state.content[ link ].first_reblogged_on = b.reblog_on;
+               }
             }
          }
       }
@@ -1693,7 +1705,10 @@ state database_api::get_state( string path )const
                _state.content[ link ] = my->_db.get_comment( f.author, f.permlink );
                set_pending_payout( _state.content[ link ] );
                if( f.reblog_by.size() )
+               {
                   _state.content[link].first_reblogged_by = f.reblog_by;
+                  _state.content[link].first_reblogged_on = f.reblog_on;
+               }
             }
          }
       }

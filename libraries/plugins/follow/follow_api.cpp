@@ -94,7 +94,10 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
       entry.permlink = comment.permlink;
       entry.entry_id = itr->account_feed_id;
       if( itr->first_reblogged_by != account_id_type() )
+      {
          entry.reblog_by = itr->first_reblogged_by(db).name;
+         entry.reblog_on = itr->first_reblogged_on;
+      }
       results.push_back( entry );
 
       ++itr;
@@ -125,7 +128,10 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
       entry.comment = comment;
       entry.entry_id = itr->account_feed_id;
       if( itr->first_reblogged_by != account_id_type() )
+      {
          entry.reblog_by = itr->first_reblogged_by(db).name;
+         entry.reblog_on = itr->first_reblogged_on;
+      }
       results.push_back( entry );
 
       ++itr;
@@ -156,6 +162,7 @@ vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t
       entry.author = comment.author;
       entry.permlink = comment.permlink;
       entry.blog = account;
+      entry.reblog_on = itr->reblogged_on;
       entry.entry_id = itr->blog_feed_id;
 
       results.push_back( entry );
@@ -187,6 +194,7 @@ vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t
       comment_blog_entry entry;
       entry.comment = comment;
       entry.blog = account;
+      entry.reblog_on = itr->reblogged_on;
       entry.entry_id = itr->blog_feed_id;
 
       results.push_back( entry );

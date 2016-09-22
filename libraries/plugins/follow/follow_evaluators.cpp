@@ -89,6 +89,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       {
          b.account = reblog_account.id;
          b.comment = c.id;
+         b.reblogged_on = db.head_block_time();
          b.blog_feed_id = next_blog_id;
       });
 
@@ -118,6 +119,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                {
                   f.account = itr->follower;
                   f.first_reblogged_by = reblog_account.id;
+                  f.first_reblogged_on = db.head_block_time();
                   f.comment = c.id;
                   f.reblogs = 1;
                   f.account_feed_id = next_id;
