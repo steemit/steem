@@ -5,6 +5,7 @@
 #include <steemit/chain/compound.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/db_with.hpp>
+#include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/history_object.hpp>
@@ -2550,19 +2551,19 @@ void database::initialize_evaluators()
     _my->_evaluator_registry.register_evaluator<set_reset_account_evaluator>();
 }
 
-void database::set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry )
+void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
 {
-   bool inserted = _custom_json_evaluators.emplace( id, registry ).second;
+   bool inserted = _custom_operation_interpreters.emplace( id, registry ).second;
    // This assert triggering means we're mis-configured (multiple registrations of custom JSON evaluator for same ID)
    FC_ASSERT( inserted );
 }
 
-std::shared_ptr< generic_json_evaluator_registry > database::get_custom_json_evaluator( const std::string& id )
+std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evaluator( const std::string& id )
 {
-   auto it = _custom_json_evaluators.find( id );
-   if( it != _custom_json_evaluators.end() )
+   auto it = _custom_operation_interpreters.find( id );
+   if( it != _custom_operation_interpreters.end() )
       return it->second;
-   return std::shared_ptr< generic_json_evaluator_registry >();
+   return std::shared_ptr< custom_operation_interpreter >();
 }
 
 void database::initialize_indexes()

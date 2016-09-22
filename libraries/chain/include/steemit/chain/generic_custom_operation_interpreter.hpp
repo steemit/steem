@@ -2,7 +2,8 @@
 #pragma once
 
 #include <steemit/chain/evaluator.hpp>
-#include <steemit/chain/generic_json_evaluator_registry.hpp>
+#include <steemit/chain/evaluator_registry.hpp>
+#include <steemit/chain/custom_operation_interpreter.hpp>
 #include <steemit/chain/protocol/steem_operations.hpp>
 #include <steemit/chain/protocol/operation_util_impl.hpp>
 
@@ -16,11 +17,11 @@ namespace steemit { namespace chain {
 class database;
 
 template< typename CustomOperationType >
-class json_evaluator_registry
-   : public generic_json_evaluator_registry, public evaluator_registry< CustomOperationType >
+class generic_custom_operation_interpreter
+   : public custom_operation_interpreter, public evaluator_registry< CustomOperationType >
 {
    public:
-      json_evaluator_registry( database& db ) : evaluator_registry< CustomOperationType >(db) {}
+      generic_custom_operation_interpreter( database& db ) : evaluator_registry< CustomOperationType >(db) {}
 
       void apply_operations( const vector< CustomOperationType >& custom_operations, const operation& outer_o )
       {

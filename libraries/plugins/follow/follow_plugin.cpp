@@ -6,7 +6,7 @@
 
 #include <steemit/chain/config.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/json_evaluator_registry.hpp>
+#include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 #include <steemit/chain/account_object.hpp>
@@ -38,20 +38,20 @@ class follow_plugin_impl
       void post_operation( const operation_notification& op_obj );
 
       follow_plugin&                                                                         _self;
-      std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
+      std::shared_ptr< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > > _custom_operation_interpreter;
 };
 
 void follow_plugin_impl::plugin_initialize()
 {
    // Each plugin needs its own evaluator registry.
-   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
+   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > >( database() );
 
    // Add each operation evaluator to the registry
-   _evaluator_registry->register_evaluator<follow_evaluator>( &_self );
-   _evaluator_registry->register_evaluator<reblog_evaluator>( &_self );
+   _custom_operation_interpreter->register_evaluator<follow_evaluator>( &_self );
+   _custom_operation_interpreter->register_evaluator<reblog_evaluator>( &_self );
 
    // Add the registry to the database so the database can delegate custom ops to the plugin
-   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
+   database().set_custom_operation_interpreter( _self.plugin_name(), _custom_operation_interpreter );
 }
 
 struct pre_operation_visitor
@@ -165,7 +165,7 @@ struct post_operation_visitor
 
             auto new_fop = follow_plugin_operation( fop );
             new_cop.json = fc::json::to_string( new_fop );
-            std::shared_ptr< generic_json_evaluator_registry > eval = _plugin.database().get_custom_json_evaluator( op.id );
+            std::shared_ptr< custom_operation_interpreter > eval = _plugin.database().get_custom_json_evaluator( op.id );
             eval->apply( new_cop );
          }
       }

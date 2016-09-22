@@ -1,5 +1,5 @@
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/generic_json_evaluator_registry.hpp>
+#include <steemit/chain/custom_operation_interpreter.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/witness_objects.hpp>
@@ -1270,7 +1270,7 @@ void custom_evaluator::do_apply( const custom_operation& o ){}
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
    database& d = db();
-   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
       return;
 
@@ -1295,7 +1295,7 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__317 ) );
 
    database& d = db();
-   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
       return;
 
