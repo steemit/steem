@@ -1,11 +1,25 @@
 #pragma once
-
 #include <boost/interprocess/managed_mapped_file.hpp>
+#include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/containers/set.hpp>
+#include <boost/interprocess/containers/deque.hpp>
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/filesystem.hpp>
+
+#include <typeindex>
 
 namespace graphene { namespace db2 {
 
+   namespace bip = boost::interprocess;
+   namespace bfs = boost::filesystem;
+   using std::unique_ptr;
+   using std::vector;
+   
+
    template<typename T>
-   using allocator = boost::interprocess::allocator<T, boost::interprocess::managed_mapped_file::segment_manager>;
+   using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
+   
+   class database; 
 
    /**
     *  Object ID type that includes the type of the object it references
@@ -13,9 +27,7 @@ namespace graphene { namespace db2 {
    template<typename T>
    struct oid {
       oid( int64_t i = 0 ):_id(i){}
-
-      const T& operator()( const database& db )const { return db.get<T>( _id ); }
-
+      const T& operator()( const database& db )const;
       int64_t _id = 0;
    };
 
@@ -49,7 +61,7 @@ namespace graphene { namespace db2 {
       public:
          typedef bip::managed_mapped_file::segment_manager             segment_manager_type;
          typedef MultiIndexType                                        index_type;
-         typedef index_type::value_type                                value_type;
+         typedef typename index_type::value_type                       value_type;
          typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
 
          generic_index( allocator<value_type> a )
@@ -64,7 +76,7 @@ namespace graphene { namespace db2 {
                c( v );
             };
 
-            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() ) 
+            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() ); 
             if( insert_result.second ) {
                ++_next_id;
 
@@ -88,26 +100,21 @@ namespace graphene { namespace db2 {
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
-         template<typename CompatibleKey&>
-         const object_type* find( CompatibleKey& key )const {
-            auto itr = _indices.find( key );
+         template<typename CompatibleKey>
+         const value_type* find( CompatibleKey&& key )const {
+            auto itr = _indices.find( std::forward<CompatibleKey>(key) );
             if( itr != _indices.end() ) return *itr;
             return nullptr;
          }
 
          const index_type& indices()const { return _indices; }
 
-
-         int64_t get_next_id()const override              { return _next_id; }
-         void    use_next_id()override                    { ++_next_id;      }
-         void    set_next_id( int64_t id )override        { _next_id = id;   }
-
          class undo_state {
             public:
                typedef allocator< std::pair<int64_t, value_type> > id_value_allocator_type;
-               typedef allocator< int64_t> >                       id_allocator_type;
+               typedef allocator< int64_t >                        id_allocator_type;
 
-               undo_state( allocator<undo_type> al )
+               undo_state( allocator<value_type> al )
                :old_values( id_value_allocator_type( al.get_segment_manager() ) ), 
                 removed_values( id_value_allocator_type( al.get_segment_manager() ) ), 
                 new_ids( id_allocator_type( al.get_segment_manager() ) ){}
@@ -175,7 +182,8 @@ namespace graphene { namespace db2 {
          bool enabled()const { return _stack.size(); }
 
          /**
-          *  Restores the state to how it was prior to the current session
+          *  Restores the state to how it was prior to the current session discarding all changes
+          *  made between the last version and the current version.
           */
          void undo() {
             if( !enabled() ) return;
@@ -202,9 +210,12 @@ namespace graphene { namespace db2 {
          }
 
          /**
-          *  Combines most recent undo state with the prior undo state
+          *  This method works similar to git squash, it merges the change set from the two most
+          *  recent version numbers into one version number (reducing the head version number)
+          *
+          *  This method does not change the state of the index, only the state of the undo buffer.
           */
-         void merge() {
+         void squash() {
             if( !enabled() ) return;
             if( _stack.size() == 1 )
                _stack.pop_front();
@@ -212,17 +223,17 @@ namespace graphene { namespace db2 {
             _stack.pop_back();
 
             auto& state = _stack.back();
-            auto& prev_state = _stack[stack.size()-2];
+            auto& prev_state = _stack[_stack.size()-2];
 
             for( const auto& item : state.old_values ) {
                if( prev_state.new_ids.find( item.second.id ) != prev_state.new_ids.end() )
                   continue;
-               if( prev_state.old_values.find(obj.second->id) != prev_state.old_values.end() )
+               if( prev_state.old_values.find( item.second->id) != prev_state.old_values.end() )
                   continue;
                // del+upd -> N/A
-               assert( prev_state.removed_values.find(obj.second->id) == prev_state.removed_values.end() );
+               assert( prev_state.removed_values.find(item.second->id) == prev_state.removed_values.end() );
                // nop+upd(was=Y) -> upd(was=Y), type B
-               prev_state.old_values.emplace( std::move(item) ); //[obj.second->id] = std::move(item.second);
+               prev_state.old_values.emplace( std::move(item) ); //[item.second->id] = std::move(item.second);
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
@@ -242,7 +253,7 @@ namespace graphene { namespace db2 {
                if( it != prev_state.old_values.end() )
                {
                   // upd(was=X) + del(was=Y) -> del(was=X)
-                  prev_state.removed_values.emplace( *[obj.second->id] = std::move(it->second);
+                  prev_state.removed_values.emplace( std::move(it->second) );
                   prev_state.old_values.erase(obj.second->id);
                   continue;
                }
@@ -275,7 +286,7 @@ namespace graphene { namespace db2 {
             if( itr != head.old_values.end() ) 
                return;
 
-            state.old_values.emplace( std::pair<int64_t, const value_type&>( v.id, v ) );
+            head.old_values.emplace( std::pair<int64_t, const value_type&>( v.id, v ) );
          }
 
          void on_remove( const value_type& v ) {
@@ -310,7 +321,7 @@ namespace graphene { namespace db2 {
          boost::interprocess::deque< undo_state, allocator<undo_state> > _stack;
 
          /**
-          *  Each new session increments the version, a merge will decrement the version by combining
+          *  Each new session increments the version, a squash will decrement the version by combining
           *  the two most recent versions into one version. 
           *
           *  Commit will discard all versions prior to the committed version.
@@ -323,21 +334,22 @@ namespace graphene { namespace db2 {
    };
 
    class abstract_session {
-      virtual ~abstract_session();
-      virtual void push() = 0;
-      virtual void merge() = 0;
-      virtual void undo()  = 0;
-      virtual int64_t version()const  = 0;
+      public:
+         virtual ~abstract_session(){};
+         virtual void push()             = 0;
+         virtual void squash()           = 0;
+         virtual void undo()             = 0;
+         virtual int64_t version()const  = 0;
    };
 
    template<typename SessionType>
-   class session_impl : public abstract_index 
+   class session_impl : public abstract_session
    {
       public:
          session_impl( SessionType&& s ):_session( std::move( s ) ){}
 
          virtual void push() override  { _session.push();  }
-         virtual void merge() override { _session.merge(); }
+         virtual void squash() override{ _session.squash(); }
          virtual void undo() override  { _session.undo();  }
          virtual int64_t version()const override  { return _session.version();  }
       private:
@@ -371,7 +383,7 @@ namespace graphene { namespace db2 {
    template<typename IndexType>
    class index : index_impl<IndexType> {
       public:
-         index( IndexType& i ):index_impl( i ){}
+         index( IndexType& i ):index_impl<IndexType>( i ){}
    };
 
 
@@ -381,44 +393,17 @@ namespace graphene { namespace db2 {
    class database 
    {
       public:
-         typedef allocator< std::pair<int32_t,offset_ptr<void>> > index_pair_allocator;
-         typedef flat_map<int32_t, offset_ptr<void>, index_pair_allocator >* index_map_type; 
-         
-         void open( const fc::path& file ) {
-            auto abs_path = fc::absolute( file );
-            _segment.reset( new bip::managed_mapped_file( abs_path.generic_string(), 1024*1024*1024*64 ) );
-            _mutex.reset( new bip::named_mutex( bip::open_or_create, abs_path.generic_string() ) );
-            _mutex = _segment.find_or_construct< bip::interprocess_mutex >( "global_mutex" )();
-            //                 bip::allocator_type< bip::interprocess_mutex, bip::managed_mapped_file::segment_manager>( *_segment ) );
-         }
-
-         template<typename MultiIndexType>
-         generic_index<MultiIndexType>& add_index() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType> index_type;
-             typedef index_type::allocator_type    index_alloc;
-             auto idx_ptr =  _segment.find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
-                                                         ( index_alloc( _segment ) );
-             _index_map[ type_id ] = new index<index_type>( *idx_ptr );
-         }
+         void open( const bfs::path& file );
 
          struct session {
             public:
-               session( session&& s ):_index_sessions( std::move(s) ){}
+               session( session&& s ):_index_sessions( std::move(s._index_sessions) ){}
+               session( vector<std::unique_ptr<abstract_session>>&& s ):_index_sessions( std::move(s) ){}
 
-               void push(){
-                  for( auto& i : _index_sessions ) i->push();
-               }
-               void merge(){
-                  for( auto& i : _index_sessions ) i->merge();
-               }
-               void undo(){
-                  for( auto& i : _index_sessions ) i->undo();
-               }
-
-               int64_t version()const {
-                  return _index_sessions[0]->version();
-               }
+               void push(){ for( auto& i : _index_sessions ) i->push(); }
+               void squash(){ for( auto& i : _index_sessions ) i->squash(); }
+               void undo(){ for( auto& i : _index_sessions ) i->undo(); }
+               int64_t version()const { return _index_sessions[0]->version(); }
 
             private:
                friend class database;
@@ -427,64 +412,93 @@ namespace graphene { namespace db2 {
                vector< std::unique_ptr<abstract_session> > _index_sessions;
          };
 
-         session start_undo_session( bool enabled ) {
-            if( enabled ) {
-               vector< std::unique_ptr<abstract_session> > _sub_sessions;
-               _sub_sessions.reserve( _index_map.size() );
-               for( auto& item : _index_map ) {
-                  _sub_sessions.push_back( item->second->start_undo_session( enabled ) );
-               }
-            } else {
-               return session();
-            }
+         session start_undo_session( bool enabled );
+
+
+
+         template<typename MultiIndexType>
+         generic_index<MultiIndexType>& add_index() {
+             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+             typedef generic_index<MultiIndexType>          index_type;
+             typedef typename index_type::allocator_type    index_alloc;
+             auto idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
+                                                         ( index_alloc( _segment ) );
+             auto new_index = new index<index_type>( *idx_ptr );
+             _index_map[ type_id ].reset( new_index );
+             _index_list.push_back( new_index );
          }
 
          template<typename MultiIndexType>
-         const generic_index<MultiIndexType>& get()const {
+         const generic_index<MultiIndexType>& get_index()const {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
-            return *id::index_type_ptr( _index_map[IndexType::type_id]->get() );
+            return *index_type_ptr( _index_map[index_type::type_id]->get() );
+         }
+
+         template<typename ObjectType, typename CompatibleKey>
+         const ObjectType* find( CompatibleKey&& key )const {
+            typedef typename get_index_type<ObjectType>::type index_type;
+            const auto& idx = get_index<index_type>().indicies();
+            auto itr = idx.find( std::forward<CompatibleKey>(key) );
+            if( itr == idx.end() ) return nullptr;
+            return &*itr;
+         }
+
+         template<typename ObjectType, typename CompatibleKey>
+         const ObjectType& get( CompatibleKey&& key )const {
+            return *find( std::forward<CompatibleKey>(key) );
          }
 
          template<typename ObjectType, typename Modifier>
          void modify( const ObjectType& obj, Modifier&& m ) {
-            typedef get_index_type<ObjectType>::type index_type;
+            typedef typename get_index_type<ObjectType>::type index_type;
             get<index_type>().modify( obj, m );
          }
 
          template<typename ObjectType, typename CompatibleKey>
          const ObjectType& get( CompatibleKey&& key ) {
-            typedef get_index_type<ObjectType>::type index_type;
+            typedef typename get_index_type<ObjectType>::type index_type;
             return get<index_type>().get( std::forward<CompatibleKey>(key) );
          }
 
          template<typename ObjectType, typename CompatibleKey>
          const ObjectType* find( CompatibleKey&& key ) {
-            typedef get_index_type<ObjectType>::type index_type;
+            typedef typename get_index_type<ObjectType>::type index_type;
             return get<index_type>().find( std::forward<CompatibleKey>(key) );
          }
 
          template<typename ObjectType>
          void remove( const ObjectType& obj ) {
-            typedef get_index_type<ObjectType>::type index_type;
+            typedef typename get_index_type<ObjectType>::type index_type;
             return get<index_type>().remove( obj );
          }
 
          template<typename ObjectType, typename Constructor>
          const ObjectType& create( Constructor&& con ) {
-            typedef get_index_type<ObjectType>::type index_type;
-            return index_type.emplace( std::forward<Constructor>(con) );
+            typedef typename get_index_type<ObjectType>::type index_type;
+            return get<index_type>().emplace( std::forward<Constructor>(con) );
          }
 
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }
 
       private:
-         unique_ptr<bip::managed_mapped_file>           _segment;
+         unique_ptr<bip::managed_mapped_file>            _segment;
          bip::interprocess_mutex*                        _mutex;
-         flat_map<uint16_t,unique_ptr<abstract_index>>  _index_map;
+
+         /**
+          * This is a sparse list of known indicies kept to accelerate creation of undo sessions
+          */
+         vector<abstract_index*>                        _index_list;
+         /**
+          * This is a full map (size 2^16) of all possible index designed for constant time lookup
+          */
+         vector<unique_ptr<abstract_index>>             _index_map;
    };
 
-}
+
+   template<typename T>
+   const T& oid<T>::operator()( const database& db )const { return db.get<T>( _id ); }
+} } // namepsace graphene::db2
 
 /*
 struct example_object : public object<1,example_object> {
