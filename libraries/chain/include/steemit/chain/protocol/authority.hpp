@@ -76,9 +76,12 @@ namespace steemit { namespace chain {
          }
       };
 
+      typedef flat_map<account_name_type,weight_type,string_less>  account_authority_map;
+      typedef flat_map<public_key_type,weight_type>                key_authority_map;
+
       uint32_t                                             weight_threshold = 0;
-      flat_map<account_name_type,weight_type,string_less>  account_auths;
-      flat_map<public_key_type,weight_type>                key_auths;
+      account_authority_map                                account_auths;
+      key_authority_map                                    key_auths;
 
       void validate()const;
    };
@@ -88,9 +91,13 @@ namespace steemit { namespace chain {
     *  shared memory storage.  This requires all dynamic fields to be allocated with the same allocator
     *  that allocated the shared_authority.
     */
-   struct shared_authority {
+   struct shared_authority
+   {
       typedef bip::allocator<std::pair<account_name_type,weight_type>, bip::managed_mapped_file::segment_manager> account_pair_allocator_type;
       typedef bip::allocator<std::pair<public_key_type,weight_type>, bip::managed_mapped_file::segment_manager> key_pair_allocator_type;
+
+      typedef bip::flat_map<account_name_type, weight_type, authority::string_less, account_pair_allocator_type> account_authority_map;
+      typedef bip::flat_map<public_key_type, weight_type, std::less<public_key_type>, key_pair_allocator_type> key_authority_map;
 
       template<typename Allocator>
       shared_authority( const authority& a, const Allocator& alloc )
@@ -109,7 +116,7 @@ namespace steemit { namespace chain {
 
       template<typename Allocator>
       shared_authority( const Allocator& alloc )
-      :account_auths( account_pair_allocator_type( alloc.get_segment_manager() )  ), 
+      :account_auths( account_pair_allocator_type( alloc.get_segment_manager() )  ),
        key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) ){}
 
       operator authority()const {
@@ -130,12 +137,12 @@ namespace steemit { namespace chain {
          for( const auto& item : a.key_auths )
             key_auths.insert( item );
          weight_threshold = a.weight_threshold;
-         return *this; 
+         return *this;
       }
 
       uint32_t                                                                                weight_threshold = 0;
-      bip::flat_map<account_name_type, weight_type, authority::string_less, account_pair_allocator_type>   account_auths;
-      bip::flat_map<public_key_type, weight_type, std::less<public_key_type>, key_pair_allocator_type> key_auths;
+      account_authority_map                                                                   account_auths;
+      key_authority_map                                                                       key_auths;
    };
 
 void add_authority_accounts(
@@ -177,6 +184,10 @@ bool is_valid_account_name( const string& name );
 
 } } // namespace steemit::chain
 
+FC_REFLECT_TYPENAME( steemit::chain::authority::account_authority_map)
+FC_REFLECT_TYPENAME( steemit::chain::authority::key_authority_map)
+FC_REFLECT_TYPENAME( steemit::chain::shared_authority::account_authority_map)
+FC_REFLECT_TYPENAME( steemit::chain::shared_authority::key_authority_map)
 FC_REFLECT( steemit::chain::authority, (weight_threshold)(account_auths)(key_auths) )
 FC_REFLECT( steemit::chain::shared_authority, (weight_threshold)(account_auths)(key_auths) )
 FC_REFLECT_ENUM( steemit::chain::authority::classification, (owner)(active)(key)(posting) )
