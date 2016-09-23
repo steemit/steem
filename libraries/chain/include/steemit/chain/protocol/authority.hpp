@@ -179,5 +179,4 @@ bool is_valid_account_name( const string& name );
 
 FC_REFLECT( steemit::chain::authority, (weight_threshold)(account_auths)(key_auths) )
 FC_REFLECT( steemit::chain::shared_authority, (weight_threshold)(account_auths)(key_auths) )
-FC_REFLECT_TYPENAME( steemit::chain::authority::classification )
 FC_REFLECT_ENUM( steemit::chain::authority::classification, (owner)(active)(key)(posting) )
