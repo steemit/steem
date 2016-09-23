@@ -315,7 +315,11 @@ FC_REFLECT_ENUM( steemit::chain::impl_object_type,
                  (impl_decline_voting_rights_request_object_type)
                )
 
+FC_REFLECT_TYPENAME( steemit::chain::account_name_type )
+FC_REFLECT_TYPENAME( steemit::chain::block_id_type )
 FC_REFLECT_TYPENAME( steemit::chain::share_type )
+FC_REFLECT_TYPENAME( steemit::chain::signature_type )
+FC_REFLECT_TYPENAME( steemit::chain::transaction_id_type )
 
 FC_REFLECT_TYPENAME( steemit::chain::account_id_type )
 FC_REFLECT_TYPENAME( steemit::chain::witness_id_type )
