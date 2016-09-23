@@ -96,6 +96,15 @@ namespace fc {
 struct book
 {
      typedef bip::allocator<book,bip::managed_mapped_file::segment_manager> allocator_type;
+
+     template<typename Constructor, typename Allocator>
+     book( Constructor&& c, const Allocator& al ) 
+     :name(al),author(al),pages(0),prize(0),
+     auth( bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )), 
+     deq( basic_string_allocator( al.get_segment_manager() ) )
+     {
+        c( *this );
+     }
       
      shared_string name;
      shared_string author;
@@ -145,11 +154,13 @@ int main(int argc, char** argv, char** envp)
    bip::managed_mapped_file seg( bip::open_or_create,"./book_container.db", 1024*100);
    bip::named_mutex mutex( bip::open_or_create,"./book_container.db");
 
+   /*
    book b( book::allocator_type( seg.get_segment_manager() ) );
    b.name = "test name";
    b.author = "test author";
    b.deq.push_back( shared_string( "hello world", basic_string_allocator( seg.get_segment_manager() )  ) );
    idump((b));
+   */
    book_container* pbc = seg.find_or_construct<book_container>("book container")( book_container::ctor_args_list(),
                                                                                   book_container::allocator_type(seg.get_segment_manager()));
 
@@ -157,15 +168,18 @@ int main(int argc, char** argv, char** envp)
       idump((item));
    }
 
-   b.pages = pbc->size();
-   b.auth = steemit::chain::authority( 1, "dan", pbc->size() );
-   pbc->insert(b);
+   //b.pages = pbc->size();
+   //b.auth = steemit::chain::authority( 1, "dan", pbc->size() );
+   pbc->emplace( [&]( book& b ) {
+                 b.name = "emplace name";
+                 b.pages = pbc->size();
+                }, book::allocator_type( seg.get_segment_manager() ) );
 
    bip::deque< book, book::allocator_type > * deq = seg.find_or_construct<bip::deque<book,book::allocator_type> >("book deque")( book_container::allocator_type(seg.get_segment_manager()));
    idump((deq->size()));
 
   // book c( b ); //book::allocator_type( seg.get_segment_manager() ) );
-   deq->push_back( b );
+  // deq->push_back( b );
 
 
    } catch ( const std::exception& e ) {
