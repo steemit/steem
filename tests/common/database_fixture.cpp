@@ -46,15 +46,16 @@ clean_database_fixture::clean_database_fixture()
 
    boost::program_options::variables_map options;
 
-   open_database();
-
    db_plugin->logging = false;
    ahplugin->plugin_initialize( options );
    db_plugin->plugin_initialize( options );
 
+   open_database();
+
    generate_block();
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );
    generate_block();
+
 
    //ahplugin->plugin_startup();
    db_plugin->plugin_startup();
@@ -101,11 +102,11 @@ live_database_fixture::live_database_fixture()
       _chain_dir = fc::current_path() / "test_blockchain";
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
-      db.open( _chain_dir );
-      graphene::time::now();
-
       auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
+
+      db.open( _chain_dir );
+      graphene::time::now();
 
       validate_database();
       generate_block();
