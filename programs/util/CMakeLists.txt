@@ -54,3 +54,15 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+
+add_executable( schema_test schema_test.cpp )
+target_link_libraries( schema_test
+                       PRIVATE steemit_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+
+install( TARGETS
+   schema_test
+
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)

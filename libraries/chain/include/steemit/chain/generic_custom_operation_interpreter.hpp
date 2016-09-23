@@ -7,6 +7,8 @@
 #include <steemit/chain/protocol/steem_operations.hpp>
 #include <steemit/chain/protocol/operation_util_impl.hpp>
 
+#include <graphene/db/schema.hpp>
+
 #include <fc/variant.hpp>
 
 #include <string>
@@ -100,6 +102,11 @@ class generic_custom_operation_interpreter
             apply_operations( custom_operations, operation( outer_o ) );
          }
          FC_CAPTURE_AND_RETHROW( (outer_o) )
+      }
+
+      virtual std::shared_ptr< graphene::db::abstract_schema > get_operation_schema() override
+      {
+         return graphene::db::get_schema_for_type< CustomOperationType >();
       }
 };
 

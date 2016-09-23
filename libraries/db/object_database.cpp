@@ -101,6 +101,10 @@ void object_database::open(const fc::path& data_dir)
 
 } FC_CAPTURE_AND_RETHROW( (data_dir) ) }
 
+void object_database::done_adding_indexes()
+{
+   _done_adding_indexes = true;
+}
 
 void object_database::pop_undo()
 { try {
@@ -120,6 +124,26 @@ void object_database::save_undo_add( const object& obj )
 void object_database::save_undo_remove(const object& obj)
 {
    _undo_db.on_remove( obj );
+}
+
+void object_database::get_object_schemas( vector< object_schema >& result )
+{
+   size_t m = _index.size();
+   for( size_t sid=0; sid<m; sid++)
+   {
+      size_t n = _index[sid].size();
+      for( size_t tid=0; tid<n; tid++ )
+      {
+         if( !_index[sid][tid] )
+            continue;
+         const auto& idx = get_index(sid, tid);
+         result.emplace_back();
+         result.back().space_id = sid;
+         result.back().type_id = tid;
+         result.back().schema = idx.get_schema();
+      }
+   }
+   return;
 }
 
 } } // namespace graphene::db

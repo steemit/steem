@@ -32,6 +32,9 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 
+#include <graphene/db/schema.hpp>
+#include <graphene/db/schema_impl.hpp>
+
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
