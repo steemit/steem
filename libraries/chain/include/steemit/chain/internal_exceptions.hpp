@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fc/exception/exception.hpp>
-#include <steemit/chain/exceptions.hpp>
+#include <steemit/protocol/exceptions.hpp>
 
 #define STEEMIT_DECLARE_INTERNAL_EXCEPTION( exc_name, seqnum, msg )  \
    FC_DECLARE_DERIVED_EXCEPTION(                                      \

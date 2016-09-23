@@ -27,8 +27,10 @@
 #include <steemit/app/api_access.hpp>
 #include <steemit/app/application.hpp>
 #include <steemit/app/impacted.hpp>
+
+#include <steemit/protocol/get_config.hpp>
+
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/get_config.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
 
@@ -195,7 +197,7 @@ namespace steemit { namespace app {
     fc::variant network_broadcast_api::broadcast_transaction_synchronous(const signed_transaction& trx)
     {
        promise<fc::variant>::ptr prom( new fc::promise<fc::variant>() );
-       broadcast_transaction_with_callback( [=]( const fc::variant& v ){ 
+       broadcast_transaction_with_callback( [=]( const fc::variant& v ){
           prom->set_value(v);
        }, trx );
        return future<fc::variant>(prom).wait();

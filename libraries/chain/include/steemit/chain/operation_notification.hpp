@@ -1,7 +1,8 @@
 #pragma once
 
-#include <steemit/chain/protocol/operations.hpp>
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/operations.hpp>
+
+#include <steemit/chain/steem_object_types.hpp>
 
 namespace steemit { namespace chain {
 

@@ -10,6 +10,8 @@ namespace steemit { namespace market_history {
 
 namespace detail {
 
+using steemit::protocol::fill_order_operation;
+
 class market_history_plugin_impl
 {
    public:

@@ -81,14 +81,14 @@ class  message_object : public abstract_object<message_object> {
       static const uint8_t space_id = PRIVATE_MESSAGE_SPACE_ID;
       static const uint8_t type_id  = message_object_type;
 
-      string             from;
-      string             to;
-      public_key_type    from_memo_key;
-      public_key_type    to_memo_key;
-      uint64_t           sent_time = 0; /// used as seed to secret generation
-      fc::time_point_sec receive_time; /// time received by blockchain
-      uint32_t           checksum = 0;
-      vector<char>       encrypted_message;
+      string                     from;
+      string                     to;
+      protocol::public_key_type  from_memo_key;
+      protocol::public_key_type  to_memo_key;
+      uint64_t                   sent_time = 0; /// used as seed to secret generation
+      fc::time_point_sec         receive_time; /// time received by blockchain
+      uint32_t                   checksum = 0;
+      vector<char>               encrypted_message;
 };
 
 struct extended_message_object : public message_object {

@@ -1,9 +1,10 @@
 #pragma once
 
-#include <steemit/chain/protocol/authority.hpp>
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/protocol/operations.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/authority.hpp>
+#include <steemit/protocol/operations.hpp>
+#include <steemit/protocol/steem_operations.hpp>
+
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
 #include <graphene/db/generic_index.hpp>

@@ -4,8 +4,8 @@
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 
-#include <steemit/chain/protocol/authority.hpp>
-#include <steemit/chain/protocol/sign_state.hpp>
+#include <steemit/protocol/authority.hpp>
+#include <steemit/protocol/sign_state.hpp>
 
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
@@ -42,7 +42,7 @@ void auth_util_api_impl::check_authority_signature( const check_authority_signat
 {
    std::shared_ptr< chain::database > db = app.chain_database();
    const chain::account_object& acct = db->get_account( args.account_name );
-   const chain::authority* auth = nullptr;
+   const protocol::authority* auth = nullptr;
    if( (args.level == "posting") || (args.level == "p") )
    {
       auth = &acct.posting;
@@ -59,15 +59,15 @@ void auth_util_api_impl::check_authority_signature( const check_authority_signat
    {
       FC_ASSERT( false, "invalid level specified" );
    }
-   flat_set< chain::public_key_type > signing_keys;
-   for( const chain::signature_type& sig : args.sigs )
+   flat_set< protocol::public_key_type > signing_keys;
+   for( const protocol::signature_type& sig : args.sigs )
    {
       result.keys.emplace_back( fc::ecc::public_key( sig, args.dig, true ) );
       signing_keys.insert( result.keys.back() );
    }
 
-   flat_set< chain::public_key_type > avail;
-   chain::sign_state ss( signing_keys, [&db]( const std::string& account_name ) -> const chain::authority*
+   flat_set< protocol::public_key_type > avail;
+   protocol::sign_state ss( signing_keys, [&db]( const std::string& account_name ) -> const protocol::authority*
    {
       return &db->get_account( account_name ).active;
    }, avail );

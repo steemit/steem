@@ -43,7 +43,7 @@
 #include <graphene/utilities/words.hpp>
 
 #include <steemit/app/api.hpp>
-#include <steemit/chain/protocol/base.hpp>
+#include <steemit/protocol/base.hpp>
 #include <steemit/follow/follow_operations.hpp>
 #include <steemit/private_message/private_message_operations.hpp>
 #include <steemit/wallet/wallet.hpp>

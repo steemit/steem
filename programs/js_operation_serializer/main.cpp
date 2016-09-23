@@ -21,12 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <steemit/chain/protocol/protocol.hpp>
+#include <steemit/protocol/protocol.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <iostream>
 
 using namespace steemit::chain;
+using namespace steemit::protocol;
+
+using std::string;
+using std::map;
 
 namespace detail_ns {
 
@@ -109,7 +113,7 @@ template<> struct js_name<fc::sha224>          { static std::string name(){ retu
 template<> struct js_name<fc::sha256>          { static std::string name(){ return "bytes 32";   } };
 template<> struct js_name<fc::unsigned_int>    { static std::string name(){ return "varuint32";  } };
 template<> struct js_name<fc::signed_int>      { static std::string name(){ return "varint32";   } };
-template<> struct js_name< time_point_sec >    { static std::string name(){ return "time_point_sec"; } };
+template<> struct js_name<fc::time_point_sec >    { static std::string name(){ return "time_point_sec"; } };
 
 template<uint8_t S, uint8_t T, typename O>
 struct js_name<graphene::db::object_id<S,T,O> >

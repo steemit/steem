@@ -78,7 +78,7 @@
 #include <graphene/net/config.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -1199,7 +1199,7 @@ namespace graphene { namespace net { namespace detail {
             if (items_by_type.first == core_message_type_enum::block_message_type)
               for (const item_hash_t& id : items_by_type.second)
               {
-                fc_dlog(fc::logger::get("sync"), 
+                fc_dlog(fc::logger::get("sync"),
                         "requesting a block from peer ${endpoint} (message_id is ${id})",
                         ("endpoint", peer_and_items.peer->get_remote_endpoint())("id", id));
               }
@@ -1390,7 +1390,7 @@ namespace graphene { namespace net { namespace detail {
             if (!active_peer->sync_items_requested_from_peer.empty() &&
                 active_peer->last_sync_item_received_time < active_ignored_request_threshold)
             {
-              fc_wlog(fc::logger::get("sync"), 
+              fc_wlog(fc::logger::get("sync"),
                       "disconnecting peer ${peer} because they haven't made any progress on my remaining ${count} sync item requests",
                       ("peer", active_peer->get_remote_endpoint())("count", active_peer->sync_items_requested_from_peer.size()));
               wlog("Disconnecting peer ${peer} because they haven't made any progress on my remaining ${count} sync item requests",
@@ -3018,7 +3018,7 @@ namespace graphene { namespace net { namespace detail {
       {
         std::vector<fc::uint160_t> contained_transaction_message_ids;
         fc_ilog(fc::logger::get("sync"),
-                "p2p pushing sync block #${block_num} ${block_hash}", 
+                "p2p pushing sync block #${block_num} ${block_hash}",
                 ("block_num", block_message_to_send.block.block_num())
                 ("block_hash", block_message_to_send.block_id));
         _delegate->handle_block(block_message_to_send, true, contained_transaction_message_ids);
@@ -3351,7 +3351,7 @@ namespace graphene { namespace net { namespace detail {
           std::vector<fc::uint160_t> contained_transaction_message_ids;
           _message_ids_currently_being_processed.insert(message_hash);
           fc_ilog(fc::logger::get("sync"),
-                  "p2p pushing block #${block_num} ${block_hash} from ${peer} (message_id was ${id})", 
+                  "p2p pushing block #${block_num} ${block_hash} from ${peer} (message_id was ${id})",
                   ("block_num", block_message_to_process.block.block_num())
                   ("block_hash", block_message_to_process.block_id)
                   ("peer", originating_peer->get_remote_endpoint())("id", message_hash));
@@ -3384,7 +3384,7 @@ namespace graphene { namespace net { namespace detail {
         else
         {
           fc_ilog(fc::logger::get("sync"),
-                  "p2p NOT pushing block #${block_num} ${block_hash} from ${peer} because we recently pushed it", 
+                  "p2p NOT pushing block #${block_num} ${block_hash} from ${peer} because we recently pushed it",
                   ("block_num", block_message_to_process.block.block_num())
                   ("block_hash", block_message_to_process.block_id)
                   ("peer", originating_peer->get_remote_endpoint())("id", message_hash));

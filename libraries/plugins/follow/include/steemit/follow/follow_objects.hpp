@@ -2,7 +2,7 @@
 
 #include <steemit/follow/follow_plugin.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <graphene/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>

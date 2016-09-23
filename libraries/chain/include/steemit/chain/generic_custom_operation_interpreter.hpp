@@ -1,11 +1,12 @@
 
 #pragma once
 
+#include <steemit/protocol/steem_operations.hpp>
+#include <steemit/protocol/operation_util_impl.hpp>
+
 #include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/custom_operation_interpreter.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
-#include <steemit/chain/protocol/operation_util_impl.hpp>
 
 #include <graphene/db/schema.hpp>
 
@@ -62,7 +63,7 @@ class generic_custom_operation_interpreter
          plugin_session.merge();
       }
 
-      virtual void apply( const custom_json_operation& outer_o ) override
+      virtual void apply( const protocol::custom_json_operation& outer_o ) override
       {
          try
          {
@@ -84,7 +85,7 @@ class generic_custom_operation_interpreter
          } FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
 
-      virtual void apply( const custom_binary_operation& outer_o ) override
+      virtual void apply( const protocol::custom_binary_operation& outer_o ) override
       {
          try
          {

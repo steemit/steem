@@ -28,7 +28,8 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 

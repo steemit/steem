@@ -1,10 +1,12 @@
 #pragma once
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <graphene/db/object.hpp>
 
 namespace steemit { namespace chain {
    using namespace graphene::db;
+
+   using steemit::protocol::block_id_type;
 
    /**
     *  @brief tracks minimal information about past blocks to implement TaPOS

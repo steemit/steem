@@ -2,10 +2,10 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/operation_notification.hpp>
-
 #include <steemit/chain/history_object.hpp>
 
 #include <graphene/db/schema.hpp>
@@ -18,6 +18,8 @@ namespace steemit { namespace account_history {
 
 namespace detail
 {
+
+using namespace steemit::protocol;
 
 class account_history_plugin_impl
 {

@@ -10,7 +10,7 @@
 
 #include <graphene/utilities/key_conversion.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
@@ -37,7 +37,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
-#include <steemit/chain/protocol/authority.hpp>
+#include <steemit/protocol/authority.hpp>
 
 #include <fc/fixed_string.hpp>
 
@@ -98,24 +98,24 @@ struct book
      typedef bip::allocator<book,bip::managed_mapped_file::segment_manager> allocator_type;
 
      template<typename Constructor, typename Allocator>
-     book( Constructor&& c, const Allocator& al ) 
+     book( Constructor&& c, const Allocator& al )
      :name(al),author(al),pages(0),prize(0),
-     auth( bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )), 
+     auth( bip::allocator<steemit::protocol::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )),
      deq( basic_string_allocator( al.get_segment_manager() ) )
      {
         c( *this );
      }
-      
+
      shared_string name;
      shared_string author;
      int32_t                          pages;
      int32_t                          prize;
-     steemit::chain::shared_authority auth;
+     steemit::protocol::shared_authority auth;
      bip::deque<shared_string,basic_string_allocator> deq;
 
      book(const shared_string::allocator_type& al):
      name(al),author(al),pages(0),prize(0),
-     auth( bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )), 
+     auth( bip::allocator<steemit::protocol::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )),
      deq( basic_string_allocator( al.get_segment_manager() ) )
      {}
 
