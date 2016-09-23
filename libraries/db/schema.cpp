@@ -1,7 +1,6 @@
 
 #include <graphene/db/schema.hpp>
 
-#include <iostream>
 #include <set>
 
 namespace graphene { namespace db {
@@ -33,7 +32,6 @@ void add_dependent_schemas( std::vector< std::shared_ptr< abstract_schema > >& s
       s->get_name( s_name );
 
       int64_t id = s->get_id();
-      std::cout << "processing schema " << id << ":" << s_name << std::endl;
       if( has_types.find( id ) != has_types.end() )
          continue;
 
