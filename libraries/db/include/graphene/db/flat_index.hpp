@@ -119,11 +119,15 @@ namespace graphene { namespace db {
 
          size_t size()const{ return _objects.size(); }
 
-         void resize( uint32_t s ) { 
-            _objects.resize(s); 
+         void resize( uint32_t s )
+         {
+            _objects.resize(s);
             for( uint32_t i = 0; i < s; ++i )
                _objects[i].id = object_id_type(object_type::space_id,object_type::type_id,i);
          }
+
+         virtual std::shared_ptr< abstract_schema > get_schema()const override
+         { return get_schema_for_type<T>(); }
 
       private:
          vector< T > _objects;

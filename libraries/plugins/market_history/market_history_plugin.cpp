@@ -3,6 +3,9 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
+#include <graphene/db/schema.hpp>
+#include <graphene/db/schema_impl.hpp>
+
 namespace steemit { namespace market_history {
 
 namespace detail {

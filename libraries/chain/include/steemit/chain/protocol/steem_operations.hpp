@@ -666,9 +666,11 @@ namespace steemit { namespace chain {
       void validate()const;
    };
 
+   typedef fc::static_variant< pow2 > pow2_work;
+
    struct pow2_operation : public base_operation
    {
-      static_variant< pow2 >        work;
+      pow2_work                     work;
       optional< public_key_type >   new_owner_key;
       chain_properties              props;
 
@@ -924,6 +926,7 @@ FC_REFLECT( steemit::chain::pow2, (input)(pow_summary) )
 FC_REFLECT( steemit::chain::pow2_input, (worker_account)(prev_block)(nonce) )
 FC_REFLECT( steemit::chain::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
+FC_REFLECT_TYPENAME( steemit::chain::pow2_work )
 FC_REFLECT( steemit::chain::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )
 FC_REFLECT( steemit::chain::pow2_operation, (work)(new_owner_key)(props) )
 

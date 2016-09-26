@@ -15,6 +15,17 @@ namespace graphene { namespace db {
 
    namespace bip = boost::interprocess;
 
+   // defined in schema.hpp
+   template< typename ObjectType >
+   void get_schema_for_type( std::string& schema );
+
+   struct object_schema
+   {
+      uint16_t space_id = 0;
+      uint16_t type_id = 0;
+      std::shared_ptr< abstract_schema > schema;
+   };
+
    /**
     *   @class object_database
     *   @brief maintains a set of indexed objects that can be modified with multi-level rollback support
@@ -113,6 +124,7 @@ namespace graphene { namespace db {
          template<typename IndexType>
          IndexType* add_index()
          {
+            FC_ASSERT( !_done_adding_indexes, "Cannot add any more indexes" );
             typedef typename IndexType::object_type ObjectType;
             if( _index[ObjectType::space_id].size() <= ObjectType::type_id  )
                 _index[ObjectType::space_id].resize( 255 );
@@ -121,12 +133,17 @@ namespace graphene { namespace db {
             //idump((fc::get_typename<ObjectType>::name())(ObjectType::space_id)(ObjectType::type_id));
             unique_ptr<index> indexptr( new IndexType(*this) );
             _index[ObjectType::space_id][ObjectType::type_id] = std::move(indexptr);
-            return static_cast<IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
+            IndexType* result = static_cast<IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
+            return result;
          }
+
+         void done_adding_indexes();
 
          void pop_undo();
 
          fc::path get_data_dir()const { return _data_dir; }
+
+         void get_object_schemas( std::vector< object_schema >& result );
 
          /** public for testing purposes only... should be private in practice. */
          undo_database                          _undo_db;
@@ -151,6 +168,7 @@ namespace graphene { namespace db {
 
          fc::path                                                  _data_dir;
          vector< vector< unique_ptr<index> > >                     _index;
+         bool                                                      _done_adding_indexes = false;
    };
 
 } } // graphene::db

@@ -3,6 +3,7 @@
 
 #include <steemit/chain/block_summary_object.hpp>
 #include <steemit/chain/compound.hpp>
+#include <steemit/chain/custom_operation_interpreter.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/db_with.hpp>
 #include <steemit/chain/evaluator_registry.hpp>
@@ -16,6 +17,8 @@
 #include <steemit/chain/operation_notification.hpp>
 
 #include <graphene/db/flat_index.hpp>
+#include <graphene/db/schema.hpp>
+#include <graphene/db/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -31,6 +34,34 @@
 
 #define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
 #define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
+
+namespace steemit { namespace chain {
+
+struct object_schema_repr
+{
+   std::pair< uint16_t, uint16_t > space_type;
+   std::string type;
+};
+
+struct operation_schema_repr
+{
+   std::string id;
+   std::string type;
+};
+
+struct db_schema
+{
+   std::map< std::string, std::string > types;
+   std::vector< object_schema_repr > object_types;
+   std::string operation_type;
+   std::vector< operation_schema_repr > custom_operation_types;
+};
+
+} }
+
+FC_REFLECT( steemit::chain::object_schema_repr, (space_type)(type) )
+FC_REFLECT( steemit::chain::operation_schema_repr, (id)(type) )
+FC_REFLECT( steemit::chain::db_schema, (types)(object_types)(operation_type)(custom_operation_types) )
 
 namespace steemit { namespace chain {
 
@@ -93,6 +124,7 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply )
 {
    try
    {
+      init_schema();
       object_database::open(data_dir);
 
       _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
@@ -2598,6 +2630,72 @@ void database::initialize_indexes()
    add_index< primary_index< change_recovery_account_request_index         > >();
    add_index< primary_index< withdraw_index                                > >();
    add_index< primary_index< decline_voting_rights_request_index           > >();
+}
+
+const std::string& database::get_json_schema()const
+{
+   return _json_schema;
+}
+
+void database::init_schema()
+{
+   done_adding_indexes();
+
+   db_schema ds;
+
+   std::vector< std::shared_ptr< abstract_schema > > schema_list;
+
+   std::vector< object_schema > object_schemas;
+   get_object_schemas( object_schemas );
+
+   for( const object_schema& oschema : object_schemas )
+   {
+      ds.object_types.emplace_back();
+      ds.object_types.back().space_type.first = oschema.space_id;
+      ds.object_types.back().space_type.second = oschema.type_id;
+      oschema.schema->get_name( ds.object_types.back().type );
+      schema_list.push_back( oschema.schema );
+   }
+
+   std::shared_ptr< abstract_schema > operation_schema = get_schema_for_type< operation >();
+   operation_schema->get_name( ds.operation_type );
+   schema_list.push_back( operation_schema );
+
+   for( const std::pair< std::string, std::shared_ptr< custom_operation_interpreter > >& p : _custom_operation_interpreters )
+   {
+      ds.custom_operation_types.emplace_back();
+      ds.custom_operation_types.back().id = p.first;
+      schema_list.push_back( p.second->get_operation_schema() );
+      schema_list.back()->get_name( ds.custom_operation_types.back().type );
+   }
+
+   graphene::db::add_dependent_schemas( schema_list );
+   std::sort( schema_list.begin(), schema_list.end(),
+      []( const std::shared_ptr< abstract_schema >& a,
+          const std::shared_ptr< abstract_schema >& b )
+      {
+         return a->get_id() < b->get_id();
+      } );
+   auto new_end = std::unique( schema_list.begin(), schema_list.end(),
+      []( const std::shared_ptr< abstract_schema >& a,
+          const std::shared_ptr< abstract_schema >& b )
+      {
+         return a->get_id() == b->get_id();
+      } );
+   schema_list.erase( new_end, schema_list.end() );
+
+   for( std::shared_ptr< abstract_schema >& s : schema_list )
+   {
+      std::string tname;
+      s->get_name( tname );
+      FC_ASSERT( ds.types.find( tname ) == ds.types.end(), "types with different ID's found for name ${tname}", ("tname", tname) );
+      std::string ss;
+      s->get_str_schema( ss );
+      ds.types.emplace( tname, ss );
+   }
+
+   _json_schema = fc::json::to_string( ds );
+   return;
 }
 
 void database::init_genesis( uint64_t init_supply )

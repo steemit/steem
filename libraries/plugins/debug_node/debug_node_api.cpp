@@ -40,6 +40,7 @@ class debug_node_api_impl
       void debug_stream_json_objects_flush();
       void debug_set_hardfork( uint32_t hardfork_id );
       bool debug_has_hardfork( uint32_t hardfork_id );
+      void debug_get_json_schema( std::string& schema );
       std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > get_plugin();
 
       steemit::app::application& app;
@@ -172,6 +173,11 @@ bool debug_node_api_impl::debug_has_hardfork( uint32_t hardfork_id )
    return steemit::chain::hardfork_property_id_type()( *app.chain_database() ).last_hardfork >= hardfork_id;
 }
 
+void debug_node_api_impl::debug_get_json_schema( std::string& schema )
+{
+   schema = app.chain_database()->get_json_schema();
+}
+
 } // detail
 
 debug_node_api::debug_node_api( const steemit::app::api_context& ctx )
@@ -249,6 +255,13 @@ void debug_node_api::debug_set_hardfork( uint32_t hardfork_id )
 bool debug_node_api::debug_has_hardfork( uint32_t hardfork_id )
 {
    return my->debug_has_hardfork( hardfork_id );
+}
+
+std::string debug_node_api::debug_get_json_schema()
+{
+   std::string result;
+   my->debug_get_json_schema( result );
+   return result;
 }
 
 } } } // steemit::plugin::debug_node

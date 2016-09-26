@@ -994,11 +994,11 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
 
       boost::program_options::variables_map options;
 
-      open_database();
-
-      // app.initialize();
       ahplugin->plugin_initialize( options );
       db_plugin->plugin_initialize( options );
+
+      open_database();
+
       generate_blocks( 2 );
 
       ahplugin->plugin_startup();

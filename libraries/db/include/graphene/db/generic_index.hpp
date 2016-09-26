@@ -105,6 +105,9 @@ namespace graphene { namespace db {
             return result;
          }
 
+         virtual std::shared_ptr< abstract_schema > get_schema()const override
+         { return get_schema_for_type<ObjectType>(); }
+
       private:
          fc::uint128 _current_hash;
          index_type  _indices;

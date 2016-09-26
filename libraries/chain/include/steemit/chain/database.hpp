@@ -343,6 +343,7 @@ namespace steemit { namespace chain {
 
          /// Reset the object graph in-memory
          void initialize_indexes();
+         void init_schema();
          void init_genesis(uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
 
          /**
@@ -378,6 +379,8 @@ namespace steemit { namespace chain {
          /**
           * @}
           */
+
+         const std::string& get_json_schema() const;
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
@@ -453,6 +456,7 @@ namespace steemit { namespace chain {
          node_property_object              _node_property_object;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
+         std::string                       _json_schema;
    };
 
 } }

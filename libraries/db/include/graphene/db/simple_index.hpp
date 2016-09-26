@@ -142,6 +142,10 @@ namespace graphene { namespace db {
          const_iterator end()const   { return const_iterator(_objects, _objects.end());   }
 
          size_t size()const { return _objects.size(); }
+
+         virtual std::shared_ptr< abstract_schema > get_schema()const override
+         { return get_schema_for_type<T>(); }
+
       private:
          vector< unique_ptr<object> > _objects;
    };
