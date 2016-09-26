@@ -39,8 +39,7 @@ namespace steemit { namespace chain {
 
 struct object_schema_repr
 {
-   uint16_t space_id = 0;
-   uint16_t type_id = 0;
+   std::pair< uint16_t, uint16_t > space_type;
    std::string type;
 };
 
@@ -60,7 +59,7 @@ struct db_schema
 
 } }
 
-FC_REFLECT( steemit::chain::object_schema_repr, (space_id)(type_id)(type) )
+FC_REFLECT( steemit::chain::object_schema_repr, (space_type)(type) )
 FC_REFLECT( steemit::chain::operation_schema_repr, (id)(type) )
 FC_REFLECT( steemit::chain::db_schema, (types)(object_types)(operation_type)(custom_operation_types) )
 
@@ -2652,8 +2651,8 @@ void database::init_schema()
    for( const object_schema& oschema : object_schemas )
    {
       ds.object_types.emplace_back();
-      ds.object_types.back().space_id = oschema.space_id;
-      ds.object_types.back().type_id = oschema.type_id;
+      ds.object_types.back().space_type.first = oschema.space_id;
+      ds.object_types.back().space_type.second = oschema.type_id;
       oschema.schema->get_name( ds.object_types.back().type );
       schema_list.push_back( oschema.schema );
    }
