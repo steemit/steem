@@ -166,10 +166,6 @@ namespace graphene { namespace db {
          void save_undo_add( const object& obj );
          void save_undo_remove( const object& obj );
 
-
-         unique_ptr<bip::managed_mapped_file>                      _managed_mem;
-         unique_ptr<bip::named_mutex>                              _managed_mem_mutex;
-
          fc::path                                                  _data_dir;
          vector< vector< unique_ptr<index> > >                     _index;
          bool                                                      _done_adding_indexes = false;
