@@ -34,6 +34,14 @@
       msg                                                             \
       )
 
+#define STEEMIT_DECLARE_INTERNAL_EXCEPTION( exc_name, seqnum, msg )  \
+   FC_DECLARE_DERIVED_EXCEPTION(                                      \
+      internal_ ## exc_name,                                          \
+      steemit::chain::internal_exception,                            \
+      4990000 + seqnum,                                               \
+      msg                                                             \
+      )
+
 #define STEEMIT_TRY_NOTIFY( signal, ... )                                     \
    try                                                                        \
    {                                                                          \
@@ -75,5 +83,22 @@ namespace steemit { namespace chain {
    STEEMIT_DECLARE_OP_BASE_EXCEPTIONS( account_update );
    STEEMIT_DECLARE_OP_EVALUATE_EXCEPTION( max_auth_exceeded, account_update, 1, "Exceeds max authority fan-out" )
    STEEMIT_DECLARE_OP_EVALUATE_EXCEPTION( auth_account_not_found, account_update, 2, "Auth account not found" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( internal_exception, steemit::chain::chain_exception, 4990000, "internal exception" )
+
+   STEEMIT_DECLARE_INTERNAL_EXCEPTION( verify_auth_max_auth_exceeded, 1, "Exceeds max authority fan-out" )
+   STEEMIT_DECLARE_INTERNAL_EXCEPTION( verify_auth_account_not_found, 2, "Auth account not found" )
+
+} } // steemit::chain
+
+
+#pragma once
+
+#include <fc/exception/exception.hpp>
+#include <steemit/protocol/exceptions.hpp>
+
+namespace steemit { namespace chain {
+
+
 
 } } // steemit::chain
