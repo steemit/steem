@@ -177,6 +177,28 @@ BOOST_AUTO_TEST_CASE( account_update_validate )
    {
       BOOST_TEST_MESSAGE( "Testing: account_update_validate" );
 
+      ACTORS( (alice) )
+
+      account_update_operation op;
+      op.account = "alice";
+      op.posting = authority();
+      op.posting->weight_threshold = 1;
+      op.posting->add_authorities( "abcdefghijklmnopq", 1 );
+
+      try
+      {
+         op.validate();
+
+         signed_transaction tx;
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.operations.push_back( op );
+         tx.sign( alice_private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+
+         BOOST_FAIL( "An exception was not thrown for an invalid account name" );
+      }
+      catch( fc::assert_exception& ) {}
+
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -313,6 +335,19 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       tx.operations.push_back( op );
       tx.sign( new_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception )
+      validate_database();
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure when account authority does not exist" );
+      tx.clear();
+      op = account_update_operation();
+      op.account = "alice";
+      op.posting = authority();
+      op.posting->weight_threshold = 1;
+      op.posting->add_authorities( "dave", 1 );
+      tx.operations.push_back( op );
+      tx.sign( new_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -781,7 +816,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          new_cashout_time = db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
          int64_t regenerated_power = (STEEMIT_100_PERCENT * ( db.head_block_time() - db.get_account( "alice").last_vote_time ).to_seconds() ) / STEEMIT_VOTE_REGENERATION_SECONDS;
          int64_t used_power = ( db.get_account( "alice" ).voting_power + regenerated_power + max_vote_denom - 1 ) / max_vote_denom;
-         idump( (db.get_account( "alice" ).voting_power)(used_power) );
 
          comment_op.author = "sam";
          comment_op.permlink = "foo";
