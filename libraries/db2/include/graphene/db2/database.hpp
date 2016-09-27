@@ -56,7 +56,7 @@ namespace graphene { namespace db2 {
    /**
     *  This macro must be used at global scope and OBJECT_TYPE and INDEX_TYPE must be fully qualified 
     */
-   #define SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
+   #define GRAPHENE_DB2_SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
    namespace graphene { namespace db2 { template<> struct get_index_type<OBJECT_TYPE> { typedef INDEX_TYPE type; }; } }
 
    /**
@@ -469,7 +469,7 @@ namespace graphene { namespace db2 {
              index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
 
-             if( type_id > _index_map.size() ) 
+             if( type_id >= _index_map.size() ) 
                 _index_map.resize( type_id + 1 );
 
              auto new_index = new index<index_type>( *idx_ptr );
@@ -482,6 +482,13 @@ namespace graphene { namespace db2 {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
+         }
+
+         template<typename MultiIndexType, typename ByIndex>
+         const auto& get_index()const {
+            typedef generic_index<MultiIndexType> index_type;
+            typedef index_type*                   index_type_ptr;
+            return index_type_ptr( _index_map[index_type::value_type::type_id]->get() )->indicies().template get<ByIndex>();
          }
 
          template<typename MultiIndexType>
