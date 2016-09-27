@@ -3094,12 +3094,20 @@ void database::update_global_dynamic_data( const signed_block& b )
             modify( witness_missed, [&]( witness_object& w )
             {
                w.total_missed++;
+               w.consecutive_missed++;
                if( has_hardfork( STEEMIT_HARDFORK_0_14__278 ) )
                {
                   if( head_block_num() - w.last_confirmed_block_num  > STEEMIT_BLOCKS_PER_DAY )
                   {
                      w.signing_key = public_key_type();
                      push_virtual_operation( shutdown_witness_operation( w.owner ) );
+                  }
+                  else if( has_hardfork( STEEMIT_HARDFORK_0_15_466 ) )
+                  {
+                     if((w.consecutive_missed%STEEMIT_MAX_MISS_THRESHOLD)==0){
+                       w.signing_key = public_key_type();
+                       push_virtual_operation( shutdown_witness_operation( w.owner ) );
+                     }
                   }
                }
             } );
@@ -3218,6 +3226,7 @@ void database::update_signing_witness(const witness_object& signing_witness, con
    {
       _wit.last_aslot = new_block_aslot;
       _wit.last_confirmed_block_num = new_block.block_num();
+      _wit.consecutive_missed = 0;
    } );
 }
 

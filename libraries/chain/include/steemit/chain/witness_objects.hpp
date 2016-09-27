@@ -29,6 +29,7 @@ namespace steemit { namespace chain {
          time_point_sec  created;
          string          url;
          uint32_t        total_missed = 0;
+         uint32_t        consecutive_missed = 0;
          uint64_t        last_aslot = 0;
          uint64_t        last_confirmed_block_num = 0;
 
@@ -183,7 +184,7 @@ namespace steemit { namespace chain {
 FC_REFLECT_DERIVED( steemit::chain::witness_object, (graphene::db::object),
                     (owner)
                     (created)
-                    (url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
+                    (url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)(consecutive_missed)
                     (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
                     (props)
                     (sbd_exchange_rate)(last_sbd_exchange_update)
