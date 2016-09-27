@@ -1,5 +1,5 @@
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/generic_json_evaluator_registry.hpp>
+#include <steemit/chain/custom_operation_interpreter.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/witness_objects.hpp>
@@ -56,7 +56,25 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    db().get_account( o.owner ); // verify owner exists
 
-   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "url is too long" );
+   if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+   {
+      FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "url is too long" );
+   }
+   else if( o.url.size() > STEEMIT_MAX_WITNESS_URL_LENGTH )
+   {
+      // after HF, above check can be moved to validate() if reindex doesn't show this warning
+      wlog( "URL is too long in block ${b}", ("b", db().head_block_num()+1) );
+   }
+
+   if ( db().has_hardfork( STEEMIT_HARDFORK_0_14__410 ) )
+   {
+      FC_ASSERT( o.props.account_creation_fee.symbol == STEEM_SYMBOL );
+   }
+   else if( o.props.account_creation_fee.symbol != STEEM_SYMBOL )
+   {
+      // after HF, above check can be moved to validate() if reindex doesn't show this warning
+      wlog( "Wrong fee symbol in block ${b}", ("b", db().head_block_num()+1) );
+   }
 
    const auto& by_witness_name_idx = db().get_index_type< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
@@ -196,7 +214,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
    }
 
    /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
-   if( db().has_hardfork( STEEMIT_HARDFORK_0_6__80 ) && comment.parent_author.size() != 0 )
+   if( db().has_hardfork( STEEMIT_HARDFORK_0_6__80 ) && comment.parent_author != STEEMIT_ROOT_POST_PARENT )
    {
       auto parent = &db().get_comment( comment.parent_author, comment.parent_permlink );
       auto now = db().head_block_time();
@@ -207,7 +225,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o ) {
             p.active = now;
          });
    #ifndef IS_LOW_MEM
-         if( parent->parent_author.size() )
+         if( parent->parent_author != STEEMIT_ROOT_POST_PARENT )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
          else
    #endif
@@ -268,7 +286,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    comment_id_type id;
 
    const comment_object* parent = nullptr;
-   if( o.parent_author.size() != 0 ) {
+   if( o.parent_author != STEEMIT_ROOT_POST_PARENT ) {
       parent = &db().get_comment( o.parent_author, o.parent_permlink );
       FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
@@ -276,7 +294,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
    if ( itr == by_permlink_idx.end() )
    {
-      if( o.parent_author.size() != 0 )
+      if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
       {
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
          if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177) )
@@ -285,14 +303,14 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
       {
-         if( o.parent_author.size() == 0 )
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
              FC_ASSERT( (now - auth.last_root_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_root_post",auth.last_root_post) );
          else
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
       }
       else if( db().has_hardfork( STEEMIT_HARDFORK_0_6__113 ) )
       {
-         if( o.parent_author.size() == 0 )
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes", ("now",now)("auth.last_post",auth.last_post) );
          else
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds", ("now",now)("auth.last_post",auth.last_post) );
@@ -305,7 +323,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       uint16_t reward_weight = STEEMIT_100_PERCENT;
       uint64_t post_bandwidth = auth.post_bandwidth;
 
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author.size() == 0 )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author == STEEMIT_ROOT_POST_PARENT )
       {
          uint64_t post_delta_time = std::min( db().head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
          uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
@@ -314,7 +332,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       db().modify( auth, [&]( account_object& a ) {
-         if( o.parent_author.size() == 0 )
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             a.last_root_post = now;
             a.post_bandwidth = uint32_t( post_bandwidth );
@@ -340,7 +358,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
          com.max_cashout_time = fc::time_point_sec::maximum();
          com.reward_weight = reward_weight;
 
-         if ( o.parent_author.size() == 0 )
+         if ( o.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             com.parent_author = "";
             com.parent_permlink = o.parent_permlink;
@@ -395,7 +413,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             p.active = now;
          });
 #ifndef IS_LOW_MEM
-         if( parent->parent_author.size() )
+         if( parent->parent_author != STEEMIT_ROOT_POST_PARENT )
             parent = &db().get_comment( parent->parent_author, parent->parent_permlink );
          else
 #endif
@@ -419,7 +437,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          if( !parent )
          {
-            FC_ASSERT( com.parent_author == "", "The parent of a comment cannot change" );
+            FC_ASSERT( com.parent_author == account_name_type(), "The parent of a comment cannot change" );
             FC_ASSERT( com.parent_permlink == o.parent_permlink, "The permlink of a comment cannot change" );
          }
          else
@@ -472,24 +490,18 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       FC_ASSERT( o.ratification_deadline > db().head_block_time(), "ratification deadline must be after head block time" );
       FC_ASSERT( o.escrow_expiration > db().head_block_time(), "escrow expiration must be after head block time" );
 
+      asset steem_spent = o.steem_amount;
+      asset sbd_spent = o.sbd_amount;
       if( o.fee.symbol == STEEM_SYMBOL )
-      {
-         FC_ASSERT( from_account.balance >= o.steem_amount + o.fee, "account cannot cover steem costs of escrow" );
-         FC_ASSERT( from_account.sbd_balance >= o.sbd_amount, "account cannot cover sbd costs of escrow" );
-      }
+         steem_spent += o.fee;
       else
-      {
-         FC_ASSERT( from_account.balance >= o.steem_amount, "account cannot cover steem costs of escrow" );
-         FC_ASSERT( from_account.sbd_balance >= o.sbd_amount + o.fee, "account cannot cover sbd costs of escrow" );
-      }
+         sbd_spent += o.fee;
 
-      if( o.fee.amount > 0 )
-      {
-         db().adjust_balance( from_account, -o.fee );
-      }
+      FC_ASSERT( from_account.balance >= steem_spent, "account cannot cover steem costs of escrow" );
+      FC_ASSERT( from_account.sbd_balance >= sbd_spent, "account cannot cover sbd costs of escrow" );
 
-      db().adjust_balance( from_account, -o.steem_amount );
-      db().adjust_balance( from_account, -o.sbd_amount );
+      db().adjust_balance( from_account, -steem_spent );
+      db().adjust_balance( from_account, -sbd_spent );
 
       db().create<escrow_object>([&]( escrow_object& esc )
       {
@@ -497,11 +509,11 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
          esc.from                   = o.from;
          esc.to                     = o.to;
          esc.agent                  = o.agent;
+         esc.ratification_deadline  = o.ratification_deadline;
+         esc.escrow_expiration      = o.escrow_expiration;
          esc.sbd_balance            = o.sbd_amount;
          esc.steem_balance          = o.steem_amount;
          esc.pending_fee            = o.fee;
-         esc.ratification_deadline  = o.ratification_deadline;
-         esc.escrow_expiration      = o.escrow_expiration;
       });
    }
    FC_CAPTURE_AND_RETHROW( (o) )
@@ -1258,7 +1270,7 @@ void custom_evaluator::do_apply( const custom_operation& o ){}
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
    database& d = db();
-   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
       return;
 
@@ -1268,7 +1280,8 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
@@ -1282,7 +1295,7 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__317 ) );
 
    database& d = db();
-   std::shared_ptr< generic_json_evaluator_registry > eval = d.get_custom_json_evaluator( o.id );
+   std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
       return;
 
@@ -1292,7 +1305,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
@@ -1316,6 +1330,7 @@ void pow_apply( database& db, Operation o ) {
    }
 
    const auto& accounts_by_name = db.get_index_type<account_index>().indices().get<by_name>();
+
    auto itr = accounts_by_name.find(o.get_worker_account());
    if(itr == accounts_by_name.end()) {
       db.create< account_object >( [&]( account_object& acc )
@@ -1757,7 +1772,7 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
    const auto& from = db().get_account( op.from );
    db().modify( from, [&]( account_object& a )
    {
-      a.savings_withdraw_requests++;
+      a.savings_withdraw_requests--;
    });
 }
 

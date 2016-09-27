@@ -2,12 +2,16 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/account_object.hpp>
 #include <steemit/chain/hardfork.hpp>
+#include <steemit/chain/operation_notification.hpp>
+#include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
+
+#include <graphene/db/schema.hpp>
+#include <graphene/db/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -20,6 +24,8 @@
 namespace steemit { namespace tags {
 
 namespace detail {
+
+using namespace steemit::protocol;
 
 class tags_plugin_impl
 {
@@ -34,7 +40,7 @@ class tags_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
+      void on_operation( const operation_notification& note );
 
       tags_plugin& _self;
 };
@@ -93,20 +99,25 @@ struct operation_visitor {
    {
        const auto& stats = get_stats( current.tag );
        remove_stats( current, stats );
-       _db.modify( current, [&]( tag_object& obj ) {
-          obj.active            = comment.active;
-          obj.cashout           = comment.cashout_time;
-          obj.children          = comment.children;
-          obj.net_rshares       = comment.net_rshares.value;
-          obj.net_votes         = comment.net_votes;
-          obj.children_rshares2 = comment.children_rshares2;
-          obj.hot               = hot;
-          obj.total_payout      = comment.total_payout_value;
-          obj.mode              = comment.mode;
-          if( obj.mode != first_payout ) 
-            obj.promoted_balance = 0;
-      });
-      add_stats( current, stats );
+
+       if( comment.mode != archived ) {
+          _db.modify( current, [&]( tag_object& obj ) {
+             obj.active            = comment.active;
+             obj.cashout           = comment.cashout_time;
+             obj.children          = comment.children;
+             obj.net_rshares       = comment.net_rshares.value;
+             obj.net_votes         = comment.net_votes;
+             obj.children_rshares2 = comment.children_rshares2;
+             obj.hot               = hot;
+             obj.total_payout      = comment.total_payout_value;
+             obj.mode              = comment.mode;
+             if( obj.mode != first_payout )
+               obj.promoted_balance = 0;
+         });
+         add_stats( current, stats );
+       } else {
+          _db.remove( current );
+       }
    }
 
    void create_tag( const string& tag, const comment_object& comment, double hot )const {
@@ -198,7 +209,7 @@ struct operation_visitor {
       }
 
       meta.tags = lower_tags; /// TODO: std::move???
-      if( meta.tags.size() > 7 ) {
+      if( meta.tags.size() > 5 ) {
          //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
          if( safe_for_work )
             meta.tags = set<string>({"", c.parent_permlink});
@@ -294,7 +305,7 @@ struct operation_visitor {
    void operator()( const transfer_operation& op )const {
       if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )  {
          vector<string> part; part.reserve(4);
-         auto path = op.memo; 
+         auto path = op.memo;
          boost::split( part, path, boost::is_any_of("/") );
          if( part[0].size() && part[0][0] == '@' ) {
             auto acnt = part[0].substr(1);
@@ -309,7 +320,7 @@ struct operation_visitor {
                       if( t.mode == first_payout )
                           t.promoted_balance += op.amount.amount;
                   });
-                  ++citr; 
+                  ++citr;
                }
             } else {
                ilog( "unable to find body" );
@@ -354,12 +365,18 @@ struct operation_visitor {
 
 
 
-void tags_plugin_impl::on_operation( const operation_object& op_obj ) {
-   try { /// plugins shouldn't ever throw
-      op_obj.op.visit( operation_visitor( database() ) );
-   } catch ( const fc::exception& e ) {
+void tags_plugin_impl::on_operation( const operation_notification& note ) {
+   try
+   {
+      /// plugins shouldn't ever throw
+      note.op.visit( operation_visitor( database() ) );
+   }
+   catch ( const fc::exception& e )
+   {
       edump( (e.to_detail_string()) );
-   } catch ( ... ) {
+   }
+   catch ( ... )
+   {
       elog( "unhandled exception" );
    }
 }
@@ -391,7 +408,7 @@ void tags_plugin::plugin_set_program_options(
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing tags plugin" );
-   database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
+   database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
    database().add_index< primary_index< tag_index  > >();
    database().add_index< primary_index< tag_stats_index > >();
    database().add_index< primary_index< peer_stats_index > >();

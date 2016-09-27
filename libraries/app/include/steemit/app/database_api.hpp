@@ -1,11 +1,14 @@
 #pragma once
+#include <steemit/app/applied_operation.hpp>
 #include <steemit/app/state.hpp>
-#include <steemit/chain/protocol/types.hpp>
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/history_object.hpp>
+
 #include <steemit/tags/tags_plugin.hpp>
+
 #include <steemit/follow/follow_plugin.hpp>
 
 #include <fc/api.hpp>
@@ -24,6 +27,7 @@
 namespace steemit { namespace app {
 
 using namespace steemit::chain;
+using namespace steemit::protocol;
 using namespace std;
 
 struct order
@@ -129,8 +133,8 @@ class database_api
       vector<category_object> get_active_categories( string after, uint32_t limit )const;
       vector<category_object> get_recent_categories( string after, uint32_t limit )const;
 
-      vector<string> get_active_witnesses()const;
-      vector<string> get_miner_queue()const;
+      vector<account_name_type> get_active_witnesses()const;
+      vector<account_name_type> get_miner_queue()const;
 
       /////////////////////////////
       // Blocks and transactions //
@@ -158,6 +162,11 @@ class database_api
        * @brief Retrieve compile-time constants
        */
       fc::variant_object get_config()const;
+
+      /**
+       * @brief Return a JSON description of object representations
+       */
+      std::string get_schema()const;
 
       /**
        * @brief Retrieve the current @ref dynamic_global_property_object
@@ -255,7 +264,7 @@ class database_api
        * @param limit Maximum number of results to return -- must not exceed 1000
        * @return Map of witness names to corresponding IDs
        */
-      set<string> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
+      set<account_name_type> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
 
       /**
        * @brief Get the total number of witnesses registered with the blockchain
@@ -332,8 +341,9 @@ class database_api
       vector<discussion> get_discussions_by_children( const discussion_query& query )const;
       vector<discussion> get_discussions_by_hot( const discussion_query& query )const;
       vector<discussion> get_discussions_by_feed( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_blog( const discussion_query& query )const;
+      vector<discussion> get_discussions_by_comments( const discussion_query& query )const;
       vector<discussion> get_discussions_by_promoted( const discussion_query& query )const;
-
 
       ///@}
 
@@ -382,7 +392,7 @@ class database_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map<uint32_t,operation_object> get_account_history( string account, uint64_t from, uint32_t limit )const;
+      map<uint32_t, applied_operation> get_account_history( string account, uint64_t from, uint32_t limit )const;
 
       ////////////////////////////
       // Handlers - not exposed //
@@ -445,6 +455,8 @@ FC_API(steemit::app::database_api,
    (get_discussions_by_children)
    (get_discussions_by_hot)
    (get_discussions_by_feed)
+   (get_discussions_by_blog)
+   (get_discussions_by_comments)
    (get_discussions_by_promoted)
 
    // Blocks and transactions

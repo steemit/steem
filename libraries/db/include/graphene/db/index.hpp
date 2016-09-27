@@ -49,6 +49,11 @@ namespace graphene { namespace db {
          virtual void on_modify( const object& obj ){}
    };
 
+   // defined in schema.hpp
+   struct abstract_schema;
+   template< typename ObjectType >
+   std::shared_ptr< abstract_schema > get_schema_for_type();
+
    /**
     *  @class index
     *  @brief abstract base class for accessing objects indexed in various ways.
@@ -132,6 +137,8 @@ namespace graphene { namespace db {
 
          virtual void               object_from_variant( const fc::variant& var, object& obj )const = 0;
          virtual void               object_default( object& obj )const = 0;
+
+         virtual std::shared_ptr< abstract_schema > get_schema()const = 0;
    };
 
    class secondary_index

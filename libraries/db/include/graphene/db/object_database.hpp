@@ -1,36 +1,30 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 #pragma once
 #include <graphene/db/object.hpp>
 #include <graphene/db/index.hpp>
 #include <graphene/db/undo_database.hpp>
+
+#include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/managed_mapped_file.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
 
 #include <fc/log/logger.hpp>
 
 #include <map>
 
 namespace graphene { namespace db {
+
+   namespace bip = boost::interprocess;
+
+   // defined in schema.hpp
+   template< typename ObjectType >
+   void get_schema_for_type( std::string& schema );
+
+   struct object_schema
+   {
+      uint16_t space_id = 0;
+      uint16_t type_id = 0;
+      std::shared_ptr< abstract_schema > schema;
+   };
 
    /**
     *   @class object_database
@@ -130,6 +124,7 @@ namespace graphene { namespace db {
          template<typename IndexType>
          IndexType* add_index()
          {
+            FC_ASSERT( !_done_adding_indexes, "Cannot add any more indexes" );
             typedef typename IndexType::object_type ObjectType;
             if( _index[ObjectType::space_id].size() <= ObjectType::type_id  )
                 _index[ObjectType::space_id].resize( 255 );
@@ -138,12 +133,17 @@ namespace graphene { namespace db {
             //idump((fc::get_typename<ObjectType>::name())(ObjectType::space_id)(ObjectType::type_id));
             unique_ptr<index> indexptr( new IndexType(*this) );
             _index[ObjectType::space_id][ObjectType::type_id] = std::move(indexptr);
-            return static_cast<IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
+            IndexType* result = static_cast<IndexType*>(_index[ObjectType::space_id][ObjectType::type_id].get());
+            return result;
          }
+
+         void done_adding_indexes();
 
          void pop_undo();
 
          fc::path get_data_dir()const { return _data_dir; }
+
+         void get_object_schemas( std::vector< object_schema >& result );
 
          /** public for testing purposes only... should be private in practice. */
          undo_database                          _undo_db;
@@ -168,6 +168,7 @@ namespace graphene { namespace db {
 
          fc::path                                                  _data_dir;
          vector< vector< unique_ptr<index> > >                     _index;
+         bool                                                      _done_adding_indexes = false;
    };
 
 } } // graphene::db

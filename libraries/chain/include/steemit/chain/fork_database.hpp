@@ -1,5 +1,5 @@
 #pragma once
-#include <steemit/chain/protocol/block.hpp>
+#include <steemit/protocol/block.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
@@ -11,6 +11,9 @@
 namespace steemit { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
+
+   using steemit::protocol::signed_block;
+   using steemit::protocol::block_id_type;
 
    struct fork_item
    {

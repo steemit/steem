@@ -79,8 +79,8 @@ struct bucket_object : public abstract_object< bucket_object >
 
 struct order_history_object : public abstract_object< order_history_object >
 {
-   fc::time_point_sec   time;
-   fill_order_operation op;
+   fc::time_point_sec               time;
+   protocol::fill_order_operation   op;
 };
 
 struct by_bucket;

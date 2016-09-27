@@ -1,8 +1,9 @@
 #pragma once
 
-#include <steemit/chain/protocol/authority.hpp>
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/authority.hpp>
+#include <steemit/protocol/steem_operations.hpp>
+
+#include <steemit/chain//steem_object_types.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
 #include <graphene/db/generic_index.hpp>
@@ -76,9 +77,9 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_comment_object_type;
 
          string            category;
-         string            parent_author;
+         account_name_type parent_author;
          string            parent_permlink;
-         string            author;
+         account_name_type author;
          string            permlink;
 
          string            title = "";
@@ -222,117 +223,25 @@ namespace steemit { namespace chain {
          >,
          ordered_unique< tag< by_permlink >, /// used by consensus to find posts referenced in ops
             composite_key< comment_object,
-               member< comment_object, string, &comment_object::author >,
+               member< comment_object, account_name_type, &comment_object::author >,
                member< comment_object, string, &comment_object::permlink >
             >,
-            composite_key_compare< std::less< string >, std::less< string > >
+            composite_key_compare< std::less< account_name_type >, std::less< string > >
          >,
          ordered_unique< tag< by_root >,
             composite_key< comment_object,
                member< comment_object, comment_id_type, &comment_object::root_comment >,
                member< object, object_id_type, &object::id >
             >
-         >
-
-//#ifndef IS_LOW_MEM
-         ,
+         >,
          ordered_unique< tag< by_parent >, /// used by consensus to find posts referenced in ops
             composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >,
+               member< comment_object, account_name_type, &comment_object::parent_author >,
                member< comment_object, string, &comment_object::parent_permlink >,
                member< object, object_id_type, &object::id >
             >,
-            composite_key_compare< std::less< string >, std::less< string >, std::less<object_id_type> >
-         >,
-         ordered_unique< tag<by_active>,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, time_point_sec, &comment_object::active >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
-         >,
-         /// PENDING PAYOUT relative to a parent
-         ordered_unique< tag< by_pending_payout >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, share_type, &comment_object::net_rshares >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<share_type>, std::less<object_id_type> >
-         >,
-         /// TOTAL PENDING PAYOUT - this is the default TRENDING ORDER
-         ordered_unique< tag< by_total_pending_payout >,
-            composite_key< comment_object,
-               member< comment_object, comment_mode, &comment_object::mode >,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, fc::uint128_t, &comment_object::children_rshares2 >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<comment_mode>, std::less<string>, std::greater<fc::uint128_t>, std::less<object_id_type> >
-         >,
-         /// used to sort all posts by the last time they were edited
-         ordered_unique< tag<by_last_update>,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, time_point_sec, &comment_object::last_update >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
-         >,
-         /// used to sort all posts by the last time they were edited
-         ordered_unique< tag<by_created>,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<time_point_sec>, std::less<object_id_type> >
-         >,
-         ordered_unique< tag<by_votes>,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, int32_t, &comment_object::net_votes >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<int32_t>, std::less<object_id_type> >
-         >,
-         ordered_unique< tag<by_responses>,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::parent_author >, /// parent author of "" is root topic
-               member< comment_object, uint32_t, &comment_object::children >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less<string>, std::greater<uint32_t>, std::less<object_id_type> >
-         >,
-         /// posts with the high dollar value received
-         ordered_unique< tag< by_payout >,
-            composite_key< comment_object,
-               member< comment_object, asset, &comment_object::total_payout_value >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::greater<asset>, std::less<object_id_type> >
-         >,
-         /// used to find all top-level posts (blog posts)
-         ordered_unique< tag< by_blog >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::author >,
-               member< comment_object, string, &comment_object::parent_author >,
-               member< comment_object, time_point_sec, &comment_object::created >,
-               member< comment_object, string, &comment_object::permlink >
-            >,
-            composite_key_compare< std::less< string >, std::less< string >, std::greater<time_point_sec>, std::less<string> >
-         >,
-         /// used to find all posts by an author
-         ordered_unique< tag< by_author_last_update >,
-            composite_key< comment_object,
-               member< comment_object, string, &comment_object::author >,
-               member< comment_object, time_point_sec, &comment_object::last_update >,
-               member< object, object_id_type, &object::id >
-            >,
-            composite_key_compare< std::less< string >, std::greater<time_point_sec>, std::less<object_id_type> >
+            composite_key_compare< std::less< account_name_type >, std::less< string >, std::less<object_id_type> >
          >
-// #endif /// IS_LOW_MEM
       >
    > comment_multi_index_type;
 

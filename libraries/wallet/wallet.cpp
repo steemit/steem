@@ -43,7 +43,7 @@
 #include <graphene/utilities/words.hpp>
 
 #include <steemit/app/api.hpp>
-#include <steemit/chain/protocol/base.hpp>
+#include <steemit/protocol/base.hpp>
 #include <steemit/follow/follow_operations.hpp>
 #include <steemit/private_message/private_message_operations.hpp>
 #include <steemit/wallet/wallet.hpp>
@@ -535,9 +535,9 @@ public:
 
    annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
    {
-      flat_set< string >   req_active_approvals;
-      flat_set< string >   req_owner_approvals;
-      flat_set< string >   req_posting_approvals;
+      flat_set< account_name_type >   req_active_approvals;
+      flat_set< account_name_type >   req_owner_approvals;
+      flat_set< account_name_type >   req_posting_approvals;
       vector< authority >  other_auths;
 
       tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
@@ -587,7 +587,7 @@ public:
       };
 
       flat_set<public_key_type> approving_key_set;
-      for( string& acct_name : req_active_approvals )
+      for( account_name_type& acct_name : req_active_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
@@ -602,7 +602,7 @@ public:
          }
       }
 
-      for( string& acct_name : req_posting_approvals )
+      for( account_name_type& acct_name : req_posting_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
@@ -617,7 +617,7 @@ public:
          }
       }
 
-      for( const string& acct_name : req_owner_approvals )
+      for( const account_name_type& acct_name : req_owner_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
@@ -719,7 +719,7 @@ public:
             total_steem += a.balance;
             total_vest  += a.vesting_shares;
             total_sbd  += a.sbd_balance;
-            out << std::left << std::setw( 17 ) << a.name
+            out << std::left << std::setw( 17 ) << std::string(a.name)
                 << std::right << std::setw(20) << fc::variant(a.balance).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.vesting_shares).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.sbd_balance).as_string() <<"\n";
@@ -992,10 +992,10 @@ set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
    return my->_remote_db->lookup_accounts(lowerbound, limit);
 }
 
-vector<string> wallet_api::get_miner_queue()const {
+vector<account_name_type> wallet_api::get_miner_queue()const {
    return my->_remote_db->get_miner_queue();
 }
-vector<string> wallet_api::get_active_witnesses()const {
+vector<account_name_type> wallet_api::get_active_witnesses()const {
    return my->_remote_db->get_active_witnesses();
 }
 
@@ -1086,7 +1086,7 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 }
 */
 
-set<string> wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
+set<account_name_type> wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
 {
    return my->_remote_db->lookup_witness_accounts(lowerbound, limit);
 }
@@ -1770,6 +1770,7 @@ annotated_signed_transaction wallet_api::escrow_dispute(
       bool broadcast
    )
 {
+   FC_ASSERT( !is_locked() );
    escrow_dispute_operation op;
    op.from = from;
    op.to = to;
@@ -1777,60 +1778,6 @@ annotated_signed_transaction wallet_api::escrow_dispute(
    op.who = who;
    op.escrow_id = escrow_id;
 
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-/**
- *  Transfers into savings happen immediately, transfers from savings take 72 hours
- */
-annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
-{
-
-   transfer_to_savings_operation op;
-   op.from = from;
-   op.to   = to;
-   op.memo = get_encrypted_memo( from, to, memo );
-   op.amount = amount;
-
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-/**
- * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
- */
-annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint16_t request_id, string to, asset amount, string memo, bool broadcast  ) {
-
-   transfer_from_savings_operation op;
-   op.from = from;
-   op.request_id = request_id;
-   op.to = to;
-   op.amount = amount;
-   op.memo = get_encrypted_memo( from, to, memo );
-
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-/**
- *  @param request_id the id used in transfer_from_savings
- *  @param from the account that initiated the transfer
- */
-annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint16_t request_id, bool broadcast  ) {
-
-   cancel_transfer_from_savings_operation op;
-   op.from = from;
-   op.request_id = request_id;
    signed_transaction tx;
    tx.operations.push_back( op );
    tx.validate();
@@ -1850,6 +1797,7 @@ annotated_signed_transaction wallet_api::escrow_release(
    bool broadcast
 )
 {
+   FC_ASSERT( !is_locked() );
    escrow_release_operation op;
    op.from = from;
    op.to = to;
@@ -1866,6 +1814,61 @@ annotated_signed_transaction wallet_api::escrow_release(
    return my->sign_transaction( tx, broadcast );
 }
 
+/**
+ *  Transfers into savings happen immediately, transfers from savings take 72 hours
+ */
+annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
+{
+   FC_ASSERT( !is_locked() );
+   transfer_to_savings_operation op;
+   op.from = from;
+   op.to   = to;
+   op.memo = get_encrypted_memo( from, to, memo );
+   op.amount = amount;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+ */
+annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast  )
+{
+   FC_ASSERT( !is_locked() );
+   transfer_from_savings_operation op;
+   op.from = from;
+   op.request_id = request_id;
+   op.to = to;
+   op.amount = amount;
+   op.memo = get_encrypted_memo( from, to, memo );
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+/**
+ *  @param request_id the id used in transfer_from_savings
+ *  @param from the account that initiated the transfer
+ */
+annotated_signed_transaction wallet_api::cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast  )
+{
+   FC_ASSERT( !is_locked() );
+   cancel_transfer_from_savings_operation op;
+   op.from = from;
+   op.request_id = request_id;
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
 
 annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string to, asset amount, bool broadcast )
 {
@@ -1881,6 +1884,7 @@ annotated_signed_transaction wallet_api::transfer_to_vesting(string from, string
 
    return my->sign_transaction( tx, broadcast );
 }
+
 annotated_signed_transaction wallet_api::withdraw_vesting(string from, asset vesting_shares, bool broadcast )
 {
    FC_ASSERT( !is_locked() );
@@ -1977,7 +1981,21 @@ string wallet_api::decrypt_memo( string encrypted_memo ) {
    return encrypted_memo;
 }
 
-map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
+annotated_signed_transaction wallet_api::decline_voting_rights( string account, bool decline, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+   decline_voting_rights_operation op;
+   op.account = account;
+   op.decline = decline;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
+map<uint32_t,applied_operation> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
    auto result = my->_remote_db->get_account_history(account,from,limit);
    if( !is_locked() ) {
       for( auto& item : result ) {

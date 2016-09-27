@@ -1,9 +1,9 @@
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/exceptions.hpp>
-#include <steemit/chain/hardfork.hpp>
+#include <steemit/protocol/exceptions.hpp>
 
+#include <steemit/chain/database.hpp>
+#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -12,8 +12,9 @@
 
 #include <iostream>
 
+using namespace steemit;
 using namespace steemit::chain;
-using namespace steemit::chain::test;
+using namespace steemit::protocol;
 
 #ifndef IS_TEST_NET
 

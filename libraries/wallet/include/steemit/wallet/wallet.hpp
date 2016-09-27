@@ -95,12 +95,6 @@ namespace detail {
 class wallet_api_impl;
 }
 
-struct operation_detail {
-   string               memo;
-   string               description;
-   operation_object     op;
-};
-
 /**
  * This wallet assumes it is connected to the database server with a high-bandwidth, low-latency connection and
  * performs minimal caching. This API could be provided locally to be used by a web interface.
@@ -150,12 +144,12 @@ class wallet_api
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
        */
-      vector<string>                      get_active_witnesses()const;
+      vector<account_name_type>                      get_active_witnesses()const;
 
       /**
        * Returns the queue of pow miners waiting to produce blocks.
        */
-      vector<string>                      get_miner_queue()const;
+      vector<account_name_type>                      get_miner_queue()const;
 
       /**
        * Returns the state info associated with the URL
@@ -490,7 +484,7 @@ class wallet_api
        * @param limit the maximum number of witnesss to return (max: 1000)
        * @returns a list of witnesss mapping witness names to witness ids
        */
-      set<string>       list_witnesses(const string& lowerbound, uint32_t limit);
+      set<account_name_type>       list_witnesses(const string& lowerbound, uint32_t limit);
 
       /** Returns information about the given witness.
        * @param owner_account the name or id of the witness account owner, or the id of the witness
@@ -683,14 +677,14 @@ class wallet_api
       /**
        * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
        */
-      annotated_signed_transaction transfer_from_savings( string from, uint16_t request_id, string to, asset amount, string memo, bool broadcast = false );
+      annotated_signed_transaction transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast = false );
 
       /**
        *  @param request_id the id used in transfer_from_savings
        *  @param from the account that initiated the transfer
        */
-      annotated_signed_transaction cancel_transfer_from_savings( string from, uint16_t request_id, bool broadcast = false );
-      
+      annotated_signed_transaction cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast = false );
+
 
       /**
        * Set up a vesting withdraw request. The request is fulfilled once a week over the next two year (104 weeks).
@@ -896,7 +890,7 @@ class wallet_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map<uint32_t,operation_object> get_account_history( string account, uint32_t from, uint32_t limit );
+      map<uint32_t,applied_operation> get_account_history( string account, uint32_t from, uint32_t limit );
 
 
       /**
@@ -922,6 +916,8 @@ class wallet_api
        * Returns the decrypted memo if possible given wallet's known private keys
        */
       string decrypt_memo( string memo );
+
+      annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
 };
 
 struct plain_keys {
@@ -943,7 +939,6 @@ FC_REFLECT( steemit::wallet::brain_key_info, (brain_priv_key)(wif_priv_key) (pub
 FC_REFLECT_DERIVED( steemit::wallet::signed_block_with_info, (steemit::chain::signed_block),
    (block_id)(signing_key)(transaction_ids) )
 
-FC_REFLECT( steemit::wallet::operation_detail, (memo)(description)(op) )
 FC_REFLECT( steemit::wallet::plain_keys, (checksum)(keys) )
 
 FC_REFLECT_ENUM( steemit::wallet::authority_type, (owner)(active)(posting) )
@@ -1013,6 +1008,7 @@ FC_API( steemit::wallet::wallet_api,
         (cancel_transfer_from_savings)
         (get_encrypted_memo)
         (decrypt_memo)
+        (decline_voting_rights)
 
         // private message api
         (send_private_message)

@@ -24,10 +24,12 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
+#include <steemit/protocol/exceptions.hpp>
+
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
+
 #include <steemit/account_history/account_history_plugin.hpp>
 
 #include <graphene/utilities/tempdir.hpp>
@@ -36,8 +38,9 @@
 
 #include "../common/database_fixture.hpp"
 
+using namespace steemit;
 using namespace steemit::chain;
-using namespace steemit::chain::test;
+using namespace steemit::protocol;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
@@ -994,11 +997,11 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
 
       boost::program_options::variables_map options;
 
-      open_database();
-
-      // app.initialize();
       ahplugin->plugin_initialize( options );
       db_plugin->plugin_initialize( options );
+
+      open_database();
+
       generate_blocks( 2 );
 
       ahplugin->plugin_startup();

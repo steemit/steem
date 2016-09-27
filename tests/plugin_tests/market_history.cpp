@@ -3,14 +3,14 @@
 
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/steem_operations.hpp>
 
 #include <steemit/market_history/market_history_plugin.hpp>
 
 #include "../common/database_fixture.hpp"
 
 using namespace steemit::chain;
-using namespace steemit::chain::test;
+using namespace steemit::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( market_history, clean_database_fixture )
 

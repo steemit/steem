@@ -2,7 +2,7 @@
 
 #include <steemit/follow/follow_plugin.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <graphene/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
@@ -38,8 +38,8 @@ class follow_object : public abstract_object< follow_object >
       static const uint8_t space_id = FOLLOW_SPACE_ID;
       static const uint8_t type_id  = follow_object_type;
 
-      string               follower;
-      string               following;
+      account_id_type      follower;
+      account_id_type      following;
       set< follow_type >   what; /// blog
 };
 
@@ -51,6 +51,7 @@ class feed_object : public abstract_object< feed_object >
 
       account_id_type account;
       account_id_type first_reblogged_by;
+      time_point_sec  first_reblogged_on;
       comment_id_type comment;
       uint32_t        reblogs;
       uint32_t        account_feed_id = 0;
@@ -64,6 +65,7 @@ class blog_object : public abstract_object< blog_object >
 
       account_id_type account;
       comment_id_type comment;
+      time_point_sec  reblogged_on;
       uint32_t        blog_feed_id = 0;
 };
 
@@ -88,17 +90,15 @@ typedef multi_index_container<
       ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
       ordered_unique< tag< by_following_follower >,
          composite_key< follow_object,
-            member< follow_object, string, &follow_object::following >,
-            member< follow_object, string, &follow_object::follower >
-         >,
-         composite_key_compare< std::less<string>, std::less<string> >
+            member< follow_object, account_id_type, &follow_object::following >,
+            member< follow_object, account_id_type, &follow_object::follower >
+         >
       >,
       ordered_unique< tag< by_follower_following >,
          composite_key< follow_object,
-            member< follow_object, string, &follow_object::follower >,
-            member< follow_object, string, &follow_object::following >
-         >,
-         composite_key_compare< std::less<string>, std::less<string> >
+            member< follow_object, account_id_type, &follow_object::follower >,
+            member< follow_object, account_id_type, &follow_object::following >
+         >
       >
    >
 > follow_multi_index_type;
@@ -198,6 +198,6 @@ typedef graphene::db::generic_index< reputation_object,  reputation_multi_index_
 FC_REFLECT_ENUM( steemit::follow::follow_type, (undefined)(blog)(ignore) )
 
 FC_REFLECT_DERIVED( steemit::follow::follow_object, (graphene::db::object), (follower)(following)(what) )
-FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(first_reblogged_by)(comment)(reblogs)(account_feed_id) )
-FC_REFLECT_DERIVED( steemit::follow::blog_object, (graphene::db::object), (account)(comment)(blog_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::feed_object, (graphene::db::object), (account)(first_reblogged_by)(first_reblogged_on)(comment)(reblogs)(account_feed_id) )
+FC_REFLECT_DERIVED( steemit::follow::blog_object, (graphene::db::object), (account)(comment)(reblogged_on)(blog_feed_id) )
 FC_REFLECT_DERIVED( steemit::follow::reputation_object, (graphene::db::object), (account)(reputation) )

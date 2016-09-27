@@ -1,8 +1,13 @@
 #pragma once
 #include <fstream>
-#include <steemit/chain/protocol/block.hpp>
+#include <steemit/protocol/block.hpp>
 
 namespace steemit { namespace chain {
+
+   using steemit::protocol::block_id_type;
+   using steemit::protocol::signed_block;
+   using steemit::protocol::block_header;
+
    class block_database
    {
       public:

@@ -129,6 +129,8 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
 namespace steemit { namespace chain {
 
+using namespace steemit::protocol;
+
 struct database_fixture {
    // the reason we use an app is to exercise the indexes of built-in
    //   plugins

@@ -8,7 +8,8 @@
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
 
-#include <steemit/chain/protocol/block.hpp>
+#include <steemit/protocol/block.hpp>
+
 #include <steemit/chain/witness_objects.hpp>
 
 namespace steemit { namespace app {
@@ -94,6 +95,8 @@ class debug_node_api
 
       bool debug_has_hardfork( uint32_t hardfork_id );
 
+      std::string debug_get_json_schema();
+
       std::shared_ptr< detail::debug_node_api_impl > my;
 };
 
@@ -114,4 +117,5 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_has_hardfork)
        (debug_get_witness_schedule)
        (debug_get_hardfork_property_object)
+       (debug_get_json_schema)
      )

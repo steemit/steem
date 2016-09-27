@@ -39,7 +39,7 @@
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <steemit/app/api.hpp>
-#include <steemit/chain/protocol/protocol.hpp>
+#include <steemit/protocol/protocol.hpp>
 #include <steemit/wallet/wallet.hpp>
 
 #include <fc/interprocess/signals.hpp>
@@ -234,7 +234,7 @@ int main( int argc, char** argv )
          //
          _http_server->on_request(
             [&]( const fc::http::request& req, const fc::http::server::response& resp )
-            { 
+            {
                auto itr = allowed_ip_set.find( fc::ip::endpoint::from_string(req.remote_endpoint).get_address() );
                if( itr == allowed_ip_set.end() ) {
                   elog("rejected connection from ${ip} because it isn't in allowed set ${s}", ("ip",req.remote_endpoint)("s",allowed_ip_set) );

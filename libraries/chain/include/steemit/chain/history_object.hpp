@@ -1,9 +1,10 @@
 #pragma once
 
-#include <steemit/chain/protocol/authority.hpp>
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/protocol/operations.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/authority.hpp>
+#include <steemit/protocol/operations.hpp>
+#include <steemit/protocol/steem_operations.hpp>
+
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
 #include <graphene/db/generic_index.hpp>
@@ -27,7 +28,7 @@ namespace steemit { namespace chain {
          uint16_t            op_in_trx = 0;
          uint64_t            virtual_op = 0;
          time_point_sec      timestamp;
-         operation           op;
+         std::vector<char>   serialized_op;
    };
 
    struct by_location;
@@ -59,7 +60,7 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id  = impl_account_history_object_type;
 
-         string            account;
+         account_name_type account;
          uint32_t          sequence = 0;
          operation_id_type op;
    };
@@ -71,10 +72,10 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< account_history_object,
-               member< account_history_object, string, &account_history_object::account>,
+               member< account_history_object, account_name_type, &account_history_object::account>,
                member< account_history_object, uint32_t, &account_history_object::sequence>
             >,
-            composite_key_compare< std::less<string>, std::greater<uint32_t> >
+            composite_key_compare< std::less<account_name_type>, std::greater<uint32_t> >
          >
       >
    > account_history_multi_index_type;
@@ -83,5 +84,5 @@ namespace steemit { namespace chain {
    typedef generic_index< account_history_object, account_history_multi_index_type >  account_history_index;
 } }
 
-FC_REFLECT_DERIVED( steemit::chain::operation_object, (graphene::db::object), (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
+FC_REFLECT_DERIVED( steemit::chain::operation_object, (graphene::db::object), (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(serialized_op) )
 FC_REFLECT_DERIVED( steemit::chain::account_history_object, (graphene::db::object), (account)(sequence)(op) )

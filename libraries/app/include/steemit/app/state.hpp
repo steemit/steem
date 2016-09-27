@@ -1,4 +1,6 @@
 #pragma once
+#include <steemit/app/applied_operation.hpp>
+
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
@@ -67,6 +69,8 @@ namespace steemit { namespace app {
       vector<string>              replies; ///< author/slug mapping
       share_type                  author_reputation = 0;
       asset                       promoted = asset(0, SBD_SYMBOL);
+      optional<string>            first_reblogged_by;
+      optional<time_point_sec>    first_reblogged_on;
    };
 
    /**
@@ -76,22 +80,22 @@ namespace steemit { namespace app {
       extended_account(){}
       extended_account( const account_object& a ):account_object(a){}
 
-      asset                              vesting_balance; /// convert vesting_shares to vesting steem
-      share_type                         reputation = 0;
-      map<uint64_t,operation_object>     transfer_history; /// transfer to/from vesting
-      map<uint64_t,operation_object>     market_history; /// limit order / cancel / fill
-      map<uint64_t,operation_object>     post_history;
-      map<uint64_t,operation_object>     vote_history;
-      map<uint64_t,operation_object>     other_history;
-      set<string>                        witness_votes;
+      asset                                   vesting_balance; /// convert vesting_shares to vesting steem
+      share_type                              reputation = 0;
+      map<uint64_t,applied_operation>         transfer_history; /// transfer to/from vesting
+      map<uint64_t,applied_operation>         market_history; /// limit order / cancel / fill
+      map<uint64_t,applied_operation>         post_history;
+      map<uint64_t,applied_operation>         vote_history;
+      map<uint64_t,applied_operation>         other_history;
+      set<string>                             witness_votes;
 
       optional<map<uint32_t,extended_limit_order>> open_orders;
-      optional<vector<string>>           posts; /// permlinks for this user
-      optional<vector<string>>           blog; /// blog posts for this user
-      optional<vector<string>>           feed; /// feed posts for this user
-      optional<vector<string>>           recent_replies; /// blog posts for this user
-      map<string,vector<string>>         blog_category; /// blog posts for this user
-      optional<vector<string>>           recommended; /// posts recommened for this user
+      optional<vector<string>>                posts; /// permlinks for this user
+      optional<vector<string>>                blog; /// blog posts for this user
+      optional<vector<string>>                feed; /// feed posts for this user
+      optional<vector<string>>                recent_replies; /// blog posts for this user
+      map<string,vector<string>>              blog_category; /// blog posts for this user
+      optional<vector<string>>                recommended; /// posts recommened for this user
    };
 
 
@@ -155,7 +159,7 @@ namespace steemit { namespace app {
         /**
          * The list of miners who are queued to produce work
          */
-        vector<string>                pow_queue;
+        vector<account_name_type>     pow_queue;
         map<string, witness_object>   witnesses;
         witness_schedule_object       witness_schedule;
         price                         feed_price;
@@ -176,7 +180,7 @@ FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(t
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(trending30)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(promoted)(cashout) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
-FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted) )
+FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::chain::comment_object), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted)(first_reblogged_by)(first_reblogged_on) )
 
 FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data) )
 

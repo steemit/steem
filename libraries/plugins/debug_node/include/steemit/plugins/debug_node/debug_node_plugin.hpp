@@ -8,7 +8,7 @@
 #include <map>
 #include <fstream>
 
-namespace steemit { namespace chain {
+namespace steemit { namespace protocol {
    struct signed_block;
 } }
 
@@ -49,11 +49,11 @@ class debug_node_plugin : public steemit::app::plugin
    private:
       void on_changed_objects( const std::vector<graphene::db::object_id_type>& ids );
       void on_removed_objects( const std::vector<const graphene::db::object*> objs );
-      void on_applied_block( const chain::signed_block& b );
+      void on_applied_block( const protocol::signed_block& b );
 
       void apply_debug_updates();
 
-      std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
+      std::map<protocol::public_key_type, fc::ecc::private_key> _private_keys;
 
       std::shared_ptr< std::ofstream > _json_object_stream;
       boost::signals2::scoped_connection _applied_block_conn;
@@ -61,7 +61,7 @@ class debug_node_plugin : public steemit::app::plugin
       boost::signals2::scoped_connection _removed_objects_conn;
 
       std::vector< std::string > _edit_scripts;
-      std::map< chain::block_id_type, std::vector< fc::variant_object > > _debug_updates;
+      std::map< protocol::block_id_type, std::vector< fc::variant_object > > _debug_updates;
 };
 
 } } }

@@ -28,15 +28,20 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/json_evaluator_registry.hpp>
+#include <steemit/chain/generic_custom_operation_interpreter.hpp>
+
+#include <graphene/db/schema.hpp>
+#include <graphene/db/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
 namespace steemit { namespace private_message {
+
+using namespace graphene::db;
 
 namespace detail
 {
@@ -53,18 +58,18 @@ class private_message_plugin_impl
       }
 
       private_message_plugin&                                                             _self;
-      std::shared_ptr< json_evaluator_registry< steemit::private_message::private_message_plugin_operation > >   _evaluator_registry;
+      std::shared_ptr< generic_custom_operation_interpreter< steemit::private_message::private_message_plugin_operation > >   _custom_operation_interpreter;
       flat_map<string,string>                                                             _tracked_accounts;
 };
 
 private_message_plugin_impl::private_message_plugin_impl( private_message_plugin& _plugin )
    : _self( _plugin )
 {
-   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::private_message::private_message_plugin_operation > >( database() );
+   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::private_message::private_message_plugin_operation > >( database() );
 
-   _evaluator_registry->register_evaluator< private_message_evaluator >( &_self );
+   _custom_operation_interpreter->register_evaluator< private_message_evaluator >( &_self );
 
-   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
+   database().set_custom_operation_interpreter( _self.plugin_name(), _custom_operation_interpreter );
    return;
 }
 

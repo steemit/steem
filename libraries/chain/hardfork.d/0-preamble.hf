@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/protocol/version.hpp>
+#include <steemit/protocol/types.hpp>
+#include <steemit/protocol/version.hpp>
 
 namespace steemit { namespace chain {
 
@@ -22,8 +22,8 @@ class hardfork_property_object : public abstract_object< hardfork_property_objec
 
       vector< fc::time_point_sec > processed_hardforks;
       int                          last_hardfork = 0;
-      hardfork_version             current_hardfork_version;
-      hardfork_version             next_hardfork;
+      protocol::hardfork_version   current_hardfork_version;
+      protocol::hardfork_version   next_hardfork;
       fc::time_point_sec           next_hardfork_time;
 };
 

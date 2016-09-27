@@ -1,8 +1,9 @@
 #pragma once
 
-#include <steemit/chain/protocol/authority.hpp>
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/authority.hpp>
+#include <steemit/protocol/steem_operations.hpp>
+
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <graphene/db/generic_index.hpp>
 
@@ -12,6 +13,14 @@ namespace steemit { namespace chain {
 
    using namespace graphene::db;
 
+   using steemit::protocol::chain_properties;
+   using steemit::protocol::digest_type;
+   using steemit::protocol::public_key_type;
+   using steemit::protocol::version;
+   using steemit::protocol::hardfork_version;
+   using steemit::protocol::price;
+   using steemit::protocol::asset;
+   using steemit::protocol::asset_symbol_type;
 
    /**
     *  All witnesses with at least 1% net positive approval and
@@ -25,9 +34,9 @@ namespace steemit { namespace chain {
          static const uint8_t type_id  = impl_witness_object_type;
 
          /** the account that has authority over this witness */
-         string          owner;
-         time_point_sec  created;
-         string          url;
+         account_name_type owner;
+         time_point_sec    created;
+         string            url;
          uint32_t        total_missed = 0;
          uint64_t        last_aslot = 0;
          uint64_t        last_confirmed_block_num = 0;
@@ -115,11 +124,24 @@ namespace steemit { namespace chain {
          static const uint8_t space_id = implementation_ids;
          static const uint8_t type_id = impl_witness_schedule_object_type;
 
-         fc::uint128      current_virtual_time;
-         uint32_t         next_shuffle_block_num = 1;
-         vector< string > current_shuffled_witnesses;
-         chain_properties median_props;
-         version          majority_version;
+         fc::uint128                 current_virtual_time;
+         uint32_t                    next_shuffle_block_num = 1;
+         vector< account_name_type > current_shuffled_witnesses;
+         chain_properties            median_props;
+         version                     majority_version;
+   };
+
+   struct string_less {
+      bool operator()( const std::string& a, const std::string& b )const {
+         return a < b;
+      }
+      bool operator()( const fc::fixed_string<>& a, const fc::fixed_string<>& b )const {
+         const char* ap = (const char*)&a;
+         const char* ab = (const char*)&b;
+         int count = sizeof(a);
+         while( *ap == *ab && count ) { ++ap; ++ab; --count; }
+         return *ap < *ab;
+      }
    };
 
    struct by_vote_name;
@@ -135,14 +157,14 @@ namespace steemit { namespace chain {
       indexed_by<
          ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
          ordered_non_unique< tag<by_work>, member<witness_object, digest_type, &witness_object::last_work> >,
-         ordered_unique< tag<by_name>, member<witness_object, string, &witness_object::owner> >,
+         ordered_unique< tag<by_name>, member<witness_object, account_name_type, &witness_object::owner> >,
          ordered_non_unique< tag<by_pow>, member<witness_object, uint64_t, &witness_object::pow_worker> >,
          ordered_unique< tag<by_vote_name>,
             composite_key< witness_object,
                member<witness_object, share_type, &witness_object::votes >,
-               member<witness_object, string, &witness_object::owner >
+               member<witness_object, account_name_type, &witness_object::owner >
             >,
-            composite_key_compare< std::greater< share_type >, std::less< string > >
+            composite_key_compare< std::greater< share_type >, string_less > //std::less< account_name_type > >
          >,
          ordered_unique< tag<by_schedule_time>,
             composite_key< witness_object,

@@ -18,7 +18,7 @@
 
 #include "database_fixture.hpp"
 
-using namespace steemit::chain::test;
+//using namespace steemit::chain::test;
 
 uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
@@ -46,15 +46,16 @@ clean_database_fixture::clean_database_fixture()
 
    boost::program_options::variables_map options;
 
-   open_database();
-
    db_plugin->logging = false;
    ahplugin->plugin_initialize( options );
    db_plugin->plugin_initialize( options );
 
+   open_database();
+
    generate_block();
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );
    generate_block();
+
 
    //ahplugin->plugin_startup();
    db_plugin->plugin_startup();
@@ -101,11 +102,11 @@ live_database_fixture::live_database_fixture()
       _chain_dir = fc::current_path() / "test_blockchain";
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
-      db.open( _chain_dir );
-      graphene::time::now();
-
       auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
+
+      db.open( _chain_dir );
+      graphene::time::now();
 
       validate_database();
       generate_block();
@@ -454,7 +455,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
    while( itr != acc_hist_idx.begin() && ops.size() < num_ops )
    {
       itr--;
-      ops.push_back( itr->op(db).op );
+      ops.push_back( fc::raw::unpack< steemit::chain::operation >( itr->op(db).serialized_op ) );
    }
 
    return ops;

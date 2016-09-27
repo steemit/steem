@@ -35,9 +35,37 @@
 
 #include <cmath>
 
+using namespace steemit;
 using namespace steemit::chain;
+using namespace steemit::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( serialization_tests, clean_database_fixture )
+
+   /*
+BOOST_AUTO_TEST_CASE( account_name_type_test )
+{
+
+   auto test = []( const string& data ) {
+      fixed_string<> a(data);
+      std::string    b(data);
+
+      auto ap = fc::raw::pack( empty );
+      auto bp = fc::raw::pack( emptystr );
+      FC_ASSERT( ap.size() == bp.size() );
+      FC_ASSERT( std::equal( ap.begin(), ap.end(), bp.begin() ) );
+
+      auto sfa = fc::raw::unpack<std::string>( ap );
+      auto afs = fc::raw::unpack<fixed_string<>>( bp );
+   }
+   test( std::string() );
+   test( "helloworld" );
+   test( "1234567890123456" );
+
+   auto packed_long_string = fc::raw::pack( std::string( "12345678901234567890" ) );
+   auto unpacked = fc::raw::unpack<fixed_string<>>( packed_long_string );
+   idump( (unpacked) );
+}
+*/
 
 BOOST_AUTO_TEST_CASE( serialization_raw_test )
 {
