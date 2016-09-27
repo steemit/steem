@@ -3589,6 +3589,8 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       ACTORS( (bob) )
 
+      target = db.get_pow_summary_target();
+
       do
       {
          nonce++;
