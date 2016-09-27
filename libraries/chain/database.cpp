@@ -2733,7 +2733,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
               | skip_block_size_check
               | skip_tapos_check
               | skip_authority_check
-              | skip_merkle_check
+              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
               | skip_undo_history_check
               | skip_witness_schedule_check
               | skip_validate
