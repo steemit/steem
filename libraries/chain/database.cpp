@@ -1,5 +1,6 @@
 
 #include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/chain/shared_db_merkle.hpp>
 
 #include <steemit/chain/block_summary_object.hpp>
 #include <steemit/chain/compound.hpp>
@@ -217,7 +218,7 @@ void database::reindex(fc::path data_dir )
             skip_transaction_signatures |
             skip_transaction_dupe_check |
             skip_tapos_check |
-            skip_merkle_check |
+            /*skip_merkle_check |*/
             skip_witness_schedule_check |
             skip_authority_check |
             skip_validate | /// no need to validate operations
@@ -2861,7 +2862,20 @@ void database::_apply_block( const signed_block& next_block )
    uint32_t next_block_num = next_block.block_num();
    uint32_t skip = get_node_properties().skip_flags;
 
-   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
+   auto merkle_root = next_block.calculate_merkle_root();
+
+   try
+   {
+      FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == merkle_root, "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
+   }
+   catch( fc::assert_exception& e )
+   {
+      const auto& merkle_map = get_shared_db_merkle();
+      auto itr = merkle_map.find( next_block_num );
+
+      if( itr == merkle_map.end() || itr->second != merkle_root )
+         throw e;
+   }
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
