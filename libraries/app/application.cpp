@@ -26,9 +26,9 @@
 #include <steemit/app/application.hpp>
 #include <steemit/app/plugin.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/steem_object_types.hpp>
+#include <steemit/chain/database_exceptions.hpp>
 
 #include <graphene/net/core_messages.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -64,10 +64,10 @@ using graphene::net::message;
 using graphene::net::block_message;
 using graphene::net::trx_message;
 
-using chain::block_header;
-using chain::signed_block_header;
-using chain::signed_block;
-using chain::block_id_type;
+using protocol::block_header;
+using protocol::signed_block_header;
+using protocol::signed_block;
+using protocol::block_id_type;
 
 using std::vector;
 
@@ -421,13 +421,13 @@ namespace detail {
 
          if (sync_mode)
             fc_ilog(fc::logger::get("sync"),
-                    "chain pushing sync block #${block_num} ${block_hash}, head is ${head}", 
+                    "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",
                     ("block_num", blk_msg.block.block_num())
                     ("block_hash", blk_msg.block_id)
                     ("head", _chain_db->head_block_num()));
          else
             fc_ilog(fc::logger::get("sync"),
-                    "chain pushing block #${block_num} ${block_hash}, head is ${head}", 
+                    "chain pushing block #${block_num} ${block_hash}, head is ${head}",
                     ("block_num", blk_msg.block.block_num())
                     ("block_hash", blk_msg.block_id)
                     ("head", _chain_db->head_block_num()));
@@ -461,15 +461,15 @@ namespace detail {
             return result;
          } catch ( const steemit::chain::unlinkable_block_exception& e ) {
             // translate to a graphene::net exception
-            fc_elog(fc::logger::get("sync"), 
-                    "Error when pushing block, current head block is ${head}:\n${e}", 
+            fc_elog(fc::logger::get("sync"),
+                    "Error when pushing block, current head block is ${head}:\n${e}",
                     ("e", e.to_detail_string())
                     ("head", _chain_db->head_block_num()));
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
          } catch( const fc::exception& e ) {
-            fc_elog(fc::logger::get("sync"), 
-                    "Error when pushing block, current head block is ${head}:\n${e}", 
+            fc_elog(fc::logger::get("sync"),
+                    "Error when pushing block, current head block is ${head}:\n${e}",
                     ("e", e.to_detail_string())
                     ("head", _chain_db->head_block_num()));
             elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));

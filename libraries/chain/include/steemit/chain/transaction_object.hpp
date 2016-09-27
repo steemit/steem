@@ -1,7 +1,8 @@
 #pragma once
 #include <fc/io/raw.hpp>
 
-#include <steemit/chain/protocol/transaction.hpp>
+#include <steemit/protocol/transaction.hpp>
+
 #include <graphene/db/index.hpp>
 #include <graphene/db/generic_index.hpp>
 #include <fc/uint128.hpp>

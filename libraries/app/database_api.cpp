@@ -1,11 +1,13 @@
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 #include <steemit/app/database_api.hpp>
-#include <steemit/chain/get_config.hpp>
+
+#include <steemit/protocol/get_config.hpp>
+
 #include <steemit/chain/steem_objects.hpp>
+
 #include <fc/bloom_filter.hpp>
 #include <fc/smart_ref_impl.hpp>
-
 #include <fc/crypto/hex.hpp>
 
 #include <boost/range/iterator_range.hpp>
@@ -247,7 +249,7 @@ fc::variant_object database_api::get_config()const
 
 fc::variant_object database_api_impl::get_config()const
 {
-   return steemit::chain::get_config();
+   return steemit::protocol::get_config();
 }
 
 dynamic_global_property_object database_api::get_dynamic_global_properties()const

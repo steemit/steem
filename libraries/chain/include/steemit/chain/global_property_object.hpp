@@ -1,13 +1,17 @@
 #pragma once
 #include <fc/uint128.hpp>
 
-#include <steemit/chain/protocol/asset.hpp>
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/asset.hpp>
+
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/database.hpp>
+
 #include <graphene/db/object.hpp>
 
 namespace steemit { namespace chain {
 
+   using steemit::protocol::asset;
+   using steemit::protocol::price;
 
    /**
     * @class dynamic_global_property_object

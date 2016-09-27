@@ -1,7 +1,9 @@
 #include <steemit/chain/fork_database.hpp>
-#include <steemit/chain/exceptions.hpp>
+
+#include <steemit/chain/database_exceptions.hpp>
 
 namespace steemit { namespace chain {
+
 fork_database::fork_database()
 {
 }

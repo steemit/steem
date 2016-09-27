@@ -22,7 +22,8 @@
  * THE SOFTWARE.
  */
 
-#include <steemit/chain/protocol/authority.hpp>
+#include <steemit/protocol/authority.hpp>
+
 #include <steemit/app/impacted.hpp>
 
 #include <fc/utility.hpp>
@@ -30,7 +31,7 @@
 namespace steemit { namespace app {
 
 using namespace fc;
-using namespace steemit::chain;
+using namespace steemit::protocol;
 
 // TODO:  Review all of these, especially no-ops
 struct get_impacted_account_visitor

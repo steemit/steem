@@ -8,7 +8,7 @@
 #include <steemit/chain/fork_database.hpp>
 #include <steemit/chain/block_database.hpp>
 
-#include <steemit/chain/protocol/protocol.hpp>
+#include <steemit/protocol/protocol.hpp>
 
 #include <graphene/db/object_database.hpp>
 #include <graphene/db/object.hpp>
@@ -22,6 +22,13 @@
 namespace steemit { namespace chain {
    using graphene::db::abstract_object;
    using graphene::db::object;
+
+   using steemit::protocol::signed_transaction;
+   using steemit::protocol::operation;
+   using steemit::protocol::authority;
+   using steemit::protocol::asset;
+   using steemit::protocol::asset_symbol_type;
+   using steemit::protocol::price;
 
    class database_impl;
    class custom_operation_interpreter;

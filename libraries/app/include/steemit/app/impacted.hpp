@@ -24,9 +24,9 @@
 #pragma once
 
 #include <fc/container/flat.hpp>
-#include <steemit/chain/protocol/operations.hpp>
-#include <steemit/chain/protocol/transaction.hpp>
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/operations.hpp>
+#include <steemit/protocol/transaction.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <fc/string.hpp>
 
@@ -35,12 +35,12 @@ namespace steemit { namespace app {
 using namespace fc;
 
 void operation_get_impacted_accounts(
-   const steemit::chain::operation& op,
-   fc::flat_set<chain::account_name_type>& result );
+   const steemit::protocol::operation& op,
+   fc::flat_set<protocol::account_name_type>& result );
 
 void transaction_get_impacted_accounts(
-   const steemit::chain::transaction& tx,
-   fc::flat_set<chain::account_name_type>& result
+   const steemit::protocol::transaction& tx,
+   fc::flat_set<protocol::account_name_type>& result
    );
 
 } } // steemit::app

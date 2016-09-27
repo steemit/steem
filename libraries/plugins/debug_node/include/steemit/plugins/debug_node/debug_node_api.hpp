@@ -8,7 +8,8 @@
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
 
-#include <steemit/chain/protocol/block.hpp>
+#include <steemit/protocol/block.hpp>
+
 #include <steemit/chain/witness_objects.hpp>
 
 namespace steemit { namespace app {

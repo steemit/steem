@@ -23,7 +23,9 @@
  */
 
 #include <steemit/delayed_node/delayed_node_plugin.hpp>
-#include <steemit/chain/protocol/types.hpp>
+
+#include <steemit/protocol/types.hpp>
+
 #include <steemit/chain/database.hpp>
 #include <steemit/app/api.hpp>
 #include <steemit/app/database_api.hpp>

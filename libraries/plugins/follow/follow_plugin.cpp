@@ -4,11 +4,11 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/operation_notification.hpp>
-
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
 
@@ -24,6 +24,8 @@ namespace steemit { namespace follow {
 
 namespace detail
 {
+
+using namespace steemit::protocol;
 
 class follow_plugin_impl
 {

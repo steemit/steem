@@ -1,12 +1,14 @@
 #pragma once
 #include <steemit/app/applied_operation.hpp>
 #include <steemit/app/state.hpp>
-#include <steemit/chain/protocol/types.hpp>
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/history_object.hpp>
+
 #include <steemit/tags/tags_plugin.hpp>
+
 #include <steemit/follow/follow_plugin.hpp>
 
 #include <fc/api.hpp>
@@ -25,6 +27,7 @@
 namespace steemit { namespace app {
 
 using namespace steemit::chain;
+using namespace steemit::protocol;
 using namespace std;
 
 struct order

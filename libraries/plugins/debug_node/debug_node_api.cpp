@@ -6,7 +6,8 @@
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 
-#include <steemit/chain/protocol/block.hpp>
+#include <steemit/protocol/block.hpp>
+
 #include <steemit/chain/block_database.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/witness_objects.hpp>

@@ -1,12 +1,13 @@
 #pragma once
 
-#include <steemit/chain/protocol/base.hpp>
+#include <steemit/protocol/base.hpp>
 
 #include <steemit/follow/follow_plugin.hpp>
 
 namespace steemit { namespace follow {
 
 using namespace std;
+using steemit::protocol::base_operation;
 
 struct follow_operation : base_operation
 {

@@ -2,11 +2,11 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/operation_notification.hpp>
-
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
 
@@ -24,6 +24,8 @@
 namespace steemit { namespace tags {
 
 namespace detail {
+
+using namespace steemit::protocol;
 
 class tags_plugin_impl
 {
@@ -109,7 +111,7 @@ struct operation_visitor {
              obj.hot               = hot;
              obj.total_payout      = comment.total_payout_value;
              obj.mode              = comment.mode;
-             if( obj.mode != first_payout ) 
+             if( obj.mode != first_payout )
                obj.promoted_balance = 0;
          });
          add_stats( current, stats );
@@ -303,7 +305,7 @@ struct operation_visitor {
    void operator()( const transfer_operation& op )const {
       if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )  {
          vector<string> part; part.reserve(4);
-         auto path = op.memo; 
+         auto path = op.memo;
          boost::split( part, path, boost::is_any_of("/") );
          if( part[0].size() && part[0][0] == '@' ) {
             auto acnt = part[0].substr(1);
@@ -318,7 +320,7 @@ struct operation_visitor {
                       if( t.mode == first_payout )
                           t.promoted_balance += op.amount.amount;
                   });
-                  ++citr; 
+                  ++citr;
                }
             } else {
                ilog( "unable to find body" );

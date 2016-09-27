@@ -18,7 +18,7 @@
 
 #include "database_fixture.hpp"
 
-using namespace steemit::chain::test;
+//using namespace steemit::chain::test;
 
 uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
 

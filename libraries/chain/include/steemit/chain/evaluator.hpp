@@ -1,12 +1,12 @@
 #pragma once
-#include <steemit/chain/exceptions.hpp>
-#include <steemit/chain/protocol/operations.hpp>
+#include <steemit/protocol/exceptions.hpp>
+#include <steemit/protocol/operations.hpp>
 
 namespace steemit { namespace chain {
 
 class database;
 
-template< typename OperationType=steemit::chain::operation >
+template< typename OperationType=steemit::protocol::operation >
 class evaluator
 {
    public:
@@ -14,7 +14,7 @@ class evaluator
       virtual int get_type()const = 0;
 };
 
-template< typename EvaluatorType, typename OperationType=steemit::chain::operation >
+template< typename EvaluatorType, typename OperationType=steemit::protocol::operation >
 class evaluator_impl : public evaluator<OperationType>
 {
    public:

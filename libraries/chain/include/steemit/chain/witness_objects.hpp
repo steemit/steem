@@ -1,8 +1,9 @@
 #pragma once
 
-#include <steemit/chain/protocol/authority.hpp>
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/authority.hpp>
+#include <steemit/protocol/steem_operations.hpp>
+
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <graphene/db/generic_index.hpp>
 
@@ -12,6 +13,14 @@ namespace steemit { namespace chain {
 
    using namespace graphene::db;
 
+   using steemit::protocol::chain_properties;
+   using steemit::protocol::digest_type;
+   using steemit::protocol::public_key_type;
+   using steemit::protocol::version;
+   using steemit::protocol::hardfork_version;
+   using steemit::protocol::price;
+   using steemit::protocol::asset;
+   using steemit::protocol::asset_symbol_type;
 
    /**
     *  All witnesses with at least 1% net positive approval and
