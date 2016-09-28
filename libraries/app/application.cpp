@@ -46,6 +46,9 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/signals2.hpp>
 #include <boost/range/algorithm/reverse.hpp>
 
@@ -238,6 +241,7 @@ namespace detail {
       void startup()
       { try {
          bool clean = !fc::exists(_data_dir / "blockchain/dblock");
+         bool bootstrap_needed = clean;
          fc::create_directories(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "node/transaction_history");
 
@@ -245,7 +249,10 @@ namespace detail {
          register_builtin_apis();
 
          if( _options->count("resync-blockchain") )
+         {
             _chain_db->wipe(_data_dir / "blockchain", true);
+            bootstrap_needed = true;
+         }
 
          flat_map<uint32_t,block_id_type> loaded_checkpoints;
          if( _options->count("checkpoint") )
@@ -259,6 +266,11 @@ namespace detail {
             }
          }
          _chain_db->add_checkpoints( loaded_checkpoints );
+
+         if( bootstrap_needed && _options->count("bootstrap") )
+         {
+            bootstrap( _options->at("bootstrap").as<string>() );
+         }
 
          if( _options->count("replay-blockchain") )
          {
@@ -357,6 +369,108 @@ namespace detail {
          reset_websocket_server();
          reset_websocket_tls_server();
       } FC_LOG_AND_RETHROW() }
+
+      void bootstrap( const std::string& bootstrap_path )
+      {
+         // TODO:
+         // path starts with http:// -> download from URL
+         // path ends with .gz / .bz2 -> decompress
+         // after last / and before first . or ? character looks like sha256 -> require checksum match
+         //
+
+         std::shared_ptr< std::istream > input_file = nullptr;
+
+         uint32_t skip;
+         bool do_push;
+         std::string without_mode;
+         if( bootstrap_path.substr(0, 5) == "push:" )
+         {
+            skip = 0;
+            do_push = true;
+            without_mode = bootstrap_path.substr(5);
+         }
+         else
+         {
+            if( bootstrap_path.substr(0, 6) == "apply:" )
+               without_mode = bootstrap_path.substr(6);
+            else
+               without_mode = bootstrap_path;
+            skip = database::skip_witness_signature |
+                   database::skip_transaction_signatures |
+                   database::skip_transaction_dupe_check |
+                   database::skip_tapos_check |
+                   database::skip_merkle_check |
+                   database::skip_witness_schedule_check |
+                   database::skip_authority_check |
+                   database::skip_validate |
+                   database::skip_validate_invariants;
+            do_push = false;
+         }
+
+         if( without_mode.substr(0, 7) == "http://" )
+         {
+            FC_ASSERT( false, "URL's aren't supported just yet" );
+         }
+         else
+         {
+            FC_ASSERT( fc::exists( without_mode ), "Bootstrap file not found" );
+            input_file = std::make_shared< std::ifstream >( without_mode, ios_base::in | ios_base::binary );
+         }
+
+         std::string without_qs = without_mode.substr(0, without_mode.find('?'));
+
+         std::string without_path;
+         size_t last_slash_pos = without_qs.rfind('/');
+         size_t last_backslash_pos = without_qs.rfind('\\');
+         if( (last_slash_pos == std::string::npos) ||
+             ((last_backslash_pos != std::string::npos) && (last_backslash_pos > last_slash_pos))
+           )
+            last_slash_pos = last_backslash_pos;
+
+         if( last_slash_pos == std::string::npos )
+            without_path = without_qs;
+         else
+            without_path = without_qs.substr(last_slash_pos+1);
+
+         std::string without_ext;
+         std::string ext;
+         size_t first_dot_pos = without_path.find('.');
+         if( first_dot_pos == std::string::npos )
+         {
+            without_ext = without_path;
+            ext = "";
+         }
+         else
+         {
+            without_ext = without_path.substr(0, first_dot_pos);
+            size_t last_dot_pos = without_path.rfind('.');
+            ext = without_path.substr(last_dot_pos+1);
+         }
+
+         // Open file, load blocks until EOF
+         boost::iostreams::filtering_stream<boost::iostreams::input> in;
+         if( ext == "gz" )
+         {
+#ifdef HAS_ZLIB
+            in.push(boost::iostreams::gzip_decompressor());
+#else
+            FC_ASSERT( false, "Attempt to load .gz bootstrap file, but was not compiled with zlib" );
+#endif
+         }
+         else if( ext == "bz2" )
+         {
+#ifdef HAS_BZIP2
+            in.push(boost::iostreams::bzip2_decompressor());
+#else
+            FC_ASSERT( false, "Attempt to load .bz2 bootstrap file, but was not compiled with bzip2" );
+#endif
+         }
+         in.push(*input_file);
+
+         _chain_db->bootstrap( _data_dir / "blockchain", in, skip, do_push );
+
+         return;
+      }
 
       optional< api_access_info > get_api_access_info(const string& username)const
       {
@@ -881,6 +995,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
+         ("bootstrap", bpo::value< string >(), "Bootstrap file path or URL")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()

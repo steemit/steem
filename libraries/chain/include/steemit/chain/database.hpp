@@ -17,6 +17,7 @@
 
 #include <fc/log/logger.hpp>
 
+#include <iostream>
 #include <map>
 
 namespace steemit { namespace chain {
@@ -76,12 +77,20 @@ namespace steemit { namespace chain {
           void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
 
          /**
-          * @brief Rebuild object graph from block history and open detabase
+          * @brief Rebuild object graph from block history and open database
           *
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
          void reindex(fc::path data_dir);
+
+         /**
+          * @brief Rebuild object graph from block stream and open database
+          *
+          * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
+          * replaying blockchain history. When this method exits successfully, the database will be open.
+          */
+         void bootstrap( const fc::path& data_dir, std::istream& input_file, uint32_t skip_flags, bool do_push );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.

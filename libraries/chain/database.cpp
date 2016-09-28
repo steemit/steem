@@ -236,6 +236,55 @@ void database::reindex(fc::path data_dir )
 
 }
 
+void database::bootstrap( const fc::path& data_dir, std::istream& input_file, uint32_t skip_flags, bool do_push )
+{
+   try
+   {
+      ilog( "Bootstrapping blockchain" );
+      wipe(data_dir, true);
+      open(data_dir);
+      _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
+
+      auto start = fc::time_point::now();
+
+      ilog( "Bootstrapping blocks (push=${push})...", ("push", do_push) );
+      if( !do_push )
+         _undo_db.disable();
+
+      uint32_t i = 1;
+      block_id_type previous_id;
+      while( true )
+      {
+         if( i % 100000 == 0 )
+            std::cerr << i << " blocks\n";
+         signed_block block;
+         try
+         {
+            fc::raw::unpack( input_file, block );
+         }
+         catch (std::ios_base::failure &fail)
+         {
+            // We have to catch this exception because stdlib iostreams set failbit
+            // when a read doesn't return any characters
+            FC_ASSERT( input_file.eof() );
+         }
+         if( input_file.eof() )
+            break;
+         if( do_push )
+            push_block( block, skip_flags );
+         else
+            apply_block( block, skip_flags );
+         ++i;
+      }
+
+      close(false);
+
+      auto end = fc::time_point::now();
+      ilog( "Done bootstrapping, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+   }
+   FC_CAPTURE_AND_RETHROW( (data_dir) )
+}
+
 void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
    ilog("Wiping database", ("include_blocks", include_blocks));
