@@ -7,6 +7,8 @@
 #include <boost/filesystem.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/container/flat.hpp>
+#include <fc/io/raw_fwd.hpp>
 
 #include <typeindex>
 
@@ -565,6 +567,35 @@ namespace graphene { namespace db2 {
    template<typename T>
    const T& oid<T>::operator()( const database& db )const { return db.get<T>( _id ); }
 } } // namepsace graphene::db2
+
+namespace fc { 
+  template<typename T>
+  void to_variant( const graphene::db2::oid<T>& var,  variant& vo )
+  {
+     vo = var._id;
+  }
+  template<typename T>
+  void from_variant( const variant& vo, graphene::db2::oid<T>& var )
+  {
+     var._id = vo.as_int64();
+  }
+
+  namespace raw {
+    template<typename Stream, typename T>
+    inline void pack( Stream& s, const graphene::db2::oid<T>& id )
+    {
+      // fc::raw::pack( s, id._id );
+       s << id._id;
+    }
+    template<typename Stream, typename T>
+    inline void unpack( Stream& s, graphene::db2::oid<T>& id )
+    {
+       s.read( (char*)&id._id, sizeof(id._id));
+       //s >> id._id;
+      // fc::raw::unpack( s, id._id );
+    }
+  } 
+}
 
 /*
 struct example_object : public object<1,example_object> {
