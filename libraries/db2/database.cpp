@@ -3,13 +3,14 @@
 
 namespace graphene { namespace db2 {
 
-   void database::open( const bfs::path& file ) {
-      if( _data_dir != file ) close(); 
+   void database::open( const bfs::path& dir ) {
+      if( _data_dir != dir ) close(); 
       
-      fc::create_directories( file );
+      if( !fc::exists( dir ) )
+         fc::create_directories( dir );
 
-      _data_dir = file; 
-      auto abs_path = bfs::absolute( file / "shared_memory" );
+      _data_dir = dir; 
+      auto abs_path = bfs::absolute( dir / "shared_memory" );
       _segment.reset( new bip::managed_mapped_file( bip::open_or_create, 
                                                     abs_path.generic_string().c_str(), 
                                                     uint64_t(1024*1024*64) ) );

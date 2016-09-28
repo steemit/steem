@@ -7,6 +7,8 @@
 #include <boost/filesystem.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/container/flat.hpp>
+#include <fc/io/raw_fwd.hpp>
 
 #include <typeindex>
 
@@ -56,7 +58,7 @@ namespace graphene { namespace db2 {
    /**
     *  This macro must be used at global scope and OBJECT_TYPE and INDEX_TYPE must be fully qualified 
     */
-   #define SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
+   #define GRAPHENE_DB2_SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
    namespace graphene { namespace db2 { template<> struct get_index_type<OBJECT_TYPE> { typedef INDEX_TYPE type; }; } }
 
    /**
@@ -469,7 +471,7 @@ namespace graphene { namespace db2 {
              index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
 
-             if( type_id > _index_map.size() ) 
+             if( type_id >= _index_map.size() ) 
                 _index_map.resize( type_id + 1 );
 
              auto new_index = new index<index_type>( *idx_ptr );
@@ -482,6 +484,13 @@ namespace graphene { namespace db2 {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
+         }
+
+         template<typename MultiIndexType, typename ByIndex>
+         const auto& get_index()const {
+            typedef generic_index<MultiIndexType> index_type;
+            typedef index_type*                   index_type_ptr;
+            return index_type_ptr( _index_map[index_type::value_type::type_id]->get() )->indicies().template get<ByIndex>();
          }
 
          template<typename MultiIndexType>
@@ -558,6 +567,35 @@ namespace graphene { namespace db2 {
    template<typename T>
    const T& oid<T>::operator()( const database& db )const { return db.get<T>( _id ); }
 } } // namepsace graphene::db2
+
+namespace fc { 
+  template<typename T>
+  void to_variant( const graphene::db2::oid<T>& var,  variant& vo )
+  {
+     vo = var._id;
+  }
+  template<typename T>
+  void from_variant( const variant& vo, graphene::db2::oid<T>& var )
+  {
+     var._id = vo.as_int64();
+  }
+
+  namespace raw {
+    template<typename Stream, typename T>
+    inline void pack( Stream& s, const graphene::db2::oid<T>& id )
+    {
+      // fc::raw::pack( s, id._id );
+       s << id._id;
+    }
+    template<typename Stream, typename T>
+    inline void unpack( Stream& s, graphene::db2::oid<T>& id )
+    {
+       s.read( (char*)&id._id, sizeof(id._id));
+       //s >> id._id;
+      // fc::raw::unpack( s, id._id );
+    }
+  } 
+}
 
 /*
 struct example_object : public object<1,example_object> {
