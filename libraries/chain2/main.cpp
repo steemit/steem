@@ -1,37 +1,9 @@
 #include <graphene/db2/database.hpp>
 #include <steemit/chain2/chain_database.hpp>
 #include <steemit/chain2/block_objects.hpp>
+#include <fc/interprocess/container.hpp>
 
-
-#include <boost/interprocess/containers/vector.hpp>
-#include <fc/io/raw_fwd.hpp>
 #include <fc/io/json.hpp>
-
-namespace fc {
-namespace raw {
-    namespace bip = boost::interprocess;
-
-    template<typename Stream, typename T, typename... A>
-    inline void pack( Stream& s, const bip::vector<T,A...>& value ) {
-      pack( s, unsigned_int((uint32_t)value.size()) );
-      auto itr = value.begin();
-      auto end = value.end();
-      while( itr != end ) {
-        fc::raw::pack( s, *itr );
-        ++itr;
-      }
-    }
-    template<typename Stream, typename T, typename... A>
-    inline void unpack( Stream& s, bip::vector<T,A...>& value ) {
-      unsigned_int size;
-      unpack( s, size );
-      value.clear(); value.resize(size);
-      for( auto& item : value )
-          fc::raw::unpack( s, item );
-    }
-}}
-
-#include <fc/io/raw.hpp>
 using namespace steemit::chain2;
 
 
@@ -76,6 +48,16 @@ int main( int argc, char** argv ) {
       });
       js = fc::json::to_string( head );
       idump((js)(js.size()));
+
+      db.export_to_directory( "export_db" );
+
+      fc::temp_directory temp_dir( "." );
+      steemit::chain2::database import_db;
+      import_db.open( temp_dir.path() );
+      import_db.import_from_directory( "export_db" );
+      idump((import_db.head_block()));
+
+
 
    } catch ( const fc::exception& e ) {
       edump( (e.to_detail_string()) );

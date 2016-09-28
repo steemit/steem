@@ -1,6 +1,6 @@
 #pragma once
 #include <steemit/protocol/block.hpp>
-#include <steemit/chain2/object_types.hpp>
+#include <steemit/chain2/block_objects.hpp>
 
 #include <fc/signals.hpp>
 
@@ -12,8 +12,6 @@ namespace steemit { namespace chain2 {
       skip_undo_operation,
       skip_validation ///< apply changes without validation checks
    };
-
-   class block_object;
 
    class database : public db2::database {
       public:

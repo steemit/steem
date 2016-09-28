@@ -9,13 +9,32 @@
 #include <fc/exception/exception.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/io/raw_fwd.hpp>
+#include <fc/filesystem.hpp>
+#include <fc/interprocess/file_mapping.hpp>
+#include <fc/io/datastream.hpp>
 
 #include <typeindex>
+#include <fstream>
+
+
+namespace graphene { namespace db2 {
+   template<typename T> class oid;
+} }
+
+namespace fc { 
+  template<typename T> void to_variant( const graphene::db2::oid<T>& var,  variant& vo );
+  template<typename T> void from_variant( const variant& vo, graphene::db2::oid<T>& var );
+
+  namespace raw {
+    template<typename Stream, typename T> inline void pack( Stream& s, const graphene::db2::oid<T>& id );
+    template<typename Stream, typename T> inline void unpack( Stream& s, graphene::db2::oid<T>& id );
+  } 
+}
+
 
 namespace graphene { namespace db2 {
 
    namespace bip = boost::interprocess;
-   namespace bfs = boost::filesystem;
    using std::unique_ptr;
    using std::vector;
    
@@ -77,6 +96,40 @@ namespace graphene { namespace db2 {
 
          generic_index( allocator<value_type> a )
          :_stack(a),_indices( a ){}
+
+         void export_to_file( const fc::path& filename )const {
+            std::ofstream out( filename.generic_string(), 
+                               std::ofstream::binary | std::ofstream::out | std::ofstream::trunc );
+            fc::raw::pack( out, int32_t(value_type::type_id) );
+            fc::raw::pack( out, uint64_t( _indices.size() ) );
+            fc::raw::pack( out, _next_id );
+
+            for( const auto& item : _indices ) {
+               fc::raw::pack( out, item );
+            }
+         }
+
+         void import_from_file( const fc::path& filename ) {
+            int32_t   id = 0;
+            uint64_t  size = 0;
+
+            fc::file_mapping fm( filename.generic_string().c_str(), fc::read_only );
+            fc::mapped_region mr( fm, fc::read_only, 0, fc::file_size(filename) );
+            fc::datastream<const char*> in( (const char*)mr.get_address(), mr.get_size() );
+
+            fc::raw::unpack( in, id );
+            fc::raw::unpack( in, size );
+            fc::raw::unpack( in, _next_id );
+
+            FC_ASSERT( id == value_type::type_id );
+
+            for( uint64_t i = 0; i < size; ++i ) {
+               auto insert_result = _indices.emplace( [&]( value_type& v ) {
+                  fc::raw::unpack( in, v );
+               }, _indices.get_allocator() );
+               FC_ASSERT( insert_result.second, "Could not import object, most likely a uniqueness constraint was violated" );
+            }
+         }
 
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
@@ -390,6 +443,9 @@ namespace graphene { namespace db2 {
          virtual void    undo()const = 0;
          virtual void    squash()const = 0;
          virtual void    commit( int64_t revision )const = 0;
+         virtual void    export_to_file( const fc::path& filename ) const = 0;
+         virtual void    import_from_file( const fc::path& filename ) = 0;
+         virtual uint32_t type_id()const  = 0;
          void* get()const { return _idx_ptr; }
       private:
          void* _idx_ptr;
@@ -407,7 +463,9 @@ namespace graphene { namespace db2 {
          virtual void    undo()const  override { _base.undo(); }
          virtual void    squash()const  override { _base.squash(); }
          virtual void    commit( int64_t revision )const  override { _base.commit(revision); }
-
+         virtual void    export_to_file( const fc::path& filename )const override { _base.export_to_file( filename ); }
+         virtual void    import_from_file( const fc::path& filename ) override { _base.import_from_file( filename ); }
+         virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
       private:
          BaseIndex& _base;
    };
@@ -425,7 +483,7 @@ namespace graphene { namespace db2 {
    class database 
    {
       public:
-         void open( const bfs::path& file );
+         void open( const fc::path& file );
          void close();
          void flush();
 
@@ -547,6 +605,9 @@ namespace graphene { namespace db2 {
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }
 
 
+         void export_to_directory( const fc::path& dir )const;
+         void import_from_directory( const fc::path& dir );
+
       private:
          unique_ptr<bip::managed_mapped_file>            _segment;
          bip::interprocess_mutex*                        _mutex;
@@ -560,7 +621,7 @@ namespace graphene { namespace db2 {
           */
          vector<unique_ptr<abstract_index>>             _index_map;
 
-         bfs::path                                      _data_dir;
+         fc::path                                       _data_dir;
    };
 
 
@@ -584,15 +645,12 @@ namespace fc {
     template<typename Stream, typename T>
     inline void pack( Stream& s, const graphene::db2::oid<T>& id )
     {
-      // fc::raw::pack( s, id._id );
-       s << id._id;
+       s.write( (const char*)&id._id, sizeof(id._id) );
     }
     template<typename Stream, typename T>
     inline void unpack( Stream& s, graphene::db2::oid<T>& id )
     {
        s.read( (char*)&id._id, sizeof(id._id));
-       //s >> id._id;
-      // fc::raw::unpack( s, id._id );
     }
   } 
 }

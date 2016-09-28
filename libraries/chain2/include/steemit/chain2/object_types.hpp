@@ -13,9 +13,9 @@
 
 namespace steemit { namespace chain2 {
 
-   using namespace steemit::protocol;
    using namespace boost::multi_index;
    namespace db2 = graphene::db2;
+   namespace bip = boost::interprocess;
    using db2::allocator;
 
    typedef uint64_t options_type;
