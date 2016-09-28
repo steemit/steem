@@ -22,11 +22,14 @@ namespace steemit { namespace chain {
     * in a block a transaction_object is added. At the end of block processing all transaction_objects that have
     * expired can be removed from the index.
     */
-   class transaction_object : public abstract_object<transaction_object>
+   class transaction_object : public object< impl_transaction_object_type, transaction_object >
    {
       public:
-         static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id  = impl_transaction_object_type;
+         template< typename Constructor, typename Allocator >
+         transaction_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
 
          signed_transaction  trx;
          transaction_id_type trx_id;
@@ -39,13 +42,14 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       transaction_object,
       indexed_by<
-         ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+         ordered_unique< tag<by_id>, member< transaction_object, id_type, &transaction_object::id > >,
          hashed_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type> >,
          ordered_non_unique< tag<by_expiration>, const_mem_fun<transaction_object, time_point_sec, &transaction_object::get_expiration > >
-      >
-   > transaction_multi_index_type;
+      >,
+      bip::allocator< transaction_object, bip::managed_mapped_file::segment_manager >
+   > transaction_index;
 
-   typedef generic_index<transaction_object, transaction_multi_index_type> transaction_index;
 } }
 
 FC_REFLECT_DERIVED( steemit::chain::transaction_object, (graphene::db::object), (trx)(trx_id) )
+SET_INDEX_TYPE( steemit::chain::transaction_object, steemit::chain::transaction_index )

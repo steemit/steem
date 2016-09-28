@@ -93,6 +93,8 @@ namespace steemit { namespace protocol {
     */
    struct shared_authority
    {
+      typedef bip::allocator< shared_authority, bip::managed_mapped_file::segment_manager > allocator_type;
+
       typedef bip::allocator<std::pair<account_name_type,weight_type>, bip::managed_mapped_file::segment_manager> account_pair_allocator_type;
       typedef bip::allocator<std::pair<public_key_type,weight_type>, bip::managed_mapped_file::segment_manager> key_pair_allocator_type;
 

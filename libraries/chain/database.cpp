@@ -66,27 +66,6 @@ namespace steemit { namespace chain {
 
 using boost::container::flat_set;
 
-// C++ requires that static class variables declared and initialized
-// in headers must also have a definition in a single source file,
-// else linker errors will occur [1].
-//
-// The purpose of this source file is to collect such definitions in
-// a single place.
-//
-// [1] http://stackoverflow.com/questions/8016780/undefined-reference-to-static-constexpr-char
-
-const uint8_t account_object::space_id;
-const uint8_t account_object::type_id;
-
-const uint8_t block_summary_object::space_id;
-const uint8_t block_summary_object::type_id;
-
-const uint8_t transaction_object::space_id;
-const uint8_t transaction_object::type_id;
-
-const uint8_t witness_object::space_id;
-const uint8_t witness_object::type_id;
-
 inline u256 to256( const fc::uint128& t ) {
    u256 v(t.hi);
    v <<= 64;

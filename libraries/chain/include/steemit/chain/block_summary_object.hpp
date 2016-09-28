@@ -17,15 +17,27 @@ namespace steemit { namespace chain {
     *  so we can calculate whether the current transaction is valid and at
     *  what time it should expire.
     */
-   class block_summary_object : public abstract_object<block_summary_object>
+   class block_summary_object : public object< impl_block_summary_object_type, block_summary_object >
    {
       public:
-         static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id  = impl_block_summary_object_type;
+         template< typename Constructor, typename Allocator >
+         block_summary_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
 
-         block_id_type      block_id;
+         id_type        id;
+         block_id_type  block_id;
    };
+
+   typedef multi_index_container<
+      block_summary_object,
+      indexed_by<
+         ordered_unique< member< block_summary_object, id_type, &block_summary_object::id > >
+      >,
+      bip::allocator< block_summary_object, bip::managed_mapped_file::segment_manager >
+   > block_summary_index;
 
 } }
 
-FC_REFLECT_DERIVED( steemit::chain::block_summary_object, (graphene::db::object), (block_id) )
+FC_REFLECT( steemit::chain::block_summary_object, (id)(block_id) )

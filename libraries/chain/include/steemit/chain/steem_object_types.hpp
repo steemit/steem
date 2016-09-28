@@ -3,6 +3,10 @@
 
 namespace steemit { namespace chain {
 
+namespace bip = graphene::db2::bip;
+
+using graphene::db2::object;
+
 using graphene::db::object_id_type;
 using graphene::db::object_id;
 using graphene::db::abstract_object;
@@ -13,6 +17,14 @@ using steemit::protocol::transaction_id_type;
 using steemit::protocol::chain_id_type;
 using steemit::protocol::account_name_type;
 using steemit::protocol::share_type;
+using steemit::protocol::shared_authority;
+
+typedef bip::basic_string<
+   char,std::char_traits<char>,
+   bip::allocator<char,bip::managed_mapped_file::segment_manager>
+> shared_string;
+
+typedef bip::allocator<shared_string,bip::managed_mapped_file::segment_manager> shared_string_allocator_type;
 
 enum reserved_spaces
 {

@@ -22,11 +22,16 @@ namespace steemit { namespace chain {
     * This is an implementation detail. The values here are calculated during normal chain operations and reflect the
     * current values of global blockchain properties.
     */
-   class dynamic_global_property_object : public abstract_object<dynamic_global_property_object>
+   class dynamic_global_property_object : public abstract_object< impl_dynamic_global_property_object_type, dynamic_global_property_object>
    {
       public:
-         static const uint8_t space_id = implementation_ids;
-         static const uint8_t type_id  = impl_dynamic_global_property_object_type;
+         template< typename Constructor, typename Allocator >
+         dynamic_global_property_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
+
+         id_type           id;
 
          uint32_t          head_block_number = 0;
          block_id_type     head_block_id;
@@ -133,32 +138,41 @@ namespace steemit { namespace chain {
    };
 }}
 
-FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::db::object),
-                    (head_block_number)
-                    (head_block_id)
-                    (time)
-                    (current_witness)
-                    (total_pow)
-                    (num_pow_witnesses)
-                    (virtual_supply)
-                    (current_supply)
-                    (confidential_supply)
-                    (current_sbd_supply)
-                    (confidential_sbd_supply)
-                    (total_vesting_fund_steem)
-                    (total_vesting_shares)
-                    (total_reward_fund_steem)
-                    (total_reward_shares2)
-                    (sbd_interest_rate)
-                    (sbd_print_rate)
-                    (average_block_size)
-                    (maximum_block_size)
-                    (current_aslot)
-                    (recent_slots_filled)
-                    (participation_count)
-                    (last_irreversible_block_num)
-                    (max_virtual_bandwidth)
-                    (current_reserve_ratio)
-                    (vote_regeneration_per_day)
-                  )
+typedef multi_index_container<
+   dynamic_global_property_object,
+   indexed_by<
+      ordered_unique< member< dynamic_global_property_object, id_type, &dynamic_global_property_object::id > >
+   >,
+   bip::allocator< dynamic_global_property_object, bip::managed_mapped_file::segment_manager >
+> dynamic_global_property_index;
 
+FC_REFLECT( steemit::chain::dynamic_global_property_object,
+             (id)
+             (head_block_number)
+             (head_block_id)
+             (time)
+             (current_witness)
+             (total_pow)
+             (num_pow_witnesses)
+             (virtual_supply)
+             (current_supply)
+             (confidential_supply)
+             (current_sbd_supply)
+             (confidential_sbd_supply)
+             (total_vesting_fund_steem)
+             (total_vesting_shares)
+             (total_reward_fund_steem)
+             (total_reward_shares2)
+             (sbd_interest_rate)
+             (sbd_print_rate)
+             (average_block_size)
+             (maximum_block_size)
+             (current_aslot)
+             (recent_slots_filled)
+             (participation_count)
+             (last_irreversible_block_num)
+             (max_virtual_bandwidth)
+             (current_reserve_ratio)
+             (vote_regeneration_per_day)
+          )
+SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, dynamic_global_property_index )
