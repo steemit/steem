@@ -1,4 +1,5 @@
 #include <steemit/chain2/chain_database.hpp>
+#include <steemit/chain2/block_objects.hpp>
 
 namespace steemit { namespace chain2 {
    database::database()
