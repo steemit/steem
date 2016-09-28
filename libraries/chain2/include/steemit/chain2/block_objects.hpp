@@ -1,7 +1,10 @@
 #pragma once
 #include <steemit/chain2/object_types.hpp>
+#include <steemit/protocol/block.hpp>
 
 namespace steemit { namespace chain2 {
+
+   using namespace steemit::protocol;
 
    struct by_id;
    struct by_ref_prefix;

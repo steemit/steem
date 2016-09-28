@@ -1,5 +1,7 @@
-#include <steemit/chain2/chain_database.hpp>
+#include <fc/interprocess/container.hpp>
 #include <steemit/chain2/block_objects.hpp>
+#include <steemit/chain2/chain_database.hpp>
+#include <fc/io/raw.hpp>
 
 namespace steemit { namespace chain2 {
    database::database()
@@ -13,7 +15,7 @@ namespace steemit { namespace chain2 {
       graphene::db2::database::open( dir );
 
       add_index<block_index>();
-      add_index<transaction_index>();
+//      add_index<transaction_index>();
    }
 
    const block_object& database::head_block()const {
