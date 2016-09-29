@@ -554,7 +554,8 @@ namespace graphene { namespace db2 {
          }
 
          template<typename MultiIndexType, typename ByIndex>
-         const auto& get_index()const {
+         //const auto& get_index()const {
+         auto get_index()const -> decltype( ((generic_index<MultiIndexType>*)( nullptr ))->indicies().template get<ByIndex>() ) {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
             return index_type_ptr( _index_map[index_type::value_type::type_id]->get() )->indicies().template get<ByIndex>();

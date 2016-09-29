@@ -16,11 +16,23 @@ namespace steemit { namespace chain2 {
 
       add_index<block_index>();
       add_index<transaction_index>();
+
+      if( head_block_num() ) {
+         const auto& head = head_block();
+         signed_block front;
+         front.previous = head.previous;
+         //_fork_db.set_head( branches.second.front() );
+      }
    }
 
    
    
-   void           database::push_block( const signed_block& b ) {
+   void           database::push_block( const signed_block& b ) 
+   { try {
+      if( !head_block_num() ) {
+         _fork_db.start_block( b );
+      }
+
       auto restore_pending = clear_pending();
 
       const auto& head = head_block();
@@ -69,14 +81,24 @@ namespace steemit { namespace chain2 {
              }
          }
       }
-   }
+   } FC_CAPTURE_AND_RETHROW( (b) ) }
 
-   void           database::push_transaction( const signed_transaction& trx ) {
-      
-   }
+   void           database::push_transaction( const signed_transaction& trx ) 
+   { try {
+
+     if( !_pending_tx_session ) 
+        _pending_tx_session = start_undo_session( true );
+    
+     auto undos = start_undo_session( true );
+     apply( *this, trx );
+     _pending_transactions.emplace_back( trx );
+
+   } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
    signed_block   database::generate_block( time_point_sec time, const account_name_type& witness, const fc::ecc::private_key& block_signing_key ) {
+      signed_block result;
 
+      return result;
    }
 
    const block_object& database::head_block()const {
@@ -85,6 +107,7 @@ namespace steemit { namespace chain2 {
       FC_ASSERT( head_block_itr != block_idx.rend() );
       return *head_block_itr;
    }
+
    uint32_t  database::head_block_num()const {
       const auto& block_idx = get_index<block_index, by_block_num>();
       auto head_block_itr = block_idx.rbegin();
@@ -92,7 +115,6 @@ namespace steemit { namespace chain2 {
          return head_block_itr->block_num;
       return 0;
    }
-
 
    void apply( database& db, const signed_block& b, const options_type& opts ) {
       auto undo_session = db.start_undo_session( !(opts & skip_undo_block) );

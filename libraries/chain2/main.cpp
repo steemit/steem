@@ -21,10 +21,13 @@ int main( int argc, char** argv ) {
       if( db.head_block_num() )  {
          genesis.previous = db.head_block().block_id;
          genesis.timestamp = db.head_block().timestamp + fc::seconds(3);
+      } else {
+         apply( db, genesis ); 
+         return 0;
       }
 
       idump((genesis));
-      apply( db, genesis ); 
+      db.push_block( genesis );
       idump((db.revision()));
 
       const auto& head = db.head_block();

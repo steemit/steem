@@ -36,15 +36,30 @@ namespace steemit { namespace chain2 {
          void           push_transaction( const signed_transaction& trx );
          signed_block   generate_block( time_point_sec time, const account_name_type& witness, const fc::ecc::private_key& block_signing_key );
 
-         auto clear_pending() {
+
+
+         struct restore_pending {
+            restore_pending( database& db, vector<signed_transaction>&& p ):_db(db),_pending( std::move(p) ){}
+            restore_pending( restore_pending&& mv ):_db(mv._db),_pending( std::move(mv._pending) ){}
+
+            ~restore_pending() {
+               try {
+                  for( const auto& t : _pending ) {
+                     try {
+                        _db.push_transaction( t );
+                     } catch ( ... ){}
+                  }
+               } catch ( ... ){}
+            }
+
+            private:
+               database&                  _db;
+               vector<signed_transaction> _pending;
+         };
+
+         restore_pending clear_pending() {
             _pending_tx_session.reset();
-            return fc::make_scoped_exit( [pending=std::move(_pending_transactions),this]()mutable {
-               for( const auto& t : pending ) {
-                  try {
-                     push_transaction( t );
-                  } catch ( ... ){}
-               }
-            });
+            return restore_pending( *this, std::move(_pending_transactions) );
          }
 
       private:
