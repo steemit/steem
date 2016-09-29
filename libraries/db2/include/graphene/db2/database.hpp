@@ -413,7 +413,6 @@ namespace graphene { namespace db2 {
          index_type                      _indices;
          uint32_t                        _size_of_value_type = 0;
          uint32_t                        _size_of_this = 0;
-
    };
 
    class abstract_session {

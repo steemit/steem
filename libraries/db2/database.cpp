@@ -7,6 +7,30 @@
 
 namespace graphene { namespace db2 {
 
+   struct environment_check {
+      environment_check() {
+         memcpy( &compiler_version.at(0), __VERSION__, std::min<size_t>( strlen(__VERSION__), 256 ) );
+#ifndef NDEBUG 
+         debug = true;
+#endif
+#ifdef __APPLE__
+         apple = true;
+#endif 
+#ifdef WIN32
+         windows = true;
+#endif 
+      }
+      friend bool operator == ( const environment_check& a, const environment_check& b ) {
+         return std::make_tuple( a.compiler_version, a.debug, a.apple, a.windows )
+            ==  std::make_tuple( b.compiler_version, b.debug, b.apple, b.windows );
+      }
+
+      fc::array<char,256>  compiler_version;
+      bool                 debug = false;
+      bool                 apple = false;
+      bool                 windows = false;
+   };
+
    void database::open( const fc::path& dir ) {
       if( _data_dir != dir ) close(); 
       
@@ -19,6 +43,8 @@ namespace graphene { namespace db2 {
                                                     abs_path.generic_string().c_str(), 
                                                     uint64_t(1024*1024*64) ) );
       _mutex = _segment->find_or_construct< bip::interprocess_mutex >( "global_mutex" )();
+      auto env = _segment->find_or_construct< environment_check >( "environment" )();
+      FC_ASSERT( *env == environment_check() );
    }
 
    void database::flush() {

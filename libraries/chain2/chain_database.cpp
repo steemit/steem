@@ -15,7 +15,68 @@ namespace steemit { namespace chain2 {
       graphene::db2::database::open( dir );
 
       add_index<block_index>();
-//      add_index<transaction_index>();
+      add_index<transaction_index>();
+   }
+
+   
+   
+   void           database::push_block( const signed_block& b ) {
+      auto restore_pending = clear_pending();
+
+      const auto& head = head_block();
+
+      auto new_head = _fork_db.push_block( b );
+      if( new_head->previous_id() == head.previous ) {
+         try {
+         apply( *this, b, skip_undo_transaction | skip_undo_operation );
+         } catch ( const fc::exception& e ) {
+            _fork_db.remove( b.id() );
+            throw;
+         }
+      } else {
+
+         auto branches = _fork_db.fetch_branch_from( new_head->id, head.block_id );
+         while( head_block().block_id != branches.second.back()->previous_id() ) {
+            undo();
+         }
+
+         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr )
+         {
+             optional<fc::exception> except;
+             try {
+                apply( *this, (*ritr)->data, skip_undo_transaction | skip_undo_operation );
+             } catch ( const fc::exception& e ) { except = e; }
+
+             if( except )
+             {
+                // wlog( "exception thrown while switching forks ${e}", ("e",except->to_detail_string() ) );
+                // remove the rest of branches.first from the fork_db, those blocks are invalid
+                while( ritr != branches.first.rend() )
+                {
+                   _fork_db.remove( (*ritr)->id ); //data.id() );
+                   ++ritr;
+                }
+                _fork_db.set_head( branches.second.front() );
+
+                // pop all blocks from the bad fork
+                while( head_block().block_id != branches.second.back()->data.previous )
+                   undo();
+
+                // restore all blocks from the good fork
+                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
+                    apply( *this, (*ritr)->data, skip_undo_transaction | skip_undo_operation );
+                throw *except;
+             }
+         }
+      }
+   }
+
+   void           database::push_transaction( const signed_transaction& trx ) {
+      
+   }
+
+   signed_block   database::generate_block( time_point_sec time, const account_name_type& witness, const fc::ecc::private_key& block_signing_key ) {
+
    }
 
    const block_object& database::head_block()const {
@@ -74,9 +135,20 @@ namespace steemit { namespace chain2 {
    void apply( database& db, const signed_transaction& t, const options_type& opts  ){
       auto undo_session = db.start_undo_session( !(opts & skip_undo_transaction) );
          db.pre_apply_transaction( t );
+
+         db.create<transaction_object>( [&]( transaction_object& trx ) {
+              trx.trx_id = t.id();
+              trx.block_num = db.head_block().block_num;
+              auto pack_size = fc::raw::pack_size( t );
+              trx.packed_transaction.resize( pack_size );
+              fc::datastream<char*> ds( trx.packed_transaction.data(), pack_size );
+              fc::raw::pack( ds, t );
+         });
+
          for( const auto& op : t.operations ) {
             apply( db, op, opts );
          }
+
          db.post_apply_transaction( t );
       undo_session.squash();
    }
