@@ -17,7 +17,7 @@ namespace steemit { namespace chain {
 
    using steemit::protocol::authority;
 
-   class account_object : public object<impl_account_object_type, account_object>
+   class account_object : public object< impl_account_object_type, account_object >
    {
       public:
          template<typename Constructor, typename Allocator>

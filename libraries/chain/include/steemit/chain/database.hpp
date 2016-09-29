@@ -10,9 +10,7 @@
 
 #include <steemit/protocol/protocol.hpp>
 
-#include <graphene/db/object_database.hpp>
-#include <graphene/db/object.hpp>
-#include <graphene/db/simple_index.hpp>
+#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -20,8 +18,6 @@
 #include <map>
 
 namespace steemit { namespace chain {
-   using graphene::db::abstract_object;
-   using graphene::db::object;
 
    using steemit::protocol::signed_transaction;
    using steemit::protocol::operation;
@@ -38,7 +34,7 @@ namespace steemit { namespace chain {
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class database : public graphene::db::object_database
+   class database : public graphene::db2::database
    {
       public:
          database();
@@ -62,7 +58,8 @@ namespace steemit { namespace chain {
             skip_undo_history_check     = 1 << 8,  ///< used while reindexing
             skip_witness_schedule_check = 1 << 9,  ///< used while reindexing
             skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_validate_invariants    = 1 << 11  ///< used to skip database invariant check on block application
+            skip_validate_invariants    = 1 << 11, ///< used to skip database invariant check on block application
+            skip_undo_block             = 1 << 12, ///< used to skip undo db on reindex
          };
 
          /**
@@ -110,20 +107,36 @@ namespace steemit { namespace chain {
 
          chain_id_type             get_chain_id()const;
 
-         const witness_object* find_witness( const account_name_type& name )const;
-         const category_object* find_category( const string& name )const;
-         const category_object& get_category( const string& name )const;
-         const witness_object&  get_witness( const account_name_type& name )const;
+
+         const witness_object&  get_witness(  const account_name_type& name )const;
+         const witness_object*  find_witness( const account_name_type& name )const;
+
+         const account_object&  get_account(  const account_name_type& name )const;
          const account_object*  find_account( const account_name_type& name )const;
-         const account_object&  get_account( const account_name_type& name )const;
-         const comment_object&  get_comment( const account_name_type& author, const string& permlink )const;
+
+         const comment_object&  get_comment(  const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
-         const escrow_object&   get_escrow( const account_name_type& name, uint32_t escrowid )const;
-         const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
-         const limit_order_object& get_limit_order( const account_name_type& owner, uint32_t id )const;
+
+         const category_object& get_category(  const string& name )const;
+         const category_object* find_category( const string& name )const;
+
+         const escrow_object&   get_escrow(  const account_name_type& name, uint32_t escrow_id )const;
+         const escrow_object*   find_escrow( const account_name_type& name, uint32_t escrow_id )const;
+
+         const limit_order_object& get_limit_order(  const account_name_type& owner, uint32_t id )const;
          const limit_order_object* find_limit_order( const account_name_type& owner, uint32_t id )const;
-         const savings_withdraw_object& get_savings_withdraw( const account_name_type& owner, uint32_t request_id )const;
+
+         const savings_withdraw_object& get_savings_withdraw(  const account_name_type& owner, uint32_t request_id )const;
          const savings_withdraw_object* find_savings_withdraw( const account_name_type& owner, uint32_t request_id )const;
+
+         const dynamic_global_property_object&  get_dynamic_global_properties()const;
+         const node_property_object&            get_node_properties()const;
+         const feed_history_object&             get_feed_history()const;
+         const witness_schedule_object&         get_witness_schedule_object()const;
+         const hardfork_property_object&        get_hardfork_property_object()const;
+
+
+         const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -318,14 +331,6 @@ namespace steemit { namespace chain {
          uint128_t calculate_vshares( uint128_t rshares ) const;
 
          void  pay_liquidity_reward();
-
-
-         //////////////////// db_getter.cpp ////////////////////
-
-         const dynamic_global_property_object&  get_dynamic_global_properties()const;
-         const node_property_object&            get_node_properties()const;
-         const feed_history_object&             get_feed_history()const;
-         const witness_schedule_object&         get_witness_schedule_object()const;
 
          /**
           * Helper method to return the current sbd value of a given amount of

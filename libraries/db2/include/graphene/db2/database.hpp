@@ -16,12 +16,12 @@ namespace graphene { namespace db2 {
    namespace bfs = boost::filesystem;
    using std::unique_ptr;
    using std::vector;
-   
+
 
    template<typename T>
-   using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
-   
-   class database; 
+   using allocator = bip::allocator< T, bip::managed_mapped_file::segment_manager >;
+
+   class database;
 
    /**
     *  Object ID type that includes the type of the object it references
@@ -29,7 +29,7 @@ namespace graphene { namespace db2 {
    template<typename T>
    class oid {
       public:
-         oid( int64_t i = 0 ):_id(i){}
+         oid( uint64_t i = 0 ):_id(i){}
          const T& operator()( const database& db )const;
 
          oid& operator++() { ++_id; return *this; }
@@ -38,7 +38,7 @@ namespace graphene { namespace db2 {
          friend bool operator > ( const oid& a, const oid& b ) { return a._id > b._id; }
          friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
          friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
-         int64_t _id = 0;
+         uint64_t _id = 0;
    };
 
    template<uint16_t TypeNumber, typename Derived>
@@ -48,20 +48,20 @@ namespace graphene { namespace db2 {
    };
 
    /** this class is ment to be specified to enable lookup of index type by object type using
-    * the SET_INDEX_TYPE macro. 
+    * the SET_INDEX_TYPE macro.
     **/
    template<typename T>
    struct get_index_type {};
 
    /**
-    *  This macro must be used at global scope and OBJECT_TYPE and INDEX_TYPE must be fully qualified 
+    *  This macro must be used at global scope and OBJECT_TYPE and INDEX_TYPE must be fully qualified
     */
    #define SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
    namespace graphene { namespace db2 { template<> struct get_index_type<OBJECT_TYPE> { typedef INDEX_TYPE type; }; } }
 
    /**
     *  The value_type stored in the multiindex container must have a integer field with the name 'id'.  This will
-    *  be the primary key and it will be assigned and managed by generic_index. 
+    *  be the primary key and it will be assigned and managed by generic_index.
     *
     *  Additionally, the constructor for value_type must take an allocator
     */
@@ -85,7 +85,7 @@ namespace graphene { namespace db2 {
                c( v );
             };
 
-            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() ); 
+            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
 
             FC_ASSERT( insert_result.second, "Could not insert object, most likely a uniqueness constraint was violated" );
 
@@ -96,7 +96,7 @@ namespace graphene { namespace db2 {
 
          template<typename Modifier>
          void modify( const value_type& obj, Modifier&& m ) {
-            on_modify( obj ); 
+            on_modify( obj );
             auto ok = _indices.modify( _indices.iterator_to( obj ), m );
             FC_ASSERT( ok, "Could not modify object, most likely a uniqueness constraint was violated" );
          }
@@ -123,8 +123,8 @@ namespace graphene { namespace db2 {
 
                template<typename T>
                undo_state( allocator<T> al )
-               :old_values( id_value_allocator_type( al.get_segment_manager() ) ), 
-                removed_values( id_value_allocator_type( al.get_segment_manager() ) ), 
+               :old_values( id_value_allocator_type( al.get_segment_manager() ) ),
+                removed_values( id_value_allocator_type( al.get_segment_manager() ) ),
                 new_ids( id_allocator_type( al.get_segment_manager() ) ){}
 
 
@@ -134,7 +134,7 @@ namespace graphene { namespace db2 {
                id_value_type_map                                                           removed_values;
                boost::interprocess::set< id_type, std::less<id_type>, id_allocator_type>   new_ids;
                id_type                                                                     old_next_id = 0;
-               int64_t                                                                     revision = 0;
+               uint64_t                                                                    revision = 0;
          };
 
          class session {
@@ -162,25 +162,25 @@ namespace graphene { namespace db2 {
                   return *this;
                }
 
-               int64_t revision()const { return _revision; }
+               uint64_t revision()const { return _revision; }
 
             private:
                friend class generic_index;
 
-               session( generic_index& idx, int64_t revision )
+               session( generic_index& idx, uint64_t revision )
                :_index(idx),_revision(revision) {
                   if( revision == -1 )
                      _apply = false;
-               } 
+               }
 
                generic_index& _index;
                bool           _apply = true;
-               int64_t        _revision = 0;
+               uint64_t        _revision = 0;
          };
 
          session start_undo_session( bool enabled ) {
             if( enabled ) {
-               _stack.emplace_back( _indices.get_allocator() ); 
+               _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
                return session( *this, _revision );
@@ -190,7 +190,7 @@ namespace graphene { namespace db2 {
          }
 
          const index_type& indicies()const { return _indices; }
-         int64_t revision()const { return _revision; }
+         uint64_t revision()const { return _revision; }
 
 
          /**
@@ -284,13 +284,19 @@ namespace graphene { namespace db2 {
          /**
           * Discards all undo history prior to revision
           */
-         void commit( int64_t revision ) {
+         void commit( uint64_t revision ) {
             while( _stack.size() ) {
                 if( _stack[0].revision <= revision ) {
                   elog( "_stack.pop_front" );
                   _stack.pop_front();
                 }
             }
+         }
+
+         void set_revision( uint64_t revision )
+         {
+            FC_ASSERT( _stack.size() == 0, "Revision can only be changed on empty undo state" );
+            _revision = revision;
          }
 
       private:
@@ -300,12 +306,12 @@ namespace graphene { namespace db2 {
             if( !enabled() ) return;
 
             auto& head = _stack.back();
-            
-            if( head.new_ids.find( v.id ) != head.new_ids.end() ) 
+
+            if( head.new_ids.find( v.id ) != head.new_ids.end() )
                return;
 
             auto itr = head.old_values.find( v.id );
-            if( itr != head.old_values.end() ) 
+            if( itr != head.old_values.end() )
                return;
 
             head.old_values.emplace( std::pair<typename value_type::id_type, const value_type&>( v.id, v ) );
@@ -327,7 +333,7 @@ namespace graphene { namespace db2 {
                return;
             }
 
-            if( head.removed_values.count( v.id ) ) 
+            if( head.removed_values.count( v.id ) )
                return;
 
             head.old_values.emplace( std::pair<typename value_type::id_type, const value_type&>( v.id, v ) );
@@ -344,11 +350,11 @@ namespace graphene { namespace db2 {
 
          /**
           *  Each new session increments the revision, a squash will decrement the revision by combining
-          *  the two most recent revisions into one revision. 
+          *  the two most recent revisions into one revision.
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
-         int64_t                         _revision = 0;
+         uint64_t                        _revision = 0;
          typename value_type::id_type    _next_id = 0;
          index_type                      _indices;
 
@@ -360,7 +366,7 @@ namespace graphene { namespace db2 {
          virtual void push()             = 0;
          virtual void squash()           = 0;
          virtual void undo()             = 0;
-         virtual int64_t revision()const  = 0;
+         virtual uint64_t revision()const  = 0;
    };
 
    template<typename SessionType>
@@ -372,39 +378,44 @@ namespace graphene { namespace db2 {
          virtual void push() override  { _session.push();  }
          virtual void squash() override{ _session.squash(); }
          virtual void undo() override  { _session.undo();  }
-         virtual int64_t revision()const override  { return _session.revision();  }
+         virtual uint64_t revision()const override  { return _session.revision();  }
       private:
          SessionType _session;
    };
 
-   class abstract_index 
+   class abstract_index
    {
       public:
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
          virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) = 0;
 
-         virtual int64_t revision()const = 0;
-         virtual void    undo()const = 0;
-         virtual void    squash()const = 0;
-         virtual void    commit( int64_t revision )const = 0;
+         virtual uint64_t revision()const = 0;
+         virtual void     undo()const = 0;
+         virtual void     squash()const = 0;
+         virtual void     commit( uint64_t revision )const = 0;
+         virtual void     set_revision( uint64_t revision ) = 0;
          void* get()const { return _idx_ptr; }
       private:
          void* _idx_ptr;
    };
 
    template<typename BaseIndex>
-   class index_impl : public abstract_index {
+   class index_impl : public abstract_index
+   {
       public:
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
 
-         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override {
+         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override
+         {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session( enabled ) ) );
          }
-         virtual int64_t revision()const  override { return _base.revision(); }
-         virtual void    undo()const  override { _base.undo(); }
-         virtual void    squash()const  override { _base.squash(); }
-         virtual void    commit( int64_t revision )const  override { _base.commit(revision); }
+
+         virtual uint64_t revision()const  override { return _base.revision(); }
+         virtual void     undo()const  override { _base.undo(); }
+         virtual void     squash()const  override { _base.squash(); }
+         virtual void     commit( uint64_t revision )const  override { _base.commit( revision ); }
+         virtual void     set_revision( uint64_t revision ) override { _base.set_revision( revision ); }
 
       private:
          BaseIndex& _base;
@@ -418,9 +429,9 @@ namespace graphene { namespace db2 {
 
 
    /**
-    *  This class 
+    *  This class
     */
-   class database 
+   class database
    {
       public:
          void open( const bfs::path& file );
@@ -439,7 +450,7 @@ namespace graphene { namespace db2 {
                void push(){ for( auto& i : _index_sessions ) i->push(); }
                void squash(){ for( auto& i : _index_sessions ) i->squash(); }
                void undo(){ for( auto& i : _index_sessions ) i->undo(); }
-               int64_t revision()const { return _index_sessions[0]->revision(); }
+               uint64_t revision()const { return _index_sessions[0]->revision(); }
 
             private:
                friend class database;
@@ -450,15 +461,22 @@ namespace graphene { namespace db2 {
 
          session start_undo_session( bool enabled );
 
-         int64_t revision()const {
+         uint64_t revision()const {
             FC_ASSERT( _index_list.size() );
             return _index_list[0]->revision();
          }
          void undo();
          void squash();
-         void commit( int64_t revision );
+         void commit( uint64_t revision );
 
-
+         void set_revision( uint64_t revision )
+         {
+            try
+            {
+               for( auto i : _index_list ) i->set_revision( revision );
+            }
+            FC_CAPTURE_AND_RETHROW()
+         }
 
 
          template<typename MultiIndexType>
@@ -469,7 +487,7 @@ namespace graphene { namespace db2 {
              index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
 
-             if( type_id > _index_map.size() ) 
+             if( type_id > _index_map.size() )
                 _index_map.resize( type_id + 1 );
 
              auto new_index = new index<index_type>( *idx_ptr );
@@ -594,6 +612,6 @@ int main( int argc, char** argv ) {
    db.modify( eo, [&]( example_object& o ) {
       o.b = 3;
    });
-   undo.merge(); 
+   undo.merge();
 }
 */

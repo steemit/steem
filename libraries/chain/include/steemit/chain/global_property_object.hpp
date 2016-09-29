@@ -1,12 +1,9 @@
 #pragma once
 #include <fc/uint128.hpp>
 
-#include <steemit/protocol/asset.hpp>
-
 #include <steemit/chain/steem_object_types.hpp>
-#include <steemit/chain/database.hpp>
 
-#include <graphene/db/object.hpp>
+#include <steemit/protocol/asset.hpp>
 
 namespace steemit { namespace chain {
 
@@ -22,7 +19,7 @@ namespace steemit { namespace chain {
     * This is an implementation detail. The values here are calculated during normal chain operations and reflect the
     * current values of global blockchain properties.
     */
-   class dynamic_global_property_object : public abstract_object< impl_dynamic_global_property_object_type, dynamic_global_property_object>
+   class dynamic_global_property_object : public object< dynamic_global_property_object_type, dynamic_global_property_object>
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -136,15 +133,17 @@ namespace steemit { namespace chain {
           */
          uint32_t vote_regeneration_per_day = 40;
    };
-}}
 
-typedef multi_index_container<
-   dynamic_global_property_object,
-   indexed_by<
-      ordered_unique< member< dynamic_global_property_object, id_type, &dynamic_global_property_object::id > >
-   >,
-   bip::allocator< dynamic_global_property_object, bip::managed_mapped_file::segment_manager >
-> dynamic_global_property_index;
+   typedef multi_index_container<
+      dynamic_global_property_object,
+      indexed_by<
+         ordered_unique< tag< by_id >,
+            member< dynamic_global_property_object, dynamic_global_property_object::id_type, &dynamic_global_property_object::id > >
+      >,
+      allocator< dynamic_global_property_object >
+   > dynamic_global_property_index;
+
+} } // steemit::chain
 
 FC_REFLECT( steemit::chain::dynamic_global_property_object,
              (id)
@@ -175,4 +174,4 @@ FC_REFLECT( steemit::chain::dynamic_global_property_object,
              (current_reserve_ratio)
              (vote_regeneration_per_day)
           )
-SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, dynamic_global_property_index )
+SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, steemit::chain::dynamic_global_property_index )

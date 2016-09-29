@@ -32,7 +32,7 @@ add_library( steemit_chain
            )
 
 add_dependencies( steemit_chain steemit_protocol build_hardfork_hpp )
-target_link_libraries( steemit_chain steemit_protocol fc graphene_db ${PATCH_MERGE_LIB} )
+target_link_libraries( steemit_chain steemit_protocol fc graphene_db2 ${PATCH_MERGE_LIB} )
 target_include_directories( steemit_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
