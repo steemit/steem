@@ -9,7 +9,7 @@ For Ubuntu 16.04 users, after installing the right packages with `apt` Steem wil
     sudo apt-get install libboost-thread-dev libboost-date-time-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-signals-dev libboost-serialization-dev libboost-chrono-dev libboost-test-dev libboost-context-dev libboost-locale-dev libboost-coroutine-dev libboost-iostreams-dev
 
     # Optional packages (not required, but will make a nicer experience)
-    sudo apt-get install doxygen perl libreadline-dev libncurses5-dev
+    sudo apt-get install doxygen perl libreadline-dev libncurses5-dev zlib1g zlib1g-dev libbz2-1.0 libbz2-dev
 
     git clone https://github.com/steemit/steem
     cd steem
@@ -31,7 +31,7 @@ Here are the required packages:
     sudo apt-get install python-dev libbz2-dev
 
     # Optional packages (not required, but will make a nicer experience)
-    sudo apt-get install doxygen perl libreadline-dev libncurses5-dev
+    sudo apt-get install doxygen perl libreadline-dev libncurses5-dev zlib1g zlib1g-dev libbz2-1.0 libbz2-dev
 
 Steem requires Boost 1.57 or later. The Boost provided in the Ubuntu 14.04 package manager (Boost 1.55) is too old. So building Steem on Ubuntu 14.04 requires downloading and installing a more recent version of Boost.
 
