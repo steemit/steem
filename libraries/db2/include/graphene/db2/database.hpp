@@ -95,7 +95,12 @@ namespace graphene { namespace db2 {
          typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
 
          generic_index( allocator<value_type> a )
-         :_stack(a),_indices( a ){}
+         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+
+         void validate()const {
+            FC_ASSERT( sizeof(typename MultiIndexType::node_type) == _size_of_value_type );
+            FC_ASSERT( sizeof(*this)      == _size_of_this );
+         }
 
          void export_to_file( const fc::path& filename )const {
             std::ofstream out( filename.generic_string(), 
@@ -406,6 +411,8 @@ namespace graphene { namespace db2 {
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
          index_type                      _indices;
+         uint32_t                        _size_of_value_type = 0;
+         uint32_t                        _size_of_this = 0;
 
    };
 
@@ -526,8 +533,11 @@ namespace graphene { namespace db2 {
              const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
              typedef generic_index<MultiIndexType>          index_type;
              typedef typename index_type::allocator_type    index_alloc;
+
              index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
+
+             idx_ptr->validate();
 
              if( type_id >= _index_map.size() ) 
                 _index_map.resize( type_id + 1 );
