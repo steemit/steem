@@ -2,14 +2,8 @@
 
 For Ubuntu 16.04 users, after installing the right packages with `apt` Steem will build out of the box without further effort:
 
-    # Required packages
-    sudo apt-get install git make automake cmake g++ libssl-dev autoconf libtool
-
-    # Boost packages (also required)
-    sudo apt-get install libboost-thread-dev libboost-date-time-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-signals-dev libboost-serialization-dev libboost-chrono-dev libboost-test-dev libboost-context-dev libboost-locale-dev libboost-coroutine-dev libboost-iostreams-dev
-
-    # Optional packages (not required, but will make a nicer experience)
-    sudo apt-get install doxygen perl libreadline-dev libncurses5-dev
+# Required packages
+sudo apt-get install git make automake cmake g++ libssl-dev autoconf libtool libboost-thread-dev libboost-date-time-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-signals-dev libboost-serialization-dev libboost-chrono-dev libboost-test-dev libboost-context-dev libboost-locale-dev libboost-coroutine-dev libboost-iostreams-dev doxygen perl libreadline-dev libncurses5-dev ntp
 
     git clone https://github.com/steemit/steem
     cd steem
@@ -21,6 +15,8 @@ For Ubuntu 16.04 users, after installing the right packages with `apt` Steem wil
 You can add the `-j` parameter to the `make` command to compile in parallel on a machine with lots of memory and multiple cores (e.g. `make -j4 steemd`).
 
 ### Ubuntu 14.04
+
+Note:  Development occurs on Ubuntu 16.04.  Best practices dictate replicating this environment when setting up your node.  
 
 Here are the required packages:
 
@@ -60,6 +56,5 @@ Then the instructions are the same as for Steem:
 
 - OSX (Apple) build instructions are [here](BUILD_OSX.md).
 - Windows build instructions do not yet exist.
-
 - The developers normally compile with gcc and clang. These compilers should be well-supported.
 - Community members occasionally attempt to compile the code with mingw, Intel and Microsoft compilers. These compilers may work, but the developers do not use them. Pull requests fixing warnings / errors from these compilers are accepted.
