@@ -62,12 +62,14 @@ cp /etc/steemd/config.ini $HOME/config.ini
 chown steemd:steemd $HOME/config.ini
 
 if [[ ! -d $HOME/blockchain ]]; then
-    # init with blockchain cached in image
-    ARGS+=" --replay-blockchain"
-    mkdir -p $HOME/blockchain/database
-    cd $HOME/blockchain/database
-    tar xvjpf /var/cache/steemd/blocks.tbz2
-    chown -R steemd:steemd $HOME/blockchain
+    if [[ -e /var/cache/steemd/blocks.tbz2 ]]; then
+        # init with blockchain cached in image
+        ARGS+=" --replay-blockchain"
+        mkdir -p $HOME/blockchain/database
+        cd $HOME/blockchain/database
+        tar xvjpf /var/cache/steemd/blocks.tbz2
+        chown -R steemd:steemd $HOME/blockchain
+    fi
 fi
 
 # without --data-dir it uses cwd as datadir(!)
