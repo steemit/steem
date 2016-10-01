@@ -2,6 +2,9 @@ FROM phusion/baseimage:0.9.19
 
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
+ARG STEEM_BUILD_TYPE=web
+
+# install essential build-time packages and cleanup after installer
 RUN \
     apt-get update && \
     apt-get install -y \
@@ -25,43 +28,17 @@ RUN \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# add the repo to the image
 ADD . /usr/local/src/steem
 
-RUN \
-    cd /usr/local/src/steem && \
-    git submodule update --init --recursive && \
-    rsync -a \
-        /usr/local/src/steem/ \
-        /usr/local/src/steemtest/
+# run all tests first, fail if they don't pass, build, and install
+RUN cd /usr/local/src/steem && \
+    make test && \
+    make clean && \
+    make ${STEEM_BUILD_TYPE}build && \
+    make install
 
-RUN \
-    cd /usr/local/src/steemtest && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Debug \
-        -DBUILD_STEEM_TESTNET=On \
-        -DLOW_MEMORY_NODE=ON \
-        . \
-    && \
-    make -j$(nproc) chain_test && \
-    ./tests/chain_test && \
-    rm -rf /usr/local/src/steemtest
-
-RUN \
-    cd /usr/local/src/steem && \
-    doxygen && \
-    programs/build_helpers/check_reflect.py
-
-RUN \
-    cd /usr/local/src/steem && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DLOW_MEMORY_NODE=ON \
-        . \
-    && \
-    make -j$(nproc) && \
-    make install && \
-    rm -rf /usr/local/src/steem
-
+# remove packages unnecessary for runtime
 RUN \
     apt-get remove -y \
         automake \
@@ -110,17 +87,23 @@ RUN \
         /usr/include \
         /usr/local/include
 
+# create steemd user
 RUN useradd -s /bin/bash -m -d /var/lib/steemd steemd
 
+# create cache directory for blockchain cache if added later
+# blockchain cache not added in this dockerfile
 RUN mkdir /var/cache/steemd && \
     chown steemd:steemd -R /var/cache/steemd
 
 # add blockchain cache to image
+# not done in this dockerfile - do in a child image if required
 #ADD $STEEMD_BLOCKCHAIN /var/cache/steemd/blocks.tbz2
 
+# set homedir and homedir permissions
 ENV HOME /var/lib/steemd
 RUN chown steemd:steemd -R /var/lib/steemd
 
+# put the database on a volume
 VOLUME ["/var/lib/steemd"]
 
 # rpc service:
@@ -128,6 +111,7 @@ EXPOSE 8090
 # p2p service:
 EXPOSE 2001
 
+# add the appropriate service directories and startup script
 RUN mkdir -p /etc/service/steemd
 ADD contrib/steemd.run /etc/service/steemd/run
 RUN chmod +x /etc/service/steemd/run

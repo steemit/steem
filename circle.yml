@@ -11,4 +11,4 @@ dependencies:
 
 test:
     override:
-        - time docker build --rm=false -t steemitinc/steem-test -f Dockerfile.test .
+        - make dockertest
