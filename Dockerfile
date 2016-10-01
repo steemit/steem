@@ -53,10 +53,29 @@ RUN \
 
 RUN \
     cd /usr/local/src/steem && \
+    mkdir build && \
+    cd build && \
     cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
-        . \
+        -DENABLE_CONTENT_PATCHING=OFF \
+        -DCLEAR_VOTES=ON \
+        .. \
+    && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rfv build && \
+    mkdir build && \
+    cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLOW_MEMORY_NODE=OFF \
+        -DENABLE_CONTENT_PATCHING=ON \
+        -DCLEAR_VOTES=OFF \
+        .. \
     && \
     make -j$(nproc) && \
     make install && \
