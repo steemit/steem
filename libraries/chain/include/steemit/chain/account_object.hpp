@@ -17,12 +17,12 @@ namespace steemit { namespace chain {
 
    using steemit::protocol::authority;
 
-   class account_object : public object< impl_account_object_type, account_object >
+   class account_object : public object< account_object_type, account_object >
    {
       public:
          template<typename Constructor, typename Allocator>
-         test_object( Constructor&& c, allocator<Allocator> a )
-            :shared_string( a )
+         account_object( Constructor&& c, allocator< Allocator > a )
+            :json_metadata( shared_string::allocator_type(a.get_segment_manager()) )
          {
             c(*this);
          };
@@ -123,7 +123,6 @@ namespace steemit { namespace chain {
          time_point_sec    last_root_post = fc::time_point_sec::min();
          uint32_t          post_bandwidth = 0;
 
-         account_id_type   get_id()const { return id; }
          /// This function should be used only when the account votes for a witness directly
          share_type        witness_vote_weight()const {
             return std::accumulate( proxied_vsf_votes.begin(),
@@ -141,7 +140,7 @@ namespace steemit { namespace chain {
     *  @brief This secondary index will allow a reverse lookup of all accounts that a particular key or account
     *  is an potential signing authority.
     */
-   class account_member_index : public secondary_index
+   /*class account_member_index : public secondary_index
    {
       public:
          virtual void object_inserted( const object& obj ) override;
@@ -150,6 +149,7 @@ namespace steemit { namespace chain {
          virtual void object_modified( const object& after  ) override;
 
          /** given an account or key, map it to the set of accounts that reference it in an active or owner authority */
+         /*
          map< string, set<string> >          account_to_account_memberships;
          map< public_key_type, set<string> > account_to_key_memberships;
 
@@ -159,9 +159,9 @@ namespace steemit { namespace chain {
 
          set<string>             before_account_members;
          set<public_key_type>    before_key_members;
-   };
+   };*/
 
-   class owner_authority_history_object : public object< impl_owner_authority_history_object_type, owner_authority_history_object >
+   class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -176,11 +176,9 @@ namespace steemit { namespace chain {
          account_name_type account;
          shared_authority  previous_owner_authority;
          time_point_sec    last_valid_time;
-
-         owner_authority_history_id_type get_id()const { return id; }
    };
 
-   class account_recovery_request_object : public object< impl_account_recovery_request_object_type, account_recovery_request_object >
+   class account_recovery_request_object : public object< account_recovery_request_object_type, account_recovery_request_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -195,11 +193,9 @@ namespace steemit { namespace chain {
          account_name_type account_to_recover;
          shared_authority  new_owner_authority;
          time_point_sec    expires;
-
-         account_recovery_request_id_type get_id()const { return id; }
    };
 
-   class change_recovery_account_request_object : public object< impl_change_recovery_account_request_object_type, change_recovery_account_request_object >
+   class change_recovery_account_request_object : public object< change_recovery_account_request_object_type, change_recovery_account_request_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -213,8 +209,6 @@ namespace steemit { namespace chain {
          account_name_type account_to_recover;
          account_name_type recovery_account;
          time_point_sec    effective_on;
-
-         change_recovery_account_request_id_type get_id()const { return id; }
    };
 
    struct by_name;
@@ -235,72 +229,72 @@ namespace steemit { namespace chain {
       account_object,
       indexed_by<
          ordered_unique< tag< by_id >,
-            member< account_object, id_type, &account_object::id > >,
+            member< account_object, account_id_type, &account_object::id > >,
          ordered_unique< tag< by_name >,
             member< account_object, account_name_type, &account_object::name > >,
          ordered_unique< tag< by_proxy >,
             composite_key< account_object,
                member< account_object, account_name_type, &account_object::proxy >,
-               member< account_object, id_type, &account_object::id >
+               member< account_object, account_id_type, &account_object::id >
             > /// composite key by proxy
          >,
          ordered_unique< tag< by_next_vesting_withdrawal >,
             composite_key< account_object,
-               member<account_object, time_point_sec, &account_object::next_vesting_withdrawal >,
-               member<object, id_type, &account_object::id >
+               member< account_object, time_point_sec, &account_object::next_vesting_withdrawal >,
+               member< account_object, account_id_type, &account_object::id >
             > /// composite key by_next_vesting_withdrawal
          >,
          ordered_unique< tag< by_last_post >,
             composite_key< account_object,
-               member<account_object, time_point_sec, &account_object::last_post >,
-               member<object, id_type, &account_object::id >
+               member< account_object, time_point_sec, &account_object::last_post >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< time_point_sec >, std::less< id_type > >
+            composite_key_compare< std::greater< time_point_sec >, std::less< account_id_type > >
          >,
          ordered_unique< tag< by_steem_balance >,
             composite_key< account_object,
-               member<account_object, asset, &account_object::balance >,
-               member<object, id_type, &account_object::id >
+               member< account_object, asset, &account_object::balance >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< asset >, std::less< id_type > >
+            composite_key_compare< std::greater< asset >, std::less< account_id_type > >
          >,
          ordered_unique< tag< by_smp_balance >,
             composite_key< account_object,
-               member<account_object, asset, &account_object::vesting_shares >,
-               member<object, id_type, &account_object::id >
+               member< account_object, asset, &account_object::vesting_shares >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< asset >, std::less< id_type > >
+            composite_key_compare< std::greater< asset >, std::less< account_id_type > >
          >,
          ordered_unique< tag< by_smd_balance >,
             composite_key< account_object,
-               member<account_object, asset, &account_object::sbd_balance >,
-               member<object, id_type, &account_object::id >
+               member< account_object, asset, &account_object::sbd_balance >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< asset >, std::less< id_type > >
+            composite_key_compare< std::greater< asset >, std::less< account_id_type > >
          >,
          ordered_unique< tag< by_post_count >,
             composite_key< account_object,
-               member<account_object, uint32_t, &account_object::post_count >,
-               member<object, id_type, &account_object::id >
+               member< account_object, uint32_t, &account_object::post_count >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< uint32_t >, std::less< id_type > >
+            composite_key_compare< std::greater< uint32_t >, std::less< account_id_type > >
          >,
          ordered_unique< tag< by_vote_count >,
             composite_key< account_object,
-               member<account_object, uint32_t, &account_object::lifetime_vote_count >,
-               member<object, id_type, &account_object::id >
+               member< account_object, uint32_t, &account_object::lifetime_vote_count >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< uint32_t >, std::less< id_type > >
+            composite_key_compare< std::greater< uint32_t >, std::less< account_id_type > >
          >,
          ordered_unique< tag< by_last_owner_update >,
             composite_key< account_object,
-               member<account_object, time_point_sec, &account_object::last_owner_update >,
-               member<object, id_type, &account_object::id >
+               member< account_object, time_point_sec, &account_object::last_owner_update >,
+               member< account_object, account_id_type, &account_object::id >
             >,
-            composite_key_compare< std::greater< time_point_sec >, std::less< id_type > >
+            composite_key_compare< std::greater< time_point_sec >, std::less< account_id_type > >
          >
       >,
-      bip::allocator< account_object, bip::managed_map_file::segment_manager >
+      allocator< account_object >
    > account_index;
 
    struct by_account;
@@ -310,17 +304,17 @@ namespace steemit { namespace chain {
       owner_authority_history_object,
       indexed_by <
          ordered_unique< tag< by_id >,
-            member< owner_authority_history_object, id_type, &owner_authority_history_object::id > >,
+            member< owner_authority_history_object, owner_authority_history_id_type, &owner_authority_history_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< owner_authority_history_object,
                member< owner_authority_history_object, account_name_type, &owner_authority_history_object::account >,
                member< owner_authority_history_object, time_point_sec, &owner_authority_history_object::last_valid_time >,
-               member< owner_authority_history_object, id_type, &owner_authority_history_object::id >
+               member< owner_authority_history_object, owner_authority_history_id_type, &owner_authority_history_object::id >
             >,
-            composite_key_compare< std::less< account_name_type >, std::less< time_point_sec >, std::less< id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< time_point_sec >, std::less< owner_authority_history_id_type > >
          >
       >,
-      bip::allocator< owner_authority_history_object, bip::managed_map_file::segment_manager >
+      allocator< owner_authority_history_object >
    > owner_authority_history_index;
 
    struct by_expiration;
@@ -329,23 +323,23 @@ namespace steemit { namespace chain {
       account_recovery_request_object,
       indexed_by <
          ordered_unique< tag< by_id >,
-            member< account_recovery_request_object, id_type, &oaccount_recovery_request_objectbject::id > >,
+            member< account_recovery_request_object, account_recovery_request_id_type, &account_recovery_request_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< account_recovery_request_object,
                member< account_recovery_request_object, account_name_type, &account_recovery_request_object::account_to_recover >,
-               member< account_recovery_request_object, id_type, &account_recovery_request_object::id >
+               member< account_recovery_request_object, account_recovery_request_id_type, &account_recovery_request_object::id >
             >,
-            composite_key_compare< std::less< account_name_type >, std::less< id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< account_recovery_request_id_type > >
          >,
          ordered_unique< tag< by_expiration >,
             composite_key< account_recovery_request_object,
                member< account_recovery_request_object, time_point_sec, &account_recovery_request_object::expires >,
-               member< account_recovery_request_object, id_type, &account_recovery_request_object::id >
+               member< account_recovery_request_object, account_recovery_request_id_type, &account_recovery_request_object::id >
             >,
-            composite_key_compare< std::less< time_point_sec >, std::less< id_type > >
+            composite_key_compare< std::less< time_point_sec >, std::less< account_recovery_request_id_type > >
          >
       >,
-      bip::allocator< account_recovery_request_object, bip::managed_map_file::segment_manager >
+      allocator< account_recovery_request_object >
    > account_recovery_request_index;
 
    struct by_effective_date;
@@ -354,23 +348,23 @@ namespace steemit { namespace chain {
       change_recovery_account_request_object,
       indexed_by <
          ordered_unique< tag< by_id >,
-            member< change_recovery_account_request_object, id_type, &change_recovery_account_request_object::id > >,
+            member< change_recovery_account_request_object, change_recovery_account_request_id_type, &change_recovery_account_request_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< change_recovery_account_request_object,
                member< change_recovery_account_request_object, account_name_type, &change_recovery_account_request_object::account_to_recover >,
-               member< change_recovery_account_request_object, id_type, &change_recovery_account_request_object::id >
+               member< change_recovery_account_request_object, change_recovery_account_request_id_type, &change_recovery_account_request_object::id >
             >,
-            composite_key_compare< std::less< account_name_type >, std::less< id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< change_recovery_account_request_id_type > >
          >,
          ordered_unique< tag< by_effective_date >,
             composite_key< change_recovery_account_request_object,
                member< change_recovery_account_request_object, time_point_sec, &change_recovery_account_request_object::effective_on >,
-               member< change_recovery_account_request_object, id_type, &change_recovery_account_request_object::id >
+               member< change_recovery_account_request_object, change_recovery_account_request_id_type, &change_recovery_account_request_object::id >
             >,
-            composite_key_compare< std::less< time_point_sec >, std::less< id_type > >
+            composite_key_compare< std::less< time_point_sec >, std::less< change_recovery_account_request_id_type > >
          >
       >,
-      bip::allocator< change_recovery_account_request_object, bip::managed_map_file::segment_manager >
+      allocator< change_recovery_account_request_object >
    > change_recovery_account_request_index;
 } }
 

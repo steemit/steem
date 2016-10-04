@@ -114,11 +114,14 @@ namespace steemit { namespace chain {
          const account_object&  get_account(  const account_name_type& name )const;
          const account_object*  find_account( const account_name_type& name )const;
 
+         const comment_object&  get_comment(  const account_name_type& author, const shared_string& permlink )const;
+         const comment_object*  find_comment( const account_name_type& author, const shared_string& permlink )const;
+
          const comment_object&  get_comment(  const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
 
-         const category_object& get_category(  const string& name )const;
-         const category_object* find_category( const string& name )const;
+         const category_object& get_category(  const shared_string& name )const;
+         const category_object* find_category( const shared_string& name )const;
 
          const escrow_object&   get_escrow(  const account_name_type& name, uint32_t escrow_id )const;
          const escrow_object*   find_escrow( const account_name_type& name, uint32_t escrow_id )const;
@@ -222,12 +225,12 @@ namespace steemit { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         fc::signal<void(const vector<object_id_type>&)> changed_objects;
+         //fc::signal<void(const vector<object_id_type>&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.
           */
-         fc::signal<void(const vector<const object*>&)>  removed_objects;
+         //fc::signal<void(const vector<const object*>&)>  removed_objects;
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -400,11 +403,11 @@ namespace steemit { namespace chain {
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
-         void pop_undo() { object_database::pop_undo(); }
+         //void pop_undo() { object_database::pop_undo(); }
          void notify_changed_objects();
 
       private:
-         optional<undo_database::session>       _pending_tx_session;
+         optional< graphene::db2::database::session > _pending_tx_session;
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );

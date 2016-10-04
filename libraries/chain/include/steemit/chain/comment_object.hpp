@@ -18,7 +18,7 @@ namespace steemit { namespace chain {
    /**
     *  Used to track the trending categories
     */
-   class category_object : public object< impl_category_object_type, category_object >
+   class category_object : public object< category_object_type, category_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -44,31 +44,31 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       category_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< category_object, id_type, &category_object::id > >,
-         ordered_unique< tag< by_name >, member< category_object, string, &category_object::name > >,
+         ordered_unique< tag< by_id >, member< category_object, category_id_type, &category_object::id > >,
+         ordered_unique< tag< by_name >, member< category_object, shared_string, &category_object::name > >,
          ordered_unique< tag< by_rshares >,
             composite_key< category_object,
                member< category_object, share_type, &category_object::abs_rshares>,
-               member< category_object, id_type, &category_object::id >
+               member< category_object, category_id_type, &category_object::id >
             >,
-            composite_key_compare< std::greater<share_type>, std::less<id_type> >
+            composite_key_compare< std::greater< share_type >, std::less< category_id_type > >
          >,
          ordered_unique< tag< by_total_payouts >,
             composite_key< category_object,
                member< category_object, asset, &category_object::total_payouts>,
-               member< category_object, id_type, &category_object::id >
+               member< category_object, category_id_type, &category_object::id >
             >,
-            composite_key_compare< std::greater<asset>, std::less<id_type> >
+            composite_key_compare< std::greater<asset>, std::less< category_id_type > >
          >,
          ordered_unique< tag< by_last_update >,
             composite_key< category_object,
                member< category_object, time_point_sec, &category_object::last_update>,
-               member< category_object, id_type, &category_object::id >
+               member< category_object, category_id_type, &category_object::id >
             >,
-            composite_key_compare< std::greater<time_point_sec>, std::less<id_type> >
+            composite_key_compare< std::greater< time_point_sec >, std::less< category_id_type > >
          >
       >,
-      bip::allocator< category_object, bip::managed_mapped_file::segment_manager >
+      allocator< category_object >
    > category_index;
 
    enum comment_mode
@@ -78,7 +78,7 @@ namespace steemit { namespace chain {
       archived
    };
 
-   class comment_object : public object < impl_comment_object_type, comment_object >
+   class comment_object : public object < comment_object_type, comment_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -96,9 +96,9 @@ namespace steemit { namespace chain {
          account_name_type author;
          shared_string     permlink;
 
-         shared_string     title = "";
-         shared_string     body = "";
-         shared_string     json_metadata = "";
+         shared_string     title;
+         shared_string     body;
+         shared_string     json_metadata;
          time_point_sec    last_update;
          time_point_sec    created;
          time_point_sec    active; ///< the last time this post was "touched" by voting or reply
@@ -135,7 +135,7 @@ namespace steemit { namespace chain {
 
          int32_t           net_votes = 0;
 
-         comment_id_type   root_comment;
+         id_type           root_comment;
 
          comment_mode      mode = first_payout;
 
@@ -151,23 +151,24 @@ namespace steemit { namespace chain {
     * This index maintains the set of voter/comment pairs that have been used, voters cannot
     * vote on the same comment more than once per payout period.
     */
-   class comment_vote_object : public object< impl_comment_vote_object_type, comment_vote_object>
+   class comment_vote_object : public object< comment_vote_object_type, comment_vote_object>
    {
       public:
          template< typename Constructor, typename Allocator >
+         comment_vote_object( Constructor&& c, allocator< Allocator > a )
          {
             c( *this );
          }
 
-         id_type id;
+         id_type           id;
 
-         account_id_type voter;
-         comment_id_type comment;
-         uint64_t        weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
-         int64_t         rshares = 0; ///< The number of rshares this vote is responsible for
-         int16_t         vote_percent = 0; ///< The percent weight of the vote
-         time_point_sec  last_update; ///< The time of the last update of the vote
-         int8_t          num_changes = 0;
+         account_id_type   voter;
+         comment_id_type   comment;
+         uint64_t          weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
+         int64_t           rshares = 0; ///< The number of rshares this vote is responsible for
+         int16_t           vote_percent = 0; ///< The percent weight of the vote
+         time_point_sec    last_update; ///< The time of the last update of the vote
+         int8_t            num_changes = 0;
    };
 
    struct by_comment_voter;
@@ -177,7 +178,7 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       comment_vote_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< comment_vote_object, id_type, &comment_vote_object::id > >,
+         ordered_unique< tag< by_id >, member< comment_vote_object, comment_vote_id_type, &comment_vote_object::id > >,
          ordered_unique< tag< by_comment_voter >,
             composite_key< comment_vote_object,
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment>,
@@ -196,7 +197,7 @@ namespace steemit { namespace chain {
                member< comment_vote_object, time_point_sec, &comment_vote_object::last_update>,
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment>
             >,
-            composite_key_compare< std::less< account_id_type >, std::greater< time_point_sec >, std::less<comment_id_type> >
+            composite_key_compare< std::less< account_id_type >, std::greater< time_point_sec >, std::less< comment_id_type > >
          >,
          ordered_unique< tag< by_comment_weight_voter >,
             composite_key< comment_vote_object,
@@ -204,10 +205,10 @@ namespace steemit { namespace chain {
                member< comment_vote_object, uint64_t, &comment_vote_object::weight>,
                member< comment_vote_object, account_id_type, &comment_vote_object::voter>
             >,
-            composite_key_compare< std::less< comment_id_type >, std::greater< uint64_t >, std::less<account_id_type> >
+            composite_key_compare< std::less< comment_id_type >, std::greater< uint64_t >, std::less< account_id_type > >
          >
       >,
-      bip::allocator< comment_vote_object, bip::managed_mapped_file::segment_manager >
+      allocator< comment_vote_object >
    > comment_vote_index;
 
 
@@ -225,7 +226,36 @@ namespace steemit { namespace chain {
    struct by_votes;
    struct by_responses;
    struct by_author_last_update;
-   struct by_parent;
+
+   struct strcmp_less
+   {
+      bool operator()( const shared_string& a, const shared_string& b )const
+      {
+         return less( a.c_str(), b.c_str() );
+      }
+
+      bool operator()( const shared_string& a, const string& b )const
+      {
+         return less( a.c_str(), b.c_str() );
+      }
+
+      bool operator()( const string& a, const shared_string& b )const
+      {
+         return less( a.c_str(), b.c_str() );
+      }
+      /*
+      bool operator()( const char* a, const char* b )const
+      {
+         return less( a, b );
+      }
+      */
+      private:
+         inline bool less( const char* a, const char* b )const
+         {
+            return std::strcmp( a, b ) < 0;
+         }
+   };
+
 
    /**
     * @ingroup object_index
@@ -234,36 +264,36 @@ namespace steemit { namespace chain {
       comment_object,
       indexed_by<
          /// CONSENUSS INDICIES - used by evaluators
-         ordered_unique< tag< by_id >, member< comment_object, id_type, &comment_object::id > >,
+         ordered_unique< tag< by_id >, member< comment_object, comment_id_type, &comment_object::id > >,
          ordered_unique< tag< by_cashout_time >,
             composite_key< comment_object,
                member< comment_object, time_point_sec, &comment_object::cashout_time>,
-               member< comment_object, id_type, &comment_object::id >
+               member< comment_object, comment_id_type, &comment_object::id >
             >
          >,
          ordered_unique< tag< by_permlink >, /// used by consensus to find posts referenced in ops
             composite_key< comment_object,
                member< comment_object, account_name_type, &comment_object::author >,
-               member< comment_object, string, &comment_object::permlink >
+               member< comment_object, shared_string, &comment_object::permlink >
             >,
-            composite_key_compare< std::less< account_name_type >, std::less< string > >
+            composite_key_compare< std::less< account_name_type >, strcmp_less >
          >,
          ordered_unique< tag< by_root >,
             composite_key< comment_object,
                member< comment_object, comment_id_type, &comment_object::root_comment >,
-               member< comment_object, id_type, &comment_object::id >
+               member< comment_object, comment_id_type, &comment_object::id >
             >
          >,
          ordered_unique< tag< by_parent >, /// used by consensus to find posts referenced in ops
             composite_key< comment_object,
                member< comment_object, account_name_type, &comment_object::parent_author >,
-               member< comment_object, string, &comment_object::parent_permlink >,
-               member< comment_object, id_type, &comment_object::id >
+               member< comment_object, shared_string, &comment_object::parent_permlink >,
+               member< comment_object, comment_id_type, &comment_object::id >
             >,
-            composite_key_compare< std::less< account_name_type >, std::less< string >, std::less<id_type> >
+            composite_key_compare< std::less< account_name_type >, strcmp_less, std::less< comment_id_type > >
          >
       >,
-      bip::allocator< comment_object, bip::managed_mapped_file::segment_manager >
+      allocator< comment_object >
    > comment_index;
 
 } } // steemit::chain

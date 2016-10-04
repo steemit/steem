@@ -27,7 +27,7 @@ namespace steemit { namespace chain {
     *  at least 2 weeks old are able to participate in block
     *  production.
     */
-   class witness_object : public object< impl_witness_object_type, witness_object >
+   class witness_object : public object< witness_object_type, witness_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -112,7 +112,7 @@ namespace steemit { namespace chain {
    };
 
 
-   class witness_vote_object : public object< impl_witness_vote_object_type, witness_vote_object >
+   class witness_vote_object : public object< witness_vote_object_type, witness_vote_object >
    {
       public:
          template< typename Constructor, typename Allocator >
@@ -121,29 +121,28 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
-         id_type id;
+         id_type           id;
 
-         id_type witness;
-         id_type account;
+         witness_id_type   witness;
+         account_id_type   account;
    };
 
-   class witness_schedule_object : public object< impl_witness_schedule_object_type, witness_schedule_object >
+   class witness_schedule_object : public object< witness_schedule_object_type, witness_schedule_object >
    {
       public:
          template< typename Constructor, typename Allocator >
          witness_schedule_object( Constructor&& c, allocator< Allocator > a )
-            :current_shuffled_witness( bip::allocator< account_name_type, bip::managed_mapped_file::segment_manager>( a.get_segment_manager() ) )
          {
             c( *this );
          }
 
-         id_type                          id;
+         id_type                                                           id;
 
-         fc::uint128                      current_virtual_time;
-         uint32_t                         next_shuffle_block_num = 1;
-         bip::vector< account_name_type > current_shuffled_witnesses;
-         chain_properties                 median_props;
-         version                          majority_version;
+         fc::uint128                                                       current_virtual_time;
+         uint32_t                                                          next_shuffle_block_num = 1;
+         fc::array< account_name_type, STEEMIT_MAX_WITNESSES >             current_shuffled_witnesses;
+         chain_properties                                                  median_props;
+         version                                                           majority_version;
    };
 
    struct string_less
@@ -174,25 +173,25 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       witness_object,
       indexed_by<
-         ordered_unique< tag<by_id>, member< witness_object, id_type, &witness_object::id > >,
-         ordered_non_unique< tag<by_work>, member<witness_object, digest_type, &witness_object::last_work> >,
-         ordered_unique< tag<by_name>, member<witness_object, account_name_type, &witness_object::owner> >,
-         ordered_non_unique< tag<by_pow>, member<witness_object, uint64_t, &witness_object::pow_worker> >,
-         ordered_unique< tag<by_vote_name>,
+         ordered_unique< tag< by_id >, member< witness_object, witness_id_type, &witness_object::id > >,
+         ordered_non_unique< tag< by_work >, member< witness_object, digest_type, &witness_object::last_work > >,
+         ordered_unique< tag< by_name >, member< witness_object, account_name_type, &witness_object::owner > >,
+         ordered_non_unique< tag< by_pow >, member< witness_object, uint64_t, &witness_object::pow_worker > >,
+         ordered_unique< tag< by_vote_name >,
             composite_key< witness_object,
-               member<witness_object, share_type, &witness_object::votes >,
-               member<witness_object, account_name_type, &witness_object::owner >
+               member< witness_object, share_type, &witness_object::votes >,
+               member< witness_object, account_name_type, &witness_object::owner >
             >,
             composite_key_compare< std::greater< share_type >, string_less > //std::less< account_name_type > >
          >,
-         ordered_unique< tag<by_schedule_time>,
+         ordered_unique< tag< by_schedule_time >,
             composite_key< witness_object,
-               member<witness_object, fc::uint128, &witness_object::virtual_scheduled_time >,
-               member<witness_object, id_type, &witness_object::id >
+               member< witness_object, fc::uint128, &witness_object::virtual_scheduled_time >,
+               member< witness_object, witness_id_type, &witness_object::id >
             >
          >
       >,
-      bip::allocator< witness_object, bip::managed_mapped_file::segment_manager >
+      allocator< witness_object >
    > witness_index;
 
    struct by_account_witness;
@@ -200,31 +199,31 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       witness_vote_object,
       indexed_by<
-         ordered_unique< tag<by_id>, member< witness_vote_object, id_type, &witness_vote_object::id > >,
+         ordered_unique< tag<by_id>, member< witness_vote_object, witness_vote_id_type, &witness_vote_object::id > >,
          ordered_unique< tag<by_account_witness>,
             composite_key< witness_vote_object,
-               member<witness_vote_object, id_type, &witness_vote_object::account >,
-               member<witness_vote_object, id_type, &witness_vote_object::witness >
+               member<witness_vote_object, account_id_type, &witness_vote_object::account >,
+               member<witness_vote_object, witness_id_type, &witness_vote_object::witness >
             >,
-            composite_key_compare< std::less< id_type >, std::less< id_type > >
+            composite_key_compare< std::less< account_id_type >, std::less< witness_id_type > >
          >,
          ordered_unique< tag<by_witness_account>,
             composite_key< witness_vote_object,
-               member<witness_vote_object, id_type, &witness_vote_object::witness >,
-               member<witness_vote_object, id_type, &witness_vote_object::account >
+               member<witness_vote_object, witness_id_type, &witness_vote_object::witness >,
+               member<witness_vote_object, account_id_type, &witness_vote_object::account >
             >,
-            composite_key_compare< std::less< id_type >, std::less< id_type > >
+            composite_key_compare< std::less< witness_id_type >, std::less< account_id_type > >
          >
       >, // indexed_by
-      bip::allocator< witness_vote_object, bip::managed_mapped_file::segment_manager >
+      allocator< witness_vote_object >
    > witness_vote_index;
 
-   typedef witness_schedule_object<
+   typedef multi_index_container<
       witness_schedule_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< witness_schedule_object, id_type, &witness_schedule_object::id > >
+         ordered_unique< tag< by_id >, member< witness_schedule_object, witness_schedule_id_type, &witness_schedule_object::id > >
       >,
-      bip::allocator< witness_schedule_object, bip::managed_mapped_file::segment_manager >
+      allocator< witness_schedule_object >
    > witness_schedule_index;
 
 } }
@@ -250,4 +249,4 @@ FC_REFLECT( steemit::chain::witness_schedule_object,
              (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)
              (majority_version)
           )
-SET_INDEX_TYPE( steemit::chain::witness_schedule_object, witness_schedule_index )
+SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )

@@ -6,7 +6,7 @@
 
 namespace steemit { namespace chain {
 
-set< string > account_member_index::get_account_members( const account_object& a ) const
+/*set< string > account_member_index::get_account_members( const account_object& a ) const
 {
    set< string > result;
    for( auto auth : a.owner.account_auths )
@@ -119,6 +119,6 @@ void account_member_index::object_modified( const object& after )
        for( auto itr = added.begin(); itr != added.end(); ++itr )
           account_to_key_memberships[*itr].insert( a.name );
     }
-}
+}*/
 
 } } // steemit::chain

@@ -14,31 +14,31 @@
 
 namespace steemit { namespace chain {
 
-class hardfork_property_object : public object< impl_hardfork_property_object_type, hardfork_property_object >
+class hardfork_property_object : public object< hardfork_property_object_type, hardfork_property_object >
 {
    public:
       template< typename Constructor, typename Allocator >
       hardfork_property_object( Constructor&& c, allocator< Allocator > a )
-         :processed_hardforks( bip::allocator< bip::vector, bip::managed_mapped_file::segment_manager >( a.get_segment_manager() ) )
+         :processed_hardforks( a.get_segment_manager() )
       {
          c( *this );
       }
 
-      id_type                             id;
+      id_type                                                              id;
 
-      bip::vector< fc::time_point_sec >   processed_hardforks;
-      int                                 last_hardfork = 0;
-      protocol::hardfork_version          current_hardfork_version;
-      protocol::hardfork_version          next_hardfork;
-      fc::time_point_sec                  next_hardfork_time;
+      bip::vector< fc::time_point_sec, allocator< fc::time_point_sec > >   processed_hardforks;
+      int                                                                  last_hardfork = 0;
+      protocol::hardfork_version                                           current_hardfork_version;
+      protocol::hardfork_version                                           next_hardfork;
+      fc::time_point_sec                                                   next_hardfork_time;
 };
 
 typedef multi_index_container<
-   dynamic_global_property_object,
+   hardfork_property_object,
    indexed_by<
-      ordered_unique< member< hardfork_property_object, id_type, &hardfork_property_object::id > >
+      ordered_unique< member< hardfork_property_object, hardfork_property_object::id_type, &hardfork_property_object::id > >
    >,
-   bip::allocator< hardfork_property_object, bip::managed_mapped_file::segment_manager >
+   allocator< hardfork_property_object >
 > hardfork_property_index;
 
 } } // namespace steemit::chain

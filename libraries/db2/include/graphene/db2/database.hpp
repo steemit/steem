@@ -109,7 +109,7 @@ namespace graphene { namespace db2 {
          template<typename CompatibleKey>
          const value_type* find( CompatibleKey&& key )const {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );
-            if( itr != _indices.end() ) return *itr;
+            if( itr != _indices.end() ) return &*itr;
             return nullptr;
          }
 
@@ -363,10 +363,10 @@ namespace graphene { namespace db2 {
    class abstract_session {
       public:
          virtual ~abstract_session(){};
-         virtual void push()             = 0;
-         virtual void squash()           = 0;
-         virtual void undo()             = 0;
-         virtual uint64_t revision()const  = 0;
+         virtual void push()              = 0;
+         virtual void squash()            = 0;
+         virtual void undo()              = 0;
+         virtual uint64_t revision()const = 0;
    };
 
    template<typename SessionType>
@@ -388,12 +388,12 @@ namespace graphene { namespace db2 {
       public:
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
-         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) = 0;
+         virtual unique_ptr< abstract_session > start_undo_session( bool enabled ) = 0;
 
-         virtual uint64_t revision()const = 0;
-         virtual void     undo()const = 0;
-         virtual void     squash()const = 0;
-         virtual void     commit( uint64_t revision )const = 0;
+         virtual uint64_t revision()const                   = 0;
+         virtual void     undo()const                       = 0;
+         virtual void     squash()const                     = 0;
+         virtual void     commit( uint64_t revision )const  = 0;
          virtual void     set_revision( uint64_t revision ) = 0;
          void* get()const { return _idx_ptr; }
       private:
@@ -437,6 +437,8 @@ namespace graphene { namespace db2 {
          void open( const bfs::path& file );
          void close();
          void flush();
+         void wipe();
+         void reset_indexes();
 
          struct session {
             public:
@@ -509,18 +511,40 @@ namespace graphene { namespace db2 {
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
          }
 
-         template<typename ObjectType, typename CompatibleKey>
-         const ObjectType* find( CompatibleKey&& key )const {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            const auto& idx = get_index<index_type>().indicies();
-            auto itr = idx.find( std::forward<CompatibleKey>(key) );
+         template< typename ObjectType, typename IndexedByType, typename CompatibleKey >
+         const ObjectType* find( CompatibleKey&& key )const
+         {
+            typedef typename get_index_type< ObjectType >::type index_type;
+            const auto& idx = get_index< index_type >().indicies().template get< IndexedByType >();
+            auto itr = idx.find( std::forward< CompatibleKey >( key ) );
             if( itr == idx.end() ) return nullptr;
             return &*itr;
          }
 
-         template<typename ObjectType, typename CompatibleKey>
-         const ObjectType& get( CompatibleKey&& key )const {
-            return *find( std::forward<CompatibleKey>(key) );
+         template< typename ObjectType >
+         const ObjectType* find( oid< ObjectType > key = oid< ObjectType >() ) const
+         {
+            typedef typename get_index_type< ObjectType >::type index_type;
+            const auto& idx = get_index< index_type >().indices();
+            auto itr = idx.find( key );
+            if( itr == idx.end() ) return nullptr;
+            return &*itr;
+         }
+
+         template< typename ObjectType, typename IndexedByType, typename CompatibleKey >
+         const ObjectType& get( CompatibleKey&& key )const
+         {
+            auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
+            FC_ASSERT( obj != nullptr, "Object could not be found" );
+            return *obj;
+         }
+
+         template< typename ObjectType >
+         const ObjectType& get( oid< ObjectType > key = oid< ObjectType >() )const
+         {
+            auto obj = find< ObjectType >( key );
+            FC_ASSERT( obj != nullptr, "Object could not be found" );
+            return *obj;
          }
 
          template<typename ObjectType, typename Modifier>
@@ -529,7 +553,7 @@ namespace graphene { namespace db2 {
             get_mutable_index<index_type>().modify( obj, m );
          }
 
-         template<typename ObjectType, typename CompatibleKey>
+         /*template<typename ObjectType, typename CompatibleKey>
          const ObjectType& get( CompatibleKey&& key ) {
             typedef typename get_index_type<ObjectType>::type index_type;
             return get_index<index_type>().get( std::forward<CompatibleKey>(key) );
@@ -538,8 +562,8 @@ namespace graphene { namespace db2 {
          template<typename ObjectType, typename CompatibleKey>
          const ObjectType* find( CompatibleKey&& key ) {
             typedef typename get_index_type<ObjectType>::type index_type;
-            return get<index_type>().find( std::forward<CompatibleKey>(key) );
-         }
+            return get_index<index_type>().find( std::forward<CompatibleKey>(key) );
+         }*/
 
          template<typename ObjectType>
          void remove( const ObjectType& obj ) {
@@ -576,6 +600,8 @@ namespace graphene { namespace db2 {
    template<typename T>
    const T& oid<T>::operator()( const database& db )const { return db.get<T>( _id ); }
 } } // namepsace graphene::db2
+
+FC_REFLECT_TEMPLATE( (typename T), graphene::db2::oid<T>, (_id) )
 
 /*
 struct example_object : public object<1,example_object> {
