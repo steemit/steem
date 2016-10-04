@@ -9,8 +9,8 @@ algorithm.
 
 # Public Announcement & Discussion
 
-Steem was announced on
-[Bitcointalk](https://bitcointalk.org/index.php?topic=1410943.new) prior to
+Steem was announced on the
+[Bitcointalk forum](https://bitcointalk.org/index.php?topic=1410943.new) prior to
 the start of any mining.
 
 # No Support & No Warranty
@@ -31,11 +31,11 @@ each individual to inspect the code to understand the consensus rules.
 # Quickstart
 
 Just want to get up and running quickly?  Try deploying a prebuilt
-dockerized container.
+dockerized container.  Both common binary types are included.
 
 ## Dockerized p2p Node
 
-To run a p2p node (ca. 2GB RAM required at the moment):
+To run a p2p node (ca. 2GB of memory is required at the moment):
 
     docker run \
         -d -p 2001:2001 -p 8090:8090 --name steemd-default \
@@ -46,7 +46,7 @@ To run a p2p node (ca. 2GB RAM required at the moment):
 ## Dockerized Full Node
 
 To run a node with *all* the data (e.g. for supporting a content website)
-that uses about 14GB of memory:
+that uses ca. 14GB of memory and growing:
 
     docker run \
         --env USE_WAY_TOO_MUCH_RAM=1 \
@@ -62,7 +62,7 @@ A list of some seed nodes to get you started can be found in
 
 This same file is baked into the docker images and can be overridden by
 setting `STEEMD_SEED_NODES` in the container environment at `docker run`
-time.
+time to a whitespace delimited list of seed nodes (with port).
 
 # How to Mine
 
