@@ -24,7 +24,9 @@ namespace detail
 class follow_plugin_impl
 {
    public:
-      follow_plugin_impl( follow_plugin& _plugin );
+      follow_plugin_impl( follow_plugin& _plugin ) : _self( _plugin ) {}
+
+      void plugin_initialize();
 
       steemit::chain::database& database()
       {
@@ -38,8 +40,7 @@ class follow_plugin_impl
       std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
 };
 
-follow_plugin_impl::follow_plugin_impl( follow_plugin& _plugin )
-   : _self( _plugin )
+void follow_plugin_impl::plugin_initialize()
 {
    // Each plugin needs its own evaluator registry.
    _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
@@ -101,6 +102,7 @@ struct pre_operation_visitor
          const auto* comment = db.find_comment( op.author, op.permlink );
 
          if( comment == nullptr ) return;
+         if( comment->parent_author.size() ) return;
 
          const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
@@ -115,7 +117,7 @@ struct pre_operation_visitor
          const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
          auto blog_itr = blog_idx.lower_bound( comment->id );
 
-         while( blog_itr != blog_idx.end() && itr->comment == comment->id )
+         while( blog_itr != blog_idx.end() && blog_itr->comment == comment->id )
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
@@ -349,6 +351,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
+      my->plugin_initialize();
+
       database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
       database().add_index< primary_index< follow_index > >();

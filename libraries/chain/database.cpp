@@ -993,12 +993,14 @@ uint32_t database::get_slot_at_time(fc::time_point_sec when)const
  *  Converts STEEM into sbd and adds it to to_account while reducing the STEEM supply
  *  by STEEM and increasing the sbd supply by the specified amount.
  */
-asset database::create_sbd( const account_object& to_account, asset steem )
+std::pair< asset, asset > database::create_sbd( const account_object& to_account, asset steem )
 {
+   std::pair< asset, asset > assets( asset( 0, SBD_SYMBOL ), asset( 0, STEEM_SYMBOL ) );
+
    try
    {
       if( steem.amount == 0 )
-         return asset(0, SBD_SYMBOL);
+         return assets;
 
       const auto& median_price = get_feed_history().current_median_history;
       const auto& gpo = get_dynamic_global_properties();
@@ -1014,15 +1016,18 @@ asset database::create_sbd( const account_object& to_account, asset steem )
          adjust_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
          adjust_supply( asset( -to_sbd, STEEM_SYMBOL ) );
          adjust_supply( sbd );
-         return sbd;
+         assets.first = sbd;
+         assets.second = to_steem;
       }
       else
       {
          adjust_balance( to_account, steem );
-         return steem;
+         assets.second = steem;
       }
    }
    FC_CAPTURE_LOG_AND_RETHROW( (to_account.name)(steem) )
+
+   return assets;
 }
 
 /**
@@ -1966,17 +1971,20 @@ void database::cashout_comment_helper( const comment_object& comment )
 
             const auto& author = get_account( comment.author );
             auto vest_created = create_vesting( author, vesting_steem );
-            auto sbd_created = create_sbd( author, sbd_steem );
+            auto sbd_payout = create_sbd( author, sbd_steem );
 
-            if( sbd_created.symbol == SBD_SYMBOL )
+            adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+
+            /*if( sbd_created.symbol == SBD_SYMBOL )
                adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
             else
                adjust_total_payout( comment, to_sbd( asset( vesting_steem + sbd_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+               */
 
             // stats only.. TODO: Move to plugin...
             total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
 
-            push_virtual_operation( author_reward_operation( comment.author, comment.permlink, sbd_created, vest_created ) );
+            push_virtual_operation( author_reward_operation( comment.author, comment.permlink, sbd_payout.first, sbd_payout.second, vest_created ) );
             push_virtual_operation( comment_reward_operation( comment.author, comment.permlink, total_payout ) );
 
             #ifndef IS_LOW_MEM
@@ -2135,6 +2143,8 @@ void database::process_savings_withdraws()
      {
         a.savings_withdraw_requests--;
      });
+
+     push_virtual_operation( fill_transfer_from_savings_operation( itr->from, itr->to, itr->amount, itr->request_id, itr->memo) );
 
      remove( *itr );
      itr = idx.begin();
@@ -2414,9 +2424,9 @@ void database::account_recovery_processing()
 void database::expire_escrow_ratification()
 {
    const auto& escrow_idx = get_index_type< escrow_index >().indices().get< by_ratification_deadline >();
-   auto escrow_itr = escrow_idx.lower_bound( boost::make_tuple( false, false ) );
+   auto escrow_itr = escrow_idx.lower_bound( false );
 
-   while( escrow_itr != escrow_idx.end() && !escrow_itr->to_approved && !escrow_itr->agent_approved && escrow_itr->ratification_deadline <= head_block_time() )
+   while( escrow_itr != escrow_idx.end() && !escrow_itr->is_approved() && escrow_itr->ratification_deadline <= head_block_time() )
    {
       const auto& old_escrow = *escrow_itr;
       ++escrow_itr;
@@ -2439,13 +2449,19 @@ void database::process_decline_voting_rights()
    {
       const auto& account = itr->account(*this);
 
-      adjust_proxied_witness_votes( account, -account.witness_vote_weight() );
+      /// remove all current votes
+      std::array<share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1> delta;
+      delta[0] = -account.vesting_shares.amount;
+      for( int i = 0; i < STEEMIT_MAX_PROXY_RECURSION_DEPTH; ++i )
+         delta[i+1] = -account.proxied_vsf_votes[i];
+      adjust_proxied_witness_votes( account, delta );
+
       clear_witness_votes( account );
 
       modify( itr->account(*this), [&]( account_object& a )
       {
          a.can_vote = false;
-         a.proxy = a.name;
+         a.proxy = STEEMIT_PROXY_TO_SELF_ACCOUNT;
       });
 
       remove( *itr );
@@ -2717,7 +2733,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
               | skip_block_size_check
               | skip_tapos_check
               | skip_authority_check
-              | skip_merkle_check
+              /* | skip_merkle_check While blockchain is being downloaded, txs need to be validated against block headers */
               | skip_undo_history_check
               | skip_witness_schedule_check
               | skip_validate
