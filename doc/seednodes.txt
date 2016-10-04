@@ -1,0 +1,22 @@
+104.168.154.160:40696   # ihashfury
+104.207.152.44:2201     # nextgencrypto, steemwitness.com (Los Angeles, USA)
+109.74.206.93:2001      # steempty, steem.clawmap.com (UK)
+192.99.4.226:2001       # unknown
+199.241.186.130:2001    # someguy123, steemit-seed.someguy123.com:2001
+212.117.213.186:2016    # liondani (Switzerland)
+40.76.37.6:2001         # kushed, steem.kushed.com (Azure)
+45.114.118.146:2001     # steem-id (Indonesia)
+45.55.217.111:12150     # xeldal (USA)
+46.252.27.1:1337        # unknown
+52.26.78.244:2001       # unknown
+52.37.169.52:2001       # unknown
+52.38.66.234:2001       # unknown
+52.4.250.181:39705      # unknown
+52.4.250.181:39705      # lafona
+52.74.152.79:2001       # smooth.witness
+81.89.101.133:2001      # unknown
+81.89.101.133:2001      # cyrano.witness (Jena, Germany)
+seed.steemed.net:2001
+seed.steemwitness.com:2001
+steem-seed1.abit-more.com:2001
+steem.clawmap.com:2001

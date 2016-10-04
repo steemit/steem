@@ -151,5 +151,8 @@ RUN mkdir -p /etc/service/steemd
 ADD contrib/steemd.run /etc/service/steemd/run
 RUN chmod +x /etc/service/steemd/run
 
+# add seednodes from documentation to image
+ADD doc/seednodes.txt /etc/steemd/seednodes.txt
+
 # the following adds lots of logging info to stdout
 ADD contrib/config-for-docker.ini /etc/steemd/config.ini
