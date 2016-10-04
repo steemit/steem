@@ -178,7 +178,7 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
 *Optional.* To use TCMalloc in LevelDB:
 
-   brew install google-perftools
+    brew install google-perftools
 
 ### Clone the Repository
 
@@ -187,22 +187,22 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
 ### Compile
 
-   export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
-   export BOOST_ROOT=$(brew --prefix)/Cellar/boost160/1.60.0/
-   git submodule update --init --recursive
-   mkdir build && cd build
-   cmake -DBOOST_ROOT="$BOOST_ROOT" -DCMAKE_BUILD_TYPE=Release ..
-   make -j$(sysctl -n hw.logicalcpu)
+    export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
+    export BOOST_ROOT=$(brew --prefix)/Cellar/boost160/1.60.0/
+    git submodule update --init --recursive
+    mkdir build && cd build
+    cmake -DBOOST_ROOT="$BOOST_ROOT" -DCMAKE_BUILD_TYPE=Release ..
+    make -j$(sysctl -n hw.logicalcpu)
 
 Also, some useful build targets for `make` are:
 
-   steemd
-   chain_test
-   cli_wallet
+    steemd
+    chain_test
+    cli_wallet
 
 e.g.:
 
-   make -j$(sysctl -n hw.logicalcpu) steemd
+    make -j$(sysctl -n hw.logicalcpu) steemd
 
 This will only build `steemd`.
 
