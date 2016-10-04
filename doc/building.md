@@ -29,6 +29,14 @@ Clears old votes from memory that are not longer required for consensus.
 Builds steem for use in a private testnet. Also required for correctly
 building unit tests
 
+## Building under Docker
+
+We ship a Dockerfile.  This builds both common node type binaries.
+
+    git clone https://github.com/steemit/steem
+    cd steem
+    docker build -t steemitinc/steem .
+
 ## Building on Ubuntu 16.04
 
 For Ubuntu 16.04 users, after installing the right packages with `apt` Steem
