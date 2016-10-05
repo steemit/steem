@@ -2,14 +2,46 @@
 
 namespace steemit { namespace protocol {
 
-void add_authority_accounts(
-   flat_set<account_name_type>& result,
-   const authority& a
-   )
+// authority methods
+void authority::add_authority( const public_key_type& k, weight_type w )
 {
-   for( auto& item : a.account_auths )
-      result.insert( item.first );
+   key_auths[k] = w;
 }
+
+void authority::add_authority( const account_name_type& k, weight_type w )
+{
+   account_auths[k] = w;
+}
+
+vector< public_key_type > authority::get_keys()const
+{
+   vector< public_key_type > result;
+   result.reserve( key_auths.size() );
+   for( const auto& k : key_auths )
+      result.push_back(k.first);
+   return result;
+}
+
+bool authority::is_impossible()const
+{
+   uint64_t auth_weights = 0;
+   for( const auto& item : account_auths ) auth_weights += item.second;
+   for( const auto& item : key_auths ) auth_weights += item.second;
+   return auth_weights < weight_threshold;
+}
+
+uint32_t authority::num_auths()const { return account_auths.size() + key_auths.size(); }
+
+void authority::clear() { account_auths.clear(); key_auths.clear(); }
+
+void authority::validate()const
+{
+   for( const auto& item : account_auths )
+   {
+      FC_ASSERT( is_valid_account_name( item.first ) );
+   }
+}
+
 
 bool is_valid_account_name( const string& name )
 {
@@ -75,14 +107,6 @@ bool is_valid_account_name( const string& name )
       begin = end+1;
    }
    return true;
-}
-
-void authority::validate()const
-{
-   for( const auto& item : account_auths )
-   {
-      FC_ASSERT( is_valid_account_name( item.first ) );
-   }
 }
 
 } } // steemit::protocol

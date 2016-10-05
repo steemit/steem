@@ -446,7 +446,7 @@ namespace steemit { namespace protocol {
       void get_required_owner_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_owner_auths ) a.insert(i); }
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_active_auths ) a.insert(i); }
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ for( const auto& i : required_posting_auths ) a.insert(i); }
-      void get_required_authorities( vector<authority>& a )const{ for( const auto& i : required_auths ) a.push_back(i); }
+      void get_required_authorities( vector< authority >& a )const{ for( const auto& i : required_auths ) a.push_back( i ); }
    };
 
 
@@ -612,7 +612,7 @@ namespace steemit { namespace protocol {
          }
       }
 
-      void get_required_authorities( vector<authority>& a )const
+      void get_required_authorities( vector< authority >& a )const
       {
          if( new_owner_key )
          {
@@ -736,7 +736,7 @@ namespace steemit { namespace protocol {
 
       extensions_type   extensions;                ///< Extensions. Not currently used.
 
-      void get_required_authorities( vector<authority>& a )const
+      void get_required_authorities( vector< authority >& a )const
       {
          a.push_back( new_owner_authority );
          a.push_back( recent_owner_authority );

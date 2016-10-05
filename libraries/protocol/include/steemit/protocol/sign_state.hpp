@@ -5,7 +5,7 @@
 
 namespace steemit { namespace protocol {
 
-typedef std::function<const authority*(const string&)> authority_getter;
+typedef std::function<authority(const string&)> authority_getter;
 
 struct sign_state
 {
@@ -19,7 +19,7 @@ struct sign_state
        *  Checks to see if we have signatures of the active authorites of
        *  the accounts specified in authority or the keys specified.
        */
-      bool check_authority( const authority* au, uint32_t depth = 0 );
+      bool check_authority( const authority& au, uint32_t depth = 0 );
 
       bool remove_unused_signatures();
 

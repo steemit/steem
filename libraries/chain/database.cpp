@@ -3135,9 +3135,9 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    if( !(skip & (skip_transaction_signatures | skip_authority_check) ) )
    {
-      auto get_active  = [&]( const string& name ) { return &get_account(name).active; };
-      auto get_owner   = [&]( const string& name ) { return &get_account(name).owner;  };
-      auto get_posting = [&]( const string& name ) { return &get_account(name).posting;  };
+      auto get_active  = [&]( const string& name ) { return authority( get_account(name).active ); };
+      auto get_owner   = [&]( const string& name ) { return authority( get_account(name).owner );  };
+      auto get_posting = [&]( const string& name ) { return authority( get_account(name).posting );  };
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
    }

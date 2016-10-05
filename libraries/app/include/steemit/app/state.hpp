@@ -1,5 +1,6 @@
 #pragma once
 #include <steemit/app/applied_operation.hpp>
+#include <steemit/app/steem_api_objects.hpp>
 
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/account_object.hpp>
@@ -8,12 +9,11 @@
 namespace steemit { namespace app {
    using std::string;
    using std::vector;
-   using namespace steemit::chain;
 
-   struct extended_limit_order : public limit_order_object
+   struct extended_limit_order : public limit_order
    {
       extended_limit_order(){}
-      extended_limit_order( const limit_order_object& o ):limit_order_object(o){}
+      extended_limit_order( const limit_order& o ):limit_order(o){}
 
       double real_price  = 0;
       bool   rewarded    = false;
@@ -57,8 +57,8 @@ namespace steemit { namespace app {
       time_point_sec time;
    };
 
-   struct  discussion : public comment_object {
-      discussion( const comment_object& o ):comment_object(o){}
+   struct  discussion : public comment {
+      discussion( const comment_object& o ):comment(o){}
       discussion(){}
 
       string                      url; /// /category/@rootauthor/root_permlink#author/permlink

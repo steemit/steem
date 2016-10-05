@@ -6,8 +6,7 @@
 
 #include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/witness_objects.hpp>
-
-#include <graphene/db/generic_index.hpp>
+#include <steemit/chain/shared_authority.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
 
@@ -22,7 +21,7 @@ namespace steemit { namespace chain {
       public:
          template<typename Constructor, typename Allocator>
          account_object( Constructor&& c, allocator< Allocator > a )
-            :json_metadata( shared_string::allocator_type(a.get_segment_manager()) )
+            :owner( a ), active( a ), posting( a ), json_metadata( a )
          {
             c(*this);
          };
@@ -30,9 +29,9 @@ namespace steemit { namespace chain {
          id_type            id;
 
          account_name_type  name;
-         authority          owner; ///< used for backup control, can set owner or active
-         authority          active; ///< used for all monetary operations, can set active or posting
-         authority          posting; ///< used for voting and posting
+         shared_authority   owner; ///< used for backup control, can set owner or active
+         shared_authority   active; ///< used for all monetary operations, can set active or posting
+         shared_authority   posting; ///< used for voting and posting
          public_key_type    memo_key;
          shared_string      json_metadata;
          account_name_type  proxy;

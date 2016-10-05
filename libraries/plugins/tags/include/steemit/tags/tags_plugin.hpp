@@ -4,7 +4,6 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/comment_object.hpp>
 
-#include <graphene/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
 
 #include <fc/thread/future.hpp>

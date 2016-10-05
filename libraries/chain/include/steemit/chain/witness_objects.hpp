@@ -5,8 +5,6 @@
 
 #include <steemit/chain/steem_object_types.hpp>
 
-#include <graphene/db/generic_index.hpp>
-
 #include <boost/multi_index/composite_key.hpp>
 
 namespace steemit { namespace chain {
@@ -145,22 +143,7 @@ namespace steemit { namespace chain {
          version                                                           majority_version;
    };
 
-   struct string_less
-   {
-      bool operator()( const std::string& a, const std::string& b )const
-      {
-         return a < b;
-      }
 
-      bool operator()( const fc::fixed_string<>& a, const fc::fixed_string<>& b )const
-      {
-         const char* ap = (const char*)&a;
-         const char* ab = (const char*)&b;
-         int count = sizeof(a);
-         while( *ap == *ab && count ) { ++ap; ++ab; --count; }
-         return *ap < *ab;
-      }
-   };
 
    struct by_vote_name;
    struct by_name;
@@ -182,7 +165,7 @@ namespace steemit { namespace chain {
                member< witness_object, share_type, &witness_object::votes >,
                member< witness_object, account_name_type, &witness_object::owner >
             >,
-            composite_key_compare< std::greater< share_type >, string_less > //std::less< account_name_type > >
+            composite_key_compare< std::greater< share_type >, steemit::protocol::string_less > //std::less< account_name_type > >
          >,
          ordered_unique< tag< by_schedule_time >,
             composite_key< witness_object,

@@ -26,7 +26,6 @@ using steemit::protocol::transaction_id_type;
 using steemit::protocol::chain_id_type;
 using steemit::protocol::account_name_type;
 using steemit::protocol::share_type;
-using steemit::protocol::shared_authority;
 
 typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }

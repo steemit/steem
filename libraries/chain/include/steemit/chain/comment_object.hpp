@@ -6,8 +6,6 @@
 #include <steemit/chain//steem_object_types.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
-#include <graphene/db/generic_index.hpp>
-
 #include <boost/multi_index/composite_key.hpp>
 
 

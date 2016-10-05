@@ -28,7 +28,7 @@ class generic_custom_operation_interpreter
 
       void apply_operations( const vector< CustomOperationType >& custom_operations, const operation& outer_o )
       {
-         auto plugin_session = this->_db._undo_db.start_undo_session( true );
+         auto plugin_session = this->_db.start_undo_session( true );
 
          flat_set<account_name_type> outer_active;
          flat_set<account_name_type> outer_owner;
@@ -60,7 +60,7 @@ class generic_custom_operation_interpreter
             this->get_evaluator( inner_o ).apply( inner_o );
          }
 
-         plugin_session.merge();
+         plugin_session.squash();
       }
 
       virtual void apply( const protocol::custom_json_operation& outer_o ) override

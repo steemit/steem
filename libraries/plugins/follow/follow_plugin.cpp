@@ -80,12 +80,12 @@ struct pre_operation_visitor
 
          if( c.mode == archived ) return;
 
-         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
          auto cv = cv_idx.find( std::make_tuple( c.id, db.get_account( op.voter ).id ) );
 
          if( cv != cv_idx.end() )
          {
-            const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
+            const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
             auto rep = rep_idx.find( db.get_account( op.author ).id );
 
             if( rep != rep_idx.end() )
@@ -110,7 +110,7 @@ struct pre_operation_visitor
          if( comment == nullptr ) return;
          if( comment->parent_author.size() ) return;
 
-         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
 
          while( itr != feed_idx.end() && itr->comment == comment->id )
@@ -120,7 +120,7 @@ struct pre_operation_visitor
             db.remove( old_feed );
          }
 
-         const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
          auto blog_itr = blog_idx.lower_bound( comment->id );
 
          while( blog_itr != blog_idx.end() && itr->comment == comment->id )
@@ -188,15 +188,15 @@ struct post_operation_visitor
 
          if( c.created != db.head_block_time() ) return;
 
-         const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
-         const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+         const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
+         const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = idx.find( author.id );
 
-         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
+         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
          while( itr != idx.end() && itr->following == author.id )
          {
-            if( itr->what.find( follow_type::blog ) != itr->what.end() )
+            if( itr->what & ( 1 << blog ) )
             {
                uint32_t next_id = 0;
                auto last_feed = feed_idx.lower_bound( itr->follower );
@@ -215,7 +215,7 @@ struct post_operation_visitor
                      f.account_feed_id = next_id;
                   });
 
-                  const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
+                  const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
                   auto old_feed = old_feed_idx.lower_bound( itr->follower );
 
                   while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
@@ -229,8 +229,8 @@ struct post_operation_visitor
             ++itr;
          }
 
-         const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
-         const auto& comment_blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
+         const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
          auto author_id = db.get_account( op.author ).id;
          auto last_blog = blog_idx.lower_bound( author_id );
          uint32_t next_id = 0;
@@ -249,7 +249,7 @@ struct post_operation_visitor
                b.blog_feed_id = next_id;
             });
 
-            const auto& old_blog_idx = db.get_index_type< blog_index >().indices().get< by_old_blog >();
+            const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
             auto old_blog = old_blog_idx.lower_bound( author_id );
 
             while( old_blog->account == author_id && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
@@ -274,10 +274,10 @@ struct post_operation_visitor
 
          const auto& voter_id = db.get_account( op.voter ).id;
          const auto& author_id = db.get_account( op.author ).id;
-         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
          auto cv = cv_idx.find( boost::make_tuple( comment.id, voter_id ) );
 
-         const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
+         const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
          auto voter_rep = rep_idx.find( voter_id );
          auto author_rep = rep_idx.find( author_id );
 
@@ -361,10 +361,10 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
 
       database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
-      database().add_index< primary_index< follow_index > >();
-      database().add_index< primary_index< feed_index > >();
-      database().add_index< primary_index< blog_index > >();
-      database().add_index< primary_index< reputation_index > >();
+      database().add_index< follow_index     >();
+      database().add_index< feed_index       >();
+      database().add_index< blog_index       >();
+      database().add_index< reputation_index >();
 
       if( options.count( "follow-max-feed-size" ) )
       {

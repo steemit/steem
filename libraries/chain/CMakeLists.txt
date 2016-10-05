@@ -25,6 +25,7 @@ add_library( steemit_chain
 
              steem_objects.cpp
              block_database.cpp
+             shared_authority.cpp
 
              ${HEADERS}
              ${hardfork_hpp_file}

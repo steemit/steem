@@ -174,6 +174,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         limit_order_object(){}
+
          id_type           id;
 
          time_point_sec    created;

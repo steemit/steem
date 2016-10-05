@@ -75,10 +75,10 @@ void transaction::set_reference_block( const block_id_type& reference_block )
    ref_block_prefix = reference_block._hash[1];
 }
 
-void transaction::get_required_authorities( flat_set<account_name_type>& active,
-                                            flat_set<account_name_type>& owner,
-                                            flat_set<account_name_type>& posting,
-                                            vector<authority>& other )const
+void transaction::get_required_authorities( flat_set< account_name_type >& active,
+                                            flat_set< account_name_type >& owner,
+                                            flat_set< account_name_type >& posting,
+                                            vector< authority >& other )const
 {
    for( const auto& op : operations )
       operation_get_required_authorities( op, active, owner, posting, other );
@@ -90,15 +90,15 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                        const authority_getter& get_posting,
                        uint32_t max_recursion_depth,
                        bool  allow_committe,
-                       const flat_set<account_name_type>& active_aprovals,
-                       const flat_set<account_name_type>& owner_approvals,
-                       const flat_set<account_name_type>& posting_approvals
+                       const flat_set< account_name_type >& active_aprovals,
+                       const flat_set< account_name_type >& owner_approvals,
+                       const flat_set< account_name_type >& posting_approvals
                        )
 { try {
-   flat_set<account_name_type> required_active;
-   flat_set<account_name_type> required_owner;
-   flat_set<account_name_type> required_posting;
-   vector<authority> other;
+   flat_set< account_name_type > required_active;
+   flat_set< account_name_type > required_owner;
+   flat_set< account_name_type > required_posting;
+   vector< authority > other;
 
    for( const auto& op : ops )
       operation_get_required_authorities( op, required_active, required_owner, required_posting, other );
@@ -126,9 +126,9 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                           s.check_authority(get_owner(id)),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
                           ("id",id)
-                          ("posting",*get_posting(id))
-                          ("active",*get_active(id))
-                          ("owner",*get_owner(id)) );
+                          ("posting",get_posting(id))
+                          ("active",get_active(id))
+                          ("owner",get_owner(id)) );
       }
       STEEMIT_ASSERT(
          !s.remove_unused_signatures(),
@@ -148,7 +148,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 
    for( const auto& auth : other )
    {
-      STEEMIT_ASSERT( s.check_authority(&auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
+      STEEMIT_ASSERT( s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
 
    // fetch all of the top level authorities
@@ -156,14 +156,14 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
    {
       STEEMIT_ASSERT( s.check_authority(id) ||
                        s.check_authority(get_owner(id)),
-                       tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",*get_active(id))("owner",*get_owner(id)) );
+                       tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
    for( auto id : required_owner )
    {
       STEEMIT_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
                        s.check_authority(get_owner(id)),
-                       tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",*get_owner(id)) );
+                       tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",get_owner(id)) );
    }
 
    STEEMIT_ASSERT(
@@ -198,10 +198,10 @@ set<public_key_type> signed_transaction::get_required_signatures(
    const authority_getter& get_posting,
    uint32_t max_recursion_depth )const
 {
-   flat_set<account_name_type> required_active;
-   flat_set<account_name_type> required_owner;
-   flat_set<account_name_type> required_posting;
-   vector<authority> other;
+   flat_set< account_name_type > required_active;
+   flat_set< account_name_type > required_owner;
+   flat_set< account_name_type > required_posting;
+   vector< authority > other;
    get_required_authorities( required_active, required_owner, required_posting, other );
 
    /** posting authority cannot be mixed with active authority in same transaction */
@@ -230,7 +230,7 @@ set<public_key_type> signed_transaction::get_required_signatures(
    s.max_recursion = max_recursion_depth;
 
    for( const auto& auth : other )
-      s.check_authority(&auth);
+      s.check_authority( auth );
    for( auto& owner : required_owner )
       s.check_authority( get_owner( owner ) );
    for( auto& active : required_active )
@@ -249,7 +249,7 @@ set<public_key_type> signed_transaction::get_required_signatures(
 
 set<public_key_type> signed_transaction::minimize_required_signatures(
    const chain_id_type& chain_id,
-   const flat_set<public_key_type>& available_keys,
+   const flat_set< public_key_type >& available_keys,
    const authority_getter& get_active,
    const authority_getter& get_owner,
    const authority_getter& get_posting,

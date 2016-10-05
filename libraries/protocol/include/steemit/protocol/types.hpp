@@ -75,6 +75,22 @@ namespace steemit {
       typedef fc::fixed_string<>                     account_name_type;
       //   typedef std::string                            account_name_type;
 
+      struct string_less
+      {
+         bool operator()( const std::string& a, const std::string& b )const
+         {
+            return a < b;
+         }
+
+         bool operator()( const fc::fixed_string<>& a, const fc::fixed_string<>& b )const
+         {
+            const char* ap = (const char*)&a;
+            const char* ab = (const char*)&b;
+            int count = sizeof(a);
+            while( *ap == *ab && count ) { ++ap; ++ab; --count; }
+            return *ap < *ab;
+         }
+      };
 
       typedef fc::ripemd160                                        block_id_type;
       typedef fc::ripemd160                                        checksum_type;

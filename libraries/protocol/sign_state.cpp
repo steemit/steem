@@ -22,20 +22,18 @@ bool sign_state::check_authority( string id )
    return check_authority( get_active(id) );
 }
 
-bool sign_state::check_authority( const authority* au, uint32_t depth )
+bool sign_state::check_authority( const authority& auth, uint32_t depth )
 {
-   if( au == nullptr ) return false;
-   const authority& auth = *au;
-
    uint32_t total_weight = 0;
    for( const auto& k : auth.key_auths )
+   {
       if( signed_by( k.first ) )
       {
          total_weight += k.second;
          if( total_weight >= auth.weight_threshold )
             return true;
       }
-
+   }
 
    for( const auto& a : auth.account_auths )
    {
