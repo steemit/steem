@@ -35,7 +35,7 @@ We ship a Dockerfile.  This builds both common node type binaries.
 
     git clone https://github.com/steemit/steem
     cd steem
-    docker build -t steemitinc/steem .
+    docker build -t steemit/steem .
 
 ## Building on Ubuntu 16.04
 

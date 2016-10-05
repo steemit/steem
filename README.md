@@ -39,7 +39,7 @@ To run a p2p node (ca. 2GB of memory is required at the moment):
 
     docker run \
         -d -p 2001:2001 -p 8090:8090 --name steemd-default \
-        steemitinc/steem
+        steemit/steem
 
     docker logs -f steemd-default  # follow along
 
@@ -51,7 +51,7 @@ that uses ca. 14GB of memory and growing:
     docker run \
         --env USE_WAY_TOO_MUCH_RAM=1 \
         -d -p 2001:2001 -p 8090:8090 --name steemd-full \
-        steemitinc/steem
+        steemit/steem
 
     docker logs -f steemd-full
 
