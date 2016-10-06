@@ -11,12 +11,11 @@
 52.26.78.244:2001       # unknown
 52.37.169.52:2001       # unknown
 52.38.66.234:2001       # unknown
-52.4.250.181:39705      # unknown
 52.4.250.181:39705      # lafona
 52.74.152.79:2001       # smooth.witness
-81.89.101.133:2001      # unknown
 81.89.101.133:2001      # cyrano.witness (Jena, Germany)
 seed.steemed.net:2001
 seed.steemwitness.com:2001
 steem-seed1.abit-more.com:2001
 steem.clawmap.com:2001
+steemd.pharesim.me:2001
