@@ -17,6 +17,8 @@ namespace steemit { namespace chain {
    class operation_object : public object< operation_object_type, operation_object >
    {
       public:
+         typedef bip::vector< char, allocator< char > > operation_raw_type;
+
          template< typename Constructor, typename Allocator >
          operation_object( Constructor&& c, allocator< Allocator > a )
             :serialized_op( a.get_segment_manager() )
@@ -24,16 +26,43 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
-         id_type                                id;
+         id_type              id;
 
-         transaction_id_type                    trx_id;
-         uint32_t                               block = 0;
-         uint32_t                               trx_in_block = 0;
-         uint16_t                               op_in_trx = 0;
-         uint64_t                               virtual_op = 0;
-         time_point_sec                         timestamp;
-         bip::vector< char, allocator< char > > serialized_op;
+         transaction_id_type  trx_id;
+         uint32_t             block = 0;
+         uint32_t             trx_in_block = 0;
+         uint16_t             op_in_trx = 0;
+         uint64_t             virtual_op = 0;
+         time_point_sec       timestamp;
+         operation_raw_type   serialized_op;
    };
+
+   /*template< typename... T >
+   void op_pack( const fc::static_variant< T... >& op, operation_object::operation_raw_type& raw )
+   {
+      auto fc_raw = fc::raw::pack< fc::static_variant< T... > >( op );
+      raw.clear();
+      raw.reserve( fc_raw.size() );
+
+      for( auto c : fc_raw )
+      {
+         raw.push_back( c );
+      }
+   }
+
+   template< typename... T >
+   fc::static_variant< T... > op_unpack( const operation_object::operation_raw_type& raw )
+   {
+      vector< char > fc_raw;
+      fc_raw.reserve( raw.size() );
+
+      for( auto c : raw )
+      {
+         fc_raw.push_back( c );
+      }
+
+      return fc::raw::unpack< static_variant< T... > >( fc_raw );
+   }*/
 
    struct by_location;
    struct by_transaction_id;

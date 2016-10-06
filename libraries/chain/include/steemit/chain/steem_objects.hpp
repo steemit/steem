@@ -27,6 +27,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         convert_request_object(){}
+
          id_type           id;
 
          account_name_type owner;
@@ -44,6 +46,8 @@ namespace steemit { namespace chain {
          {
             c( *this );
          }
+
+         escrow_object(){}
 
          id_type           id;
 
@@ -104,6 +108,8 @@ namespace steemit { namespace chain {
          {
             c( *this );
          }
+
+         liquidity_reward_balance_object(){}
 
          id_type           id;
 
@@ -209,6 +215,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         withdraw_vesting_route_object(){}
+
          id_type  id;
 
          account_id_type   from_account;
@@ -226,6 +234,8 @@ namespace steemit { namespace chain {
          {
             c( *this );
          }
+
+         decline_voting_rights_request_object(){}
 
          id_type           id;
 

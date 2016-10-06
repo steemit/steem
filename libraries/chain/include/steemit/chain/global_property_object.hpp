@@ -28,6 +28,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         dynamic_global_property_object(){}
+
          id_type           id;
 
          uint32_t          head_block_number = 0;

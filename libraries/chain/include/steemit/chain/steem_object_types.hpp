@@ -126,6 +126,33 @@ namespace fc
       auto str = var.as_string();
       s.assign( str.begin(), str.end() );
    }
+
+   namespace raw
+   {
+      namespace bip = graphene::db2::bip;
+      using graphene::db2::allocator;
+
+      template< typename T > inline void pack( const T& v, bip::vector< char , allocator< char > >& raw )
+      {
+         std::vector< char > stack_raw = pack( v );
+         raw.clear();
+         raw.reserve( stack_raw.size() );
+
+         for( auto c : stack_raw )
+            raw.push_back( c );
+      }
+
+      template< typename T > inline T unpack( const bip::vector< char, allocator< char > >& raw )
+      {
+         std::vector< char > stack_raw;
+         stack_raw.reserve( raw.size() );
+
+         for( auto c : raw )
+            stack_raw.push_back( c );
+
+         return unpack< T >( stack_raw );
+      }
+   }
 }
 
 FC_REFLECT_ENUM( steemit::chain::object_type,

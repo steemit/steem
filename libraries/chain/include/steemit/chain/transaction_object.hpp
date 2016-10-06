@@ -3,7 +3,12 @@
 
 #include <steemit/chain/steem_object_types.hpp>
 
+#include <boost/multi_index/hashed_index.hpp>
+
 namespace steemit { namespace chain {
+
+   using steemit::protocol::signed_transaction;
+
    /**
     * The purpose of this object is to enable the detection of duplicate transactions. When a transaction is included
     * in a block a transaction_object is added. At the end of block processing all transaction_objects that have

@@ -13,6 +13,35 @@ namespace steemit { namespace chain {
 
    using namespace graphene::db;
 
+   struct strcmp_less
+   {
+      bool operator()( const shared_string& a, const shared_string& b )const
+      {
+         return less( a.c_str(), b.c_str() );
+      }
+
+      bool operator()( const shared_string& a, const string& b )const
+      {
+         return less( a.c_str(), b.c_str() );
+      }
+
+      bool operator()( const string& a, const shared_string& b )const
+      {
+         return less( a.c_str(), b.c_str() );
+      }
+      /*
+      bool operator()( const char* a, const char* b )const
+      {
+         return less( a, b );
+      }
+      */
+      private:
+         inline bool less( const char* a, const char* b )const
+         {
+            return std::strcmp( a, b ) < 0;
+         }
+   };
+
    /**
     *  Used to track the trending categories
     */
@@ -43,7 +72,7 @@ namespace steemit { namespace chain {
       category_object,
       indexed_by<
          ordered_unique< tag< by_id >, member< category_object, category_id_type, &category_object::id > >,
-         ordered_unique< tag< by_name >, member< category_object, shared_string, &category_object::name > >,
+         ordered_unique< tag< by_name >, member< category_object, shared_string, &category_object::name >, strcmp_less >,
          ordered_unique< tag< by_rshares >,
             composite_key< category_object,
                member< category_object, share_type, &category_object::abs_rshares>,
@@ -224,36 +253,6 @@ namespace steemit { namespace chain {
    struct by_votes;
    struct by_responses;
    struct by_author_last_update;
-
-   struct strcmp_less
-   {
-      bool operator()( const shared_string& a, const shared_string& b )const
-      {
-         return less( a.c_str(), b.c_str() );
-      }
-
-      bool operator()( const shared_string& a, const string& b )const
-      {
-         return less( a.c_str(), b.c_str() );
-      }
-
-      bool operator()( const string& a, const shared_string& b )const
-      {
-         return less( a.c_str(), b.c_str() );
-      }
-      /*
-      bool operator()( const char* a, const char* b )const
-      {
-         return less( a, b );
-      }
-      */
-      private:
-         inline bool less( const char* a, const char* b )const
-         {
-            return std::strcmp( a, b ) < 0;
-         }
-   };
-
 
    /**
     * @ingroup object_index

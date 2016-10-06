@@ -42,18 +42,18 @@ void auth_util_api_impl::check_authority_signature( const check_authority_signat
 {
    std::shared_ptr< chain::database > db = app.chain_database();
    const chain::account_object& acct = db->get_account( args.account_name );
-   const protocol::authority* auth = nullptr;
+   protocol::authority auth;
    if( (args.level == "posting") || (args.level == "p") )
    {
-      auth = &acct.posting;
+      auth = protocol::authority( acct.posting );
    }
    else if( (args.level == "active") || (args.level == "a") || (args.level == "") )
    {
-      auth = &acct.active;
+      auth = protocol::authority( acct.active );
    }
    else if( (args.level == "owner") || (args.level == "o") )
    {
-      auth = &acct.owner;
+      auth = protocol::authority( acct.owner );
    }
    else
    {
@@ -67,9 +67,9 @@ void auth_util_api_impl::check_authority_signature( const check_authority_signat
    }
 
    flat_set< protocol::public_key_type > avail;
-   protocol::sign_state ss( signing_keys, [&db]( const std::string& account_name ) -> const protocol::authority*
+   protocol::sign_state ss( signing_keys, [&db]( const std::string& account_name ) -> const protocol::authority
    {
-      return &db->get_account( account_name ).active;
+      return protocol::authority( db->get_account( account_name ).active );
    }, avail );
 
    bool has_authority = ss.check_authority( auth );

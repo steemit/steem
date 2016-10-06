@@ -15,10 +15,6 @@
 
 #include <steemit/chain/operation_notification.hpp>
 
-#include <graphene/db/flat_index.hpp>
-#include <graphene/db/schema.hpp>
-#include <graphene/db/schema_impl.hpp>
-
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 

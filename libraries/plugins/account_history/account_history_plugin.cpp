@@ -64,7 +64,7 @@ struct operation_visitor
    template<typename Op>
    void operator()( Op&& )const
    {
-         const auto& hist_idx = _db.get_index_type<account_history_index>().indices().get<by_account>();
+         const auto& hist_idx = _db.get_index<account_history_index>().indices().get<by_account>();
          if( !new_obj )
          {
             new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
@@ -75,7 +75,7 @@ struct operation_visitor
                obj.op_in_trx    = _note.op_in_trx;
                obj.virtual_op   = _note.virtual_op;
                obj.timestamp    = _db.head_block_time();
-               obj.serialized_op = fc::raw::pack( _note.op );
+               fc::raw::pack( _note.op, obj.serialized_op );
                // TODO: Check size of serialized_op
             });
          }
@@ -132,7 +132,7 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
    flat_set<account_name_type> impacted;
    steemit::chain::database& db = database();
 
-   const auto& hist_idx = db.get_index_type<account_history_index>().indices().get<by_account>();
+   const auto& hist_idx = db.get_index<account_history_index>().indices().get<by_account>();
    const operation_object* new_obj = nullptr;
    app::operation_get_impacted_accounts( note.op, impacted );
 
@@ -180,8 +180,8 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 {
    //ilog("Intializing account history plugin" );
    database().pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
-   database().add_index< primary_index< operation_index  > >();
-   database().add_index< primary_index< account_history_index  > >();
+   database().add_index< operation_index >();
+   database().add_index< account_history_index >();
 
    typedef pair<string,string> pairstring;
    LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);

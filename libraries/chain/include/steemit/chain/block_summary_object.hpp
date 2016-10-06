@@ -23,6 +23,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         block_summary_object(){};
+
          id_type        id;
          block_id_type  block_id;
    };

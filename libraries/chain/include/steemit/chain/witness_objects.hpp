@@ -119,6 +119,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         witness_vote_object(){}
+
          id_type           id;
 
          witness_id_type   witness;
@@ -133,6 +135,8 @@ namespace steemit { namespace chain {
          {
             c( *this );
          }
+
+         witness_schedule_object(){}
 
          id_type                                                           id;
 
