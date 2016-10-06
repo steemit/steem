@@ -8,9 +8,6 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
-#include <graphene/db/schema.hpp>
-#include <graphene/db/schema_impl.hpp>
-
 namespace steemit { namespace blockchain_statistics {
 
 namespace detail
@@ -31,7 +28,7 @@ class blockchain_statistics_plugin_impl
 
       blockchain_statistics_plugin&       _self;
       flat_set< uint32_t >                _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
-      flat_set< bucket_object_id_type >   _current_buckets;
+      flat_set< bucket_id_type >   _current_buckets;
       uint32_t                            _maximum_history_per_bucket_size = 100;
 };
 
@@ -129,7 +126,7 @@ struct operation_process
    {
       _db.modify( _bucket, [&]( bucket_object& b )
       {
-         const auto& cv_idx = _db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         const auto& cv_idx = _db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
          auto& comment = _db.get_comment( op.author, op.permlink );
          auto& voter = _db.get_account( op.voter );
          auto itr = cv_idx.find( boost::make_tuple( comment.id, voter.id ) );
@@ -261,16 +258,16 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    }
    else
    {
-      db.modify( bucket_object_id_type()( db ), [&]( bucket_object& bo )
+      db.modify( bucket_id_type()( db ), [&]( bucket_object& bo )
       {
          bo.blocks++;
       });
    }
 
    _current_buckets.clear();
-   _current_buckets.insert( bucket_object_id_type() );
+   _current_buckets.insert( bucket_id_type() );
 
-   const auto& bucket_idx = db.get_index_type< bucket_index >().indices().get< by_bucket >();
+   const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
 
    uint32_t trx_size = 0;
    uint32_t num_trx =b.transactions.size();
@@ -430,7 +427,7 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       database().pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
 
-      database().add_index< primary_index< bucket_index > >();
+      database().add_index< bucket_index >();
 
       if( options.count( "chain-stats-bucket-size" ) )
       {

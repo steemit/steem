@@ -37,7 +37,7 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
       fill_order_operation op = o.op.get< fill_order_operation >();
 
       auto& db = _self.database();
-      const auto& bucket_idx = db.get_index_type< bucket_index >().indices().get< by_bucket >();
+      const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
 
       uint64_t history_seq = std::numeric_limits< uint64_t >::min();
 
@@ -181,8 +181,8 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       ilog( "market_history: plugin_initialize() begin" );
 
       database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
-      database().add_index< primary_index< bucket_index > >();
-      database().add_index< primary_index< order_history_index > >();
+      database().add_index< bucket_index >();
+      database().add_index< order_history_index >();
 
       if( options.count("bucket-size" ) )
       {

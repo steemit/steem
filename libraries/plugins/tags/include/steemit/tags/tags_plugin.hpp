@@ -71,6 +71,8 @@ class tag_object : public object< tag_object_type, tag_object >
          c( *this );
       }
 
+      tag_object() {}
+
       id_type           id;
 
       tag_name_type     tag;

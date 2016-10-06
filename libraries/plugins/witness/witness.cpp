@@ -338,7 +338,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
       return block_production_condition::not_my_turn;
    }
 
-   const auto& witness_by_name = db.get_index_type< chain::witness_index >().indices().get< chain::by_name >();
+   const auto& witness_by_name = db.get_index< chain::witness_index >().indices().get< chain::by_name >();
    auto itr = witness_by_name.find( scheduled_witness );
 
    fc::time_point_sec scheduled_time = db.get_slot_time( slot );
@@ -478,7 +478,7 @@ void witness_plugin::start_mining(
     uint32_t thread_num = 0;
     uint32_t num_threads = _mining_threads;
     uint32_t target = db.get_pow_summary_target();
-    const auto& acct_idx  = db.get_index_type< chain::account_index >().indices().get< chain::by_name >();
+    const auto& acct_idx  = db.get_index< chain::account_index >().indices().get< chain::by_name >();
     auto acct_it = acct_idx.find( miner );
     bool has_account = (acct_it != acct_idx.end());
     for( auto& t : _thread_pool )

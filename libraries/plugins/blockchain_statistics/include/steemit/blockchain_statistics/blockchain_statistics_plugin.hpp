@@ -1,6 +1,7 @@
+#pragma once
 #include <steemit/app/plugin.hpp>
 
-#include <graphene/db/generic_index.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
 
@@ -24,9 +25,14 @@
 
 namespace steemit { namespace blockchain_statistics {
 
-using namespace chain;
+using namespace steemit::chain;
 using namespace graphene::db;
 using app::application;
+
+enum blockchain_statistics_object_type
+{
+   bucket_object_type = ( BLOCKCHAIN_STATISTICS_SPACE_ID << 8 )
+};
 
 namespace detail
 {
@@ -54,10 +60,15 @@ class blockchain_statistics_plugin : public steemit::app::plugin
       std::unique_ptr< detail::blockchain_statistics_plugin_impl > _my;
 };
 
-struct bucket_object : public abstract_object< bucket_object >
+struct bucket_object : public object< bucket_object_type, bucket_object >
 {
-   static const uint8_t space_id = BLOCKCHAIN_STATISTICS_SPACE_ID;
-   static const uint8_t type_id = 0;
+   template< typename Constructor, typename Allocator >
+   bucket_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type              id;
 
    fc::time_point_sec   open;                                        ///< Open time of the bucket
    uint32_t             seconds = 0;                                 ///< Seconds accounted for in the bucket
@@ -106,28 +117,28 @@ struct bucket_object : public abstract_object< bucket_object >
    uint128_t            estimated_hashpower = 0;                     ///< Estimated average hashpower over interval
 };
 
+typedef oid< bucket_object > bucket_id_type;
+
+struct by_id;
 struct by_bucket;
 typedef multi_index_container<
    bucket_object,
    indexed_by<
-      hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_id >, member< bucket_object, bucket_id_type, &bucket_object::id > >,
       ordered_unique< tag< by_bucket >,
          composite_key< bucket_object,
             member< bucket_object, uint32_t, &bucket_object::seconds >,
             member< bucket_object, fc::time_point_sec, &bucket_object::open >
          >
       >
-   >
-> bucket_object_multi_index_type;
-
-
-typedef object_id< BLOCKCHAIN_STATISTICS_SPACE_ID, 0, bucket_object >                  bucket_object_id_type;
-
-typedef generic_index< bucket_object, bucket_object_multi_index_type >                 bucket_index;
+   >,
+   allocator< bucket_object >
+> bucket_index;
 
 } } // steemit::blockchain_statistics
 
-FC_REFLECT_DERIVED( steemit::blockchain_statistics::bucket_object, (graphene::db::object),
+FC_REFLECT( steemit::blockchain_statistics::bucket_object,
+   (id)
    (open)
    (seconds)
    (blocks)
@@ -174,3 +185,4 @@ FC_REFLECT_DERIVED( steemit::blockchain_statistics::bucket_object, (graphene::db
    (total_pow)
    (estimated_hashpower)
 )
+SET_INDEX_TYPE( steemit::blockchain_statistics::bucket_object, steemit::blockchain_statistics::bucket_index )
