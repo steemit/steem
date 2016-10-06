@@ -143,6 +143,7 @@ namespace steemit { namespace chain {
          fc::uint128                                                       current_virtual_time;
          uint32_t                                                          next_shuffle_block_num = 1;
          fc::array< account_name_type, STEEMIT_MAX_WITNESSES >             current_shuffled_witnesses;
+         uint8_t                                                           num_scheduled_witnesses = 1;
          chain_properties                                                  median_props;
          version                                                           majority_version;
    };
@@ -233,7 +234,7 @@ FC_REFLECT( steemit::chain::witness_vote_object, (id)(witness)(account) )
 SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::witness_vote_index )
 
 FC_REFLECT( steemit::chain::witness_schedule_object,
-             (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(median_props)
+             (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)(median_props)
              (majority_version)
           )
 SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )

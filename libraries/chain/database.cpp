@@ -1073,7 +1073,7 @@ account_name_type database::get_scheduled_witness( uint32_t slot_num )const
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    const witness_schedule_object& wso = get_witness_schedule_object();
    uint64_t current_aslot = dpo.current_aslot + slot_num;
-   return wso.current_shuffled_witnesses[ current_aslot % wso.current_shuffled_witnesses.size() ];
+   return wso.current_shuffled_witnesses[ current_aslot % wso.num_scheduled_witnesses ];
 }
 
 fc::time_point_sec database::get_slot_time(uint32_t slot_num)const
@@ -1316,7 +1316,7 @@ void database::update_witness_schedule4()
       flat_map< version, uint32_t, std::greater< version > > witness_versions;
       flat_map< std::tuple< hardfork_version, time_point_sec >, uint32_t > hardfork_version_votes;
 
-      for( uint32_t i = 0; i < wso.current_shuffled_witnesses.size(); i++ )
+      for( uint32_t i = 0; i < wso.num_scheduled_witnesses; i++ )
       {
          auto witness = get_witness( wso.current_shuffled_witnesses[ i ] );
          if( witness_versions.find( witness.running_version ) == witness_versions.end() )
@@ -1383,10 +1383,19 @@ void database::update_witness_schedule4()
    modify( wso, [&]( witness_schedule_object& _wso )
    {
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
-      for( int i = 0; i < STEEMIT_MAX_WITNESSES; i++ )
+      for( int i = 0; i < active_witnesses.size(); i++ )
       {
          _wso.current_shuffled_witnesses[i] = active_witnesses[i];
       }
+
+      for( int i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+      {
+         _wso.current_shuffled_witnesses[i] = account_name_type();
+      }
+
+      //_wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
+
+      idump( (_wso.current_shuffled_witnesses)(active_witnesses.size()) );
 
       /// shuffle current shuffled witnesses
       auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
@@ -1518,9 +1527,6 @@ void database::update_witness_schedule()
          ++itr;
       }
 
-      FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_WITNESSES, "number of active witnesses does not equal STEEMIT_MAX_WITNESSES",
-                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_WITNESSES",STEEMIT_MAX_WITNESSES) );
-
       modify( wso, [&]( witness_schedule_object& _wso )
       {
       /*
@@ -1531,13 +1537,22 @@ void database::update_witness_schedule()
             _wso.current_shuffled_witnesses.push_back( w );
             */
          // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
-         for( int i = 0; i < STEEMIT_MAX_WITNESSES; i++ )
+         for( int i = 0; i < active_witnesses.size(); i++ )
          {
             _wso.current_shuffled_witnesses[i] = active_witnesses[i];
          }
 
+         for( int i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+         {
+            _wso.current_shuffled_witnesses[i] = account_name_type();
+         }
+
+         _wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
+
+         //idump( (_wso.current_shuffled_witnesses)(active_witnesses.size()) );
+
          auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
-         for( uint32_t i = 0; i < _wso.current_shuffled_witnesses.size(); ++i )
+         for( uint32_t i = 0; i < _wso.num_scheduled_witnesses; ++i )
          {
             /// High performance random generator
             /// http://xorshift.di.unimi.it/
@@ -2813,7 +2828,7 @@ void database::init_genesis( uint64_t init_supply )
          } );
       }
 
-      create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
+      const auto& gpo = create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
       {
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;
@@ -2824,9 +2839,12 @@ void database::init_genesis( uint64_t init_supply )
          p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
       } );
 
+      idump( (gpo.id));
+
       // Nothing to do
       create< feed_history_object >( [&]( feed_history_object& o ) {});
-      create< block_summary_object >( [&]( block_summary_object& ) {});
+      for( int i = 0; i < 0x10000; i++ )
+         create< block_summary_object >( [&]( block_summary_object& ) {});
       create< hardfork_property_object >( [&](hardfork_property_object& hpo )
       {
          hpo.processed_hardforks.push_back( STEEMIT_GENESIS_TIME );
@@ -2916,7 +2934,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
+   wdump( (next_block.block_num()) );
    uint32_t next_block_num = next_block.block_num();
+
    uint32_t skip = get_node_properties().skip_flags;
 
    FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
@@ -2934,7 +2954,6 @@ void database::_apply_block( const signed_block& next_block )
    else if ( block_size > gprops.maximum_block_size ) {
  //     idump((next_block_num)(block_size)(next_block.transactions.size()));
    }
-
 
    /// modify current witness so transaction evaluators can know who included the transaction,
    /// this is mostly for POW operations which must pay the current_witness
@@ -2968,37 +2987,55 @@ void database::_apply_block( const signed_block& next_block )
    }
 
    update_global_dynamic_data(next_block);
+   ilog( "" );
    update_signing_witness(signing_witness, next_block);
-
+   ilog( "" );
    update_last_irreversible_block();
-
+   ilog( "" );
    create_block_summary(next_block);
+   ilog( "" );
    clear_expired_transactions();
+   ilog( "" );
    clear_expired_orders();
+   ilog( "" );
    update_witness_schedule();
+   ilog( "" );
 
    update_median_feed();
+   ilog( "" );
    update_virtual_supply();
+   ilog( "" );
 
    clear_null_account_balance();
+   ilog( "" );
    process_funds();
+   ilog( "" );
    process_conversions();
+   ilog( "" );
    process_comment_cashout();
+   ilog( "" );
    process_vesting_withdrawals();
+   ilog( "" );
    process_savings_withdraws();
+   ilog( "" );
    pay_liquidity_reward();
+   ilog( "" );
    update_virtual_supply();
-
+ilog( "" );
    account_recovery_processing();
+   ilog( "" );
    expire_escrow_ratification();
+   ilog( "" );
    process_decline_voting_rights();
+   ilog( "" );
 
    process_hardforks();
-
+ilog( "" );
    // notify observers that the block has been applied
    notify_applied_block( next_block );
-
+ilog( "" );
    notify_changed_objects();
+   ilog( "" );
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 FC_LOG_AND_RETHROW() }
 
@@ -3253,7 +3290,9 @@ void database::update_global_dynamic_data( const signed_block& b )
       missed_blocks--;
       for( uint32_t i = 0; i < missed_blocks; ++i )
       {
-         const auto& witness_missed = get_witness( get_scheduled_witness( i+1 ) );
+         const auto s = get_scheduled_witness( i+1 );
+         idump( (s) );
+         const auto& witness_missed = get_witness( s );
          if(  witness_missed.owner != b.witness )
          {
             modify( witness_missed, [&]( witness_object& w )

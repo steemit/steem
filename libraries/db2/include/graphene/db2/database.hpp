@@ -7,19 +7,40 @@
 #include <boost/filesystem.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/container/flat.hpp>
+#include <fc/io/raw_fwd.hpp>
+#include <fc/filesystem.hpp>
+#include <fc/interprocess/file_mapping.hpp>
+#include <fc/io/datastream.hpp>
 
 #include <typeindex>
+#include <fstream>
+
+
+namespace graphene { namespace db2 {
+   template<typename T> class oid;
+} }
+
+namespace fc {
+  template<typename T> void to_variant( const graphene::db2::oid<T>& var,  variant& vo );
+  template<typename T> void from_variant( const variant& vo, graphene::db2::oid<T>& var );
+
+  namespace raw {
+    template<typename Stream, typename T> inline void pack( Stream& s, const graphene::db2::oid<T>& id );
+    template<typename Stream, typename T> inline void unpack( Stream& s, graphene::db2::oid<T>& id );
+  }
+}
+
 
 namespace graphene { namespace db2 {
 
    namespace bip = boost::interprocess;
-   namespace bfs = boost::filesystem;
    using std::unique_ptr;
    using std::vector;
 
 
    template<typename T>
-   using allocator = bip::allocator< T, bip::managed_mapped_file::segment_manager >;
+   using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
 
    class database;
 
@@ -29,7 +50,7 @@ namespace graphene { namespace db2 {
    template<typename T>
    class oid {
       public:
-         oid( uint64_t i = 0 ):_id(i){}
+         oid( int64_t i = 0 ):_id(i){}
          const T& operator()( const database& db )const;
 
          oid& operator++() { ++_id; return *this; }
@@ -38,7 +59,7 @@ namespace graphene { namespace db2 {
          friend bool operator > ( const oid& a, const oid& b ) { return a._id > b._id; }
          friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
          friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
-         uint64_t _id = 0;
+         int64_t _id = 0;
    };
 
    template<uint16_t TypeNumber, typename Derived>
@@ -56,8 +77,9 @@ namespace graphene { namespace db2 {
    /**
     *  This macro must be used at global scope and OBJECT_TYPE and INDEX_TYPE must be fully qualified
     */
-   #define SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
+   #define GRAPHENE_DB2_SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )  \
    namespace graphene { namespace db2 { template<> struct get_index_type<OBJECT_TYPE> { typedef INDEX_TYPE type; }; } }
+   #define SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE ) GRAPHENE_DB2_SET_INDEX_TYPE( OBJECT_TYPE, INDEX_TYPE )
 
    /**
     *  The value_type stored in the multiindex container must have a integer field with the name 'id'.  This will
@@ -74,7 +96,46 @@ namespace graphene { namespace db2 {
          typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
 
          generic_index( allocator<value_type> a )
-         :_stack(a),_indices( a ){}
+         :_stack(a),_indices( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+
+         void validate()const {
+            FC_ASSERT( sizeof(typename MultiIndexType::node_type) == _size_of_value_type );
+            FC_ASSERT( sizeof(*this)      == _size_of_this );
+         }
+
+         void export_to_file( const fc::path& filename )const {
+            std::ofstream out( filename.generic_string(),
+                               std::ofstream::binary | std::ofstream::out | std::ofstream::trunc );
+            fc::raw::pack( out, int32_t(value_type::type_id) );
+            fc::raw::pack( out, uint64_t( _indices.size() ) );
+            fc::raw::pack( out, _next_id );
+
+            /*for( const auto& item : _indices ) {
+               fc::raw::pack( out, item );
+            }*/
+         }
+
+         void import_from_file( const fc::path& filename ) {
+            int32_t   id = 0;
+            uint64_t  size = 0;
+
+            fc::file_mapping fm( filename.generic_string().c_str(), fc::read_only );
+            fc::mapped_region mr( fm, fc::read_only, 0, fc::file_size(filename) );
+            fc::datastream<const char*> in( (const char*)mr.get_address(), mr.get_size() );
+
+            fc::raw::unpack( in, id );
+            fc::raw::unpack( in, size );
+            fc::raw::unpack( in, _next_id );
+
+            FC_ASSERT( id == value_type::type_id );
+
+            /*for( uint64_t i = 0; i < size; ++i ) {
+               auto insert_result = _indices.emplace( [&]( value_type& v ) {
+                  fc::raw::unpack( in, v );
+               }, _indices.get_allocator() );
+               FC_ASSERT( insert_result.second, "Could not import object, most likely a uniqueness constraint was violated" );
+            }*/
+         }
 
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
@@ -109,7 +170,7 @@ namespace graphene { namespace db2 {
          template<typename CompatibleKey>
          const value_type* find( CompatibleKey&& key )const {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );
-            if( itr != _indices.end() ) return &*itr;
+            if( itr != _indices.end() ) return *itr;
             return nullptr;
          }
 
@@ -134,7 +195,7 @@ namespace graphene { namespace db2 {
                id_value_type_map                                                           removed_values;
                boost::interprocess::set< id_type, std::less<id_type>, id_allocator_type>   new_ids;
                id_type                                                                     old_next_id = 0;
-               uint64_t                                                                    revision = 0;
+               int64_t                                                                     revision = 0;
          };
 
          class session {
@@ -162,12 +223,12 @@ namespace graphene { namespace db2 {
                   return *this;
                }
 
-               uint64_t revision()const { return _revision; }
+               int64_t revision()const { return _revision; }
 
             private:
                friend class generic_index;
 
-               session( generic_index& idx, uint64_t revision )
+               session( generic_index& idx, int64_t revision )
                :_index(idx),_revision(revision) {
                   if( revision == -1 )
                      _apply = false;
@@ -175,7 +236,7 @@ namespace graphene { namespace db2 {
 
                generic_index& _index;
                bool           _apply = true;
-               uint64_t        _revision = 0;
+               int64_t        _revision = 0;
          };
 
          session start_undo_session( bool enabled ) {
@@ -190,7 +251,7 @@ namespace graphene { namespace db2 {
          }
 
          const index_type& indicies()const { return _indices; }
-         uint64_t revision()const { return _revision; }
+         int64_t revision()const { return _revision; }
 
 
          /**
@@ -284,7 +345,7 @@ namespace graphene { namespace db2 {
          /**
           * Discards all undo history prior to revision
           */
-         void commit( uint64_t revision ) {
+         void commit( int64_t revision ) {
             while( _stack.size() ) {
                 if( _stack[0].revision <= revision ) {
                   elog( "_stack.pop_front" );
@@ -354,19 +415,20 @@ namespace graphene { namespace db2 {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
-         uint64_t                        _revision = 0;
+         int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
          index_type                      _indices;
-
+         uint32_t                        _size_of_value_type = 0;
+         uint32_t                        _size_of_this = 0;
    };
 
    class abstract_session {
       public:
          virtual ~abstract_session(){};
-         virtual void push()              = 0;
-         virtual void squash()            = 0;
-         virtual void undo()              = 0;
-         virtual uint64_t revision()const = 0;
+         virtual void push()             = 0;
+         virtual void squash()           = 0;
+         virtual void undo()             = 0;
+         virtual int64_t revision()const  = 0;
    };
 
    template<typename SessionType>
@@ -378,7 +440,7 @@ namespace graphene { namespace db2 {
          virtual void push() override  { _session.push();  }
          virtual void squash() override{ _session.squash(); }
          virtual void undo() override  { _session.undo();  }
-         virtual uint64_t revision()const override  { return _session.revision();  }
+         virtual int64_t revision()const override  { return _session.revision();  }
       private:
          SessionType _session;
    };
@@ -388,35 +450,37 @@ namespace graphene { namespace db2 {
       public:
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
-         virtual unique_ptr< abstract_session > start_undo_session( bool enabled ) = 0;
-
-         virtual uint64_t revision()const                   = 0;
-         virtual void     undo()const                       = 0;
-         virtual void     squash()const                     = 0;
-         virtual void     commit( uint64_t revision )const  = 0;
          virtual void     set_revision( uint64_t revision ) = 0;
+         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) = 0;
+
+         virtual int64_t revision()const = 0;
+         virtual void    undo()const = 0;
+         virtual void    squash()const = 0;
+         virtual void    commit( int64_t revision )const = 0;
+         virtual void    export_to_file( const fc::path& filename ) const = 0;
+         virtual void    import_from_file( const fc::path& filename ) = 0;
+         virtual uint32_t type_id()const  = 0;
          void* get()const { return _idx_ptr; }
       private:
          void* _idx_ptr;
    };
 
    template<typename BaseIndex>
-   class index_impl : public abstract_index
-   {
+   class index_impl : public abstract_index {
       public:
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
 
-         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override
-         {
+         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override {
             return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session( enabled ) ) );
          }
-
-         virtual uint64_t revision()const  override { return _base.revision(); }
-         virtual void     undo()const  override { _base.undo(); }
-         virtual void     squash()const  override { _base.squash(); }
-         virtual void     commit( uint64_t revision )const  override { _base.commit( revision ); }
          virtual void     set_revision( uint64_t revision ) override { _base.set_revision( revision ); }
-
+         virtual int64_t revision()const  override { return _base.revision(); }
+         virtual void    undo()const  override { _base.undo(); }
+         virtual void    squash()const  override { _base.squash(); }
+         virtual void    commit( int64_t revision )const  override { _base.commit(revision); }
+         virtual void    export_to_file( const fc::path& filename )const override { _base.export_to_file( filename ); }
+         virtual void    import_from_file( const fc::path& filename ) override { _base.import_from_file( filename ); }
+         virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
       private:
          BaseIndex& _base;
    };
@@ -434,11 +498,9 @@ namespace graphene { namespace db2 {
    class database
    {
       public:
-         void open( const bfs::path& file );
+         void open( const fc::path& file );
          void close();
          void flush();
-         void wipe();
-         void reset_indexes();
 
          struct session {
             public:
@@ -452,7 +514,7 @@ namespace graphene { namespace db2 {
                void push(){ for( auto& i : _index_sessions ) i->push(); }
                void squash(){ for( auto& i : _index_sessions ) i->squash(); }
                void undo(){ for( auto& i : _index_sessions ) i->undo(); }
-               uint64_t revision()const { return _index_sessions[0]->revision(); }
+               int64_t revision()const { return _index_sessions[0]->revision(); }
 
             private:
                friend class database;
@@ -463,13 +525,14 @@ namespace graphene { namespace db2 {
 
          session start_undo_session( bool enabled );
 
-         uint64_t revision()const {
+         int64_t revision()const {
             FC_ASSERT( _index_list.size() );
             return _index_list[0]->revision();
          }
          void undo();
          void squash();
-         void commit( uint64_t revision );
+         void commit( int64_t revision );
+
 
          void set_revision( uint64_t revision )
          {
@@ -482,27 +545,22 @@ namespace graphene { namespace db2 {
 
 
          template<typename MultiIndexType>
-         void add_index()
-         {
-            const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-            typedef generic_index<MultiIndexType>          index_type;
-            typedef typename index_type::allocator_type    index_alloc;
-            idump( (type_id)(std::type_index(typeid(typename index_type::value_type)).name()) );
-            index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
+         void add_index() {
+             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+             typedef generic_index<MultiIndexType>          index_type;
+             typedef typename index_type::allocator_type    index_alloc;
+
+             index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
 
-            FC_ASSERT( idx_ptr );
-            ilog("");
-            if( type_id > _index_map.size() )
-               _index_map.resize( type_id + 1 );
-               ilog( "" );
-            idump( ((uint64_t)idx_ptr) );
-            auto new_index = new index<index_type>( *idx_ptr );
-            idump( (type_id)(_index_map.size())((uint64_t)idx_ptr)((uint64_t)_index_map[ type_id].get()) );
-            _index_map[ type_id ].reset( new_index );
-            ilog("");
-            _index_list.push_back( new_index );
-            ilog( "done" );
+             idx_ptr->validate();
+
+             if( type_id >= _index_map.size() )
+                _index_map.resize( type_id + 1 );
+
+             auto new_index = new index<index_type>( *idx_ptr );
+             _index_map[ type_id ].reset( new_index );
+             _index_list.push_back( new_index );
          }
 
          template<typename MultiIndexType>
@@ -510,6 +568,14 @@ namespace graphene { namespace db2 {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
+         }
+
+         template<typename MultiIndexType, typename ByIndex>
+         //const auto& get_index()const {
+         auto get_index()const -> decltype( ((generic_index<MultiIndexType>*)( nullptr ))->indicies().template get<ByIndex>() ) {
+            typedef generic_index<MultiIndexType> index_type;
+            typedef index_type*                   index_type_ptr;
+            return index_type_ptr( _index_map[index_type::value_type::type_id]->get() )->indicies().template get<ByIndex>();
          }
 
          template<typename MultiIndexType>
@@ -543,7 +609,7 @@ namespace graphene { namespace db2 {
          const ObjectType& get( CompatibleKey&& key )const
          {
             auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
-            FC_ASSERT( obj != nullptr, "Object could not be found" );
+            FC_ASSERT( obj != nullptr, "Object could not be found ${o}", ("o",std::string(fc::get_typename< ObjectType >::name())) );
             return *obj;
          }
 
@@ -551,7 +617,7 @@ namespace graphene { namespace db2 {
          const ObjectType& get( oid< ObjectType > key = oid< ObjectType >() )const
          {
             auto obj = find< ObjectType >( key );
-            FC_ASSERT( obj != nullptr, "Object could not be found" );
+            FC_ASSERT( obj != nullptr, "Object could not be found ${o}", ("o",std::string(fc::get_typename< ObjectType >::name())) );
             return *obj;
          }
 
@@ -588,6 +654,9 @@ namespace graphene { namespace db2 {
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }
 
 
+         void export_to_directory( const fc::path& dir )const;
+         void import_from_directory( const fc::path& dir );
+
       private:
          unique_ptr<bip::managed_mapped_file>            _segment;
          bip::interprocess_mutex*                        _mutex;
@@ -601,7 +670,7 @@ namespace graphene { namespace db2 {
           */
          vector<unique_ptr<abstract_index>>             _index_map;
 
-         bfs::path                                      _data_dir;
+         fc::path                                       _data_dir;
    };
 
 
@@ -609,7 +678,31 @@ namespace graphene { namespace db2 {
    const T& oid<T>::operator()( const database& db )const { return db.get<T>( _id ); }
 } } // namepsace graphene::db2
 
-FC_REFLECT_TEMPLATE( (typename T), graphene::db2::oid<T>, (_id) )
+namespace fc {
+  template<typename T>
+  void to_variant( const graphene::db2::oid<T>& var,  variant& vo )
+  {
+     vo = var._id;
+  }
+  template<typename T>
+  void from_variant( const variant& vo, graphene::db2::oid<T>& var )
+  {
+     var._id = vo.as_int64();
+  }
+
+  namespace raw {
+    template<typename Stream, typename T>
+    inline void pack( Stream& s, const graphene::db2::oid<T>& id )
+    {
+       s.write( (const char*)&id._id, sizeof(id._id) );
+    }
+    template<typename Stream, typename T>
+    inline void unpack( Stream& s, graphene::db2::oid<T>& id )
+    {
+       s.read( (char*)&id._id, sizeof(id._id));
+    }
+  }
+}
 
 /*
 struct example_object : public object<1,example_object> {
