@@ -64,4 +64,21 @@ void shared_authority::validate()const
    }
 }
 
+bool operator == ( const shared_authority& a, const shared_authority& b )
+{
+   return ( a.weight_threshold == b.weight_threshold ) &&
+            ( a.account_auths  == b.account_auths )    &&
+            ( a.key_auths      == b.key_auths );
+}
+
+bool operator == ( const authority& a, const shared_authority& b )
+{
+   return a == authority( b );
+}
+
+bool operator == ( const shared_authority& a, const authority& b )
+{
+   return authority( a ) == b;
+}
+
 } } // steemit::chain

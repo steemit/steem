@@ -109,4 +109,11 @@ bool is_valid_account_name( const string& name )
    return true;
 }
 
+bool operator == ( const authority& a, const authority& b )
+{
+   return ( a.weight_threshold == b.weight_threshold ) &&
+            ( a.account_auths  == b.account_auths )    &&
+            ( a.key_auths      == b.key_auths );
+}
+
 } } // steemit::protocol

@@ -116,12 +116,12 @@ typedef oid< decline_voting_rights_request_object   > decline_voting_rights_requ
 namespace fc
 {
    class variant;
-   void to_variant( const steemit::chain::shared_string& s, variant& var )
+   inline void to_variant( const steemit::chain::shared_string& s, variant& var )
    {
       var = fc::string( steemit::chain::to_string( s ) );
    }
 
-   void from_variant( const variant& var, steemit::chain::shared_string& s )
+   inline void from_variant( const variant& var, steemit::chain::shared_string& s )
    {
       auto str = var.as_string();
       s.assign( str.begin(), str.end() );

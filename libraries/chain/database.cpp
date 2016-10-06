@@ -2662,7 +2662,7 @@ std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evalua
 
 void database::initialize_indexes()
 {
-   reset_indexes();
+   //reset_indexes();
 
    add_index< dynamic_global_property_index           >();
    add_index< account_index                           >();

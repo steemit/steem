@@ -1,3 +1,4 @@
+#pragma once
 #include <steemit/protocol/authority.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 
@@ -88,22 +89,9 @@ namespace steemit { namespace chain {
       key_authority_map                                                                                                 key_auths;
    };
 
-   bool operator == ( const shared_authority& a, const shared_authority& b )
-   {
-      return ( a.weight_threshold == b.weight_threshold ) &&
-               ( a.account_auths  == b.account_auths )    &&
-               ( a.key_auths      == b.key_auths );
-   }
-
-   bool operator == ( const authority& a, const shared_authority& b )
-   {
-      return a == authority( b );
-   }
-
-   bool operator == ( const shared_authority& a, const authority& b )
-   {
-      return authority( a ) == b;
-   }
+   bool operator == ( const shared_authority& a, const shared_authority& b );
+   bool operator == ( const authority& a, const shared_authority& b );
+   bool operator == ( const shared_authority& a, const authority& b );
 
 } } //steemit::chain
 
