@@ -70,7 +70,7 @@ namespace steemit { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-          void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
+         void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
 
          /**
           * @brief Rebuild object graph from block history and open detabase

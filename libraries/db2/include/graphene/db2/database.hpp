@@ -482,19 +482,27 @@ namespace graphene { namespace db2 {
 
 
          template<typename MultiIndexType>
-         void add_index() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType>          index_type;
-             typedef typename index_type::allocator_type    index_alloc;
-             index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
+         void add_index()
+         {
+            const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+            typedef generic_index<MultiIndexType>          index_type;
+            typedef typename index_type::allocator_type    index_alloc;
+            idump( (type_id)(std::type_index(typeid(typename index_type::value_type)).name()) );
+            index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
 
-             if( type_id > _index_map.size() )
-                _index_map.resize( type_id + 1 );
-
-             auto new_index = new index<index_type>( *idx_ptr );
-             _index_map[ type_id ].reset( new_index );
-             _index_list.push_back( new_index );
+            FC_ASSERT( idx_ptr );
+            ilog("");
+            if( type_id > _index_map.size() )
+               _index_map.resize( type_id + 1 );
+               ilog( "" );
+            idump( ((uint64_t)idx_ptr) );
+            auto new_index = new index<index_type>( *idx_ptr );
+            idump( (type_id)(_index_map.size())((uint64_t)idx_ptr)((uint64_t)_index_map[ type_id].get()) );
+            _index_map[ type_id ].reset( new_index );
+            ilog("");
+            _index_list.push_back( new_index );
+            ilog( "done" );
          }
 
          template<typename MultiIndexType>
