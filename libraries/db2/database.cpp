@@ -10,15 +10,15 @@ namespace graphene { namespace db2 {
    struct environment_check {
       environment_check() {
          memcpy( &compiler_version.at(0), __VERSION__, std::min<size_t>( strlen(__VERSION__), 256 ) );
-#ifndef NDEBUG 
+#ifndef NDEBUG
          debug = true;
 #endif
 #ifdef __APPLE__
          apple = true;
-#endif 
+#endif
 #ifdef WIN32
          windows = true;
-#endif 
+#endif
       }
       friend bool operator == ( const environment_check& a, const environment_check& b ) {
          return std::make_tuple( a.compiler_version, a.debug, a.apple, a.windows )
@@ -32,16 +32,21 @@ namespace graphene { namespace db2 {
    };
 
    void database::open( const fc::path& dir ) {
-      if( _data_dir != dir ) close(); 
-      
+      if( _data_dir != dir ) close();
+
       if( !fc::exists( dir ) )
          fc::create_directories( dir );
 
-      _data_dir = dir; 
+      _data_dir = dir;
       auto abs_path = fc::absolute( dir / "shared_memory" );
-      _segment.reset( new bip::managed_mapped_file( bip::open_or_create, 
-                                                    abs_path.generic_string().c_str(), 
-                                                    uint64_t(1024*1024*64) ) );
+
+      uint64_t file_size = (1024l*1024l*1024l*2l);
+      if( fc::exists( abs_path ) )
+         file_size = fc::file_size( abs_path );
+
+      _segment.reset( new bip::managed_mapped_file( bip::open_or_create,
+                                                    abs_path.generic_string().c_str(),
+                                                    file_size ) );
       _mutex = _segment->find_or_construct< bip::interprocess_mutex >( "global_mutex" )();
       auto env = _segment->find_or_construct< environment_check >( "environment" )();
       FC_ASSERT( *env == environment_check() );
@@ -88,7 +93,12 @@ namespace graphene { namespace db2 {
       }
    }
 
-   database::session database::start_undo_session( bool enabled ) {
+   database::session database::start_undo_session( bool enabled )
+   {
+      try
+      {
+      elog( "start undo session" );
+
       if( enabled ) {
          vector< std::unique_ptr<abstract_session> > _sub_sessions;
          _sub_sessions.reserve( _index_map.size() );
@@ -99,6 +109,7 @@ namespace graphene { namespace db2 {
       } else {
          return session();
       }
+      } FC_LOG_AND_RETHROW()
    }
 
 

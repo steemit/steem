@@ -622,33 +622,33 @@ namespace graphene { namespace db2 {
          }
 
          template<typename ObjectType, typename Modifier>
-         void modify( const ObjectType& obj, Modifier&& m ) {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            get_mutable_index<index_type>().modify( obj, m );
+         void modify( const ObjectType& obj, Modifier&& m )
+         {
+            try
+            {
+               typedef typename get_index_type<ObjectType>::type index_type;
+               get_mutable_index<index_type>().modify( obj, m );
+            } FC_LOG_AND_RETHROW()
          }
-
-         /*template<typename ObjectType, typename CompatibleKey>
-         const ObjectType& get( CompatibleKey&& key ) {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            return get_index<index_type>().get( std::forward<CompatibleKey>(key) );
-         }
-
-         template<typename ObjectType, typename CompatibleKey>
-         const ObjectType* find( CompatibleKey&& key ) {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            return get_index<index_type>().find( std::forward<CompatibleKey>(key) );
-         }*/
 
          template<typename ObjectType>
-         void remove( const ObjectType& obj ) {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            return get_mutable_index<index_type>().remove( obj );
+         void remove( const ObjectType& obj )
+         {
+            try
+            {
+               typedef typename get_index_type<ObjectType>::type index_type;
+               return get_mutable_index<index_type>().remove( obj );
+            } FC_LOG_AND_RETHROW()
          }
 
          template<typename ObjectType, typename Constructor>
-         const ObjectType& create( Constructor&& con ) {
-            typedef typename get_index_type<ObjectType>::type index_type;
-            return get_mutable_index<index_type>().emplace( std::forward<Constructor>(con) );
+         const ObjectType& create( Constructor&& con )
+         {
+            try
+            {
+               typedef typename get_index_type<ObjectType>::type index_type;
+               return get_mutable_index<index_type>().emplace( std::forward<Constructor>(con) );
+            } FC_LOG_AND_RETHROW()
          }
 
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }

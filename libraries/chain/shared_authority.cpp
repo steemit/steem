@@ -5,23 +5,32 @@ namespace steemit { namespace chain {
 shared_authority::operator authority()const
 {
    authority result;
+
    result.account_auths.reserve( account_auths.size() );
    for( const auto& item : account_auths )
       result.account_auths.insert( item );
+
    result.key_auths.reserve( key_auths.size() );
    for( const auto& item : key_auths )
       result.key_auths.insert( item );
+
    result.weight_threshold = weight_threshold;
+
    return result;
 }
 
 shared_authority& shared_authority::operator=( const authority& a )
 {
+   clear();
+
    for( const auto& item : a.account_auths )
       account_auths.insert( item );
+
    for( const auto& item : a.key_auths )
       key_auths.insert( item );
+
    weight_threshold = a.weight_threshold;
+
    return *this;
 }
 

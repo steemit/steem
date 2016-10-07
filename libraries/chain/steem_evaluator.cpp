@@ -1323,7 +1323,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
 
 
 template<typename Operation>
-void pow_apply( database& db, Operation o ) {
+void pow_apply( database& db, Operation o )
+{
    const auto& dgp = db.get_dynamic_global_properties();
 
    if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )
@@ -1358,7 +1359,7 @@ void pow_apply( database& db, Operation o ) {
    }
 
    const auto& worker_account = db.get_account( o.get_worker_account() ); // verify it exists
-   FC_ASSERT( worker_account.active.num_auths() == 1, "miners can only have one key auth" );
+   FC_ASSERT( worker_account.active.num_auths() == 1, "miners can only have one key auth ${a}", ("a",worker_account.active) );
    FC_ASSERT( worker_account.active.key_auths.size() == 1, "miners may only have one key auth" );
    FC_ASSERT( worker_account.active.key_auths.begin()->first == o.work.worker, "work must be performed by key that signed the work" );
    FC_ASSERT( o.block_id == db.head_block_id(), "pow not for last block" );

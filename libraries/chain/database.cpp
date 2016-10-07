@@ -179,7 +179,7 @@ void database::reindex(fc::path data_dir )
 
          // Revision for undo history is last irreverisivle block num - 1 because revision is 0 indexed
          // and block num is 1 indexed.
-         set_revision( get_dynamic_global_properties().last_irreversible_block_num );
+         set_revision( head_block_num() );
       };
 
       const uint32_t last_block_num_in_file = last_block->block_num();
@@ -1393,13 +1393,9 @@ void database::update_witness_schedule4()
          _wso.current_shuffled_witnesses[i] = account_name_type();
       }
 
-      //_wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
-
-      idump( (_wso.current_shuffled_witnesses)(active_witnesses.size()) );
-
       /// shuffle current shuffled witnesses
       auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
-      for( uint32_t i = 0; i < _wso.current_shuffled_witnesses.size(); ++i )
+      for( uint32_t i = 0; i < _wso.num_scheduled_witnesses; ++i )
       {
          /// High performance random generator
          /// http://xorshift.di.unimi.it/
@@ -1409,14 +1405,14 @@ void database::update_witness_schedule4()
          k ^= (k >> 27);
          k *= 2685821657736338717ULL;
 
-         uint32_t jmax = _wso.current_shuffled_witnesses.size() - i;
+         uint32_t jmax = _wso.num_scheduled_witnesses - i;
          uint32_t j = i + k%jmax;
          std::swap( _wso.current_shuffled_witnesses[i],
                     _wso.current_shuffled_witnesses[j] );
       }
 
       _wso.current_virtual_time = new_virtual_time;
-      _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
+      _wso.next_shuffle_block_num = head_block_num() + _wso.num_scheduled_witnesses;
       _wso.majority_version = majority_version;
    } );
 
@@ -1562,7 +1558,7 @@ void database::update_witness_schedule()
             k ^= (k >> 27);
             k *= 2685821657736338717ULL;
 
-            uint32_t jmax = _wso.current_shuffled_witnesses.size() - i;
+            uint32_t jmax = _wso.num_scheduled_witnesses - i;
             uint32_t j = i + k%jmax;
             std::swap( _wso.current_shuffled_witnesses[i],
                        _wso.current_shuffled_witnesses[j] );
@@ -1571,7 +1567,7 @@ void database::update_witness_schedule()
          if( props.num_pow_witnesses == 0 || head_block_num() > STEEMIT_START_MINER_VOTING_BLOCK )
             _wso.current_virtual_time = new_virtual_time;
 
-         _wso.next_shuffle_block_num = head_block_num() + _wso.current_shuffled_witnesses.size();
+         _wso.next_shuffle_block_num = head_block_num() + _wso.num_scheduled_witnesses;
       } );
       update_median_witness_props();
    }
@@ -1582,10 +1578,10 @@ void database::update_median_witness_props()
    const witness_schedule_object& wso = get_witness_schedule_object();
 
    /// fetch all witness objects
-   vector<const witness_object*> active; active.reserve( wso.current_shuffled_witnesses.size() );
-   for( const auto& wname : wso.current_shuffled_witnesses )
+   vector<const witness_object*> active; active.reserve( wso.num_scheduled_witnesses );
+   for( int i = 0; i < wso.num_scheduled_witnesses; i++ )
    {
-      active.push_back(&get_witness(wname));
+      active.push_back( &get_witness( wso.current_shuffled_witnesses[i] ) );
    }
 
    /// sort them by account_creation_fee
@@ -1609,7 +1605,6 @@ void database::update_median_witness_props()
    {
          p.maximum_block_size = active[active.size()/2]->props.maximum_block_size;
    } );
-
 
    /// sort them by sbd_interest_rate
    std::sort( active.begin(), active.end(), [&]( const witness_object* a, const witness_object* b )
@@ -2934,7 +2929,6 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
-   wdump( (next_block.block_num()) );
    uint32_t next_block_num = next_block.block_num();
 
    uint32_t skip = get_node_properties().skip_flags;
@@ -2987,57 +2981,40 @@ void database::_apply_block( const signed_block& next_block )
    }
 
    update_global_dynamic_data(next_block);
-   ilog( "" );
    update_signing_witness(signing_witness, next_block);
-   ilog( "" );
+
    update_last_irreversible_block();
-   ilog( "" );
+
    create_block_summary(next_block);
-   ilog( "" );
    clear_expired_transactions();
-   ilog( "" );
    clear_expired_orders();
-   ilog( "" );
    update_witness_schedule();
-   ilog( "" );
 
    update_median_feed();
-   ilog( "" );
    update_virtual_supply();
-   ilog( "" );
 
    clear_null_account_balance();
-   ilog( "" );
    process_funds();
-   ilog( "" );
    process_conversions();
-   ilog( "" );
    process_comment_cashout();
-   ilog( "" );
    process_vesting_withdrawals();
-   ilog( "" );
    process_savings_withdraws();
-   ilog( "" );
    pay_liquidity_reward();
-   ilog( "" );
    update_virtual_supply();
-ilog( "" );
+
    account_recovery_processing();
-   ilog( "" );
    expire_escrow_ratification();
-   ilog( "" );
    process_decline_voting_rights();
-   ilog( "" );
 
    process_hardforks();
-ilog( "" );
+
    // notify observers that the block has been applied
    notify_applied_block( next_block );
-ilog( "" );
+
    notify_changed_objects();
-   ilog( "" );
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
-FC_LOG_AND_RETHROW() }
+FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
+}
 
 void database::process_header_extensions( const signed_block& next_block )
 {
@@ -3096,9 +3073,10 @@ try {
 
    auto now = head_block_time();
    const witness_schedule_object& wso = get_witness_schedule_object();
-   vector<price> feeds; feeds.reserve( wso.current_shuffled_witnesses.size() );
-   for( const auto& w : wso.current_shuffled_witnesses ) {
-      const auto& wit = get_witness(w);
+   vector<price> feeds; feeds.reserve( wso.num_scheduled_witnesses );
+   for( int i = 0; i < wso.num_scheduled_witnesses; i++ )
+   {
+      const auto& wit = get_witness( wso.current_shuffled_witnesses[i] );
       if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE &&
           !wit.sbd_exchange_rate.is_null() )
       {
@@ -3290,9 +3268,7 @@ void database::update_global_dynamic_data( const signed_block& b )
       missed_blocks--;
       for( uint32_t i = 0; i < missed_blocks; ++i )
       {
-         const auto s = get_scheduled_witness( i+1 );
-         idump( (s) );
-         const auto& witness_missed = get_witness( s );
+         const auto& witness_missed = get_witness( get_scheduled_witness( i + 1 ) );
          if(  witness_missed.owner != b.witness )
          {
             modify( witness_missed, [&]( witness_object& w )
@@ -3434,9 +3410,9 @@ void database::update_last_irreversible_block()
       const witness_schedule_object& wso = get_witness_schedule_object();
 
       vector< const witness_object* > wit_objs;
-      wit_objs.reserve( wso.current_shuffled_witnesses.size() );
-      for( const string& wid : wso.current_shuffled_witnesses )
-         wit_objs.push_back( &get_witness(wid) );
+      wit_objs.reserve( wso.num_scheduled_witnesses );
+      for( int i = 0; i < wso.num_scheduled_witnesses; i++ )
+         wit_objs.push_back( &get_witness( wso.current_shuffled_witnesses[i] ) );
 
       static_assert( STEEMIT_IRREVERSIBLE_THRESHOLD > 0, "irreversible threshold must be nonzero" );
 
