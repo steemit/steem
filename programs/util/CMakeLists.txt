@@ -66,3 +66,15 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+
+add_executable( test_block_log test_block_log.cpp )
+target_link_libraries( test_block_log
+                       PRIVATE steemit_chain steemit_protocol fc ${CMAKE_DL_LIB} ${PLATFORM_SPECIFIC_LIBS} )
+
+install( TARGETS
+   test_block_log
+
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)

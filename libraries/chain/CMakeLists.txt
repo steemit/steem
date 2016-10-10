@@ -24,8 +24,8 @@ add_library( steemit_chain
              steem_evaluator.cpp
 
              steem_objects.cpp
-             block_database.cpp
              shared_authority.cpp
+             block_log.cpp
 
              ${HEADERS}
              ${hardfork_hpp_file}
@@ -38,7 +38,7 @@ target_include_directories( steemit_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 if(MSVC)
-  set_source_files_properties( database.cpp block_database.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
+  set_source_files_properties( database.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
 
 INSTALL( TARGETS

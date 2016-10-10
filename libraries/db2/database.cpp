@@ -31,7 +31,7 @@ namespace graphene { namespace db2 {
       bool                 windows = false;
    };
 
-   void database::open( const fc::path& dir ) {
+   void database::open( const fc::path& dir, uint64_t shared_file_size ) {
       if( _data_dir != dir ) close();
 
       if( !fc::exists( dir ) )
@@ -40,13 +40,12 @@ namespace graphene { namespace db2 {
       _data_dir = dir;
       auto abs_path = fc::absolute( dir / "shared_memory" );
 
-      uint64_t file_size = (1024l*1024l*1024l*2l);
       if( fc::exists( abs_path ) )
-         file_size = fc::file_size( abs_path );
+         shared_file_size = fc::file_size( abs_path );
 
       _segment.reset( new bip::managed_mapped_file( bip::open_or_create,
                                                     abs_path.generic_string().c_str(),
-                                                    file_size ) );
+                                                    shared_file_size ) );
       _mutex = _segment->find_or_construct< bip::interprocess_mutex >( "global_mutex" )();
       auto env = _segment->find_or_construct< environment_check >( "environment" )();
       FC_ASSERT( *env == environment_check() );
@@ -97,8 +96,6 @@ namespace graphene { namespace db2 {
    {
       try
       {
-      elog( "start undo session" );
-
       if( enabled ) {
          vector< std::unique_ptr<abstract_session> > _sub_sessions;
          _sub_sessions.reserve( _index_map.size() );

@@ -130,6 +130,7 @@ namespace detail {
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
          _p2p_network->connect_to_p2p_network();
+         idump( (_chain_db->head_block_id()) );
          _p2p_network->sync_from(graphene::net::item_id(graphene::net::core_message_type_enum::block_message_type,
                                               _chain_db->head_block_id()),
                                  std::vector<uint32_t>());
@@ -418,7 +419,6 @@ namespace detail {
       virtual bool handle_block(const graphene::net::block_message& blk_msg, bool sync_mode,
                                 std::vector<fc::uint160_t>& contained_transaction_message_ids) override
       { try {
-
          if (sync_mode)
             fc_ilog(fc::logger::get("sync"),
                     "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",

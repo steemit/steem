@@ -91,35 +91,31 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, uint64_t initial_supply )
+void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t shared_file_size )
 {
    try
    {
       init_schema();
       idump( (data_dir) );
-      db2::database::open(data_dir);
+      db2::database::open( data_dir, shared_file_size );
 
       initialize_indexes();
       initialize_evaluators();
 
-      _block_id_to_block.open(data_dir / "database" / "block_num_to_block");
+      _block_log.open( data_dir / "block_log" );
 
       if( !find< dynamic_global_property_object >() )
          init_genesis( initial_supply );
 
       init_hardforks();
 
-      fc::optional<signed_block> last_block = _block_id_to_block.last();
-      if( last_block.valid() )
-      {
-         _fork_db.start_block( *last_block );
-         idump((last_block->id())(last_block->block_num()));
-         if( last_block->id() != head_block_id() )
-         {
-              FC_ASSERT( head_block_num() == 0, "last block ID does not match current chain state",
-                         ("last_block->block_num()",last_block->block_num())( "head_block_num", head_block_num()) );
-         }
-      }
+      // block_log.head must be in block stats
+      // If it is not, print warning and exit
+      auto log_head = _block_log.head();
+
+      if( log_head )
+         FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
+            "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
@@ -134,17 +130,37 @@ void database::reindex(fc::path data_dir )
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
-      auto last_block = _block_id_to_block.last();
-      if( !last_block )
-      {
-         elog( "!no last block" );
-         edump((last_block));
-         return;
-      }
+      FC_ASSERT( _block_log.head(), "No blocks in block log. Cannot reindex an empty chain." );
 
       ilog( "Replaying blocks..." );
 
-      auto reindex_range = [&]( uint32_t start_block_num, uint32_t last_block_num, uint32_t skip, bool do_push )
+      auto itr = _block_log.read_block( 0 );
+      auto last_block_num = _block_log.head()->block_num();
+      uint64_t skip_flags =
+         skip_witness_signature |
+         skip_transaction_signatures |
+         skip_transaction_dupe_check |
+         skip_tapos_check |
+         skip_merkle_check |
+         skip_witness_schedule_check |
+         skip_authority_check |
+         skip_validate | /// no need to validate operations
+         skip_validate_invariants |
+         skip_undo_block;
+
+      while( itr.first.block_num() != last_block_num )
+      {
+         auto cur_block_num = itr.first.block_num();
+         if( cur_block_num % 100000 == 0 )
+            std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
+         apply_block( itr.first, skip_flags );
+         itr = _block_log.read_block( itr.second );
+         set_revision( head_block_num() ); // This should be able to be done once at the end of reindexing
+      }
+      //_fork_db.start_block( _block_log.head() )
+
+
+      /*auto reindex_range = [&]( uint32_t start_block_num, uint32_t last_block_num, uint32_t skip, bool do_push )
       {
          for( uint32_t i = start_block_num; i <= last_block_num; ++i )
          {
@@ -206,7 +222,7 @@ void database::reindex(fc::path data_dir )
       }
 
       reindex_range( first, last_block_num_in_file, skip_nothing, true );
-
+      */
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
    }
@@ -227,42 +243,7 @@ void database::close(bool rewind)
 {
    try
    {
-      if( !_block_id_to_block.is_open() ) return;
-      //ilog( "Closing database" );
-
-      // pop all of the blocks that we can given our undo history, this should
-      // throw when there is no more undo history to pop
-      if( rewind )
-      {
-         try
-         {
-            uint32_t cutoff = get_dynamic_global_properties().last_irreversible_block_num;
-            //ilog( "rewinding to last irreversible block number ${c}", ("c",cutoff) );
-
-            clear_pending();
-            while( head_block_num() > cutoff )
-            {
-               block_id_type popped_block_id = head_block_id();
-               pop_block();
-               _fork_db.remove(popped_block_id); // doesn't throw on missing
-               try
-               {
-                  _block_id_to_block.remove(popped_block_id);
-               }
-               catch (const fc::key_not_found_exception&)
-               {
-                  ilog( "key not found" );
-               }
-            }
-            //idump((head_block_num())(get_dynamic_global_properties().last_irreversible_block_num));
-         }
-         catch ( const fc::exception& e )
-         {
-            // ilog( "exception on rewind ${e}", ("e",e.to_detail_string()) );
-         }
-      }
-
-      //ilog( "Clearing pending state" );
+      // ilog( "Clearing pending state" );
       // Since pop_block() will move tx's in the popped blocks into pending,
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
@@ -271,8 +252,7 @@ void database::close(bool rewind)
       db2::database::flush();
       db2::database::close();
 
-      if( _block_id_to_block.is_open() )
-         _block_id_to_block.close();
+      _block_log.close();
 
       _fork_db.reset();
    }
@@ -281,7 +261,20 @@ void database::close(bool rewind)
 
 bool database::is_known_block( const block_id_type& id )const
 {
-   return _fork_db.is_known_block(id) || _block_id_to_block.contains(id);
+   /*
+   bool result = _fork_db.is_known_block( id );
+
+   if( !result )
+   {
+      auto block = find< block_stats_object >( protocol::block_header::num_from_id( id ) );
+      if( block )
+      {
+         result = block->block_id == id;
+      }
+   }
+
+   return result;*/
+   return _fork_db.is_known_block(id) || find< block_stats_object, by_block_id >( id );
 }
 
 /**
@@ -297,29 +290,39 @@ bool database::is_known_transaction( const transaction_id_type& id )const
 
 block_id_type  database::get_block_id_for_num( uint32_t block_num )const
 {
-   try
-   {
-      return _block_id_to_block.fetch_block_id( block_num );
-   }
-   FC_CAPTURE_AND_RETHROW( (block_num) )
+   return get< block_stats_object >( block_num - 1 ).block_id;
 }
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
 {
    auto b = _fork_db.fetch_block( id );
    if( !b )
-      return _block_id_to_block.fetch_optional(id);
+   {
+      auto tmp = fetch_block_by_number( protocol::block_header::num_from_id( id ) );
+
+      if( tmp && tmp->id() == id )
+         return tmp;
+
+      tmp.reset();
+      return tmp;
+   }
+
    return b->data;
 }
 
-optional<signed_block> database::fetch_block_by_number( uint32_t num )const
+optional<signed_block> database::fetch_block_by_number( uint32_t block_num )const
 {
-   auto results = _fork_db.fetch_block_by_number(num);
-   if( results.size() == 1 )
-      return results[0]->data;
-   else
-      return _block_id_to_block.fetch_by_number(num);
-   return optional<signed_block>();
+   optional< signed_block > b;
+
+   const auto* stats = find< block_stats_object >( block_num - 1 );
+
+   if( !stats )
+      return b;
+
+   b = signed_block();
+   fc::datastream< const char* > ds( stats->packed_block.data(), stats->packed_block.size() );
+   fc::raw::unpack( ds, *b );
+   return b;
 }
 
 const signed_transaction& database::get_recent_transaction( const transaction_id_type& trx_id ) const
@@ -705,7 +708,7 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 bool database::_push_block(const signed_block& new_block)
 {
    uint32_t skip = get_node_properties().skip_flags;
-   uint32_t skip_undo_db = skip & skip_undo_block;
+   //uint32_t skip_undo_db = skip & skip_undo_block;
    if( !(skip&skip_fork_db) )
    {
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
@@ -733,7 +736,6 @@ bool database::_push_block(const signed_block& new_block)
                    //undo_database::session session = _undo_db.start_undo_session();
                    auto session = start_undo_session( !skip_undo_block );
                    apply_block( (*ritr)->data, skip );
-                   _block_id_to_block.store( (*ritr)->id, (*ritr)->data );
                    //session.commit();
                    session.push();
                 }
@@ -759,7 +761,6 @@ bool database::_push_block(const signed_block& new_block)
                       //auto session = _undo_db.start_undo_session();
                       auto session = start_undo_session( !skip_undo_block );
                       apply_block( (*ritr)->data, skip );
-                      _block_id_to_block.store( new_block.id(), (*ritr)->data );
                       //session.commit();
                       session.push();
                    }
@@ -778,7 +779,6 @@ bool database::_push_block(const signed_block& new_block)
       //auto session = _undo_db.start_undo_session();
       auto session = start_undo_session( !skip_undo_block );
       apply_block(new_block, skip);
-      _block_id_to_block.store(new_block.id(), new_block);
       //session.commit();
       session.push();
    }
@@ -1008,7 +1008,6 @@ void database::pop_block()
       STEEMIT_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
 
       _fork_db.pop_block();
-      _block_id_to_block.remove( head_id );
       undo();
 
       _popped_tx.insert( _popped_tx.begin(), head_block->transactions.begin(), head_block->transactions.end() );
@@ -2698,6 +2697,7 @@ void database::initialize_indexes()
    add_index< escrow_index                            >();
    add_index< savings_withdraw_index                  >();
    add_index< decline_voting_rights_request_index     >();
+   add_index< block_stats_index                       >();
 }
 
 const std::string& database::get_json_schema()const
@@ -2930,10 +2930,11 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 void database::_apply_block( const signed_block& next_block )
 { try {
    uint32_t next_block_num = next_block.block_num();
+   block_id_type next_block_id = next_block.id();
 
    uint32_t skip = get_node_properties().skip_flags;
 
-   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()) );
+   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block_id) );
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
@@ -2979,6 +2980,16 @@ void database::_apply_block( const signed_block& next_block )
       apply_transaction( trx, skip );
       ++_current_trx_in_block;
    }
+
+   create< block_stats_object >( [&]( block_stats_object& bso )
+   {
+      assert( bso.block_num() == next_block_num ); // Probably can be taken out. Sanity check
+      bso.block_id = next_block_id;
+      auto size = fc::raw::pack_size( next_block );
+      bso.packed_block.resize( size );
+      fc::datastream<char*> ds( bso.packed_block.data(), size );
+      fc::raw::pack( ds, next_block );
+   });
 
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
@@ -3349,7 +3360,7 @@ void database::update_global_dynamic_data( const signed_block& b )
    }
 
    //_undo_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
-   //_fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
+   _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
 }
 
 void database::update_virtual_supply()
@@ -3403,7 +3414,6 @@ void database::update_last_irreversible_block()
          if ( head_block_num() > STEEMIT_MAX_WITNESSES )
             _dpo.last_irreversible_block_num = head_block_num() - STEEMIT_MAX_WITNESSES;
       } );
-      return;
    }
    else
    {
@@ -3442,6 +3452,19 @@ void database::update_last_irreversible_block()
    // Revision for undo history is last irreverisivle block num - 1 because revision is 0 indexed
    // and block num is 1 indexed.
    commit( dpo.last_irreversible_block_num );
+
+   // output to block log based on new last irreverisible block num
+   const auto& tmp_head = _block_log.head();
+   uint64_t log_head_num = 0;
+
+   if( tmp_head )
+      log_head_num = tmp_head->block_num();
+
+   while( log_head_num < dpo.last_irreversible_block_num )
+   {
+      _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+      log_head_num++;
+   }
 }
 
 

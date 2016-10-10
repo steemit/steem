@@ -498,7 +498,7 @@ namespace graphene { namespace db2 {
    class database
    {
       public:
-         void open( const fc::path& file );
+         void open( const fc::path& file, uint64_t shared_file_size );
          void close();
          void flush();
 

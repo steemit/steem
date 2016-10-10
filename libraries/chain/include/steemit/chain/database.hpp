@@ -6,7 +6,7 @@
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
 #include <steemit/chain/fork_database.hpp>
-#include <steemit/chain/block_database.hpp>
+#include <steemit/chain/block_log.hpp>
 
 #include <steemit/protocol/protocol.hpp>
 
@@ -70,7 +70,7 @@ namespace steemit { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-         void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
+         void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
 
          /**
           * @brief Rebuild object graph from block history and open detabase
@@ -448,16 +448,7 @@ namespace steemit { namespace chain {
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
          protocol::hardfork_version    _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
-         /**
-          *  Note: we can probably store blocks by block num rather than
-          *  block id because after the undo window is past the block ID
-          *  is no longer relevant and its number is irreversible.
-          *
-          *  During the "fork window" we can cache blocks in memory
-          *  until the fork is resolved.  This should make maintaining
-          *  the fork tree relatively simple.
-          */
-         block_database   _block_id_to_block;
+         block_log        _block_log;
 
          transaction_id_type               _current_trx_id;
          uint32_t                          _current_block_num    = 0;
