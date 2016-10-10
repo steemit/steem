@@ -42,7 +42,7 @@ add_library( steemit_chain
              block_database.cpp
 
              ${HEADERS}
-             ${hardfork_hpp_file}
+ #            ${hardfork_hpp_file}
              ${PROTOCOL_HEADERS}
              "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
            )

@@ -21,7 +21,7 @@ class account_statistics_plugin_impl
       void on_operation( const operation_object& o );
 
       account_statistics_plugin& _self;
-      flat_set< uint32_t >       _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
+      flat_set< uint32_t >       _tracked_buckets = flat_set< uint32_t > { 60, 3600, 21600, 86400, 604800, 2592000 };
       uint32_t                   _maximum_history_per_bucket_size = 100;
       flat_set< string >         _tracked_accounts;
 };
