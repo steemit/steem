@@ -412,7 +412,10 @@ void witness_plugin::on_applied_block(const steemit::chain::signed_block& b)
   chain::database& db = database();
 
    const auto& dgp = db.get_dynamic_global_properties();
-   double hps   = (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count();
+  
+   double divisor = (fc::time_point::now() - _hash_start_time).count();
+   if (divisor == 0)divisor = 1;//Division by zero,It is not compatible with windows
+   double hps   = (_total_hashes*1000000)/divisor;
    int64_t bits    = (dgp.num_pow_witnesses/4) + 4;
    fc::uint128 hashes  = fc::uint128(1) << bits;
    hashes *= 1000000;
