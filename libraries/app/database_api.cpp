@@ -1021,34 +1021,35 @@ vector<discussion> database_api::get_content_replies( string author, string perm
 }
 
 /**
- *  This method can be used to fetch replies to start_auth
+ *  This method can be used to fetch replies to an account.
+ *
+ *  The first call should be (account_to_retrieve replies, "", limit)
+ *  Subsequent calls should be (last_author, last_permlink, limit)
  */
-
-
-
-vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const {
-
-//   idump((start_parent_author)(start_permlink)(limit) );
-   vector<discussion> result;
+vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const
+{
    /*
-   const auto& last_update_idx = my->_db.get_index< comment_index >().indices().get< by_last_update >();
-
+   FC_ASSERT( limit <= 100 );
+   const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
    auto itr = last_update_idx.begin();
+   const string* parent_author = &start_parent_author;
 
-
-   bool filter_by_parent_author = true;
    if( start_permlink.size() )
-      itr = last_update_idx.iterator_to( my->_db.get_comment( start_parent_author, start_permlink ) );
-   else if( start_parent_author.size() ) {
-      itr = last_update_idx.lower_bound( boost::make_tuple( start_parent_author, time_point_sec::maximum(), object_id_type() ) );
-      filter_by_parent_author = true;
+   {
+      const auto& comment = my->_db.get_comment( start_parent_author, start_permlink );
+      itr = last_update_idx.iterator_to( comment );
+      parent_author = &comment.parent_author;
    }
+   else if( start_parent_author.size() )
+   {
+      itr = last_update_idx.lower_bound( start_parent_author );
+   }
+   */
+   vector<discussion> result;
+   /*result.reserve( limit );
 
-   while( itr != last_update_idx.end() && result.size() < limit  ) {
-      if( filter_by_parent_author && itr->parent_author != start_parent_author ) {
-         return result;
-      }
-
+   while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author )
+   {
       result.push_back( *itr );
       set_pending_payout(result.back());
       result.back().active_votes = get_active_votes( itr->author, itr->permlink );
@@ -1665,9 +1666,10 @@ state database_api::get_state( string path )const
          {
             if( itr->parent_author.size() )
             {
-               eacnt.posts->push_back(itr->permlink);
-               _state.content[acnt+"/"+itr->permlink] = *itr;
-               set_pending_payout( _state.content[acnt+"/"+itr->permlink] );
+               const auto link = acnt + "/" + itr->permlink;
+               eacnt.posts->push_back( link );
+               _state.content[ link ] = *itr;
+               set_pending_payout( _state.content[ link ] );
                ++count;
             }
 

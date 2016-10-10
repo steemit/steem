@@ -7,15 +7,15 @@
 
 namespace steemit { namespace protocol {
 
-   struct author_reward_operation : public virtual_operation
-   {
+   struct author_reward_operation : public virtual_operation {
       author_reward_operation(){}
-      author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
-         :author(a), permlink(p), sbd_payout(s), vesting_payout(v) {}
+      author_reward_operation( const account_name_type& a, const account_name_type& p, const asset& s, const asset& st, const asset& v )
+         :author(a), permlink(p), sbd_payout(s), steem_payout(st), vesting_payout(v){}
 
       account_name_type author;
-      string            permlink;
+      account_name_type permlink;
       asset             sbd_payout;
+      asset             steem_payout;
       asset             vesting_payout;
    };
 
@@ -36,7 +36,7 @@ namespace steemit { namespace protocol {
    struct comment_reward_operation : public virtual_operation
    {
       comment_reward_operation(){}
-      comment_reward_operation( const string& a, const string& pl, const asset& p )
+      comment_reward_operation( const account_name_type& a, const string& pl, const asset& p )
          :author(a), permlink(pl), payout(p){}
 
       account_name_type author;
@@ -114,9 +114,23 @@ namespace steemit { namespace protocol {
       asset             open_pays;
    };
 
+
+   struct fill_transfer_from_savings_operation : public virtual_operation
+   {
+      fill_transfer_from_savings_operation() {}
+      fill_transfer_from_savings_operation( const account_name_type& f, const account_name_type& t, const asset& a, const uint32_t r, const string& m )
+         :from(f), to(t), amount(a), request_id(r), memo(m) {}
+
+      account_name_type from;
+      account_name_type to;
+      asset             amount;
+      uint32_t          request_id = 0;
+      string            memo;
+   };
+
 } } //steemit::protocol
 
-FC_REFLECT( steemit::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
+FC_REFLECT( steemit::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steemit::protocol::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
 FC_REFLECT( steemit::protocol::comment_reward_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::protocol::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
@@ -124,4 +138,5 @@ FC_REFLECT( steemit::protocol::liquidity_reward_operation, (owner)(payout) )
 FC_REFLECT( steemit::protocol::interest_operation, (owner)(interest) )
 FC_REFLECT( steemit::protocol::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
 FC_REFLECT( steemit::protocol::shutdown_witness_operation, (owner) )
-FC_REFLECT( steemit::protocol::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
+FC_REFLECT( steemit::protocol::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) )
+FC_REFLECT( steemit::protocol::fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )

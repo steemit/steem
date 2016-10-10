@@ -8,58 +8,62 @@ namespace steemit { namespace follow {
 
 void follow_evaluator::do_apply( const follow_operation& o )
 {
-   static map< string, follow_type > follow_type_map = []()
+   try
    {
-      map< string, follow_type > follow_map;
-      follow_map[ "undefined" ] = follow_type::undefined;
-      follow_map[ "blog" ] = follow_type::blog;
-      follow_map[ "ignore" ] = follow_type::ignore;
-
-      return follow_map;
-   }();
-
-   const auto& following = db().get_account( o.following );
-   const auto& follower = db().get_account( o.follower );
-   const auto& idx = db().get_index<follow_index>().indices().get< by_follower_following >();
-   auto itr = idx.find( boost::make_tuple( follower.id, following.id ) );
-
-   uint16_t what = 0;
-
-   for( auto target : o.what )
-   {
-      switch( follow_type_map[ target ] )
+      static map< string, follow_type > follow_type_map = []()
       {
-         case blog:
-            what |= 1 << blog;
-            break;
-         case ignore:
-            what |= 1 << ignore;
-            break;
-         default:
-            //ilog( "Encountered unknown option ${o}", ("o", target) );
-            break;
+         map< string, follow_type > follow_map;
+         follow_map[ "undefined" ] = follow_type::undefined;
+         follow_map[ "blog" ] = follow_type::blog;
+         follow_map[ "ignore" ] = follow_type::ignore;
+
+         return follow_map;
+      }();
+
+      const auto& following = db().get_account( o.following );
+      const auto& follower = db().get_account( o.follower );
+      const auto& idx = db().get_index<follow_index>().indices().get< by_follower_following >();
+      auto itr = idx.find( boost::make_tuple( follower.id, following.id ) );
+
+      uint16_t what = 0;
+
+      for( auto target : o.what )
+      {
+         switch( follow_type_map[ target ] )
+         {
+            case blog:
+               what |= 1 << blog;
+               break;
+            case ignore:
+               what |= 1 << ignore;
+               break;
+            default:
+               //ilog( "Encountered unknown option ${o}", ("o", target) );
+               break;
+         }
+      }
+
+      if( what & ( 1 << ignore ) )
+         FC_ASSERT( !( what & ( 1 << blog ) ), "Cannot follow blog and ignore author at the same time" );
+
+      if( itr == idx.end() )
+      {
+         db().create< follow_object >( [&]( follow_object& obj )
+         {
+            obj.follower = follower.id;
+            obj.following = following.id;
+            obj.what = what;
+         });
+      }
+      else
+      {
+         db().modify( *itr, [&]( follow_object& obj )
+         {
+            obj.what = what;
+         });
       }
    }
-
-   if( what & ( 1 << ignore ) )
-      FC_ASSERT( !( what & ( 1 << blog ) ), "Cannot follow blog and ignore author at the same time" );
-
-   if( itr == idx.end() )
-   {
-      db().create<follow_object>( [&]( follow_object& obj )
-      {
-         obj.follower = follower.id;
-         obj.following = following.id;
-         obj.what = what;
-      });
-   }
-   else
-   {
-      db().modify( *itr, [&]( follow_object& obj )
-      {
-         obj.what = what;
-      });
-   }
+   FC_CAPTURE_AND_RETHROW( (o) )
 }
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
@@ -147,7 +151,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          ++itr;
       }
    }
-   FC_LOG_AND_RETHROW()
+   FC_CAPTURE_AND_RETHROW( (o) )
 }
 
 } } // steemit::follow

@@ -110,16 +110,58 @@ struct operation_visitor_filter : operation_visitor {
    void operator()( const limit_order_cancel_operation& )const {}
    void operator()( const pow_operation& )const {}
 
-   void operator()( const transfer_operation& op )const {
+   void operator()( const transfer_operation& op )const
+   {
       operation_visitor::operator()( op );
    }
-   void operator()( const transfer_to_vesting_operation& op )const {
+
+   void operator()( const transfer_to_vesting_operation& op )const
+   {
       operation_visitor::operator()( op );
    }
-   void operator()( const account_create_operation& op )const {
+
+   void operator()( const account_create_operation& op )const
+   {
       operation_visitor::operator()( op );
    }
-   void operator()( const account_update_operation& op )const {
+
+   void operator()( const account_update_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const transfer_to_savings_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const transfer_from_savings_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const cancel_transfer_from_savings_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const escrow_transfer_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const escrow_dispute_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const escrow_release_operation& op )const
+   {
+      operation_visitor::operator()( op );
+   }
+
+   void operator()( const escrow_approve_operation& op )const
+   {
       operation_visitor::operator()( op );
    }
 
