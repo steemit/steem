@@ -12,7 +12,7 @@
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
-
+#include <steemit/chain/shared_db_merkle.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 #include <fc/smart_ref_impl.hpp>
@@ -113,20 +113,23 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
       // If it is not, print warning and exit
       auto log_head = _block_log.head();
 
-      if( log_head )
+      if( log_head && head_block_num() )
          FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
             "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
+
+      // unwind all undo states
+      // set fork_db head
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
 
-void database::reindex(fc::path data_dir )
+void database::reindex( fc::path data_dir, uint64_t shared_file_size )
 {
    try
    {
       ilog( "reindexing blockchain" );
-      wipe(data_dir, false);
-      open(data_dir);
+      wipe( data_dir, false );
+      open( data_dir, shared_file_size );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -136,7 +139,7 @@ void database::reindex(fc::path data_dir )
 
       auto itr = _block_log.read_block( 0 );
       auto last_block_num = _block_log.head()->block_num();
-      uint64_t skip_flags =
+      uint64_t skip_flags = skip_block_log | skip_undo_block /*|
          skip_witness_signature |
          skip_transaction_signatures |
          skip_transaction_dupe_check |
@@ -146,83 +149,26 @@ void database::reindex(fc::path data_dir )
          skip_authority_check |
          skip_validate | /// no need to validate operations
          skip_validate_invariants |
-         skip_undo_block;
+         skip_undo_block*/;
 
       while( itr.first.block_num() != last_block_num )
       {
+         FC_ASSERT( itr.first.block_num() == head_block_num() + 1, "", ("next_block",itr.first.block_num())("head_block",head_block_num()) );
+         FC_ASSERT( itr.first.previous == head_block_id(), "", ("next_previous",itr.first.previous)("head_block",head_block_id()) );
          auto cur_block_num = itr.first.block_num();
          if( cur_block_num % 100000 == 0 )
             std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
-         apply_block( itr.first, skip_flags );
+         push_block( itr.first, skip_flags );
          itr = _block_log.read_block( itr.second );
-         set_revision( head_block_num() ); // This should be able to be done once at the end of reindexing
-      }
-      //_fork_db.start_block( _block_log.head() )
-
-
-      /*auto reindex_range = [&]( uint32_t start_block_num, uint32_t last_block_num, uint32_t skip, bool do_push )
-      {
-         for( uint32_t i = start_block_num; i <= last_block_num; ++i )
-         {
-            if( i % 100000 == 0 )
-               std::cerr << "   " << double(i*100)/last_block_num << "%   "<<i << " of " <<last_block_num<<"   \n";
-            fc::optional< signed_block > block = _block_id_to_block.fetch_by_number(i);
-            if( !block.valid() )
-            {
-               // TODO gap handling may not properly init fork db
-               wlog( "Reindexing terminated due to error unpacking block:  Block ${i}", ("i", i) );
-               uint32_t dropped_count = 0;
-               while( true )
-               {
-                  fc::optional< block_id_type > last_id = _block_id_to_block.last_id();
-                  // this can trigger if we attempt to e.g. read a file that has block #2 but no block #1
-                  if( !last_id.valid() )
-                     break;
-                  // we've caught up to the gap
-                  if( block_header::num_from_id( *last_id ) <= i )
-                     break;
-                  _block_id_to_block.remove( *last_id );
-                  dropped_count++;
-               }
-               wlog( "Dropped ${n} blocks from after the gap", ("n", dropped_count) );
-               break;
-            }
-            if( do_push )
-               push_block( *block, skip );
-            else
-               apply_block( *block, skip );
-         }
-
-         // Revision for undo history is last irreverisivle block num - 1 because revision is 0 indexed
-         // and block num is 1 indexed.
-         set_revision( head_block_num() );
-      };
-
-      const uint32_t last_block_num_in_file = last_block->block_num();
-      const uint32_t initial_undo_blocks = STEEMIT_MAX_TIME_UNTIL_EXPIRATION / STEEMIT_BLOCK_INTERVAL + 5;
-
-      uint32_t first = 1;
-
-      if( last_block_num_in_file > initial_undo_blocks )
-      {
-         uint32_t last = last_block_num_in_file - initial_undo_blocks;
-         reindex_range( 1, last,
-            skip_witness_signature |
-            skip_transaction_signatures |
-            skip_transaction_dupe_check |
-            skip_tapos_check |
-            skip_merkle_check |
-            skip_witness_schedule_check |
-            skip_authority_check |
-            skip_validate | /// no need to validate operations
-            skip_validate_invariants |
-            skip_undo_block, false );
-         first = last+1;
-         _fork_db.start_block( *_block_id_to_block.fetch_by_number( last ) );
+         //set_revision( head_block_num() ); // This should be able to be done once at the end of reindexing
       }
 
-      reindex_range( first, last_block_num_in_file, skip_nothing, true );
-      */
+      apply_block( itr.first, skip_flags );
+      set_revision( head_block_num() );
+
+      if( last_block_num )
+         _fork_db.start_block( *_block_log.head() );
+
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
    }
@@ -234,9 +180,10 @@ void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
    ilog("Wiping database", ("include_blocks", include_blocks));
    close();
-   //db2::database::wipe(data_dir);
+   db2::database::wipe( data_dir );
    if( include_blocks )
-      fc::remove_all( data_dir / "database" );
+      fc::remove_all( data_dir / "block_log" );
+   ilog("Done");
 }
 
 void database::close(bool rewind)
@@ -247,6 +194,7 @@ void database::close(bool rewind)
       // Since pop_block() will move tx's in the popped blocks into pending,
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
+      ilog( "" );
       clear_pending();
 
       db2::database::flush();
@@ -322,6 +270,12 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
    b = signed_block();
    fc::datastream< const char* > ds( stats->packed_block.data(), stats->packed_block.size() );
    fc::raw::unpack( ds, *b );
+   try
+   {
+      FC_ASSERT( protocol::block_header::num_from_id( b->id() ) == block_num );
+   }
+   FC_LOG_AND_RETHROW()
+
    return b;
 }
 
@@ -708,7 +662,14 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 bool database::_push_block(const signed_block& new_block)
 {
    uint32_t skip = get_node_properties().skip_flags;
-   //uint32_t skip_undo_db = skip & skip_undo_block;
+   uint32_t skip_undo_db = skip & skip_undo_block;
+
+   try
+   {
+      FC_ASSERT( !_pending_tx_session.valid() );
+   }
+   FC_LOG_AND_RETHROW()
+
    if( !(skip&skip_fork_db) )
    {
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
@@ -734,9 +695,8 @@ bool database::_push_block(const signed_block& new_block)
                 try
                 {
                    //undo_database::session session = _undo_db.start_undo_session();
-                   auto session = start_undo_session( !skip_undo_block );
+                   auto session = start_undo_session( false );
                    apply_block( (*ritr)->data, skip );
-                   //session.commit();
                    session.push();
                 }
                 catch ( const fc::exception& e ) { except = e; }
@@ -758,10 +718,8 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
-                      //auto session = _undo_db.start_undo_session();
-                      auto session = start_undo_session( !skip_undo_block );
+                      auto session = start_undo_session( false );
                       apply_block( (*ritr)->data, skip );
-                      //session.commit();
                       session.push();
                    }
                    throw *except;
@@ -776,16 +734,13 @@ bool database::_push_block(const signed_block& new_block)
 
    try
    {
-      //auto session = _undo_db.start_undo_session();
-      auto session = start_undo_session( !skip_undo_block );
+      auto session = start_undo_session( false );
       apply_block(new_block, skip);
-      //session.commit();
       session.push();
    }
    catch( const fc::exception& e )
    {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
-      //idump( (skip)(new_block) );
       _fork_db.remove(new_block.id());
       throw;
    }
@@ -824,6 +779,7 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
 
 void database::_push_transaction( const signed_transaction& trx )
 {
+   idump( (trx) );
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_tx_session.valid() )
@@ -2944,7 +2900,23 @@ void database::_apply_block( const signed_block& next_block )
 
    uint32_t skip = get_node_properties().skip_flags;
 
-   FC_ASSERT( (skip & skip_merkle_check) || next_block.transaction_merkle_root == next_block.calculate_merkle_root(), "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block_id) );
+   if( !( skip & skip_merkle_check ) )
+   {
+      auto merkle_root = next_block.calculate_merkle_root();
+
+      try
+      {
+         FC_ASSERT( next_block.transaction_merkle_root == merkle_root, "Merkle check failed", ("next_block.transaction_merkle_root",next_block.transaction_merkle_root)("calc",merkle_root)("next_block",next_block)("id",next_block.id()) );
+      }
+      catch( fc::assert_exception& e )
+      {
+         const auto& merkle_map = get_shared_db_merkle();
+         auto itr = merkle_map.find( next_block_num );
+
+         if( itr == merkle_map.end() || itr->second != merkle_root )
+            throw e;
+      }
+   }
 
    const witness_object& signing_witness = validate_block_header(skip, next_block);
 
@@ -2953,11 +2925,9 @@ void database::_apply_block( const signed_block& next_block )
 
    const auto& gprops = get_dynamic_global_properties();
    auto block_size = fc::raw::pack_size( next_block );
-   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) ) {
+   if( has_hardfork( STEEMIT_HARDFORK_0_12 ) )
+   {
       FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
-   }
-   else if ( block_size > gprops.maximum_block_size ) {
- //     idump((next_block_num)(block_size)(next_block.transactions.size()));
    }
 
    /// modify current witness so transaction evaluators can know who included the transaction,
@@ -3163,7 +3133,8 @@ void database::_apply_transaction(const signed_transaction& trx)
    auto trx_id = trx.id();
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||
-              trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end() );
+              trx_idx.indices().get<by_trx_id>().find(trx_id) == trx_idx.indices().get<by_trx_id>().end(),
+              "Duplicate transaction check failed", ("trx_ix", trx_id) );
 
    if( !(skip & (skip_transaction_signatures | skip_authority_check) ) )
    {
@@ -3464,16 +3435,19 @@ void database::update_last_irreversible_block()
    commit( dpo.last_irreversible_block_num );
 
    // output to block log based on new last irreverisible block num
-   const auto& tmp_head = _block_log.head();
-   uint64_t log_head_num = 0;
-
-   if( tmp_head )
-      log_head_num = tmp_head->block_num();
-
-   while( log_head_num < dpo.last_irreversible_block_num )
+   if( !( get_node_properties().skip_flags & skip_block_log ) )
    {
-      _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
-      log_head_num++;
+      const auto& tmp_head = _block_log.head();
+      uint64_t log_head_num = 0;
+
+      if( tmp_head )
+         log_head_num = tmp_head->block_num();
+
+      while( log_head_num < dpo.last_irreversible_block_num )
+      {
+         _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+         log_head_num++;
+      }
    }
 }
 
@@ -3652,9 +3626,8 @@ void database::clear_expired_transactions()
 {
    //Look for expired transactions in the deduplication list, and remove them.
    //Transactions must have expired by at least two forking windows in order to be removed.
-   auto& transaction_idx = get_index< transaction_index >();
-   const auto& dedupe_index = transaction_idx.indices().get< by_expiration >();
-   while( ( !dedupe_index.empty() ) && ( head_block_time() > dedupe_index.begin()->trx.expiration ) )
+   const auto& dedupe_index = get_index< transaction_index >().indices().get< by_expiration >();
+   while( dedupe_index.begin() !=  dedupe_index.end() && ( head_block_time() > dedupe_index.begin()->get_expiration() ) )
       remove( *dedupe_index.begin() );
 }
 

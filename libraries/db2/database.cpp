@@ -57,10 +57,22 @@ namespace graphene { namespace db2 {
    }
 
    void database::close() {
+      ilog( "" );
       _segment.reset();
+      ilog( "" );
       _data_dir = fc::path();
+      ilog( "" );
    }
 
+   void database::wipe( const fc::path& dir )
+   {
+      ilog( "" );
+      _segment.reset();
+      ilog( "" );
+      fc::remove_all( dir / "shared_memory" );
+      ilog( "" );
+      _data_dir = fc::path();
+   }
 
    void database::export_to_directory( const fc::path& dir )const {
       if( !fc::exists( dir ) ) fc::create_directories( dir );

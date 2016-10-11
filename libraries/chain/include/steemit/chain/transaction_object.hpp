@@ -37,7 +37,7 @@ namespace steemit { namespace chain {
       transaction_object,
       indexed_by<
          ordered_unique< tag<by_id>, member< transaction_object, transaction_object_id_type, &transaction_object::id > >,
-         hashed_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type> >,
+         ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id) >,
          ordered_non_unique< tag<by_expiration>, const_mem_fun<transaction_object, time_point_sec, &transaction_object::get_expiration > >
       >,
       allocator< transaction_object >

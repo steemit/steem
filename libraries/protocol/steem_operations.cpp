@@ -42,12 +42,12 @@ namespace steemit { namespace protocol {
    void account_update_operation::validate() const
    {
       validate_account_name( account );
-      if( owner )
+      /*if( owner )
          owner->validate();
       if( active )
          active->validate();
       if( posting )
-         posting->validate();
+         posting->validate();*/
 
       if ( json_metadata.size() > 0 )
       {

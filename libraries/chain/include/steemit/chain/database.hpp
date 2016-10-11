@@ -60,6 +60,7 @@ namespace steemit { namespace chain {
             skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
             skip_validate_invariants    = 1 << 11, ///< used to skip database invariant check on block application
             skip_undo_block             = 1 << 12, ///< used to skip undo db on reindex
+            skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
          };
 
          /**
@@ -78,7 +79,7 @@ namespace steemit { namespace chain {
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
-         void reindex(fc::path data_dir);
+         void reindex( fc::path data_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
