@@ -139,7 +139,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
 
       auto itr = _block_log.read_block( 0 );
       auto last_block_num = _block_log.head()->block_num();
-      uint64_t skip_flags = skip_block_log | skip_undo_block /*|
+      uint64_t skip_flags =
          skip_witness_signature |
          skip_transaction_signatures |
          skip_transaction_dupe_check |
@@ -149,7 +149,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
          skip_authority_check |
          skip_validate | /// no need to validate operations
          skip_validate_invariants |
-         skip_undo_block*/;
+         skip_undo_block;
 
       while( itr.first.block_num() != last_block_num )
       {
@@ -270,12 +270,6 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
    b = signed_block();
    fc::datastream< const char* > ds( stats->packed_block.data(), stats->packed_block.size() );
    fc::raw::unpack( ds, *b );
-   try
-   {
-      FC_ASSERT( protocol::block_header::num_from_id( b->id() ) == block_num );
-   }
-   FC_LOG_AND_RETHROW()
-
    return b;
 }
 
@@ -662,13 +656,13 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 bool database::_push_block(const signed_block& new_block)
 {
    uint32_t skip = get_node_properties().skip_flags;
-   uint32_t skip_undo_db = skip & skip_undo_block;
+   //uint32_t skip_undo_db = skip & skip_undo_block;
 
-   try
-   {
-      FC_ASSERT( !_pending_tx_session.valid() );
-   }
-   FC_LOG_AND_RETHROW()
+   if( _pending_tx.size() )
+      wlog( "Pending tx when pushing block" );
+
+   if( _pending_tx_session.valid() )
+      wlog( "Pending tx session when pushing block" );
 
    if( !(skip&skip_fork_db) )
    {
@@ -695,8 +689,9 @@ bool database::_push_block(const signed_block& new_block)
                 try
                 {
                    //undo_database::session session = _undo_db.start_undo_session();
-                   auto session = start_undo_session( false );
+                   auto session = start_undo_session( !skip_undo_block );
                    apply_block( (*ritr)->data, skip );
+                   //session.commit();
                    session.push();
                 }
                 catch ( const fc::exception& e ) { except = e; }
@@ -718,7 +713,7 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
-                      auto session = start_undo_session( false );
+                      auto session = start_undo_session( !skip_undo_block );
                       apply_block( (*ritr)->data, skip );
                       session.push();
                    }
@@ -734,7 +729,7 @@ bool database::_push_block(const signed_block& new_block)
 
    try
    {
-      auto session = start_undo_session( false );
+      auto session = start_undo_session( !skip_undo_block );
       apply_block(new_block, skip);
       session.push();
    }
@@ -779,7 +774,6 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
 
 void database::_push_transaction( const signed_transaction& trx )
 {
-   idump( (trx) );
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_tx_session.valid() )
@@ -3626,8 +3620,9 @@ void database::clear_expired_transactions()
 {
    //Look for expired transactions in the deduplication list, and remove them.
    //Transactions must have expired by at least two forking windows in order to be removed.
-   const auto& dedupe_index = get_index< transaction_index >().indices().get< by_expiration >();
-   while( dedupe_index.begin() !=  dedupe_index.end() && ( head_block_time() > dedupe_index.begin()->get_expiration() ) )
+   auto& transaction_idx = get_index< transaction_index >();
+   const auto& dedupe_index = transaction_idx.indices().get< by_expiration >();
+   while( ( !dedupe_index.empty() ) && ( head_block_time() > dedupe_index.begin()->trx.expiration ) )
       remove( *dedupe_index.begin() );
 }
 

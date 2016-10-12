@@ -297,8 +297,6 @@ namespace graphene { namespace db2 {
                return;
             }
 
-            _stack.pop_back();
-
             auto& state = _stack.back();
             auto& prev_state = _stack[_stack.size()-2];
 
@@ -339,6 +337,8 @@ namespace graphene { namespace db2 {
                // nop + del(was=Y) -> del(was=Y)
                prev_state.removed_values.emplace( std::move(obj) ); //[obj.second->id] = std::move(obj.second);
             }
+
+            _stack.pop_back();
             --_revision;
          }
 
