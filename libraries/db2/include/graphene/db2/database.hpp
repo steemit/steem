@@ -294,7 +294,8 @@ namespace graphene { namespace db2 {
           *
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
-         void squash() {
+         void squash()
+         {
             if( !enabled() ) return;
             if( _stack.size() == 1 ) {
                _stack.pop_front();
@@ -304,15 +305,64 @@ namespace graphene { namespace db2 {
             auto& state = _stack.back();
             auto& prev_state = _stack[_stack.size()-2];
 
-            for( const auto& item : state.old_values ) {
+            // An object's relationship to a state can be:
+            // in new_ids            : new
+            // in old_values (was=X) : upd(was=X)
+            // in removed (was=X)    : del(was=X)
+            // not in any of above   : nop
+            //
+            // When merging A=prev_state and B=state we have a 4x4 matrix of all possibilities:
+            //
+            //                   |--------------------- B ----------------------|
+            //
+            //                +------------+------------+------------+------------+
+            //                | new        | upd(was=Y) | del(was=Y) | nop        |
+            //   +------------+------------+------------+------------+------------+
+            // / | new        | N/A        | new       A| nop       C| new       A|
+            // | +------------+------------+------------+------------+------------+
+            // | | upd(was=X) | N/A        | upd(was=X)A| del(was=X)C| upd(was=X)A|
+            // A +------------+------------+------------+------------+------------+
+            // | | del(was=X) | N/A        | N/A        | N/A        | del(was=X)A|
+            // | +------------+------------+------------+------------+------------+
+            // \ | nop        | new       B| upd(was=Y)B| del(was=Y)B| nop      AB|
+            //   +------------+------------+------------+------------+------------+
+            //
+            // Each entry was composed by labelling what should occur in the given case.
+            //
+            // Type A means the composition of states contains the same entry as the first of the two merged states for that object.
+            // Type B means the composition of states contains the same entry as the second of the two merged states for that object.
+            // Type C means the composition of states contains an entry different from either of the merged states for that object.
+            // Type N/A means the composition of states violates causal timing.
+            // Type AB means both type A and type B simultaneously.
+            //
+            // The merge() operation is defined as modifying prev_state in-place to be the state object which represents the composition of
+            // state A and B.
+            //
+            // Type A (and AB) can be implemented as a no-op; prev_state already contains the correct value for the merged state.
+            // Type B (and AB) can be implemented by copying from state to prev_state.
+            // Type C needs special case-by-case logic.
+            // Type N/A can be ignored or assert(false) as it can only occur if prev_state and state have illegal values
+            // (a serious logic error which should never happen).
+            //
+
+            // We can only be outside type A/AB (the nop path) if B is not nop, so it suffices to iterate through B's three containers.
+
+            for( const auto& item : state.old_values )
+            {
                if( prev_state.new_ids.find( item.second.id ) != prev_state.new_ids.end() )
+               {
+                  // new+upd -> new, type A
                   continue;
+               }
                if( prev_state.old_values.find( item.second.id ) != prev_state.old_values.end() )
+               {
+                  // upd(was=X) + upd(was=Y) -> upd(was=X), type A
                   continue;
+               }
                // del+upd -> N/A
                assert( prev_state.removed_values.find(item.second.id) == prev_state.removed_values.end() );
                // nop+upd(was=Y) -> upd(was=Y), type B
-               prev_state.old_values.emplace( std::move(item) ); //[item.second->id] = std::move(item.second);
+               prev_state.old_values.emplace( std::move(item) );
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
