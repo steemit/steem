@@ -374,7 +374,7 @@ namespace graphene { namespace db2 {
             if( itr != head.old_values.end() )
                return;
 
-            head.old_values.emplace( std::pair<typename value_type::id_type, const value_type&>( v.id, v ) );
+            head.old_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
          }
 
          void on_remove( const value_type& v ) {
@@ -396,7 +396,7 @@ namespace graphene { namespace db2 {
             if( head.removed_values.count( v.id ) )
                return;
 
-            head.old_values.emplace( std::pair<typename value_type::id_type, const value_type&>( v.id, v ) );
+            head.removed_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
          }
 
          void on_create( const value_type& v ) {
