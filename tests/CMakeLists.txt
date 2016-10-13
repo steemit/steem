@@ -18,4 +18,7 @@ if(MSVC)
   set_source_files_properties( tests/serialization_tests.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
 
+add_executable( database_tests tests/database_tests.cpp tests/main.cpp )
+target_link_libraries( database_tests graphene_db2 fc ${PLATFORM_SPECIFIC_LIBS} )
+
 #add_subdirectory( generate_empty_blocks )

@@ -6,13 +6,15 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <fc/io/raw.hpp>
 #include <fc/reflect/variant.hpp>
 
 using namespace graphene::db2;
 using namespace boost::multi_index;
 
-struct test_object : public graphene::db2::object<1, test_object> {
-   template<typename Constructor, typename Allocator> 
+struct test_object : public graphene::db2::object<1, test_object>
+{
+   template<typename Constructor, typename Allocator>
    test_object( Constructor&& c, allocator<Allocator> a ){
       c(*this);
    };
@@ -32,8 +34,8 @@ typedef multi_index_container<
   bip::allocator<test_object,bip::managed_mapped_file::segment_manager>
 > test_index;
 
-SET_INDEX_TYPE( test_object, test_index );
-FC_REFLECT( test_object, (a)(b) );
+GRAPHENE_DB2_SET_INDEX_TYPE( test_object, test_index );
+FC_REFLECT( test_object, (id)(a)(b) );
 
 
 BOOST_AUTO_TEST_CASE( db2_test )
@@ -42,9 +44,9 @@ BOOST_AUTO_TEST_CASE( db2_test )
    fc::temp_directory temp_dir( "." );
 
    database db;
+   uint64_t shared_file_size = 64*1024;
 
-   ilog( "creating 8GB database" );
-   db.open(  temp_dir.path() / "database.db" );
+   db.open(  temp_dir.path() / "database.db", shared_file_size );
    ilog( "adding text_index" );
    db.add_index<test_index>();
 
@@ -67,13 +69,15 @@ BOOST_AUTO_TEST_CASE( db2_test )
 
       wlog( ".......... MODIFY ........." );
       auto s = db.start_undo_session(true);
-      db.modify( first, [&]( test_object& o ) {
-           o.b = 4;
+      db.modify( first, [&]( test_object& o )
+      {
+         o.b = 4;
       });
-      const auto& second = db.create<test_object>( [&]( test_object& o ) {
-                              o.a = 20;
-                              o.b = 20;
-                              });
+      db.create<test_object>( [&]( test_object& o )
+      {
+         o.a = 20;
+         o.b = 20;
+      });
 
       for( const auto& item : idx.indices() ) idump((item));
 
@@ -93,9 +97,8 @@ BOOST_AUTO_TEST_CASE( db2_test )
    for( const auto& item : idx.indices() ) idump((item));
    db.close();
 
-   
    ilog( "opening again" );
-   db.open(  temp_dir.path() / "database.db" );
+   db.open(  temp_dir.path() / "database.db", shared_file_size );
    {
    const auto& idx = db.get_index<test_index>();
    for( const auto& item : idx.indices() ) idump((item));
@@ -104,14 +107,70 @@ BOOST_AUTO_TEST_CASE( db2_test )
 
    ilog( "opening copy" );
    database db2;
-   db2.open(  temp_dir.path() / "database.db" );
+   db2.open(  temp_dir.path() / "database.db", shared_file_size );
    db2.close();
 
 
-   idump(( fc::file_size( fc::absolute(temp_dir.path()) / "database.db" ) ) );
-
-   } FC_CAPTURE_AND_RETHROW() 
+   } FC_CAPTURE_AND_RETHROW()
  } catch ( const fc::exception& e ) {
     edump( (e.to_detail_string() ) );
  }
+}
+
+BOOST_AUTO_TEST_CASE( db2_next_id )
+{
+   try
+   {
+      fc::temp_directory temp_dir( "." );
+
+      database db;
+      uint64_t shared_file_size = 64*1024;
+      db.open( temp_dir.path() / "database.db", shared_file_size );
+
+      db.add_index<test_index>();
+      const test_object& first = db.create<test_object>( [&]( test_object& o ) {
+         o.a = 11;
+         o.b = 111;
+         });
+      BOOST_CHECK_EQUAL( first.id._id, 0 );
+
+      {
+         auto s = db.start_undo_session(true);
+         const test_object& second = db.create<test_object>( [&]( test_object& o )
+         {
+            o.a = 22;
+            o.b = 222;
+         });
+         BOOST_CHECK_EQUAL( second.id._id, 1 );
+         db.remove(second);
+         const test_object& third = db.create<test_object>( [&]( test_object& o )
+         {
+            o.a = 33;
+            o.b = 333;
+         });
+         BOOST_CHECK_EQUAL( third.id._id, 2 );
+         db.remove(third);
+         {
+            auto s2 = db.start_undo_session(true);
+            const test_object& fourth = db.create<test_object>( [&]( test_object& o )
+            {
+               o.a = 44;
+               o.b = 444;
+            });
+            BOOST_CHECK_EQUAL( fourth.id._id, 3 );
+            db.remove(fourth);
+            s2.undo();
+         }
+         const test_object& fifth = db.create<test_object>( [&]( test_object& o )
+         {
+            o.a = 55;
+            o.b = 555;
+         });
+         BOOST_CHECK_EQUAL( fifth.id._id, 3 );
+      }
+   }
+   catch( const fc::exception& e )
+   {
+      elog( "caught fc exception: ${e}", ("e", e.to_detail_string()) );
+   }
 }

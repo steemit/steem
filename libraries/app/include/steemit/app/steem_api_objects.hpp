@@ -45,7 +45,7 @@ typedef limit_order_object                      limit_order;
 typedef withdraw_vesting_route_object           withdraw_vesting_route;
 typedef decline_voting_rights_request_object    decline_voting_rights_request;
 typedef witness_vote_object                     witness_vote;
-typedef witness_schedule_object                 witness_schedule;
+typedef witness_schedule_object                 witness_schedule_api_object;
 
 struct comment
 {
