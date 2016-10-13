@@ -129,7 +129,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
    {
       ilog( "reindexing blockchain" );
       wipe( data_dir, false );
-      open( data_dir, shared_file_size );
+      open( data_dir, 0, shared_file_size );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -148,19 +148,15 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
          skip_witness_schedule_check |
          skip_authority_check |
          skip_validate | /// no need to validate operations
-         skip_validate_invariants |
-         skip_undo_block;
+         skip_validate_invariants;
 
       while( itr.first.block_num() != last_block_num )
       {
-         FC_ASSERT( itr.first.block_num() == head_block_num() + 1, "", ("next_block",itr.first.block_num())("head_block",head_block_num()) );
-         FC_ASSERT( itr.first.previous == head_block_id(), "", ("next_previous",itr.first.previous)("head_block",head_block_id()) );
          auto cur_block_num = itr.first.block_num();
          if( cur_block_num % 100000 == 0 )
             std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
-         push_block( itr.first, skip_flags );
+         apply_block( itr.first, skip_flags );
          itr = _block_log.read_block( itr.second );
-         //set_revision( head_block_num() ); // This should be able to be done once at the end of reindexing
       }
 
       apply_block( itr.first, skip_flags );
@@ -689,7 +685,7 @@ bool database::_push_block(const signed_block& new_block)
                 try
                 {
                    //undo_database::session session = _undo_db.start_undo_session();
-                   auto session = start_undo_session( !skip_undo_block );
+                   auto session = start_undo_session( true );
                    apply_block( (*ritr)->data, skip );
                    //session.commit();
                    session.push();
@@ -713,7 +709,7 @@ bool database::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr )
                    {
-                      auto session = start_undo_session( !skip_undo_block );
+                      auto session = start_undo_session( true );
                       apply_block( (*ritr)->data, skip );
                       session.push();
                    }
@@ -729,7 +725,7 @@ bool database::_push_block(const signed_block& new_block)
 
    try
    {
-      auto session = start_undo_session( !skip_undo_block );
+      auto session = start_undo_session( true );
       apply_block(new_block, skip);
       session.push();
    }

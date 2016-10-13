@@ -345,12 +345,11 @@ namespace graphene { namespace db2 {
          /**
           * Discards all undo history prior to revision
           */
-         void commit( int64_t revision ) {
-            while( _stack.size() ) {
-                if( _stack[0].revision <= revision ) {
-                  elog( "_stack.pop_front" );
-                  _stack.pop_front();
-                }
+         void commit( int64_t revision )
+         {
+            while( _stack.size() && _stack[0].revision <= revision )
+            {
+               _stack.pop_front();
             }
          }
 
