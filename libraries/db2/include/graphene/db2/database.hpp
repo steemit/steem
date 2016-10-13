@@ -137,6 +137,10 @@ namespace graphene { namespace db2 {
             }*/
          }
 
+         /**
+          * Construct a new element in the multi_index_container.
+          * Set the ID to the next available ID, then increment _next_id and fire off on_create().
+          */
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
             auto new_id = _next_id;
