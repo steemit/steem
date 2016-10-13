@@ -277,12 +277,11 @@ namespace graphene { namespace db2 {
                _indices.emplace( std::move( item.second ) );
             }
 
-            if( head.new_ids.size() ) {
-               for( auto id : head.new_ids ) {
-                  _indices.erase( _indices.find( id ) );
-               }
-               _next_id = *head.new_ids.begin();
+            for( auto id : head.new_ids )
+            {
+               _indices.erase( _indices.find( id ) );
             }
+            _next_id = head.old_next_id;
 
             _stack.pop_back();
             --_revision;
