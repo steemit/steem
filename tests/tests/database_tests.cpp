@@ -35,7 +35,7 @@ typedef multi_index_container<
 > test_index;
 
 GRAPHENE_DB2_SET_INDEX_TYPE( test_object, test_index );
-FC_REFLECT( test_object, (a)(b) );
+FC_REFLECT( test_object, (id)(a)(b) );
 
 
 BOOST_AUTO_TEST_CASE( db2_test )
@@ -115,4 +115,62 @@ BOOST_AUTO_TEST_CASE( db2_test )
  } catch ( const fc::exception& e ) {
     edump( (e.to_detail_string() ) );
  }
+}
+
+BOOST_AUTO_TEST_CASE( db2_next_id )
+{
+   try
+   {
+      fc::temp_directory temp_dir( "." );
+
+      database db;
+      uint64_t shared_file_size = 64*1024;
+      db.open( temp_dir.path() / "database.db", shared_file_size );
+
+      db.add_index<test_index>();
+      const test_object& first = db.create<test_object>( [&]( test_object& o ) {
+         o.a = 11;
+         o.b = 111;
+         });
+      BOOST_CHECK_EQUAL( first.id._id, 0 );
+
+      {
+         auto s = db.start_undo_session(true);
+         const test_object& second = db.create<test_object>( [&]( test_object& o )
+         {
+            o.a = 22;
+            o.b = 222;
+         });
+         BOOST_CHECK_EQUAL( second.id._id, 1 );
+         db.remove(second);
+         const test_object& third = db.create<test_object>( [&]( test_object& o )
+         {
+            o.a = 33;
+            o.b = 333;
+         });
+         BOOST_CHECK_EQUAL( third.id._id, 2 );
+         db.remove(third);
+         {
+            auto s2 = db.start_undo_session(true);
+            const test_object& fourth = db.create<test_object>( [&]( test_object& o )
+            {
+               o.a = 44;
+               o.b = 444;
+            });
+            BOOST_CHECK_EQUAL( fourth.id._id, 3 );
+            db.remove(fourth);
+            s2.undo();
+         }
+         const test_object& fifth = db.create<test_object>( [&]( test_object& o )
+         {
+            o.a = 55;
+            o.b = 555;
+         });
+         BOOST_CHECK_EQUAL( fifth.id._id, 3 );
+      }
+   }
+   catch( const fc::exception& e )
+   {
+      elog( "caught fc exception: ${e}", ("e", e.to_detail_string()) );
+   }
 }
