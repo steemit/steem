@@ -168,7 +168,7 @@ namespace steemit { namespace app {
          */
         vector< account_name_type >       pow_queue;
         map< string, witness >            witnesses;
-        witness_schedule                  witness_schedule;
+        witness_schedule_api_object       witness_schedule;
         price                             feed_price;
         string                            error;
         optional< market >                market_data;
