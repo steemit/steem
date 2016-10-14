@@ -31,6 +31,8 @@ typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > s
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
 
+typedef bip::vector< char, allocator< char > > buffer_type;
+
 struct by_id;
 
 enum object_type
@@ -138,25 +140,26 @@ namespace fc
       namespace bip = graphene::db2::bip;
       using graphene::db2::allocator;
 
-      template< typename T > inline void pack( const T& v, bip::vector< char , allocator< char > >& raw )
+      template< typename T > inline void pack( steemit::chain::buffer_type& raw, const T& v )
       {
-         std::vector< char > stack_raw = pack( v );
-         raw.clear();
-         raw.reserve( stack_raw.size() );
-
-         for( auto c : stack_raw )
-            raw.push_back( c );
+         auto size = pack_size( v );
+         raw.resize( size );
+         datastream< char* > ds( raw.data(), size );
+         pack( ds, v );
       }
 
-      template< typename T > inline T unpack( const bip::vector< char, allocator< char > >& raw )
+      template< typename T > inline void unpack( const steemit::chain::buffer_type& raw, T& v )
       {
-         std::vector< char > stack_raw;
-         stack_raw.reserve( raw.size() );
+         datastream< const char* > ds( raw.data(), raw.size() );
+         unpack( ds, v );
+      }
 
-         for( auto c : raw )
-            stack_raw.push_back( c );
-
-         return unpack< T >( stack_raw );
+      template< typename T > inline T unpack( const steemit::chain::buffer_type& raw )
+      {
+         T v;
+         datastream< const char* > ds( raw.data(), raw.size() );
+         unpack( ds, v );
+         return v;
       }
    }
 }

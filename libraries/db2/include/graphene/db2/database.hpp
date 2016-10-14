@@ -424,6 +424,15 @@ namespace graphene { namespace db2 {
             }
          }
 
+         /**
+          * Unwinds all undo states
+          */
+         void undo_all()
+         {
+            while( enabled() )
+               undo();
+         }
+
          void set_revision( uint64_t revision )
          {
             FC_ASSERT( _stack.size() == 0, "Revision can only be changed on empty undo state" );
@@ -527,6 +536,7 @@ namespace graphene { namespace db2 {
          virtual void    undo()const = 0;
          virtual void    squash()const = 0;
          virtual void    commit( int64_t revision )const = 0;
+         virtual void    undo_all()const = 0;
          virtual void    export_to_file( const fc::path& filename ) const = 0;
          virtual void    import_from_file( const fc::path& filename ) = 0;
          virtual uint32_t type_id()const  = 0;
@@ -548,6 +558,7 @@ namespace graphene { namespace db2 {
          virtual void    undo()const  override { _base.undo(); }
          virtual void    squash()const  override { _base.squash(); }
          virtual void    commit( int64_t revision )const  override { _base.commit(revision); }
+         virtual void    undo_all() const override {_base.undo_all(); }
          virtual void    export_to_file( const fc::path& filename )const override { _base.export_to_file( filename ); }
          virtual void    import_from_file( const fc::path& filename ) override { _base.import_from_file( filename ); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
@@ -603,6 +614,7 @@ namespace graphene { namespace db2 {
          void undo();
          void squash();
          void commit( int64_t revision );
+         void undo_all();
 
 
          void set_revision( uint64_t revision )

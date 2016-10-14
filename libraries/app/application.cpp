@@ -238,8 +238,6 @@ namespace detail {
 
       void startup()
       { try {
-         bool clean = !fc::exists(_data_dir / "blockchain/dblock");
-         fc::create_directories(_data_dir / "blockchain/dblock");
          fc::create_directories(_data_dir / "node/transaction_history");
 
          _max_block_age =_options->at("max-block-age").as<int32_t>();
@@ -265,8 +263,9 @@ namespace detail {
          {
             ilog("Replaying blockchain on user request.");
             _chain_db->reindex(_data_dir/"blockchain" );
-         } else if( clean ) {
-
+         }
+         else
+         {
             auto is_new = [&]() -> bool
             {
                // directory doesn't exist
@@ -284,6 +283,7 @@ namespace detail {
                fc::read_file_contents( _data_dir / "db_version", version_str );
                return (version_str != GRAPHENE_CURRENT_DB_VERSION);
             };
+
             if( !is_new() && is_outdated() )
             {
                ilog("Replaying blockchain due to version upgrade");
@@ -302,13 +302,30 @@ namespace detail {
                   db_version.write( version_string.c_str(), version_string.size() );
                   db_version.close();
                }
-            } else {
-              _chain_db->open(_data_dir / "blockchain" );
             }
-         } else {
-            wlog("Detected unclean shutdown. Replaying blockchain...");
-            _chain_db->reindex(_data_dir / "blockchain" );
+            else
+            {
+               try
+               {
+                  _chain_db->open(_data_dir / "blockchain" );
+               }
+               catch( fc::assert_exception& )
+               {
+                  wlog( "Error when opening database. Attempting reindex..." );
+
+                  try
+                  {
+                     _chain_db->reindex( _data_dir / "blockchain" );
+                  }
+                  catch( chain::block_log_exception& )
+                  {
+                     wlog( "Error opening block log. Having to resync from network..." );
+                     _chain_db->open( _data_dir / "blockchain" );
+                  }
+               }
+            }
          }
+
          //_pending_trx_db->open(_data_dir / "node/transaction_history" );
 
          if( _options->count("force-validate") )

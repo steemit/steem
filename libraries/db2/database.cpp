@@ -56,21 +56,16 @@ namespace graphene { namespace db2 {
          _segment->flush();
    }
 
-   void database::close() {
-      ilog( "" );
+   void database::close()
+   {
       _segment.reset();
-      ilog( "" );
       _data_dir = fc::path();
-      ilog( "" );
    }
 
    void database::wipe( const fc::path& dir )
    {
-      ilog( "" );
       _segment.reset();
-      ilog( "" );
       fc::remove_all( dir / "shared_memory" );
-      ilog( "" );
       _data_dir = fc::path();
    }
 
@@ -88,19 +83,33 @@ namespace graphene { namespace db2 {
       }
    }
 
-   void database::undo() {
-      for( auto& item : _index_list ) {
+   void database::undo()
+   {
+      for( auto& item : _index_list )
+      {
          item->undo();
       }
    }
-   void database::squash() {
-      for( auto& item : _index_list ) {
+   void database::squash()
+   {
+      for( auto& item : _index_list )
+      {
          item->squash();
       }
    }
-   void database::commit( int64_t revision ) {
-      for( auto& item : _index_list ) {
+   void database::commit( int64_t revision )
+   {
+      for( auto& item : _index_list )
+      {
          item->commit( revision );
+      }
+   }
+
+   void database::undo_all()
+   {
+      for( auto& item : _index_list )
+      {
+         item->undo_all();
       }
    }
 

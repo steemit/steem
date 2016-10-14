@@ -117,8 +117,10 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
          FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
             "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
 
-      // unwind all undo states
-      // set fork_db head
+      // Rewind all undo state. This should return us to the state at the last irreversible block.
+      undo_all();
+      if( head_block_num() )
+         _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
@@ -127,13 +129,13 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
 {
    try
    {
-      ilog( "reindexing blockchain" );
+      ilog( "Reindexing Blockchain" );
       wipe( data_dir, false );
       open( data_dir, 0, shared_file_size );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
-      FC_ASSERT( _block_log.head(), "No blocks in block log. Cannot reindex an empty chain." );
+      STEEMIT_ASSERT( _block_log.head(), block_log_exception, "No blocks in block log. Cannot reindex an empty chain." );
 
       ilog( "Replaying blocks..." );
 
@@ -146,7 +148,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
          skip_tapos_check |
          skip_merkle_check |
          skip_witness_schedule_check |
-         /*skip_authority_check |*/
+         skip_authority_check |
          skip_validate | /// no need to validate operations
          skip_validate_invariants;
 
@@ -179,18 +181,15 @@ void database::wipe(const fc::path& data_dir, bool include_blocks)
    db2::database::wipe( data_dir );
    if( include_blocks )
       fc::remove_all( data_dir / "block_log" );
-   ilog("Done");
 }
 
 void database::close(bool rewind)
 {
    try
    {
-      // ilog( "Clearing pending state" );
       // Since pop_block() will move tx's in the popped blocks into pending,
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
-      ilog( "" );
       clear_pending();
 
       db2::database::flush();
@@ -205,19 +204,6 @@ void database::close(bool rewind)
 
 bool database::is_known_block( const block_id_type& id )const
 {
-   /*
-   bool result = _fork_db.is_known_block( id );
-
-   if( !result )
-   {
-      auto block = find< block_stats_object >( protocol::block_header::num_from_id( id ) );
-      if( block )
-      {
-         result = block->block_id == id;
-      }
-   }
-
-   return result;*/
    return _fork_db.is_known_block(id) || find< block_stats_object, by_block_id >( id );
 }
 
@@ -263,9 +249,9 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
    if( !stats )
       return b;
 
-   b = signed_block();
-   fc::datastream< const char* > ds( stats->packed_block.data(), stats->packed_block.size() );
-   fc::raw::unpack( ds, *b );
+   signed_block block;
+   fc::raw::unpack( stats->packed_block, block );
+   b = block;
    return b;
 }
 
@@ -274,7 +260,9 @@ const signed_transaction& database::get_recent_transaction( const transaction_id
    auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
-   return itr->trx;
+   signed_transaction trx;
+   fc::raw::unpack( itr->packed_trx, trx );
+   return trx;;
 }
 
 std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head_of_fork ) const
@@ -2719,8 +2707,6 @@ void database::init_genesis( uint64_t init_supply )
          p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
       } );
 
-      idump( (gpo.id));
-
       // Nothing to do
       create< feed_history_object >( [&]( feed_history_object& o ) {});
       for( int i = 0; i < 0x10000; i++ )
@@ -2884,10 +2870,12 @@ void database::_apply_block( const signed_block& next_block )
    {
       assert( bso.block_num() == next_block_num ); // Probably can be taken out. Sanity check
       bso.block_id = next_block_id;
+      fc::raw::pack( bso.packed_block, next_block );
+      /*
       auto size = fc::raw::pack_size( next_block );
       bso.packed_block.resize( size );
       fc::datastream<char*> ds( bso.packed_block.data(), size );
-      fc::raw::pack( ds, next_block );
+      fc::raw::pack( ds, next_block );*/
    });
 
    update_global_dynamic_data(next_block);
@@ -3110,7 +3098,8 @@ void database::_apply_transaction(const signed_transaction& trx)
    {
       create<transaction_object>([&](transaction_object& transaction) {
          transaction.trx_id = trx_id;
-         transaction.trx = trx;
+         transaction.expiration = trx.expiration;
+         fc::raw::pack( transaction.packed_trx, trx );
       });
    }
 
@@ -3547,7 +3536,7 @@ void database::clear_expired_transactions()
    //Transactions must have expired by at least two forking windows in order to be removed.
    auto& transaction_idx = get_index< transaction_index >();
    const auto& dedupe_index = transaction_idx.indices().get< by_expiration >();
-   while( ( !dedupe_index.empty() ) && ( head_block_time() > dedupe_index.begin()->trx.expiration ) )
+   while( ( !dedupe_index.empty() ) && ( head_block_time() > dedupe_index.begin()->expiration ) )
       remove( *dedupe_index.begin() );
 }
 

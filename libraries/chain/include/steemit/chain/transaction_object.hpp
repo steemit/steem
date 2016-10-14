@@ -19,16 +19,16 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          transaction_object( Constructor&& c, allocator< Allocator > a )
+            : packed_trx( a )
          {
             c( *this );
          }
 
          id_type              id;
 
-         signed_transaction   trx;
+         bip::vector< char, allocator< char > > packed_trx;
          transaction_id_type  trx_id;
-
-         time_point_sec get_expiration()const { return trx.expiration; }
+         time_point_sec       expiration;
    };
 
    struct by_expiration;
@@ -36,14 +36,14 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       transaction_object,
       indexed_by<
-         ordered_unique< tag<by_id>, member< transaction_object, transaction_object_id_type, &transaction_object::id > >,
-         hashed_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type> >,
-         ordered_non_unique< tag<by_expiration>, const_mem_fun<transaction_object, time_point_sec, &transaction_object::get_expiration > >
+         ordered_unique< tag< by_id >, member< transaction_object, transaction_object_id_type, &transaction_object::id > >,
+         hashed_unique< tag< by_trx_id >, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id), std::hash<transaction_id_type> >,
+         ordered_non_unique< tag< by_expiration >, member<transaction_object, time_point_sec, &transaction_object::expiration > >
       >,
       allocator< transaction_object >
    > transaction_index;
 
 } } // steemit::chain
 
-FC_REFLECT_DERIVED( steemit::chain::transaction_object, (graphene::db::object), (id)(trx)(trx_id) )
+FC_REFLECT_DERIVED( steemit::chain::transaction_object, (graphene::db::object), (id)(packed_trx)(trx_id)(expiration) )
 SET_INDEX_TYPE( steemit::chain::transaction_object, steemit::chain::transaction_index )

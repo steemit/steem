@@ -100,7 +100,7 @@ applied_operation::applied_operation( const operation_object& op_obj )
    virtual_op( op_obj.virtual_op ),
    timestamp( op_obj.timestamp )
 {
-   // fc::raw::unpack( op_obj.serialized_op, op );     // g++ refuses to compile this as ambiguous
+   //fc::raw::unpack( op_obj.serialized_op, op );     // g++ refuses to compile this as ambiguous
    op = fc::raw::unpack< operation >( op_obj.serialized_op );
 }
 

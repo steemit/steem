@@ -75,8 +75,11 @@ struct operation_visitor
                obj.op_in_trx    = _note.op_in_trx;
                obj.virtual_op   = _note.virtual_op;
                obj.timestamp    = _db.head_block_time();
-               fc::raw::pack( _note.op, obj.serialized_op );
-               // TODO: Check size of serialized_op
+               //fc::raw::pack( obj.serialized_op , _note.op);  //call to 'pack' is ambiguous
+               auto size = fc::raw::pack_size( _note.op );
+               obj.serialized_op.resize( size );
+               fc::datastream< char* > ds( obj.serialized_op.data(), size );
+               fc::raw::pack( ds, _note.op );
             });
          }
 
