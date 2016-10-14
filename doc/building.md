@@ -10,24 +10,17 @@ running tests, it is recommended to build as release.
 
 ### LOW_MEMORY_NODE=[OFF/ON]
 
-Builds steemd to be a consensus only low memory node. Data and fields not
+Builds steemd to be a consensus-only low memory node. Data and fields not
 needed for consensus are not stored in the object database.  This option is
 recommended for witnesses and seed-nodes.
 
-### ENABLE_CONTENT_PATCHING=[ON/OFF]
-
-Allows content to be updated using a patch rather than a complete
-replacement.  If you do not need an API server or need to see the result of
-patching content then you can set this to OFF.
-
 ### CLEAR_VOTES=[ON/OFF]
 
-Clears old votes from memory that are not longer required for consensus.
+Clears old votes from memory that are no longer required for consensus.
 
 ### BUILD_STEEM_TESTNET=[OFF/ON]
 
-Builds steem for use in a private testnet. Also required for correctly
-building unit tests
+Builds steem for use in a private testnet. Also required for building unit tests.
 
 ## Building under Docker
 
@@ -117,12 +110,10 @@ Steem requires Boost 1.57 or later. The Boost provided in the Ubuntu 14.04
 package manager (Boost 1.55) is too old. So building Steem on Ubuntu 14.04
 requires downloading and installing a more recent version of Boost.
 
-<!-- FIXME is the 16.04 below correct? should it read 14.04? -->
-
 According to [this mailing list
 post](http://boost.2283326.n4.nabble.com/1-58-1-bugfix-release-necessary-td4674686.html),
 Boost 1.58 is not compatible with gcc 4.8 (the default C++ compiler for
-Ubuntu 16.04) when compiling in C++11 mode (which Steem does). So we will
+Ubuntu 14.04) when compiling in C++11 mode (which Steem does). So we will
 use Boost 1.57; if you try to build with any other version, you will
 probably have a bad time.
 

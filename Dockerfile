@@ -36,8 +36,8 @@ RUN \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
-        -DENABLE_CONTENT_PATCHING=OFF \
         -DCLEAR_VOTES=ON \
+        -DBUILD_STEEM_TESTNET=OFF \
         .. \
     && \
     make -j$(nproc) && \
@@ -50,8 +50,8 @@ RUN \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=OFF \
-        -DENABLE_CONTENT_PATCHING=ON \
         -DCLEAR_VOTES=OFF \
+        -DBUILD_STEEM_TESTNET=OFF \
         .. \
     && \
     make -j$(nproc) && \
