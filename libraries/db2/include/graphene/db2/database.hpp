@@ -61,6 +61,24 @@ namespace graphene { namespace db2 {
          friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
          int64_t _id = 0;
    };
+   /*
+   class generic_id
+   {
+      public:
+         template< typename T >
+         generic_id( T obj& ): _type_id( obj.type_id ), _id( obj.id._id ) {}
+
+         const T& operator()( const database& db )const;
+
+         friend bool operator <  ( const generic_id& a, const generic_id& b ) { return a._type_id != b._type_id ? a._type_id < b._type_id : a._id < b._id; }
+         friend bool operator <  ( const generic_id& a, const generic_id& b ) { return a._type_id != b._type_id ? a._type_id > b._type_id : a._id > b._id; }
+         friend bool operator == ( const generic_id& a, const generic_id& b ) { return a._type_id == b._type_id && a._id == b._id; }
+         friend bool operator != ( const generic_id& a, const generic_id& b ) { return a._type_id != b._type_id || a._id != b._id; }
+
+         uint16_t _type_id;
+         int64_t  _id;
+   }
+   */
 
    template<uint16_t TypeNumber, typename Derived>
    struct object {

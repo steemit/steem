@@ -21,23 +21,19 @@ namespace steemit { namespace chain {
       public:
          template<typename Constructor, typename Allocator>
          account_object( Constructor&& c, allocator< Allocator > a )
-            :owner( a ), active( a ), posting( a ), json_metadata( a )
+            :json_metadata( a )
          {
             c(*this);
          };
 
-         id_type            id;
+         id_type           id;
 
-         account_name_type  name;
-         shared_authority   owner; ///< used for backup control, can set owner or active
-         shared_authority   active; ///< used for all monetary operations, can set active or posting
-         shared_authority   posting; ///< used for voting and posting
-         public_key_type    memo_key;
-         shared_string      json_metadata;
-         account_name_type  proxy;
+         account_name_type name;
+         public_key_type   memo_key;
+         shared_string     json_metadata;
+         account_name_type proxy;
 
-         time_point_sec  last_owner_update;
-         time_point_sec  last_account_update;
+         time_point_sec    last_account_update;
 
          time_point_sec    created;
          bool              mined = true;
@@ -135,30 +131,26 @@ namespace steemit { namespace chain {
          }
    };
 
-   /**
-    *  @brief This secondary index will allow a reverse lookup of all accounts that a particular key or account
-    *  is an potential signing authority.
-    */
-   /*class account_member_index : public secondary_index
+   class account_authority_object : public object< account_authority_object_type, account_authority_object >
    {
       public:
-         virtual void object_inserted( const object& obj ) override;
-         virtual void object_removed( const object& obj ) override;
-         virtual void about_to_modify( const object& before ) override;
-         virtual void object_modified( const object& after  ) override;
+         template< typename Constructor, typename Allocator >
+         account_authority_object( Constructor&& c, allocator< Allocator > a )
+            : owner( a ), active( a ), posting( a )
+         {
+            c( *this );
+         }
 
-         /** given an account or key, map it to the set of accounts that reference it in an active or owner authority */
-         /*
-         map< string, set<string> >          account_to_account_memberships;
-         map< public_key_type, set<string> > account_to_key_memberships;
+         id_type           id;
 
-      protected:
-         set<string>             get_account_members( const account_object& a )const;
-         set<public_key_type>    get_key_members( const account_object& a )const;
+         account_name_type account;
 
-         set<string>             before_account_members;
-         set<public_key_type>    before_key_members;
-   };*/
+         shared_authority  owner;   ///< used for backup control, can set owner or active
+         shared_authority  active;  ///< used for all monetary operations, can set active or posting
+         shared_authority  posting; ///< used for voting and posting
+
+         time_point_sec    last_owner_update;
+   };
 
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
    {
@@ -219,7 +211,6 @@ namespace steemit { namespace chain {
    struct by_smd_balance;
    struct by_post_count;
    struct by_vote_count;
-   struct by_last_owner_update;
 
    /**
     * @ingroup object_index
@@ -284,13 +275,6 @@ namespace steemit { namespace chain {
                member< account_object, account_id_type, &account_object::id >
             >,
             composite_key_compare< std::greater< uint32_t >, std::less< account_id_type > >
-         >,
-         ordered_unique< tag< by_last_owner_update >,
-            composite_key< account_object,
-               member< account_object, time_point_sec, &account_object::last_owner_update >,
-               member< account_object, account_id_type, &account_object::id >
-            >,
-            composite_key_compare< std::greater< time_point_sec >, std::less< account_id_type > >
          >
       >,
       allocator< account_object >
@@ -315,6 +299,32 @@ namespace steemit { namespace chain {
       >,
       allocator< owner_authority_history_object >
    > owner_authority_history_index;
+
+   struct by_last_owner_update;
+
+   typedef multi_index_container <
+      account_authority_object,
+      indexed_by <
+         ordered_unique< tag< by_id >,
+            member< account_authority_object, account_authority_id_type, &account_authority_object::id > >,
+         ordered_unique< tag< by_account >,
+            composite_key< account_authority_object,
+               member< account_authority_object, account_name_type, &account_authority_object::account >,
+               member< account_authority_object, account_authority_id_type, &account_authority_object::id >
+            >,
+            composite_key_compare< std::less< account_name_type >, std::less< account_authority_id_type > >
+         >,
+         ordered_unique< tag< by_last_owner_update >,
+            composite_key< account_authority_object,
+               member< account_authority_object, time_point_sec, &account_authority_object::last_owner_update >,
+               member< account_authority_object, account_authority_id_type, &account_authority_object::id >
+            >,
+            composite_key_compare< std::greater< time_point_sec >, std::less< account_authority_id_type > >
+         >
+      >,
+      allocator< account_authority_object >
+   > account_authority_index;
+
 
    struct by_expiration;
 
@@ -368,7 +378,7 @@ namespace steemit { namespace chain {
 } }
 
 FC_REFLECT( steemit::chain::account_object,
-             (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
+             (id)(name)/*(owner)(active)(posting)*/(memo_key)(json_metadata)(proxy)/*(last_owner_update)*/(last_account_update)
              (created)(mined)
              (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
@@ -385,6 +395,11 @@ FC_REFLECT( steemit::chain::account_object,
              (last_post)(last_root_post)(post_bandwidth)
           )
 SET_INDEX_TYPE( steemit::chain::account_object, steemit::chain::account_index )
+
+FC_REFLECT( steemit::chain::account_authority_object,
+             (id)(account)(owner)(active)(posting)(last_owner_update)
+)
+SET_INDEX_TYPE( steemit::chain::account_authority_object, steemit::chain::account_authority_index )
 
 FC_REFLECT( steemit::chain::owner_authority_history_object,
              (id)(account)(previous_owner_authority)(last_valid_time)

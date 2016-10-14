@@ -161,16 +161,16 @@ struct category
 
 struct account
 {
-   account( const chain::account_object& a ) :
+   account( const chain::account_object& a, const chain::account_authority_object& auth ) :
       id( a.id ),
       name( a.name ),
-      owner( authority( a.owner ) ),
-      active( authority( a.active ) ),
-      posting( authority( a.posting ) ),
+      owner( authority( auth.owner ) ),
+      active( authority( auth.active ) ),
+      posting( authority( auth.posting ) ),
       memo_key( a.memo_key ),
       json_metadata( to_string( a.json_metadata ) ),
       proxy( a.proxy ),
-      last_owner_update( a.last_owner_update ),
+      last_owner_update( auth.last_owner_update ),
       last_account_update( a.last_account_update ),
       created( a.created ),
       mined( a.mined ),

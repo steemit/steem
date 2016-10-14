@@ -41,7 +41,7 @@ std::shared_ptr< steemit::plugin::auth_util::auth_util_plugin > auth_util_api_im
 void auth_util_api_impl::check_authority_signature( const check_authority_signature_params& args, check_authority_signature_result& result )
 {
    std::shared_ptr< chain::database > db = app.chain_database();
-   const chain::account_object& acct = db->get_account( args.account_name );
+   const chain::account_authority_object& acct = db->get< chain::account_authority_object, chain::by_account >( args.account_name );
    protocol::authority auth;
    if( (args.level == "posting") || (args.level == "p") )
    {
@@ -69,7 +69,7 @@ void auth_util_api_impl::check_authority_signature( const check_authority_signat
    flat_set< protocol::public_key_type > avail;
    protocol::sign_state ss( signing_keys, [&db]( const std::string& account_name ) -> const protocol::authority
    {
-      return protocol::authority( db->get_account( account_name ).active );
+      return protocol::authority(db->get< chain::account_authority_object, chain::by_account >( account_name ).active );
    }, avail );
 
    bool has_authority = ss.check_authority( auth );

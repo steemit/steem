@@ -126,11 +126,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
    const auto& new_account = db().create< account_object >( [&]( account_object& acc )
    {
       acc.name = o.new_account_name;
-      acc.owner = o.owner;
-      acc.active = o.active;
-      acc.posting = o.posting;
       acc.memo_key = o.memo_key;
-      acc.last_owner_update = fc::time_point_sec::min();
       acc.created = props.time;
       acc.last_vote_time = props.time;
       acc.mined = false;
@@ -146,6 +142,15 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       #endif
    });
 
+   db().create< account_authority_object >( [&]( account_authority_object& auth )
+   {
+      auth.account = o.new_account_name;
+      auth.owner = o.owner;
+      auth.active = o.active;
+      auth.posting = o.posting;
+      auth.last_owner_update = fc::time_point_sec::min();
+   });
+
    if( o.fee.amount > 0 )
       db().create_vesting( new_account, o.fee );
 }
@@ -159,12 +164,13 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       o.posting->validate();
 
    const auto& account = db().get_account( o.account );
+   const auto& account_auth = db().get< account_authority_object, by_account >( o.account );
 
    if( o.owner )
    {
 #ifndef IS_TESTNET
       if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
-         FC_ASSERT( db().head_block_time() - account.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "can only update owner authority once a minute" );
+         FC_ASSERT( db().head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "can only update owner authority once a minute" );
 #endif
 
       if( db().is_producing() ) // TODO: Add HF 15
@@ -197,9 +203,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    db().modify( account, [&]( account_object& acc )
    {
-      if( o.active ) acc.active = *o.active;
-      if( o.posting ) acc.posting = *o.posting;
-
       if( o.memo_key != public_key_type() )
             acc.memo_key = o.memo_key;
 
@@ -216,6 +219,15 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
             acc.json_metadata = o.json_metadata;
       #endif
    });
+
+   if( o.active || o.posting )
+   {
+      db().modify( account_auth, [&]( account_authority_object& auth)
+      {
+         if( o.active )  auth.active  = *o.active;
+         if( o.posting ) auth.posting = *o.posting;
+      });
+   }
 
 }
 
@@ -1369,13 +1381,11 @@ void pow_apply( database& db, Operation o )
    const auto& accounts_by_name = db.get_index<account_index>().indices().get<by_name>();
 
    auto itr = accounts_by_name.find(o.get_worker_account());
-   if(itr == accounts_by_name.end()) {
+   if(itr == accounts_by_name.end())
+   {
       db.create< account_object >( [&]( account_object& acc )
       {
          acc.name = o.get_worker_account();
-         acc.owner = authority( 1, o.work.worker, 1);
-         acc.active = acc.owner;
-         acc.posting = acc.owner;
          acc.memo_key = o.work.worker;
          acc.created = dgp.time;
          acc.last_vote_time = dgp.time;
@@ -1385,12 +1395,21 @@ void pow_apply( database& db, Operation o )
          else
             acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
+
+      db.create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = o.get_worker_account();
+         auth.owner = authority( 1, o.work.worker, 1);
+         auth.active = auth.owner;
+         auth.posting = auth.owner;
+      });
    }
 
    const auto& worker_account = db.get_account( o.get_worker_account() ); // verify it exists
-   FC_ASSERT( worker_account.active.num_auths() == 1, "miners can only have one key auth ${a}", ("a",worker_account.active) );
-   FC_ASSERT( worker_account.active.key_auths.size() == 1, "miners may only have one key auth" );
-   FC_ASSERT( worker_account.active.key_auths.begin()->first == o.work.worker, "work must be performed by key that signed the work" );
+   const auto& worker_auth = db.get< account_authority_object, by_account >( o.get_worker_account() );
+   FC_ASSERT( worker_auth.active.num_auths() == 1, "miners can only have one key auth ${a}", ("a",worker_auth.active) );
+   FC_ASSERT( worker_auth.active.key_auths.size() == 1, "miners may only have one key auth" );
+   FC_ASSERT( worker_auth.active.key_auths.begin()->first == o.work.worker, "work must be performed by key that signed the work" );
    FC_ASSERT( o.block_id == db.head_block_id(), "pow not for last block" );
    if( db.has_hardfork( STEEMIT_HARDFORK_0_13__256 ) )
       FC_ASSERT( worker_account.last_account_update < db.head_block_time(), "worker account must not have updated their account this block" );
@@ -1470,14 +1489,20 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
       db.create< account_object >( [&]( account_object& acc )
       {
          acc.name = work.input.worker_account;
-         acc.owner = authority( 1, *o.new_owner_key, 1);
-         acc.active = acc.owner;
-         acc.posting = acc.owner;
          acc.memo_key = *o.new_owner_key;
          acc.created = dgp.time;
          acc.last_vote_time = dgp.time;
          acc.recovery_account = ""; /// highest voted witness at time of recovery
       });
+
+      db.create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = work.input.worker_account;
+         auth.owner = authority( 1, *o.new_owner_key, 1);
+         auth.active = auth.owner;
+         auth.posting = auth.owner;
+      });
+
       db.create<witness_object>( [&]( witness_object& w )
       {
           w.owner             = work.input.worker_account;

@@ -146,7 +146,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
          skip_tapos_check |
          skip_merkle_check |
          skip_witness_schedule_check |
-         skip_authority_check |
+         /*skip_authority_check |*/
          skip_validate | /// no need to validate operations
          skip_validate_invariants;
 
@@ -303,74 +303,31 @@ chain_id_type database::get_chain_id() const
 const witness_object& database::get_witness( const account_name_type& name ) const
 {
    return get< witness_object, by_name >( name );
-   /*
-   const auto& witnesses_by_name = get_index_type< witness_index >().indices().get< by_name >();
-   auto itr = witnesses_by_name.find( name );
-   FC_ASSERT( itr != witnesses_by_name.end(),
-              "Unable to find witness account '${wit}'. Did you forget to add a record for it?",
-              ( "wit", name ) );
-   return *itr;
-   */
 }
 
 const witness_object* database::find_witness( const account_name_type& name ) const
 {
    return find< witness_object, by_name >( name );
-   /*
-   const auto& witnesses_by_name = get_index_type< witness_index >().indices().get< by_name >();
-   auto itr = witnesses_by_name.find( name );
-   if( itr == witnesses_by_name.end() ) return nullptr;
-   return &*itr;
-   */
 }
 
 const account_object& database::get_account( const account_name_type& name )const
 {
    return get< account_object, by_name >( name );
-   /*
-   const auto& accounts_by_name = get_index_type<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find(name);
-   FC_ASSERT(itr != accounts_by_name.end(),
-             "Unable to find account '${acct}'. Did you forget to add a record for it?",
-             ("acct", name));
-   return *itr;*/
 }
 
 const account_object* database::find_account( const account_name_type& name )const
 {
    return find< account_object, by_name >( name );
-   /*
-   const auto& accounts_by_name = get_index_type<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find(name);
-   if( itr == accounts_by_name.end() )
-      return nullptr;
-   return &*itr;
-   */
 }
 
 const comment_object& database::get_comment( const account_name_type& author, const shared_string& permlink )const
 {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
-   /*
-   try
-   {
-      const auto& by_permlink_idx = get_index_type< comment_index >().indices().get< by_permlink >();
-      auto itr = by_permlink_idx.find( make_tuple( author, permlink ) );
-      FC_ASSERT( itr != by_permlink_idx.end() );
-      return *itr;
-   }
-   FC_CAPTURE_AND_RETHROW( (author)(permlink) )
-   */
 }
 
 const comment_object* database::find_comment( const account_name_type& author, const shared_string& permlink )const
 {
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
-   /*
-   const auto& by_permlink_idx = get_index_type< comment_index >().indices().get< by_permlink >();
-   auto itr = by_permlink_idx.find( make_tuple( author, permlink ) );
-   return itr == by_permlink_idx.end() ? nullptr : &*itr;
-   */
 }
 
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
@@ -386,34 +343,16 @@ const comment_object* database::find_comment( const account_name_type& author, c
 const category_object& database::get_category( const shared_string& name )const
 {
    return get< category_object, by_name >( name );
-   /*
-   auto cat = find_category( name );
-   FC_ASSERT( cat != nullptr, "Unable to find category ${c}", ("c",name) );
-   return *cat;
-   */
 }
 
 const category_object* database::find_category( const shared_string& name )const
 {
    return find< category_object, by_name >( name );
-   /*
-   const auto& idx = get_index_type<category_index>().indices().get<by_name>();
-   auto itr = idx.find(name);
-   if( itr != idx.end() )
-      return &*itr;
-   return nullptr;
-   */
 }
 
 const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
 {
    return get< escrow_object, by_from_id >( boost::make_tuple( name, escrow_id ) );
-   /*
-   const auto& escrow_idx = get_index_type<escrow_index>().indices().get<by_from_id>();
-   auto itr = escrow_idx.find( make_tuple(name,escrow_id) );
-   FC_ASSERT( itr != escrow_idx.end() );
-   return *itr;
-   */
 }
 
 const escrow_object* database::find_escrow( const account_name_type& name, uint32_t escrow_id )const
@@ -427,15 +366,6 @@ const limit_order_object& database::get_limit_order( const account_name_type& na
       orderid = orderid & 0x0000FFFF;
 
    return get< limit_order_object, by_account >( boost::make_tuple( name, orderid ) );
-
-   /*
-   const auto& orders_by_account = get_index_type<limit_order_index>().indices().get<by_account>();
-   auto itr = orders_by_account.find(make_tuple(name,orderid));
-   FC_ASSERT(itr != orders_by_account.end(),
-             "Unable to find order '${acct}/${id}'.",
-             ("acct", name)("id",orderid));
-   return *itr;
-   */
 }
 
 const limit_order_object* database::find_limit_order( const account_name_type& name, uint32_t orderid )const
@@ -444,37 +374,16 @@ const limit_order_object* database::find_limit_order( const account_name_type& n
       orderid = orderid & 0x0000FFFF;
 
    return find< limit_order_object, by_account >( boost::make_tuple( name, orderid ) );
-   /*
-   const auto& orders_by_account = get_index_type<limit_order_index>().indices().get<by_account>();
-   auto itr = orders_by_account.find(make_tuple(name,orderid));
-   if( itr == orders_by_account.end() ) return nullptr;
-   return &*itr;
-   */
 }
 
 const savings_withdraw_object& database::get_savings_withdraw( const account_name_type& owner, uint32_t request_id )const
 {
    return get< savings_withdraw_object, by_from_rid >( boost::make_tuple( owner, request_id ) );
-   /*
-   try
-   {
-      const auto& savings_withdraw_idx = get_index_type< withdraw_index >().indices().get< by_from_rid >();
-      auto itr = savings_withdraw_idx.find( make_tuple( owner, request_id ) );
-      FC_ASSERT( itr != savings_withdraw_idx.end() );
-      return *itr;
-   }
-   FC_CAPTURE_AND_RETHROW( (owner)(request_id) )
-   */
 }
 
 const savings_withdraw_object* database::find_savings_withdraw( const account_name_type& owner, uint32_t request_id )const
 {
    return find< savings_withdraw_object, by_from_rid >( boost::make_tuple( owner, request_id ) );
-   /*
-   const auto& savings_withdraw_idx = get_index_type< withdraw_index >().indices().get< by_from_rid >();
-   auto itr = savings_withdraw_idx.find( make_tuple( owner, request_id ) );
-   return itr == savings_withdraw_idx.end() ? nullptr : &*itr;
-   */
 }
 
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
@@ -1768,15 +1677,15 @@ void database::update_owner_authority( const account_object& account, const auth
       create< owner_authority_history_object >( [&]( owner_authority_history_object& hist )
       {
          hist.account = account.name;
-         hist.previous_owner_authority = account.owner;
+         hist.previous_owner_authority = get< account_authority_object, by_account >( account.name ).owner;
          hist.last_valid_time = head_block_time();
       });
    }
 
-   modify( account, [&]( account_object& a )
+   modify( get< account_authority_object, by_account >( account.name ), [&]( account_authority_object& auth )
    {
-      a.owner = owner_authority;
-      a.last_owner_update = head_block_time();
+      auth.owner = owner_authority;
+      auth.last_owner_update = head_block_time();
    });
 }
 
@@ -2631,6 +2540,7 @@ void database::initialize_indexes()
 
    add_index< dynamic_global_property_index           >();
    add_index< account_index                           >();
+   add_index< account_authority_index                 >();
    add_index< witness_index                           >();
    add_index< transaction_index                       >();
    add_index< block_summary_index                     >();
@@ -2743,34 +2653,53 @@ void database::init_genesis( uint64_t init_supply )
       create< account_object >( [&]( account_object& a )
       {
          a.name = STEEMIT_MINER_ACCOUNT;
-         a.owner.weight_threshold = 1;
-         a.active.weight_threshold = 1;
       } );
+      create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = STEEMIT_MINER_ACCOUNT;
+         auth.owner.weight_threshold = 1;
+         auth.active.weight_threshold = 1;
+      });
+
       create< account_object >( [&]( account_object& a )
       {
          a.name = STEEMIT_NULL_ACCOUNT;
-         a.owner.weight_threshold = 1;
-         a.active.weight_threshold = 1;
       } );
+      create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = STEEMIT_NULL_ACCOUNT;
+         auth.owner.weight_threshold = 1;
+         auth.active.weight_threshold = 1;
+      });
+
       create< account_object >( [&]( account_object& a )
       {
          a.name = STEEMIT_TEMP_ACCOUNT;
-         a.owner.weight_threshold = 0;
-         a.active.weight_threshold = 0;
       } );
+      create< account_authority_object >( [&]( account_authority_object& auth )
+      {
+         auth.account = STEEMIT_TEMP_ACCOUNT;
+         auth.owner.weight_threshold = 0;
+         auth.active.weight_threshold = 0;
+      });
 
       for( int i = 0; i < STEEMIT_NUM_INIT_MINERS; ++i )
       {
          create< account_object >( [&]( account_object& a )
          {
             a.name = STEEMIT_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
-            a.owner.weight_threshold = 1;
-            a.owner.add_authority( init_public_key, 1 );
-            a.active  = a.owner;
-            a.posting = a.active;
             a.memo_key = init_public_key;
             a.balance  = asset( i ? 0 : init_supply, STEEM_SYMBOL );
          } );
+
+         create< account_authority_object >( [&]( account_authority_object& auth )
+         {
+            auth.account = STEEMIT_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
+            auth.owner.add_authority( init_public_key, 1 );
+            auth.owner.weight_threshold = 1;
+            auth.active  = auth.owner;
+            auth.posting = auth.active;
+         });
 
          create< witness_object >( [&]( witness_object& w )
          {
@@ -3128,9 +3057,9 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    if( !(skip & (skip_transaction_signatures | skip_authority_check) ) )
    {
-      auto get_active  = [&]( const string& name ) { return authority( get_account(name).active ); };
-      auto get_owner   = [&]( const string& name ) { return authority( get_account(name).owner );  };
-      auto get_posting = [&]( const string& name ) { return authority( get_account(name).posting );  };
+      auto get_active  = [&]( const string& name ) { return authority( get< account_authority_object, by_account >( name ).active ); };
+      auto get_owner   = [&]( const string& name ) { return authority( get< account_authority_object, by_account >( name ).owner );  };
+      auto get_posting = [&]( const string& name ) { return authority( get< account_authority_object, by_account >( name ).posting );  };
 
       trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
    }
@@ -3994,10 +3923,10 @@ void database::apply_hardfork( uint32_t hardfork )
 
                update_owner_authority( *account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
 
-               modify( *account, [&]( account_object& a )
+               modify( get< account_authority_object, by_account >( account->name ), [&]( account_authority_object& auth )
                {
-                  a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  auth.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
+                  auth.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
                });
             }
          }
@@ -4048,22 +3977,22 @@ void database::apply_hardfork( uint32_t hardfork )
                }
             }
 
-            modify( get_account( STEEMIT_MINER_ACCOUNT ), [&]( account_object& a )
+            modify( get< account_authority_object, by_account >( STEEMIT_MINER_ACCOUNT ), [&]( account_authority_object& auth )
             {
-               a.posting = authority();
-               a.posting.weight_threshold = 1;
+               auth.posting = authority();
+               auth.posting.weight_threshold = 1;
             });
 
-            modify( get_account( STEEMIT_NULL_ACCOUNT ), [&]( account_object& a )
+            modify( get< account_authority_object, by_account >( STEEMIT_NULL_ACCOUNT ), [&]( account_authority_object& auth )
             {
-               a.posting = authority();
-               a.posting.weight_threshold = 1;
+               auth.posting = authority();
+               auth.posting.weight_threshold = 1;
             });
 
-            modify( get_account( STEEMIT_TEMP_ACCOUNT ), [&]( account_object& a )
+            modify( get< account_authority_object, by_account >( STEEMIT_TEMP_ACCOUNT ), [&]( account_authority_object& auth )
             {
-               a.posting = authority();
-               a.posting.weight_threshold = 1;
+               auth.posting = authority();
+               auth.posting.weight_threshold = 1;
             });
          }
          break;

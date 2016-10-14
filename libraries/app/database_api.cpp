@@ -354,7 +354,7 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
       auto itr = idx.find( name );
       if ( itr != idx.end() )
       {
-         results.push_back( *itr );
+         results.push_back( extended_account( *itr, _db.get< account_authority_object, by_account >( itr->name ) ) );
 
          if( _follow_api )
          {
@@ -772,9 +772,9 @@ set<public_key_type> database_api_impl::get_required_signatures( const signed_tr
 //   wdump((trx)(available_keys));
    auto result = trx.get_required_signatures( STEEMIT_CHAIN_ID,
                                               available_keys,
-                                              [&]( string account_name ){ return authority( _db.get_account( account_name ).active  ); },
-                                              [&]( string account_name ){ return authority( _db.get_account( account_name ).owner   ); },
-                                              [&]( string account_name ){ return authority( _db.get_account( account_name ).posting ); },
+                                              [&]( string account_name ){ return authority( _db.get< account_authority_object, by_account >( account_name ).active  ); },
+                                              [&]( string account_name ){ return authority( _db.get< account_authority_object, by_account >( account_name ).owner   ); },
+                                              [&]( string account_name ){ return authority( _db.get< account_authority_object, by_account >( account_name ).posting ); },
                                               STEEMIT_MAX_SIG_CHECK_DEPTH );
 //   wdump((result));
    return result;
@@ -794,21 +794,21 @@ set<public_key_type> database_api_impl::get_potential_signatures( const signed_t
       flat_set<public_key_type>(),
       [&]( account_name_type account_name )
       {
-         const auto& auth = _db.get_account(account_name).active;
+         const auto& auth = _db.get< account_authority_object, by_account >(account_name).active;
          for( const auto& k : auth.get_keys() )
             result.insert(k);
          return authority( auth );
       },
       [&]( account_name_type account_name )
       {
-         const auto& auth = _db.get_account(account_name).owner;
+         const auto& auth = _db.get< account_authority_object, by_account >(account_name).owner;
          for( const auto& k : auth.get_keys() )
             result.insert(k);
          return authority( auth );
       },
       [&]( account_name_type account_name )
       {
-         const auto& auth = _db.get_account(account_name).posting;
+         const auto& auth = _db.get< account_authority_object, by_account >(account_name).posting;
          for( const auto& k : auth.get_keys() )
             result.insert(k);
          return authority( auth );
@@ -828,9 +828,9 @@ bool database_api::verify_authority( const signed_transaction& trx ) const
 bool database_api_impl::verify_authority( const signed_transaction& trx )const
 {
    trx.verify_authority( STEEMIT_CHAIN_ID,
-                         [&]( string account_name ){ return authority( _db.get_account( account_name ).active  ); },
-                         [&]( string account_name ){ return authority( _db.get_account( account_name ).owner   ); },
-                         [&]( string account_name ){ return authority( _db.get_account( account_name ).posting ); },
+                         [&]( string account_name ){ return authority( _db.get< account_authority_object, by_account >( account_name ).active  ); },
+                         [&]( string account_name ){ return authority( _db.get< account_authority_object, by_account >( account_name ).owner   ); },
+                         [&]( string account_name ){ return authority( _db.get< account_authority_object, by_account >( account_name ).posting ); },
                          STEEMIT_MAX_SIG_CHECK_DEPTH );
    return true;
 }
@@ -1593,7 +1593,7 @@ state database_api::get_state( string path )const
 
    if( part[0].size() && part[0][0] == '@' ) {
       auto acnt = part[0].substr(1);
-      _state.accounts[acnt] = my->_db.get_account(acnt);
+      _state.accounts[acnt] = extended_account( my->_db.get_account(acnt), my->_db.get< account_authority_object, by_account >(acnt) );
       if( my->_follow_api )
       {
          _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;
@@ -1905,7 +1905,7 @@ state database_api::get_state( string path )const
    for( const auto& a : accounts )
    {
       _state.accounts.erase("");
-      _state.accounts[a] = my->_db.get_account( a );
+      _state.accounts[a] = extended_account( my->_db.get_account( a ), my->_db.get< account_authority_object, by_account >( a ) );
       if( my->_follow_api )
       {
          _state.accounts[a].reputation = my->_follow_api->get_account_reputations( a, 1 )[0].reputation;
