@@ -44,6 +44,8 @@ Seed Nodes
     liondani         212.117.213.186:2016                        (Switzerland)
     someguy123       199.241.186.130:2001     steemit-seed.someguy123.com:2001
     smooth.witness   52.74.152.79:2001
+    proctologic	     seed.saves-the-whales.com:2001              (Stockholm, Sweden)
+    proctologic	     steem.saves-the-whales.com:2001		     (Stockholm, Sweden)  
 
     52.38.66.234:2001
     52.37.169.52:2001
