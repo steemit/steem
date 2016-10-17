@@ -1,4 +1,7 @@
 #pragma once
+
+#include <graphene/schema/schema.hpp>
+
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/set.hpp>
@@ -15,7 +18,6 @@
 
 #include <typeindex>
 #include <fstream>
-
 
 namespace graphene { namespace db2 {
    template<typename T> class oid;
@@ -443,6 +445,11 @@ namespace graphene { namespace db2 {
             _revision = revision;
          }
 
+         std::shared_ptr< graphene::schema::abstract_schema > get_schema()const
+         {
+            return graphene::schema::get_schema_for_type< value_type >();
+         }
+
       private:
          bool enabled()const { return _stack.size(); }
 
@@ -544,6 +551,8 @@ namespace graphene { namespace db2 {
          virtual void    export_to_file( const fc::path& filename ) const = 0;
          virtual void    import_from_file( const fc::path& filename ) = 0;
          virtual uint32_t type_id()const  = 0;
+         virtual std::shared_ptr< graphene::schema::abstract_schema > get_schema()const = 0;
+
          void* get()const { return _idx_ptr; }
       private:
          void* _idx_ptr;
@@ -566,6 +575,7 @@ namespace graphene { namespace db2 {
          virtual void    export_to_file( const fc::path& filename )const override { _base.export_to_file( filename ); }
          virtual void    import_from_file( const fc::path& filename ) override { _base.import_from_file( filename ); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
+         virtual std::shared_ptr< graphene::schema::abstract_schema > get_schema()const override { return _base.get_schema(); }
       private:
          BaseIndex& _base;
    };
