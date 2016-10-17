@@ -358,7 +358,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_object& o
             new_vesting_withdrawal_rate = 1;
 
          if( !db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
-            new_vesting_withdrawal_rate *= 1000000;
+            new_vesting_withdrawal_rate *= 10000;
 
          db.modify( bucket, [&]( bucket_object& b )
          {

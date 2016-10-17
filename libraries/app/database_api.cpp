@@ -1286,6 +1286,91 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
    return result;
 }
 
+vector<discussion> database_api::get_discussions_by_blog( const discussion_query& query )const
+{
+   query.validate();
+   FC_ASSERT( my->_follow_api, "Node is not running the follow plugin" );
+   auto start_author = query.start_author ? *( query.start_author ) : "";
+   auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
+
+   const auto& account = my->_db.get_account( query.tag );
+
+   const auto& c_idx = my->_db.get_index_type< follow::blog_index >().indices().get< follow::by_comment >();
+   const auto& b_idx = my->_db.get_index_type< follow::blog_index >().indices().get< follow::by_blog >();
+   auto blog_itr = b_idx.lower_bound( account.id );
+
+   if( start_author.size() || start_permlink.size() )
+   {
+      auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.id ) );
+      FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's blog" );
+      blog_itr = b_idx.iterator_to( *start_c );
+   }
+
+   vector< discussion > result;
+   result.reserve( query.limit );
+
+   while( result.size() < query.limit && blog_itr != b_idx.end() )
+   {
+      if( blog_itr->account != account.id )
+         break;
+      try
+      {
+         result.push_back( get_discussion( blog_itr->comment ) );
+      }
+      catch ( const fc::exception& e )
+      {
+         edump((e.to_detail_string()));
+      }
+
+      ++blog_itr;
+   }
+   return result;
+}
+
+vector<discussion> database_api::get_discussions_by_comments( const discussion_query& query )const
+{
+   query.validate();
+   FC_ASSERT( query.start_author, "Must get comments for a specific author" );
+   auto start_author = *( query.start_author );
+   auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
+
+   const auto& account = my->_db.get_account( start_author );
+
+   const auto& c_idx = my->_db.get_index_type< comment_index >().indices().get< by_permlink >();
+   const auto& t_idx = my->_db.get_index_type< comment_index >().indices().get< by_author_last_update >();
+   auto comment_itr = t_idx.lower_bound( start_author );
+
+   if( start_permlink.size() )
+   {
+      auto start_c = c_idx.find( boost::make_tuple( start_author, start_permlink ) );
+      FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's comments" );
+      comment_itr = t_idx.iterator_to( *start_c );
+   }
+
+   vector< discussion > result;
+   result.reserve( query.limit );
+
+   while( result.size() < query.limit && comment_itr != t_idx.end() )
+   {
+      if( comment_itr->author != start_author )
+         break;
+      if( comment_itr->parent_author.size() > 0 )
+      {
+         try
+         {
+            result.push_back( get_discussion( comment_itr->id ) );
+         }
+         catch( const fc::exception& e )
+         {
+            edump( (e.to_detail_string() ) );
+         }
+      }
+
+      ++comment_itr;
+   }
+   return result;
+}
+
 vector<category_object> database_api::get_trending_categories( string after, uint32_t limit )const {
    limit = std::min( limit, uint32_t(100) );
    vector<category_object> result; result.reserve( limit );

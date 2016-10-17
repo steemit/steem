@@ -34,4 +34,3 @@ FC_REFLECT_DERIVED( steemit::chain::hardfork_property_object, (graphene::db::obj
    (next_hardfork)(next_hardfork_time) )
 
 #define STEEMIT_NUM_HARDFORKS 14
-

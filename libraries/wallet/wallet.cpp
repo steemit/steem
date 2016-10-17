@@ -306,8 +306,9 @@ public:
          client_version = client_version.substr( pos + 1 );
 
       fc::mutable_variant_object result;
-      //result["blockchain_name"]        = BLOCKCHAIN_NAME;
-      //result["blockchain_description"] = BTS_BLOCKCHAIN_DESCRIPTION;
+      result["blockchain_name"]          = BLOCKCHAIN_NAME;
+      result["chain_id"]                 = STEEMIT_CHAIN_ID;
+      result["address_prefix"]           = STEEMIT_ADDRESS_PREFIX;
       result["client_version"]           = client_version;
       result["steem_revision"]           = graphene::utilities::git_revision_sha;
       result["steem_revision_age"]       = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
@@ -2288,4 +2289,3 @@ vector<extended_message_object>   wallet_api::get_outbox( string account, fc::ti
 }
 
 } } // steemit::wallet
-

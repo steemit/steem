@@ -130,7 +130,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.mined = false;
 
       if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
-         acc.recovery_account = "steem";
+         acc.recovery_account = "golos";
       else
          acc.recovery_account = o.creator;
 
@@ -976,7 +976,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
    {
-      FC_ASSERT( max_vote_denom == 200 );   // TODO: Remove this assert
       used_power = (used_power / max_vote_denom)+1;
    }
    else
@@ -1039,7 +1038,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !db().has_hardfork( STEEMIT_HARDFORK_0_13__257)  )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
-         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
 
       auto avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
 
@@ -1118,8 +1117,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
                if( !db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
                {
-                  rshares3 *= 1000000;
-                  total2 *= 1000000;
+                  rshares3 *= 10000;
+                  total2 *= 10000;
                }
 
                rshares3 = rshares3 * rshares3 * rshares3;
@@ -1135,8 +1134,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
                }
                else
                {
-                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
-                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 10000 * old_vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 10000 * old_vote_rshares.value ) ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 10000 * comment.vote_rshares.value ) ) / ( 2 * db().get_content_constant_s() + ( 10000 * comment.vote_rshares.value ) ) ).to_uint64();
                   cv.weight = new_weight - old_weight;
                }
             }
@@ -1199,7 +1198,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! db().has_hardfork( STEEMIT_HARDFORK_0_13__257 )  )
          new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
       else
-         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+         new_cashout_time_sec = db().head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
 
       fc::uint128_t avg_cashout_sec;
       if( db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 )
@@ -1341,7 +1340,7 @@ void pow_apply( database& db, Operation o ) {
          acc.last_vote_time = dgp.time;
 
          if( !db.has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
-            acc.recovery_account = "steem";
+            acc.recovery_account = "golos";
          else
             acc.recovery_account = ""; /// highest voted witness at time of recovery
       });

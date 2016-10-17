@@ -2,6 +2,8 @@
 #include <steemit/chain/compound.hpp>
 #include <steemit/chain/protocol/asset.hpp>
 #include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/get_config.hpp>
+#include <steemit/chain/config.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant_object.hpp>
@@ -65,13 +67,7 @@ int main( int argc, char** argv, char** envp )
    std::vector< share_type > reward_delta;
    std::vector< share_type > reward_total;
 
-/*
-#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
-#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1467590400))  /// July 4th
-*/
-
-   uint32_t liquidity_begin_block = (1467590400 - 1458835200) / 3;
+   uint32_t liquidity_begin_block = STEEMIT_START_VESTING_BLOCK;
    uint32_t pow_deficit = 100;
 
    for( int i=0; i<REWARD_TYPES; i++ )
@@ -136,7 +132,7 @@ int main( int argc, char** argv, char** envp )
       return;
    };
 
-   share_type current_supply = 0;
+   share_type current_supply = STEEMIT_INIT_SUPPLY;
 
    for( uint32_t b=1; b<10*STEEMIT_BLOCKS_PER_YEAR; b++ )
    {

@@ -54,7 +54,7 @@ namespace steemit { namespace chain {
          price       get_vesting_share_price() const
          {
             if ( total_vesting_fund_steem.amount == 0 || total_vesting_shares.amount == 0 )
-               return price ( asset( 1000, STEEM_SYMBOL ), asset( 1000000, VESTS_SYMBOL ) );
+               return price ( asset( 1000, STEEM_SYMBOL ), asset( 100000, VESTS_SYMBOL ) );
 
             return price( total_vesting_shares, total_vesting_fund_steem );
          }
@@ -157,4 +157,3 @@ FC_REFLECT_DERIVED( steemit::chain::dynamic_global_property_object, (graphene::d
                     (current_reserve_ratio)
                     (vote_regeneration_per_day)
                   )
-

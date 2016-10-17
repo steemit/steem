@@ -20,8 +20,8 @@ libraries/wallet/doxygen
 
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
-programs/steemd/steemd
-programs/steemd/test
+programs/golosd/golosd
+programs/golosd/test
 programs/delayed_node
 programs/build_helpers/cat-parts
 programs/size_checker/size_checker
@@ -36,10 +36,17 @@ tests/intense_test
 tests/performance_test
 
 doxygen
+snapshot5392323.json
+
+programs/util/sign_digest
+programs/util/sign_transaction
+libraries/manifest/inc/
 
 wallet.json
 witness_node_data_dir
 
+*.png
+model.json
 *.wallet
 
 *.pyc

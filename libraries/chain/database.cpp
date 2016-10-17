@@ -1,4 +1,3 @@
-
 #include <steemit/chain/protocol/steem_operations.hpp>
 
 #include <steemit/chain/block_summary_object.hpp>
@@ -20,6 +19,10 @@
 #include <fc/container/deque.hpp>
 
 #include <fc/io/fstream.hpp>
+
+#include <openssl/md5.h>
+#include <boost/iostreams/device/mapped_file.hpp>
+#include <steemit/chain/snapshot_state.hpp>
 
 #include <cstdint>
 #include <deque>
@@ -1185,8 +1188,11 @@ void database::update_witness_schedule4()
       reset_virtual_schedule_time();
    }
 
-   FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_MINERS, "number of active witnesses does not equal STEEMIT_MAX_MINERS",
+   if( head_block_num() > 14400 )
+   {
+      FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_MINERS, "number of active witnesses does not equal STEEMIT_MAX_MINERS",
                                        ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_MINERS",STEEMIT_MAX_MINERS) );
+   }
 
    auto majority_version = wso.majority_version;
 
@@ -2063,10 +2069,7 @@ void database::cashout_comment_helper( const comment_object& comment )
 
 void database::process_comment_cashout()
 {
-   /// don't allow any content to get paid out until the website is ready to launch
-   /// and people have had a week to start posting.  The first cashout will be the biggest because it
-   /// will represent 2+ months of rewards.
-   if( !has_hardfork( STEEMIT_FIRST_CASHOUT_TIME ) )
+   if( head_block_time() <= STEEMIT_FIRST_CASHOUT_TIME )
       return;
 
    int count = 0;
@@ -2155,17 +2158,27 @@ asset database::get_liquidity_reward()const
 asset database::get_content_reward()const
 {
    const auto& props = get_dynamic_global_properties();
+   auto reward = asset( 255, STEEM_SYMBOL );
    static_assert( STEEMIT_BLOCK_INTERVAL == 3, "this code assumes a 3-second time interval" );
-   asset percent( calc_percent_reward_per_block< STEEMIT_CONTENT_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL );
-   return std::max( percent, STEEMIT_MIN_CONTENT_REWARD );
+   if (props.head_block_number > STEEMIT_START_VESTING_BLOCK)
+   {
+      asset percent( calc_percent_reward_per_block< STEEMIT_CONTENT_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL );
+      reward = std::max( percent, STEEMIT_MIN_CONTENT_REWARD );
+   }
+   return reward;
 }
 
 asset database::get_curation_reward()const
 {
    const auto& props = get_dynamic_global_properties();
+   auto reward = asset( 85, STEEM_SYMBOL );
    static_assert( STEEMIT_BLOCK_INTERVAL == 3, "this code assumes a 3-second time interval" );
-   asset percent( calc_percent_reward_per_block< STEEMIT_CURATE_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL);
-   return std::max( percent, STEEMIT_MIN_CURATE_REWARD );
+   if (props.head_block_number > STEEMIT_START_VESTING_BLOCK)
+   {
+      asset percent( calc_percent_reward_per_block< STEEMIT_CURATE_APR_PERCENT >( props.virtual_supply.amount ), STEEM_SYMBOL);
+      reward = std::max( percent, STEEMIT_MIN_CURATE_REWARD );
+   }
+   return reward;
 }
 
 asset database::get_producer_reward()
@@ -2263,12 +2276,16 @@ uint16_t database::get_curation_rewards_percent() const
 uint128_t database::get_content_constant_s() const
 {
    return uint128_t( uint64_t(2000000000000ll) ); // looking good for posters
+   // return uint128_t( uint64_t(5000000000000ll) ); // looking good for posters
 }
 
 uint128_t database::calculate_vshares( uint128_t rshares ) const
 {
    auto s = get_content_constant_s();
    return ( rshares + s ) * ( rshares + s ) - s * s;
+   // return ( rshares + s ) * ((rshares >> 1) + s ) - s * s;
+   // return ( (rshares >> 1) * 3 + s ) * ((rshares >> 1) + s ) - s * s;
+   // return ( (rshares >> 2) * 5 + s ) * ((rshares >> 1) + s ) - s * s;
 }
 
 /**
@@ -2658,6 +2675,41 @@ void database::init_genesis( uint64_t init_supply )
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
       } );
+
+      #ifndef IS_TEST_NET
+         auto snapshot_path = string("./snapshot5392323.json");
+         auto snapshot_file = fc::path(snapshot_path);
+         FC_ASSERT( fc::exists( snapshot_file ), "Snapshot file '${file}' was not found.", ("file", snapshot_file) );
+
+         std::cout << "Initializing state from snapshot file: "<< snapshot_file.generic_string() << "\n";
+
+         unsigned char digest[MD5_DIGEST_LENGTH];
+         char snapshot_checksum [] = "081b0149f0b2a570ae76b663090cfb0c";
+         char md5hash[33];
+         boost::iostreams::mapped_file_source src(snapshot_path);
+         MD5((unsigned char*) src.data(), src.size(), (unsigned char*) &digest);
+         for(int i = 0; i < 16; i++) {
+            sprintf(&md5hash[i*2], "%02x", (unsigned int)digest[i]);
+         }
+         FC_ASSERT( memcmp(md5hash, snapshot_checksum, 32) == 0 , "Checksum of snapshot [${h}] is not equal [${s}]", ("h", md5hash)("s", snapshot_checksum) );
+
+         snapshot_state snapshot = fc::json::from_file(snapshot_file).as<snapshot_state>();
+         for (account_summary& account : snapshot.accounts)
+         {
+            create<account_object>([&](account_object& a)
+            {
+               a.name = account.name;
+               a.owner.weight_threshold = 1;
+               a.owner = account.keys.owner_key;
+               a.active = account.keys.active_key;
+               a.posting = account.keys.posting_key;
+               a.memo_key = account.keys.memo_key;
+               a.json_metadata = "{created_at: 'GENESIS'}";
+               a.recovery_account = STEEMIT_INIT_MINER_NAME;
+            } );
+         }
+         std::cout << "Imported " << snapshot.accounts.size() << " accounts from " << snapshot_file.generic_string() << ".\n";
+      #endif
 
       // Nothing to do
       create<feed_history_object>([&](feed_history_object& o) {});
@@ -3741,7 +3793,7 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 1 at block ${b}", ("b", head_block_num()) );
 #endif
-         perform_vesting_share_split( 1000000 );
+         perform_vesting_share_split( 10000 );
 #ifdef IS_TEST_NET
          {
             custom_operation test_op;
@@ -3799,23 +3851,6 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
 #endif
-         {
-            for( auto acc : hardfork9::get_compromised_accounts() )
-            {
-               try
-               {
-                  const auto& account = get_account( acc );
-
-                  update_owner_authority( account, authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 ) );
-
-                  modify( account, [&]( account_object& a )
-                  {
-                     a.active  = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                     a.posting = authority( 1, public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" ), 1 );
-                  });
-               } catch( ... ) {}
-            }
-         }
          break;
       case STEEMIT_HARDFORK_0_10:
 #ifndef IS_TEST_NET
