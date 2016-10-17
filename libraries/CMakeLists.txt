@@ -1,4 +1,5 @@
 add_subdirectory( fc )
+add_subdirectory( schema )
 add_subdirectory( db2 )
 add_subdirectory( deterministic_openssl_rand )
 #add_subdirectory( chain2 )
