@@ -130,7 +130,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       acc.mined = false;
 
       if( !db().has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
-         acc.recovery_account = "golos";
+         acc.recovery_account = STEEMIT_INIT_MINER_NAME;
       else
          acc.recovery_account = o.creator;
 
@@ -1340,7 +1340,7 @@ void pow_apply( database& db, Operation o ) {
          acc.last_vote_time = dgp.time;
 
          if( !db.has_hardfork( STEEMIT_HARDFORK_0_11__169 ) )
-            acc.recovery_account = "golos";
+            acc.recovery_account = STEEMIT_INIT_MINER_NAME;
          else
             acc.recovery_account = ""; /// highest voted witness at time of recovery
       });

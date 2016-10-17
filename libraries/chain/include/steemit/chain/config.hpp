@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 14, 3) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 14, 2) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -61,7 +61,7 @@
 #define STEEMIT_BLOCK_INTERVAL                  3
 #define STEEMIT_BLOCKS_PER_YEAR                 (365*24*60*60/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_BLOCKS_PER_DAY                  (24*60*60/STEEMIT_BLOCK_INTERVAL)
-#define STEEMIT_START_VESTING_BLOCK             (STEEMIT_BLOCKS_PER_DAY * 47)
+#define STEEMIT_START_VESTING_BLOCK             (STEEMIT_BLOCKS_PER_DAY * 49)
 #define STEEMIT_START_MINER_VOTING_BLOCK        (60*10/STEEMIT_BLOCK_INTERVAL)
 #define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1484478000))
 
@@ -123,8 +123,8 @@
 
 #define STEEMIT_ACTIVE_CHALLENGE_FEE            asset( 2000, STEEM_SYMBOL )
 #define STEEMIT_OWNER_CHALLENGE_FEE             asset( 30000, STEEM_SYMBOL )
-#define STEEMIT_ACTIVE_CHALLENGE_COOLDOWN       fc::hours(1)
-#define STEEMIT_OWNER_CHALLENGE_COOLDOWN        fc::hours(1)
+#define STEEMIT_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
+#define STEEMIT_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
 
 
 
