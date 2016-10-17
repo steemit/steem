@@ -1190,8 +1190,9 @@ void database::update_witness_schedule4()
       reset_virtual_schedule_time();
    }
 
-   FC_ASSERT( active_witnesses.size() == STEEMIT_MAX_MINERS, "number of active witnesses does not equal STEEMIT_MAX_MINERS",
-                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_MINERS",STEEMIT_MAX_MINERS) );
+   size_t expected_active_witnesses = std::min( size_t(STEEMIT_MAX_MINERS), widx.size() );
+   FC_ASSERT( active_witnesses.size() == expected_active_witnesses, "number of active witnesses does not equal expected_active_witnesses=${expected_active_witnesses}",
+                                       ("active_witnesses.size()",active_witnesses.size()) ("STEEMIT_MAX_MINERS",STEEMIT_MAX_MINERS) ("expected_active_witnesses", expected_active_witnesses) );
 
    auto majority_version = wso.majority_version;
 
@@ -2206,7 +2207,7 @@ asset database::get_pow_reward()const
 {
    const auto& props = get_dynamic_global_properties();
 
-#if !IS_TEST_NET
+#ifndef IS_TEST_NET
    /// 0 block rewards until at least STEEMIT_MAX_MINERS have produced a POW
    if( props.num_pow_witnesses < STEEMIT_MAX_MINERS && props.head_block_number < STEEMIT_START_VESTING_BLOCK )
       return asset( 0, STEEM_SYMBOL );
