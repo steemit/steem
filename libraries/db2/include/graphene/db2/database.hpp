@@ -44,6 +44,18 @@ namespace graphene { namespace db2 {
 
    class database;
 
+   class generic_id
+   {
+      public:
+         generic_id( uint16_t type_id, int64_t id ): _type_id( id ), _id( id ) {}
+
+         //template< typename ObjectType >
+         //const ObjectType& operator()( database& db );
+
+         uint16_t _type_id;
+         int64_t  _id;
+   };
+
    /**
     *  Object ID type that includes the type of the object it references
     */
@@ -55,33 +67,18 @@ namespace graphene { namespace db2 {
 
          oid& operator++() { ++_id; return *this; }
 
+         explicit operator generic_id() const { return generic_id( T::type_id, _id ); }
+
          friend bool operator < ( const oid& a, const oid& b ) { return a._id < b._id; }
          friend bool operator > ( const oid& a, const oid& b ) { return a._id > b._id; }
          friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
          friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
          int64_t _id = 0;
    };
-   /*
-   class generic_id
-   {
-      public:
-         template< typename T >
-         generic_id( T obj& ): _type_id( obj.type_id ), _id( obj.id._id ) {}
-
-         const T& operator()( const database& db )const;
-
-         friend bool operator <  ( const generic_id& a, const generic_id& b ) { return a._type_id != b._type_id ? a._type_id < b._type_id : a._id < b._id; }
-         friend bool operator <  ( const generic_id& a, const generic_id& b ) { return a._type_id != b._type_id ? a._type_id > b._type_id : a._id > b._id; }
-         friend bool operator == ( const generic_id& a, const generic_id& b ) { return a._type_id == b._type_id && a._id == b._id; }
-         friend bool operator != ( const generic_id& a, const generic_id& b ) { return a._type_id != b._type_id || a._id != b._id; }
-
-         uint16_t _type_id;
-         int64_t  _id;
-   }
-   */
 
    template<uint16_t TypeNumber, typename Derived>
-   struct object {
+   struct object
+   {
       typedef oid<Derived> id_type;
       static const uint16_t type_id = TypeNumber;
    };
@@ -192,8 +189,15 @@ namespace graphene { namespace db2 {
          template<typename CompatibleKey>
          const value_type* find( CompatibleKey&& key )const {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );
-            if( itr != _indices.end() ) return *itr;
+            if( itr != _indices.end() ) return &*itr;
             return nullptr;
+         }
+
+         template<typename CompatibleKey>
+         const value_type& get( CompatibleKey&& key )const {
+            auto ptr = find( key );
+            FC_ASSERT( ptr != nullptr );
+            return *ptr;
          }
 
          const index_type& indices()const { return _indices; }
@@ -736,7 +740,6 @@ namespace graphene { namespace db2 {
 
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }
 
-
          void export_to_directory( const fc::path& dir )const;
          void import_from_directory( const fc::path& dir );
 
@@ -786,6 +789,8 @@ namespace fc {
     }
   }
 }
+
+FC_REFLECT( graphene::db2::generic_id, (_id)(_type_id) )
 
 /*
 struct example_object : public object<1,example_object> {
