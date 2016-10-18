@@ -12,8 +12,8 @@
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
 
-#include <graphene/db/schema.hpp>
-#include <graphene/db/schema_impl.hpp>
+#include <graphene/schema/schema.hpp>
+#include <graphene/schema/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>

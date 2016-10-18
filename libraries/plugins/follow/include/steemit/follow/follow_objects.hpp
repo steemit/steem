@@ -58,6 +58,8 @@ class feed_object : public object< feed_object_type, feed_object >
          c( *this );
       }
 
+      feed_object() {}
+
       id_type           id;
 
       account_id_type   account;
@@ -80,6 +82,8 @@ class blog_object : public object< blog_object_type, blog_object >
          c( *this );
       }
 
+      blog_object() {}
+
       id_type           id;
 
       account_id_type   account;
@@ -99,6 +103,8 @@ class reputation_object : public object< reputation_object_type, reputation_obje
       {
          c( *this );
       }
+
+      reputation_object() {}
 
       id_type           id;
 

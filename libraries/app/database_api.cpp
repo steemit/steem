@@ -30,9 +30,6 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       database_api_impl( const steemit::app::api_context& ctx  );
       ~database_api_impl();
 
-      // Objects
-      fc::variants get_objects(const vector<object_id_type>& ids)const;
-
       // Subscriptions
       void set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter );
       void set_pending_transaction_callback( std::function<void(const variant&)> cb );

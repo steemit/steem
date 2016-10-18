@@ -8,6 +8,8 @@
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/custom_operation_interpreter.hpp>
 
+#include <graphene/schema/schema.hpp>
+
 #include <fc/variant.hpp>
 
 #include <string>
@@ -103,9 +105,9 @@ class generic_custom_operation_interpreter
          FC_CAPTURE_AND_RETHROW( (outer_o) )
       }
 
-      virtual std::shared_ptr< graphene::db::abstract_schema > get_operation_schema() override
+      virtual std::shared_ptr< graphene::schema::abstract_schema > get_operation_schema() override
       {
-         return graphene::db::get_schema_for_type< CustomOperationType >();
+         return graphene::schema::get_schema_for_type< CustomOperationType >();
       }
 };
 
