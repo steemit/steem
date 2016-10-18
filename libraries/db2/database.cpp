@@ -130,6 +130,72 @@ namespace graphene { namespace db2 {
       } FC_LOG_AND_RETHROW()
    }
 
+   generic_id database::generic_id_from_variant( const fc::variant& var )const
+   {
+      const fc::variants& array = var.get_array();
+      FC_ASSERT( array.size() == 2 );
+      uint16_t type_id;
+      if( array[0].is_string() )
+      {
+         const std::string& name = array[0].get_string();
+         auto it = _type_name_to_id.find( name );
+         FC_ASSERT( it != _type_name_to_id.end() );
+         type_id = it->second;
+      }
+      else
+      {
+         FC_ASSERT( array[0].is_int64() );
+         int64_t i = array[0].as_int64();
+         FC_ASSERT( (i >= 0) && (i <= std::numeric_limits< uint16_t >::max()) );
+         type_id = uint16_t(i);;
+      }
+      FC_ASSERT( array[1].is_int64() );
+      int64_t instance_id = array[1].as_int64();
+      return generic_id( type_id, instance_id );
+   }
+
+   void database::remove_object( generic_id gid )
+   {
+      abstract_index* idx = _index_map[ gid._type_id ].get();
+      FC_ASSERT( idx != nullptr );
+      idx->remove_object( gid._id );
+   }
+
+   fc::variant database::find_variant( generic_id gid )const
+   {
+      abstract_index* idx = _index_map[ gid._type_id ].get();
+      FC_ASSERT( idx != nullptr );
+      return idx->find_variant( gid._id );
+   }
+
+   fc::variant database::create_variant( generic_id gid, const fc::variant& var )
+   {
+      abstract_index* idx = _index_map[ gid._type_id ].get();
+      FC_ASSERT( idx != nullptr );
+      return idx->create_variant( gid._id, var );
+   }
+
+   void database::modify_variant( generic_id gid, const fc::variant& var )
+   {
+      abstract_index* idx = _index_map[ gid._type_id ].get();
+      FC_ASSERT( idx != nullptr );
+      idx->modify_variant( gid._id, var );
+   }
+
+   std::vector<char> database::find_binary( generic_id gid )const
+   {
+      abstract_index* idx = _index_map[ gid._type_id ].get();
+      FC_ASSERT( idx != nullptr );
+      return idx->find_binary( gid._id );
+   }
+
+   std::vector<char> database::create_binary( generic_id gid, const std::vector<char>& bin )
+   {
+      abstract_index* idx = _index_map[ gid._type_id ].get();
+      FC_ASSERT( idx != nullptr );
+      return idx->create_binary( gid._id, bin );
+   }
+
 
 } }
 

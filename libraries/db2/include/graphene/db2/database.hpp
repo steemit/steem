@@ -51,12 +51,13 @@ namespace graphene { namespace db2 {
    {
       public:
          generic_id( uint16_t type_id, int64_t id ): _type_id( id ), _id( id ) {}
+         generic_id() {}
 
          //template< typename ObjectType >
          //const ObjectType& operator()( database& db );
 
-         uint16_t _type_id;
-         int64_t  _id;
+         uint16_t _type_id = 0;
+         int64_t  _id = 0;
    };
 
    /**
@@ -453,76 +454,65 @@ namespace graphene { namespace db2 {
 
          void remove_object( int64_t id )
          {
-            const value_type* val = find( value_type::id_type(id) );
+            const value_type* val = find( typename value_type::id_type(id) );
             FC_ASSERT( val != nullptr );
             remove( *val );
          }
 
          fc::variant find_variant( int64_t id )const
          {
-            const value_type* val = find( value_type::id_type(id) );
+            const value_type* val = find( typename value_type::id_type(id) );
             fc::variant result;
             if( val != nullptr )
                fc::to_variant( *val, result );
             return result;
          }
 
-         fc::variant create_variant( const fc::variant& var )
+         fc::variant create_variant( int64_t id, const fc::variant& var )
          {
-            fc::variant_object& vo = var.get_object();
-            auto it = vo.find("id");
-            if( it != vo.end() )
+            if( id >= 0 )
             {
-               int64_t id = it->value().as_int64();
-               if( id >= 0 )
-               {
-                  FC_ASSERT( id >= _next_id );
-                  _next_id = id;
-               }
+               FC_ASSERT( id >= _next_id._id );
+               _next_id = id;
             }
             const value_type& o = emplace( [&]( value_type& v )
             {
-               typename value_type::id_type tmp = v.id;
+               typename value_type::id_type old_id = v.id;
                fc::from_variant( var, v );
-               v.id = tmp;
+               v.id = old_id;
             } );
             fc::variant result;
             fc::to_variant( o, result );
             return result;
          }
 
-         void modify_variant( const fc::variant& var )
+         void modify_variant( int64_t id, const fc::variant& var )
          {
-            fc::variant_object& vo = var.get_object();
-            auto it = vo.find("id");
-            FC_ASSERT( it != vo.end() );
-            int64_t id = it->value().as_int64();
-
-            const value_type* val = find( value_type::id_type(id) );
+            const value_type* val = find( typename value_type::id_type(id) );
             FC_ASSERT( val != nullptr );
             modify( *val, [&]( value_type& v )
             {
-               typename value_type::id_type tmp = v.id;
+               typename value_type::id_type old_id = v.id;
                fc::from_variant( var, v );
-               v.id = tmp;
+               v.id = old_id;
             } );
          }
 
          std::vector<char> find_binary( int64_t id )const
          {
-            const value_type* val = find( value_type::id_type(id) );
+            const value_type* val = find( typename value_type::id_type(id) );
             if( val != nullptr )
                return fc::raw::pack( val );
             return std::vector<char>();
          }
 
-         std::vector<char> create_binary( const std::vector<char>& bin )
+         std::vector<char> create_binary( int64_t id, const std::vector<char>& bin )
          {
             const value_type& o = emplace( [&]( value_type& v )
             {
-               typename value_type::id_type tmp = v.id;
+               typename value_type::id_type old_id = v.id;
                fc::raw::unpack( bin, v );
-               v.id = tmp;
+               v.id = old_id;
             } );
 
             return fc::raw::pack( o );
@@ -530,13 +520,13 @@ namespace graphene { namespace db2 {
 
          void modify_binary( int64_t id, const std::vector<char>& bin )
          {
-            const value_type* val = find( value_type::id_type(id) );
+            const value_type* val = find( typename value_type::id_type(id) );
             FC_ASSERT( val != nullptr );
             modify( *val, [&]( value_type& v )
             {
-               typename value_type::id_type tmp = v.id;
+               typename value_type::id_type old_id = v.id;
                fc::raw::unpack( bin, v );
-               v.id = tmp;
+               v.id = old_id;
             } );
          }
 
@@ -645,12 +635,12 @@ namespace graphene { namespace db2 {
 
          virtual void remove_object( int64_t id ) = 0;
 
-         virtual fc::variant   find_variant( int64_t id )const        = 0;
-         virtual fc::variant create_variant( const fc::variant& var ) = 0;
-         virtual void        modify_variant( const fc::variant& var ) = 0;
+         virtual fc::variant   find_variant( int64_t id  )const                   = 0;
+         virtual fc::variant create_variant( int64_t id, const fc::variant& var ) = 0;
+         virtual void        modify_variant( int64_t id, const fc::variant& var ) = 0;
 
-         virtual std::vector<char>   find_binary( int64_t id )const              = 0;
-         virtual std::vector<char> create_binary( const std::vector<char>& bin ) = 0;
+         virtual std::vector<char>   find_binary( int64_t id )const                          = 0;
+         virtual std::vector<char> create_binary( int64_t id, const std::vector<char>& bin ) = 0;
          virtual void              modify_binary( int64_t id, const std::vector<char>& bin ) = 0;
 
          void* get()const { return _idx_ptr; }
@@ -680,11 +670,11 @@ namespace graphene { namespace db2 {
          virtual void remove_object( int64_t id ) override { return _base.remove_object( id ); }
 
          virtual fc::variant   find_variant( int64_t id )const        override { return _base.find_variant( id ); }
-         virtual fc::variant create_variant( const fc::variant& var ) override { return _base.create_variant( var ); }
-         virtual void        modify_variant( const fc::variant& var ) override { _base.modify_variant( var ); }
+         virtual fc::variant create_variant( int64_t id, const fc::variant& var ) override { return _base.create_variant( id, var ); }
+         virtual void        modify_variant( int64_t id, const fc::variant& var ) override { _base.modify_variant( id, var ); }
 
          virtual std::vector<char>   find_binary( int64_t id )const override { return _base.find_binary( id ); }
-         virtual std::vector<char> create_binary(             const std::vector<char>& bin ) override { return _base.create_binary( bin ); }
+         virtual std::vector<char> create_binary( int64_t id, const std::vector<char>& bin ) override { return _base.create_binary( id, bin ); }
          virtual void              modify_binary( int64_t id, const std::vector<char>& bin ) override { _base.modify_binary( id, bin ); }
 
       private:
@@ -769,6 +759,9 @@ namespace graphene { namespace db2 {
              auto new_index = new index<index_type>( *idx_ptr );
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
+             std::string name;
+             new_index->get_schema()->get_name( name );
+             _type_name_to_id.emplace( name, type_id );
          }
 
          template<typename MultiIndexType>
@@ -861,20 +854,20 @@ namespace graphene { namespace db2 {
 
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }
 
-         /*
          void get_type_ids( std::vector< uint16_t >& type_ids );
          std::shared_ptr< graphene::schema::abstract_schema > get_schema_for_type_id( uint16_t type_id );
 
-         void remove_object(        uint16_t type_id, int64_t id                         );
+         generic_id generic_id_from_variant( const fc::variant& var )const;
 
-         void get_var_object(       uint16_t type_id, int64_t id,       fc::variant& var )const;
-         int64_t create_var_object( uint16_t type_id, int64_t id, const fc::variant& var );
-         void modify_var_object(    uint16_t type_id, int64_t id, const fc::variant& var );
+         void remove_object( generic_id gid );
 
-         void get_bin_object(       uint16_t type_id, int64_t id,       std::vector<char>& bin )const;
-         int64_t create_bin_object( uint16_t type_id, int64_t id, const std::vector<char>& bin );
-         void modify_bin_object(    uint16_t type_id, int64_t id, const std::vector<char>& bin );
-         */
+         fc::variant   find_variant( generic_id gid )const;
+         fc::variant create_variant( generic_id gid, const fc::variant& var );
+         void        modify_variant( generic_id gid, const fc::variant& var );
+
+         std::vector<char>   find_binary( generic_id gid )const;
+         std::vector<char> create_binary( generic_id gid, const std::vector<char>& bin );
+         void              modify_binary( generic_id gid, const std::vector<char>& bin );
 
          void export_to_directory( const fc::path& dir )const;
          void import_from_directory( const fc::path& dir );
@@ -893,6 +886,8 @@ namespace graphene { namespace db2 {
          vector<unique_ptr<abstract_index>>             _index_map;
 
          fc::path                                       _data_dir;
+
+         boost::container::flat_map< std::string, uint16_t > _type_name_to_id;
    };
 
 
