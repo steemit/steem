@@ -3,7 +3,7 @@
 #include <steemit/app/api.hpp>
 #include <steemit/private_message/private_message_plugin.hpp>
 #include <steemit/follow/follow_plugin.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steemit/app/steem_api_objects.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -21,13 +21,6 @@ using steemit::app::discussion;
 using namespace steemit::private_message;
 
 typedef uint16_t transaction_handle_type;
-
-/**
- * This class takes a variant and turns it into an object
- * of the given type, with the new operator.
- */
-
-object* create_object( const variant& v );
 
 struct memo_data {
 
@@ -139,12 +132,12 @@ class wallet_api
        *
        * @returns Price feed history data on the blockchain
        */
-      feed_history_object                 get_feed_history()const;
+      feed_history_api_obj                 get_feed_history()const;
 
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
        */
-      vector<account_name_type>                      get_active_witnesses()const;
+      fc::array< account_name_type, STEEMIT_MAX_WITNESSES > get_active_witnesses()const;
 
       /**
        * Returns the queue of pow miners waiting to produce blocks.
@@ -167,7 +160,7 @@ class wallet_api
       /**
        *  Gets the account information for all accounts for which this wallet has a private key
        */
-      vector<account_object>              list_my_accounts();
+      vector<account_api_obj>              list_my_accounts();
 
       /** Lists all accounts registered in the blockchain.
        * This returns a list of all account names and their account ids, sorted by account name.
@@ -189,14 +182,14 @@ class wallet_api
        * @see \c get_global_properties() for less-frequently changing properties
        * @returns the dynamic global properties
        */
-      dynamic_global_property_object    get_dynamic_global_properties() const;
+      dynamic_global_property_api_obj    get_dynamic_global_properties() const;
 
       /** Returns information about the given account.
        *
        * @param account_name the name of the account to provide information about
        * @returns the public account data stored in the blockchain
        */
-      extended_account                  get_account( string account_name ) const;
+      account_api_obj                     get_account( string account_name ) const;
 
       /** Returns the current wallet filename.
        *
@@ -490,7 +483,7 @@ class wallet_api
        * @param owner_account the name or id of the witness account owner, or the id of the witness
        * @returns the information about the witness stored in the block chain
        */
-      optional< witness_object > get_witness(string owner_account);
+      optional< witness_api_obj > get_witness(string owner_account);
 
       /** Returns conversion requests by an account
        *
@@ -498,7 +491,7 @@ class wallet_api
        *
        * @returns All pending conversion requests by account
        */
-      vector<convert_request_object> get_conversion_requests( string owner );
+      vector<convert_request_api_obj> get_conversion_requests( string owner );
 
 
       /**
@@ -808,7 +801,7 @@ class wallet_api
       annotated_signed_transaction      send_private_message( string from, string to, string subject, string body, bool broadcast );
       vector<extended_message_object>   get_inbox( string account, fc::time_point newest, uint32_t limit );
       vector<extended_message_object>   get_outbox( string account, fc::time_point newest, uint32_t limit );
-      message_body try_decrypt_message( const message_object& mo );
+      message_body try_decrypt_message( const message_api_obj& mo );
 
       /**
        * Vote on a comment to be paid STEEM
@@ -871,7 +864,7 @@ class wallet_api
        */
       annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
 
-      vector< owner_authority_history_object > get_owner_history( string account )const;
+      vector< owner_authority_history_api_obj > get_owner_history( string account )const;
 
       /**
        * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making

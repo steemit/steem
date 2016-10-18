@@ -10,10 +10,10 @@ namespace steemit { namespace app {
    using std::string;
    using std::vector;
 
-   struct extended_limit_order : public limit_order
+   struct extended_limit_order : public limit_order_api_obj
    {
       extended_limit_order(){}
-      extended_limit_order( const limit_order& o ):limit_order(o){}
+      extended_limit_order( const limit_order_object& o ):limit_order_api_obj(o){}
 
       double real_price  = 0;
       bool   rewarded    = false;
@@ -63,8 +63,8 @@ namespace steemit { namespace app {
       time_point_sec time;
    };
 
-   struct  discussion : public comment {
-      discussion( const comment_object& o ):comment(o){}
+   struct  discussion : public comment_api_obj {
+      discussion( const comment_object& o ):comment_api_obj(o){}
       discussion(){}
 
       string                      url; /// /category/@rootauthor/root_permlink#author/permlink
@@ -82,10 +82,10 @@ namespace steemit { namespace app {
    /**
     *  Convert's vesting shares
     */
-   struct extended_account : public account
+   struct extended_account : public account_api_obj
    {
       extended_account(){}
-      extended_account( const account_object& a, const account_authority_object& auth ):account( a, auth ){}
+      extended_account( const account_object& a, const account_authority_object& auth ):account_api_obj( a, auth ){}
 
       asset                                   vesting_balance; /// convert vesting_shares to vesting steem
       share_type                              reputation = 0;
@@ -143,7 +143,7 @@ namespace steemit { namespace app {
    struct state {
         string                            current_route;
 
-        dynamic_global_property           props;
+        dynamic_global_property_api_obj   props;
 
         /**
          *  Tracks the top categories by name, any category in this index
@@ -156,7 +156,7 @@ namespace steemit { namespace app {
          */
         map<string, discussion_index>     discussion_idx;
 
-        map< string, category >           categories;
+        map< string, category_api_obj >   categories;
         /**
          *  map from account/slug to full nested discussion
          */
@@ -167,8 +167,8 @@ namespace steemit { namespace app {
          * The list of miners who are queued to produce work
          */
         vector< account_name_type >       pow_queue;
-        map< string, witness >            witnesses;
-        witness_schedule_api_object       witness_schedule;
+        map< string, witness_api_obj >    witnesses;
+        witness_schedule_api_obj          witness_schedule;
         price                             feed_price;
         string                            error;
         optional< market >                market_data;
@@ -177,7 +177,7 @@ namespace steemit { namespace app {
 } }
 
 FC_REFLECT_DERIVED( steemit::app::extended_account,
-                   (steemit::app::account),
+                   (steemit::app::account_api_obj),
                    (vesting_balance)(reputation)
                    (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(posts)(feed)(blog)(recent_replies)(blog_category)(recommended) )
 
@@ -187,11 +187,11 @@ FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(t
 
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(trending30)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(promoted)(cashout) )
 FC_REFLECT( steemit::app::category_index, (trending)(active)(recent)(best) )
-FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::app::comment), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted)(first_reblogged_by)(first_reblogged_on) )
+FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::app::comment_api_obj), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted)(first_reblogged_by)(first_reblogged_on) )
 
 FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(categories)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data) )
 
-FC_REFLECT_DERIVED( steemit::app::extended_limit_order, (steemit::app::limit_order), (real_price)(rewarded) )
+FC_REFLECT_DERIVED( steemit::app::extended_limit_order, (steemit::app::limit_order_api_obj), (real_price)(rewarded) )
 FC_REFLECT( steemit::app::order_history_item, (time)(type)(sbd_quantity)(steem_quantity)(real_price) );
 FC_REFLECT( steemit::app::market, (bids)(asks)(history)(price_history)(available_candlesticks)(available_zoom)(current_candlestick)(current_zoom) )
 FC_REFLECT( steemit::app::candle_stick, (open_time)(period)(high)(low)(open)(close)(steem_volume)(dollar_volume) );

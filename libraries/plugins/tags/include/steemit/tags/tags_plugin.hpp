@@ -256,6 +256,8 @@ class tag_stats_object : public object< tag_stats_object_type, tag_stats_object 
          c( *this );
       }
 
+      tag_stats_object() {}
+
       id_type           id;
 
       tag_name_type     tag;
@@ -315,6 +317,8 @@ class peer_stats_object : public object< peer_stats_object_type, peer_stats_obje
       {
          c( *this );
       }
+
+      peer_stats_object() {}
 
       id_type           id;
 

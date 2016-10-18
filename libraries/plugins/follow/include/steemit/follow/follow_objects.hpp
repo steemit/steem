@@ -38,6 +38,8 @@ class follow_object : public object< follow_object_type, follow_object >
          c( *this );
       }
 
+      follow_object() {}
+
       id_type           id;
 
       account_id_type   follower;

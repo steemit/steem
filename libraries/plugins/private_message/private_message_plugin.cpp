@@ -33,8 +33,6 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 
-#include <graphene/db/schema.hpp>
-#include <graphene/db/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -107,7 +105,8 @@ void private_message_evaluator::do_apply( const private_message_operation& pm )
          pmo.checksum           = pm.checksum;
          pmo.sent_time          = pm.sent_time;
          pmo.receive_time       = d.head_block_time();
-         pmo.encrypted_message  = pm.encrypted_message;
+         pmo.encrypted_message.resize( pm.encrypted_message.size() );
+         std::copy( pm.encrypted_message.begin(), pm.encrypted_message.end(), pmo.encrypted_message.begin() );
       } );
    }
 }
@@ -140,7 +139,7 @@ void private_message_plugin::plugin_set_program_options(
 void private_message_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing private message plugin" );
-   database().add_index< primary_index< private_message_index  > >();
+   database().add_index< message_index >();
 
    app().register_api_factory<private_message_api>("private_message_api");
 
@@ -148,10 +147,10 @@ void private_message_plugin::plugin_initialize(const boost::program_options::var
    LOAD_VALUE_SET(options, "pm-accounts", my->_tracked_accounts, pairstring);
 }
 
-vector<message_object> private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
+vector< message_api_obj > private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
    FC_ASSERT( limit <= 100 );
-   vector<message_object> result;
-   const auto& idx = _app->chain_database()->get_index_type<private_message_index>().indices().get<by_to_date>();
+   vector< message_api_obj > result;
+   const auto& idx = _app->chain_database()->get_index< message_index >().indices().get< by_to_date >();
    auto itr = idx.lower_bound( std::make_tuple( to, newest ) );
    while( itr != idx.end() && limit && itr->to == to ) {
       result.push_back(*itr);
@@ -162,10 +161,10 @@ vector<message_object> private_message_api::get_inbox( string to, time_point new
    return result;
 }
 
-vector<message_object> private_message_api::get_outbox( string from, time_point newest, uint16_t limit )const {
+vector< message_api_obj > private_message_api::get_outbox( string from, time_point newest, uint16_t limit )const {
    FC_ASSERT( limit <= 100 );
-   vector<message_object> result;
-   const auto& idx = _app->chain_database()->get_index_type<private_message_index>().indices().get<by_from_date>();
+   vector< message_api_obj > result;
+   const auto& idx = _app->chain_database()->get_index< message_index >().indices().get< by_from_date >();
 
    auto itr = idx.lower_bound( std::make_tuple( from, newest ) );
    while( itr != idx.end() && limit && itr->from == from ) {

@@ -17,10 +17,10 @@ class follow_api_impl
       vector< follow_object > get_following( string follower, string start_following, follow_type type, uint16_t limit )const;
 
       vector< feed_entry > get_feed_entries( string account, uint32_t entry_id, uint16_t limit )const;
-      //vector< comment_feed_entry > get_feed( string account, uint32_t entry_id, uint16_t limit )const;
+      vector< comment_feed_entry > get_feed( string account, uint32_t entry_id, uint16_t limit )const;
 
       vector< blog_entry > get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const;
-      //vector< comment_blog_entry > get_blog( string account, uint32_t entry_id, uint16_t limit )const;
+      vector< comment_blog_entry > get_blog( string account, uint32_t entry_id, uint16_t limit )const;
 
       vector< account_reputation > get_account_reputations( string lower_bound_name, uint32_t limit )const;
 
@@ -106,7 +106,7 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
    return results;
 }
 
-/*vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t entry_id, uint16_t limit )const
+vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t entry_id, uint16_t limit )const
 {
    FC_ASSERT( limit <= 500, "Cannot retrieve more than 500 feed entries at a time." );
 
@@ -138,7 +138,7 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
    }
 
    return results;
-}*/
+}
 
 vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const
 {
@@ -173,7 +173,7 @@ vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t
    return results;
 }
 
-/*vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t entry_id, uint16_t limit )const
+vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t entry_id, uint16_t limit )const
 {
    FC_ASSERT( limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
 
@@ -203,7 +203,7 @@ vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t
    }
 
    return results;
-}*/
+}
 
 vector< account_reputation > follow_api_impl::get_account_reputations( string lower_bound_name, uint32_t limit )const
 {
@@ -257,20 +257,20 @@ vector< feed_entry > follow_api::get_feed_entries( string account, uint32_t entr
    return my->get_feed_entries( account, entry_id, limit );
 }
 
-/*vector< comment_feed_entry > follow_api::get_feed( string account, uint32_t entry_id, uint16_t limit )const
+vector< comment_feed_entry > follow_api::get_feed( string account, uint32_t entry_id, uint16_t limit )const
 {
    return my->get_feed( account, entry_id, limit );
-}*/
+}
 
 vector< blog_entry > follow_api::get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const
 {
    return my->get_blog_entries( account, entry_id, limit );
 }
 
-/*vector< comment_blog_entry > follow_api::get_blog( string account, uint32_t entry_id, uint16_t limit )const
+vector< comment_blog_entry > follow_api::get_blog( string account, uint32_t entry_id, uint16_t limit )const
 {
    return my->get_blog( account, entry_id, limit );
-}*/
+}
 
 vector< account_reputation > follow_api::get_account_reputations( string lower_bound_name, uint32_t limit )const
 {

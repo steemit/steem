@@ -255,7 +255,7 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
    return b;
 }
 
-const signed_transaction& database::get_recent_transaction( const transaction_id_type& trx_id ) const
+const signed_transaction database::get_recent_transaction( const transaction_id_type& trx_id ) const
 {
    auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
    auto itr = index.find(trx_id);
@@ -2735,8 +2735,12 @@ void database::validate_transaction( const signed_transaction& trx )
 
 void database::notify_changed_objects()
 {
-   /*try
+   try
    {
+      /*vector< graphene::db2::generic_id > ids;
+      get_changed_ids( ids );
+      STEEMIT_TRY_NOTIFY( changed_objects, ids )*/
+      /*
       if( _undo_db.enabled() )
       {
          const auto& head_undo = _undo_db.head();
@@ -2752,9 +2756,10 @@ void database::notify_changed_objects()
          }
          STEEMIT_TRY_NOTIFY( changed_objects, changed_ids )
       }
+      */
    }
    FC_CAPTURE_AND_RETHROW()
-   */
+
 }
 
 //////////////////// private methods ////////////////////

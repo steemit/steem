@@ -128,10 +128,10 @@ class database_api
        *  with a single query.
        */
       state get_state( string path )const;
-      vector<category_object> get_trending_categories( string after, uint32_t limit )const;
-      vector<category_object> get_best_categories( string after, uint32_t limit )const;
-      vector<category_object> get_active_categories( string after, uint32_t limit )const;
-      vector<category_object> get_recent_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_trending_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_best_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_active_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_recent_categories( string after, uint32_t limit )const;
 
       fc::array< account_name_type, STEEMIT_MAX_WITNESSES > get_active_witnesses()const;
       vector< account_name_type > get_miner_queue()const;
@@ -171,13 +171,13 @@ class database_api
       /**
        * @brief Retrieve the current @ref dynamic_global_property_object
        */
-      dynamic_global_property_object get_dynamic_global_properties()const;
-      chain_properties               get_chain_properties()const;
-      price                          get_current_median_history_price()const;
-      feed_history_object            get_feed_history()const;
-      witness_schedule_object        get_witness_schedule()const;
-      hardfork_version               get_hardfork_version()const;
-      scheduled_hardfork             get_next_scheduled_hardfork()const;
+      dynamic_global_property_api_obj  get_dynamic_global_properties()const;
+      chain_properties                 get_chain_properties()const;
+      price                            get_current_median_history_price()const;
+      feed_history_api_obj             get_feed_history()const;
+      witness_schedule_api_obj         get_witness_schedule()const;
+      hardfork_version                 get_hardfork_version()const;
+      scheduled_hardfork               get_next_scheduled_hardfork()const;
 
       //////////
       // Keys //
@@ -203,7 +203,7 @@ class database_api
        *
        * This function has semantics identical to @ref get_objects
        */
-      vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
+      vector<optional<account_api_obj>> lookup_account_names(const vector<string>& account_names)const;
 
       /**
        * @brief Get names and IDs for registered accounts
@@ -218,16 +218,16 @@ class database_api
        */
       uint64_t get_account_count()const;
 
-      vector< owner_authority_history_object > get_owner_history( string account )const;
+      vector< owner_authority_history_api_obj > get_owner_history( string account )const;
 
-      optional< account_recovery_request_object > get_recovery_request( string account ) const;
+      optional< account_recovery_request_api_obj > get_recovery_request( string account ) const;
 
-      optional< escrow_object > get_escrow( string from, uint32_t escrow_id )const;
+      optional< escrow_api_obj > get_escrow( string from, uint32_t escrow_id )const;
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
-      vector< savings_withdraw_object > get_savings_withdraw_from( string account )const;
-      vector< savings_withdraw_object > get_savings_withdraw_to( string account )const;
+      vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
+      vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
 
       ///////////////
       // Witnesses //
@@ -240,23 +240,23 @@ class database_api
        *
        * This function has semantics identical to @ref get_objects
        */
-      vector<optional<witness_object>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
+      vector<optional<witness_api_obj>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
 
-      vector<convert_request_object> get_conversion_requests( const string& account_name )const;
+      vector<convert_request_api_obj> get_conversion_requests( const string& account_name )const;
 
       /**
        * @brief Get the witness owned by a given account
        * @param account The name of the account whose witness should be retrieved
        * @return The witness object, or null if the account does not have a witness
        */
-      fc::optional< witness_object > get_witness_by_account( string account_name )const;
+      fc::optional< witness_api_obj > get_witness_by_account( string account_name )const;
 
       /**
        *  This method is used to fetch witnesses with pagination.
        *
        *  @return an array of `count` witnesses sorted by total votes after witness `from` with at most `limit' results.
        */
-      vector< witness_object > get_witnesses_by_vote( string from, uint32_t limit )const;
+      vector< witness_api_obj > get_witnesses_by_vote( string from, uint32_t limit )const;
 
       /**
        * @brief Get names and IDs for registered witnesses
@@ -404,8 +404,8 @@ class database_api
       void set_url( discussion& d )const;
       discussion get_discussion( comment_id_type )const;
 
-      static bool filter_default( const comment& c ) { return false; }
-      static bool exit_default( const comment& c )   { return false; }
+      static bool filter_default( const comment_api_obj& c ) { return false; }
+      static bool exit_default( const comment_api_obj& c )   { return false; }
       static bool tag_exit_default( const tags::tag_object& c ) { return false; }
 
       template<typename Index, typename StartItr>
@@ -413,8 +413,8 @@ class database_api
                                           const string& tag,
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr,
-                                          const std::function< bool( const comment& ) >& filter = &database_api::filter_default,
-                                          const std::function< bool( const comment& ) >& exit   = &database_api::exit_default,
+                                          const std::function< bool( const comment_api_obj& ) >& filter = &database_api::filter_default,
+                                          const std::function< bool( const comment_api_obj& ) >& exit   = &database_api::exit_default,
                                           const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default
                                           )const;
       comment_id_type get_parent( const discussion_query& q )const;

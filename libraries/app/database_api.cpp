@@ -4,8 +4,6 @@
 
 #include <steemit/protocol/get_config.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
-
 #include <fc/bloom_filter.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/crypto/hex.hpp>
@@ -47,7 +45,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 
       // Globals
       fc::variant_object get_config()const;
-      dynamic_global_property_object get_dynamic_global_properties()const;
+      dynamic_global_property_api_obj get_dynamic_global_properties()const;
 
       // Keys
       vector<set<string>> get_key_references( vector<public_key_type> key )const;
@@ -55,13 +53,13 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // Accounts
       vector< extended_account > get_accounts( vector< string > names )const;
       vector<account_id_type> get_account_references( account_id_type account_id )const;
-      vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
+      vector<optional<account_api_obj>> lookup_account_names(const vector<string>& account_names)const;
       set<string> lookup_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_account_count()const;
 
       // Witnesses
-      vector<optional<witness_object>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
-      fc::optional<witness_object> get_witness_by_account( string account_name )const;
+      vector<optional<witness_api_obj>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
+      fc::optional<witness_api_obj> get_witness_by_account( string account_name )const;
       set<account_name_type> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
       uint64_t get_witness_count()const;
 
@@ -252,7 +250,7 @@ fc::variant_object database_api_impl::get_config()const
    return steemit::protocol::get_config();
 }
 
-dynamic_global_property_object database_api::get_dynamic_global_properties()const
+dynamic_global_property_api_obj database_api::get_dynamic_global_properties()const
 {
    return my->get_dynamic_global_properties();
 }
@@ -262,7 +260,7 @@ chain_properties database_api::get_chain_properties()const
    return my->_db.get_witness_schedule_object().median_props;
 }
 
-feed_history_object database_api::get_feed_history()const {
+feed_history_api_obj database_api::get_feed_history()const {
    return my->_db.get_feed_history();
 }
 
@@ -270,12 +268,12 @@ price database_api::get_current_median_history_price()const {
    return my->_db.get_feed_history().current_median_history;
 }
 
-dynamic_global_property_object database_api_impl::get_dynamic_global_properties()const
+dynamic_global_property_api_obj database_api_impl::get_dynamic_global_properties()const
 {
    return _db.get(dynamic_global_property_id_type());
 }
 
-witness_schedule_object database_api::get_witness_schedule()const
+witness_schedule_api_obj database_api::get_witness_schedule()const
 {
    return witness_schedule_id_type()( my->_db );
 }
@@ -394,21 +392,30 @@ vector<account_id_type> database_api_impl::get_account_references( account_id_ty
    FC_ASSERT( false, "database_api::get_account_references --- Needs to be refactored for steem." );
 }
 
-vector<optional<account_object>> database_api::lookup_account_names(const vector<string>& account_names)const
+vector<optional<account_api_obj>> database_api::lookup_account_names(const vector<string>& account_names)const
 {
    return my->lookup_account_names( account_names );
 }
 
-vector<optional<account_object>> database_api_impl::lookup_account_names(const vector<string>& account_names)const
+vector<optional<account_api_obj>> database_api_impl::lookup_account_names(const vector<string>& account_names)const
 {
-   const auto& accounts_by_name = _db.get_index<account_index>().indices().get<by_name>();
-   vector<optional<account_object> > result;
+   vector<optional<account_api_obj> > result;
    result.reserve(account_names.size());
-   std::transform(account_names.begin(), account_names.end(), std::back_inserter(result),
-                  [&accounts_by_name](const string& name) -> optional<account_object> {
-      auto itr = accounts_by_name.find(name);
-      return itr == accounts_by_name.end()? optional<account_object>() : *itr;
-   });
+
+   for( auto& name : account_names )
+   {
+      auto itr = _db.find< account_object, by_name >( name );
+
+      if( itr )
+      {
+         result.push_back( account_api_obj( *itr, _db.get< account_authority_object, by_account >( name ) ) );
+      }
+      else
+      {
+         result.push_back( optional< account_api_obj>() );
+      }
+   }
+
    return result;
 }
 
@@ -443,9 +450,9 @@ uint64_t database_api_impl::get_account_count()const
    return _db.get_index<account_index>().indices().size();
 }
 
-vector< owner_authority_history_object > database_api::get_owner_history( string account )const
+vector< owner_authority_history_api_obj > database_api::get_owner_history( string account )const
 {
-   vector< owner_authority_history_object > results;
+   vector< owner_authority_history_api_obj > results;
 
    const auto& hist_idx = my->_db.get_index< owner_authority_history_index >().indices().get< by_account >();
    auto itr = hist_idx.lower_bound( account );
@@ -459,9 +466,9 @@ vector< owner_authority_history_object > database_api::get_owner_history( string
    return results;
 }
 
-optional< account_recovery_request_object > database_api::get_recovery_request( string account )const
+optional< account_recovery_request_api_obj > database_api::get_recovery_request( string account )const
 {
-   optional< account_recovery_request_object > result;
+   optional< account_recovery_request_api_obj > result;
 
    const auto& rec_idx = my->_db.get_index< account_recovery_request_index >().indices().get< by_account >();
    auto req = rec_idx.find( account );
@@ -472,9 +479,9 @@ optional< account_recovery_request_object > database_api::get_recovery_request( 
    return result;
 }
 
-optional< escrow_object > database_api::get_escrow( string from, uint32_t escrow_id )const
+optional< escrow_api_obj > database_api::get_escrow( string from, uint32_t escrow_id )const
 {
-   optional< escrow_object > result;
+   optional< escrow_api_obj > result;
 
    try
    {
@@ -538,16 +545,16 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-vector<optional<witness_object>> database_api::get_witnesses(const vector<witness_id_type>& witness_ids)const
+vector<optional<witness_api_obj>> database_api::get_witnesses(const vector<witness_id_type>& witness_ids)const
 {
    return my->get_witnesses( witness_ids );
 }
 
-vector<optional<witness_object>> database_api_impl::get_witnesses(const vector<witness_id_type>& witness_ids)const
+vector<optional<witness_api_obj>> database_api_impl::get_witnesses(const vector<witness_id_type>& witness_ids)const
 {
-   vector<optional<witness_object>> result; result.reserve(witness_ids.size());
+   vector<optional<witness_api_obj>> result; result.reserve(witness_ids.size());
    std::transform(witness_ids.begin(), witness_ids.end(), std::back_inserter(result),
-                  [this](witness_id_type id) -> optional<witness_object> {
+                  [this](witness_id_type id) -> optional<witness_api_obj> {
       if(auto o = _db.find(id))
          return *o;
       return {};
@@ -555,17 +562,17 @@ vector<optional<witness_object>> database_api_impl::get_witnesses(const vector<w
    return result;
 }
 
-fc::optional<witness_object> database_api::get_witness_by_account( string account_name ) const
+fc::optional<witness_api_obj> database_api::get_witness_by_account( string account_name ) const
 {
    return my->get_witness_by_account( account_name );
 }
 
-vector< witness_object > database_api::get_witnesses_by_vote( string from, uint32_t limit )const
+vector< witness_api_obj > database_api::get_witnesses_by_vote( string from, uint32_t limit )const
 {
    //idump((from)(limit));
    FC_ASSERT( limit <= 100 );
 
-   vector<witness_object> result;
+   vector<witness_api_obj> result;
    result.reserve(limit);
 
    const auto& name_idx = my->_db.get_index< witness_index >().indices().get< by_name >();
@@ -588,7 +595,7 @@ vector< witness_object > database_api::get_witnesses_by_vote( string from, uint3
    return result;
 }
 
-fc::optional<witness_object> database_api_impl::get_witness_by_account( string account_name ) const
+fc::optional<witness_api_obj> database_api_impl::get_witness_by_account( string account_name ) const
 {
    const auto& idx = _db.get_index< witness_index >().indices().get< by_name >();
    auto itr = idx.find( account_name );
@@ -611,7 +618,7 @@ set< account_name_type > database_api_impl::lookup_witness_accounts( const strin
    // records to return.  This could be optimized, but we expect the
    // number of witnesses to be few and the frequency of calls to be rare
    set< account_name_type > witnesses_by_account_name;
-   for ( const witness_object& witness : witnesses_by_id )
+   for ( const witness_api_obj& witness : witnesses_by_id )
       if ( witness.owner >= lower_bound_name ) // we can ignore anything below lower_bound_name
          witnesses_by_account_name.insert( witness.owner );
 
@@ -840,21 +847,11 @@ bool database_api::verify_account_authority( const string& name_or_id, const fla
    return my->verify_account_authority( name_or_id, signers );
 }
 
-bool database_api_impl::verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& keys )const
+bool database_api_impl::verify_account_authority( const string& name, const flat_set<public_key_type>& keys )const
 {
-   FC_ASSERT( name_or_id.size() > 0);
-   const account_object* account = nullptr;
-   if (std::isdigit(name_or_id[0]))
-      account = _db.find(fc::variant(name_or_id).as<account_id_type>());
-   else
-   {
-      const auto& idx = _db.get_index<account_index>().indices().get<by_name>();
-      auto itr = idx.find(name_or_id);
-      if (itr != idx.end())
-         account = &*itr;
-   }
+   FC_ASSERT( name.size() > 0);
+   auto account = _db.find< account_object, by_name >( name );
    FC_ASSERT( account, "no such account" );
-
 
    /// reuse trx.verify_authority by creating a dummy transfer
    signed_transaction trx;
@@ -865,9 +862,9 @@ bool database_api_impl::verify_account_authority( const string& name_or_id, cons
    return verify_authority( trx );
 }
 
-vector<convert_request_object> database_api::get_conversion_requests( const string& account )const {
+vector<convert_request_api_obj> database_api::get_conversion_requests( const string& account )const {
   const auto& idx = my->_db.get_index< convert_request_index >().indices().get< by_owner >();
-  vector< convert_request_object > result;
+  vector< convert_request_api_obj > result;
   auto itr = idx.lower_bound(account);
   while( itr != idx.end() && itr->owner == account ) {
      result.push_back(*itr);
@@ -998,7 +995,7 @@ void database_api::set_pending_payout( discussion& d )const
 
 void database_api::set_url( discussion& d )const
 {
-   const comment root = comment( my->_db.get< comment_object, by_id >( d.root_comment ) );
+   const comment_api_obj root( my->_db.get< comment_object, by_id >( d.root_comment ) );
    d.url = "/" + root.category + "/@" + root.author + "/" + root.permlink;
    d.root_title = root.title;
    if( root.id != d.id )
@@ -1105,8 +1102,8 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   const string& tag,
                                                   comment_id_type parent,
                                                   const Index& tidx, StartItr tidx_itr,
-                                                  const std::function< bool(const comment& ) >& filter,
-                                                  const std::function< bool(const comment& ) >& exit,
+                                                  const std::function< bool(const comment_api_obj& ) >& filter,
+                                                  const std::function< bool(const comment_api_obj& ) >& exit,
                                                   const std::function< bool(const tags::tag_object& ) >& tag_exit
                                                   )const
 {
@@ -1169,7 +1166,7 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
 }
 vector<discussion> database_api::get_discussions_by_promoted( const discussion_query& query )const {
    query.validate();
@@ -1179,7 +1176,7 @@ vector<discussion> database_api::get_discussions_by_promoted( const discussion_q
    const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY) )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment& c ){ return c.children_rshares2 <= 0; }, exit_default, []( const tags::tag_object& t ){ return t.promoted_balance == 0; }  );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0; }, exit_default, []( const tags::tag_object& t ){ return t.promoted_balance == 0; }  );
 }
 
 vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const {
@@ -1190,7 +1187,7 @@ vector<discussion> database_api::get_discussions_by_trending30( const discussion
    const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, second_payout, parent, fc::uint128_t::max_value() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
 }
 
 vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const {
@@ -1225,7 +1222,7 @@ vector<discussion> database_api::get_discussions_by_cashout( const discussion_qu
    const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_cashout>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, fc::time_point::now() - fc::minutes(60) ) );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment& c ){ return c.children_rshares2 <= 0; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0; } );
 }
 vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const {
    vector<discussion> result;
@@ -1261,7 +1258,7 @@ vector<discussion> database_api::get_discussions_by_hot( const discussion_query&
    const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<double>::max() )  );
 
-   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment& c ) { return c.net_rshares <= 0; } );
+   return get_discussions( query, tag, parent, tidx, tidx_itr, []( const comment_api_obj& c ) { return c.net_rshares <= 0; } );
 }
 
 vector<discussion> database_api::get_discussions_by_feed( const discussion_query& query )const
@@ -1400,9 +1397,9 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
    return result;
 }
 
-vector<category_object> database_api::get_trending_categories( string after, uint32_t limit )const {
+vector<category_api_obj> database_api::get_trending_categories( string after, uint32_t limit )const {
    limit = std::min( limit, uint32_t(100) );
-   vector<category_object> result; result.reserve( limit );
+   vector<category_api_obj> result; result.reserve( limit );
 
    const auto& nidx = my->_db.get_index<chain::category_index>().indices().get<by_name>();
 
@@ -1422,21 +1419,21 @@ vector<category_object> database_api::get_trending_categories( string after, uin
    return result;
 }
 
-vector<category_object> database_api::get_best_categories( string after, uint32_t limit )const {
+vector<category_api_obj> database_api::get_best_categories( string after, uint32_t limit )const {
    limit = std::min( limit, uint32_t(100) );
-   vector<category_object> result; result.reserve( limit );
+   vector<category_api_obj> result; result.reserve( limit );
    return result;
 }
 
-vector<category_object> database_api::get_active_categories( string after, uint32_t limit )const {
+vector<category_api_obj> database_api::get_active_categories( string after, uint32_t limit )const {
    limit = std::min( limit, uint32_t(100) );
-   vector<category_object> result; result.reserve( limit );
+   vector<category_api_obj> result; result.reserve( limit );
    return result;
 }
 
-vector<category_object> database_api::get_recent_categories( string after, uint32_t limit )const {
+vector<category_api_obj> database_api::get_recent_categories( string after, uint32_t limit )const {
    limit = std::min( limit, uint32_t(100) );
-   vector<category_object> result; result.reserve( limit );
+   vector<category_api_obj> result; result.reserve( limit );
    return result;
 }
 
@@ -1528,8 +1525,8 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
    FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) )
 }
 
-vector< savings_withdraw_object > database_api::get_savings_withdraw_from( string account )const {
-  vector<savings_withdraw_object> result;
+vector< savings_withdraw_api_obj > database_api::get_savings_withdraw_from( string account )const {
+  vector<savings_withdraw_api_obj> result;
 
   const auto& from_rid_idx = my->_db.get_index< savings_withdraw_index >().indices().get< by_from_rid >();
   auto itr = from_rid_idx.lower_bound( account );
@@ -1539,8 +1536,8 @@ vector< savings_withdraw_object > database_api::get_savings_withdraw_from( strin
   }
   return result;
 }
-vector< savings_withdraw_object > database_api::get_savings_withdraw_to( string account )const {
-  vector<savings_withdraw_object> result;
+vector< savings_withdraw_api_obj > database_api::get_savings_withdraw_to( string account )const {
+  vector<savings_withdraw_api_obj> result;
 
   const auto& to_complete_idx = my->_db.get_index< savings_withdraw_index >().indices().get< by_to_complete >();
   auto itr = to_complete_idx.lower_bound( account );
@@ -1570,16 +1567,16 @@ state database_api::get_state( string path )const
    auto trending_cat = get_trending_categories( "", 100 );
    for( const auto& c : trending_cat )
    {
-      string name = to_string( c.name );
+      string name = c.name;
       _state.category_idx.trending.push_back( name );
-      _state.categories[ name ] = category( c );
+      _state.categories[ name ] = category_api_obj( c );
    }
    auto best_cat     = get_best_categories( "", 50 );
    for( const auto& c : best_cat )
    {
-      string name = to_string( c.name );
+      string name = c.name;
       _state.category_idx.best.push_back( name );
-      _state.categories[ name ] = category( c );
+      _state.categories[ name ] = category_api_obj( c );
    }
    /// END FETCH CATEGORY STATE
 

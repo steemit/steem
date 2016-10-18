@@ -103,7 +103,7 @@ int main( int argc, char** argv, char** envp )
       share_type liquidity_reward = 0;
       share_type pow_reward = 0;
 
-      if( (block_num % STEEMIT_MAX_MINERS) == 0 )
+      if( (block_num % STEEMIT_MAX_WITNESSES) == 0 )
          ++pow_deficit;
 
       if( pow_deficit > 0 )
@@ -111,7 +111,7 @@ int main( int argc, char** argv, char** envp )
          pow_reward = calc_percent_reward_per_round< STEEMIT_POW_APR_PERCENT >( current_supply );
          pow_reward = std::max( pow_reward, STEEMIT_MIN_POW_REWARD.amount );
          if( block_num < STEEMIT_START_MINER_VOTING_BLOCK )
-            pow_reward *= STEEMIT_MAX_MINERS;
+            pow_reward *= STEEMIT_MAX_WITNESSES;
          --pow_deficit;
       }
       reward_delta[ POW_OFF ] = pow_reward;

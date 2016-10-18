@@ -1,3 +1,4 @@
+#pragma once
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/block_summary_object.hpp>
 #include <steemit/chain/comment_object.hpp>
@@ -34,22 +35,22 @@ using namespace steemit::chain;
    price                      sell_price;
 };*/
 
-typedef change_recovery_account_request_object  change_recovery_account_request;
-typedef block_summary_object                    block_summary;
-typedef comment_vote_object                     comment_vote;
-typedef dynamic_global_property_object          dynamic_global_property;
-typedef convert_request_object                  convert_request_object;
-typedef escrow_object                           escrow;
-typedef liquidity_reward_balance_object         liquidity_reward_balance;
-typedef limit_order_object                      limit_order;
-typedef withdraw_vesting_route_object           withdraw_vesting_route;
-typedef decline_voting_rights_request_object    decline_voting_rights_request;
-typedef witness_vote_object                     witness_vote;
-typedef witness_schedule_object                 witness_schedule_api_object;
+typedef chain::change_recovery_account_request_object  change_recovery_account_request_api_obj;
+typedef chain::block_summary_object                    block_summary_api_obj;
+typedef chain::comment_vote_object                     comment_vote_api_obj;
+typedef chain::dynamic_global_property_object          dynamic_global_property_api_obj;
+typedef chain::convert_request_object                  convert_request_api_obj;
+typedef chain::escrow_object                           escrow_api_obj;
+typedef chain::liquidity_reward_balance_object         liquidity_reward_balance_api_obj;
+typedef chain::limit_order_object                      limit_order_api_obj;
+typedef chain::withdraw_vesting_route_object           withdraw_vesting_route_api_obj;
+typedef chain::decline_voting_rights_request_object    decline_voting_rights_request_api_obj;
+typedef chain::witness_vote_object                     witness_vote_api_obj;
+typedef chain::witness_schedule_object                 witness_schedule_api_obj;
 
-struct comment
+struct comment_api_obj
 {
-   comment( const chain::comment_object& o ):
+   comment_api_obj( const chain::comment_object& o ):
       id( o.id ),
       category( to_string( o.category ) ),
       parent_author( o.parent_author ),
@@ -87,7 +88,7 @@ struct comment
       allow_curation_rewards( o.allow_curation_rewards )
    {}
 
-   comment(){}
+   comment_api_obj(){}
 
    comment_id_type   id;
    string            category;
@@ -138,9 +139,9 @@ struct comment
    bool              allow_curation_rewards;
 };
 
-struct category
+struct category_api_obj
 {
-   category( const chain::category_object& c ) :
+   category_api_obj( const chain::category_object& c ) :
       id( c.id ),
       name( to_string( c.name ) ),
       abs_rshares( c.abs_rshares ),
@@ -149,7 +150,7 @@ struct category
       last_update( c.last_update )
    {}
 
-   category() {}
+   category_api_obj() {}
 
    category_id_type     id;
    string               name;
@@ -159,9 +160,9 @@ struct category
    time_point_sec       last_update;
 };
 
-struct account
+struct account_api_obj
 {
-   account( const chain::account_object& a, const chain::account_authority_object& auth ) :
+   account_api_obj( const chain::account_object& a, const chain::account_authority_object& auth ) :
       id( a.id ),
       name( a.name ),
       owner( authority( auth.owner ) ),
@@ -218,7 +219,7 @@ struct account
       post_bandwidth( a.post_bandwidth )
    {}
 
-   account(){}
+   account_api_obj(){}
 
    account_id_type   id;
 
@@ -290,34 +291,87 @@ struct account
    uint32_t          post_bandwidth;
 };
 
-struct owner_authority_history
+struct owner_authority_history_api_obj
+{
+   owner_authority_history_api_obj( const chain::owner_authority_history_object& o ) :
+      id( o.id ),
+      account( o.account ),
+      previous_owner_authority( authority( o.previous_owner_authority ) ),
+      last_valid_time( o.last_valid_time )
+   {}
+
+   owner_authority_history_api_obj() {}
+
+   owner_authority_history_id_type  id;
+
+   account_name_type                account;
+   authority                        previous_owner_authority;
+   time_point_sec                   last_valid_time;
+};
+
+struct account_recovery_request_api_obj
+{
+   account_recovery_request_api_obj( const chain::account_recovery_request_object& o ) :
+      id( o.id ),
+      account_to_recover( o.account_to_recover ),
+      new_owner_authority( authority( o.new_owner_authority ) ),
+      expires( o.expires )
+   {}
+
+   account_recovery_request_api_obj() {}
+
+   account_recovery_request_id_type id;
+   account_name_type                account_to_recover;
+   authority                        new_owner_authority;
+   time_point_sec                   expires;
+};
+
+struct account_history_api_obj
 {
 
 };
 
-struct account_recovery_request
+struct savings_withdraw_api_obj
 {
+   savings_withdraw_api_obj( const chain::savings_withdraw_object& o ) :
+      id( o.id ),
+      from( o.from ),
+      to( o.to ),
+      memo( to_string( o.memo ) ),
+      request_id( o.request_id ),
+      amount( o.amount ),
+      complete( o.complete )
+   {}
 
+   savings_withdraw_api_obj() {}
+
+   savings_withdraw_id_type   id;
+   account_name_type          from;
+   account_name_type          to;
+   string                     memo;
+   uint32_t                   request_id = 0;
+   asset                      amount;
+   time_point_sec             complete;
 };
 
-struct account_history
+struct feed_history_api_obj
 {
+   feed_history_api_obj( const chain::feed_history_object& f ) :
+      id( f.id ),
+      current_median_history( f.current_median_history ),
+      price_history( f.price_history.begin(), f.price_history.end() )
+   {}
 
+   feed_history_api_obj() {}
+
+   feed_history_id_type id;
+   price                current_median_history;
+   deque< price >       price_history;
 };
 
-struct savings_withdraw
+struct witness_api_obj
 {
-
-};
-
-struct feed_history
-{
-
-};
-
-struct witness
-{
-   witness( const chain::witness_object& w ) :
+   witness_api_obj( const chain::witness_object& w ) :
       id( w.id ),
       owner( w.owner ),
       created( w.created ),
@@ -340,7 +394,7 @@ struct witness
       hardfork_time_vote( w.hardfork_time_vote )
    {}
 
-   witness() {}
+   witness_api_obj() {}
 
    witness_id_type   id;
    account_name_type owner;
@@ -366,7 +420,7 @@ struct witness
 
 } } // steemit::app
 
-FC_REFLECT( steemit::app::comment,
+FC_REFLECT( steemit::app::comment_api_obj,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
@@ -377,11 +431,11 @@ FC_REFLECT( steemit::app::comment,
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
           )
 
-FC_REFLECT( steemit::app::category,
+FC_REFLECT( steemit::app::category_api_obj,
              (name)(abs_rshares)(total_payouts)(discussions)(last_update)
           )
 
-FC_REFLECT( steemit::app::account,
+FC_REFLECT( steemit::app::account_api_obj,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
              (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
@@ -399,7 +453,37 @@ FC_REFLECT( steemit::app::account,
              (last_post)(last_root_post)(post_bandwidth)
           )
 
-FC_REFLECT( steemit::app::witness,
+FC_REFLECT( steemit::app::owner_authority_history_api_obj,
+             (id)
+             (account)
+             (previous_owner_authority)
+             (last_valid_time)
+          )
+
+FC_REFLECT( steemit::app::account_recovery_request_api_obj,
+             (id)
+             (account_to_recover)
+             (new_owner_authority)
+             (expires)
+          )
+
+FC_REFLECT( steemit::app::savings_withdraw_api_obj,
+             (id)
+             (from)
+             (to)
+             (memo)
+             (request_id)
+             (amount)
+             (complete)
+          )
+
+FC_REFLECT( steemit::app::feed_history_api_obj,
+             (id)
+             (current_median_history)
+             (price_history)
+          )
+
+FC_REFLECT( steemit::app::witness_api_obj,
              (id)
              (owner)
              (created)

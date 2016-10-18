@@ -103,7 +103,7 @@ namespace steemit { namespace chain {
          block_id_type              get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
+         const signed_transaction   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
          chain_id_type             get_chain_id()const;
@@ -226,7 +226,7 @@ namespace steemit { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         //fc::signal<void(const vector<object_id_type>&)> changed_objects;
+         fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.
