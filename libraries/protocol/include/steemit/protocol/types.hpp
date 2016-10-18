@@ -2,10 +2,6 @@
 #include <steemit/protocol/config.hpp>
 #include <fc/fixed_string.hpp>
 
-#include <graphene/db/object_id.hpp>
-#include <graphene/db/object.hpp>
-#include <graphene/db/undo_database.hpp>
-
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>

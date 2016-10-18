@@ -10,9 +10,6 @@
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
 
-#include <graphene/db/schema.hpp>
-#include <graphene/db/schema_impl.hpp>
-
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/io/json.hpp>

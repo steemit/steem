@@ -11,8 +11,6 @@
 
 namespace steemit { namespace chain {
 
-   using namespace graphene::db;
-
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const

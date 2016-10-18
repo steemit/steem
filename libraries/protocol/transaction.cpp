@@ -10,8 +10,6 @@
 
 namespace steemit { namespace protocol {
 
-using namespace graphene::db;
-
 digest_type signed_transaction::merkle_digest()const
 {
    digest_type::encoder enc;

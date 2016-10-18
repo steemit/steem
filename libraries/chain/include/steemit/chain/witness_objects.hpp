@@ -9,8 +9,6 @@
 
 namespace steemit { namespace chain {
 
-   using namespace graphene::db;
-
    using steemit::protocol::chain_properties;
    using steemit::protocol::digest_type;
    using steemit::protocol::public_key_type;
