@@ -8,13 +8,12 @@ namespace steemit { namespace follow {
 
 using namespace std;
 using namespace steemit::chain;
-using graphene::db::abstract_object;
 
 #ifndef FOLLOW_SPACE_ID
 #define FOLLOW_SPACE_ID 8
 #endif
 
-enum follow_object_type
+enum follow_plugin_object_type
 {
    follow_object_type     = ( FOLLOW_SPACE_ID << 8 ),
    feed_object_type       = ( FOLLOW_SPACE_ID << 8 ) + 1,

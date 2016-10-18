@@ -8,8 +8,6 @@
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/custom_operation_interpreter.hpp>
 
-#include <graphene/db/schema.hpp>
-
 #include <fc/variant.hpp>
 
 #include <string>
