@@ -498,6 +498,7 @@ namespace graphene { namespace db2 {
             } );
          }
 
+         /*
          std::vector<char> find_binary( int64_t id )const
          {
             const value_type* val = find( typename value_type::id_type(id) );
@@ -529,6 +530,7 @@ namespace graphene { namespace db2 {
                v.id = old_id;
             } );
          }
+         */
 
       private:
          bool enabled()const { return _stack.size(); }
@@ -639,9 +641,11 @@ namespace graphene { namespace db2 {
          virtual fc::variant create_variant( int64_t id, const fc::variant& var ) = 0;
          virtual void        modify_variant( int64_t id, const fc::variant& var ) = 0;
 
+         /*
          virtual std::vector<char>   find_binary( int64_t id )const                          = 0;
          virtual std::vector<char> create_binary( int64_t id, const std::vector<char>& bin ) = 0;
          virtual void              modify_binary( int64_t id, const std::vector<char>& bin ) = 0;
+         */
 
          void* get()const { return _idx_ptr; }
       private:
@@ -673,9 +677,11 @@ namespace graphene { namespace db2 {
          virtual fc::variant create_variant( int64_t id, const fc::variant& var ) override { return _base.create_variant( id, var ); }
          virtual void        modify_variant( int64_t id, const fc::variant& var ) override { _base.modify_variant( id, var ); }
 
+         /*
          virtual std::vector<char>   find_binary( int64_t id )const override { return _base.find_binary( id ); }
          virtual std::vector<char> create_binary( int64_t id, const std::vector<char>& bin ) override { return _base.create_binary( id, bin ); }
          virtual void              modify_binary( int64_t id, const std::vector<char>& bin ) override { _base.modify_binary( id, bin ); }
+         */
 
       private:
          BaseIndex& _base;
@@ -865,9 +871,11 @@ namespace graphene { namespace db2 {
          fc::variant create_variant( generic_id gid, const fc::variant& var );
          void        modify_variant( generic_id gid, const fc::variant& var );
 
+         /*
          std::vector<char>   find_binary( generic_id gid )const;
          std::vector<char> create_binary( generic_id gid, const std::vector<char>& bin );
          void              modify_binary( generic_id gid, const std::vector<char>& bin );
+         */
 
          void export_to_directory( const fc::path& dir )const;
          void import_from_directory( const fc::path& dir );

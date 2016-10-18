@@ -182,6 +182,7 @@ namespace graphene { namespace db2 {
       idx->modify_variant( gid._id, var );
    }
 
+   /*
    std::vector<char> database::find_binary( generic_id gid )const
    {
       abstract_index* idx = _index_map[ gid._type_id ].get();
@@ -195,6 +196,7 @@ namespace graphene { namespace db2 {
       FC_ASSERT( idx != nullptr );
       return idx->create_binary( gid._id, bin );
    }
+   */
 
 
 } }
