@@ -348,51 +348,13 @@ uint32_t debug_node_plugin::debug_generate_blocks_until(
 
    if( generate_sparsely )
    {
-      auto new_slot = db.get_slot_at_time( head_block_time );
-
-      if( new_slot == 0 )
-         return 0;
-
-      fc::optional<fc::ecc::private_key> debug_private_key;
-      steemit::chain::public_key_type debug_public_key;
-      if( debug_key != "" )
+      new_blocks += debug_generate_blocks( debug_key, 1, skip );
+      auto slots_to_miss = db.get_slot_at_time( head_block_time );
+      if( slots_to_miss > 1 )
       {
-         debug_private_key = graphene::utilities::wif_to_key( debug_key );
-         FC_ASSERT( debug_private_key.valid() );
-         debug_public_key = debug_private_key->get_public_key();
+         slots_to_miss--;
+         new_blocks += debug_generate_blocks( debug_key, 1, skip, slots_to_miss, key_storage );
       }
-
-      std::string scheduled_witness_name = db.get_scheduled_witness( new_slot );
-      fc::time_point_sec scheduled_time = db.get_slot_time( new_slot );
-      const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
-      steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-
-      if( debug_key != "" )
-      {
-         wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
-
-         if( scheduled_key != debug_public_key )
-         {
-            wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-            fc::mutable_variant_object update;
-            update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-            debug_update( update );
-         }
-      }
-      else
-      {
-         // TODO handle the situation where you don't have the private key for the witness at this exact slot,
-         // but you do have the private key for some other slot
-         debug_private_key.reset();
-         if( key_storage != nullptr )
-            key_storage->maybe_get_private_key( debug_private_key, scheduled_key, scheduled_witness_name );
-         FC_ASSERT( debug_private_key.valid() );
-      }
-
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
-      new_blocks++;
-
-      FC_ASSERT( head_block_time.sec_since_epoch() - db.head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db.head_block_time()",db.head_block_time()) );
    }
    else
    {
