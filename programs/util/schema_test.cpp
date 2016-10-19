@@ -1,4 +1,3 @@
-
 #include <graphene/db/schema.hpp>
 #include <graphene/db/schema_impl.hpp>
 #include <graphene/db/schema_types.hpp>

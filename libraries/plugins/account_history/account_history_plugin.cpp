@@ -8,9 +8,6 @@
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/history_object.hpp>
 
-#include <graphene/db/schema.hpp>
-#include <graphene/db/schema_impl.hpp>
-
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
@@ -225,8 +222,6 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 {
    //ilog("Intializing account history plugin" );
    database().pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
-   database().add_index< operation_index >();
-   database().add_index< account_history_index >();
 
    typedef pair<string,string> pairstring;
    LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);

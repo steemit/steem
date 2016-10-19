@@ -20,6 +20,7 @@ namespace steemit { namespace chain {
          uint64_t append( const signed_block& b );
          void flush();
          std::pair< signed_block, uint64_t > read_block( uint64_t file_pos )const;
+         uint64_t get_block_pos( uint32_t block_num ) const;
          signed_block read_head()const;
          const optional< signed_block >& head()const;
 

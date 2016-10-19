@@ -1,7 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <graphene/db/simple_index.hpp>
 #include <graphene/time/time.hpp>
 #include <graphene/utilities/tempdir.hpp>
 
@@ -26,6 +25,7 @@ namespace steemit { namespace chain {
 
 using std::cout;
 using std::cerr;
+using graphene::db2::generic_id;
 
 clean_database_fixture::clean_database_fixture()
 {
@@ -46,24 +46,22 @@ clean_database_fixture::clean_database_fixture()
 
    boost::program_options::variables_map options;
 
+   open_database();
+
    db_plugin->logging = false;
    ahplugin->plugin_initialize( options );
    db_plugin->plugin_initialize( options );
-
-   open_database();
 
    generate_block();
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );
    generate_block();
 
-
    //ahplugin->plugin_startup();
    db_plugin->plugin_startup();
-
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
-   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_MINERS; i++ )
+   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_WITNESSES; i++ )
    {
       account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
       fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
@@ -153,7 +151,7 @@ void database_fixture::open_database()
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
-      db.open( data_dir->path(), INITIAL_TEST_SUPPLY );
+      db.open( data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 ); // 8 M file for testing
    }
 }
 
@@ -293,9 +291,10 @@ void database_fixture::fund(
    try
    {
       const auto& account = db.get_account( account_name );
+      idump( (account) );
 
       fc::mutable_variant_object vo;
-      vo("_action", "update")("id", account.id);
+      vo("_action", "update")("id", generic_id( account.id ) );
 
       if( amount.symbol == STEEM_SYMBOL )
       {
@@ -304,7 +303,7 @@ void database_fixture::fund(
 
          const auto& gpo = db.get_dynamic_global_properties();
          vo = fc::mutable_variant_object();
-         vo("_action", "update")("id", gpo.id)("current_supply", gpo.current_supply + amount );
+         vo("_action", "update")("id", generic_id( gpo.id ) )("current_supply", gpo.current_supply + amount );
          update_object( vo );
       }
       else if( amount.symbol == SBD_SYMBOL )
@@ -314,14 +313,14 @@ void database_fixture::fund(
 
          const auto& gpo = db.get_dynamic_global_properties();
          vo = fc::mutable_variant_object();
-         vo("_action", "update")("id", gpo.id)("current_sbd_supply", gpo.current_sbd_supply + amount );
+         vo("_action", "update")("id", generic_id( gpo.id ))("current_sbd_supply", gpo.current_sbd_supply + amount );
          update_object( vo );
 
          const auto& median_feed = db.get_feed_history();
          if( median_feed.current_median_history.is_null() )
          {
             fc::mutable_variant_object vo;
-            vo("_action", "update")("id", median_feed.id)("current_median_history", price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL) ) );
+            vo("_action", "update")("id", generic_id( median_feed.id ))("current_median_history", price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL) ) );
             update_object( vo );
          }
       }
@@ -428,6 +427,7 @@ void database_fixture::set_price_feed( const price& new_price )
    } FC_CAPTURE_AND_RETHROW( (new_price) )
 
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
+   idump( (feed_history_id_type()( db ).current_median_history)(new_price) );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
       !db.skip_price_feed_limit_check ||
@@ -449,7 +449,7 @@ void database_fixture::sign(signed_transaction& trx, const fc::ecc::private_key&
 vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
 {
    vector< operation > ops;
-   const auto& acc_hist_idx = db.get_index_type< account_history_index >().indices().get< by_id >();
+   const auto& acc_hist_idx = db.get_index< account_history_index >().indices().get< by_id >();
    auto itr = acc_hist_idx.end();
 
    while( itr != acc_hist_idx.begin() && ops.size() < num_ops )

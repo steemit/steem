@@ -8,7 +8,7 @@
 
 #include <steemit/protocol/block.hpp>
 
-#include <steemit/chain/block_database.hpp>
+#include <steemit/chain/block_log.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
@@ -60,29 +60,31 @@ uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename
    fc::path src_path = fc::path( src_filename );
    if( fc::is_directory( src_path ) )
    {
-      ilog( "Loading ${n} from block_database ${fn}", ("n", count)("fn", src_filename) );
+      ilog( "Loading ${n} from block_log ${fn}", ("n", count)("fn", src_filename) );
       idump( (src_filename)(count)(skip_validate_invariants) );
-      steemit::chain::block_database bdb;
-      bdb.open( src_path );
+      steemit::chain::block_log log;
+      log.open( src_path );
       uint32_t first_block = db->head_block_num()+1;
       uint32_t skip_flags = steemit::chain::database::skip_nothing;
       if( skip_validate_invariants )
          skip_flags = skip_flags | steemit::chain::database::skip_validate_invariants;
       for( uint32_t i=0; i<count; i++ )
       {
-         fc::optional< steemit::chain::signed_block > block = bdb.fetch_by_number( first_block+i );
-         if( !block.valid() )
+         //fc::optional< steemit::chain::signed_block > block = log.read_block( log.get_block_pos( first_block + i ) );
+         auto result = log.read_block( log.get_block_pos( first_block + i ) );
+
+         if( result.second == ~0 )
          {
             wlog( "Block database ${fn} only contained ${i} of ${n} requested blocks", ("i", i)("n", count)("fn", src_filename) );
             return i;
          }
          try
          {
-            db->push_block( *block, skip_flags );
+            db->push_block( result.first, skip_flags );
          }
          catch( const fc::exception& e )
          {
-            elog( "Got exception pushing block ${bn} : ${bid} (${i} of ${n})", ("bn", block->block_num())("bid", block->id())("i", i)("n", count) );
+            elog( "Got exception pushing block ${bn} : ${bid} (${i} of ${n})", ("bn", result.first.block_num())("bid", result.first.id())("i", i)("n", count) );
             elog( "Exception backtrace: ${bt}", ("bt", e.to_detail_string()) );
          }
       }

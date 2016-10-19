@@ -29,8 +29,6 @@
 
 #include <steemit/protocol/steem_operations.hpp>
 
-#include <graphene/db/simple_index.hpp>
-
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/hex.hpp>
 #include "../common/database_fixture.hpp"
@@ -38,9 +36,9 @@
 #include <algorithm>
 #include <random>
 
+using namespace steemit;
 using namespace steemit::chain;
 using namespace steemit::protocol;
-using namespace graphene::db;
 
 BOOST_FIXTURE_TEST_SUITE( basic_tests, clean_database_fixture )
 

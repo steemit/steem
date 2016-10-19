@@ -6,7 +6,7 @@ add_library( steemit_debug_node
              debug_node_api.cpp
            )
 
-target_link_libraries( steemit_debug_node steemit_app steemit_chain steemit_protocol fc graphene_db )
+target_link_libraries( steemit_debug_node steemit_app steemit_chain steemit_protocol fc )
 target_include_directories( steemit_debug_node
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

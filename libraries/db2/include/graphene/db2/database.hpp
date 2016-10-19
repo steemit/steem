@@ -50,7 +50,7 @@ namespace graphene { namespace db2 {
    class generic_id
    {
       public:
-         generic_id( uint16_t type_id, int64_t id ): _type_id( id ), _id( id ) {}
+         generic_id( uint16_t type_id, int64_t id ): _type_id( type_id ), _id( id ) {}
          generic_id() {}
 
          //template< typename ObjectType >
@@ -488,6 +488,7 @@ namespace graphene { namespace db2 {
 
          void modify_variant( int64_t id, const fc::variant& var )
          {
+            idump( (typename value_type::id_type(id))(var) );
             const value_type* val = find( typename value_type::id_type(id) );
             FC_ASSERT( val != nullptr );
             modify( *val, [&]( value_type& v )
@@ -754,6 +755,8 @@ namespace graphene { namespace db2 {
              typedef generic_index<MultiIndexType>          index_type;
              typedef typename index_type::allocator_type    index_alloc;
 
+             FC_ASSERT( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr, "type_id is already in use", ("type_id", type_id) );
+
              index_type* idx_ptr =  _segment->find_or_construct< index_type >( std::type_index(typeid(index_type)).name() )
                                                                               ( index_alloc( _segment->get_segment_manager() ) );
 
@@ -765,7 +768,7 @@ namespace graphene { namespace db2 {
              auto new_index = new index<index_type>( *idx_ptr );
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
-             std::string name;
+             std::string name;// = fc::get_typename< typename index_type::value_type >();
              new_index->get_schema()->get_name( name );
              _type_name_to_id.emplace( name, type_id );
          }
@@ -835,7 +838,7 @@ namespace graphene { namespace db2 {
             {
                typedef typename get_index_type<ObjectType>::type index_type;
                get_mutable_index<index_type>().modify( obj, m );
-            } FC_LOG_AND_RETHROW()
+            } FC_CAPTURE_AND_RETHROW()
          }
 
          template<typename ObjectType>
@@ -845,7 +848,7 @@ namespace graphene { namespace db2 {
             {
                typedef typename get_index_type<ObjectType>::type index_type;
                return get_mutable_index<index_type>().remove( obj );
-            } FC_LOG_AND_RETHROW()
+            } FC_CAPTURE_AND_RETHROW()
          }
 
          template<typename ObjectType, typename Constructor>
@@ -855,7 +858,7 @@ namespace graphene { namespace db2 {
             {
                typedef typename get_index_type<ObjectType>::type index_type;
                return get_mutable_index<index_type>().emplace( std::forward<Constructor>(con) );
-            } FC_LOG_AND_RETHROW()
+            } FC_CAPTURE_AND_RETHROW()
          }
 
          bip::interprocess_mutex& get_mutex()const { return *_mutex; }

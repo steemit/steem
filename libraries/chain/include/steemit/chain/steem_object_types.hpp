@@ -194,4 +194,4 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
                )
 
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )
-
+FC_REFLECT_TYPENAME( steemit::chain::buffer_type )

@@ -47,8 +47,6 @@ void debug_node_plugin::plugin_startup()
    // connect needed signals
 
    _applied_block_conn  = db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
-   _changed_objects_conn = db.changed_objects.connect([this](const std::vector<graphene::db::object_id_type>& ids){ on_changed_objects(ids); });
-   _removed_objects_conn = db.removed_objects.connect([this](const std::vector<const graphene::db::object*>& objs){ on_removed_objects(objs); });
 
    app().register_api_factory< debug_node_api >( "debug_node_api" );
 
@@ -70,9 +68,10 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
       db_action_update = 3,
       db_action_delete = 4,
       db_action_set_hardfork = 5;
-
+   ilog("");
+   wlog( "debug_apply_update:  ${o}", ("o", vo) );
    if( logging ) wlog( "debug_apply_update:  ${o}", ("o", vo) );
-
+ilog("");
    // "_action" : "create"   object must not exist, unspecified fields take defaults
    // "_action" : "write"    object may exist, is replaced entirely, unspecified fields take defaults
    // "_action" : "update"   object must exist, unspecified fields don't change
@@ -82,20 +81,32 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
    // - delete if object contains only ID field
    // - otherwise, write
 
-   graphene::db::object_id_type oid;
+   graphene::db2::generic_id oid;
+   ilog("");
    uint8_t action = db_action_nil;
+   ilog("");
    auto it_id = vo.find("id");
+   ilog("");
    FC_ASSERT( it_id != vo.end() );
 
+   ilog("");
    from_variant( it_id->value(), oid );
+   ilog("");
    action = ( vo.size() == 1 ) ? db_action_delete : db_action_write;
 
+   ilog("");
    from_variant( vo["id"], oid );
+   ilog("");
    if( vo.size() == 1 )
       action = db_action_delete;
+   ilog("");
+
+   fc::mutable_variant_object mvo( vo );
+   mvo( "id", oid._id );
    auto it_action = vo.find("_action" );
    if( it_action != vo.end() )
    {
+      ilog("");
       const std::string& str_action = it_action->value().get_string();
       if( str_action == "create" )
          action = db_action_create;
@@ -109,8 +120,6 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
          action = db_action_set_hardfork;
    }
 
-   auto& idx = db.get_index( oid );
-
    switch( action )
    {
       case db_action_create:
@@ -123,20 +132,19 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
          FC_ASSERT( false );
          break;
       case db_action_write:
-         db.modify( db.get_object( oid ), [&]( graphene::db::object& obj )
+         /*db.modify( db.get_object( oid ), [&]( graphene::db::object& obj )
          {
             idx.object_default( obj );
             idx.object_from_variant( vo, obj );
-         } );
+         } );*/
+         FC_ASSERT( false );
          break;
       case db_action_update:
-         db.modify( db.get_object( oid ), [&]( graphene::db::object& obj )
-         {
-            idx.object_from_variant( vo, obj );
-         } );
+         idump( (oid)(mvo) );
+         db.modify_variant( oid, mvo );
          break;
       case db_action_delete:
-         db.remove( db.get_object( oid ) );
+         db.remove_object( oid );
          break;
       case db_action_set_hardfork:
          {
@@ -147,6 +155,7 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
          break;
       default:
          FC_ASSERT( false );
+         ilog("");
    }
 }
 
@@ -171,7 +180,7 @@ uint32_t debug_node_plugin::debug_generate_blocks( const std::string& debug_key,
       {
          if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
          fc::mutable_variant_object update;
-         update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
+         update("_action", "update")("id", graphene::db2::generic_id( scheduled_witness.id ) )("signing_key", debug_public_key);
          debug_update( update, skip );
       }
       db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
@@ -240,49 +249,14 @@ void debug_node_plugin::debug_update( const fc::variant_object& update, uint32_t
    db.push_block( *head_block, skip );
 }
 
-void debug_node_plugin::on_changed_objects( const std::vector<graphene::db::object_id_type>& ids )
-{
-   // this was a method on database in Graphene
-   if( _json_object_stream && (ids.size() > 0) )
-   {
-      const chain::database& db = database();
-      for( const graphene::db::object_id_type& oid : ids )
-      {
-         const graphene::db::object* obj = db.find_object( oid );
-         if( obj == nullptr )
-         {
-            (*_json_object_stream) << "{\"id\":" << fc::json::to_string( oid ) << "}\n";
-         }
-         else
-         {
-            (*_json_object_stream) << fc::json::to_string( obj->to_variant() ) << '\n';
-         }
-      }
-   }
-}
-
-void debug_node_plugin::on_removed_objects( const std::vector<const graphene::db::object*> objs )
-{
-   /*
-   if( _json_object_stream )
-   {
-      for( const graphene::db::object* obj : objs )
-      {
-         (*_json_object_stream) << "{\"id\":" << fc::json::to_string( obj->id ) << "}\n";
-      }
-   }
-   */
-}
-
 void debug_node_plugin::on_applied_block( const chain::signed_block& b )
 {
+   try
+   {
    if( !_debug_updates.empty() )
       apply_debug_updates();
-
-   if( _json_object_stream )
-   {
-      (*_json_object_stream) << "{\"bn\":" << fc::to_string( b.block_num() ) << "}\n";
    }
+   FC_LOG_AND_RETHROW()
 }
 
 void debug_node_plugin::set_json_object_stream( const std::string& filename )

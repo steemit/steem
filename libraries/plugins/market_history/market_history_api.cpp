@@ -173,7 +173,7 @@ std::vector< bucket_object > market_history_api_impl::get_market_history( uint32
    return result;
 }
 
-chain::flat_set< uint32_t > market_history_api_impl::get_market_history_buckets() const
+flat_set< uint32_t > market_history_api_impl::get_market_history_buckets() const
 {
    auto buckets = app.get_plugin< market_history_plugin >( MARKET_HISTORY_PLUGIN_NAME )->get_tracked_buckets();
    return buckets;

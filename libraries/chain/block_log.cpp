@@ -9,8 +9,11 @@ namespace steemit { namespace chain {
       class block_log_impl {
          public:
             optional< signed_block > head;
+            block_id_type            head_id;
             std::fstream             out_blocks;
             std::fstream             in_blocks;
+            std::fstream             out_index;
+            std::fstream             in_index;
       };
    }
 
@@ -25,6 +28,8 @@ namespace steemit { namespace chain {
       my->in_blocks.close();
       my->out_blocks.open( file.generic_string().c_str(), std::ios::app | std::ios::binary );
       my->in_blocks.open( file.generic_string().c_str(), std::ios::in | std::ios::binary );
+      my->out_blocks.open( ( file.generic_string() + ".index" ).c_str(), std::ios::app | std::ios::binary );
+      my->in_blocks.open( ( file.generic_string() + ".index" ).c_str(), std::ios::in | std::ios::binary );
       if( fc::file_size( file ) > 8 )
          my->head = read_head();
    }
@@ -41,7 +46,9 @@ namespace steemit { namespace chain {
       uint64_t pos = my->out_blocks.tellp();
       fc::raw::pack( my->out_blocks, b );
       my->out_blocks.write( (char*)&pos, sizeof(pos) );
+      my->out_index.write( (char*)&pos, sizeof( pos ) );
       my->head = b;
+      my->head_id = b.id();
       return pos;
    }
 
@@ -54,9 +61,24 @@ namespace steemit { namespace chain {
    {
       my->in_blocks.seekg( pos );
       std::pair<signed_block,uint64_t> result;
-      fc::raw::unpack( my->in_blocks, result.first );
-      result.second = uint64_t(my->in_blocks.tellg()) + 8;
+      if( pos < ~0 )
+         fc::raw::unpack( my->in_blocks, result.first );
+         result.second = uint64_t(my->in_blocks.tellg()) + 8;
+         if( my->head && my->head_id == result.first.id() )
+            result.second = ~0;
+      else
+         result.second = ~0;
       return result;
+   }
+
+   uint64_t block_log::get_block_pos( uint32_t block_num ) const
+   {
+      if( !( my->head && block_num <= protocol::block_header::num_from_id( my->head_id ) ) )
+         return ~0;
+      my->in_index.seekg( sizeof( uint64_t ) * (block_num - 1) );
+      uint64_t pos;
+      my->in_index.read( (char*)&pos, sizeof( pos ) );
+      return pos;
    }
 
    signed_block block_log::read_head()const {

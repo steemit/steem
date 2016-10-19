@@ -138,7 +138,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 
       #ifndef IS_LOW_MEM
-         acc.json_metadata = o.json_metadata;
+         from_string( acc.json_metadata, o.json_metadata );
       #endif
    });
 
@@ -216,7 +216,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
       #ifndef IS_LOW_MEM
         if ( o.json_metadata.size() > 0 )
-            acc.json_metadata = o.json_metadata;
+            from_string( acc.json_metadata, o.json_metadata );
       #endif
    });
 
@@ -425,12 +425,12 @@ void comment_evaluator::do_apply( const comment_operation& o )
          }
 
          #ifndef IS_LOW_MEM
-            com.title = o.title;
+            from_string( com.title, o.title );
             if( o.body.size() < 1024*1024*128 )
             {
-               com.body = o.body;
+               from_string( com.body, o.body );
             }
-            com.json_metadata = o.json_metadata;
+            from_string( com.json_metadata, o.json_metadata );
          #endif
       });
 
@@ -494,26 +494,26 @@ void comment_evaluator::do_apply( const comment_operation& o )
          }
 
          #ifndef IS_LOW_MEM
-           if( o.title.size() )         com.title         = o.title;
-           if( o.json_metadata.size() ) com.json_metadata = o.json_metadata;
+           if( o.title.size() )         from_string( com.title, o.title );
+           if( o.json_metadata.size() ) from_string( com.json_metadata, o.json_metadata );
 
            if( o.body.size() ) {
               try {
                diff_match_patch<std::wstring> dmp;
                auto patch = dmp.patch_fromText( utf8_to_wstring(o.body) );
                if( patch.size() ) {
-                  auto result = dmp.patch_apply( patch, utf8_to_wstring(com.body) );
+                  auto result = dmp.patch_apply( patch, utf8_to_wstring( to_string( com.body ) ) );
                   auto patched_body = wstring_to_utf8(result.first);
                   if( !fc::is_utf8( patched_body ) ) {
                      idump(("invalid utf8")(patched_body));
-                     com.body = fc::prune_invalid_utf8(patched_body);
-                  } else { com.body = patched_body; }
+                     from_string( com.body, fc::prune_invalid_utf8(patched_body) );
+                  } else { from_string( com.body, patched_body ); }
                }
                else { // replace
-                  com.body = o.body;
+                  from_string( com.body, o.body );
                }
               } catch ( ... ) {
-                  com.body = o.body;
+                  from_string( com.body, o.body );
               }
            }
          #endif
@@ -1807,7 +1807,7 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
       s.to     = op.to;
       s.amount = op.amount;
 #ifndef IS_LOW_MEM
-      s.memo   = op.memo;
+      from_string( s.memo, op.memo );
 #endif
       s.request_id = op.request_id;
       s.complete = db().head_block_time() + STEEMIT_SAVINGS_WITHDRAW_TIME;

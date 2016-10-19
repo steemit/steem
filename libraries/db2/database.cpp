@@ -119,7 +119,7 @@ namespace graphene { namespace db2 {
       {
       if( enabled ) {
          vector< std::unique_ptr<abstract_session> > _sub_sessions;
-         _sub_sessions.reserve( _index_map.size() );
+         _sub_sessions.reserve( _index_list.size() );
          for( auto& item : _index_list ) {
             _sub_sessions.push_back( item->start_undo_session( enabled ) );
          }

@@ -20,6 +20,7 @@ using namespace steemit::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( live_tests, live_database_fixture )
 
+/*
 BOOST_AUTO_TEST_CASE( vests_stock_split )
 {
    try
@@ -30,7 +31,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
 
       flat_map< string, share_type > account_vests;
       flat_map< string, share_type > account_vsf_votes;
-      const auto& acnt_idx = db.get_index_type< account_index >().indices().get< by_name >();
+      const auto& acnt_idx = db.get_index< account_index >().indices().get< by_name >();
       auto acnt_itr = acnt_idx.begin();
 
       BOOST_TEST_MESSAGE( "Saving account vesting shares" );
@@ -49,13 +50,13 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       auto old_rshares2 = db.get_dynamic_global_properties().total_reward_shares2;
       auto old_reward_fund = db.get_dynamic_global_properties().total_reward_fund_steem;
 
-      flat_map< std::tuple< string, string >, share_type > comment_net_rshares;
-      flat_map< std::tuple< string, string >, share_type > comment_abs_rshares;
+      flat_map< std::tuple< account_name_type, string >, share_type > comment_net_rshares;
+      flat_map< std::tuple< account_name_type, string >, share_type > comment_abs_rshares;
       flat_map< comment_id_type, uint64_t > total_vote_weights;
       flat_map< comment_id_type, uint64_t > orig_vote_weight;
       flat_map< comment_id_type, uint64_t > expected_reward;
       fc::uint128_t total_rshares2 = 0;
-      const auto& com_idx = db.get_index_type< comment_index >().indices().get< by_permlink >();
+      const auto& com_idx = db.get_index< comment_index >().indices().get< by_permlink >();
       auto com_itr = com_idx.begin();
       auto gpo = db.get_dynamic_global_properties();
 
@@ -84,7 +85,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
 
       BOOST_TEST_MESSAGE( "Saving category rshares" );
 
-      const auto& cat_idx = db.get_index_type< category_index >().indices();
+      const auto& cat_idx = db.get_index< category_index >().indices();
       flat_map< category_id_type, share_type > category_rshares;
 
       for( auto cat_itr = cat_idx.begin(); cat_itr != cat_idx.end(); cat_itr++ )
@@ -146,7 +147,7 @@ BOOST_AUTO_TEST_CASE( vests_stock_split )
       validate_database();
    }
    FC_LOG_AND_RETHROW()
-}
+}*/
 
 BOOST_AUTO_TEST_CASE( retally_votes )
 {
@@ -154,7 +155,7 @@ BOOST_AUTO_TEST_CASE( retally_votes )
    {
       flat_map< witness_id_type, share_type > expected_votes;
 
-      const auto& by_account_witness_idx = db.get_index_type< witness_vote_index >().indices();
+      const auto& by_account_witness_idx = db.get_index< witness_vote_index >().indices();
 
       for( auto vote: by_account_witness_idx )
       {
@@ -166,7 +167,7 @@ BOOST_AUTO_TEST_CASE( retally_votes )
 
       db.retally_witness_votes();
 
-      const auto& witness_idx = db.get_index_type< witness_index >().indices();
+      const auto& witness_idx = db.get_index< witness_index >().indices();
 
       for( auto witness: witness_idx )
       {

@@ -96,7 +96,6 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
    try
    {
       init_schema();
-      idump( (data_dir) );
       db2::database::open( data_dir, shared_file_size );
 
       initialize_indexes();
@@ -768,7 +767,11 @@ signed_block database::_generate_block(
       try
       {
          auto temp_session = start_undo_session( true );
-         _apply_transaction( tx );
+         try
+         {
+            _apply_transaction( tx );
+         }
+         FC_LOG_AND_RETHROW()
          temp_session.squash();
 
          total_block_size += fc::raw::pack_size( tx );
@@ -2464,7 +2467,6 @@ uint32_t database::last_non_undoable_block_num() const
 
 void database::initialize_evaluators()
 {
-   ilog( "registering evaluators" );
    _my->_evaluator_registry.register_evaluator< vote_evaluator                           >();
    _my->_evaluator_registry.register_evaluator< comment_evaluator                        >();
    _my->_evaluator_registry.register_evaluator< comment_options_evaluator                >();
@@ -2524,7 +2526,6 @@ std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evalua
 void database::initialize_indexes()
 {
    //reset_indexes();
-   ilog( "initializing indices" );
 
    add_index< dynamic_global_property_index           >();
    add_index< account_index                           >();

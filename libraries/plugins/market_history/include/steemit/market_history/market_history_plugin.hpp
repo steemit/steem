@@ -27,7 +27,6 @@
 namespace steemit { namespace market_history {
 
 using namespace chain;
-using namespace graphene::db;
 using steemit::app::application;
 
 enum market_history_object_types
