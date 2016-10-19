@@ -292,9 +292,10 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    }
 
    steemit::chain::database& db = database();
-   uint32_t slot = 1, produced = 0;
+   uint32_t slot = miss_blocks+1, produced = 0;
    while( produced < count )
    {
+      uint32_t new_slot = miss_blocks+1;
       std::string scheduled_witness_name = db.get_scheduled_witness( slot );
       fc::time_point_sec scheduled_time = db.get_slot_time( slot );
       const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
@@ -318,13 +319,13 @@ uint32_t debug_node_plugin::debug_generate_blocks(
          if( !debug_private_key.valid() )
          {
             elog( "Skipping ${wit} because I don't know the private key", ("wit", scheduled_witness_name) );
-            ++slot;
-            FC_ASSERT( slot < 50 );
+            new_slot = slot+1;
+            FC_ASSERT( slot < miss_blocks+50 );
          }
       }
       db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
       ++produced;
-      slot = 1;
+      slot = new_slot;
    }
 
    return count;
