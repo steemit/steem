@@ -307,7 +307,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
             if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
             fc::mutable_variant_object update;
             update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
-            debug_update( update );
+            debug_update( update, skip );
          }
       }
       else
@@ -322,7 +322,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
             FC_ASSERT( slot < 50 );
          }
       }
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
       ++produced;
       slot = 1;
    }
@@ -388,7 +388,7 @@ uint32_t debug_node_plugin::debug_generate_blocks_until(
          FC_ASSERT( debug_private_key.valid() );
       }
 
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, steemit::chain::database::skip_nothing );
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
       new_blocks++;
 
       FC_ASSERT( head_block_time.sec_since_epoch() - db.head_block_time().sec_since_epoch() < STEEMIT_BLOCK_INTERVAL, "", ("desired_time", head_block_time)("db.head_block_time()",db.head_block_time()) );
