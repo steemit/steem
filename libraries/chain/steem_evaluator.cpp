@@ -526,7 +526,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
 void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
 {
-   //idump( (o) );
    try
    {
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ), "op is not valid until next hardfork" ); /// TODO: remove this after HF14
@@ -569,7 +568,6 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
 
 void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 {
-   //idump( (o) );
    try
    {
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ), "op is not valid until next hardfork" ); /// TODO: remove this after HF14
@@ -632,7 +630,6 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 
 void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
 {
-   //idump( (o) );
    try
    {
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ), "op is not valid until next hardfork" ); /// TODO: remove this after HF14
@@ -655,7 +652,6 @@ void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
 
 void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 {
-   //idump( (o) );
    try
    {
       FC_ASSERT( db().has_hardfork( STEEMIT_HARDFORK_0_14__143 ), "op is not valid until next hardfork" ); /// TODO: remove this after HF14

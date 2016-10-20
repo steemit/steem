@@ -175,7 +175,6 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
 
 void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
-   ilog("Wiping database", ("include_blocks", include_blocks));
    close();
    db2::database::wipe( data_dir );
    if( include_blocks )

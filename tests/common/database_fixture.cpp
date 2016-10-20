@@ -92,6 +92,43 @@ clean_database_fixture::~clean_database_fixture()
    return;
 } FC_CAPTURE_AND_RETHROW() }
 
+void clean_database_fixture::resize_shared_mem( uint64_t size )
+{
+   db.wipe( data_dir->path(), true );
+   int argc = boost::unit_test::framework::master_test_suite().argc;
+   char** argv = boost::unit_test::framework::master_test_suite().argv;
+   for( int i=1; i<argc; i++ )
+   {
+      const std::string arg = argv[i];
+      if( arg == "--record-assert-trip" )
+         fc::enable_record_assert_trip = true;
+      if( arg == "--show-test-names" )
+         std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
+   }
+   init_account_pub_key = init_account_priv_key.get_public_key();
+
+   db.open( data_dir->path(), INITIAL_TEST_SUPPLY, size );
+
+   boost::program_options::variables_map options;
+
+
+   generate_block();
+   db.set_hardfork( STEEMIT_NUM_HARDFORKS );
+   generate_block();
+
+   vest( "initminer", 10000 );
+
+   // Fill up the rest of the required miners
+   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_WITNESSES; i++ )
+   {
+      account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+   }
+
+   validate_database();
+}
+
 live_database_fixture::live_database_fixture()
 {
    try
@@ -151,7 +188,7 @@ void database_fixture::open_database()
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
-      db.open( data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 128 ); // 16 M file for testing
+      db.open( data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 ); // 8 MB file for testing
    }
 }
 

@@ -67,6 +67,9 @@ namespace graphene { namespace db2 {
       _segment.reset();
       fc::remove_all( dir / "shared_memory" );
       _data_dir = fc::path();
+      _index_list.clear();
+      _index_map.clear();
+      _type_name_to_id.clear();
    }
 
    void database::export_to_directory( const fc::path& dir )const {

@@ -224,6 +224,8 @@ struct clean_database_fixture : public database_fixture
 {
    clean_database_fixture();
    ~clean_database_fixture();
+
+   void resize_shared_mem( uint64_t size );
 };
 
 struct live_database_fixture : public database_fixture
