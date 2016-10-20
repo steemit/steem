@@ -68,10 +68,8 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
       db_action_update = 3,
       db_action_delete = 4,
       db_action_set_hardfork = 5;
-   ilog("");
-   wlog( "debug_apply_update:  ${o}", ("o", vo) );
    if( logging ) wlog( "debug_apply_update:  ${o}", ("o", vo) );
-ilog("");
+
    // "_action" : "create"   object must not exist, unspecified fields take defaults
    // "_action" : "write"    object may exist, is replaced entirely, unspecified fields take defaults
    // "_action" : "update"   object must exist, unspecified fields don't change
@@ -82,31 +80,22 @@ ilog("");
    // - otherwise, write
 
    graphene::db2::generic_id oid;
-   ilog("");
    uint8_t action = db_action_nil;
-   ilog("");
    auto it_id = vo.find("id");
-   ilog("");
    FC_ASSERT( it_id != vo.end() );
 
-   ilog("");
    from_variant( it_id->value(), oid );
-   ilog("");
    action = ( vo.size() == 1 ) ? db_action_delete : db_action_write;
 
-   ilog("");
    from_variant( vo["id"], oid );
-   ilog("");
    if( vo.size() == 1 )
       action = db_action_delete;
-   ilog("");
 
    fc::mutable_variant_object mvo( vo );
    mvo( "id", oid._id );
    auto it_action = vo.find("_action" );
    if( it_action != vo.end() )
    {
-      ilog("");
       const std::string& str_action = it_action->value().get_string();
       if( str_action == "create" )
          action = db_action_create;
@@ -140,7 +129,6 @@ ilog("");
          FC_ASSERT( false );
          break;
       case db_action_update:
-         idump( (oid)(mvo) );
          db.modify_variant( oid, mvo );
          break;
       case db_action_delete:
@@ -155,7 +143,6 @@ ilog("");
          break;
       default:
          FC_ASSERT( false );
-         ilog("");
    }
 }
 

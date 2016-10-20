@@ -174,7 +174,7 @@ namespace steemit { namespace protocol {
       account_name_type from;
       account_name_type to;
       account_name_type agent;
-      uint32_t          escrow_id = 0;
+      uint32_t          escrow_id = 30;
 
       asset             sbd_amount = asset( 0, SBD_SYMBOL );
       asset             steem_amount = asset( 0, STEEM_SYMBOL );
@@ -202,7 +202,7 @@ namespace steemit { namespace protocol {
       account_name_type agent;
       account_name_type who; // Either to or agent
 
-      uint32_t          escrow_id = 0;
+      uint32_t          escrow_id = 30;
       bool              approve = true;
 
       void validate()const;
@@ -222,7 +222,7 @@ namespace steemit { namespace protocol {
       account_name_type agent;
       account_name_type who;
 
-      uint32_t          escrow_id = 0;
+      uint32_t          escrow_id = 30;
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(who); }
@@ -247,7 +247,7 @@ namespace steemit { namespace protocol {
       account_name_type who; ///< the account that is attempting to release the funds, determines valid 'receiver'
       account_name_type receiver; ///< the account that should receive funds (might be from, might be to)
 
-      uint32_t          escrow_id = 0;
+      uint32_t          escrow_id = 30;
       asset             sbd_amount = asset( 0, SBD_SYMBOL ); ///< the amount of sbd to release
       asset             steem_amount = asset( 0, STEEM_SYMBOL ); ///< the amount of steem to release
 

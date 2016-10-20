@@ -51,7 +51,7 @@ namespace steemit { namespace chain {
 
          id_type           id;
 
-         uint32_t          escrow_id = 0;
+         uint32_t          escrow_id = 20;
          account_name_type from;
          account_name_type to;
          account_name_type agent;

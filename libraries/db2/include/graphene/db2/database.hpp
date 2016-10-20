@@ -16,6 +16,7 @@
 #include <fc/interprocess/file_mapping.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/reflect/variant.hpp>
+#include <fc/interprocess/container.hpp>
 
 #include <typeindex>
 #include <fstream>
@@ -291,16 +292,14 @@ namespace graphene { namespace db2 {
          void undo() {
             if( !enabled() ) return;
 
-
             const auto& head = _stack.back();
+
             for( auto& item : head.old_values ) {
-               _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
+               bool success = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
                   v = std::move( item.second );
                });
-            }
 
-            for( auto& item : head.removed_values ) {
-               _indices.emplace( std::move( item.second ) );
+               FC_ASSERT( success, "Error modifying object. Uniqueness constraint likely violated." );
             }
 
             for( auto id : head.new_ids )
@@ -308,6 +307,12 @@ namespace graphene { namespace db2 {
                _indices.erase( _indices.find( id ) );
             }
             _next_id = head.old_next_id;
+
+            for( auto& item : head.removed_values ) {
+               bool success = _indices.emplace( std::move( item.second ) ).second;
+
+               FC_ASSERT( success, "Error restoring object. Uniqueness constraint likely violated." );
+            }
 
             _stack.pop_back();
             --_revision;
@@ -488,7 +493,6 @@ namespace graphene { namespace db2 {
 
          void modify_variant( int64_t id, const fc::variant& var )
          {
-            idump( (typename value_type::id_type(id))(var) );
             const value_type* val = find( typename value_type::id_type(id) );
             FC_ASSERT( val != nullptr );
             modify( *val, [&]( value_type& v )
@@ -708,23 +712,43 @@ namespace graphene { namespace db2 {
 
          struct session {
             public:
-               session( session&& s ):_index_sessions( std::move(s._index_sessions) ){}
-               session( vector<std::unique_ptr<abstract_session>>&& s ):_index_sessions( std::move(s) ){}
+               session( session&& s ):_index_sessions( std::move(s._index_sessions) ),_revision( s._revision ){}
+               session( vector<std::unique_ptr<abstract_session>>&& s ):_index_sessions( std::move(s) )
+               {
+                  if( _index_sessions.size() )
+                     _revision = _index_sessions[0]->revision();
+               }
 
                ~session() {
                   undo();
                }
 
-               void push(){ for( auto& i : _index_sessions ) i->push(); }
-               void squash(){ for( auto& i : _index_sessions ) i->squash(); }
-               void undo(){ for( auto& i : _index_sessions ) i->undo(); }
-               int64_t revision()const { return _index_sessions[0]->revision(); }
+               void push()
+               {
+                  for( auto& i : _index_sessions ) i->push();
+                  _index_sessions.clear();
+               }
+
+               void squash()
+               {
+                  for( auto& i : _index_sessions ) i->squash();
+                  _index_sessions.clear();
+               }
+
+               void undo()
+               {
+                  for( auto& i : _index_sessions ) i->undo();
+                  _index_sessions.clear();
+               }
+
+               int64_t revision()const { return _revision; }
 
             private:
                friend class database;
                session(){}
 
                vector< std::unique_ptr<abstract_session> > _index_sessions;
+               int64_t _revision = -1;
          };
 
          session start_undo_session( bool enabled );

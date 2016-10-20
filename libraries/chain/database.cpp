@@ -550,12 +550,6 @@ bool database::_push_block(const signed_block& new_block)
    uint32_t skip = get_node_properties().skip_flags;
    //uint32_t skip_undo_db = skip & skip_undo_block;
 
-   if( _pending_tx.size() )
-      wlog( "Pending tx when pushing block" );
-
-   if( _pending_tx_session.valid() )
-      wlog( "Pending tx session when pushing block" );
-
    if( !(skip&skip_fork_db) )
    {
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
@@ -580,10 +574,8 @@ bool database::_push_block(const signed_block& new_block)
                 optional<fc::exception> except;
                 try
                 {
-                   //undo_database::session session = _undo_db.start_undo_session();
                    auto session = start_undo_session( true );
                    apply_block( (*ritr)->data, skip );
-                   //session.commit();
                    session.push();
                 }
                 catch ( const fc::exception& e ) { except = e; }
@@ -730,7 +722,6 @@ signed_block database::_generate_block(
    size_t total_block_size = max_block_header_size;
 
    signed_block pending_block;
-
    //
    // The following code throws away existing pending_tx_session and
    // rebuilds it by re-applying pending transactions.
