@@ -758,11 +758,7 @@ signed_block database::_generate_block(
       try
       {
          auto temp_session = start_undo_session( true );
-         try
-         {
-            _apply_transaction( tx );
-         }
-         FC_LOG_AND_RETHROW()
+         _apply_transaction( tx );
          temp_session.squash();
 
          total_block_size += fc::raw::pack_size( tx );
@@ -771,8 +767,8 @@ signed_block database::_generate_block(
       catch ( const fc::exception& e )
       {
          // Do nothing, transaction will not be re-applied
-         wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-         wlog( "The transaction was ${t}", ("t", tx) );
+         //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+         //wlog( "The transaction was ${t}", ("t", tx) );
       }
    }
    if( postponed_tx_count > 0 )
@@ -1233,6 +1229,8 @@ void database::update_witness_schedule4()
       {
          _wso.current_shuffled_witnesses[i] = account_name_type();
       }
+
+      _wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
 
       /// shuffle current shuffled witnesses
       auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;

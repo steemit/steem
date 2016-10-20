@@ -20,6 +20,7 @@
 using namespace steemit;
 using namespace steemit::chain;
 using namespace steemit::protocol;
+using graphene::db2::generic_id;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
@@ -2473,11 +2474,11 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
       fc::mutable_variant_object vo;
-      vo("_action", "update")("id", sam_id)("sbd_balance", sbd_balance);
+      vo("_action", "update")("id", generic_id(sam_id))("sbd_balance", sbd_balance);
       db_plugin->debug_update( vo, database::skip_witness_signature );
 
       vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", gpo.id)("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
+      vo("_action", "update")("id", generic_id(gpo.id))("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
       db_plugin->debug_update( vo, database::skip_witness_signature );
 
       validate_database();
@@ -2506,11 +2507,11 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       // Get close to 1.5% for printing SBD to start again, but not all the way
       vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", sam_id)("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ) );
+      vo("_action", "update")("id", generic_id(sam_id))("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ) );
       db_plugin->debug_update( vo, database::skip_witness_signature );
 
       vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", gpo.id)("current_sbd_supply", alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ));
+      vo("_action", "update")("id", generic_id(gpo.id))("current_sbd_supply", alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ));
       db_plugin->debug_update( vo, database::skip_witness_signature );
 
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );

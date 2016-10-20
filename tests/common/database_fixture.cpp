@@ -151,7 +151,7 @@ void database_fixture::open_database()
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
-      db.open( data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 ); // 8 M file for testing
+      db.open( data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 128 ); // 16 M file for testing
    }
 }
 
@@ -291,7 +291,6 @@ void database_fixture::fund(
    try
    {
       const auto& account = db.get_account( account_name );
-      idump( (account) );
 
       fc::mutable_variant_object vo;
       vo("_action", "update")("id", generic_id( account.id ) );
@@ -427,7 +426,6 @@ void database_fixture::set_price_feed( const price& new_price )
    } FC_CAPTURE_AND_RETHROW( (new_price) )
 
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
-   idump( (feed_history_id_type()( db ).current_median_history)(new_price) );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
       !db.skip_price_feed_limit_check ||
