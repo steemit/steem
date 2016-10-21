@@ -154,7 +154,7 @@ void debug_node_plugin::plugin_initialize( const boost::program_options::variabl
       _my->_mining_threads = options.at("mining-threads").as< uint32_t >();
    }
 
-   wlog( "Initializing ${n} mining threads", ("n", _my->_mining_threads) );
+   if( logging ) wlog( "Initializing ${n} mining threads", ("n", _my->_mining_threads) );
    _my->_thread_pool.resize( _my->_mining_threads );
    for( uint32_t i = 0; i < _my->_mining_threads; ++i )
       _my->_thread_pool[i] = std::make_shared<fc::thread>();
@@ -303,7 +303,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
          {
             if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
             fc::mutable_variant_object update;
-            update("_action", "update")("id", scheduled_witness.id)("signing_key", debug_public_key);
+            update("_action", "update")("id", graphene::db2::generic_id(scheduled_witness.id) )("signing_key", debug_public_key);
             debug_update( update, skip );
          }
       }
@@ -314,7 +314,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
             key_storage->maybe_get_private_key( debug_private_key, scheduled_key, scheduled_witness_name );
          if( !debug_private_key.valid() )
          {
-            elog( "Skipping ${wit} because I don't know the private key", ("wit", scheduled_witness_name) );
+            if( logging ) elog( "Skipping ${wit} because I don't know the private key", ("wit", scheduled_witness_name) );
             new_slot = slot+1;
             FC_ASSERT( slot < miss_blocks+50 );
          }

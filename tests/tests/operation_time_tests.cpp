@@ -2425,6 +2425,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       // Using the debug node plugin to manually set account balances to create required market conditions for this test
       auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
       boost::program_options::variables_map options;
+      db_plugin->logging = false;
       db_plugin->plugin_initialize( options );
       db_plugin->plugin_startup();
       auto debug_key = "5JdouSvkK75TKWrJixYufQgePT21V7BAVWbNUWt3ktqhPmy8Z78"; //get_dev_key debug node
