@@ -149,16 +149,44 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT, "cannot update temp account" );
 
+   if( db().is_producing() && o.posting ) // TODO: Add HF 15
+      o.posting->validate();
+
    const auto& account = db().get_account( o.account );
 
    if( o.owner )
    {
-#ifndef IS_TESTNET
+#ifndef IS_TEST_NET
       if( db().has_hardfork( STEEMIT_HARDFORK_0_11 ) )
          FC_ASSERT( db().head_block_time() - account.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "can only update owner authority once a minute" );
 #endif
 
+      if( db().is_producing() ) // TODO: Add HF 15
+      {
+         for( auto a: o.owner->account_auths )
+         {
+            db().get_account( a.first );
+         }
+      }
+
+
       db().update_owner_authority( account, *o.owner );
+   }
+
+   if( o.active && db().is_producing() ) // TODO: Add HF 15
+   {
+      for( auto a: o.active->account_auths )
+      {
+         db().get_account( a.first );
+      }
+   }
+
+   if( o.posting && db().is_producing() ) // TODO: Add HF 15
+   {
+      for( auto a: o.posting->account_auths )
+      {
+         db().get_account( a.first );
+      }
    }
 
    db().modify( account, [&]( account_object& acc )
@@ -1280,7 +1308,8 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {
@@ -1304,7 +1333,8 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    }
    catch( const fc::exception& e )
    {
-      //elog( "Caught exception processing custom_json_operation:\n${e}", ("e", e.to_detail_string()) );
+      if( d.is_producing() )
+         throw e;
    }
    catch(...)
    {

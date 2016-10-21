@@ -21,7 +21,7 @@ class hardfork_property_object : public abstract_object< hardfork_property_objec
       static const uint8_t type_id  = impl_hardfork_property_object_type;
 
       vector< fc::time_point_sec > processed_hardforks;
-      int                          last_hardfork = 0;
+      uint32_t                     last_hardfork = 0;
       hardfork_version             current_hardfork_version;
       hardfork_version             next_hardfork;
       fc::time_point_sec           next_hardfork_time;
