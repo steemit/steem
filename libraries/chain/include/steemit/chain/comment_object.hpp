@@ -313,6 +313,6 @@ FC_REFLECT( steemit::chain::comment_vote_object,
 SET_INDEX_TYPE( steemit::chain::comment_vote_object, steemit::chain::comment_vote_index )
 
 FC_REFLECT( steemit::chain::category_object,
-             (name)(abs_rshares)(total_payouts)(discussions)(last_update)
+             (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
           )
 SET_INDEX_TYPE( steemit::chain::category_object, steemit::chain::category_index )

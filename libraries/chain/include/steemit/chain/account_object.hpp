@@ -378,7 +378,7 @@ namespace steemit { namespace chain {
 } }
 
 FC_REFLECT( steemit::chain::account_object,
-             (id)(name)/*(owner)(active)(posting)*/(memo_key)(json_metadata)(proxy)/*(last_owner_update)*/(last_account_update)
+             (id)(name)(memo_key)(json_metadata)(proxy)(last_account_update)
              (created)(mined)
              (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)

@@ -432,7 +432,7 @@ FC_REFLECT( steemit::app::comment_api_obj,
           )
 
 FC_REFLECT( steemit::app::category_api_obj,
-             (name)(abs_rshares)(total_payouts)(discussions)(last_update)
+             (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
           )
 
 FC_REFLECT( steemit::app::account_api_obj,

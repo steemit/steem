@@ -137,6 +137,7 @@ typedef multi_index_container<
 } } // steemit::market_history
 
 FC_REFLECT( steemit::market_history::bucket_object,
+                     (id)
                      (open)(seconds)
                      (high_steem)(high_sbd)
                      (low_steem)(low_sbd)
@@ -146,6 +147,7 @@ FC_REFLECT( steemit::market_history::bucket_object,
 SET_INDEX_TYPE( steemit::market_history::bucket_object, steemit::market_history::bucket_index )
 
 FC_REFLECT( steemit::market_history::order_history_object,
+                     (id)
                      (time)
                      (op) )
 SET_INDEX_TYPE( steemit::market_history::order_history_object, steemit::market_history::order_history_index )

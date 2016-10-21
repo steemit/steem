@@ -483,6 +483,7 @@ void witness_plugin::start_mining(
     bool has_account = (acct_it != acct_idx.end());
     for( auto& t : _thread_pool )
     {
+       thread_num++;
        t->async( [=]()
        {
           protocol::pow2_operation op;
