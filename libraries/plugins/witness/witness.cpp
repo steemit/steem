@@ -414,19 +414,28 @@ void witness_plugin::on_applied_block(const steemit::protocol::signed_block& b)
 
    const auto& dgp = db.get_dynamic_global_properties();
    double hps   = (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count();
-   int64_t bits    = (dgp.num_pow_witnesses/4) + 4;
-   fc::uint128 hashes  = fc::uint128(1) << bits;
-   hashes *= 1000000;
-   hps += 1;
-   hashes /= int64_t(hps*1000000);
-   auto seconds = hashes.to_uint64();
-   //double seconds = hashes/hps;
-   auto minutes = uint64_t(seconds / 60.0);
+   uint64_t i_hps = uint64_t(hps+0.5);
 
+   uint32_t summary_target = db.get_pow_summary_target();
+
+   double target = fc::sha256::inverse_approx_log_32_double( summary_target );
+   static const double max_target = std::ldexp( 1.0, 256 );
+
+   double seconds_needed = 0.0;
+   if( i_hps > 0 )
+   {
+      double hashes_needed = max_target / target;
+      seconds_needed = hashes_needed / i_hps;
+   }
+
+   uint64_t minutes_needed = uint64_t( seconds_needed / 60.0 + 0.5 );
+
+   fc::sha256 hash_target;
+   hash_target.set_to_inverse_approx_log_32( summary_target );
 
    if( _total_hashes > 0 )
       ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
-              ("x",uint64_t(hps)) ("t",bits) ("m", minutes ) ("l",dgp.num_pow_witnesses)
+              ("x",i_hps) ("t",hash_target.str()) ("m", minutes_needed ) ("l",dgp.num_pow_witnesses)
          );
 
 

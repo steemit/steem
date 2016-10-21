@@ -1123,23 +1123,43 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
    }
 
    uint32_t count = query.limit;
-   while( count > 0 && tidx_itr != tidx.end() ) {
-      if( tidx_itr->tag != tag || tidx_itr->parent != parent )
-         break;
-      try {
-      result.push_back( get_discussion( tidx_itr->comment ) );
-      result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL );
-
-      if( filter( result.back() ) )
-         result.pop_back();
-      else if( exit( result.back() ) || tag_exit( *tidx_itr )  )
+   uint64_t itr_count = 0;
+   uint64_t filter_count = 0;
+   uint64_t exc_count = 0;
+   uint64_t max_itr_count = 10 * query.limit;
+   while( count > 0 && tidx_itr != tidx.end() )
+   {
+      ++itr_count;
+      if( itr_count > max_itr_count )
       {
-         result.pop_back();
+         wlog( "Maximum iteration count exceeded serving query: ${q}", ("q", query) );
+         wlog( "count=${count}   itr_count=${itr_count}   filter_count=${filter_count}   exc_count=${exc_count}",
+               ("count", count)("itr_count", itr_count)("filter_count", filter_count)("exc_count", exc_count) );
          break;
       }
-      else
-         --count;
-      } catch ( const fc::exception& e ) {
+      if( tidx_itr->tag != tag || tidx_itr->parent != parent )
+         break;
+      try
+      {
+         result.push_back( get_discussion( tidx_itr->comment ) );
+         result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL );
+
+         if( filter( result.back() ) )
+         {
+            result.pop_back();
+            ++filter_count;
+         }
+         else if( exit( result.back() ) || tag_exit( *tidx_itr )  )
+         {
+            result.pop_back();
+            break;
+         }
+         else
+            --count;
+      }
+      catch ( const fc::exception& e )
+      {
+         ++exc_count;
          edump((e.to_detail_string()));
       }
       ++tidx_itr;
