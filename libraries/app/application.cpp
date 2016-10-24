@@ -238,8 +238,6 @@ namespace detail {
 
       void startup()
       { try {
-         fc::create_directories(_data_dir / "node/transaction_history");
-
          _max_block_age =_options->at("max-block-age").as<int32_t>();
          register_builtin_apis();
 
@@ -847,6 +845,8 @@ namespace detail {
       int32_t                                          _max_block_age = -1;
 
       uint32_t allow_future_time = 5;
+
+      bool reindex = false;
    };
 
 }

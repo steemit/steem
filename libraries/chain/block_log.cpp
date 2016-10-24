@@ -28,8 +28,8 @@ namespace steemit { namespace chain {
       my->in_blocks.close();
       my->out_blocks.open( file.generic_string().c_str(), std::ios::app | std::ios::binary );
       my->in_blocks.open( file.generic_string().c_str(), std::ios::in | std::ios::binary );
-      my->out_blocks.open( ( file.generic_string() + ".index" ).c_str(), std::ios::app | std::ios::binary );
-      my->in_blocks.open( ( file.generic_string() + ".index" ).c_str(), std::ios::in | std::ios::binary );
+      my->out_index.open( ( file.generic_string() + ".index" ).c_str(), std::ios::app | std::ios::binary );
+      my->in_index.open( ( file.generic_string() + ".index" ).c_str(), std::ios::in | std::ios::binary );
       if( fc::file_size( file ) > 8 )
          my->head = read_head();
    }

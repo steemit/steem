@@ -90,6 +90,12 @@ namespace steemit { namespace chain {
          void wipe(const fc::path& data_dir, bool include_blocks);
          void close(bool rewind = true);
 
+         template< typename T >
+         void add_plugin_index()
+         {
+            _plugin_index_signal.connect( [&](){ add_index< T >(); } );
+         }
+
          //////////////////// db_block.cpp ////////////////////
 
          /**
@@ -449,13 +455,15 @@ namespace steemit { namespace chain {
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
          protocol::hardfork_version    _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
-         block_log        _block_log;
+         block_log                     _block_log;
 
-         transaction_id_type               _current_trx_id;
-         uint32_t                          _current_block_num    = 0;
-         uint16_t                          _current_trx_in_block = 0;
-         uint16_t                          _current_op_in_trx    = 0;
-         uint16_t                          _current_virtual_op   = 0;
+         fc::signal< void() >          _plugin_index_signal;
+
+         transaction_id_type           _current_trx_id;
+         uint32_t                      _current_block_num    = 0;
+         uint16_t                      _current_trx_in_block = 0;
+         uint16_t                      _current_op_in_trx    = 0;
+         uint16_t                      _current_virtual_op   = 0;
 
          flat_map<uint32_t,block_id_type>  _checkpoints;
 

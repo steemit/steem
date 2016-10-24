@@ -2542,6 +2542,8 @@ void database::initialize_indexes()
    add_index< savings_withdraw_index                  >();
    add_index< decline_voting_rights_request_index     >();
    add_index< block_stats_index                       >();
+
+   _plugin_index_signal();
 }
 
 const std::string& database::get_json_schema()const
