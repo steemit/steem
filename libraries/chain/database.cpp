@@ -154,6 +154,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
       while( itr.first.block_num() != last_block_num )
       {
          auto cur_block_num = itr.first.block_num();
+         FC_ASSERT( itr.first.previous == head_block_id(), "", ("prev", itr.first.previous)("head", head_block_id())("num", cur_block_num) );
          if( cur_block_num % 100000 == 0 )
             std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
          apply_block( itr.first, skip_flags );

@@ -28,11 +28,16 @@ class key_lookup_object : public object< key_lookup_object_type, key_lookup_obje
 
       id_type           id;
 
-      public_key_type   key = public_key_type();
+      public_key_type   key;
       account_name_type account;
 };
 
 typedef key_lookup_object::id_type key_lookup_id_type;
+
+struct public_key_less
+{
+   bool operator()( const public_key_type& p1, const public_key_type& p2 )const { return p1 < p2; }
+};
 
 
 using namespace boost::multi_index;
@@ -61,7 +66,8 @@ typedef multi_index_container<
          composite_key< key_lookup_object,
             member< key_lookup_object, public_key_type, &key_lookup_object::key >,
             member< key_lookup_object, account_name_type, &key_lookup_object::account >
-         >
+         >,
+         composite_key_compare< public_key_less, protocol::string_less >
       >
    >,
    allocator< key_lookup_object >

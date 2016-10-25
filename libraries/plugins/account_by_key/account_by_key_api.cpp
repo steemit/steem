@@ -12,26 +12,30 @@ class account_by_key_api_impl
       account_by_key_api_impl( steemit::app::application& app )
          :_app( app ) {}
 
-      vector< set< account_name_type > > get_key_references( vector< public_key_type >& keys )const;
+      vector< vector< account_name_type > > get_key_references( vector< public_key_type >& keys )const;
 
       steemit::app::application& _app;
 };
 
-vector< set< account_name_type > > account_by_key_api_impl::get_key_references( vector< public_key_type >& keys )const
+vector< vector< account_name_type > > account_by_key_api_impl::get_key_references( vector< public_key_type >& keys )const
 {
-   vector< set< account_name_type > > final_result;
+   idump( (keys) );
+   vector< vector< account_name_type > > final_result;
    final_result.reserve( keys.size() );
 
    const auto& key_idx = _app.chain_database()->get_index< key_lookup_index >().indices().get< by_key >();
 
    for( auto& key : keys )
    {
-      set< account_name_type > result;
+      vector< account_name_type > result;
       auto lookup_itr = key_idx.lower_bound( key );
 
       while( lookup_itr != key_idx.end() && lookup_itr->key == key )
       {
-         result.insert( lookup_itr->account );
+         result.push_back( lookup_itr->account );
+         ++lookup_itr;
+         if( lookup_itr != key_idx.end() )
+         idump( (*lookup_itr) );
       }
 
       final_result.emplace_back( std::move( result ) );
@@ -49,7 +53,7 @@ account_by_key_api::account_by_key_api( const steemit::app::api_context& ctx )
 
 void account_by_key_api::on_api_startup() {}
 
-vector< set< account_name_type > > account_by_key_api::get_key_references( vector< public_key_type > keys )const
+vector< vector< account_name_type > > account_by_key_api::get_key_references( vector< public_key_type > keys )const
 {
    return my->get_key_references( keys );
 }

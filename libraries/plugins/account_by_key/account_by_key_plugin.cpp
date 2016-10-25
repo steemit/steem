@@ -115,16 +115,6 @@ struct post_operation_visitor
    }
 };
 
-void account_by_key_plugin_impl::pre_operation( const operation_notification& note )
-{
-   note.op.visit( pre_operation_visitor( _self ) );
-}
-
-void account_by_key_plugin_impl::post_operation( const operation_notification& note )
-{
-   note.op.visit( post_operation_visitor( _self ) );
-}
-
 void account_by_key_plugin_impl::clear_cache()
 {
    cached_keys.clear();
@@ -153,40 +143,68 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
    for( const auto& item : a.posting.key_auths )
       new_keys.insert( item.first );
 
+   const auto& lookup_idx = db.get_index< key_lookup_index >().indices().get< by_key >();
+
    // For each key that needs a lookup
    for( const auto& key : new_keys )
    {
-      // If the key was already in the auths, remove it from the set so we don't delete it
-      cached_keys.erase( key );
-
       // If the key was not in the authority, add it to the lookup
       if( cached_keys.find( key ) == cached_keys.end() )
       {
-         auto lookup_itr = db.find< key_lookup_object, by_key >( key );
+         //auto lookup_itr = db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
+         auto lookup_itr = lookup_idx.find( std::make_tuple( key, a.account ) );
+         idump( (key)(a.account) );
 
-         if( !lookup_itr )
+         if( lookup_itr == lookup_idx.end() )
          {
             db.create< key_lookup_object >( [&]( key_lookup_object& o )
             {
                o.key = key;
                o.account = a.account;
+               idump( (o) );
             });
+
+            ilog( "created" );
          }
+      }
+      else
+      {
+         // If the key was already in the auths, remove it from the set so we don't delete it
+         cached_keys.erase( key );
       }
    }
 
    // Loop over the keys that were in authority but are no longer and remove them from the lookup
    for( const auto& key : cached_keys )
    {
-      auto lookup_itr = db.find< key_lookup_object, by_key >( key );
+      //auto lookup_itr = db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
+      auto lookup_itr = lookup_idx.find( std::make_tuple( key, a.account ) );
 
-      if( lookup_itr )
+      if( lookup_itr != lookup_idx.end() )
       {
          db.remove( *lookup_itr );
       }
    }
 
    cached_keys.clear();
+}
+
+void account_by_key_plugin_impl::pre_operation( const operation_notification& note )
+{
+   try
+   {
+      note.op.visit( pre_operation_visitor( _self ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+void account_by_key_plugin_impl::post_operation( const operation_notification& note )
+{
+   try
+   {
+      note.op.visit( post_operation_visitor( _self ) );
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 } // detail
@@ -213,7 +231,10 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
    FC_CAPTURE_AND_RETHROW()
 }
 
-void account_by_key_plugin::plugin_startup() {}
+void account_by_key_plugin::plugin_startup()
+{
+   app().register_api_factory< account_by_key_api >( "account_by_key_api" );
+}
 
 } } // steemit::account_by_key
 
