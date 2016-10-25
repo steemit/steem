@@ -845,8 +845,6 @@ namespace detail {
       int32_t                                          _max_block_age = -1;
 
       uint32_t allow_future_time = 5;
-
-      bool reindex = false;
    };
 
 }

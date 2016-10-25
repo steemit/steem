@@ -185,20 +185,12 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
 
 void account_by_key_plugin_impl::pre_operation( const operation_notification& note )
 {
-   try
-   {
-      note.op.visit( pre_operation_visitor( _self ) );
-   }
-   FC_LOG_AND_RETHROW()
+   note.op.visit( pre_operation_visitor( _self ) );
 }
 
 void account_by_key_plugin_impl::post_operation( const operation_notification& note )
 {
-   try
-   {
-      note.op.visit( post_operation_visitor( _self ) );
-   }
-   FC_LOG_AND_RETHROW()
+   note.op.visit( post_operation_visitor( _self ) );
 }
 
 } // detail
