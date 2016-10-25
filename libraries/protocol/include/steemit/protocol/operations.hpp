@@ -70,7 +70,8 @@ namespace steemit { namespace protocol {
             fill_vesting_withdraw_operation,
             fill_order_operation,
             shutdown_witness_operation,
-            fill_transfer_from_savings_operation
+            fill_transfer_from_savings_operation,
+            hardfork_operation
          > operation;
 
    /*void operation_get_required_authorities( const operation& op,

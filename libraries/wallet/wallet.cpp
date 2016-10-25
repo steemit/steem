@@ -37,6 +37,7 @@
 #include <fc/crypto/hex.hpp>
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
+#include <fc/smart_ref_impl.hpp>
 
 #include <graphene/utilities/git_revision.hpp>
 #include <graphene/utilities/key_conversion.hpp>
@@ -49,7 +50,8 @@
 #include <steemit/wallet/wallet.hpp>
 #include <steemit/wallet/api_documentation.hpp>
 #include <steemit/wallet/reflect_util.hpp>
-#include <fc/smart_ref_impl.hpp>
+
+#include <steemit/account_by_key/account_by_key_api.hpp>
 
 #ifndef WIN32
 # include <sys/types.h>
@@ -973,7 +975,7 @@ vector<account_api_obj> wallet_api::list_my_accounts()
    for( const auto& item : my->_keys )
       pub_keys.push_back(item.first);
 
-   auto refs = my->_remote_db->get_key_references( pub_keys );
+   auto refs = my->_remote_api->get_api_by_name("account_by_key_api")->as< account_by_key::account_by_key_api >()->get_key_references( pub_keys );
    set<string> names;
    for( const auto& item : refs )
       for( const auto& name : item )

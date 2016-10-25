@@ -4022,6 +4022,8 @@ void database::apply_hardfork( uint32_t hardfork )
       hfp.current_hardfork_version = _hardfork_versions[ hardfork ];
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
+
+   push_virtual_operation( hardfork_operation( hardfork ) );
 }
 
 void database::retally_liquidity_weight() {

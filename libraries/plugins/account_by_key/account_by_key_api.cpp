@@ -34,7 +34,6 @@ vector< vector< account_name_type > > account_by_key_api_impl::get_key_reference
       {
          result.push_back( lookup_itr->account );
          ++lookup_itr;
-         if( lookup_itr != key_idx.end() )
       }
 
       final_result.emplace_back( std::move( result ) );
