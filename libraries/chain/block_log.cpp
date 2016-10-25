@@ -20,7 +20,9 @@ namespace steemit { namespace chain {
    block_log::block_log()
    :my( new detail::block_log_impl() ){}
 
-   block_log::~block_log(){
+   block_log::~block_log()
+   {
+      flush();
    }
 
    void block_log::open( const fc::path& file )
@@ -121,6 +123,7 @@ namespace steemit { namespace chain {
    void block_log::flush()
    {
       my->out_blocks.flush();
+      my->out_index.flush();
    }
 
    std::pair< signed_block, uint64_t > block_log::read_block( uint64_t pos )const

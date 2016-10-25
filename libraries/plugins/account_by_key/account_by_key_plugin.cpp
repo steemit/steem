@@ -151,20 +151,15 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
       // If the key was not in the authority, add it to the lookup
       if( cached_keys.find( key ) == cached_keys.end() )
       {
-         //auto lookup_itr = db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
-         auto lookup_itr = lookup_idx.find( std::make_tuple( key, a.account ) );
-         idump( (key)(a.account) );
+         auto lookup_itr = db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
 
-         if( lookup_itr == lookup_idx.end() )
+         if( lookup_itr == nullptr )
          {
             db.create< key_lookup_object >( [&]( key_lookup_object& o )
             {
                o.key = key;
                o.account = a.account;
-               idump( (o) );
             });
-
-            ilog( "created" );
          }
       }
       else
@@ -177,10 +172,9 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
    // Loop over the keys that were in authority but are no longer and remove them from the lookup
    for( const auto& key : cached_keys )
    {
-      //auto lookup_itr = db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
-      auto lookup_itr = lookup_idx.find( std::make_tuple( key, a.account ) );
+      auto lookup_itr = db.find< key_lookup_object, by_key >( std::make_tuple( key, a.account ) );
 
-      if( lookup_itr != lookup_idx.end() )
+      if( lookup_itr != nullptr )
       {
          db.remove( *lookup_itr );
       }
