@@ -305,8 +305,8 @@ vector<set<string>> database_api::get_key_references( vector<public_key_type> ke
  */
 vector<set<string>> database_api_impl::get_key_references( vector<public_key_type> keys )const
 {
+   FC_ASSERT( false, "database_api::get_key_references has been deprecated. Please use account_by_key_api::get_key_references instead." );
    vector< set<string> > final_result;
-   final_result.reserve(keys.size());
 
    /*for( auto& key : keys )
    {

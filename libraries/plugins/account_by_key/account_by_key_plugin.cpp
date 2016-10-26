@@ -130,7 +130,6 @@ struct post_operation_visitor
             {
                o.key = public_key_type( "STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR" );
                o.account = account->name;
-               idump( (o) );
             });
          }
       }

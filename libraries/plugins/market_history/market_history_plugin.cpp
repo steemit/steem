@@ -178,8 +178,8 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       ilog( "market_history: plugin_initialize() begin" );
 
       database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
-      database().add_index< bucket_index >();
-      database().add_index< order_history_index >();
+      database().add_plugin_index< bucket_index >();
+      database().add_plugin_index< order_history_index >();
 
       if( options.count("bucket-size" ) )
       {

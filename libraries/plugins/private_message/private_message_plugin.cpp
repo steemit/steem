@@ -136,7 +136,7 @@ void private_message_plugin::plugin_set_program_options(
 void private_message_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing private message plugin" );
-   database().add_index< message_index >();
+   database().add_plugin_index< message_index >();
 
    app().register_api_factory<private_message_api>("private_message_api");
 

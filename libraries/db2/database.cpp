@@ -31,7 +31,8 @@ namespace graphene { namespace db2 {
       bool                 windows = false;
    };
 
-   void database::open( const fc::path& dir, uint64_t shared_file_size ) {
+   void database::open( const fc::path& dir, uint64_t shared_file_size )
+   {
       if( _data_dir != dir ) close();
 
       if( !fc::exists( dir ) )
@@ -41,7 +42,18 @@ namespace graphene { namespace db2 {
       auto abs_path = fc::absolute( dir / "shared_memory" );
 
       if( fc::exists( abs_path ) )
-         shared_file_size = fc::file_size( abs_path );
+      {
+         auto existing_file_size = fc::file_size( abs_path );
+         if( shared_file_size > existing_file_size )
+         {
+            FC_ASSERT( bip::managed_mapped_file::grow( abs_path.generic_string().c_str(), shared_file_size - existing_file_size ),
+               "Failed growing the shared memory file.", ("current", existing_file_size)("new", existing_file_size) );
+         }
+         else
+         {
+            shared_file_size = existing_file_size;
+         }
+      }
 
       _segment.reset( new bip::managed_mapped_file( bip::open_or_create,
                                                     abs_path.generic_string().c_str(),

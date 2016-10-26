@@ -19,7 +19,6 @@ class account_by_key_api_impl
 
 vector< vector< account_name_type > > account_by_key_api_impl::get_key_references( vector< public_key_type >& keys )const
 {
-   idump( (keys) );
    vector< vector< account_name_type > > final_result;
    final_result.reserve( keys.size() );
 

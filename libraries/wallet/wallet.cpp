@@ -889,6 +889,15 @@ public:
       catch( const fc::exception& e ) { elog( "Couldn't get follow API" ); throw(e); }
    }
 
+   void use_remote_account_by_key_api()
+   {
+      if( _remote_account_by_key_api.valid() )
+         return;
+
+      try{ _remote_account_by_key_api = _remote_api->get_api_by_name( "account_by_key_api" )->as< account_by_key::account_by_key_api >(); }
+      catch( const fc::exception& e ) { elog( "Couldn't get account_by_key API" ); throw(e); }
+   }
+
    void network_add_nodes( const vector<string>& nodes )
    {
       use_network_node_api();
@@ -930,6 +939,7 @@ public:
    fc::api<database_api>                   _remote_db;
    fc::api<network_broadcast_api>          _remote_net_broadcast;
    optional< fc::api<network_node_api> >   _remote_net_node;
+   optional< fc::api<account_by_key::account_by_key_api> > _remote_account_by_key_api;
    optional< fc::api<private_message_api> > _remote_message_api;
    optional< fc::api<follow::follow_api> >  _remote_follow_api;
    uint32_t                                _tx_expiration_seconds = 30;
@@ -969,19 +979,31 @@ optional<signed_block_with_info> wallet_api::get_block(uint32_t num)
 vector<account_api_obj> wallet_api::list_my_accounts()
 {
    FC_ASSERT( !is_locked(), "Wallet must be unlocked to list accounts" );
+   vector<account_api_obj> result;
+
+   try
+   {
+      my->use_remote_account_by_key_api();
+   }
+   catch( fc::exception& e )
+   {
+      elog( "Connected node needs to enable account_by_key_api" );
+      return result;
+   }
+
    vector<public_key_type> pub_keys;
    pub_keys.reserve( my->_keys.size() );
 
    for( const auto& item : my->_keys )
       pub_keys.push_back(item.first);
 
-   auto refs = my->_remote_api->get_api_by_name("account_by_key_api")->as< account_by_key::account_by_key_api >()->get_key_references( pub_keys );
+   auto refs = (*my->_remote_account_by_key_api)->get_key_references( pub_keys );
    set<string> names;
    for( const auto& item : refs )
       for( const auto& name : item )
          names.insert( name );
 
-   vector<account_api_obj> result;
+
    result.reserve( names.size() );
    for( const auto& name : names )
       result.emplace_back( get_account( name ) );

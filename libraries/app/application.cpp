@@ -260,7 +260,7 @@ namespace detail {
          if( _options->count("replay-blockchain") )
          {
             ilog("Replaying blockchain on user request.");
-            _chain_db->reindex(_data_dir/"blockchain" );
+            _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
          }
          else
          {
@@ -287,7 +287,7 @@ namespace detail {
                ilog("Replaying blockchain due to version upgrade");
 
                fc::remove_all( _data_dir / "db_version" );
-               _chain_db->reindex(_data_dir / "blockchain" );
+               _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
 
                // doing this down here helps ensure that DB will be wiped
                // if any of the above steps were interrupted on a previous run
@@ -305,7 +305,7 @@ namespace detail {
             {
                try
                {
-                  _chain_db->open(_data_dir / "blockchain" );
+                  _chain_db->open(_data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
                }
                catch( fc::assert_exception& )
                {
@@ -313,18 +313,16 @@ namespace detail {
 
                   try
                   {
-                     _chain_db->reindex( _data_dir / "blockchain" );
+                     _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
                   }
                   catch( chain::block_log_exception& )
                   {
                      wlog( "Error opening block log. Having to resync from network..." );
-                     _chain_db->open( _data_dir / "blockchain" );
+                     _chain_db->open( _data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
                   }
                }
             }
          }
-
-         //_pending_trx_db->open(_data_dir / "node/transaction_history" );
 
          if( _options->count("force-validate") )
          {
@@ -843,6 +841,7 @@ namespace detail {
       flat_map< std::string, std::function< fc::api_ptr( const api_context& ) > >   _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
       int32_t                                          _max_block_age = -1;
+      uint64_t                                         _shared_file_size;
 
       uint32_t allow_future_time = 5;
    };
@@ -876,11 +875,13 @@ void application::set_program_options(boost::program_options::options_descriptio
    std::vector< std::string > default_apis;
    default_apis.push_back( "database_api" );
    default_apis.push_back( "login_api" );
+   default_apis.push_back( "account_by_key_api" );
    std::string str_default_apis = boost::algorithm::join( default_apis, " " );
 
    std::vector< std::string > default_plugins;
    default_plugins.push_back( "witness" );
    default_plugins.push_back( "account_history" );
+   default_plugins.push_back( "account_by_key" );
    std::string str_default_plugins = boost::algorithm::join( default_plugins, " " );
 
    configuration_file_options.add_options()
@@ -888,6 +889,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("shared-file-size", bpo::value<uint64_t>()->implicit_value(1024*1024*1024*32), "Size of the shared memory file. Default: 34359738368 (32GB)")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")

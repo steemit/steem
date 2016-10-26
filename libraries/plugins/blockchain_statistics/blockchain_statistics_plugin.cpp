@@ -427,7 +427,7 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
       database().pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
 
-      database().add_index< bucket_index >();
+      database().add_plugin_index< bucket_index >();
 
       if( options.count( "chain-stats-bucket-size" ) )
       {

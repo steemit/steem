@@ -40,7 +40,7 @@ namespace impl {
 std::string clean_name( const std::string& name )
 {
    std::string result;
-   const static std::string prefix = "steemit::chain::";
+   const static std::string prefix = "steemit::protocol::";
    const static std::string suffix = "_operation";
    // graphene::chain::.*_operation
    if(    (name.size() >= prefix.size() + suffix.size())

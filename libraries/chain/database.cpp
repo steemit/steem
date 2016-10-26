@@ -875,14 +875,19 @@ void database::notify_post_apply_operation( const operation_notification& note )
    STEEMIT_TRY_NOTIFY( post_apply_operation, note )
 }
 
-inline const void database::push_virtual_operation( const operation& op )
+inline const void database::push_virtual_operation( const operation& op, bool force )
 {
-#if ! defined( IS_LOW_MEM ) || defined( IS_TEST_NET )
+   if( !force )
+   {
+      #if defined( IS_LOW_MEM ) && ! defined( IS_TEST_NET )
+      return;
+      #endif
+   }
+
    FC_ASSERT( is_virtual_operation( op ) );
    operation_notification note(op);
    notify_pre_apply_operation( note );
    notify_post_apply_operation( note );
-#endif
 }
 
 void database::notify_applied_block( const signed_block& block )
@@ -4023,7 +4028,7 @@ void database::apply_hardfork( uint32_t hardfork )
       FC_ASSERT( hfp.processed_hardforks[ hfp.last_hardfork ] == _hardfork_times[ hfp.last_hardfork ], "Hardfork processing failed sanity check..." );
    } );
 
-   push_virtual_operation( hardfork_operation( hardfork ) );
+   push_virtual_operation( hardfork_operation( hardfork ), true );
 }
 
 void database::retally_liquidity_weight() {

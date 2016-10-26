@@ -361,10 +361,10 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
 
       database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
       database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
-      database().add_index< follow_index     >();
-      database().add_index< feed_index       >();
-      database().add_index< blog_index       >();
-      database().add_index< reputation_index >();
+      database().add_plugin_index< follow_index     >();
+      database().add_plugin_index< feed_index       >();
+      database().add_plugin_index< blog_index       >();
+      database().add_plugin_index< reputation_index >();
 
       if( options.count( "follow-max-feed-size" ) )
       {

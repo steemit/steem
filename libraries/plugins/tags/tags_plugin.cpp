@@ -401,9 +401,9 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 {
    ilog("Intializing tags plugin" );
    database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
-   database().add_index< tag_index >();
-   database().add_index< tag_stats_index >();
-   database().add_index< peer_stats_index >();
+   database().add_plugin_index< tag_index >();
+   database().add_plugin_index< tag_stats_index >();
+   database().add_plugin_index< peer_stats_index >();
 
    app().register_api_factory<tag_api>("tag_api");
 }
