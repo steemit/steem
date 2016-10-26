@@ -21,6 +21,7 @@ RUN \
         pbzip2 \
         python3 \
         python3-dev \
+        rapidjson-dev \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
