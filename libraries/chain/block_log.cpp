@@ -138,7 +138,6 @@ namespace steemit { namespace chain {
 
    void block_log::flush()
    {
-      ilog( "Flushing block_log" );
       my->block_stream.flush();
       my->index_stream.flush();
    }
