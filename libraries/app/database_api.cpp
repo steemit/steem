@@ -1003,15 +1003,15 @@ vector<discussion> database_api::get_content_replies( string author, string perm
  *  The first call should be (account_to_retrieve replies, "", limit)
  *  Subsequent calls should be (last_author, last_permlink, limit)
  */
-vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const
+vector<discussion> database_api::get_replies_by_last_update( account_name_type start_parent_author, string start_permlink, uint32_t limit )const
 {
    vector<discussion> result;
 
 #ifndef IS_LOW_MEM
    FC_ASSERT( limit <= 100 );
-   const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
+   const auto& last_update_idx = my->_db.get_index< comment_index >().indices().get< by_last_update >();
    auto itr = last_update_idx.begin();
-   const string* parent_author = &start_parent_author;
+   const account_name_type* parent_author = &start_parent_author;
 
    if( start_permlink.size() )
    {
@@ -1030,7 +1030,7 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
    {
       result.push_back( *itr );
       set_pending_payout(result.back());
-      result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+      result.back().active_votes = get_active_votes( itr->author, to_string( itr->permlink ) );
       ++itr;
    }
 
@@ -1515,7 +1515,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
          {
             result.push_back( *itr );
             set_pending_payout( result.back() );
-            result.back().active_votes = get_active_votes( itr->author, itr->permlink );
+            result.back().active_votes = get_active_votes( itr->author, to_string( itr->permlink ) );
             ++count;
          }
          ++itr;
@@ -1666,7 +1666,7 @@ state database_api::get_state( string path )const
          {
             if( itr->parent_author.size() )
             {
-               const auto link = acnt + "/" + itr->permlink;
+               const auto link = acnt + "/" + to_string( itr->permlink );
                eacnt.posts->push_back( link );
                _state.content[ link ] = *itr;
                set_pending_payout( _state.content[ link ] );

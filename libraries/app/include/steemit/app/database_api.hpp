@@ -373,7 +373,7 @@ class database_api
        *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
        *  pending payout means the pending payout of all children as well.
        */
-      vector<discussion>   get_replies_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_replies_by_last_update( account_name_type start_author, string start_permlink, uint32_t limit )const;
 
 
 
