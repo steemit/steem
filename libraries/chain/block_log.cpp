@@ -2,7 +2,6 @@
 #include <fstream>
 #include <fc/io/raw.hpp>
 
-
 namespace steemit { namespace chain {
 
    namespace detail {
@@ -10,15 +9,17 @@ namespace steemit { namespace chain {
          public:
             optional< signed_block > head;
             block_id_type            head_id;
-            std::fstream             out_blocks;
-            std::fstream             in_blocks;
-            std::fstream             out_index;
-            std::fstream             in_index;
+            std::fstream             block_stream;
+            std::fstream             index_stream;
       };
    }
 
    block_log::block_log()
-   :my( new detail::block_log_impl() ){}
+   :my( new detail::block_log_impl() )
+   {
+      my->block_stream.exceptions( std::fstream::failbit | std::fstream::badbit );
+      my->index_stream.exceptions( std::fstream::failbit | std::fstream::badbit );
+   }
 
    block_log::~block_log()
    {
@@ -28,12 +29,24 @@ namespace steemit { namespace chain {
    void block_log::open( const fc::path& file )
    {
       const fc::path index_file( file.generic_string() + ".index" );
-      my->out_blocks.close();
-      my->in_blocks.close();
-      my->out_blocks.open( file.generic_string().c_str(), std::ios::app | std::ios::binary );
-      my->in_blocks.open( file.generic_string().c_str(), std::ios::in | std::ios::binary );
-      my->out_index.open( index_file.generic_string().c_str(), std::ios::app | std::ios::binary );
-      my->in_index.open( index_file.generic_string().c_str(), std::ios::in | std::ios::binary );
+
+      if( my->block_stream.is_open() )
+         my->block_stream.close();
+      if( my->index_stream.is_open() )
+         my->index_stream.close();
+
+      if( !fc::exists( file ) )
+      {
+         my->block_stream.open(       file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc );
+         my->index_stream.open( index_file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc );
+      }
+      else
+      {
+         my->block_stream.open(       file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary );
+         my->index_stream.open( index_file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary );
+      }
+      my->block_stream.seekp( 0, std::ios::end );
+      my->index_stream.seekp( 0, std::ios::end );
 
       /* On startup of the block log, there are several states the log file and the index file can be
        * in relation to eachother.
@@ -58,26 +71,28 @@ namespace steemit { namespace chain {
 
       if( log_size )
       {
+         ilog( "Log is nonempty" );
          my->head = read_head();
          my->head_id = my->head->id();
 
          if( index_size )
          {
+            ilog( "Index is nonempty" );
             uint64_t block_pos;
-            my->in_blocks.seekg( -sizeof( uint64_t), std::ios::end );
-            my->in_blocks.read( (char*)&block_pos, sizeof( block_pos ) );
+            my->block_stream.seekg( -sizeof( uint64_t), std::ios::end );
+            my->block_stream.read( (char*)&block_pos, sizeof( block_pos ) );
 
             uint64_t index_pos;
-            my->in_index.seekg( -sizeof( uint64_t), std::ios::end );
-            my->in_index.read( (char*)&index_pos, sizeof( index_pos ) );
+            my->index_stream.seekg( -sizeof( uint64_t), std::ios::end );
+            my->index_stream.read( (char*)&index_pos, sizeof( index_pos ) );
 
             if( block_pos < index_pos )
             {
-               my->out_index.close();
-               my->in_index.close();
+               ilog( "block_pos < index_pos, close and reopen index_stream" );
+               my->index_stream.close();
                fc::remove_all( index_file );
-               my->out_index.open( index_file.generic_string().c_str(), std::ios::app | std::ios::binary );
-               my->in_index.open( index_file.generic_string().c_str(), std::ios::in | std::ios::binary );
+               my->index_stream.open( index_file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc );
+               my->index_stream.seekp( 0, std::ios::end );
             }
             else if( block_pos > index_pos )
             {
@@ -86,16 +101,17 @@ namespace steemit { namespace chain {
          }
          else
          {
+            ilog( "Index is empty, rebuild it" );
             construct_index( 0 );
          }
       }
       else if( index_size )
       {
-         my->out_index.close();
-         my->in_index.close();
+         ilog( "Index is nonempty, remove and recreate it" );
+         my->index_stream.close();
          fc::remove_all( index_file );
-         my->out_index.open( index_file.generic_string().c_str(), std::ios::app | std::ios::binary );
-         my->in_index.open( index_file.generic_string().c_str(), std::ios::in | std::ios::binary );
+         my->index_stream.open( index_file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc );
+         my->index_stream.seekp( 0, std::ios::end );
       }
    }
 
@@ -106,15 +122,15 @@ namespace steemit { namespace chain {
 
    bool block_log::is_open()const
    {
-      return my->in_blocks.is_open();
+      return my->block_stream.is_open();
    }
 
    uint64_t block_log::append( const signed_block& b )
    {
-      uint64_t pos = my->out_blocks.tellp();
-      fc::raw::pack( my->out_blocks, b );
-      my->out_blocks.write( (char*)&pos, sizeof( pos ) );
-      my->out_index.write( (char*)&pos, sizeof( pos ) );
+      uint64_t pos = my->block_stream.tellp();
+      fc::raw::pack( my->block_stream, b );
+      my->block_stream.write( (char*)&pos, sizeof( pos ) );
+      my->index_stream.write( (char*)&pos, sizeof( pos ) );
       my->head = b;
       my->head_id = b.id();
       return pos;
@@ -122,16 +138,17 @@ namespace steemit { namespace chain {
 
    void block_log::flush()
    {
-      my->out_blocks.flush();
-      my->out_index.flush();
+      ilog( "Flushing block_log" );
+      my->block_stream.flush();
+      my->index_stream.flush();
    }
 
    std::pair< signed_block, uint64_t > block_log::read_block( uint64_t pos )const
    {
-      my->in_blocks.seekg( pos );
+      my->block_stream.seekg( pos );
       std::pair<signed_block,uint64_t> result;
-      fc::raw::unpack( my->in_blocks, result.first );
-      result.second = uint64_t(my->in_blocks.tellg()) + 8;
+      fc::raw::unpack( my->block_stream, result.first );
+      result.second = uint64_t(my->block_stream.tellg()) + 8;
       return result;
    }
 
@@ -148,17 +165,17 @@ namespace steemit { namespace chain {
    {
       if( !( my->head && block_num <= protocol::block_header::num_from_id( my->head_id ) ) )
          return ~0;
-      my->in_index.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
+      my->index_stream.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
       uint64_t pos;
-      my->in_index.read( (char*)&pos, sizeof( pos ) );
+      my->index_stream.read( (char*)&pos, sizeof( pos ) );
       return pos;
    }
 
    signed_block block_log::read_head()const
    {
       uint64_t pos;
-      my->in_blocks.seekg( -sizeof(pos), std::ios::end );
-      my->in_blocks.read( (char*)&pos, sizeof(pos) );
+      my->block_stream.seekg( -sizeof(pos), std::ios::end );
+      my->block_stream.read( (char*)&pos, sizeof(pos) );
       return read_block( pos ).first;
    }
 
@@ -170,16 +187,16 @@ namespace steemit { namespace chain {
    void block_log::construct_index( uint64_t start_pos )
    {
       uint64_t end_pos;
-      my->in_blocks.seekg( -sizeof( uint64_t), std::ios::end );
-      my->in_blocks.read( (char*)&end_pos, sizeof( end_pos ) );
+      my->block_stream.seekg( -sizeof( uint64_t), std::ios::end );
+      my->block_stream.read( (char*)&end_pos, sizeof( end_pos ) );
       signed_block tmp;
 
       while( start_pos < end_pos )
       {
-         my->in_blocks.seekg( start_pos );
-         fc::raw::unpack( my->in_blocks, tmp );
-         start_pos = uint64_t(my->in_blocks.tellg()) + 8;
-         my->out_index.write( (char*)&start_pos, sizeof( start_pos ) );
+         my->block_stream.seekg( start_pos );
+         fc::raw::unpack( my->block_stream, tmp );
+         start_pos = uint64_t(my->block_stream.tellg()) + 8;
+         my->index_stream.write( (char*)&start_pos, sizeof( start_pos ) );
       }
    }
 
