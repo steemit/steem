@@ -287,6 +287,26 @@ namespace steemit { namespace chain {
             >,
             composite_key_compare< std::less< account_name_type >, strcmp_less, std::less< comment_id_type > >
          >
+         /// NON_CONSENSUS INDICIES - used by APIs
+#ifndef IS_LOW_MEM
+         ,
+         ordered_unique< tag< by_last_update >,
+            composite_key< comment_object,
+               member< comment_object, account_name_type, &comment_object::parent_author >,
+               member< comment_objuct, time_point_sec, &comment_object::last_update >,
+               member< comment_object, comment_id_type, &comment_object::id >
+            >,
+            composite_key_compare< std::less< account_name_type >, std::greater< time_point_sec >, std::less< comment_id_type > >
+         >,
+         ordered_unique< tag< by_author_last_update >,
+            composite_key< comment_object,
+               member< comment_object, string, &comment_object::author >,
+               member< comment_object, time_point_sec, &comment_object::last_update >,
+               member< object, object_id_type, &object::id >
+            >,
+            composite_key_compare< std::less< string >, std::greater<time_point_sec>, std::less<object_id_type> >
+         >
+#endif
       >,
       allocator< comment_object >
    > comment_index;

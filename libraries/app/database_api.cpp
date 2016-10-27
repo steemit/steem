@@ -307,23 +307,6 @@ vector<set<string>> database_api_impl::get_key_references( vector<public_key_typ
 {
    FC_ASSERT( false, "database_api::get_key_references has been deprecated. Please use account_by_key_api::get_key_references instead." );
    vector< set<string> > final_result;
-
-   /*for( auto& key : keys )
-   {
-      const auto& idx = _db.get_index<account_index>();
-      const auto& aidx = dynamic_cast<const primary_index<account_index>&>(idx);
-      const auto& refs = aidx.get_secondary_index<steemit::chain::account_member_index>();
-      set<string> result;
-
-      auto itr = refs.account_to_key_memberships.find(key);
-      if( itr != refs.account_to_key_memberships.end() )
-      {
-         for( auto item : itr->second )
-            result.insert(item);
-      }
-      final_result.emplace_back( std::move(result) );
-   }*/
-
    return final_result;
 }
 
@@ -1022,7 +1005,9 @@ vector<discussion> database_api::get_content_replies( string author, string perm
  */
 vector<discussion> database_api::get_replies_by_last_update( string start_parent_author, string start_permlink, uint32_t limit )const
 {
-   /*
+   vector<discussion> result;
+
+#ifndef IS_LOW_MEM
    FC_ASSERT( limit <= 100 );
    const auto& last_update_idx = my->_db.get_index_type< comment_index >().indices().get< by_last_update >();
    auto itr = last_update_idx.begin();
@@ -1038,9 +1023,8 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
    {
       itr = last_update_idx.lower_bound( start_parent_author );
    }
-   */
-   vector<discussion> result;
-   /*result.reserve( limit );
+
+   result.reserve( limit );
 
    while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == *parent_author )
    {
@@ -1049,7 +1033,8 @@ vector<discussion> database_api::get_replies_by_last_update( string start_parent
       result.back().active_votes = get_active_votes( itr->author, itr->permlink );
       ++itr;
    }
-   */
+
+#endif
    return result;
 }
 
@@ -1371,7 +1356,9 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
 
 vector<discussion> database_api::get_discussions_by_comments( const discussion_query& query )const
 {
-   /*query.validate();
+   vector< discussion > result;
+#ifndef IS_LOW_MEM
+   query.validate();
    FC_ASSERT( query.start_author, "Must get comments for a specific author" );
    auto start_author = *( query.start_author );
    auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
@@ -1388,9 +1375,7 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
       FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's comments" );
       comment_itr = t_idx.iterator_to( *start_c );
    }
-   */
-   vector< discussion > result;
-   /*
+
    result.reserve( query.limit );
 
    while( result.size() < query.limit && comment_itr != t_idx.end() )
@@ -1410,7 +1395,8 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
       }
 
       ++comment_itr;
-   }*/
+   }
+#endif
    return result;
 }
 
@@ -1505,8 +1491,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
    try
    {
       vector<discussion> result;
-
-      /*
+#ifndef IS_LOW_MEM
       FC_ASSERT( limit <= 100 );
       result.reserve( limit );
       int count = 0;
@@ -1535,8 +1520,8 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
          }
          ++itr;
       }
-      */
 
+#endif
       return result;
    }
    FC_CAPTURE_AND_RETHROW( (author)(start_permlink)(before_date)(limit) )
@@ -1671,7 +1656,8 @@ state database_api::get_state( string path )const
       }
       else if( part[1] == "posts" || part[1] == "comments" )
       {
-         /*int count = 0;
+#ifndef IS_LOW_MEM
+         int count = 0;
          const auto& pidx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
          auto itr = pidx.lower_bound( acnt );
          eacnt.posts = vector<string>();
@@ -1688,7 +1674,8 @@ state database_api::get_state( string path )const
             }
 
             ++itr;
-         }*/
+         }
+#endif
       }
       else if( part[1].size() == 0 || part[1] == "blog" )
       {
