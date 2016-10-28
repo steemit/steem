@@ -126,11 +126,12 @@ namespace steemit { namespace chain {
 
    struct author_reward_operation : public virtual_operation {
       author_reward_operation(){}
-      author_reward_operation( const string& a, const string& p, const asset& s, const asset& v )
-         :author(a),permlink(p),sbd_payout(s),vesting_payout(v){}
+      author_reward_operation( const string& a, const string& p, const asset& s, const asset& st, const asset& v )
+         :author(a),permlink(p),sbd_payout(s),steem_payout(st),vesting_payout(v){}
       string author;
       string permlink;
       asset  sbd_payout;
+      asset  steem_payout;
       asset  vesting_payout;
    };
 
@@ -897,6 +898,19 @@ namespace steemit { namespace chain {
       void validate() const;
    };
 
+   struct fill_transfer_from_savings_operation : public virtual_operation
+   {
+      fill_transfer_from_savings_operation() {}
+      fill_transfer_from_savings_operation( const string& f, const string& t, const asset& a, const uint32_t r, const string& m )
+         :from(f), to(t), amount(a), request_id(r), memo(m) {}
+
+      string   from;
+      string   to;
+      asset    amount;
+      uint32_t request_id = 0;
+      string   memo;
+   };
+
    struct decline_voting_rights_operation : public base_operation
    {
       string account;
@@ -912,6 +926,7 @@ namespace steemit { namespace chain {
 FC_REFLECT( steemit::chain::transfer_to_savings_operation, (from)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
 FC_REFLECT( steemit::chain::cancel_transfer_from_savings_operation, (from)(request_id) )
+FC_REFLECT( steemit::chain::fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )
 
 FC_REFLECT( steemit::chain::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
 FC_REFLECT( steemit::chain::set_reset_account_operation, (account)(reset_account) )
@@ -963,7 +978,7 @@ FC_REFLECT( steemit::chain::limit_order_create2_operation, (owner)(orderid)(amou
 FC_REFLECT( steemit::chain::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) );
 FC_REFLECT( steemit::chain::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::chain::author_reward_operation, (author)(permlink)(sbd_payout)(vesting_payout) )
+FC_REFLECT( steemit::chain::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
 FC_REFLECT( steemit::chain::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
 FC_REFLECT( steemit::chain::comment_reward_operation, (author)(permlink)(payout) )
 FC_REFLECT( steemit::chain::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )

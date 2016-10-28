@@ -59,16 +59,23 @@ FC_API( {plugin_provider}::plugin::{plugin_name}::{plugin_name}_api,
 
 namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
 
+namespace detail {{
+class {plugin_name}_plugin_impl;
+}}
+
 class {plugin_name}_plugin : public steemit::app::plugin
 {{
    public:
-      {plugin_name}_plugin();
+      {plugin_name}_plugin( steemit::app::application* app );
       virtual ~{plugin_name}_plugin();
 
       virtual std::string plugin_name()const override;
       virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
+
+   private:
+      std::shared_ptr< detail::{plugin_name}_plugin_impl > my;
 }};
 
 }} }} }}
@@ -126,27 +133,82 @@ void {plugin_name}_api::on_api_startup() {{ }}
 
 namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
 
-{plugin_name}_plugin::{plugin_name}_plugin() {{}}
-{plugin_name}_plugin::~{plugin_name}_plugin() {{}}
+namespace detail {{
 
-std::string {plugin_name}_plugin::plugin_name()const
+class {plugin_name}_plugin_impl
+{{
+   public:
+      {plugin_name}_plugin_impl( steemit::app::application& app );
+      virtual ~{plugin_name}_plugin_impl();
+
+      virtual std::string plugin_name()const;
+      virtual void plugin_initialize( const boost::program_options::variables_map& options );
+      virtual void plugin_startup();
+      virtual void plugin_shutdown();
+      void on_applied_block( const chain::signed_block& b );
+
+      steemit::app::application& _app;
+      boost::signals2::scoped_connection _applied_block_conn;
+}};
+
+{plugin_name}_plugin_impl::{plugin_name}_plugin_impl( steemit::app::application& app )
+  : _app(app) {{}}
+
+{plugin_name}_plugin_impl::~{plugin_name}_plugin_impl() {{}}
+
+std::string {plugin_name}_plugin_impl::plugin_name()const
 {{
    return "{plugin_name}";
 }}
 
+void {plugin_name}_plugin_impl::plugin_initialize( const boost::program_options::variables_map& options )
+{{
+}}
+
+void {plugin_name}_plugin_impl::plugin_startup()
+{{
+   _app.register_api_factory< {plugin_name}_api >( "{plugin_name}_api" );
+   _applied_block_conn = _app.chain_database()->applied_block.connect(
+      [this](const chain::signed_block& b){{ on_applied_block(b); }});
+}}
+
+void {plugin_name}_plugin_impl::plugin_shutdown()
+{{
+}}
+
+void {plugin_name}_plugin_impl::on_applied_block( const chain::signed_block& b )
+{{
+}}
+
+}}
+
+{plugin_name}_plugin::{plugin_name}_plugin( steemit::app::application* app )
+   : plugin(app)
+{{
+   FC_ASSERT( app != nullptr );
+   my = std::make_shared< detail::{plugin_name}_plugin_impl >( *app );
+}}
+
+{plugin_name}_plugin::~{plugin_name}_plugin() {{}}
+
+std::string {plugin_name}_plugin::plugin_name()const
+{{
+   return my->plugin_name();
+}}
+
 void {plugin_name}_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {{
+   my->plugin_initialize( options );
 }}
 
 void {plugin_name}_plugin::plugin_startup()
 {{
-   chain::database& db = database();
-
-   app().register_api_factory< {plugin_name}_api >( "{plugin_name}_api" );
+   my->plugin_startup();
 }}
 
 void {plugin_name}_plugin::plugin_shutdown()
 {{
+   my->plugin_shutdown();
 }}
 
 }} }} }} // {plugin_provider}::plugin::{plugin_name}
