@@ -30,33 +30,29 @@ ADD . /usr/local/src/steem
 RUN \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
-    rsync -a \
-        /usr/local/src/steem/ \
-        /usr/local/src/steemtest/
-
-RUN \
-    cd /usr/local/src/steemtest && \
+    mkdir build && \
+    cd build && \
     cmake \
-        -DCMAKE_BUILD_TYPE=Debug \
-        -DBUILD_STEEM_TESTNET=On \
-        -DLOW_MEMORY_NODE=ON \
-        . \
-    && \
-    make -j$(nproc) chain_test && \
-    ./tests/chain_test && \
-    rm -rf /usr/local/src/steemtest
-
-RUN \
-    cd /usr/local/src/steem && \
-    doxygen && \
-    programs/build_helpers/check_reflect.py
-
-RUN \
-    cd /usr/local/src/steem && \
-    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
-        . \
+        -DCLEAR_VOTES=ON \
+        -DBUILD_STEEM_TESTNET=OFF \
+        .. \
+    && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rfv build && \
+    mkdir build && \
+    cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLOW_MEMORY_NODE=OFF \
+        -DCLEAR_VOTES=OFF \
+        -DBUILD_STEEM_TESTNET=OFF \
+        .. \
     && \
     make -j$(nproc) && \
     make install && \
@@ -131,6 +127,9 @@ EXPOSE 2001
 RUN mkdir -p /etc/service/steemd
 ADD contrib/steemd.run /etc/service/steemd/run
 RUN chmod +x /etc/service/steemd/run
+
+# add seednodes from documentation to image
+ADD doc/seednodes.txt /etc/steemd/seednodes.txt
 
 # the following adds lots of logging info to stdout
 ADD contrib/config-for-docker.ini /etc/steemd/config.ini
