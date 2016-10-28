@@ -83,8 +83,10 @@ namespace steemit { namespace chain {
       my->block_file = file;
       my->index_file = fc::path( file.generic_string() + ".index" );
 
-      my->block_stream.open( my->block_file.generic_string().c_str(), LOG_READ );
-      my->index_stream.open( my->index_file.generic_string().c_str(), LOG_READ );
+      my->block_stream.open( my->block_file.generic_string().c_str(), LOG_WRITE );
+      my->index_stream.open( my->index_file.generic_string().c_str(), LOG_WRITE );
+      my->block_write = true;
+      my->index_write = true;
 
       /* On startup of the block log, there are several states the log file and the index file can be
        * in relation to eachother.
@@ -115,6 +117,9 @@ namespace steemit { namespace chain {
 
          if( index_size )
          {
+            my->check_block_read();
+            my->check_index_read();
+
             ilog( "Index is nonempty" );
             uint64_t block_pos;
             my->block_stream.seekg( -sizeof( uint64_t), std::ios::end );
@@ -129,6 +134,8 @@ namespace steemit { namespace chain {
                ilog( "block_pos < index_pos, close and reopen index_stream" );
                my->index_stream.close();
                fc::remove_all( my->index_file );
+               my->index_stream.open( my->index_file.generic_string().c_str(), LOG_WRITE );
+               my->index_write = true;
                construct_index( 0 );
             }
             else if( block_pos > index_pos )
@@ -147,7 +154,8 @@ namespace steemit { namespace chain {
          ilog( "Index is nonempty, remove and recreate it" );
          my->index_stream.close();
          fc::remove_all( my->index_file );
-         my->index_stream.open( my->index_file.generic_string().c_str(), LOG_READ );
+         my->index_stream.open( my->index_file.generic_string().c_str(), LOG_WRITE );
+         my->index_write = true;
       }
    }
 
