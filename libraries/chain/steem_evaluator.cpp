@@ -113,6 +113,24 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("p", o.fee) );
    }
 
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) )
+   {
+      for( auto& a : o.owner.account_auths )
+      {
+         db().get_account( a.first );
+      }
+
+      for( auto& a : o.active.account_auths )
+      {
+         db().get_account( a.first );
+      }
+
+      for( auto& a : o.posting.account_auths )
+      {
+         db().get_account( a.first );
+      }
+   }
+
    db().modify( creator, [&]( account_object& c ){
       c.balance -= o.fee;
    });
