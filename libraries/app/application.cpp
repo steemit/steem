@@ -264,62 +264,22 @@ namespace detail {
          }
          else
          {
-            auto is_new = [&]() -> bool
+            try
             {
-               // directory doesn't exist
-               if( !fc::exists( _data_dir ) )
-                  return true;
-               // if directory exists but is empty, return true; else false.
-               return ( fc::directory_iterator( _data_dir ) == fc::directory_iterator() );
-            };
-
-            auto is_outdated = [&]() -> bool
-            {
-               if( !fc::exists( _data_dir / "db_version" ) )
-                  return true;
-               std::string version_str;
-               fc::read_file_contents( _data_dir / "db_version", version_str );
-               return (version_str != GRAPHENE_CURRENT_DB_VERSION);
-            };
-
-            if( !is_new() && is_outdated() )
-            {
-               ilog("Replaying blockchain due to version upgrade");
-
-               fc::remove_all( _data_dir / "db_version" );
-               _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
-
-               // doing this down here helps ensure that DB will be wiped
-               // if any of the above steps were interrupted on a previous run
-               if( !fc::exists( _data_dir / "db_version" ) )
-               {
-                  std::ofstream db_version(
-                     (_data_dir / "db_version").generic_string().c_str(),
-                     std::ios::out | std::ios::binary | std::ios::trunc );
-                  std::string version_string = GRAPHENE_CURRENT_DB_VERSION;
-                  db_version.write( version_string.c_str(), version_string.size() );
-                  db_version.close();
-               }
+               _chain_db->open(_data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
             }
-            else
+            catch( fc::assert_exception& )
             {
+               wlog( "Error when opening database. Attempting reindex..." );
+
                try
                {
-                  _chain_db->open(_data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
+                  _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
                }
-               catch( fc::assert_exception& )
+               catch( chain::block_log_exception& )
                {
-                  wlog( "Error when opening database. Attempting reindex..." );
-
-                  try
-                  {
-                     _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
-                  }
-                  catch( chain::block_log_exception& )
-                  {
-                     wlog( "Error opening block log. Having to resync from network..." );
-                     _chain_db->open( _data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
-                  }
+                  wlog( "Error opening block log. Having to resync from network..." );
+                  _chain_db->open( _data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
                }
             }
          }
@@ -889,7 +849,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("shared-file-size", bpo::value<uint64_t>()->implicit_value(1024*1024*1024*32), "Size of the shared memory file. Default: 34359738368 (32GB)")
+         ("shared-file-size", bpo::value<uint64_t>()->default_value(34359738368), "Size of the shared memory file. Default: 34359738368 (32GB)")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
