@@ -98,26 +98,29 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
       init_schema();
       db2::database::open( data_dir, shared_file_size );
 
-      initialize_indexes();
-      initialize_evaluators();
+      with_write_lock( [&]()
+      {
+         initialize_indexes();
+         initialize_evaluators();
 
-      _block_log.open( data_dir / "block_log" );
+         _block_log.open( data_dir / "block_log" );
 
-      if( !find< dynamic_global_property_object >() )
-         init_genesis( initial_supply );
+         if( !find< dynamic_global_property_object >() )
+            init_genesis( initial_supply );
 
-      init_hardforks();
+         init_hardforks();
 
-      // block_log.head must be in block stats
-      // If it is not, print warning and exit
-      auto log_head = _block_log.head();
+         // block_log.head must be in block stats
+         // If it is not, print warning and exit
+         auto log_head = _block_log.head();
 
-      if( log_head && head_block_num() )
-         FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
-            "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
+         if( log_head && head_block_num() )
+            FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
+               "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
 
-      // Rewind all undo state. This should return us to the state at the last irreversible block.
-      undo_all();
+         // Rewind all undo state. This should return us to the state at the last irreversible block.
+         undo_all();
+      });
       if( head_block_num() )
          _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
    }
@@ -138,8 +141,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
 
       ilog( "Replaying blocks..." );
 
-      auto itr = _block_log.read_block( 0 );
-      auto last_block_num = _block_log.head()->block_num();
+
       uint64_t skip_flags =
          skip_witness_signature |
          skip_transaction_signatures |
@@ -151,19 +153,25 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
          skip_validate | /// no need to validate operations
          skip_validate_invariants;
 
-      while( itr.first.block_num() != last_block_num )
+      with_write_lock( [&]()
       {
-         auto cur_block_num = itr.first.block_num();
-         if( cur_block_num % 100000 == 0 )
-            std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
+         auto itr = _block_log.read_block( 0 );
+         auto last_block_num = _block_log.head()->block_num();
+
+         while( itr.first.block_num() != last_block_num )
+         {
+            auto cur_block_num = itr.first.block_num();
+            if( cur_block_num % 100000 == 0 )
+               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
+            apply_block( itr.first, skip_flags );
+            itr = _block_log.read_block( itr.second );
+         }
+
          apply_block( itr.first, skip_flags );
-         itr = _block_log.read_block( itr.second );
-      }
+         set_revision( head_block_num() );
+      });
 
-      apply_block( itr.first, skip_flags );
-      set_revision( head_block_num() );
-
-      if( last_block_num )
+      if( _block_log.head()->block_num() )
          _fork_db.start_block( *_block_log.head() );
 
       auto end = fc::time_point::now();
@@ -536,7 +544,10 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
       {
          try
          {
-            result = _push_block(new_block);
+            with_write_lock( [&]()
+            {
+               result = _push_block(new_block);
+            });
          }
          FC_CAPTURE_AND_RETHROW( (new_block) )
       });
@@ -643,7 +654,14 @@ void database::push_transaction( const signed_transaction& trx, uint32_t skip )
       {
          FC_ASSERT( fc::raw::pack_size(trx) <= (get_dynamic_global_properties().maximum_block_size - 256) );
          set_producing( true );
-         detail::with_skip_flags( *this, skip, [&]() { _push_transaction( trx ); } );
+         detail::with_skip_flags( *this, skip,
+            [&]()
+            {
+               with_write_lock( [&]()
+               {
+                  _push_transaction( trx );
+               });
+            });
          set_producing( false );
       }
       catch( ... )
@@ -721,61 +739,65 @@ signed_block database::_generate_block(
    size_t total_block_size = max_block_header_size;
 
    signed_block pending_block;
-   //
-   // The following code throws away existing pending_tx_session and
-   // rebuilds it by re-applying pending transactions.
-   //
-   // This rebuild is necessary because pending transactions' validity
-   // and semantics may have changed since they were received, because
-   // time-based semantics are evaluated based on the current block
-   // time.  These changes can only be reflected in the database when
-   // the value of the "when" variable is known, which means we need to
-   // re-apply pending transactions in this method.
-   //
-   _pending_tx_session.reset();
-   _pending_tx_session = start_undo_session( true );
 
-   uint64_t postponed_tx_count = 0;
-   // pop pending state (reset to head block state)
-   for( const signed_transaction& tx : _pending_tx )
+   with_write_lock( [&]()
    {
-      // Only include transactions that have not expired yet for currently generating block,
-      // this should clear problem transactions and allow block production to continue
+      //
+      // The following code throws away existing pending_tx_session and
+      // rebuilds it by re-applying pending transactions.
+      //
+      // This rebuild is necessary because pending transactions' validity
+      // and semantics may have changed since they were received, because
+      // time-based semantics are evaluated based on the current block
+      // time.  These changes can only be reflected in the database when
+      // the value of the "when" variable is known, which means we need to
+      // re-apply pending transactions in this method.
+      //
+      _pending_tx_session.reset();
+      _pending_tx_session = start_undo_session( true );
 
-      if( tx.expiration < when )
-         continue;
-
-      uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
-
-      // postpone transaction if it would make block too big
-      if( new_total_size >= maximum_block_size )
+      uint64_t postponed_tx_count = 0;
+      // pop pending state (reset to head block state)
+      for( const signed_transaction& tx : _pending_tx )
       {
-         postponed_tx_count++;
-         continue;
+         // Only include transactions that have not expired yet for currently generating block,
+         // this should clear problem transactions and allow block production to continue
+
+         if( tx.expiration < when )
+            continue;
+
+         uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+
+         // postpone transaction if it would make block too big
+         if( new_total_size >= maximum_block_size )
+         {
+            postponed_tx_count++;
+            continue;
+         }
+
+         try
+         {
+            auto temp_session = start_undo_session( true );
+            _apply_transaction( tx );
+            temp_session.squash();
+
+            total_block_size += fc::raw::pack_size( tx );
+            pending_block.transactions.push_back( tx );
+         }
+         catch ( const fc::exception& e )
+         {
+            // Do nothing, transaction will not be re-applied
+            //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
+            //wlog( "The transaction was ${t}", ("t", tx) );
+         }
+      }
+      if( postponed_tx_count > 0 )
+      {
+         wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
       }
 
-      try
-      {
-         auto temp_session = start_undo_session( true );
-         _apply_transaction( tx );
-         temp_session.squash();
-
-         total_block_size += fc::raw::pack_size( tx );
-         pending_block.transactions.push_back( tx );
-      }
-      catch ( const fc::exception& e )
-      {
-         // Do nothing, transaction will not be re-applied
-         //wlog( "Transaction was not processed while generating block due to ${e}", ("e", e) );
-         //wlog( "The transaction was ${t}", ("t", tx) );
-      }
-   }
-   if( postponed_tx_count > 0 )
-   {
-      wlog( "Postponed ${n} transactions due to block size limit", ("n", postponed_tx_count) );
-   }
-
-   _pending_tx_session.reset();
+      _pending_tx_session.reset();
+   });
 
    // We have temporarily broken the invariant that
    // _pending_tx_session is the result of applying _pending_tx, as
@@ -2519,8 +2541,6 @@ std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evalua
 
 void database::initialize_indexes()
 {
-   //reset_indexes();
-
    add_index< dynamic_global_property_index           >();
    add_index< account_index                           >();
    add_index< account_authority_index                 >();

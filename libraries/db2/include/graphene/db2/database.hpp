@@ -7,7 +7,10 @@
 #include <boost/interprocess/containers/set.hpp>
 #include <boost/interprocess/containers/deque.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
+#include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/thread.hpp>
+
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/container/flat.hpp>
@@ -42,6 +45,9 @@ namespace graphene { namespace db2 {
    using std::unique_ptr;
    using std::vector;
 
+   typedef bip::interprocess_upgradable_mutex read_write_mutex;
+   typedef boost::shared_lock< read_write_mutex > read_lock;
+   typedef boost::unique_lock< read_write_mutex > write_lock;
 
    template<typename T>
    using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
@@ -885,7 +891,27 @@ namespace graphene { namespace db2 {
             } FC_CAPTURE_AND_RETHROW()
          }
 
-         bip::interprocess_mutex& get_mutex()const { return *_mutex; }
+         template< typename Lambda >
+         void with_read_lock( Lambda&& callback )
+         {
+            try
+            {
+               read_lock lock( *_rw_mutex );
+               callback();
+            } FC_CAPTURE_AND_RETHROW()
+         }
+
+         template< typename Lambda >
+         void with_write_lock( Lambda&& callback )
+         {
+            try
+            {
+               write_lock lock( *_rw_mutex );
+               callback();
+            } FC_CAPTURE_AND_RETHROW()
+         }
+
+         //bip::interprocess_mutex& get_mutex()const { return *_mutex; }
 
          void get_type_ids( std::vector< uint16_t >& type_ids );
          std::shared_ptr< graphene::schema::abstract_schema > get_schema_for_type_id( uint16_t type_id );
@@ -910,6 +936,7 @@ namespace graphene { namespace db2 {
       private:
          unique_ptr<bip::managed_mapped_file>            _segment;
          bip::interprocess_mutex*                        _mutex;
+         read_write_mutex*                               _rw_mutex;
 
          /**
           * This is a sparse list of known indicies kept to accelerate creation of undo sessions

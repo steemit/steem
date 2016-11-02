@@ -59,6 +59,7 @@ namespace graphene { namespace db2 {
                                                     abs_path.generic_string().c_str(),
                                                     shared_file_size ) );
       _mutex = _segment->find_or_construct< bip::interprocess_mutex >( "global_mutex" )();
+      _rw_mutex = _segment->find_or_construct< read_write_mutex >( "rw_lock" )();
       auto env = _segment->find_or_construct< environment_check >( "environment" )();
       FC_ASSERT( *env == environment_check() );
    }
