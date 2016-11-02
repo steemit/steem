@@ -3055,7 +3055,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       {
          trx.verify_authority( chain_id, get_active, get_owner, get_posting, STEEMIT_MAX_SIG_CHECK_DEPTH );
       }
-      catch( protocol::tx_missing_posting_auth& e )
+      catch( protocol::tx_missing_active_auth& e )
       {
          if( get_shared_db_merkle().find( head_block_num() + 1 ) == get_shared_db_merkle().end() )
             throw e;
