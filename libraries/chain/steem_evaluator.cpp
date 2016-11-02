@@ -119,6 +119,24 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("p", o.fee) );
    }
 
+   if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) )
+   {
+      for( auto& a : o.owner.account_auths )
+      {
+         db().get_account( a.first );
+      }
+
+      for( auto& a : o.active.account_auths )
+      {
+         db().get_account( a.first );
+      }
+
+      for( auto& a : o.posting.account_auths )
+      {
+         db().get_account( a.first );
+      }
+   }
+
    db().modify( creator, [&]( account_object& c ){
       c.balance -= o.fee;
    });
@@ -160,7 +178,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    if( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT, "cannot update temp account" );
 
-   if( db().is_producing() && o.posting ) // TODO: Add HF 15
+   if( ( db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || db().is_producing() ) && o.posting ) // TODO: Add HF 15
       o.posting->validate();
 
    const auto& account = db().get_account( o.account );
@@ -173,7 +191,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
          FC_ASSERT( db().head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "can only update owner authority once a minute" );
 #endif
 
-      if( db().is_producing() ) // TODO: Add HF 15
+      if( ( db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || db().is_producing() ) ) // TODO: Add HF 15
       {
          for( auto a: o.owner->account_auths )
          {
@@ -185,7 +203,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       db().update_owner_authority( account, *o.owner );
    }
 
-   if( o.active && db().is_producing() ) // TODO: Add HF 15
+   if( o.active && ( db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || db().is_producing() ) ) // TODO: Add HF 15
    {
       for( auto a: o.active->account_auths )
       {
@@ -193,7 +211,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       }
    }
 
-   if( o.posting && db().is_producing() ) // TODO: Add HF 15
+   if( o.posting && ( db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || db().is_producing() ) ) // TODO: Add HF 15
    {
       for( auto a: o.posting->account_auths )
       {
@@ -1693,6 +1711,14 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
       FC_ASSERT( o.new_owner_authority.weight_threshold, "Cannot recover with an open authority" );
 
       // Check accounts in the new authority exist
+      if( ( db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || db().is_producing() ) )
+      {
+         for( auto& a : o.new_owner_authority.account_auths )
+         {
+            db().get_account( a.first );
+         }
+      }
+
       db().create< account_recovery_request_object >( [&]( account_recovery_request_object& req )
       {
          req.account_to_recover = o.account_to_recover;
@@ -1707,6 +1733,15 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
    else // Change Request
    {
       FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover with an impossible authority" );
+
+      // Check accounts in the new authority exist
+      if( ( db().has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || db().is_producing() ) )
+      {
+         for( auto& a : o.new_owner_authority.account_auths )
+         {
+            db().get_account( a.first );
+         }
+      }
 
       db().modify( *request, [&]( account_recovery_request_object& req )
       {

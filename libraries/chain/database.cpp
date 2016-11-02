@@ -4025,21 +4025,10 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
-      case STEEMIT_HARDFORK_0_15:
+       case  STEEMIT_HARDFORK_0_15:
 #ifndef IS_TEST_NET
-         elog( "Hardfork 15 at block ${b}", ("b", head_block_num()) );
+         elog( "HARDFORK 15 at block ${b}", ("b", head_block_num()) );
 #endif
-         {
-            const auto& acc_idx = get_index< account_index >().indices();
-
-            for( auto itr = acc_idx.begin(); itr != acc_idx.end(); ++itr )
-            {
-               modify( *itr, [&]( account_object& a )
-               {
-                  a.reset_account = "";
-               });
-            }
-         }
          break;
       default:
          break;
