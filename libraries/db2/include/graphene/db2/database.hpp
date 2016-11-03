@@ -7,7 +7,7 @@
 #include <boost/interprocess/containers/set.hpp>
 #include <boost/interprocess/containers/deque.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
-#include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
+#include <boost/chrono.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/thread.hpp>
 
@@ -20,6 +20,8 @@
 #include <fc/io/datastream.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/interprocess/container.hpp>
+
+#include <graphene/db2/timed_rw_lock.hpp>
 
 #include <typeindex>
 #include <fstream>
@@ -45,9 +47,9 @@ namespace graphene { namespace db2 {
    using std::unique_ptr;
    using std::vector;
 
-   typedef bip::interprocess_upgradable_mutex read_write_mutex;
-   typedef boost::shared_lock< read_write_mutex > read_lock;
-   typedef boost::unique_lock< read_write_mutex > write_lock;
+   //typedef bip::interprocess_upgradable_mutex read_write_mutex;
+   //typedef boost::shared_lock< read_write_mutex > read_lock;
+   //typedef boost::unique_lock< read_write_mutex > write_lock;
 
    template<typename T>
    using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
@@ -892,23 +894,36 @@ namespace graphene { namespace db2 {
          }
 
          template< typename Lambda >
-         void with_read_lock( Lambda&& callback )
+         void with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 )
          {
-            try
-            {
-               read_lock lock( *_rw_mutex );
+            read_lock lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+            if( !wait_micro )
+               lock.lock();
+            else
+               lock.try_lock_for( boost::chrono::microseconds( wait_micro ) );
+
+            if( lock.owns_lock() )
                callback();
-            } FC_CAPTURE_AND_RETHROW()
          }
 
          template< typename Lambda >
-         void with_write_lock( Lambda&& callback )
+         void with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 )
          {
-            try
+            write_lock lock( _rw_manager->current_lock() );
+            /*if( !wait_micro )
+               lock.lock();
+            else
             {
-               write_lock lock( *_rw_mutex );
-               callback();
-            } FC_CAPTURE_AND_RETHROW()
+               lock.try_lock_for( boost::chrono::microseconds( wait_micro ) );
+               while( !lock.owns_lock() )
+               {
+                  _rw_manager->next_lock();
+                  lock = write_lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+                  lock.try_lock_for( boost::chrono::microseconds( wait_micro ) );
+               }
+            }*/
+
+            callback();
          }
 
          //bip::interprocess_mutex& get_mutex()const { return *_mutex; }
@@ -936,7 +951,7 @@ namespace graphene { namespace db2 {
       private:
          unique_ptr<bip::managed_mapped_file>            _segment;
          bip::interprocess_mutex*                        _mutex;
-         read_write_mutex*                               _rw_mutex;
+         read_write_mutex_manager*                       _rw_manager;
 
          /**
           * This is a sparse list of known indicies kept to accelerate creation of undo sessions
