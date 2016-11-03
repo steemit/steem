@@ -203,8 +203,6 @@ struct database_fixture {
       const share_type& fee
    );
 
-   void update_object( const variant_object& vo );
-
    void fund( const string& account_name, const share_type& amount = 500000 );
    void fund( const string& account_name, const asset& amount );
    void transfer( const string& from, const string& to, const share_type& steem );

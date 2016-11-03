@@ -171,15 +171,16 @@ void debug_node_plugin::plugin_startup()
 
    app().register_api_factory< debug_node_api >( "debug_node_api" );
 
-   for( const std::string& fn : _edit_scripts )
+   /*for( const std::string& fn : _edit_scripts )
    {
       std::shared_ptr< fc::ifstream > stream = std::make_shared< fc::ifstream >( fc::path(fn) );
       fc::buffered_istream bstream(stream);
       fc::variant v = fc::json::from_stream( bstream, fc::json::strict_parser );
       load_debug_updates( v.get_object() );
-   }
+   }*/
 }
 
+/*
 void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool logging )
 {
    static const uint8_t
@@ -233,20 +234,20 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
    switch( action )
    {
       case db_action_create:
-         /*
+
          idx.create( [&]( object& obj )
          {
             idx.object_from_variant( vo, obj );
          } );
-         */
+
          FC_ASSERT( false );
          break;
       case db_action_write:
-         /*db.modify( db.get_object( oid ), [&]( graphene::db::object& obj )
+         db.modify( db.get_object( oid ), [&]( graphene::db::object& obj )
          {
             idx.object_default( obj );
             idx.object_from_variant( vo, obj );
-         } );*/
+         } );
          FC_ASSERT( false );
          break;
       case db_action_update:
@@ -266,6 +267,7 @@ void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool
          FC_ASSERT( false );
    }
 }
+*/
 
 uint32_t debug_node_plugin::debug_generate_blocks(
    const std::string& debug_key,
@@ -302,9 +304,14 @@ uint32_t debug_node_plugin::debug_generate_blocks(
          if( scheduled_key != debug_public_key )
          {
             if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-            fc::mutable_variant_object update;
-            update("_action", "update")("id", graphene::db2::generic_id(scheduled_witness.id) )("signing_key", debug_public_key);
-            debug_update( update, skip );
+            debug_update( [=]( chain::database& db )
+            {
+               const auto& scheduled_witness = db.get_witness( scheduled_witness_name );
+               db.modify( db.get_witness( scheduled_witness_name ), [&]( chain::witness_object& w )
+               {
+                  w.signing_key = debug_public_key;
+               });
+            }, skip );
          }
       }
       else
@@ -369,26 +376,10 @@ void debug_node_plugin::apply_debug_updates()
    auto it = _debug_updates.find( head_id );
    if( it == _debug_updates.end() )
       return;
-   for( const fc::variant_object& update : it->second )
-      debug_apply_update( db, update, logging );
-}
-
-void debug_node_plugin::debug_update( const fc::variant_object& update, uint32_t skip )
-{
-   // this was a method on database in Graphene
-   chain::database& db = database();
-   chain::block_id_type head_id = db.head_block_id();
-   auto it = _debug_updates.find( head_id );
-   if( it == _debug_updates.end() )
-      it = _debug_updates.emplace( head_id, std::vector< fc::variant_object >() ).first;
-   it->second.emplace_back( update );
-
-   fc::optional<chain::signed_block> head_block = db.fetch_block_by_id( head_id );
-   FC_ASSERT( head_block.valid() );
-
-   // What the last block does has been changed by adding to node_property_object, so we have to re-apply it
-   db.pop_block();
-   db.push_block( *head_block, skip );
+   //for( const fc::variant_object& update : it->second )
+   //   debug_apply_update( db, update, logging );
+   for( auto& update : it->second )
+      update( db );
 }
 
 void debug_node_plugin::on_applied_block( const chain::signed_block& b )
@@ -401,7 +392,7 @@ void debug_node_plugin::on_applied_block( const chain::signed_block& b )
    FC_LOG_AND_RETHROW()
 }
 
-void debug_node_plugin::set_json_object_stream( const std::string& filename )
+/*void debug_node_plugin::set_json_object_stream( const std::string& filename )
 {
    if( _json_object_stream )
    {
@@ -409,15 +400,15 @@ void debug_node_plugin::set_json_object_stream( const std::string& filename )
       _json_object_stream.reset();
    }
    _json_object_stream = std::make_shared< std::ofstream >( filename );
-}
+}*/
 
-void debug_node_plugin::flush_json_object_stream()
+/*void debug_node_plugin::flush_json_object_stream()
 {
    if( _json_object_stream )
       _json_object_stream->flush();
-}
+}*/
 
-void debug_node_plugin::save_debug_updates( fc::mutable_variant_object& target )
+/*void debug_node_plugin::save_debug_updates( fc::mutable_variant_object& target )
 {
    for( const std::pair< chain::block_id_type, std::vector< fc::variant_object > >& update : _debug_updates )
    {
@@ -425,9 +416,9 @@ void debug_node_plugin::save_debug_updates( fc::mutable_variant_object& target )
       fc::to_variant( update.second, v );
       target.set( update.first.str(), v );
    }
-}
+}*/
 
-void debug_node_plugin::load_debug_updates( const fc::variant_object& target )
+/*void debug_node_plugin::load_debug_updates( const fc::variant_object& target )
 {
    for( auto it=target.begin(); it != target.end(); ++it)
    {
@@ -435,15 +426,15 @@ void debug_node_plugin::load_debug_updates( const fc::variant_object& target )
       fc::from_variant(it->value(), o);
       _debug_updates[ chain::block_id_type( it->key() ) ] = o;
    }
-}
+}*/
 
 void debug_node_plugin::plugin_shutdown()
 {
-   if( _json_object_stream )
+   /*if( _json_object_stream )
    {
       _json_object_stream->close();
       _json_object_stream.reset();
-   }
+   }*/
    return;
 }
 

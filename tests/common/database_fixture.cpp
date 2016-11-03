@@ -303,11 +303,6 @@ const witness_object& database_fixture::witness_create(
    FC_CAPTURE_AND_RETHROW( (owner)(url) )
 }
 
-void database_fixture::update_object( const fc::variant_object& vo )
-{
-   db_plugin->debug_update( vo, default_skip );
-}
-
 void database_fixture::fund(
    const string& account_name,
    const share_type& amount
@@ -327,45 +322,36 @@ void database_fixture::fund(
 {
    try
    {
-      const auto& account = db.get_account( account_name );
-
-      fc::mutable_variant_object vo;
-      vo("_action", "update")("id", generic_id( account.id ) );
-
-      if( amount.symbol == STEEM_SYMBOL )
+      db_plugin->debug_update( [=]( database& db)
       {
-         vo("balance", account.balance + amount);
-         update_object( vo );
-
-         const auto& gpo = db.get_dynamic_global_properties();
-         vo = fc::mutable_variant_object();
-         vo("_action", "update")("id", generic_id( gpo.id ) )("current_supply", gpo.current_supply + amount );
-         update_object( vo );
-      }
-      else if( amount.symbol == SBD_SYMBOL )
-      {
-         vo("sbd_balance", account.sbd_balance + amount );
-         update_object( vo );
-
-         const auto& gpo = db.get_dynamic_global_properties();
-         vo = fc::mutable_variant_object();
-         vo("_action", "update")("id", generic_id( gpo.id ))("current_sbd_supply", gpo.current_sbd_supply + amount );
-         update_object( vo );
-
-         const auto& median_feed = db.get_feed_history();
-         if( median_feed.current_median_history.is_null() )
+         db.modify( db.get_account( account_name ), [&]( account_object& a )
          {
-            fc::mutable_variant_object vo;
-            vo("_action", "update")("id", generic_id( median_feed.id ))("current_median_history", price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL) ) );
-            update_object( vo );
-         }
-      }
-      else
-      {
-         FC_ASSERT( false, "Can only fund account with TESTS or TBD" );
-      }
+            if( amount.symbol == STEEM_SYMBOL )
+               a.balance += amount;
+            else if( amount.symbol == SBD_SYMBOL )
+               a.sbd_balance += amount;
+         });
 
-      db.update_virtual_supply();
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            if( amount.symbol == STEEM_SYMBOL )
+               gpo.current_supply += amount;
+            else if( amount.symbol == SBD_SYMBOL )
+               gpo.current_sbd_supply += amount;
+         });
+
+         if( amount.symbol == SBD_SYMBOL )
+         {
+            const auto& median_feed = db.get_feed_history();
+            if( median_feed.current_median_history.is_null() )
+               db.modify( median_feed, [&]( feed_history_object& f )
+               {
+                  f.current_median_history = price( asset( 1, SBD_SYMBOL ), asset( 1, STEEM_SYMBOL ) );
+               });
+         }
+
+         db.update_virtual_supply();
+      }, default_skip );
    }
    FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }

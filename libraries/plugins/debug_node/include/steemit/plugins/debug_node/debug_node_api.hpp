@@ -83,11 +83,11 @@ class debug_node_api
       /**
        * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
        */
-      void debug_update_object( fc::variant_object update );
+      //void debug_update_object( fc::variant_object update );
 
-      fc::variant_object debug_get_edits();
+      //fc::variant_object debug_get_edits();
 
-      void debug_set_edits( fc::variant_object edits );
+      //void debug_set_edits( fc::variant_object edits );
 
       /**
        * Set developer key prefix. This prefix only applies to the current API session.
@@ -122,12 +122,12 @@ class debug_node_api
        * Stream objects to file.  (Hint:  Create with mkfifo and pipe it to a script)
        */
 
-      void debug_stream_json_objects( std::string filename );
+      //void debug_stream_json_objects( std::string filename );
 
       /**
        * Flush streaming file.
        */
-      void debug_stream_json_objects_flush();
+      //void debug_stream_json_objects_flush();
 
       void debug_set_hardfork( uint32_t hardfork_id );
 
@@ -163,11 +163,11 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_generate_blocks_until)
        (debug_pop_block)
        //(debug_push_block)
-       (debug_update_object)
-       (debug_get_edits)
-       (debug_set_edits)
-       (debug_stream_json_objects)
-       (debug_stream_json_objects_flush)
+       //(debug_update_object)
+       //(debug_get_edits)
+       //(debug_set_edits)
+       //(debug_stream_json_objects)
+       //(debug_stream_json_objects_flush)
        (debug_set_hardfork)
        (debug_has_hardfork)
        (debug_get_witness_schedule)

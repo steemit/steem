@@ -245,19 +245,19 @@ steemit::chain::hardfork_property_object debug_node_api_impl::debug_get_hardfork
 
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
 {
-   get_plugin()->debug_update( update );
+   //get_plugin()->debug_update( update );
 }
 
-fc::variant_object debug_node_api_impl::debug_get_edits()
+/*fc::variant_object debug_node_api_impl::debug_get_edits()
 {
    fc::mutable_variant_object result;
    get_plugin()->save_debug_updates( result );
    return fc::variant_object( std::move( result ) );
-}
+}*/
 
 void debug_node_api_impl::debug_set_edits( const fc::variant_object& edits )
 {
-   get_plugin()->load_debug_updates( edits );
+   //get_plugin()->load_debug_updates( edits );
 }
 
 std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > debug_node_api_impl::get_plugin()
@@ -267,12 +267,12 @@ std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > debug_node_api
 
 void debug_node_api_impl::debug_stream_json_objects( const std::string& filename )
 {
-   get_plugin()->set_json_object_stream( filename );
+   //get_plugin()->set_json_object_stream( filename );
 }
 
 void debug_node_api_impl::debug_stream_json_objects_flush()
 {
-   get_plugin()->flush_json_object_stream();
+   //get_plugin()->flush_json_object_stream();
 }
 
 void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
@@ -282,10 +282,10 @@ void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
    if( hardfork_id > STEEMIT_NUM_HARDFORKS )
       return;
 
-   fc::mutable_variant_object update;
-   auto hfp_id = steemit::chain::hardfork_property_id_type();
-   update( "_action", "set_hardfork" )( "id", hfp_id )( "hardfork_id", hardfork_id );
-   get_plugin()->debug_update( update );
+   get_plugin()->debug_update( [=]( database& db )
+   {
+      db.set_hardfork( hardfork_id, false );
+   });
 }
 
 bool debug_node_api_impl::debug_has_hardfork( uint32_t hardfork_id )
@@ -343,20 +343,26 @@ steemit::chain::hardfork_property_object debug_node_api::debug_get_hardfork_prop
    return my->debug_get_hardfork_property_object();
 }
 
+/*
 void debug_node_api::debug_update_object( fc::variant_object update )
 {
    my->debug_update_object( update );
 }
+*/
 
+/*
 fc::variant_object debug_node_api::debug_get_edits()
 {
    return my->debug_get_edits();
 }
+*/
 
+/*
 void debug_node_api::debug_set_edits( fc::variant_object edits )
 {
    my->debug_set_edits(edits);
 }
+*/
 
 void debug_node_api::debug_set_dev_key_prefix( std::string prefix )
 {
@@ -377,6 +383,7 @@ debug_mine_result debug_node_api::debug_mine( debug_mine_args args )
    return result;
 }
 
+/*
 void debug_node_api::debug_stream_json_objects( std::string filename )
 {
    my->debug_stream_json_objects( filename );
@@ -386,6 +393,7 @@ void debug_node_api::debug_stream_json_objects_flush()
 {
    my->debug_stream_json_objects_flush();
 }
+*/
 
 void debug_node_api::debug_set_hardfork( uint32_t hardfork_id )
 {

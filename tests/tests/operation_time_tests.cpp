@@ -2478,13 +2478,24 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_TEST_MESSAGE( "Changing sam and gpo to set up market cap conditions" );
 
       asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
-      fc::mutable_variant_object vo;
-      vo("_action", "update")("id", generic_id(sam_id))("sbd_balance", sbd_balance);
-      db_plugin->debug_update( vo, database::skip_witness_signature );
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_account( "sam" ), [&]( account_object& a )
+         {
+            a.sbd_balance = sbd_balance;
+         });
+      }, database::skip_witness_signature );
 
-      vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", generic_id(gpo.id))("current_sbd_supply", sbd_balance)("virtual_supply", gpo.virtual_supply + sbd_balance * exchange_rate);
-      db_plugin->debug_update( vo, database::skip_witness_signature );
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_sbd_supply = sbd_balance;
+            gpo.virtual_supply = gpo.virtual_supply + sbd_balance * exchange_rate;
+         });
+      }, database::skip_witness_signature );
+
+      ilog( "" );
 
       validate_database();
 
@@ -2511,13 +2522,21 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       BOOST_TEST_MESSAGE( "Letting percent market cap fall to 2% to verify printing of SBD turns back on" );
 
       // Get close to 1.5% for printing SBD to start again, but not all the way
-      vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", generic_id(sam_id))("sbd_balance", asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ) );
-      db_plugin->debug_update( vo, database::skip_witness_signature );
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_account( "sam" ), [&]( account_object& a )
+         {
+            a.sbd_balance = asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+         });
+      }, database::skip_witness_signature );
 
-      vo = fc::mutable_variant_object();
-      vo("_action", "update")("id", generic_id(gpo.id))("current_sbd_supply", alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL ));
-      db_plugin->debug_update( vo, database::skip_witness_signature );
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_sbd_supply = alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+         });
+      }, database::skip_witness_signature );
 
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
       validate_database();
