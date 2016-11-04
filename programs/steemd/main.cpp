@@ -1,8 +1,6 @@
 #include <steemit/app/application.hpp>
 
 #include <steemit/witness/witness.hpp>
-#include <steemit/account_history/account_history_plugin.hpp>
-#include <steemit/private_message/private_message_plugin.hpp>
 #include <steemit/manifest/plugins.hpp>
 
 #include <fc/exception/exception.hpp>

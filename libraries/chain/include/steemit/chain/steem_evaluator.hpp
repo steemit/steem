@@ -1,8 +1,12 @@
 #pragma once
+
+#include <steemit/protocol/steem_operations.hpp>
+
 #include <steemit/chain/evaluator.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
 
 namespace steemit{ namespace chain {
+
+using namespace steemit::protocol;
 
 DEFINE_EVALUATOR( account_create )
 DEFINE_EVALUATOR( account_update )

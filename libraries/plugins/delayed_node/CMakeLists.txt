@@ -4,7 +4,7 @@ add_library( steemit_delayed_node
              delayed_node_plugin.cpp
            )
 
-target_link_libraries( steemit_delayed_node steemit_chain steemit_app )
+target_link_libraries( steemit_delayed_node steemit_chain steemit_protocol steemit_app )
 target_include_directories( steemit_delayed_node
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

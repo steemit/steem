@@ -26,7 +26,6 @@
 #include <steemit/app/plugin.hpp>
 #include <steemit/chain/database.hpp>
 
-#include <graphene/db/generic_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
 
 #include <fc/thread/future.hpp>
@@ -35,7 +34,6 @@
 namespace steemit { namespace private_message {
 using namespace chain;
 using app::application;
-using graphene::db::by_id;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -55,9 +53,7 @@ using graphene::db::by_id;
 
 enum private_message_object_type
 {
-   key_account_object_type = 0,
-   bucket_object_type = 1,///< used in market_history_plugin
-   message_object_type = 2
+   message_object_type = ( PRIVATE_MESSAGE_SPACE_ID << 8 )
 };
 
 
@@ -66,7 +62,8 @@ namespace detail
     class private_message_plugin_impl;
 }
 
-struct message_body {
+struct message_body
+{
     fc::time_point    thread_start; /// the sent_time of the original message, if any
     string            subject;
     string            body;
@@ -76,24 +73,62 @@ struct message_body {
 
 
 
-class  message_object : public abstract_object<message_object> {
+class message_object : public object< message_object_type, message_object >
+{
    public:
-      static const uint8_t space_id = PRIVATE_MESSAGE_SPACE_ID;
-      static const uint8_t type_id  = message_object_type;
+      template< typename Constructor, typename Allocator >
+      message_object( Constructor&& c, allocator< Allocator > a ) :
+         encrypted_message( a )
+      {
+         c( *this );
+      }
 
-      string             from;
-      string             to;
-      public_key_type    from_memo_key;
-      public_key_type    to_memo_key;
-      uint64_t           sent_time = 0; /// used as seed to secret generation
-      fc::time_point_sec receive_time; /// time received by blockchain
-      uint32_t           checksum = 0;
-      vector<char>       encrypted_message;
+      id_type           id;
+
+      account_name_type from;
+      account_name_type to;
+      public_key_type   from_memo_key;
+      public_key_type   to_memo_key;
+      uint64_t          sent_time = 0; /// used as seed to secret generation
+      time_point_sec    receive_time; /// time received by blockchain
+      uint32_t          checksum = 0;
+      buffer_type       encrypted_message;
 };
 
-struct extended_message_object : public message_object {
-   extended_message_object(){}
-   extended_message_object( const message_object& o ):message_object(o){}
+typedef message_object::id_type message_id_type;
+
+struct message_api_obj
+{
+   message_api_obj( const message_object& o ) :
+      id( o.id ),
+      from( o.from ),
+      to( o.to ),
+      from_memo_key( o.from_memo_key ),
+      to_memo_key( o.to_memo_key ),
+      sent_time( o.sent_time ),
+      receive_time( o.receive_time ),
+      checksum( o.checksum ),
+      encrypted_message( o.encrypted_message.begin(), o.encrypted_message.end() )
+   {}
+
+   message_api_obj(){}
+
+   message_id_type   id;
+   account_name_type from;
+   account_name_type to;
+   public_key_type   from_memo_key;
+   public_key_type   to_memo_key;
+   uint64_t          sent_time;
+   time_point_sec    receive_time;
+   uint32_t          checksum;
+   vector< char >    encrypted_message;
+};
+
+struct extended_message_object : public message_api_obj
+{
+   extended_message_object() {}
+   extended_message_object( const message_api_obj& o ):message_api_obj( o ) {}
+
    message_body   message;
 };
 
@@ -105,28 +140,26 @@ using namespace boost::multi_index;
 typedef multi_index_container<
    message_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_id >, member< message_object, message_id_type, &message_object::id > >,
       ordered_unique< tag< by_to_date >,
             composite_key< message_object,
-               member< message_object, string, &message_object::to >,
+               member< message_object, account_name_type, &message_object::to >,
                member< message_object, time_point_sec, &message_object::receive_time >,
-               member<object, object_id_type, &object::id >
+               member< message_object, message_id_type, &message_object::id >
             >,
-            composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
+            composite_key_compare< std::less< string >, std::greater< time_point_sec >, std::less< message_id_type > >
       >,
       ordered_unique< tag< by_from_date >,
             composite_key< message_object,
-               member< message_object, string, &message_object::from >,
+               member< message_object, account_name_type, &message_object::from >,
                member< message_object, time_point_sec, &message_object::receive_time >,
-               member<object, object_id_type, &object::id >
+               member< message_object, message_id_type, &message_object::id >
             >,
-            composite_key_compare< std::less<string>, std::greater< time_point_sec >, std::less< object_id_type > >
+            composite_key_compare< std::less< string >, std::greater< time_point_sec >, std::less< message_id_type > >
       >
-   >
-> message_multi_index_type;
-
-typedef graphene::db::generic_index< message_object, message_multi_index_type> private_message_index;
-
+   >,
+   allocator< message_object >
+> message_index;
 
 
 /**
@@ -166,19 +199,22 @@ class private_message_api : public std::enable_shared_from_this<private_message_
       /**
        *
        */
-      vector<message_object> get_inbox( string to, time_point newest, uint16_t limit )const;
-      vector<message_object> get_outbox( string from, time_point newest, uint16_t limit )const;
+      vector< message_api_obj > get_inbox( string to, time_point newest, uint16_t limit )const;
+      vector< message_api_obj > get_outbox( string from, time_point newest, uint16_t limit )const;
 
    private:
       app::application* _app = nullptr;
 };
-
-
 
 } } //steemit::private_message
 
 FC_API( steemit::private_message::private_message_api, (get_inbox)(get_outbox) );
 
 FC_REFLECT( steemit::private_message::message_body, (thread_start)(subject)(body)(json_meta)(cc) );
-FC_REFLECT_DERIVED( steemit::private_message::message_object, (graphene::db::object), (from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
-FC_REFLECT_DERIVED( steemit::private_message::extended_message_object, (steemit::private_message::message_object), (message) );
+
+FC_REFLECT( steemit::private_message::message_object, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
+CHAINBASE_SET_INDEX_TYPE( steemit::private_message::message_object, steemit::private_message::message_index );
+
+FC_REFLECT( steemit::private_message::message_api_obj, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
+
+FC_REFLECT_DERIVED( steemit::private_message::extended_message_object, (steemit::private_message::message_api_obj), (message) );

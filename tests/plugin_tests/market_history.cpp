@@ -3,14 +3,14 @@
 
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/protocol/steem_operations.hpp>
+#include <steemit/protocol/steem_operations.hpp>
 
 #include <steemit/market_history/market_history_plugin.hpp>
 
 #include "../common/database_fixture.hpp"
 
 using namespace steemit::chain;
-using namespace steemit::chain::test;
+using namespace steemit::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( market_history, clean_database_fixture )
 
@@ -51,10 +51,10 @@ BOOST_AUTO_TEST_CASE( mh_test )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( db.get_comment( "alice", "test" ).cashout_time );
+      generate_blocks( db.get_comment( "alice", std::string( "test" ) ).cashout_time );
 
-      const auto& bucket_idx = db.get_index_type< bucket_index >().indices().get< by_bucket >();
-      const auto& order_hist_idx = db.get_index_type< order_history_index >().indices().get< by_id >();
+      const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
+      const auto& order_hist_idx = db.get_index< order_history_index >().indices().get< by_id >();
 
       BOOST_REQUIRE( bucket_idx.begin() == bucket_idx.end() );
       BOOST_REQUIRE( order_hist_idx.begin() == order_hist_idx.end() );

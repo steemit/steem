@@ -20,20 +20,22 @@ void follow_evaluator::do_apply( const follow_operation& o )
          return follow_map;
       }();
 
-      const auto& idx = db().get_index_type<follow_index>().indices().get< by_follower_following >();
-      auto itr = idx.find( boost::make_tuple( o.follower, o.following ) );
+      const auto& following = db().get_account( o.following );
+      const auto& follower = db().get_account( o.follower );
+      const auto& idx = db().get_index<follow_index>().indices().get< by_follower_following >();
+      auto itr = idx.find( boost::make_tuple( follower.id, following.id ) );
 
-      set< follow_type > what;
+      uint16_t what = 0;
 
       for( auto target : o.what )
       {
          switch( follow_type_map[ target ] )
          {
             case blog:
-               what.insert( blog );
+               what |= 1 << blog;
                break;
             case ignore:
-               what.insert( ignore );
+               what |= 1 << ignore;
                break;
             default:
                //ilog( "Encountered unknown option ${o}", ("o", target) );
@@ -41,15 +43,15 @@ void follow_evaluator::do_apply( const follow_operation& o )
          }
       }
 
-      if( what.find( ignore ) != what.end() )
-         FC_ASSERT( what.find( blog ) == what.end(), "Cannot follow blog and ignore author at the same time" );
+      if( what & ( 1 << ignore ) )
+         FC_ASSERT( !( what & ( 1 << blog ) ), "Cannot follow blog and ignore author at the same time" );
 
       if( itr == idx.end() )
       {
-         db().create<follow_object>( [&]( follow_object& obj )
+         db().create< follow_object >( [&]( follow_object& obj )
          {
-            obj.follower = o.follower;
-            obj.following = o.following;
+            obj.follower = follower.id;
+            obj.following = following.id;
             obj.what = what;
          });
       }
@@ -73,8 +75,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
       const auto& reblog_account = db.get_account( o.account );
-      const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
-      const auto& blog_comment_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+      const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
+      const auto& blog_comment_idx = db.get_index< blog_index >().indices().get< by_comment >();
 
       auto next_blog_id = 0;
       auto last_blog = blog_idx.lower_bound( reblog_account.id );
@@ -91,36 +93,37 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       {
          b.account = reblog_account.id;
          b.comment = c.id;
+         b.reblogged_on = db.head_block_time();
          b.blog_feed_id = next_blog_id;
       });
 
-      const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
-      const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
-      const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
-      auto itr = idx.find( o.account );
+      const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
+      const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
+      const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
+      auto itr = idx.find( reblog_account.id );
 
-      while( itr != idx.end() && itr->following == o.account )
+      while( itr != idx.end() && itr->following == reblog_account.id )
       {
 
-         if( itr->what.find( follow_type::blog ) != itr->what.end() )
+         if( itr->what & ( 1 << blog ) )
          {
-            auto account_id = db.get_account( itr->follower ).id;
             uint32_t next_id = 0;
-            auto last_feed = feed_idx.lower_bound( account_id );
+            auto last_feed = feed_idx.lower_bound( itr->follower );
 
-            if( last_feed != feed_idx.end() && last_feed->account == account_id )
+            if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
             {
                next_id = last_feed->account_feed_id + 1;
             }
 
-            auto feed_itr = comment_idx.find( boost::make_tuple( c.id, account_id ) );
+            auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
 
             if( feed_itr == comment_idx.end() )
             {
                auto& fd = db.create< feed_object >( [&]( feed_object& f )
                {
-                  f.account = account_id;
+                  f.account = itr->follower;
                   f.first_reblogged_by = reblog_account.id;
+                  f.first_reblogged_on = db.head_block_time();
                   f.comment = c.id;
                   f.reblogs = 1;
                   f.account_feed_id = next_id;
@@ -135,13 +138,13 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                });
             }
 
-            const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
-            auto old_feed = old_feed_idx.lower_bound( account_id );
+            const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
+            auto old_feed = old_feed_idx.lower_bound( itr->follower );
 
-            while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
+            while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
             {
                db.remove( *old_feed );
-               old_feed = old_feed_idx.lower_bound( account_id );
+               old_feed = old_feed_idx.lower_bound( itr->follower );
             };
          }
 

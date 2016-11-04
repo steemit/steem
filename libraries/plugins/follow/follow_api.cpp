@@ -31,13 +31,15 @@ vector< follow_object > follow_api_impl::get_followers( string following, string
 {
    FC_ASSERT( limit <= 100 );
    vector<follow_object> result;
-   const auto& idx = app.chain_database()->get_index_type<follow_index>().indices().get<by_following_follower>();
-   auto itr = idx.lower_bound( std::make_tuple( following, start_follower ) );
-   while( itr != idx.end() && limit && itr->following == following )
+   const auto& idx = app.chain_database()->get_index<follow_index>().indices().get<by_following_follower>();
+   const auto& following_obj = app.chain_database()->get_account( following );
+   const auto& start_follower_obj = app.chain_database()->get_account( start_follower );
+   auto itr = idx.lower_bound( std::make_tuple( following_obj.id, start_follower_obj.id ) );
+   while( itr != idx.end() && limit && itr->following == following_obj.id )
    {
-      if( itr->what.find( type ) != itr->what.end() )
+      if( itr->what & ( 1 << type ) )
       {
-         result.push_back(*itr);
+         result.push_back( *itr );
          --limit;
       }
 
@@ -51,13 +53,15 @@ vector< follow_object > follow_api_impl::get_following( string follower, string 
 {
    FC_ASSERT( limit <= 100 );
    vector<follow_object> result;
-   const auto& idx = app.chain_database()->get_index_type<follow_index>().indices().get<by_follower_following>();
-   auto itr = idx.lower_bound( std::make_tuple( follower, start_following ) );
-   while( itr != idx.end() && limit && itr->follower == follower )
+   const auto& idx = app.chain_database()->get_index<follow_index>().indices().get<by_follower_following>();
+   const auto& follower_obj = app.chain_database()->get_account( follower );
+   const auto& start_following_obj = app.chain_database()->get_account( start_following );
+   auto itr = idx.lower_bound( std::make_tuple( follower_obj.id, start_following_obj.id ) );
+   while( itr != idx.end() && limit && itr->follower == follower_obj.id )
    {
-      if( itr->what.find( type ) != itr->what.end() )
+      if( itr->what & ( 1 << type ) )
       {
-         result.push_back(*itr);
+         result.push_back( *itr );
          --limit;
       }
 
@@ -79,7 +83,7 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
 
    const auto& db = *app.chain_database();
    const auto& acc_id = db.get_account( account ).id;
-   const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
+   const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
    auto itr = feed_idx.lower_bound( boost::make_tuple( acc_id, entry_id ) );
 
    while( itr != feed_idx.end() && itr->account == acc_id && results.size() < limit )
@@ -87,10 +91,13 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
       const auto& comment = itr->comment( db );
       feed_entry entry;
       entry.author = comment.author;
-      entry.permlink = comment.permlink;
+      entry.permlink = to_string( comment.permlink );
       entry.entry_id = itr->account_feed_id;
       if( itr->first_reblogged_by != account_id_type() )
+      {
          entry.reblog_by = itr->first_reblogged_by(db).name;
+         entry.reblog_on = itr->first_reblogged_on;
+      }
       results.push_back( entry );
 
       ++itr;
@@ -111,7 +118,7 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
 
    const auto& db = *app.chain_database();
    const auto& acc_id = app.chain_database()->get_account( account ).id;
-   const auto& feed_idx = app.chain_database()->get_index_type< feed_index >().indices().get< by_feed >();
+   const auto& feed_idx = app.chain_database()->get_index< feed_index >().indices().get< by_feed >();
    auto itr = feed_idx.lower_bound( boost::make_tuple( acc_id, entry_id ) );
 
    while( itr != feed_idx.end() && itr->account == acc_id && results.size() < limit )
@@ -121,7 +128,10 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
       entry.comment = comment;
       entry.entry_id = itr->account_feed_id;
       if( itr->first_reblogged_by != account_id_type() )
+      {
          entry.reblog_by = itr->first_reblogged_by(db).name;
+         entry.reblog_on = itr->first_reblogged_on;
+      }
       results.push_back( entry );
 
       ++itr;
@@ -142,7 +152,7 @@ vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t
 
    const auto& db = *app.chain_database();
    const auto& acc_id = db.get_account( account ).id;
-   const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
+   const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
    auto itr = blog_idx.lower_bound( boost::make_tuple( acc_id, entry_id ) );
 
    while( itr != blog_idx.end() && itr->account == acc_id && results.size() < limit )
@@ -150,8 +160,9 @@ vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t
       const auto& comment = itr->comment( db );
       blog_entry entry;
       entry.author = comment.author;
-      entry.permlink = comment.permlink;
+      entry.permlink = to_string( comment.permlink );
       entry.blog = account;
+      entry.reblog_on = itr->reblogged_on;
       entry.entry_id = itr->blog_feed_id;
 
       results.push_back( entry );
@@ -174,7 +185,7 @@ vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t
 
    const auto& db = *app.chain_database();
    const auto& acc_id = db.get_account( account ).id;
-   const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
+   const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
    auto itr = blog_idx.lower_bound( boost::make_tuple( acc_id, entry_id ) );
 
    while( itr != blog_idx.end() && itr->account == acc_id && results.size() < limit )
@@ -183,6 +194,7 @@ vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t
       comment_blog_entry entry;
       entry.comment = comment;
       entry.blog = account;
+      entry.reblog_on = itr->reblogged_on;
       entry.entry_id = itr->blog_feed_id;
 
       results.push_back( entry );
@@ -197,8 +209,8 @@ vector< account_reputation > follow_api_impl::get_account_reputations( string lo
 {
    FC_ASSERT( limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time." );
 
-   const auto& acc_idx = app.chain_database()->get_index_type< account_index >().indices().get< by_name >();
-   const auto& rep_idx = app.chain_database()->get_index_type< reputation_index >().indices().get< by_account >();
+   const auto& acc_idx = app.chain_database()->get_index< account_index >().indices().get< by_name >();
+   const auto& rep_idx = app.chain_database()->get_index< reputation_index >().indices().get< by_account >();
 
    auto acc_itr = acc_idx.lower_bound( lower_bound_name );
 

@@ -2,7 +2,6 @@
 
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/history_object.hpp>
 
 #include <steemit/chain/database.hpp>
 
@@ -18,7 +17,7 @@ class account_statistics_plugin_impl
          :_self( plugin ) {}
       virtual ~account_statistics_plugin_impl() {}
 
-      void on_operation( const operation_object& o );
+      void on_operation( const operation_notification& o );
 
       account_statistics_plugin& _self;
       flat_set< uint32_t >       _tracked_buckets = { 60, 3600, 21600, 86400, 604800, 2592000 };
@@ -42,7 +41,7 @@ struct operation_process
    void operator()( const T& )const {}
 };
 
-void account_statistics_plugin_impl::on_operation( const operation_object& o )
+void account_statistics_plugin_impl::on_operation( const operation_notification& o )
 {
 
 }
@@ -76,7 +75,7 @@ void account_statistics_plugin::plugin_initialize( const boost::program_options:
    {
       ilog( "account_stats plugin: plugin_initialize() begin" );
 
-      database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->on_operation( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->on_operation( o ); } );
 
       ilog( "account_stats plugin: plugin_initialize() end" );
    } FC_CAPTURE_AND_RETHROW()

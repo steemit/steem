@@ -1,11 +1,13 @@
 #include <steemit/market_history/market_history_api.hpp>
 
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steemit/chain/operation_notification.hpp>
 
 namespace steemit { namespace market_history {
 
 namespace detail {
+
+using steemit::protocol::fill_order_operation;
 
 class market_history_plugin_impl
 {
@@ -18,21 +20,21 @@ class market_history_plugin_impl
        * This method is called as a callback after a block is applied
        * and will process/index all operations that were applied in the block.
        */
-      void update_market_histories( const operation_object& b );
+      void update_market_histories( const operation_notification& o );
 
       market_history_plugin& _self;
       flat_set<uint32_t>     _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
       int32_t                _maximum_history_per_bucket_size = 1000;
 };
 
-void market_history_plugin_impl::update_market_histories( const operation_object& o )
+void market_history_plugin_impl::update_market_histories( const operation_notification& o )
 {
    if( o.op.which() == operation::tag< fill_order_operation >::value )
    {
       fill_order_operation op = o.op.get< fill_order_operation >();
 
       auto& db = _self.database();
-      const auto& bucket_idx = db.get_index_type< bucket_index >().indices().get< by_bucket >();
+      const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
 
       uint64_t history_seq = std::numeric_limits< uint64_t >::min();
 
@@ -175,9 +177,9 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
    {
       ilog( "market_history: plugin_initialize() begin" );
 
-      database().post_apply_operation.connect( [&]( const operation_object& o ){ _my->update_market_histories( o ); } );
-      database().add_index< primary_index< bucket_index > >();
-      database().add_index< primary_index< order_history_index > >();
+      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
+      database().add_plugin_index< bucket_index >();
+      database().add_plugin_index< order_history_index >();
 
       if( options.count("bucket-size" ) )
       {

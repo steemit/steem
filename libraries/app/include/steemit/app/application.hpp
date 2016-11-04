@@ -80,7 +80,7 @@ namespace steemit { namespace app {
 
          graphene::net::node_ptr                    p2p_node();
          std::shared_ptr<chain::database> chain_database()const;
-         std::shared_ptr<graphene::db::object_database> pending_trx_database() const;
+         //std::shared_ptr<graphene::db::object_database> pending_trx_database() const;
 
          void set_block_production(bool producing_blocks);
          fc::optional< api_access_info > get_api_access_info( const string& username )const;

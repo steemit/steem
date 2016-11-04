@@ -23,11 +23,12 @@
  */
 #include <steemit/witness/witness.hpp>
 
+#include <steemit/chain/database_exceptions.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/hardfork.hpp>
+
 #include <graphene/time/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
@@ -190,7 +191,7 @@ void witness_plugin::plugin_startup()
    if( !_miners.empty() )
    {
       ilog("Starting mining...");
-      d.applied_block.connect( [this]( const chain::signed_block& b ){ this->on_applied_block(b); } );
+      d.applied_block.connect( [this]( const protocol::signed_block& b ){ this->on_applied_block(b); } );
    }
    else
    {
@@ -337,11 +338,11 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
       return block_production_condition::not_my_turn;
    }
 
-   const auto& witness_by_name = db.get_index_type< chain::witness_index >().indices().get< chain::by_name >();
+   const auto& witness_by_name = db.get_index< chain::witness_index >().indices().get< chain::by_name >();
    auto itr = witness_by_name.find( scheduled_witness );
 
    fc::time_point_sec scheduled_time = db.get_slot_time( slot );
-   steemit::chain::public_key_type scheduled_key = itr->signing_key;
+   steemit::protocol::public_key_type scheduled_key = itr->signing_key;
    auto private_key_itr = _private_keys.find( scheduled_key );
 
    if( private_key_itr == _private_keys.end() )
@@ -406,7 +407,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
  * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
  * and therefore do not even attempt work that cannot be delivered on time.
  */
-void witness_plugin::on_applied_block(const steemit::chain::signed_block& b)
+void witness_plugin::on_applied_block(const steemit::protocol::signed_block& b)
 { try {
   if( !_mining_threads || _miners.size() == 0 ) return;
   chain::database& db = database();
@@ -465,7 +466,7 @@ void witness_plugin::start_mining(
    const fc::ecc::public_key& pub,
    const fc::ecc::private_key& pk,
    const string& miner,
-   const steemit::chain::signed_block& b )
+   const steemit::protocol::signed_block& b )
 {
     static uint64_t seed = fc::time_point::now().time_since_epoch().count();
     static uint64_t start = fc::city_hash64( (const char*)&seed, sizeof(seed) );
@@ -486,15 +487,16 @@ void witness_plugin::start_mining(
     uint32_t thread_num = 0;
     uint32_t num_threads = _mining_threads;
     uint32_t target = db.get_pow_summary_target();
-    const auto& acct_idx  = db.get_index_type< chain::account_index >().indices().get< chain::by_name >();
+    const auto& acct_idx  = db.get_index< chain::account_index >().indices().get< chain::by_name >();
     auto acct_it = acct_idx.find( miner );
     bool has_account = (acct_it != acct_idx.end());
     for( auto& t : _thread_pool )
     {
+       thread_num++;
        t->async( [=]()
        {
-          chain::pow2_operation op;
-          chain::pow2 work;
+          protocol::pow2_operation op;
+          protocol::pow2 work;
           work.input.prev_block = block_id;
           work.input.worker_account = miner;
           work.input.nonce = start + thread_num;
@@ -520,7 +522,7 @@ void witness_plugin::start_mining(
              {
                 ++this->_head_block_num; /// signal other workers to stop
 
-                chain::signed_transaction trx;
+                protocol::signed_transaction trx;
                 op.work = work;
                 if( !has_account )
                    op.new_owner_key = pub;

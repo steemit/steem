@@ -27,7 +27,7 @@
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
 
-#include <steemit/chain/protocol/protocol.hpp>
+#include <steemit/protocol/protocol.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -35,9 +35,9 @@
 #include <string>
 #include <vector>
 
-using namespace steemit::chain;
+using namespace steemit::protocol;
 
-vector< fc::variant_object > g_op_types;
+std::vector< fc::variant_object > g_op_types;
 
 template< typename T >
 uint64_t get_wire_size()
@@ -68,10 +68,10 @@ int main( int argc, char** argv )
 {
    try
    {
-      steemit::chain::operation op;
+      steemit::protocol::operation op;
 
 
-      vector<uint64_t> witnesses; witnesses.resize(50);
+      std::vector<uint64_t> witnesses; witnesses.resize(50);
       for( uint32_t i = 0; i < 60*60*24*30; ++i )
       {
          witnesses[ rand() % 50 ]++;
@@ -92,7 +92,7 @@ int main( int argc, char** argv )
 
       // sort them by mem size
       std::stable_sort( g_op_types.begin(), g_op_types.end(),
-      [](const variant_object& oa, const variant_object& ob) {
+      [](const fc::variant_object& oa, const fc::variant_object& ob) {
       return oa["mem_size"].as_uint64() > ob["mem_size"].as_uint64();
       });
       std::cout << "[\n";

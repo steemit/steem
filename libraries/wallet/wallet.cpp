@@ -37,19 +37,21 @@
 #include <fc/crypto/hex.hpp>
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
+#include <fc/smart_ref_impl.hpp>
 
 #include <graphene/utilities/git_revision.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <graphene/utilities/words.hpp>
 
 #include <steemit/app/api.hpp>
-#include <steemit/chain/protocol/base.hpp>
+#include <steemit/protocol/base.hpp>
 #include <steemit/follow/follow_operations.hpp>
 #include <steemit/private_message/private_message_operations.hpp>
 #include <steemit/wallet/wallet.hpp>
 #include <steemit/wallet/api_documentation.hpp>
 #include <steemit/wallet/reflect_util.hpp>
-#include <fc/smart_ref_impl.hpp>
+
+#include <steemit/account_by_key/account_by_key_api.hpp>
 
 #ifndef WIN32
 # include <sys/types.h>
@@ -253,7 +255,7 @@ public:
       while( fc::exists(dest_path) )
       {
          ++suffix;
-         dest_path = destination_filename + "-" + to_string( suffix ) + _wallet_filename_extension;
+         dest_path = destination_filename + "-" + std::to_string( suffix ) + _wallet_filename_extension;
       }
       wlog( "backing up wallet ${src} to ${dest}",
             ("src", src_path)
@@ -332,7 +334,7 @@ public:
       return result;
    }
 
-   extended_account get_account( string account_name ) const
+   account_api_obj get_account( string account_name ) const
    {
       auto accounts = _remote_db->get_accounts( { account_name } );
       FC_ASSERT( !accounts.empty(), "Unknown account" );
@@ -357,7 +359,7 @@ public:
    }
 
 
-   fc::ecc::private_key get_private_key_for_account(const account_object& account)const
+   fc::ecc::private_key get_private_key_for_account(const account_api_obj& account)const
    {
       vector<public_key_type> active_keys = account.active.get_keys();
       if (active_keys.size() != 1)
@@ -522,7 +524,7 @@ public:
       return sign_transaction( tx, broadcast );
    } FC_CAPTURE_AND_RETHROW( (account_to_modify)(proxy)(broadcast) ) }
 
-   optional< witness_object > get_witness( string owner_account )
+   optional< witness_api_obj > get_witness( string owner_account )
    {
       return _remote_db->get_witness_by_account( owner_account );
    }
@@ -535,9 +537,9 @@ public:
 
    annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
    {
-      flat_set< string >   req_active_approvals;
-      flat_set< string >   req_owner_approvals;
-      flat_set< string >   req_posting_approvals;
+      flat_set< account_name_type >   req_active_approvals;
+      flat_set< account_name_type >   req_owner_approvals;
+      flat_set< account_name_type >   req_posting_approvals;
       vector< authority >  other_auths;
 
       tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
@@ -565,9 +567,9 @@ public:
 
       FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size(), "", ("aco.size:", approving_account_objects.size())("acn",v_approving_account_names.size()) );
 
-      flat_map< string, account_object > approving_account_lut;
+      flat_map< string, account_api_obj > approving_account_lut;
       size_t i = 0;
-      for( const optional< account_object >& approving_acct : approving_account_objects )
+      for( const optional< account_api_obj >& approving_acct : approving_account_objects )
       {
          if( !approving_acct.valid() )
          {
@@ -579,7 +581,7 @@ public:
          approving_account_lut[ approving_acct->name ] =  *approving_acct;
          i++;
       }
-      auto get_account_from_lut = [&]( const std::string& name ) -> const account_object&
+      auto get_account_from_lut = [&]( const std::string& name ) -> const account_api_obj&
       {
          auto it = approving_account_lut.find( name );
          FC_ASSERT( it != approving_account_lut.end() );
@@ -587,12 +589,12 @@ public:
       };
 
       flat_set<public_key_type> approving_key_set;
-      for( string& acct_name : req_active_approvals )
+      for( account_name_type& acct_name : req_active_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
             continue;
-         const account_object& acct = it->second;
+         const account_api_obj& acct = it->second;
          vector<public_key_type> v_approving_keys = acct.active.get_keys();
          wdump((v_approving_keys));
          for( const public_key_type& approving_key : v_approving_keys )
@@ -602,12 +604,12 @@ public:
          }
       }
 
-      for( string& acct_name : req_posting_approvals )
+      for( account_name_type& acct_name : req_posting_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
             continue;
-         const account_object& acct = it->second;
+         const account_api_obj& acct = it->second;
          vector<public_key_type> v_approving_keys = acct.posting.get_keys();
          wdump((v_approving_keys));
          for( const public_key_type& approving_key : v_approving_keys )
@@ -617,12 +619,12 @@ public:
          }
       }
 
-      for( const string& acct_name : req_owner_approvals )
+      for( const account_name_type& acct_name : req_owner_approvals )
       {
          const auto it = approving_account_lut.find( acct_name );
          if( it == approving_account_lut.end() )
             continue;
-         const account_object& acct = it->second;
+         const account_api_obj& acct = it->second;
          vector<public_key_type> v_approving_keys = acct.owner.get_keys();
          for( const public_key_type& approving_key : v_approving_keys )
          {
@@ -662,12 +664,12 @@ public:
       auto minimal_signing_keys = tx.minimize_required_signatures(
          STEEMIT_CHAIN_ID,
          available_keys,
-         [&]( const string& account_name ) -> const authority*
-         { return &(get_account_from_lut( account_name ).active); },
-         [&]( const string& account_name ) -> const authority*
-         { return &(get_account_from_lut( account_name ).owner); },
-         [&]( const string& account_name ) -> const authority*
-         { return &(get_account_from_lut( account_name ).posting); },
+         [&]( const string& account_name ) -> const authority&
+         { return (get_account_from_lut( account_name ).active); },
+         [&]( const string& account_name ) -> const authority&
+         { return (get_account_from_lut( account_name ).owner); },
+         [&]( const string& account_name ) -> const authority&
+         { return (get_account_from_lut( account_name ).posting); },
          STEEMIT_MAX_SIG_CHECK_DEPTH
          );
 
@@ -711,7 +713,7 @@ public:
       m["list_my_accounts"] = [](variant result, const fc::variants& a ) {
          std::stringstream out;
 
-         auto accounts = result.as<vector<account_object>>();
+         auto accounts = result.as<vector<account_api_obj>>();
          asset total_steem;
          asset total_vest(0, VESTS_SYMBOL );
          asset total_sbd(0, SBD_SYMBOL );
@@ -719,7 +721,7 @@ public:
             total_steem += a.balance;
             total_vest  += a.vesting_shares;
             total_sbd  += a.sbd_balance;
-            out << std::left << std::setw( 17 ) << a.name
+            out << std::left << std::setw( 17 ) << std::string(a.name)
                 << std::right << std::setw(20) << fc::variant(a.balance).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.vesting_shares).as_string() <<" "
                 << std::right << std::setw(20) << fc::variant(a.sbd_balance).as_string() <<"\n";
@@ -887,6 +889,15 @@ public:
       catch( const fc::exception& e ) { elog( "Couldn't get follow API" ); throw(e); }
    }
 
+   void use_remote_account_by_key_api()
+   {
+      if( _remote_account_by_key_api.valid() )
+         return;
+
+      try{ _remote_account_by_key_api = _remote_api->get_api_by_name( "account_by_key_api" )->as< account_by_key::account_by_key_api >(); }
+      catch( const fc::exception& e ) { elog( "Couldn't get account_by_key API" ); throw(e); }
+   }
+
    void network_add_nodes( const vector<string>& nodes )
    {
       use_network_node_api();
@@ -928,6 +939,7 @@ public:
    fc::api<database_api>                   _remote_db;
    fc::api<network_broadcast_api>          _remote_net_broadcast;
    optional< fc::api<network_node_api> >   _remote_net_node;
+   optional< fc::api<account_by_key::account_by_key_api> > _remote_account_by_key_api;
    optional< fc::api<private_message_api> > _remote_message_api;
    optional< fc::api<follow::follow_api> >  _remote_follow_api;
    uint32_t                                _tx_expiration_seconds = 30;
@@ -964,22 +976,34 @@ optional<signed_block_with_info> wallet_api::get_block(uint32_t num)
    return my->_remote_db->get_block(num);
 }
 
-vector<account_object> wallet_api::list_my_accounts()
+vector<account_api_obj> wallet_api::list_my_accounts()
 {
    FC_ASSERT( !is_locked(), "Wallet must be unlocked to list accounts" );
+   vector<account_api_obj> result;
+
+   try
+   {
+      my->use_remote_account_by_key_api();
+   }
+   catch( fc::exception& e )
+   {
+      elog( "Connected node needs to enable account_by_key_api" );
+      return result;
+   }
+
    vector<public_key_type> pub_keys;
    pub_keys.reserve( my->_keys.size() );
 
    for( const auto& item : my->_keys )
       pub_keys.push_back(item.first);
 
-   auto refs = my->_remote_db->get_key_references( pub_keys );
+   auto refs = (*my->_remote_account_by_key_api)->get_key_references( pub_keys );
    set<string> names;
    for( const auto& item : refs )
       for( const auto& name : item )
          names.insert( name );
 
-   vector<account_object> result;
+
    result.reserve( names.size() );
    for( const auto& name : names )
       result.emplace_back( get_account( name ) );
@@ -992,10 +1016,10 @@ set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
    return my->_remote_db->lookup_accounts(lowerbound, limit);
 }
 
-vector<string> wallet_api::get_miner_queue()const {
+vector<account_name_type> wallet_api::get_miner_queue()const {
    return my->_remote_db->get_miner_queue();
 }
-vector<string> wallet_api::get_active_witnesses()const {
+fc::array< account_name_type, STEEMIT_MAX_WITNESSES > wallet_api::get_active_witnesses()const {
    return my->_remote_db->get_active_witnesses();
 }
 
@@ -1040,7 +1064,7 @@ string wallet_api::get_wallet_filename() const
 }
 
 
-extended_account wallet_api::get_account( string account_name ) const
+account_api_obj wallet_api::get_account( string account_name ) const
 {
    return my->get_account( account_name );
 }
@@ -1086,12 +1110,12 @@ fc::ecc::private_key wallet_api::derive_private_key(const std::string& prefix_st
 }
 */
 
-set<string> wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
+set<account_name_type> wallet_api::list_witnesses(const string& lowerbound, uint32_t limit)
 {
    return my->_remote_db->lookup_witness_accounts(lowerbound, limit);
 }
 
-optional< witness_object > wallet_api::get_witness(string owner_account)
+optional< witness_api_obj > wallet_api::get_witness(string owner_account)
 {
    return my->get_witness(owner_account);
 }
@@ -1241,7 +1265,7 @@ signed_block_with_info::signed_block_with_info( const signed_block& block )
       transaction_ids.push_back( tx.id() );
 }
 
-feed_history_object wallet_api::get_feed_history()const { return my->_remote_db->get_feed_history(); }
+feed_history_api_obj wallet_api::get_feed_history()const { return my->_remote_db->get_feed_history(); }
 
 /**
  * This method is used by faucets to create new accounts for other users which must
@@ -1319,7 +1343,7 @@ annotated_signed_transaction wallet_api::change_recovery_account( string owner, 
    return my->sign_transaction( tx, broadcast );
 }
 
-vector< owner_authority_history_object > wallet_api::get_owner_history( string account )const
+vector< owner_authority_history_api_obj > wallet_api::get_owner_history( string account )const
 {
    return my->_remote_db->get_owner_history( account );
 }
@@ -1618,7 +1642,7 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
 
    witness_update_operation op;
 
-   fc::optional< witness_object > wit = my->_remote_db->get_witness_by_account( witness_account_name );
+   fc::optional< witness_api_obj > wit = my->_remote_db->get_witness_by_account( witness_account_name );
    if( !wit.valid() )
    {
       op.url = url;
@@ -1944,7 +1968,7 @@ annotated_signed_transaction wallet_api::publish_feed(string witness, price exch
    return my->sign_transaction( tx, broadcast );
 }
 
-vector< convert_request_object > wallet_api::get_conversion_requests( string owner_account )
+vector< convert_request_api_obj > wallet_api::get_conversion_requests( string owner_account )
 {
    return my->_remote_db->get_conversion_requests( owner_account );
 }
@@ -1995,7 +2019,7 @@ annotated_signed_transaction wallet_api::decline_voting_rights( string account, 
    return my->sign_transaction( tx, broadcast );
 }
 
-map<uint32_t,operation_object> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
+map<uint32_t,applied_operation> wallet_api::get_account_history( string account, uint32_t from, uint32_t limit ) {
    auto result = my->_remote_db->get_account_history(account,from,limit);
    if( !is_locked() ) {
       for( auto& item : result ) {
@@ -2207,7 +2231,7 @@ annotated_signed_transaction      wallet_api::send_private_message( string from,
    vector<char> plain_text = fc::raw::pack( message );
    pmo.encrypted_message = fc::aes_encrypt( encrypt_key, plain_text );
 
-   message_object obj;
+   message_api_obj obj;
    obj.to_memo_key   = pmo.to_memo_key;
    obj.from_memo_key = pmo.from_memo_key;
    obj.checksum = pmo.checksum;
@@ -2223,7 +2247,7 @@ annotated_signed_transaction      wallet_api::send_private_message( string from,
 
    return my->sign_transaction( tx, broadcast );
 }
-message_body wallet_api::try_decrypt_message( const message_object& mo ) {
+message_body wallet_api::try_decrypt_message( const message_api_obj& mo ) {
    message_body result;
 
    fc::sha512 shared_secret;

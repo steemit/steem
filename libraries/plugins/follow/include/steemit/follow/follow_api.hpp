@@ -1,7 +1,7 @@
 #pragma once
 
 #include <steemit/app/application.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steemit/app/steem_api_objects.hpp>
 
 #include <steemit/follow/follow_objects.hpp>
 
@@ -11,35 +11,40 @@ namespace steemit { namespace follow {
 
 using std::vector;
 using std::string;
+using app::comment_api_obj;
 
 struct feed_entry
 {
-   string   author;
-   string   permlink;
-   string   reblog_by;
-   uint32_t entry_id = 0;
+   string         author;
+   string         permlink;
+   string         reblog_by;
+   time_point_sec reblog_on;
+   uint32_t       entry_id = 0;
 };
 
 struct comment_feed_entry
 {
-   comment_object comment;
-   string         reblog_by;
-   uint32_t       entry_id = 0;
+   comment_api_obj   comment;
+   string            reblog_by;
+   time_point_sec    reblog_on;
+   uint32_t          entry_id = 0;
 };
 
 struct blog_entry
 {
-   string   author;
-   string   permlink;
-   string   blog;
+   string         author;
+   string         permlink;
+   string         blog;
+   time_point_sec reblog_on;
    uint32_t entry_id = 0;
 };
 
 struct comment_blog_entry
 {
-   comment_object comment;
-   string         blog;
-   uint32_t       entry_id = 0;
+   comment_api_obj   comment;
+   string            blog;
+   time_point_sec    reblog_on;
+   uint32_t          entry_id = 0;
 };
 
 struct account_reputation
@@ -77,10 +82,18 @@ class follow_api
 
 } } // steemit::follow
 
-FC_REFLECT( steemit::follow::feed_entry, (author)(permlink)(reblog_by)(entry_id) );
-FC_REFLECT( steemit::follow::comment_feed_entry, (comment)(reblog_by)(entry_id) );
-FC_REFLECT( steemit::follow::blog_entry, (author)(permlink)(blog)(entry_id) );
-FC_REFLECT( steemit::follow::comment_blog_entry, (comment)(blog)(entry_id) );
+FC_REFLECT( steemit::follow::feed_entry, (author)(permlink)(reblog_by)(reblog_on)(entry_id) );
+FC_REFLECT( steemit::follow::comment_feed_entry, (comment)(reblog_by)(reblog_on)(entry_id) );
+FC_REFLECT( steemit::follow::blog_entry, (author)(permlink)(blog)(reblog_on)(entry_id) );
+FC_REFLECT( steemit::follow::comment_blog_entry, (comment)(blog)(reblog_on)(entry_id) );
 FC_REFLECT( steemit::follow::account_reputation, (account)(reputation) );
 
-FC_API( steemit::follow::follow_api, (get_followers)(get_following)(get_feed_entries)(get_feed)(get_blog_entries)(get_blog)(get_account_reputations) )
+FC_API( steemit::follow::follow_api,
+   (get_followers)
+   (get_following)
+   (get_feed_entries)
+   (get_feed)
+   (get_blog_entries)
+   (get_blog)
+   (get_account_reputations)
+)

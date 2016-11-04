@@ -6,13 +6,11 @@
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
 #include <steemit/chain/fork_database.hpp>
-#include <steemit/chain/block_database.hpp>
+#include <steemit/chain/block_log.hpp>
 
-#include <steemit/chain/protocol/protocol.hpp>
+#include <steemit/protocol/protocol.hpp>
 
-#include <graphene/db/object_database.hpp>
-#include <graphene/db/object.hpp>
-#include <graphene/db/simple_index.hpp>
+//#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -20,17 +18,23 @@
 #include <map>
 
 namespace steemit { namespace chain {
-   using graphene::db::abstract_object;
-   using graphene::db::object;
+
+   using steemit::protocol::signed_transaction;
+   using steemit::protocol::operation;
+   using steemit::protocol::authority;
+   using steemit::protocol::asset;
+   using steemit::protocol::asset_symbol_type;
+   using steemit::protocol::price;
 
    class database_impl;
-   class generic_json_evaluator_registry;
+   class custom_operation_interpreter;
+   struct operation_notification;
 
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class database : public graphene::db::object_database
+   class database : public chainbase::database
    {
       public:
          database();
@@ -54,7 +58,9 @@ namespace steemit { namespace chain {
             skip_undo_history_check     = 1 << 8,  ///< used while reindexing
             skip_witness_schedule_check = 1 << 9,  ///< used while reindexing
             skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
-            skip_validate_invariants    = 1 << 11  ///< used to skip database invariant check on block application
+            skip_validate_invariants    = 1 << 11, ///< used to skip database invariant check on block application
+            skip_undo_block             = 1 << 12, ///< used to skip undo db on reindex
+            skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
          };
 
          /**
@@ -65,7 +71,7 @@ namespace steemit { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-          void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
+         void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
 
          /**
           * @brief Rebuild object graph from block history and open detabase
@@ -73,7 +79,7 @@ namespace steemit { namespace chain {
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
-         void reindex(fc::path data_dir);
+         void reindex( fc::path data_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -83,6 +89,12 @@ namespace steemit { namespace chain {
           */
          void wipe(const fc::path& data_dir, bool include_blocks);
          void close(bool rewind = true);
+
+         template< typename T >
+         void add_plugin_index()
+         {
+            _plugin_index_signal.connect( [&](){ add_index< T >(); } );
+         }
 
          //////////////////// db_block.cpp ////////////////////
 
@@ -97,24 +109,44 @@ namespace steemit { namespace chain {
          block_id_type              get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
-         const signed_transaction&  get_recent_transaction( const transaction_id_type& trx_id )const;
+         const signed_transaction   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
          chain_id_type             get_chain_id()const;
 
-         const witness_object* find_witness( const string& name )const;
-         const category_object* find_category( const string& name )const;
-         const category_object& get_category( const string& name )const;
-         const witness_object&  get_witness( const string& name )const;
-         const account_object&  get_account( const string& name )const;
-         const comment_object&  get_comment( const string& author, const string& permlink )const;
-         const comment_object*  find_comment( const string& author, const string& permlink )const;
-         const escrow_object&   get_escrow( const string& name, uint32_t escrowid )const;
+
+         const witness_object&  get_witness(  const account_name_type& name )const;
+         const witness_object*  find_witness( const account_name_type& name )const;
+
+         const account_object&  get_account(  const account_name_type& name )const;
+         const account_object*  find_account( const account_name_type& name )const;
+
+         const comment_object&  get_comment(  const account_name_type& author, const shared_string& permlink )const;
+         const comment_object*  find_comment( const account_name_type& author, const shared_string& permlink )const;
+
+         const comment_object&  get_comment(  const account_name_type& author, const string& permlink )const;
+         const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
+
+         const category_object& get_category(  const shared_string& name )const;
+         const category_object* find_category( const shared_string& name )const;
+
+         const escrow_object&   get_escrow(  const account_name_type& name, uint32_t escrow_id )const;
+         const escrow_object*   find_escrow( const account_name_type& name, uint32_t escrow_id )const;
+
+         const limit_order_object& get_limit_order(  const account_name_type& owner, uint32_t id )const;
+         const limit_order_object* find_limit_order( const account_name_type& owner, uint32_t id )const;
+
+         const savings_withdraw_object& get_savings_withdraw(  const account_name_type& owner, uint32_t request_id )const;
+         const savings_withdraw_object* find_savings_withdraw( const account_name_type& owner, uint32_t request_id )const;
+
+         const dynamic_global_property_object&  get_dynamic_global_properties()const;
+         const node_property_object&            get_node_properties()const;
+         const feed_history_object&             get_feed_history()const;
+         const witness_schedule_object&         get_witness_schedule_object()const;
+         const hardfork_property_object&        get_hardfork_property_object()const;
+
+
          const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
-         const limit_order_object& get_limit_order( const string& owner, uint32_t id )const;
-         const limit_order_object* find_limit_order( const string& owner, uint32_t id )const;
-         const savings_withdraw_object& get_savings_withdraw( const string& owner, uint32_t request_id )const;
-         const savings_withdraw_object* find_savings_withdraw( const string& owner, uint32_t request_id )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -142,13 +174,13 @@ namespace steemit { namespace chain {
 
          signed_block generate_block(
             const fc::time_point_sec when,
-            const string& witness_owner,
+            const account_name_type& witness_owner,
             const fc::ecc::private_key& block_signing_private_key,
             uint32_t skip
             );
          signed_block _generate_block(
             const fc::time_point_sec when,
-            const string& witness_owner,
+            const account_name_type& witness_owner,
             const fc::ecc::private_key& block_signing_private_key
             );
 
@@ -156,18 +188,14 @@ namespace steemit { namespace chain {
          void clear_pending();
 
          /**
-          *  This method is used to track appied operations during the evaluation of a block, these
+          *  This method is used to track applied operations during the evaluation of a block, these
           *  operations should include any operation actually included in a transaction as well
-          *  as any implied/virtual operations that resulted, such as filling an order.  The
-          *  applied operations is cleared after applying each block and calling the block
-          *  observers which may want to index these operations.
-          *
-          *  @return the op_id which can be used to set the result after it has finished being applied.
-          *  @todo rename this method notify_pre_apply_operation( op )
+          *  as any implied/virtual operations that resulted, such as filling an order.
+          *  The applied operations are cleared after post_apply_operation.
           */
-         const operation_object notify_pre_apply_operation( const operation& op );
-         void notify_post_apply_operation( const operation_object& op );
-         inline const void push_virtual_operation( const operation& op );
+         void notify_pre_apply_operation( operation_notification& note );
+         void notify_post_apply_operation( const operation_notification& note );
+         inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
          void notify_applied_block( const signed_block& block );
          void notify_on_pending_transaction( const signed_transaction& tx );
          void notify_on_applied_transaction( const signed_transaction& tx );
@@ -175,8 +203,8 @@ namespace steemit { namespace chain {
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
           */
-         fc::signal<void(const operation_object&)> pre_apply_operation;
-         fc::signal<void(const operation_object&)> post_apply_operation;
+         fc::signal<void(const operation_notification&)> pre_apply_operation;
+         fc::signal<void(const operation_notification&)> post_apply_operation;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
@@ -204,12 +232,12 @@ namespace steemit { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         fc::signal<void(const vector<object_id_type>&)> changed_objects;
+         //fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.
           */
-         fc::signal<void(const vector<const object*>&)>  removed_objects;
+         //fc::signal<void(const vector<const object*>&)>  removed_objects;
 
          //////////////////// db_witness_schedule.cpp ////////////////////
 
@@ -227,7 +255,7 @@ namespace steemit { namespace chain {
           *
           * Passing slot_num == 0 returns STEEMIT_NULL_WITNESS
           */
-         string get_scheduled_witness(uint32_t slot_num)const;
+         account_name_type get_scheduled_witness(uint32_t slot_num)const;
 
          /**
           * Get the time at which the given slot occurs.
@@ -287,7 +315,6 @@ namespace steemit { namespace chain {
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
-         void process_reset_requests();
          share_type pay_discussions( const comment_object& c, share_type max_rewards );
          share_type pay_curators( const comment_object& c, share_type max_rewards );
          void cashout_comment_helper( const comment_object& comment );
@@ -315,14 +342,6 @@ namespace steemit { namespace chain {
 
          void  pay_liquidity_reward();
 
-
-         //////////////////// db_getter.cpp ////////////////////
-
-         const dynamic_global_property_object&  get_dynamic_global_properties()const;
-         const node_property_object&            get_node_properties()const;
-         const feed_history_object&             get_feed_history()const;
-         const witness_schedule_object&         get_witness_schedule_object()const;
-
          /**
           * Helper method to return the current sbd value of a given amount of
           * STEEM.  Return 0 SBD if there isn't a current_median_history
@@ -340,11 +359,12 @@ namespace steemit { namespace chain {
          //////////////////// db_init.cpp ////////////////////
 
          void initialize_evaluators();
-         void set_custom_json_evaluator( const std::string& id, std::shared_ptr< generic_json_evaluator_registry > registry );
-         std::shared_ptr< generic_json_evaluator_registry > get_custom_json_evaluator( const std::string& id );
+         void set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry );
+         std::shared_ptr< custom_operation_interpreter > get_custom_json_evaluator( const std::string& id );
 
          /// Reset the object graph in-memory
          void initialize_indexes();
+         void init_schema();
          void init_genesis(uint64_t initial_supply = STEEMIT_INIT_SUPPLY );
 
          /**
@@ -381,6 +401,8 @@ namespace steemit { namespace chain {
           * @}
           */
 
+         const std::string& get_json_schema() const;
+
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
@@ -388,11 +410,11 @@ namespace steemit { namespace chain {
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
-         void pop_undo() { object_database::pop_undo(); }
+         //void pop_undo() { object_database::pop_undo(); }
          void notify_changed_objects();
 
       private:
-         optional<undo_database::session>       _pending_tx_session;
+         optional< chainbase::database::session > _pending_tx_session;
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
@@ -431,31 +453,24 @@ namespace steemit { namespace chain {
          vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
-         hardfork_version              _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
+         protocol::hardfork_version    _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
-         /**
-          *  Note: we can probably store blocks by block num rather than
-          *  block id because after the undo window is past the block ID
-          *  is no longer relevant and its number is irreversible.
-          *
-          *  During the "fork window" we can cache blocks in memory
-          *  until the fork is resolved.  This should make maintaining
-          *  the fork tree relatively simple.
-          */
-         block_database   _block_id_to_block;
+         block_log                     _block_log;
 
-         transaction_id_type               _current_trx_id;
-         uint32_t                          _current_block_num    = 0;
-         uint16_t                          _current_trx_in_block = 0;
-         uint16_t                          _current_op_in_trx    = 0;
-         uint16_t                          _current_virtual_op   = 0;
+         fc::signal< void() >          _plugin_index_signal;
+
+         transaction_id_type           _current_trx_id;
+         uint32_t                      _current_block_num    = 0;
+         uint16_t                      _current_trx_in_block = 0;
+         uint16_t                      _current_op_in_trx    = 0;
+         uint16_t                      _current_virtual_op   = 0;
 
          flat_map<uint32_t,block_id_type>  _checkpoints;
 
          node_property_object              _node_property_object;
 
-         flat_map< std::string, std::shared_ptr< generic_json_evaluator_registry > >   _custom_json_evaluators;
+         flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
+         std::string                       _json_schema;
    };
-
 
 } }

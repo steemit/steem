@@ -21,12 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <steemit/chain/protocol/protocol.hpp>
+#include <steemit/protocol/protocol.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <iostream>
 
 using namespace steemit::chain;
+using namespace steemit::protocol;
+
+using std::string;
+using std::map;
 
 namespace detail_ns {
 
@@ -54,7 +58,7 @@ string remove_namespace( string str )
    str = remove_tail_if( str, '_', "object" );
    str = remove_tail_if( str, '_', "type" );
    str = remove_namespace_if( str, "steemit::chain" );
-   str = remove_namespace_if( str, "graphene::db" );
+   str = remove_namespace_if( str, "chainbase" );
    str = remove_namespace_if( str, "std" );
    str = remove_namespace_if( str, "fc" );
    auto pos = str.find( ":" );
@@ -73,7 +77,7 @@ void register_serializer();
 
 
 map<string, size_t >                st;
-vector<std::function<void()>>       serializers;
+steemit::vector<std::function<void()>>       serializers;
 
 bool register_serializer( const string& name, std::function<void()> sr )
 {
@@ -97,7 +101,6 @@ template<size_t N>   struct js_name<fc::array<char,N>>    { static std::string n
 template<size_t N>   struct js_name<fc::array<uint8_t,N>> { static std::string name(){ return  "bytes "+ fc::to_string(N); }; };
 template<typename T> struct js_name< fc::optional<T> >    { static std::string name(){ return "optional " + js_name<T>::name(); } };
 template<typename T> struct js_name< fc::smart_ref<T> >   { static std::string name(){ return js_name<T>::name(); } };
-template<>           struct js_name< object_id_type >     { static std::string name(){ return "object_id_type"; } };
 template<typename T> struct js_name< fc::flat_set<T> >    { static std::string name(){ return "set " + js_name<T>::name(); } };
 template<typename T> struct js_name< std::vector<T> >     { static std::string name(){ return "array " + js_name<T>::name(); } };
 template<typename T> struct js_name< fc::safe<T> > { static std::string name(){ return js_name<T>::name(); } };
@@ -109,10 +112,10 @@ template<> struct js_name<fc::sha224>          { static std::string name(){ retu
 template<> struct js_name<fc::sha256>          { static std::string name(){ return "bytes 32";   } };
 template<> struct js_name<fc::unsigned_int>    { static std::string name(){ return "varuint32";  } };
 template<> struct js_name<fc::signed_int>      { static std::string name(){ return "varint32";   } };
-template<> struct js_name< time_point_sec >    { static std::string name(){ return "time_point_sec"; } };
+template<> struct js_name<fc::time_point_sec >    { static std::string name(){ return "time_point_sec"; } };
 
-template<uint8_t S, uint8_t T, typename O>
-struct js_name<graphene::db::object_id<S,T,O> >
+template<typename O>
+struct js_name<chainbase::oid<O> >
 {
    static std::string name(){
       return "protocol_id_type \"" + remove_namespace(fc::get_typename<O>::name()) + "\"";
@@ -239,13 +242,6 @@ struct serializer<std::vector<operation>,false>
 };
 
 template<>
-struct serializer<object_id_type,true>
-{
-   static void init() {}
-
-   static void generate() {}
-};
-template<>
 struct serializer<uint64_t,false>
 {
    static void init() {}
@@ -265,8 +261,8 @@ struct serializer<fc::optional<T>,false>
    static void generate(){}
 };
 
-template<uint8_t SpaceID, uint8_t TypeID, typename T>
-struct serializer< graphene::db::object_id<SpaceID,TypeID,T> ,true>
+template<typename T>
+struct serializer< chainbase::oid<T> ,true>
 {
    static void init() {}
    static void generate() {}

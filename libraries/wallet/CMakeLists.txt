@@ -24,8 +24,9 @@ else()
 endif()
 
 add_library( steemit_wallet wallet.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS} )
-target_link_libraries( steemit_wallet PRIVATE steemit_app graphene_net steemit_chain graphene_utilities fc steemit_private_message steemit_follow  ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
-target_include_directories( graphene_db PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+# I don't know why steemit_app is required twice in the following line, I just know the linker breaks if it isn't.
+target_link_libraries( steemit_wallet PRIVATE steemit_app graphene_net steemit_chain steemit_protocol graphene_utilities fc steemit_private_message steemit_app steemit_follow steemit_account_by_key ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_include_directories( steemit_wallet PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 if(MSVC)
   set_source_files_properties( wallet.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )

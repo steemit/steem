@@ -25,7 +25,7 @@
 
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/database_api.hpp>
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <graphene/net/node.hpp>
 
