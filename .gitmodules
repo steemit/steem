@@ -1,3 +1,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/steemit/fc.git
+[submodule "libraries/chainbase"]
+	path = libraries/chainbase
+	url = ihttps://github.com/steemit/chainbase.git

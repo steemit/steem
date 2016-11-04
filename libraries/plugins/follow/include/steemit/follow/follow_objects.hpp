@@ -233,13 +233,13 @@ typedef multi_index_container<
 FC_REFLECT_ENUM( steemit::follow::follow_type, (undefined)(blog)(ignore) )
 
 FC_REFLECT( steemit::follow::follow_object, (id)(follower)(following)(what) )
-SET_INDEX_TYPE( steemit::follow::follow_object, steemit::follow::follow_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::follow::follow_object, steemit::follow::follow_index )
 
 FC_REFLECT( steemit::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(comment)(reblogs)(account_feed_id) )
-SET_INDEX_TYPE( steemit::follow::feed_object, steemit::follow::feed_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::follow::feed_object, steemit::follow::feed_index )
 
 FC_REFLECT( steemit::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )
-SET_INDEX_TYPE( steemit::follow::blog_object, steemit::follow::blog_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::follow::blog_object, steemit::follow::blog_index )
 
 FC_REFLECT( steemit::follow::reputation_object, (id)(account)(reputation) )
-SET_INDEX_TYPE( steemit::follow::reputation_object, steemit::follow::reputation_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::follow::reputation_object, steemit::follow::reputation_index )

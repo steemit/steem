@@ -39,7 +39,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
    db.push_transaction( trx, ~0 ); \
 }
 
-#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
+/*#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
 {                                                         \
    std::string req_throw_info = fc::json::to_string(      \
       fc::mutable_variant_object()                        \
@@ -55,7 +55,10 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
    if( fc::enable_record_assert_trip )                    \
       std::cout << "STEEMIT_REQUIRE_THROW end "          \
          << req_throw_info << std::endl;                  \
-}
+}*/
+
+#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
+   BOOST_REQUIRE_THROW( expr, exc_type );
 
 #define STEEMIT_CHECK_THROW( expr, exc_type )            \
 {                                                         \

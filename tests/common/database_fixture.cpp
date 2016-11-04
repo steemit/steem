@@ -25,7 +25,6 @@ namespace steemit { namespace chain {
 
 using std::cout;
 using std::cerr;
-using graphene::db2::generic_id;
 
 clean_database_fixture::clean_database_fixture()
 {

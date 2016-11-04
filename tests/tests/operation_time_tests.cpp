@@ -20,7 +20,6 @@
 using namespace steemit;
 using namespace steemit::chain;
 using namespace steemit::protocol;
-using graphene::db2::generic_id;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
@@ -1033,7 +1032,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdraw_route )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "Test from_account receiving no withdraw" );
 
@@ -2096,7 +2095,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       ops = get_last_operations( 1 );
 
-      STEEMIT_REQUIRE_THROW( ops[0].get< liquidity_reward_operation>(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( ops[0].get< liquidity_reward_operation>(), fc::exception );
       //BOOST_REQUIRE( ops[0].get< liquidity_reward_operation>().payout.amount.value == STEEMIT_MIN_LIQUIDITY_REWARD.amount.value );
 
       generate_blocks( STEEMIT_LIQUIDITY_REWARD_BLOCKS );
@@ -2110,7 +2109,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       ops = get_last_operations( 1 );
 
-      STEEMIT_REQUIRE_THROW( ops[0].get< liquidity_reward_operation>(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( ops[0].get< liquidity_reward_operation>(), fc::exception );
       //BOOST_REQUIRE( ops[0].get< liquidity_reward_operation>().payout.amount.value == STEEMIT_MIN_LIQUIDITY_REWARD.amount.value );
 
       alice_steem_volume = 0;
@@ -2334,7 +2333,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
       tx.operations.push_back( vote );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       vote.voter = "sam";
 
@@ -2411,7 +2410,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }

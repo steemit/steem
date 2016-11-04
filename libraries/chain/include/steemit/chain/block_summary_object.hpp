@@ -72,7 +72,7 @@ namespace steemit { namespace chain {
 } } // steemit::chain
 
 FC_REFLECT( steemit::chain::block_summary_object, (id)(block_id) )
-SET_INDEX_TYPE( steemit::chain::block_summary_object, steemit::chain::block_summary_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::block_summary_object, steemit::chain::block_summary_index )
 
 FC_REFLECT( steemit::chain::block_stats_object, (id)(block_id)(pos)(packed_block) )
-SET_INDEX_TYPE( steemit::chain::block_stats_object, steemit::chain::block_stats_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::block_stats_object, steemit::chain::block_stats_index )

@@ -4,7 +4,8 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-#include <graphene/db2/database.hpp>
+//#include <graphene/db2/database.hpp>
+#include <chainbase/chainbase.hpp>
 
 #include <steemit/protocol/types.hpp>
 #include <steemit/protocol/authority.hpp>
@@ -12,14 +13,14 @@
 
 namespace steemit { namespace chain {
 
-namespace bip = graphene::db2::bip;
+namespace bip = chainbase::bip;
 using namespace boost::multi_index;
 
 using boost::multi_index_container;
 
-using graphene::db2::object;
-using graphene::db2::oid;
-using graphene::db2::allocator;
+using chainbase::object;
+using chainbase::oid;
+using chainbase::allocator;
 
 using steemit::protocol::block_id_type;
 using steemit::protocol::transaction_id_type;
@@ -135,10 +136,34 @@ namespace fc
       s.assign( str.begin(), str.end() );
    }
 
+   template<typename T>
+   void to_variant( const chainbase::oid<T>& var,  variant& vo )
+   {
+      vo = var._id;
+   }
+   template<typename T>
+   void from_variant( const variant& vo, chainbase::oid<T>& var )
+   {
+      var._id = vo.as_int64();
+   }
+
+   namespace raw {
+      template<typename Stream, typename T>
+      inline void pack( Stream& s, const chainbase::oid<T>& id )
+      {
+         s.write( (const char*)&id._id, sizeof(id._id) );
+      }
+      template<typename Stream, typename T>
+      inline void unpack( Stream& s, chainbase::oid<T>& id )
+      {
+         s.read( (char*)&id._id, sizeof(id._id));
+      }
+   }
+
    namespace raw
    {
-      namespace bip = graphene::db2::bip;
-      using graphene::db2::allocator;
+      namespace bip = chainbase::bip;
+      using chainbase::allocator;
 
       template< typename T > inline void pack( steemit::chain::buffer_type& raw, const T& v )
       {
@@ -162,6 +187,10 @@ namespace fc
          return v;
       }
    }
+}
+
+namespace fc {
+
 }
 
 FC_REFLECT_ENUM( steemit::chain::object_type,

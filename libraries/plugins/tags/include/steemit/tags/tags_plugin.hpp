@@ -15,9 +15,9 @@ using namespace boost::multi_index;
 
 using steemit::app::application;
 
-using graphene::db2::object;
-using graphene::db2::oid;
-using graphene::db2::allocator;
+using chainbase::object;
+using chainbase::oid;
+using chainbase::allocator;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -433,14 +433,14 @@ FC_API( steemit::tags::tag_api, (get_tags) );
 
 FC_REFLECT( steemit::tags::tag_object,
    (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(promoted_balance)(children)(children_rshares2)(total_payout)(mode)(author)(parent)(comment) )
-SET_INDEX_TYPE( steemit::tags::tag_object, steemit::tags::tag_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::tags::tag_object, steemit::tags::tag_index )
 
 FC_REFLECT( steemit::tags::tag_stats_object,
    (id)(tag)(total_children_rshares2)(total_payout)(net_votes)(top_posts)(comments) );
-SET_INDEX_TYPE( steemit::tags::tag_stats_object, steemit::tags::tag_stats_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::tags::tag_stats_object, steemit::tags::tag_stats_index )
 
 FC_REFLECT( steemit::tags::peer_stats_object,
    (id)(voter)(peer)(direct_positive_votes)(direct_votes)(indirect_positive_votes)(indirect_votes)(rank) );
-SET_INDEX_TYPE( steemit::tags::peer_stats_object, steemit::tags::peer_stats_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::tags::peer_stats_object, steemit::tags::peer_stats_index )
 
 FC_REFLECT( steemit::tags::comment_metadata, (tags) );

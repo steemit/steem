@@ -394,24 +394,24 @@ FC_REFLECT( steemit::chain::account_object,
              (average_market_bandwidth)(last_market_bandwidth_update)
              (last_post)(last_root_post)(post_bandwidth)
           )
-SET_INDEX_TYPE( steemit::chain::account_object, steemit::chain::account_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_object, steemit::chain::account_index )
 
 FC_REFLECT( steemit::chain::account_authority_object,
              (id)(account)(owner)(active)(posting)(last_owner_update)
 )
-SET_INDEX_TYPE( steemit::chain::account_authority_object, steemit::chain::account_authority_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_authority_object, steemit::chain::account_authority_index )
 
 FC_REFLECT( steemit::chain::owner_authority_history_object,
              (id)(account)(previous_owner_authority)(last_valid_time)
           )
-SET_INDEX_TYPE( steemit::chain::owner_authority_history_object, steemit::chain::owner_authority_history_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::owner_authority_history_object, steemit::chain::owner_authority_history_index )
 
 FC_REFLECT( steemit::chain::account_recovery_request_object,
              (id)(account_to_recover)(new_owner_authority)(expires)
           )
-SET_INDEX_TYPE( steemit::chain::account_recovery_request_object, steemit::chain::account_recovery_request_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_recovery_request_object, steemit::chain::account_recovery_request_index )
 
 FC_REFLECT( steemit::chain::change_recovery_account_request_object,
              (id)(account_to_recover)(recovery_account)(effective_on)
           )
-SET_INDEX_TYPE( steemit::chain::change_recovery_account_request_object, steemit::chain::change_recovery_account_request_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::change_recovery_account_request_object, steemit::chain::change_recovery_account_request_index )

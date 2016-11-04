@@ -144,10 +144,10 @@ FC_REFLECT( steemit::market_history::bucket_object,
                      (open_steem)(open_sbd)
                      (close_steem)(close_sbd)
                      (steem_volume)(sbd_volume) )
-SET_INDEX_TYPE( steemit::market_history::bucket_object, steemit::market_history::bucket_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::market_history::bucket_object, steemit::market_history::bucket_index )
 
 FC_REFLECT( steemit::market_history::order_history_object,
                      (id)
                      (time)
                      (op) )
-SET_INDEX_TYPE( steemit::market_history::order_history_object, steemit::market_history::order_history_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::market_history::order_history_object, steemit::market_history::order_history_index )

@@ -226,13 +226,13 @@ FC_REFLECT( steemit::chain::witness_object,
              (running_version)
              (hardfork_version_vote)(hardfork_time_vote)
           )
-SET_INDEX_TYPE( steemit::chain::witness_object, steemit::chain::witness_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_object, steemit::chain::witness_index )
 
 FC_REFLECT( steemit::chain::witness_vote_object, (id)(witness)(account) )
-SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::witness_vote_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::witness_vote_index )
 
 FC_REFLECT( steemit::chain::witness_schedule_object,
              (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)(median_props)
              (majority_version)
           )
-SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )

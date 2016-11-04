@@ -184,4 +184,4 @@ FC_REFLECT( steemit::blockchain_statistics::bucket_object,
    (total_pow)
    (estimated_hashpower)
 )
-SET_INDEX_TYPE( steemit::blockchain_statistics::bucket_object, steemit::blockchain_statistics::bucket_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::blockchain_statistics::bucket_object, steemit::blockchain_statistics::bucket_index )

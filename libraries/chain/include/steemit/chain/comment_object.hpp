@@ -325,14 +325,14 @@ FC_REFLECT( steemit::chain::comment_object,
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
           )
-SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
 
 FC_REFLECT( steemit::chain::comment_vote_object,
              (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
-SET_INDEX_TYPE( steemit::chain::comment_vote_object, steemit::chain::comment_vote_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_vote_object, steemit::chain::comment_vote_index )
 
 FC_REFLECT( steemit::chain::category_object,
              (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
           )
-SET_INDEX_TYPE( steemit::chain::category_object, steemit::chain::category_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::category_object, steemit::chain::category_index )

@@ -176,4 +176,4 @@ FC_REFLECT( steemit::chain::dynamic_global_property_object,
              (current_reserve_ratio)
              (vote_regeneration_per_day)
           )
-SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, steemit::chain::dynamic_global_property_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, steemit::chain::dynamic_global_property_index )

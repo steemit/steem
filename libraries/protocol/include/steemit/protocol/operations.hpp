@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <steemit/protocol/operation_util.hpp>

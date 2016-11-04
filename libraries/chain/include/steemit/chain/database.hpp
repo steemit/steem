@@ -10,7 +10,7 @@
 
 #include <steemit/protocol/protocol.hpp>
 
-#include <graphene/db2/database.hpp>
+//#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -34,7 +34,7 @@ namespace steemit { namespace chain {
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
     */
-   class database : public graphene::db2::database
+   class database : public chainbase::database
    {
       public:
          database();
@@ -232,7 +232,7 @@ namespace steemit { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
+         //fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.
@@ -414,7 +414,7 @@ namespace steemit { namespace chain {
          void notify_changed_objects();
 
       private:
-         optional< graphene::db2::database::session > _pending_tx_session;
+         optional< chainbase::database::session > _pending_tx_session;
 
          void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );

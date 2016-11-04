@@ -253,10 +253,10 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       db1.push_block(b);
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
-      STEEMIT_REQUIRE_THROW(alice_id(db2), fc::exception);
+      STEEMIT_REQUIRE_THROW(alice_id(db2), std::exception);
       alice_id(db1); /// it should be included in the pending state
       db1.clear_pending(); // clear it so that we can verify it was properly removed from pending state.
-      STEEMIT_REQUIRE_THROW(alice_id(db1), fc::exception);
+      STEEMIT_REQUIRE_THROW(alice_id(db1), std::exception);
 
       PUSH_TX( db2, trx );
 

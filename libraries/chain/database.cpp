@@ -32,7 +32,7 @@
 
 namespace steemit { namespace chain {
 
-namespace db2 = graphene::db2;
+//namespace db2 = graphene::db2;
 
 struct object_schema_repr
 {
@@ -96,7 +96,7 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
    try
    {
       init_schema();
-      db2::database::open( data_dir, shared_file_size );
+      chainbase::database::open( data_dir, chainbase::database::read_write, shared_file_size );
 
       with_write_lock( [&]()
       {
@@ -184,7 +184,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
 void database::wipe(const fc::path& data_dir, bool include_blocks)
 {
    close();
-   db2::database::wipe( data_dir );
+   chainbase::database::wipe( data_dir );
    if( include_blocks )
       fc::remove_all( data_dir / "block_log" );
 }
@@ -198,8 +198,8 @@ void database::close(bool rewind)
       // DB state (issue #336).
       clear_pending();
 
-      db2::database::flush();
-      db2::database::close();
+      chainbase::database::flush();
+      chainbase::database::close();
 
       _block_log.close();
 
@@ -295,9 +295,9 @@ chain_id_type database::get_chain_id() const
 }
 
 const witness_object& database::get_witness( const account_name_type& name ) const
-{
+{ try {
    return get< witness_object, by_name >( name );
-}
+} FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const witness_object* database::find_witness( const account_name_type& name ) const
 {
@@ -305,9 +305,9 @@ const witness_object* database::find_witness( const account_name_type& name ) co
 }
 
 const account_object& database::get_account( const account_name_type& name )const
-{
+{ try {
    return get< account_object, by_name >( name );
-}
+} FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const account_object* database::find_account( const account_name_type& name )const
 {
@@ -315,9 +315,9 @@ const account_object* database::find_account( const account_name_type& name )con
 }
 
 const comment_object& database::get_comment( const account_name_type& author, const shared_string& permlink )const
-{
+{ try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
-}
+} FC_CAPTURE_AND_RETHROW( (author)(permlink) ) }
 
 const comment_object* database::find_comment( const account_name_type& author, const shared_string& permlink )const
 {
@@ -325,9 +325,9 @@ const comment_object* database::find_comment( const account_name_type& author, c
 }
 
 const comment_object& database::get_comment( const account_name_type& author, const string& permlink )const
-{
+{ try {
    return get< comment_object, by_permlink >( boost::make_tuple( author, permlink) );
-}
+} FC_CAPTURE_AND_RETHROW( (author)(permlink) ) }
 
 const comment_object* database::find_comment( const account_name_type& author, const string& permlink )const
 {
@@ -335,9 +335,9 @@ const comment_object* database::find_comment( const account_name_type& author, c
 }
 
 const category_object& database::get_category( const shared_string& name )const
-{
+{ try {
    return get< category_object, by_name >( name );
-}
+} FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const category_object* database::find_category( const shared_string& name )const
 {
@@ -345,9 +345,9 @@ const category_object* database::find_category( const shared_string& name )const
 }
 
 const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
-{
+{ try {
    return get< escrow_object, by_from_id >( boost::make_tuple( name, escrow_id ) );
-}
+} FC_CAPTURE_AND_RETHROW( (name)(escrow_id) ) }
 
 const escrow_object* database::find_escrow( const account_name_type& name, uint32_t escrow_id )const
 {
@@ -355,12 +355,12 @@ const escrow_object* database::find_escrow( const account_name_type& name, uint3
 }
 
 const limit_order_object& database::get_limit_order( const account_name_type& name, uint32_t orderid )const
-{
+{ try {
    if( !has_hardfork( STEEMIT_HARDFORK_0_6__127 ) )
       orderid = orderid & 0x0000FFFF;
 
    return get< limit_order_object, by_account >( boost::make_tuple( name, orderid ) );
-}
+} FC_CAPTURE_AND_RETHROW( (name)(orderid) ) }
 
 const limit_order_object* database::find_limit_order( const account_name_type& name, uint32_t orderid )const
 {
@@ -371,9 +371,9 @@ const limit_order_object* database::find_limit_order( const account_name_type& n
 }
 
 const savings_withdraw_object& database::get_savings_withdraw( const account_name_type& owner, uint32_t request_id )const
-{
+{ try {
    return get< savings_withdraw_object, by_from_rid >( boost::make_tuple( owner, request_id ) );
-}
+} FC_CAPTURE_AND_RETHROW( (owner)(request_id) ) }
 
 const savings_withdraw_object* database::find_savings_withdraw( const account_name_type& owner, uint32_t request_id )const
 {
@@ -381,9 +381,9 @@ const savings_withdraw_object* database::find_savings_withdraw( const account_na
 }
 
 const dynamic_global_property_object&database::get_dynamic_global_properties() const
-{
+{ try {
    return get< dynamic_global_property_object >();
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 const node_property_object& database::get_node_properties() const
 {
@@ -391,19 +391,19 @@ const node_property_object& database::get_node_properties() const
 }
 
 const feed_history_object& database::get_feed_history()const
-{
+{ try {
    return get< feed_history_object >();
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 const witness_schedule_object& database::get_witness_schedule_object()const
-{
+{ try {
    return get< witness_schedule_object >();
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 const hardfork_property_object& database::get_hardfork_property_object()const
-{
+{ try {
    return get< hardfork_property_object >();
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 const time_point_sec database::calculate_discussion_payout_time( const comment_object& comment )const
 {
@@ -2754,7 +2754,7 @@ void database::notify_changed_objects()
 {
    try
    {
-      /*vector< graphene::db2::generic_id > ids;
+      /*vector< graphene::chainbase::generic_id > ids;
       get_changed_ids( ids );
       STEEMIT_TRY_NOTIFY( changed_objects, ids )*/
       /*

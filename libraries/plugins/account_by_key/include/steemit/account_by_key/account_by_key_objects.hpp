@@ -71,4 +71,4 @@ typedef multi_index_container<
 
 
 FC_REFLECT( steemit::account_by_key::key_lookup_object, (id)(key)(account) )
-SET_INDEX_TYPE( steemit::account_by_key::key_lookup_object, steemit::account_by_key::key_lookup_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::account_by_key::key_lookup_object, steemit::account_by_key::key_lookup_index )

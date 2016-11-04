@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <stdexcept>
 
 using namespace steemit;
 using namespace steemit::chain;
@@ -147,7 +148,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure of duplicate account creation" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+      BOOST_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( acct.name == "alice" );
       BOOST_REQUIRE( acct_auth.owner == authority( 1, priv_key.get_public_key(), 1 ) );
@@ -171,7 +172,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -203,7 +204,7 @@ BOOST_AUTO_TEST_CASE( account_update_validate )
 
          BOOST_FAIL( "An exception was not thrown for an invalid account name" );
       }
-      catch( fc::assert_exception& ) {}
+      catch( fc::exception& ) {}
 
       validate_database();
    }
@@ -342,7 +343,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       op.account = "bob";
       tx.operations.push_back( op );
       tx.sign( new_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception )
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception )
       validate_database();
 
 
@@ -355,7 +356,7 @@ BOOST_AUTO_TEST_CASE( account_update_apply )
       op.posting->add_authorities( "dave", 1 );
       tx.operations.push_back( op );
       tx.sign( new_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -481,7 +482,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.operations.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test Bob posting a comment on Alice's comment" );
       op.parent_permlink = "lorem";
@@ -602,7 +603,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       validate_database();
 
@@ -675,7 +676,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
 
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
          validate_database();
 
@@ -687,7 +688,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
 
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
          validate_database();
 
@@ -964,7 +965,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.operations.push_back( op );
          tx.sign( alice_private_key, db.get_chain_id() );
 
-         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+         STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
          validate_database();
 
          BOOST_TEST_MESSAGE( "--- Test success when reducing rshares within lockout period" );
@@ -1107,7 +1108,7 @@ BOOST_AUTO_TEST_CASE( transfer_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "10.000 TESTS" ).amount.value );
@@ -1237,7 +1238,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_vesting_apply )
       BOOST_REQUIRE( gpo.total_vesting_shares.amount.value == shares.amount.value );
       validate_database();
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "0.500 TESTS" ).amount.value );
       BOOST_REQUIRE( alice.vesting_shares.amount.value == alice_shares.amount.value );
@@ -1361,7 +1362,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
       BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / 312 ).value );
@@ -1531,7 +1532,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.owner = "bob";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1650,7 +1651,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
 
       BOOST_TEST_MESSAGE( "--- Test failure when attempting to revoke a non-existent vote" );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
       BOOST_REQUIRE( sam_witness.votes.value == 0 );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, alice.id ) ) == witness_vote_idx.end() );
 
@@ -1675,7 +1676,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       op.account = "alice";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( sam_witness.votes == ( bob.proxied_vsf_votes_total() + bob.vesting_shares.amount ) );
       BOOST_REQUIRE( witness_vote_idx.find( std::make_tuple( sam_witness.id, bob.id ) ) != witness_vote_idx.end() );
@@ -1703,7 +1704,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when voting for an account that is not a witness" );
@@ -1713,7 +1714,7 @@ BOOST_AUTO_TEST_CASE( account_witness_vote_apply )
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -1836,7 +1837,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
 
       BOOST_TEST_MESSAGE( "--- Test failure when changing proxy to existing proxy" );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       BOOST_REQUIRE( bob.proxy == "sam" );
       BOOST_REQUIRE( bob.proxied_vsf_votes_total().value == 0 );
@@ -2118,7 +2119,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       op.publisher = "bob";
       tx.sign( alice_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test updating price feed" );
@@ -2229,7 +2230,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       op.amount = ASSET( "5.000 TESTS" );
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
       BOOST_REQUIRE( new_bob.sbd_balance.amount.value == ASSET( "7.000 TBD" ).amount.value );
@@ -2242,7 +2243,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_alice.balance.amount.value == ASSET( "7.500 TESTS" ).amount.value );
       BOOST_REQUIRE( new_alice.sbd_balance.amount.value == ASSET( "2.500 TBD" ).amount.value );
@@ -2254,7 +2255,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test success converting SBD to TESTS" );
       op.owner = "bob";
@@ -2283,7 +2284,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( new_bob.balance.amount.value == ASSET( "3.000 TESTS" ).amount.value );
       BOOST_REQUIRE( new_bob.sbd_balance.amount.value == ASSET( "4.000 TBD" ).amount.value );
@@ -2381,7 +2382,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
@@ -2396,7 +2397,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
@@ -2411,7 +2412,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
@@ -2446,7 +2447,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
       BOOST_REQUIRE( limit_order != limit_order_idx.end() );
@@ -2467,7 +2468,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
@@ -2715,7 +2716,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
@@ -2730,7 +2731,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
@@ -2745,7 +2746,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "1000.000 TESTS" ).amount.value );
@@ -2780,7 +2781,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
       BOOST_REQUIRE( limit_order != limit_order_idx.end() );
@@ -2801,7 +2802,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( alice.balance.amount.value == ASSET( "990.000 TESTS" ).amount.value );
@@ -3063,7 +3064,7 @@ BOOST_AUTO_TEST_CASE( limit_order_cancel_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test cancel order" );
 
@@ -3232,7 +3233,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.operations.push_back( recover );
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
       tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner2 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner2 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
@@ -3248,7 +3249,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.operations.push_back( recover );
       tx.sign( generate_private_key( "foo bar" ), db.get_chain_id() );
       tx.sign( generate_private_key( "idontknow" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner3 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner3 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
@@ -3310,7 +3311,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.set_expiration( db.head_block_time() );
       tx.sign( generate_private_key( "expire" ), db.get_chain_id() );
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner5 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner5 == authority( 1, generate_private_key( "foo bar" ).get_public_key(), 1 ) );
 
@@ -3349,7 +3350,7 @@ BOOST_AUTO_TEST_CASE( account_recovery )
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( generate_private_key( "bob_owner" ), db.get_chain_id() );
       tx.sign( generate_private_key( "last key" ), db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       const auto& owner6 = db.get< account_authority_object, by_account >("bob").owner;
       BOOST_REQUIRE( owner6 == authority( 1, generate_private_key( "new_key" ).get_public_key(), 1 ) );
 
@@ -3440,9 +3441,9 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
       };
 
       // if either/both users do not exist, we shouldn't allow it
-      STEEMIT_REQUIRE_THROW( change_recovery_account("alice", "nobody"), fc::assert_exception );
-      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "sam"   ), fc::assert_exception );
-      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "nobody"), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( change_recovery_account("alice", "nobody"), fc::exception );
+      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "sam"   ), fc::exception );
+      STEEMIT_REQUIRE_THROW( change_recovery_account("haxer", "nobody"), fc::exception );
       change_recovery_account("alice", "sam");
 
       fc::ecc::private_key alice_priv1 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k1" ) );
@@ -3534,14 +3535,14 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
       pow.validate();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       // Test with nonce that doesn't match work, should fail
       BOOST_TEST_MESSAGE( "Testing pow with nonce that doesn't match work" );
       work.create( db.head_block_id(), "alice", nonce3 );
       work.input.nonce = nonce4;
       pow.work = work;
-      STEEMIT_REQUIRE_THROW( pow.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( pow.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "Testing failure on inssuficient work" );
       work.create( db.head_block_id(), "alice", nonce2 );
@@ -3550,7 +3551,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       tx.operations.push_back( pow );
       tx.sign( alice_private_key, db.get_chain_id() );
       pow.validate();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       // Test without owner key, should fail on new account
       BOOST_TEST_MESSAGE( "Submit pow without a new owner key" );
@@ -3563,10 +3564,10 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       pow.new_owner_key.reset();
       tx.operations.push_back( pow );
       pow.validate();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       // Test success when adding owner key
       BOOST_TEST_MESSAGE( "Testing success" );
@@ -3598,10 +3599,10 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       tx.operations.push_back( pow );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       generate_block();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       ACTORS( (bob) )
 
@@ -3625,7 +3626,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       tx.operations.push_back( pow );
       tx.sign( bob_private_key, db.get_chain_id() );
       pow.validate();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "Submit pow from existing account with witness object." );
@@ -3660,47 +3661,47 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_validate )
 
       BOOST_TEST_MESSAGE( "--- failure when sbd symbol != SBD" );
       op.sbd_amount.symbol = STEEM_SYMBOL;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when steem symbol != STEEM" );
       op.sbd_amount.symbol = SBD_SYMBOL;
       op.steem_amount.symbol = SBD_SYMBOL;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when fee symbol != SBD and fee symbol != STEEM" );
       op.steem_amount.symbol = STEEM_SYMBOL;
       op.fee.symbol = VESTS_SYMBOL;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when sbd == 0 and steem == 0" );
       op.fee.symbol = STEEM_SYMBOL;
       op.sbd_amount.amount = 0;
       op.steem_amount.amount = 0;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when sbd < 0" );
       op.sbd_amount.amount = -100;
       op.steem_amount.amount = 1000;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when steem < 0" );
       op.sbd_amount.amount = 1000;
       op.steem_amount.amount = -100;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when fee < 0" );
       op.steem_amount.amount = 1000;
       op.fee.amount = -100;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline == escrow expiration" );
       op.fee.amount = 100;
       op.ratification_deadline = op.escrow_expiration;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline > escrow expiration" );
       op.ratification_deadline = op.escrow_expiration + 100;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success" );
       op.ratification_deadline = op.escrow_expiration - 100;
@@ -3770,7 +3771,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- falure when from cannot cover amount + fee" );
       op.sbd_amount.amount = 0;
@@ -3779,7 +3780,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when ratification deadline is in the past" );
       op.steem_amount.amount = 1000;
@@ -3788,7 +3789,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- failure when expiration is in the past" );
       op.escrow_expiration = db.head_block_time() - 100;
@@ -3796,7 +3797,7 @@ BOOST_AUTO_TEST_CASE( escrow_transfer_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success" );
       op.ratification_deadline = db.head_block_time() + 100;
@@ -3858,7 +3859,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_validate )
 
       BOOST_TEST_MESSAGE( "--- failure when who is not to or agent" );
       op.who = "dave";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- success when who is to" );
       op.who = op.to;
@@ -3947,7 +3948,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when agent does not match escrow" );
@@ -3959,7 +3960,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success approving to" );
@@ -3991,7 +3992,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.set_expiration( db.head_block_time() + STEEMIT_BLOCK_INTERVAL );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
@@ -4013,7 +4014,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
@@ -4037,7 +4038,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
       tx.sign( sam_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( alice.balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4051,7 +4052,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4076,7 +4077,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4100,7 +4101,7 @@ BOOST_AUTO_TEST_CASE( escrow_approve_apply )
 
       generate_blocks( et_op.ratification_deadline + STEEMIT_BLOCK_INTERVAL, true );
 
-      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( op.from, op.escrow_id ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "10.000 TESTS" ) );
       validate_database();
 
@@ -4183,7 +4184,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_validate )
 
       BOOST_TEST_MESSAGE( "failure when who is not from or to" );
       op.who = "sam";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
       BOOST_TEST_MESSAGE( "success" );
       op.who = "alice";
@@ -4273,7 +4274,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       const auto& escrow = db.get_escrow( et_op.from, et_op.escrow_id );
       BOOST_REQUIRE( escrow.to == "bob" );
@@ -4308,7 +4309,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
@@ -4330,7 +4331,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.signatures.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( escrow.to == "bob" );
       BOOST_REQUIRE( escrow.agent == "sam" );
@@ -4353,7 +4354,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       {
          const auto& escrow = db.get_escrow( et_op.from, et_op.escrow_id );
@@ -4415,7 +4416,7 @@ BOOST_AUTO_TEST_CASE( escrow_dispute_apply )
       op.who = "bob";
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       {
          const auto& escrow = db.get_escrow( et_op.from, et_op.escrow_id );
@@ -4449,29 +4450,29 @@ BOOST_AUTO_TEST_CASE( escrow_release_validate )
 
       BOOST_TEST_MESSAGE( "--- failure when steem < 0" );
       op.steem_amount.amount = -1;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when sbd < 0" );
       op.steem_amount.amount = 0;
       op.sbd_amount.amount = -1;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when steem == 0 and sbd == 0" );
       op.sbd_amount.amount = 0;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when sbd is not sbd symbol" );
       op.sbd_amount = ASSET( "1.000 TESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when steem is not steem symbol" );
       op.sbd_amount.symbol = SBD_SYMBOL;
       op.steem_amount = ASSET( "1.000 TBD" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success" );
@@ -4559,7 +4560,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       escrow_approve_operation ea_b_op;
       ea_b_op.from = "alice";
@@ -4585,7 +4586,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when 'agent' attempts to release non-disputed escrow to 'from' " );
@@ -4594,7 +4595,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempt to release non-disputed escrow to not 'to' or 'from'" );
@@ -4603,7 +4604,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when other attempts to release non-disputed escrow to 'to'" );
@@ -4613,7 +4614,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when other attempts to release non-disputed escrow to 'from' " );
@@ -4622,7 +4623,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when other attempt to release non-disputed escrow to not 'to' or 'from'" );
@@ -4631,7 +4632,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attemtps to release non-disputed escrow to 'to'" );
@@ -4641,7 +4642,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when 'to' attempts to release non-dispured escrow to 'agent' " );
@@ -4650,7 +4651,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-disputed escrow to not 'from'" );
@@ -4659,7 +4660,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed escrow to 'to' from 'from'" );
@@ -4681,7 +4682,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE("--- failure when 'from' attempts to release non-disputed escrow to 'agent'" );
@@ -4690,7 +4691,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed escrow to not 'from'" );
@@ -4699,7 +4700,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed escrow to 'from' from 'to'" );
@@ -4720,7 +4721,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when releasing less steem than available" );
@@ -4730,7 +4731,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release disputed escrow" );
@@ -4753,7 +4754,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.sbd_amount = ASSET( "0.000 TBD" );
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release disputed escrow" );
@@ -4762,7 +4763,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.from;
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when releasing disputed escrow to an account not 'to' or 'from'" );
@@ -4771,7 +4772,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when agent does not match escrow" );
@@ -4780,7 +4781,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       tx.operations.push_back( op );
       tx.sign( dave_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success releasing disputed escrow with agent to 'to'" );
@@ -4816,7 +4817,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release disputed expired escrow" );
@@ -4825,7 +4826,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.who = et_op.from;
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success releasing disputed expired escrow with agent" );
@@ -4848,7 +4849,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.700 TESTS" ) );
-      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::exception );
 
 
       tx.clear();
@@ -4872,7 +4873,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.steem_amount = ASSET( "0.100 TESTS" );
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempts to release non-disputed expired escrow to 'from'" );
@@ -4880,7 +4881,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.from;
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'agent' attempt to release non-disputed expired escrow to not 'to' or 'from'" );
@@ -4888,7 +4889,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( sam_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-dispured expired escrow to 'agent'" );
@@ -4897,7 +4898,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.agent;
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'to' attempts to release non-disputed expired escrow to not 'from' or 'to'" );
@@ -4905,7 +4906,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( bob_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'to' from 'to'" );
@@ -4936,7 +4937,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = et_op.agent;
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' attempts to release non-disputed expired escrow to not 'from' or 'to'" );
@@ -4944,7 +4945,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       op.receiver = "dave";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success release non-disputed expired escrow to 'to' from 'from'" );
@@ -4977,7 +4978,7 @@ BOOST_AUTO_TEST_CASE( escrow_release_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( db.get_account( "alice" ).balance == ASSET( "9.400 TESTS" ) );
-      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.get_escrow( et_op.from, et_op.escrow_id ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -4996,13 +4997,13 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
 
       BOOST_TEST_MESSAGE( "failure when 'from' is empty" );
       op.from = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "failure when 'to' is empty" );
       op.from = "alice";
       op.to = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "sucess when 'to' is not empty" );
@@ -5013,7 +5014,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
       BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
       op.to = "alice";
       op.amount = ASSET( "1.000 VESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "success when amount is SBD" );
@@ -5088,7 +5089,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
 
@@ -5099,7 +5100,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
 
@@ -5173,13 +5174,13 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
 
       BOOST_TEST_MESSAGE( "failure when 'from' is empty" );
       op.from = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "failure when 'to' is empty" );
       op.from = "alice";
       op.to = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "sucess when 'to' is not empty" );
@@ -5190,7 +5191,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
       BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
       op.to = "alice";
       op.amount = ASSET( "1.000 VESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "success when amount is SBD" );
@@ -5279,7 +5280,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- failure withdrawing to non-existant account" );
@@ -5289,7 +5290,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to self" );
@@ -5339,7 +5340,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- success withdrawing STEEM to other" );
@@ -5424,7 +5425,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT );
       validate_database();
    }
@@ -5444,7 +5445,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_validate )
 
       BOOST_TEST_MESSAGE( "--- failure when 'from' is empty" );
       op.from = "";
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- sucess when 'from' is not empty" );
@@ -5528,7 +5529,7 @@ BOOST_AUTO_TEST_CASE( cancel_transfer_from_savings_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
       BOOST_REQUIRE( db.get_account( "alice" ).savings_withdraw_requests == 1 );
@@ -5621,7 +5622,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- successs cancelling a request" );
@@ -5641,7 +5642,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.operations.push_back( op );
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
 
       BOOST_TEST_MESSAGE( "--- check account can vote during waiting period" );
@@ -5699,7 +5700,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.operations.push_back( witness_vote );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       const auto& vote_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
       auto vote_itr = vote_idx.find( boost::make_tuple( db.get_comment( "alice", string( "test" ) ).id, db.get_account( "alice" ).id ) );
@@ -5708,20 +5709,20 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.clear();
       tx.operations.push_back( vote );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       vote.weight = STEEMIT_1_PERCENT * 50;
       tx.clear();
       tx.operations.push_back( vote );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       proxy.account = "alice";
       proxy.proxy = "bob";
       tx.clear();
       tx.operations.push_back( proxy );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
