@@ -8,7 +8,7 @@ endif()
 
 file(GLOB UNIT_TESTS "tests/*.cpp")
 add_executable( chain_test ${UNIT_TESTS} ${COMMON_SOURCES} )
-target_link_libraries( chain_test graphene_db2 steemit_chain steemit_protocol steemit_app steemit_account_history steemit_market_history steemit_debug_node fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( chain_test chainbase steemit_chain steemit_protocol steemit_app steemit_account_history steemit_market_history steemit_debug_node fc ${PLATFORM_SPECIFIC_LIBS} )
 
 file(GLOB PLUGIN_TESTS "plugin_tests/*.cpp")
 add_executable( plugin_test ${PLUGIN_TESTS} ${COMMON_SOURCES} )
@@ -17,8 +17,5 @@ target_link_libraries( plugin_test steemit_chain steemit_protocol steemit_app st
 if(MSVC)
   set_source_files_properties( tests/serialization_tests.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
-
-add_executable( database_tests tests/database_tests.cpp tests/main.cpp )
-target_link_libraries( database_tests graphene_db2 fc ${PLATFORM_SPECIFIC_LIBS} )
 
 #add_subdirectory( generate_empty_blocks )
