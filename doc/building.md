@@ -44,7 +44,11 @@ will build out of the box without further effort:
         git \
         libssl-dev \
         libtool \
-        make
+        make \
+        zlib1g \
+        zlib1g-dev \
+        libbz2-1.0 \
+        libbz2-dev
 
     # Boost packages (also required)
     sudo apt-get install -y \
@@ -92,7 +96,11 @@ Here are the required packages:
         git \
         libssl-dev \
         libtool \
-        make
+        make \
+        zlib1g \
+        zlib1g-dev \
+        libbz2-1.0 \
+        libbz2-dev
 
     # Packages required to build Boost
     sudo apt-get install -y \
