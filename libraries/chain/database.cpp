@@ -2101,25 +2101,46 @@ void database::process_funds()
 {
    const auto& props = get_dynamic_global_properties();
 
-   auto content_reward = get_content_reward();
-   auto curate_reward = get_curation_reward();
-   auto witness_pay = get_producer_reward();
-   auto vesting_reward = content_reward + curate_reward + witness_pay;
+   if( has_hardfork( STEEMIT_HARDFORK_0_16 ) ) {
+      /// 9.5% instantanious inflation rate
+      auto new_steem = (props.virtual_supply.amount * 95) / (1000 * STEEMIT_BLOCKS_PER_DAY *365);
+      auto content_reward = (new_steem * 75)/100; /// 75% to content creator
+      auto vesting_reward = (new_steem * 15)/100; /// 15% to content creator
+      auto witness_reward = new_steem - content_reward - vesting_reward;
 
-   content_reward = content_reward + curate_reward;
+      modify( props, [&]( dynamic_global_property_object& p ){
+          p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
+          p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
+          p.current_supply           += asset( new_steem, STEEM_SYMBOL );
+          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
+      });
 
-   if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
-      vesting_reward.amount = 0;
-   else
-      vesting_reward.amount.value *= 9;
+      const auto& cw = get_account( props.current_witness );
+      modify( cw, [&]( account_object& w ) {
+         w.balance += asset( witness_reward, STEEM_SYMBOL );
+      });
+   }
+   else {
+      auto content_reward = get_content_reward();
+      auto curate_reward = get_curation_reward();
+      auto witness_pay = get_producer_reward();
+      auto vesting_reward = content_reward + curate_reward + witness_pay;
 
-   modify( props, [&]( dynamic_global_property_object& p )
-   {
-       p.total_vesting_fund_steem += vesting_reward;
-       p.total_reward_fund_steem  += content_reward;
-       p.current_supply += content_reward + witness_pay + vesting_reward;
-       p.virtual_supply += content_reward + witness_pay + vesting_reward;
-   } );
+      content_reward = content_reward + curate_reward;
+
+      if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
+         vesting_reward.amount = 0;
+      else
+         vesting_reward.amount.value *= 9;
+
+      modify( props, [&]( dynamic_global_property_object& p )
+      {
+          p.total_vesting_fund_steem += vesting_reward;
+          p.total_reward_fund_steem  += content_reward;
+          p.current_supply += content_reward + witness_pay + vesting_reward;
+          p.virtual_supply += content_reward + witness_pay + vesting_reward;
+      } );
+   }
 }
 
 void database::process_savings_withdraws()
@@ -3012,7 +3033,11 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         if( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+         int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
+         if( has_hardfork( STEEMIT_HARDFORK_0_16 ) )
+            steemit_feed_history_window /= 2;
+
+         while( fho.price_history.size() > steemit_feed_history_window )
             fho.price_history.pop_front();
 
          if( fho.price_history.size() )
@@ -3023,7 +3048,7 @@ try {
                copy.push_back( i );
             }
 
-            std::sort( copy.begin(), copy.end() ); /// todo: use nth_item
+            std::sort( copy.begin(), copy.end() ); /// TODO: use nth_item
             fho.current_median_history = copy[copy.size()/2];
 
 #ifdef IS_TEST_NET
@@ -3779,6 +3804,10 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_15 == 15, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_15 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_15_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_15 ] = STEEMIT_HARDFORK_0_15_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_16 == 16, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_16 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_16_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_16 ] = STEEMIT_HARDFORK_0_16_VERSION;
+
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
