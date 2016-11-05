@@ -1080,6 +1080,8 @@ void database::update_witness_schedule4()
    /// Add the highest voted witnesses
    flat_set< witness_id_type > selected_voted;
    selected_voted.reserve( STEEMIT_MAX_VOTED_WITNESSES );
+
+   share_type vote_threshold = 0;
    const auto& widx         = get_index<witness_index>().indices().get<by_vote_name>();
    for( auto itr = widx.begin();
         itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
@@ -1089,6 +1091,7 @@ void database::update_witness_schedule4()
          continue;
       selected_voted.insert( itr->id );
       active_witnesses.push_back( itr->owner) ;
+      vote_threshold = itr->votes;
    }
 
    /// Add miners from the top of the mining queue
@@ -1246,6 +1249,8 @@ void database::update_witness_schedule4()
 
    modify( wso, [&]( witness_schedule_object& _wso )
    {
+      _wso.vote_threshold = vote_threshold;
+      
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
       for( int i = 0; i < active_witnesses.size(); i++ )
       {
@@ -2106,7 +2111,18 @@ void database::process_funds()
       auto new_steem = (props.virtual_supply.amount * 95) / (1000 * STEEMIT_BLOCKS_PER_DAY *365);
       auto content_reward = (new_steem * 75)/100; /// 75% to content creator
       auto vesting_reward = (new_steem * 15)/100; /// 15% to content creator
+
       auto witness_reward = new_steem - content_reward - vesting_reward;
+
+      const auto& cwit = get_witness( props.current_witness );
+      const witness_schedule_object& wso = get_witness_schedule_object();
+
+      if( wso.vote_threshold <= cwit.votes ) {
+         witness_reward = (5 * witness_reward * 19) / 29;
+      } else {
+         witness_reward = (1 * witness_reward * 19) / 29;
+      }
+      new_steem = content_reward + vesting_reward + witness_reward;
 
       modify( props, [&]( dynamic_global_property_object& p ){
           p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
@@ -2115,8 +2131,8 @@ void database::process_funds()
           p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      const auto& cw = get_account( props.current_witness );
-      modify( cw, [&]( account_object& w ) {
+      const auto& cwa = get_account( props.current_witness );
+      modify( cwa, [&]( account_object& w ) {
          w.balance += asset( witness_reward, STEEM_SYMBOL );
       });
    }

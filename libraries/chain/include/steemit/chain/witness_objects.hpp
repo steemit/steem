@@ -144,6 +144,7 @@ namespace steemit { namespace chain {
          uint8_t                                                           num_scheduled_witnesses = 1;
          chain_properties                                                  median_props;
          version                                                           majority_version;
+         share_type                                                        vote_threshold; ///< threshold for top 19
    };
 
 
@@ -233,6 +234,6 @@ CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::w
 
 FC_REFLECT( steemit::chain::witness_schedule_object,
              (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)(median_props)
-             (majority_version)
+             (majority_version)(vote_threshold)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )
