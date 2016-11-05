@@ -1546,12 +1546,14 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
       });
    }
 
-   /// pay the witness that includes this POW
-   asset inc_reward = db.get_pow_reward();
-   db.adjust_supply( inc_reward, true );
+   if( !db.has_hardfork( STEEMIT_HARDFORK_0_16 ) ) {
+      /// pay the witness that includes this POW
+      asset inc_reward = db.get_pow_reward();
+      db.adjust_supply( inc_reward, true );
 
-   const auto& inc_witness = db.get_account( dgp.current_witness );
-   db.create_vesting( inc_witness, inc_reward );
+      const auto& inc_witness = db.get_account( dgp.current_witness );
+      db.create_vesting( inc_witness, inc_reward );
+   }
 }
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
