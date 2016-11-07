@@ -1250,7 +1250,7 @@ void database::update_witness_schedule4()
    modify( wso, [&]( witness_schedule_object& _wso )
    {
       _wso.vote_threshold = vote_threshold;
-      
+
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
       for( int i = 0; i < active_witnesses.size(); i++ )
       {
@@ -2106,7 +2106,7 @@ void database::process_funds()
 {
    const auto& props = get_dynamic_global_properties();
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_16 ) ) {
+   if( has_hardfork( STEEMIT_HARDFORK_0_16__551) ) {
       /// 9.5% instantanious inflation rate
       auto new_steem = (props.virtual_supply.amount * 95) / (1000 * STEEMIT_BLOCKS_PER_DAY *365);
       auto content_reward = (new_steem * 75)/100; /// 75% to content creator
@@ -3050,7 +3050,7 @@ try {
       {
          fho.price_history.push_back( median_feed );
          int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
-         if( has_hardfork( STEEMIT_HARDFORK_0_16 ) )
+         if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
             steemit_feed_history_window /= 2;
 
          while( fho.price_history.size() > steemit_feed_history_window )
@@ -4070,9 +4070,14 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
-       case  STEEMIT_HARDFORK_0_15:
+      case  STEEMIT_HARDFORK_0_15:
 #ifndef IS_TEST_NET
          elog( "HARDFORK 15 at block ${b}", ("b", head_block_num()) );
+#endif
+         break;
+      case STEEMIT_HARDFORK_0_16:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 16 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
       default:

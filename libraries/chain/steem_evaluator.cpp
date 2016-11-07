@@ -789,7 +789,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    else
    {
       int vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS;
-      if( db().has_hardfork( STEEMIT_HARDFORK_0_16 ) )
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_16__551) )
          vesting_withdraw_intervals = 13; /// 13 weeks = 1 quarter of a year
 
       db().modify( account, [&]( account_object& a )
@@ -1546,7 +1546,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
       });
    }
 
-   if( !db.has_hardfork( STEEMIT_HARDFORK_0_16 ) ) {
+   if( !db.has_hardfork( STEEMIT_HARDFORK_0_16__551) ) {
       /// pay the witness that includes this POW
       asset inc_reward = db.get_pow_reward();
       db.adjust_supply( inc_reward, true );
@@ -1576,7 +1576,7 @@ void convert_evaluator::do_apply( const convert_operation& o )
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed" );
 
   auto steemit_conversion_delay = STEEMIT_CONVERSION_DELAY;
-  if( db().has_hardfork( STEEMIT_HARDFORK_0_16 ) )
+  if( db().has_hardfork( STEEMIT_HARDFORK_0_16__551) )
      steemit_conversion_delay = fc::microseconds( STEEMIT_CONVERSION_DELAY.count()/2 );
 
   db().create<convert_request_object>( [&]( convert_request_object& obj )
@@ -1584,7 +1584,7 @@ void convert_evaluator::do_apply( const convert_operation& o )
       obj.owner           = o.owner;
       obj.requestid       = o.requestid;
       obj.amount          = o.amount;
-      obj.conversion_date = db().head_block_time() + steemit_conversion_delay; 
+      obj.conversion_date = db().head_block_time() + steemit_conversion_delay;
   });
 
 }
