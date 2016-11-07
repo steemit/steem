@@ -97,7 +97,7 @@ namespace steemit { namespace app {
       set<string>                             witness_votes;
 
       optional<map<uint32_t,extended_limit_order>> open_orders;
-      optional<vector<string>>                posts; /// permlinks for this user
+      optional<vector<string>>                comments; /// permlinks for this user
       optional<vector<string>>                blog; /// blog posts for this user
       optional<vector<string>>                feed; /// feed posts for this user
       optional<vector<string>>                recent_replies; /// blog posts for this user
@@ -179,7 +179,7 @@ namespace steemit { namespace app {
 FC_REFLECT_DERIVED( steemit::app::extended_account,
                    (steemit::app::account_api_obj),
                    (vesting_balance)(reputation)
-                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(posts)(feed)(blog)(recent_replies)(blog_category)(recommended) )
+                   (transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(open_orders)(comments)(feed)(blog)(recent_replies)(blog_category)(recommended) )
 
 
 FC_REFLECT( steemit::app::vote_state, (voter)(weight)(rshares)(percent)(reputation)(time) );
