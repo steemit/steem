@@ -965,6 +965,9 @@ void database_api::set_pending_payout( discussion& d )const
       }
    }
 
+   if( d.parent_author != STEEMIT_ROOT_POST_PARENT )
+      d.cashout_time = my->_db.calculate_discussion_payout_time( my->_db.get< comment_object >( d.id ) );
+
    if( d.body.size() > 1024*128 )
       d.body = "body pruned due to size";
    if( d.parent_author.size() > 0 && d.body.size() > 1024*16 )
