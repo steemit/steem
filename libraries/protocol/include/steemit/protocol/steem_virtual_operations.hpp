@@ -136,6 +136,15 @@ namespace steemit { namespace protocol {
       uint32_t         hardfork_id = 0;
    };
 
+   struct comment_payout_update_operation : public virtual_operation
+   {
+      comment_payout_update_operation() {}
+      comment_payout_update_operation( const account_name_type& a, const string& p ) : author( a ), permlink( p ) {}
+
+      account_name_type author;
+      string            permlink;
+   };
+
 } } //steemit::protocol
 
 FC_REFLECT( steemit::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
@@ -149,3 +158,4 @@ FC_REFLECT( steemit::protocol::shutdown_witness_operation, (owner) )
 FC_REFLECT( steemit::protocol::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) )
 FC_REFLECT( steemit::protocol::fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )
 FC_REFLECT( steemit::protocol::hardfork_operation, (hardfork_id) )
+FC_REFLECT( steemit::protocol::comment_payout_update_operation, (author)(permlink) )
