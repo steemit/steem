@@ -1081,7 +1081,6 @@ void database::update_witness_schedule4()
    flat_set< witness_id_type > selected_voted;
    selected_voted.reserve( STEEMIT_MAX_VOTED_WITNESSES );
 
-   share_type vote_threshold = 0;
    const auto& widx         = get_index<witness_index>().indices().get<by_vote_name>();
    for( auto itr = widx.begin();
         itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
@@ -1091,7 +1090,7 @@ void database::update_witness_schedule4()
          continue;
       selected_voted.insert( itr->id );
       active_witnesses.push_back( itr->owner) ;
-      vote_threshold = itr->votes;
+      modify( *itr, [&]( witness_object& wo ) { wo.top = true; } );
    }
 
    /// Add miners from the top of the mining queue
@@ -1110,6 +1109,7 @@ void database::update_witness_schedule4()
          {
             selected_miners.insert(mitr->id);
             active_witnesses.push_back(mitr->owner);
+            modify( *mitr, [&]( witness_object& wo ) { wo.top = false; } );
          }
       }
       // Remove processed miner from the queue
@@ -1145,6 +1145,7 @@ void database::update_witness_schedule4()
           && selected_voted.find(sitr->id) == selected_voted.end() )
       {
          active_witnesses.push_back(sitr->owner);
+         modify( *sitr, [&]( witness_object& wo ) { wo.top = false; } );
          ++witness_count;
       }
    }
@@ -1249,8 +1250,6 @@ void database::update_witness_schedule4()
 
    modify( wso, [&]( witness_schedule_object& _wso )
    {
-      _wso.vote_threshold = vote_threshold;
-
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
       for( int i = 0; i < active_witnesses.size(); i++ )
       {
@@ -2117,10 +2116,10 @@ void database::process_funds()
       const auto& cwit = get_witness( props.current_witness );
       const witness_schedule_object& wso = get_witness_schedule_object();
 
-      if( wso.vote_threshold <= cwit.votes ) {
-         witness_reward = (5 * witness_reward * 19) / 29;
-      } else {
+      if( cwit.top ) {
          witness_reward = (1 * witness_reward * 19) / 29;
+      } else {
+         witness_reward = (5 * witness_reward * 19) / 29;
       }
       new_steem = content_reward + vesting_reward + witness_reward;
 
