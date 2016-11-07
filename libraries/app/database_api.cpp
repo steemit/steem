@@ -1660,14 +1660,14 @@ state database_api::get_state( string path )const
          int count = 0;
          const auto& pidx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
          auto itr = pidx.lower_bound( acnt );
-         eacnt.posts = vector<string>();
+         eacnt.comments = vector<string>();
 
          while( itr != pidx.end() && itr->author == acnt && count < 20 )
          {
             if( itr->parent_author.size() )
             {
                const auto link = acnt + "/" + to_string( itr->permlink );
-               eacnt.posts->push_back( link );
+               eacnt.comments->push_back( link );
                _state.content[ link ] = *itr;
                set_pending_payout( _state.content[ link ] );
                ++count;
