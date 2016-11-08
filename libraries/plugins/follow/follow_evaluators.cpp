@@ -72,7 +72,10 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
    {
       auto& db = _plugin->database();
       const auto& c = db.get_comment( o.author, o.permlink );
+
       FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
+
+      _plugin->takedown( c );
 
       const auto& reblog_account = db.get_account( o.account );
       const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
