@@ -67,6 +67,7 @@ namespace steemit { namespace chain {
           *  else takes turns being scheduled proportional to their votes.
           */
          share_type        votes;
+         bool              top = false; /// true if witness is in top 19
 
          /**
           * These fields are used for the witness scheduling algorithm which uses
@@ -144,7 +145,6 @@ namespace steemit { namespace chain {
          uint8_t                                                           num_scheduled_witnesses = 1;
          chain_properties                                                  median_props;
          version                                                           majority_version;
-         share_type                                                        vote_threshold; ///< threshold for top 19
    };
 
 
@@ -219,7 +219,7 @@ FC_REFLECT( steemit::chain::witness_object,
              (id)
              (owner)
              (created)
-             (url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
+             (url)(votes)(top)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
              (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
              (props)
              (sbd_exchange_rate)(last_sbd_exchange_update)
@@ -234,6 +234,6 @@ CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::w
 
 FC_REFLECT( steemit::chain::witness_schedule_object,
              (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)(median_props)
-             (majority_version)(vote_threshold)
+             (majority_version)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )

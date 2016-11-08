@@ -2560,6 +2560,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
          last_print_rate = gpo.sbd_print_rate;
          db_plugin->debug_generate_blocks( debug_key, 1, ~0 );
+         validate_database();
       }
 
       validate_database();
