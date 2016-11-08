@@ -418,6 +418,24 @@ void database_fixture::vest( const string& from, const share_type& amount )
    } FC_CAPTURE_AND_RETHROW( (from)(amount) )
 }
 
+void database_fixture::vest( const string& account, const asset& amount )
+{
+   if( amount.symbol != STEEM_SYMBOL )
+      return;
+
+   db_plugin->debug_update( [=]( database& db )
+   {
+      db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+      {
+         gpo.current_supply += amount;
+      });
+
+      auto new_vesting = db.create_vesting( db.get_account( account ), amount );
+
+      db.update_virtual_supply();
+   }, default_skip );
+}
+
 void database_fixture::proxy( const string& account, const string& proxy )
 {
    try

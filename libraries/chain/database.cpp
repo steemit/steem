@@ -2106,37 +2106,32 @@ void database::process_funds()
 {
    const auto& props = get_dynamic_global_properties();
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_16__551) ) {
+   if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
+   {
       /// 9.5% instantanious inflation rate
-      auto new_steem = (props.virtual_supply.amount * 95) / (1000 * STEEMIT_BLOCKS_PER_DAY *365);
-      auto content_reward = (new_steem * 75)/100; /// 75% to content creator
-      auto vesting_reward = (new_steem * 15)/100; /// 15% to content creator
+      auto new_steem = ( props.virtual_supply.amount * STEEMIT_INFLATION_RATE_PERCENT )
+         / ( STEEMIT_100_PERCENT * STEEMIT_BLOCKS_PER_YEAR );
+      auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / 100; /// 75% to content creator
+      auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / 100; /// 15% to content creator
+      auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
 
-      auto witness_reward = new_steem - content_reward - vesting_reward;
-
-      const auto& cwit = get_witness( props.current_witness );
-      const witness_schedule_object& wso = get_witness_schedule_object();
-
-      if( wso.vote_threshold <= cwit.votes ) {
-         witness_reward = (5 * witness_reward * 19) / 29;
-      } else {
-         witness_reward = (1 * witness_reward * 19) / 29;
-      }
       new_steem = content_reward + vesting_reward + witness_reward;
 
-      modify( props, [&]( dynamic_global_property_object& p ){
+      modify( props, [&]( dynamic_global_property_object& p )
+      {
           p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
           p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
           p.current_supply           += asset( new_steem, STEEM_SYMBOL );
           p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      const auto& cwa = get_account( props.current_witness );
-      modify( cwa, [&]( account_object& w ) {
+      modify( get_account( props.current_witness ), [&]( account_object& w )
+      {
          w.balance += asset( witness_reward, STEEM_SYMBOL );
       });
    }
-   else {
+   else
+   {
       auto content_reward = get_content_reward();
       auto curate_reward = get_curation_reward();
       auto witness_pay = get_producer_reward();
@@ -3049,11 +3044,11 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
+         int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
          if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
-            steemit_feed_history_window /= 2;
+            steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
 
-         while( fho.price_history.size() > steemit_feed_history_window )
+         if( fho.price_history.size() > steemit_feed_history_window )
             fho.price_history.pop_front();
 
          if( fho.price_history.size() )
@@ -4079,6 +4074,11 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
          elog( "HARDFORK 16 at block ${b}", ("b", head_block_num()) );
 #endif
+         modify( get_feed_history(), [&]( feed_history_object& fho )
+         {
+            while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+               fho.price_history.pop_front();
+         });
          break;
       default:
          break;

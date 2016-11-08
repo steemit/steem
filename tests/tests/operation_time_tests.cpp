@@ -851,6 +851,7 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
 
       auto next_withdrawal = db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS;
       asset vesting_shares = new_alice.vesting_shares;
+      asset to_withdraw = op.vesting_shares;
       asset original_vesting = vesting_shares;
       asset withdraw_rate = new_alice.vesting_withdraw_rate;
 
@@ -907,11 +908,12 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          old_next_vesting = alice.next_vesting_withdrawal;
       }
 
-      if (  original_vesting.amount.value % withdraw_rate.amount.value != 0 )
+      if (  to_withdraw.amount.value % withdraw_rate.amount.value != 0 )
       {
          BOOST_TEST_MESSAGE( "Generating one more block to take care of remainder" );
          generate_blocks( db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
          fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
+         gpo = db.get_dynamic_global_properties();
 
          BOOST_REQUIRE( db.get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == ( old_next_vesting + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );
          BOOST_REQUIRE( fill_op.from_account == "alice" );
@@ -920,12 +922,13 @@ BOOST_AUTO_TEST_CASE( vesting_withdrawals )
          BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          generate_blocks( db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS, true );
+         gpo = db.get_dynamic_global_properties();
          fill_op = get_last_operations( 1 )[0].get< fill_vesting_withdraw_operation >();
 
-         BOOST_REQUIRE( db.get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == ( old_next_vesting + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS ).sec_since_epoch() );
+         BOOST_REQUIRE( db.get_account( "alice" ).next_vesting_withdrawal.sec_since_epoch() == fc::time_point_sec::maximum().sec_since_epoch() );
          BOOST_REQUIRE( fill_op.to_account == "alice" );
          BOOST_REQUIRE( fill_op.from_account == "alice" );
-         BOOST_REQUIRE( fill_op.withdrawn.amount.value == original_vesting.amount.value % withdraw_rate.amount.value );
+         BOOST_REQUIRE( fill_op.withdrawn.amount.value == to_withdraw.amount.value % withdraw_rate.amount.value );
          BOOST_REQUIRE( std::abs( ( fill_op.deposited - fill_op.withdrawn * gpo.get_vesting_share_price() ).amount.value ) <= 1 );
 
          validate_database();
@@ -1168,6 +1171,8 @@ BOOST_AUTO_TEST_CASE( convert_delay )
    try
    {
       ACTORS( (alice) )
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
 
       set_price_feed( price( asset::from_string( "1.250 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
 
@@ -1433,6 +1438,9 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
    try
    {
       ACTORS( (alice)(bob) )
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( "bob", ASSET( "10.000 TESTS" ) );
 
       set_price_feed( price( asset::from_string( "1.000 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
 
@@ -1537,6 +1545,11 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       db.liquidity_rewards_enabled = false;
 
       ACTORS( (alice)(bob)(sam)(dave) )
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( "bob", ASSET( "10.000 TESTS" ) );
+      vest( "sam", ASSET( "10.000 TESTS" ) );
+      vest( "dave", ASSET( "10.000 TESTS" ) );
 
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 
@@ -2419,7 +2432,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
    {
-      resize_shared_mem( 1024 * 1024 * 128 ); // Due to number of blocks in the test, it requires a large file. (128 MB)
+      resize_shared_mem( 1024 * 1024 * 32 ); // Due to number of blocks in the test, it requires a large file. (32 MB)
 
       // Using the debug node plugin to manually set account balances to create required market conditions for this test
       auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
@@ -2476,7 +2489,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       BOOST_TEST_MESSAGE( "Changing sam and gpo to set up market cap conditions" );
 
-      asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT )  ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
+      asset sbd_balance = asset( ( gpo.virtual_supply.amount * ( STEEMIT_SBD_STOP_PERCENT + 30 ) ) / STEEMIT_100_PERCENT, STEEM_SYMBOL ) * exchange_rate;
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_account( "sam" ), [&]( account_object& a )
@@ -2494,8 +2507,6 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          });
       }, database::skip_witness_signature );
 
-      ilog( "" );
-
       validate_database();
 
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
@@ -2505,7 +2516,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       auto sbd_reward = ( comment_reward * gpo.sbd_print_rate ) / STEEMIT_100_PERCENT;
       auto steem_reward = comment_reward - sbd_reward;
       auto alice_sbd = db.get_account( "alice" ).sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
-      auto alice_steem = db.get_account( "alice" ).balance + asset( steem_reward, STEEM_SYMBOL );
+      auto alice_steem = db.get_account( "alice" ).balance;
 
       BOOST_TEST_MESSAGE( "Checking printing SBD has slowed" );
       BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
@@ -2516,7 +2527,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       validate_database();
 
       BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd );
-      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_steem );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance > alice_steem );
 
       BOOST_TEST_MESSAGE( "Letting percent market cap fall to 2% to verify printing of SBD turns back on" );
 
@@ -2525,7 +2536,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_account( "sam" ), [&]( account_object& a )
          {
-            a.sbd_balance = asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+            a.sbd_balance = asset( ( 2 * sbd_balance.amount ) / 5, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
@@ -2533,7 +2544,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( 3 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+            gpo.current_sbd_supply = alice_sbd + asset( ( 2 * sbd_balance.amount ) / 5, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
@@ -2548,9 +2559,10 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          auto& gpo = db.get_dynamic_global_properties();
          BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
          last_print_rate = gpo.sbd_print_rate;
-         db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
-         validate_database();
+         db_plugin->debug_generate_blocks( debug_key, 1, ~0 );
       }
+
+      validate_database();
 
       BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate == STEEMIT_100_PERCENT );
    }
@@ -2562,6 +2574,8 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
    try
    {
       ACTORS( (alice) );
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
 
       price exchange_rate( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) );
       set_price_feed( exchange_rate );

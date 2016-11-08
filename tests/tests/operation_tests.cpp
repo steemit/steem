@@ -643,7 +643,14 @@ BOOST_AUTO_TEST_CASE( vote_apply )
       BOOST_TEST_MESSAGE( "Testing: vote_apply" );
 
       ACTORS( (alice)(bob)(sam)(dave) )
-      generate_blocks( 60 / STEEMIT_BLOCK_INTERVAL );
+      generate_block();
+
+      vest( "alice", ASSET( "10.000 TESTS" ) );
+      validate_database();
+      vest( "bob" , ASSET( "10.000 TESTS" ) );
+      vest( "sam" , ASSET( "10.000 TESTS" ) );
+      vest( "dave" , ASSET( "10.000 TESTS" ) );
+      generate_block();
 
       const auto& vote_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
 
@@ -1314,10 +1321,13 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       BOOST_TEST_MESSAGE( "Testing: withdraw_vesting_apply" );
 
       ACTORS( (alice) )
-      fund( "alice", 10000 );
-      vest( "alice", 10000 );
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
 
       BOOST_TEST_MESSAGE( "--- Test withdraw of existing VESTS" );
+
+      {
+      const auto& alice = db.get_account( "alice" );
 
       withdraw_vesting_operation op;
       op.account = "alice";
@@ -1332,7 +1342,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / 208 ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEMIT_VESTING_WITHDRAW_INTERVALS * 2 ) ).value );
       BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
@@ -1348,7 +1358,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       db.push_transaction( tx, 0 );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / 312 ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEMIT_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
       BOOST_REQUIRE( alice.to_withdraw.value == op.vesting_shares.amount.value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
@@ -1365,11 +1375,11 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( alice.vesting_shares.amount.value == old_vesting_shares.amount.value );
-      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / 312 ).value );
+      BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == ( old_vesting_shares.amount / ( STEEMIT_VESTING_WITHDRAW_INTERVALS * 3 ) ).value );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == db.head_block_time() + STEEMIT_VESTING_WITHDRAW_INTERVAL_SECONDS );
       validate_database();
 
-      BOOST_TEST_MESSAGE( "--- Test withdrawing 0 to resent vesting withdraw" );
+      BOOST_TEST_MESSAGE( "--- Test withdrawing 0 to reset vesting withdraw" );
       tx.operations.clear();
       tx.signatures.clear();
 
@@ -1383,6 +1393,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == 0 );
       BOOST_REQUIRE( alice.to_withdraw.value == 0 );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
+      }
    }
    FC_LOG_AND_RETHROW()
 }
@@ -5587,6 +5598,9 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       BOOST_TEST_MESSAGE( "Testing: decline_voting_rights_apply" );
 
       ACTORS( (alice)(bob) );
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( "bob", ASSET( "10.000 TESTS" ) );
       generate_block();
 
       account_witness_proxy_operation proxy;
