@@ -1393,7 +1393,46 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == 0 );
       BOOST_REQUIRE( alice.to_withdraw.value == 0 );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
+
+
+      BOOST_TEST_MESSAGE( "--- Test cancelling a withdraw when below the account creation fee" );
+      op.vesting_shares = alice.vesting_shares;
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_block();
       }
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto& wso = db.get_witness_schedule_object();
+
+         db.modify( wso, [&]( witness_schedule_object& w )
+         {
+            w.median_props.account_creation_fee = ASSET( "10.000 TESTS" );
+         });
+
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply += wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" ) - gpo.total_vesting_fund_steem;
+            gpo.total_vesting_fund_steem = wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" );
+         });
+
+         db.update_virtual_supply();
+      }, database::skip_witness_signature );
+
+      withdraw_vesting_operation op;
+      signed_transaction tx;
+      op.account = "alice";
+      op.vesting_shares = ASSET( "0.000000 VESTS" );
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).vesting_withdraw_rate == ASSET( "0.000000 VESTS" ) );
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
