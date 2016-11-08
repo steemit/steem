@@ -75,8 +75,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
-      _plugin->takedown( c );
-
       const auto& reblog_account = db.get_account( o.account );
       const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
       const auto& blog_comment_idx = db.get_index< blog_index >().indices().get< by_comment >();
@@ -99,6 +97,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          b.reblogged_on = db.head_block_time();
          b.blog_feed_id = next_blog_id;
       });
+
+      _plugin->takedown( c, o.account );
 
       const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();

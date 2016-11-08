@@ -259,7 +259,7 @@ struct post_operation_visitor
                old_blog = old_blog_idx.lower_bound( author_id );
             }
          }
-         _plugin.takedown( c );
+         _plugin.takedown( c, c.author );
       }
       FC_LOG_AND_RETHROW()
    }
@@ -384,16 +384,25 @@ void follow_plugin::plugin_startup()
 {
    app().register_api_factory<follow_api>("follow_api");
 }
-void follow_plugin::takedown( const steemit::chain::comment_object& c ) {
+
+void follow_plugin::takedown( const steemit::chain::comment_object& c, const steemit::protocol::account_name_type& reporter )
+{
    auto& db = database();
-   if( my->_dmca_authority.find(c.author) != my->_dmca_authority.end() ) {
-      if( c.parent_permlink == "dcma-takedown" && c.parent_author == steemit::protocol::account_name_type() ) {
-         auto td = fc::json::from_string( c.json_metadata.c_str() ).as<dcma_takedown>();
-         for( const auto& ap : td.author_permlinks ) {
+
+   if( my->_dmca_authority.find( reporter ) != my->_dmca_authority.end() )
+   {
+      if( c.parent_permlink == "dcma-takedown" && c.parent_author == steemit::protocol::account_name_type() )
+      {
+         auto td = fc::json::from_string( c.json_metadata.c_str() ).as< dcma_takedown >();
+
+         for( const auto& ap : td.author_permlinks )
+         {
             const auto* tdc = db.find_comment( ap.first, ap.second );
-            if( tdc ) {
-               db.modify( *tdc, [&]( comment_object& co ) {
-                  from_string( co.body, std::string( "Content removed due to a [DCMA takedown request.](/dcma-takedown/@"+std::string(c.author)+"/"+std::string(c.permlink.c_str()) ) );
+            if( tdc )
+            {
+               db.modify( *tdc, [&]( comment_object& co )
+               {
+                  from_string( co.body, std::string( "Content removed due to a [DCMA takedown request.](/dcma-takedown/@" + std::string( c.author ) + "/" + std::string( c.permlink.c_str() ) ) );
                });
             }
          }

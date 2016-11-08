@@ -33,7 +33,7 @@ class follow_plugin : public steemit::app::plugin
       std::unique_ptr<detail::follow_plugin_impl> my;
       uint32_t max_feed_size = 500;
 
-      void takedown( const steemit::chain::comment_object& c );
+      void takedown( const steemit::chain::comment_object& c, const steemit::protocol::account_name_type& reporter );
 };
 
 } } //steemit::follow
