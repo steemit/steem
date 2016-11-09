@@ -64,7 +64,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 
    if ( db().has_hardfork( STEEMIT_HARDFORK_0_1 ) )
    {
-      FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "url is too long" );
+      FC_ASSERT( o.url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "URL is too long" );
    }
    else if( o.url.size() > STEEMIT_MAX_WITNESS_URL_LENGTH )
    {
@@ -362,7 +362,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
          FC_ASSERT( parent->root_comment( db() ).allow_replies, "Comment has disabled replies." );
          if( db().has_hardfork( STEEMIT_HARDFORK_0_12__177) )
-            FC_ASSERT( db().calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "discussion is frozen" );
+            FC_ASSERT( db().calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "Discussion is frozen" );
       }
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
@@ -490,7 +490,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       const auto& comment = *itr;
 
       if( db().has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
-         FC_ASSERT( comment.mode != archived, "comment is archived" );
+         FC_ASSERT( comment.mode != archived, "The comment is archived" );
       else if( db().has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min(), "Can only edit during the first 24 hours" );
 
@@ -771,7 +771,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
       min_vests.amount.value *= 10;
 
       FC_ASSERT( account.vesting_shares > min_vests,
-                 "Account registered by another account requires 10x account creation fee worth of Steem Power before it can power down" );
+                 "Account registered by another account requires 10x account creation fee worth of Steem Power before it can powered down" );
    }
 
    if( o.vesting_shares.amount == 0 )
@@ -928,7 +928,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    auto itr = by_account_witness_idx.find( boost::make_tuple( voter.id, witness.id ) );
 
    if( itr == by_account_witness_idx.end() ) {
-      FC_ASSERT( o.approve, "vote doesn't exist, user must be indicate a desire to approve witness" );
+      FC_ASSERT( o.approve, "vote doesn't exist, user must indicate a desire to approve witness" );
 
       if ( db().has_hardfork( STEEMIT_HARDFORK_0_2 ) )
       {
@@ -962,7 +962,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
       });
 
    } else {
-      FC_ASSERT( !o.approve, "vote currently exists, user must be indicate a desire to reject witness" );
+      FC_ASSERT( !o.approve, "vote currently exists, user must indicate a desire to reject witness" );
 
       if (  db().has_hardfork( STEEMIT_HARDFORK_0_2 ) ) {
          if( db().has_hardfork( STEEMIT_HARDFORK_0_3 ) )
@@ -1049,18 +1049,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
    {
       used_power = (used_power + max_vote_denom - 1) / max_vote_denom;
    }
-   FC_ASSERT( used_power <= current_power, "Account does not have enough power for vote" );
+   FC_ASSERT( used_power <= current_power, "Account does not have enough power to vote" );
 
    int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( !db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
    if( db().has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
    {
-      FC_ASSERT( abs_rshares > 50000000 || o.weight == 0, "voting weight is too small, please accumulate more voting power or steem power" );
+      FC_ASSERT( abs_rshares > 50000000 || o.weight == 0, "Voting weight is too small, please accumulate more voting power or steem power" );
    }
    else if( db().has_hardfork( STEEMIT_HARDFORK_0_13__248 ) )
    {
-      FC_ASSERT( abs_rshares > 50000000 || abs_rshares == 1, "voting weight is too small, please accumulate more voting power or steem power" );
+      FC_ASSERT( abs_rshares > 50000000 || abs_rshares == 1, "Voting weight is too small, please accumulate more voting power or steem power" );
    }
 
 
@@ -1241,13 +1241,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
       FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Cannot change vote again" );
 
       if( db().is_producing() || db().has_hardfork( STEEMIT_HARDFORK_0_6__112 ) )
-         FC_ASSERT( itr->vote_percent != o.weight, "Changing your vote requires actually changing you vote." );
+         FC_ASSERT( itr->vote_percent != o.weight, "You have already voted in a similar way." );
 
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
       if( itr->rshares < rshares && db().has_hardfork( STEEMIT_HARDFORK_0_7 ) )
-         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase payout withing last minute before payout" );
+         FC_ASSERT( db().head_block_time() < db().calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase payout within last minute before payout" );
 
       db().modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;
@@ -1562,7 +1562,7 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 void convert_evaluator::do_apply( const convert_operation& o )
 {
   const auto& owner = db().get_account( o.owner );
-  FC_ASSERT( db().get_balance( owner, o.amount.symbol ) >= o.amount, "account does not sufficient balance" );
+  FC_ASSERT( db().get_balance( owner, o.amount.symbol ) >= o.amount, "account does not have sufficient balance" );
 
   db().adjust_balance( owner, -o.amount );
 
