@@ -1,5 +1,6 @@
 #include <steemit/protocol/steem_operations.hpp>
 
+#include <steemit/chain/confidential_objects.hpp>
 #include <steemit/chain/block_summary_object.hpp>
 #include <steemit/chain/compound.hpp>
 #include <steemit/chain/custom_operation_interpreter.hpp>
@@ -2524,6 +2525,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< decline_voting_rights_evaluator          >();
    _my->_evaluator_registry.register_evaluator< reset_account_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< set_reset_account_evaluator              >();
+   _my->_evaluator_registry.register_evaluator< transfer_to_blind_evaluator              >();
+   _my->_evaluator_registry.register_evaluator< blind_transfer_evaluator                 >();
 }
 
 void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
@@ -2569,6 +2572,7 @@ void database::initialize_indexes()
    add_index< savings_withdraw_index                  >();
    add_index< decline_voting_rights_request_index     >();
    add_index< block_stats_index                       >();
+   add_index< blind_balance_index                     >();
 
    _plugin_index_signal();
 }

@@ -3,6 +3,7 @@
 #include <steemit/protocol/operation_util.hpp>
 #include <steemit/protocol/steem_operations.hpp>
 #include <steemit/protocol/steem_virtual_operations.hpp>
+#include <steemit/protocol/steem_confidential.hpp>
 
 namespace steemit { namespace protocol {
 
@@ -58,6 +59,8 @@ namespace steemit { namespace protocol {
             decline_voting_rights_operation,
             reset_account_operation,
             set_reset_account_operation,
+            transfer_to_blind_operation,
+            blind_transfer_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,

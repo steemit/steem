@@ -15,6 +15,7 @@ namespace steemit { namespace chain {
 
 namespace bip = chainbase::bip;
 using namespace boost::multi_index;
+using chainbase::shared_multi_index_container;
 
 using boost::multi_index_container;
 
@@ -63,7 +64,8 @@ enum object_type
    escrow_object_type,
    savings_withdraw_object_type,
    decline_voting_rights_request_object_type,
-   block_stats_object_type
+   block_stats_object_type,
+   blind_balance_object_type
 };
 
 class dynamic_global_property_object;
@@ -220,6 +222,7 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
                  (savings_withdraw_object_type)
                  (decline_voting_rights_request_object_type)
                  (block_stats_object_type)
+                 (blind_balance_object_type)
                )
 
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )

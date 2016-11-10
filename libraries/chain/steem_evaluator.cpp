@@ -3,6 +3,7 @@
 #include <steemit/chain/custom_operation_interpreter.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/witness_objects.hpp>
+#include <steemit/chain/confidential_objects.hpp>
 
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
@@ -1920,5 +1921,44 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
        a.reset_account = op.reset_account;
    });
 }
+
+void transfer_to_blind_evaluator::do_apply( const transfer_to_blind_operation& op ) {
+   const auto& from = db().get_account( op.from );
+   FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount, "Insufficient Balance" );
+
+   db().adjust_balance( from, -op.amount );
+
+   for( const auto& out : op.outputs ) {
+      db().create<blind_balance_object>( [&]( blind_balance_object& bbo ) {
+           bbo.symbol     = op.amount.symbol;
+           bbo.owner      = out.owner;
+           bbo.commitment = out.commitment;
+      });
+   }
+}
+
+void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
+   const auto& from = db().get_account( op.from );
+   const auto& to   = db().get_account( op.to );
+
+   for( const auto& in : op.inputs ) {
+      const auto& bbi = db().get<blind_balance_object,by_commitment>( in );
+      FC_ASSERT( bbi.owner == op.from );
+      FC_ASSERT( bbi.symbol == op.to_public_amount.symbol );
+
+      db().remove( bbi );
+   }
+
+   for( const auto& out : op.outputs ) {
+      db().create<blind_balance_object>( [&]( blind_balance_object& bbo ) {
+           bbo.symbol     = op.to_public_amount.symbol;
+           bbo.owner      = out.owner;
+           bbo.commitment = out.commitment;
+      });
+   }
+
+   if( op.to_public_amount.amount > 0 )
+      db().adjust_balance( to, op.to_public_amount );
+};
 
 } } // steemit::chain
