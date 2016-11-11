@@ -2116,10 +2116,11 @@ void database::process_funds()
 
       const auto& cwit = get_witness( props.current_witness );
 
+      // This distribution averages out to witness_reward over a round (21 blocks)
       if( cwit.top )
-         witness_reward = (1 * witness_reward * 19) / 29;
+         witness_reward = ( witness_reward * 21 ) / 29;
       else
-         witness_reward = (5 * witness_reward * 19) / 29;
+         witness_reward = ( 5 * witness_reward * 19 ) / 29;
 
       new_steem = content_reward + vesting_reward + witness_reward;
 
