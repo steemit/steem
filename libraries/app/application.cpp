@@ -43,6 +43,7 @@
 #include <fc/rpc/api_connection.hpp>
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/network/resolve.hpp>
+#include <fc/string.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
@@ -239,6 +240,8 @@ namespace detail {
       void startup()
       { try {
          _max_block_age =_options->at("max-block-age").as<int32_t>();
+         _shared_file_size = fc::parse_size( _options->at( "shared-file-size" ).as< string >() );
+         ilog( "shared_file_size is ${n} bytes", ("n", _shared_file_size) );
          register_builtin_apis();
 
          if( _options->count("resync-blockchain") )
@@ -260,13 +263,13 @@ namespace detail {
          if( _options->count("replay-blockchain") )
          {
             ilog("Replaying blockchain on user request.");
-            _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
+            _chain_db->reindex( _data_dir / "blockchain", _shared_file_size );
          }
          else
          {
             try
             {
-               _chain_db->open(_data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
+               _chain_db->open(_data_dir / "blockchain", 0, _shared_file_size );
             }
             catch( fc::assert_exception& )
             {
@@ -274,12 +277,12 @@ namespace detail {
 
                try
                {
-                  _chain_db->reindex( _data_dir / "blockchain", _options->at( "shared-file-size" ).as< uint64_t >() );
+                  _chain_db->reindex( _data_dir / "blockchain", _shared_file_size );
                }
                catch( chain::block_log_exception& )
                {
                   wlog( "Error opening block log. Having to resync from network..." );
-                  _chain_db->open( _data_dir / "blockchain", 0, _options->at( "shared-file-size" ).as< uint64_t >() );
+                  _chain_db->open( _data_dir / "blockchain", 0, _shared_file_size );
                }
             }
          }
@@ -863,7 +866,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("shared-file-size", bpo::value<uint64_t>()->default_value(34359738368), "Size of the shared memory file. Default: 34359738368 (32GB)")
+         ("shared-file-size", bpo::value<string>()->default_value("32G"), "Size of the shared memory file. Default: 32G")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
