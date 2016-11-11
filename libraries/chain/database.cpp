@@ -91,38 +91,45 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t shared_file_size )
+void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags )
 {
    try
    {
       init_schema();
-      chainbase::database::open( data_dir, chainbase::database::read_write, shared_file_size );
+      chainbase::database::open( data_dir, chainbase_flags, shared_file_size );
 
-      with_write_lock( [&]()
+      initialize_indexes();
+      initialize_evaluators();
+
+      if( chainbase_flags & chainbase::database::read_write )
       {
-         initialize_indexes();
-         initialize_evaluators();
+         if( !find< dynamic_global_property_object >() )
+            with_write_lock( [&]()
+            {
+               init_genesis( initial_supply );
+            });
 
          _block_log.open( data_dir / "block_log" );
 
-         if( !find< dynamic_global_property_object >() )
-            init_genesis( initial_supply );
-
-         init_hardforks();
+         auto log_head = _block_log.head();
 
          // block_log.head must be in block stats
          // If it is not, print warning and exit
-         auto log_head = _block_log.head();
-
          if( log_head && head_block_num() )
             FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
                "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
 
          // Rewind all undo state. This should return us to the state at the last irreversible block.
-         undo_all();
-      });
-      if( head_block_num() )
-         _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
+         with_write_lock( [&]()
+         {
+            undo_all();
+         });
+
+         if( head_block_num() )
+            _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
+      }
+
+      init_hardforks();
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
 }
@@ -133,7 +140,7 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
    {
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, false );
-      open( data_dir, 0, shared_file_size );
+      open( data_dir, 0, shared_file_size, chainbase::database::read_write );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();

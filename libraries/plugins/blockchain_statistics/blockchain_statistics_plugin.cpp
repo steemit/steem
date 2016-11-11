@@ -379,6 +379,8 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
 
 void blockchain_statistics_plugin_impl::post_operation( const operation_notification& o )
 {
+   try
+   {
    auto& db = _self.database();
 
    for( auto bucket_id : _current_buckets )
@@ -394,6 +396,7 @@ void blockchain_statistics_plugin_impl::post_operation( const operation_notifica
       }
       o.op.visit( operation_process( _self, bucket ) );
    }
+   } FC_CAPTURE_AND_RETHROW()
 }
 
 } // detail

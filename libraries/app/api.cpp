@@ -127,14 +127,17 @@ namespace steemit { namespace app {
 
     bool network_broadcast_api::check_max_block_age( int32_t max_block_age )
     {
-       if( max_block_age < 0 )
-          return false;
+       return _app.chain_database()->with_read_lock( [&]()
+       {
+          if( max_block_age < 0 )
+             return false;
 
-       fc::time_point_sec now = graphene::time::now();
-       std::shared_ptr< database > db = _app.chain_database();
-       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+          fc::time_point_sec now = graphene::time::now();
+          std::shared_ptr< database > db = _app.chain_database();
+          const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
 
-       return ( dgpo.time < now - fc::seconds( max_block_age ) );
+          return ( dgpo.time < now - fc::seconds( max_block_age ) );
+       });
     }
 
     void network_broadcast_api::set_max_block_age( int32_t max_block_age )

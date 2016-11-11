@@ -388,7 +388,9 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
 tags_plugin::tags_plugin( application* app )
    : plugin( app ), my( new detail::tags_plugin_impl(*this) )
 {
-   //ilog("Loading account history plugin" );
+   database().add_plugin_index< tag_index >();
+   database().add_plugin_index< tag_stats_index >();
+   database().add_plugin_index< peer_stats_index >();
 }
 
 tags_plugin::~tags_plugin()
@@ -406,9 +408,6 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 {
    ilog("Intializing tags plugin" );
    database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
-   database().add_plugin_index< tag_index >();
-   database().add_plugin_index< tag_stats_index >();
-   database().add_plugin_index< peer_stats_index >();
 
    app().register_api_factory<tag_api>("tag_api");
 }
