@@ -66,45 +66,6 @@ struct blind_output
 /**
  *  @ingroup stealth
  *  @brief Transfers from blind to blind
- *
- *  There are two ways to transfer value while maintaining privacy:
- *  1. account to account with amount kept secret
- *  2. stealth transfers with amount sender/receiver kept secret
- *
- *  When doing account to account transfers, everyone with access to the
- *  memo key can see the amounts, but they will not have access to the funds.
- *
- *  When using stealth transfers the same key is used for control and reading
- *  the memo.
- *
- *  This operation is more expensive than a normal transfer and has
- *  a fee proportional to the size of the operation.
- *
- *  All assets in a blind transfer must be of the same type: fee.asset_id
- *  The fee_payer is the temp account and can be funded from the blinded values.
- *
- *  Using this operation you can transfer from an account and/or blinded balances
- *  to an account and/or blinded balances.
- *
- *  Stealth Transfers:
- *
- *  Assuming Receiver has key pair R,r and has shared public key R with Sender
- *  Assuming Sender has key pair S,s
- *  Generate one time key pair  O,o  as s.child(nonce) where nonce can be inferred from transaction
- *  Calculate secret V = o*R
- *  blinding_factor = sha256(V)
- *  memo is encrypted via aes of V
- *  owner = R.child(sha256(blinding_factor))
- *
- *  Sender gives Receiver output ID to complete the payment.
- *
- *  This process can also be used to send money to a cold wallet without having to
- *  pre-register any accounts.
- *
- *  Outputs are assigned the same IDs as the inputs until no more input IDs are available,
- *  in which case a the return value will be the *first* ID allocated for an output.  Additional
- *  output IDs are allocated sequentially thereafter.   If there are fewer outputs than inputs
- *  then the input IDs are freed and never used again.
  */
 struct blind_transfer_operation : public base_operation
 {
@@ -124,7 +85,7 @@ struct blind_transfer_operation : public base_operation
 struct transfer_to_blind_operation : public base_operation {
    account_name_type            from;
    asset                        amount;
-   fc::ecc::blind_factor_type   blinding_factor;
+   fc::ecc::blind_factor_type   blinding_factor; ///< TODO: can we make this a constant of some sort?
    vector<blind_output>         outputs;
 
    void  validate()const;

@@ -440,10 +440,9 @@ namespace steemit { namespace protocol {
                  to_public_amount.symbol == SBD_SYMBOL );
 
       /// by requiring all inputs to be sorted we also prevent duplicate commitments on the input
-      //for( uint32_t i = 1; i < in.size(); ++i )
-      //   FC_ASSERT( in[i-1] < in[i] );
+      for( uint32_t i = 1; i < in.size(); ++i )
+         FC_ASSERT( in[i-1] < in[i] );
       FC_ASSERT( in.size() > 0 );
-      FC_ASSERT( std::is_sorted( in.begin(), in.end() ) );
 
       for( uint32_t i = 0; i < out.size(); ++i )
       {
