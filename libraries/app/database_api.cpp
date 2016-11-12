@@ -1566,7 +1566,7 @@ vector<blind_output> database_api::get_blind_balances( string account )const {
             fc::datastream<const char*> ds( itr->confirmation.data(), itr->confirmation.size() );
             fc::raw::unpack( ds, conf );
          }
-         result.push_back( { itr->commitment, {}, itr->owner, conf } );
+         result.push_back( blind_output( itr->commitment, {}, itr->owner, itr->state, conf ) );
          ++itr;
       }
       return result;

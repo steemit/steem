@@ -1946,12 +1946,26 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account( op.to );
 
+   uint8_t is_pending = 0;
+
    for( const auto& in : op.inputs ) {
       const auto& bbi = db().get<blind_balance_object,by_commitment>( in );
       FC_ASSERT( bbi.owner == op.from );
       FC_ASSERT( bbi.symbol == op.to_public_amount.symbol );
 
-      db().remove( bbi );
+      FC_ASSERT( !(bbi.state & blind_balance_object::pending) );
+      if( bbi.state & blind_balance_object::savings )
+         is_pending = blind_balance_object::pending;
+   }
+
+   for( const auto& in : op.inputs ) {
+      const auto& bbi = db().get<blind_balance_object,by_commitment>( in );
+      if( is_pending )
+         db().modify( bbi, [&]( blind_balance_object& bbo ) {
+            bbo.state |= is_pending;
+         });
+      else
+         db().remove( bbi );
    }
 
    for( const auto& out : op.outputs ) {
@@ -1959,6 +1973,7 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
            bbo.symbol     = op.to_public_amount.symbol;
            bbo.owner      = out.owner;
            bbo.commitment = out.commitment;
+           bbo.state      = out.savings | is_pending;
 #ifndef IS_LOW_MEM
            bbo.confirmation.resize( fc::raw::pack_size( out.stealth_memo ) );
            fc::datastream<char*> ds (bbo.confirmation.data(), bbo.confirmation.size() );
@@ -1966,8 +1981,19 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
 #endif
       });
    }
-
-   if( op.to_public_amount.amount > 0 )
+   if( is_pending ) {
+      db().create<pending_blind_transfer_object>( [&]( pending_blind_transfer_object& pbt ){
+         pbt.owner = op.from;
+         pbt.expiration = db().head_block_time() + fc::days(3);
+         pbt.pending_commitments.reserve( op.inputs.size() + op.outputs.size() );
+         for( const auto& in : op.inputs )
+           pbt.pending_commitments.push_back(in);
+         for( const auto& out : op.outputs )
+           pbt.pending_commitments.push_back(out.commitment);
+         pbt.to = op.to;
+         pbt.to_public_amount = op.to_public_amount;
+      });
+   } else if( op.to_public_amount.amount > 0 )
       db().adjust_balance( to, op.to_public_amount );
 };
 

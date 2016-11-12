@@ -35,6 +35,9 @@ inline void from_string( shared_string& out, const string& in ){ out.assign( in.
 
 typedef bip::vector< char, allocator< char > > buffer_type;
 
+template<typename T>
+using shared_vector = bip::vector< T, allocator< T > >;
+
 struct by_id;
 
 enum object_type
@@ -65,7 +68,8 @@ enum object_type
    savings_withdraw_object_type,
    decline_voting_rights_request_object_type,
    block_stats_object_type,
-   blind_balance_object_type
+   blind_balance_object_type,
+   pending_blind_transfer_object_type
 };
 
 class dynamic_global_property_object;
@@ -223,6 +227,7 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
                  (decline_voting_rights_request_object_type)
                  (block_stats_object_type)
                  (blind_balance_object_type)
+                 (pending_blind_transfer_object_type)
                )
 
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )

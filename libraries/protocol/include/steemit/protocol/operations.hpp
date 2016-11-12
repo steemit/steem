@@ -60,6 +60,7 @@ namespace steemit { namespace protocol {
             reset_account_operation,
             set_reset_account_operation,
             transfer_to_blind_operation,
+            cancel_blind_transfer_operation,
             blind_transfer_operation,
 
             /// virtual operations below this point
