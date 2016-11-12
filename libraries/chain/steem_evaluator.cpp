@@ -1933,6 +1933,11 @@ void transfer_to_blind_evaluator::do_apply( const transfer_to_blind_operation& o
            bbo.symbol     = op.amount.symbol;
            bbo.owner      = out.owner;
            bbo.commitment = out.commitment;
+#ifndef IS_LOW_MEM
+           bbo.confirmation.resize( fc::raw::pack_size( out.stealth_memo ) );
+           fc::datastream<char*> ds (bbo.confirmation.data(), bbo.confirmation.size() );
+           fc::raw::pack( ds, out.stealth_memo );
+#endif
       });
    }
 }
@@ -1954,6 +1959,11 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
            bbo.symbol     = op.to_public_amount.symbol;
            bbo.owner      = out.owner;
            bbo.commitment = out.commitment;
+#ifndef IS_LOW_MEM
+           bbo.confirmation.resize( fc::raw::pack_size( out.stealth_memo ) );
+           fc::datastream<char*> ds (bbo.confirmation.data(), bbo.confirmation.size() );
+           fc::raw::pack( ds, out.stealth_memo );
+#endif
       });
    }
 

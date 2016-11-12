@@ -229,6 +229,11 @@ class database_api
       vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
       vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
 
+      /**
+       *  @return the unspent blind balances owned by the given account
+       */
+      vector<blind_output> get_blind_balances( string account )const;
+
       ///////////////
       // Witnesses //
       ///////////////
@@ -495,6 +500,7 @@ FC_API(steemit::app::database_api,
    (get_withdraw_routes)
    (get_savings_withdraw_from)
    (get_savings_withdraw_to)
+   (get_blind_balances)
 
    // Market
    (get_order_book)
