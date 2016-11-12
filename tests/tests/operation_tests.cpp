@@ -1,4 +1,4 @@
-#ifdef IS_TEST_NET
+//#ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/protocol/exceptions.hpp>
@@ -5728,4 +5728,50 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-#endif
+
+BOOST_AUTO_TEST_CASE( blind_transfer_validate ) 
+{ try {
+
+  blind_transfer_operation op;
+  op.to_public_amount = asset( 10, STEEM_SYMBOL ); //string("0.000 TESTS") );
+
+  blind_output out1, out2, out3;
+  auto InB1  = fc::sha256::hash("InB1");
+  auto InB2  = fc::sha256::hash("InB2");
+  auto OutB1  = fc::sha256::hash("OutB1");
+  auto OutB2  = fc::sha256::hash("OutB2");
+  auto OutB3  = fc::sha256::hash("OutB3");
+  auto OutB  = fc::sha256::hash("InB2");
+
+  auto nonce1 = fc::sha256::hash("nonce");
+  auto nonce2 = fc::sha256::hash("nonce2");
+  auto nonce3 = fc::sha256::hash("nonce3");
+
+  op.inputs.push_back( fc::ecc::blind(InB1,25000) );
+  op.inputs.push_back( fc::ecc::blind(InB2,75000) );
+
+  out1.commitment  = fc::ecc::blind( OutB1, 50000 );
+  out1.range_proof = fc::ecc::range_proof_sign( 0, out1.commitment, OutB1, nonce1, 0, 0, 50000 );
+
+  out2.commitment  = fc::ecc::blind( OutB2, 40000 );
+  out2.range_proof = fc::ecc::range_proof_sign( 0, out2.commitment, OutB2, nonce2, 0, 0, 40000 );
+
+  auto Out3B  = fc::ecc::blind_sum( {InB1,InB2,OutB1,OutB2}, 2 ); // add InB2 - Out3b
+  out3.commitment  = fc::ecc::blind( Out3B, 10000-10 );
+  out3.range_proof = fc::ecc::range_proof_sign( 0, out3.commitment, Out3B, nonce3, 0, 0, 10000 );
+
+  /*
+  if( inputs.size() == 0 ) {
+     op.blinding_factor = fc::ecc::blind_sum( {InB1,InB2}, 2 );
+     auto public_c = fc::ecc::blind(op.blinding_factor,op.to_public_amount.amount.value);
+  }
+  */
+  op.outputs = {out2,out1,out3};
+  std::sort( op.outputs.begin(), op.outputs.end(), []( const blind_output& a, const blind_output& b ) { return a.commitment < b.commitment; } );
+  std::sort( op.inputs.begin(), op.inputs.end(), []( const fc::ecc::commitment_type& a, const fc::ecc::commitment_type& b ) { return a< b; } );
+
+  op.validate();
+
+} FC_LOG_AND_RETHROW() }
+
+//#endif

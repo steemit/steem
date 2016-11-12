@@ -14,6 +14,7 @@ namespace steemit { namespace chain {
       public:
          template<typename Constructor, typename Allocator>
          blind_balance_object( Constructor&& c, allocator< Allocator > a )
+         :confirmation(a)
          {
             c(*this);
          };
@@ -22,6 +23,7 @@ namespace steemit { namespace chain {
          asset_symbol_type          symbol;
          account_name_type          owner;
          fc::ecc::commitment_type   commitment;
+         buffer_type                confirmation; ///< in full nodes stores encrypted info for owner
    };
 
    struct by_commitment;
@@ -47,5 +49,5 @@ namespace steemit { namespace chain {
 
 } } // namespace steemit::chain
 
-FC_REFLECT( steemit::chain::blind_balance_object, (id)(symbol)(owner)(commitment) )
+FC_REFLECT( steemit::chain::blind_balance_object, (id)(symbol)(owner)(commitment)(confirmation) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::blind_balance_object, steemit::chain::blind_balance_index )

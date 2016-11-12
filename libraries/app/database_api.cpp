@@ -1,6 +1,7 @@
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 #include <steemit/app/database_api.hpp>
+#include <steemit/chain/confidential_objects.hpp>
 
 #include <steemit/protocol/get_config.hpp>
 
@@ -1551,6 +1552,25 @@ vector< savings_withdraw_api_obj > database_api::get_savings_withdraw_to( string
      ++itr;
   }
   return result;
+}
+
+vector<blind_output> database_api::get_blind_balances( string account )const {
+   return my->_db.with_read_lock( [&](){
+      vector<blind_output> result; result.reserve( 10 );
+      const auto& bbi = my->_db.get_index< blind_balance_index >().indices().get<by_owner_symbol>();
+      account_name_type acnt(account);
+      auto itr = bbi.lower_bound( acnt );
+      while( itr != bbi.end() && itr->owner == acnt ) {
+         stealth_confirmation conf;
+         if( itr->confirmation.size() ) {
+            fc::datastream<const char*> ds( itr->confirmation.data(), itr->confirmation.size() );
+            fc::raw::unpack( ds, conf );
+         }
+         result.push_back( { itr->commitment, {}, itr->owner, conf } );
+         ++itr;
+      }
+      return result;
+  });
 }
 
 
