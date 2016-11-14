@@ -123,6 +123,8 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
          with_write_lock( [&]()
          {
             undo_all();
+            FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
+               ("rev", revision())("head_block", head_block_num()) );
          });
 
          if( head_block_num() )
@@ -3377,8 +3379,6 @@ void database::update_last_irreversible_block()
       }
    }
 
-   // Revision for undo history is last irreverisivle block num - 1 because revision is 0 indexed
-   // and block num is 1 indexed.
    commit( dpo.last_irreversible_block_num );
 
    // output to block log based on new last irreverisible block num
