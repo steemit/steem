@@ -10,20 +10,19 @@
 
 namespace steemit { namespace chain {
 
-   class blind_balance_object : public chainbase::object< blind_balance_object_type, blind_balance_object > {
+   class blind_balance_object : public chainbase::object< blind_balance_object_type, blind_balance_object >
+   {
       public:
          /**
           *  Outputs in state 'checking' can be spent immediately
           *  Outputs in state 'savings' can be spent into a 3 day verification object
           *  Outputs in state 'pending' cannot be used in new transactions (except to cancel)
-          *  Outputs in state 'pending|deposit' will remain after pending
-          *  Outputs in state 'pending' without deposit will be removed after pending
+          *  Outputs in state 'pending' will be removed after time interval of (TODO: how long?)
           */
          enum states {
             checking = 0,
             savings  = 1,
-            pending  = 2,
-            deposit  = 4  
+            pending  = 2
          };
          template<typename Constructor, typename Allocator>
          blind_balance_object( Constructor&& c, allocator< Allocator > a )
