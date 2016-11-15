@@ -1953,8 +1953,8 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
       FC_ASSERT( bbi.owner == op.from );
       FC_ASSERT( bbi.symbol == op.to_public_amount.symbol );
 
-      FC_ASSERT( !(bbi.state & blind_balance_object::pending) );
-      if( bbi.state & blind_balance_object::savings )
+      FC_ASSERT( !(bbi.flags & blind_balance_object::pending) );
+      if( bbi.flags & blind_balance_object::savings )
          is_pending = blind_balance_object::pending;
    }
 
@@ -1962,7 +1962,7 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
       const auto& bbi = db().get<blind_balance_object,by_commitment>( in );
       if( is_pending )
          db().modify( bbi, [&]( blind_balance_object& bbo ) {
-            bbo.state |= is_pending;
+            bbo.flags |= is_pending;
          });
       else
          db().remove( bbi );
@@ -1973,7 +1973,7 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
            bbo.symbol     = op.to_public_amount.symbol;
            bbo.owner      = out.owner;
            bbo.commitment = out.commitment;
-           bbo.state      = out.savings | is_pending;
+           bbo.flags      = out.savings | is_pending;
 #ifndef IS_LOW_MEM
            bbo.confirmation.resize( fc::raw::pack_size( out.stealth_memo ) );
            fc::datastream<char*> ds (bbo.confirmation.data(), bbo.confirmation.size() );

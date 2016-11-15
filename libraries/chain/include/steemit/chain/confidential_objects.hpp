@@ -14,15 +14,15 @@ namespace steemit { namespace chain {
    {
       public:
          /**
-          *  Outputs in state 'checking' can be spent immediately
-          *  Outputs in state 'savings' can be spent into a 3 day verification object
-          *  Outputs in state 'pending' cannot be used in new transactions (except to cancel)
-          *  Outputs in state 'pending' will be removed after time interval of (TODO: how long?)
+          *  Outputs with flag bit 'savings':
+          *  - Can only be spent into a 3 day verification object
+          *  Outputs with flag bit 'pending':
+          *  - Cannot be used in new transactions (except to cancel)
+          *  - Will be removed after time interval of (TODO: how long?)
           */
-         enum states {
-            checking = 0,
-            savings  = 1,
-            pending  = 2
+         enum available_flags {
+            savings  = 1 << 0,
+            pending  = 1 << 1
          };
          template<typename Constructor, typename Allocator>
          blind_balance_object( Constructor&& c, allocator< Allocator > a )
@@ -36,7 +36,7 @@ namespace steemit { namespace chain {
          account_name_type          owner;
          fc::ecc::commitment_type   commitment;
          buffer_type                confirmation; ///< in full nodes stores encrypted info for owner
-         uint8_t                    state = 0;
+         uint8_t                    flags = 0;
    };
 
    struct by_commitment;
@@ -102,7 +102,7 @@ namespace steemit { namespace chain {
 
 } } // namespace steemit::chain
 
-FC_REFLECT( steemit::chain::blind_balance_object, (id)(symbol)(owner)(commitment)(confirmation) )
+FC_REFLECT( steemit::chain::blind_balance_object, (id)(symbol)(owner)(commitment)(confirmation)(flags) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::blind_balance_object, steemit::chain::blind_balance_index )
 FC_REFLECT( steemit::chain::pending_blind_transfer_object, (id)(owner)(expiration)(to)(to_public_amount)(pending_commitments) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::pending_blind_transfer_object, steemit::chain::pending_blind_transfer_index )
