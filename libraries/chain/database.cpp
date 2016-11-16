@@ -1093,7 +1093,7 @@ void database::update_witness_schedule4()
          continue;
       selected_voted.insert( itr->id );
       active_witnesses.push_back( itr->owner) ;
-      modify( *itr, [&]( witness_object& wo ) { wo.top = true; } );
+      modify( *itr, [&]( witness_object& wo ) { wo.schedule = witness_object::top19; } );
    }
 
    /// Add miners from the top of the mining queue
@@ -1112,7 +1112,7 @@ void database::update_witness_schedule4()
          {
             selected_miners.insert(mitr->id);
             active_witnesses.push_back(mitr->owner);
-            modify( *mitr, [&]( witness_object& wo ) { wo.top = false; } );
+            modify( *mitr, [&]( witness_object& wo ) { wo.schedule = witness_object::miner; } );
          }
       }
       // Remove processed miner from the queue
@@ -1148,7 +1148,7 @@ void database::update_witness_schedule4()
           && selected_voted.find(sitr->id) == selected_voted.end() )
       {
          active_witnesses.push_back(sitr->owner);
-         modify( *sitr, [&]( witness_object& wo ) { wo.top = false; } );
+         modify( *sitr, [&]( witness_object& wo ) { wo.schedule = witness_object::timeshare; } );
          ++witness_count;
       }
    }
@@ -2110,14 +2110,23 @@ void database::process_funds()
 
    if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
    {
-      /// 9.5% instantanious inflation rate
-      auto new_steem = ( props.virtual_supply.amount * STEEMIT_INFLATION_RATE_PERCENT )
+      /**
+       * At block 7,000,000 have a 9.5% instantaneous inflation rate, decreasing to 0.95% at a rate of 0.01%
+       * every 250k blocks. This narrowing will take approximately 20.5 years and will complete on block 220,750,000
+       */
+      auto new_steem = ( props.virtual_supply.amount *
+         std::max( (uint32_t)( STEEMIT_INFLATION_RATE_START_PERCENT - head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD ), (uint32_t)STEEMIT_INFLATION_RATE_STOP_PERCENT ) )
          / ( STEEMIT_100_PERCENT * STEEMIT_BLOCKS_PER_YEAR );
       auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT; /// 75% to content creator
       auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
 
       const auto& cwit = get_witness( props.current_witness );
+
+      if( cwit.schedule == witness_object::timeshare )
+         witness_reward = ( 5 * witness_reward * 21 ) / 25;
+      else
+         witness_reward = ( witness_reward * 21 ) / 25;
 
       new_steem = content_reward + vesting_reward + witness_reward;
 
@@ -2129,10 +2138,7 @@ void database::process_funds()
           p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      modify( get_account( props.current_witness ), [&]( account_object& w )
-      {
-         w.balance += asset( witness_reward, STEEM_SYMBOL );
-      });
+      create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
    }
    else
    {

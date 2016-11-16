@@ -26,6 +26,14 @@ namespace steemit { namespace chain {
    class witness_object : public object< witness_object_type, witness_object >
    {
       public:
+         enum witness_schedule_type
+         {
+            top19,
+            timeshare,
+            miner,
+            none
+         };
+
          template< typename Constructor, typename Allocator >
          witness_object( Constructor&& c, allocator< Allocator > a )
             :url( a )
@@ -67,7 +75,7 @@ namespace steemit { namespace chain {
           *  else takes turns being scheduled proportional to their votes.
           */
          share_type        votes;
-         bool              top = false; /// true if witness is in top 19
+         witness_schedule_type schedule = none; /// How the witness was scheduled the last time it was scheduled
 
          /**
           * These fields are used for the witness scheduling algorithm which uses
@@ -215,11 +223,13 @@ namespace steemit { namespace chain {
 
 } }
 
+FC_REFLECT_ENUM( steemit::chain::witness_object::witness_schedule_type, (top19)(timeshare)(miner)(none) )
+
 FC_REFLECT( steemit::chain::witness_object,
              (id)
              (owner)
              (created)
-             (url)(votes)(top)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
+             (url)(votes)(schedule)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
              (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
              (props)
              (sbd_exchange_rate)(last_sbd_exchange_update)
