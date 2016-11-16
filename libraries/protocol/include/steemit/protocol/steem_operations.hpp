@@ -4,6 +4,7 @@
 #include <steemit/protocol/asset.hpp>
 
 #include <fc/utf8.hpp>
+#include <fc/crypto/equihash.hpp>
 
 namespace steemit { namespace protocol {
 
@@ -592,8 +593,18 @@ namespace steemit { namespace protocol {
       void validate()const;
    };
 
+   struct equihash_pow
+   {
+      pow2_input           input;
+      fc::equihash::proof  proof;
+      block_id_type        prev_block;
+      uint32_t             pow_summary = 0;
 
-   typedef fc::static_variant< pow2 > pow2_work;
+      void create( const block_id_type& recent_block, const account_name_type& account_name, uint32_t nonce );
+      void validate() const;
+   };
+
+   typedef fc::static_variant< pow2, equihash_pow > pow2_work;
 
    struct pow2_operation : public base_operation
    {
@@ -603,12 +614,21 @@ namespace steemit { namespace protocol {
 
       void validate()const;
 
-      /** there is no need to verify authority, the proof of work is sufficient */
       void get_required_active_authorities( flat_set<account_name_type>& a )const
       {
          if( !new_owner_key )
          {
-            a.insert( work.get<pow2>().input.worker_account );
+            switch( work.which() )
+            {
+               case pow2_work::tag< pow2 >::value:
+                  a.insert( work.get< pow2 >().input.worker_account );
+                  break;
+               case pow2_work::tag< equihash_pow >::value:
+                  a.insert( work.get< equihash_pow >().input.worker_account );
+                  break;
+               default:
+                  break;
+            }
          }
       }
 
@@ -868,6 +888,7 @@ FC_REFLECT( steemit::protocol::feed_publish_operation, (publisher)(exchange_rate
 FC_REFLECT( steemit::protocol::pow, (worker)(input)(signature)(work) )
 FC_REFLECT( steemit::protocol::pow2, (input)(pow_summary) )
 FC_REFLECT( steemit::protocol::pow2_input, (worker_account)(prev_block)(nonce) )
+FC_REFLECT( steemit::protocol::equihash_pow, (input)(proof)(prev_block)(pow_summary) )
 FC_REFLECT( steemit::protocol::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
 FC_REFLECT_TYPENAME( steemit::protocol::pow2_work )

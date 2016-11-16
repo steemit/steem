@@ -123,6 +123,8 @@
 
 
 #define STEEMIT_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )
+#define STEEMIT_EQUIHASH_N                      140
+#define STEEMIT_EQUIHASH_K                      6
 
 #define STEEMIT_LIQUIDITY_TIMEOUT_SEC           (fc::seconds(60*60*24*7)) // After one week volume is set to 0
 #define STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume

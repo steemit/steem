@@ -201,8 +201,18 @@ namespace steemit { namespace protocol {
    void pow2_operation::validate()const
    {
       props.validate();
-      validate_account_name( work.get<pow2>().input.worker_account );
-      work.get<pow2>().validate();
+      switch( work.which() )
+      {
+         case pow2_work::tag< pow2 >::value:
+            work.get< pow2 >().validate();
+            break;
+         case pow2_work::tag< equihash_pow >::value:
+            work.get< equihash_pow >().validate();
+            break;
+         default:
+            FC_ASSERT( false, "POW2 Operation does not contain a proof of work" );
+            break;
+      }
    }
 
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
@@ -232,6 +242,17 @@ namespace steemit { namespace protocol {
       pow_summary = work.approx_log_32();
    }
 
+   void equihash_pow::create( const block_id_type& recent_block, const account_name_type& account_name, uint32_t nonce )
+   {
+      input.worker_account = account_name;
+      input.prev_block = recent_block;
+      input.nonce = nonce;
+
+      auto seed = fc::sha256::hash( input );
+      proof = fc::equihash::proof::hash( STEEMIT_EQUIHASH_N, STEEMIT_EQUIHASH_K, seed );
+      pow_summary = fc::sha256::hash( proof.inputs ).approx_log_32();
+   }
+
    void pow::validate()const
    {
       FC_ASSERT( work != fc::sha256() );
@@ -246,6 +267,17 @@ namespace steemit { namespace protocol {
       validate_account_name( input.worker_account );
       pow2 tmp; tmp.create( input.prev_block, input.worker_account, input.nonce );
       FC_ASSERT( pow_summary == tmp.pow_summary, "reported work does not match calculated work" );
+   }
+
+   void equihash_pow::validate() const
+   {
+      validate_account_name( input.worker_account );
+      auto seed = fc::sha256::hash( input );
+      FC_ASSERT( proof.n == STEEMIT_EQUIHASH_N, "proof of work 'n' value is incorrect" );
+      FC_ASSERT( proof.k == STEEMIT_EQUIHASH_K, "proof of work 'k' value is incorrect" );
+      FC_ASSERT( proof.seed == seed, "proof of work seed does not match expected seed" );
+      FC_ASSERT( proof.is_valid(), "proof of work is not a solution", ("block_id", input.prev_block)("worker_account", input.worker_account)("nonce", input.nonce) );
+      FC_ASSERT( pow_summary == fc::sha256::hash( proof.inputs ).approx_log_32() );
    }
 
    void feed_publish_operation::validate()const

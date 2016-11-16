@@ -1069,7 +1069,10 @@ uint32_t database::get_pow_summary_target()const
    if( dgp.num_pow_witnesses >= 1004 )
       return 0;
 
-   return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
+   if( has_hardfork( STEEMIT_HARDFORK_0_16__551 ) )
+      return (0xFE00 - 0x0040 * dgp.num_pow_witnesses ) << 0x10;
+   else
+      return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
 }
 
 void database::update_witness_schedule4()
@@ -2111,16 +2114,10 @@ void database::process_funds()
       auto new_steem = ( props.virtual_supply.amount * STEEMIT_INFLATION_RATE_PERCENT )
          / ( STEEMIT_100_PERCENT * STEEMIT_BLOCKS_PER_YEAR );
       auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT; /// 75% to content creator
-      auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to content creator
+      auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
 
       const auto& cwit = get_witness( props.current_witness );
-
-      // This distribution averages out to witness_reward over a round (21 blocks)
-      if( cwit.top )
-         witness_reward = ( witness_reward * 21 ) / 29;
-      else
-         witness_reward = ( 5 * witness_reward * 19 ) / 29;
 
       new_steem = content_reward + vesting_reward + witness_reward;
 
