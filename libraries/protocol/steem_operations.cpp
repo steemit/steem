@@ -430,6 +430,12 @@ namespace steemit { namespace protocol {
     */
    void blind_transfer_operation::validate()const
    { try {
+      // ensure we can't overflow
+      static_assert( STEEMIT_MAX_SHARE_SUPPLY < std::numeric_limits<int64_t>::max() / STEEMIT_MAX_BLIND_INPUTS );
+      static_assert( STEEMIT_MAX_SHARE_SUPPLY < std::numeric_limits<int64_t>::max() / STEEMIT_MAX_BLIND_OUTPUTS );
+      FC_ASSERT( inputs.size() <= STEEMIT_MAX_BLIND_INPUTS );
+      FC_ASSERT( outputs.size() <= STEEMIT_MAX_BLIND_OUTPUTS );
+
       validate_account_name( from );
 
       const auto&             in = inputs;
