@@ -1922,16 +1922,72 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
    });
 }
 
-void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
-   const auto& from = db().get_account( op.from );
-   const auto& to   = db().get_account( op.to );
+void apply_blind_transfer( database& db, const blind_transfer_operation& op )
+{
+
+}
+
+void execute_blind_transfer( database& db, const blind_transfer_operation& op, bool allow_savings_inputs )
+{
+   return;
+}
+
+void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op )
+{
+   database& d = db();
+
+   const account_object& from_account = d.get_account( op.from.account );
+   const account_object*   to_account = nullptr;
+
+   bool defer = false;
+
+   if( op.to.valid() )
+      to_account = d.get_account( op.to.account );
+
+   // require all output accounts to exist
+   for( const blind_output& out : op.outputs )
+   {
+      d.get_account( out.owner );
+   }
+
+   gpo = d.get_global_properties();
+
+   const dynamic_global_property_object& dgpo = d.get_dynamic_global_properties();
+   if( (op.flags & blind_transfer_operation::defer) == 0 )
+   {
+      // immediate execution
+      execute_blind_transfer( d, op, false );
+   }
+   else
+   {
+      d.create<pending_blind_transfer_object>( [&]( pending_blind_transfer_object& pbt )
+      {
+          
+      } );
+   }
+
+      db().create<pending_blind_transfer_object>( [&]( pending_blind_transfer_object& pbt ){
+         pbt.owner = op.from;
+         pbt.expiration = db().head_block_time() + fc::days(3);
+         pbt.pending_commitments.reserve( op.inputs.size() + op.outputs.size() );
+         for( const auto& in : op.inputs )
+           pbt.pending_commitments.push_back(in);
+         for( const auto& out : op.outputs )
+           pbt.pending_commitments.push_back(out.commitment);
+         pbt.to = op.to;
+         pbt.to_public_amount = op.to_public_amount;
+      });
+
+
+   FC_ASSERT( (op.defer_seconds == 0) || (op.defer_seconds == STEEMIT_SAVINGS_WITHDRAW_TIME.to_seconds()) );
 
    uint8_t is_pending = 0;
 
-   for( const auto& in : op.inputs ) {
+   for( const auto& in : op.inputs )
+   {
       const auto& bbi = db().get<blind_balance_object,by_commitment>( in );
       FC_ASSERT( bbi.owner == op.from );
-      FC_ASSERT( bbi.symbol == op.to_public_amount.symbol );
+      FC_ASSERT( bbi.symbol == op.from.amount.symbol );
 
       FC_ASSERT( !(bbi.flags & blind_balance_object::pending) );
       if( bbi.flags & blind_balance_object::savings )
@@ -1950,7 +2006,7 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
 
    for( const auto& out : op.outputs ) {
       db().create<blind_balance_object>( [&]( blind_balance_object& bbo ) {
-           bbo.symbol     = op.to_public_amount.symbol;
+           bbo.symbol     = op.from.amount.symbol;
            bbo.owner      = out.owner;
            bbo.commitment = out.commitment;
            bbo.flags      = out.savings | is_pending;
@@ -1974,7 +2030,7 @@ void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
          pbt.to_public_amount = op.to_public_amount;
       });
    } else if( op.to_public_amount.amount > 0 )
-      db().adjust_balance( to, op.to_public_amount );
+      db().adjust_balance( to_account, op.to_public_amount );
 };
 
 } } // steemit::chain

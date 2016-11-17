@@ -10,20 +10,30 @@
 
 namespace steemit { namespace chain {
 
+/**
+ *
+ */
+struct stripped_blind_output
+{
+   stripped_blind_output(){}
+   stripped_blind_output( const blind_output& o )
+   :commitment(o.commitment),owner(o.owner),range_proof(r),owner(o),savings(s),stealth_memo(sc) {}
+
+   fc::ecc::commitment_type                commitment;
+   /** only required if there is more than one blind output */
+   range_proof_type                        range_proof;
+   account_name_type                       owner;
+   /**
+    * blind outputs held as savings can only be spent with a 3 day delay during which they may be canceled
+    */
+   uint8_t                                 balance_slot = 0;
+   vector<char>                            stealth_memo;
+};
+
+
    class blind_balance_object : public chainbase::object< blind_balance_object_type, blind_balance_object >
    {
       public:
-         /**
-          *  Outputs with flag bit 'savings':
-          *  - Can only be spent into a 3 day verification object
-          *  Outputs with flag bit 'pending':
-          *  - Cannot be used in new transactions (except to cancel)
-          *  - Will be removed after time interval of (TODO: how long?)
-          */
-         enum available_flags {
-            savings  = 1 << 0,
-            pending  = 1 << 1
-         };
          template<typename Constructor, typename Allocator>
          blind_balance_object( Constructor&& c, allocator< Allocator > a )
          :confirmation(a)
@@ -36,7 +46,7 @@ namespace steemit { namespace chain {
          account_name_type          owner;
          fc::ecc::commitment_type   commitment;
          buffer_type                confirmation; ///< in full nodes stores encrypted info for owner
-         uint8_t                    flags = 0;
+         uint8_t                    balance_slot = balance_slots::none;
    };
 
    struct by_commitment;
@@ -102,7 +112,7 @@ namespace steemit { namespace chain {
 
 } } // namespace steemit::chain
 
-FC_REFLECT( steemit::chain::blind_balance_object, (id)(symbol)(owner)(commitment)(confirmation)(flags) )
+FC_REFLECT( steemit::chain::blind_balance_object, (id)(symbol)(owner)(commitment)(confirmation)(balance_slot) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::blind_balance_object, steemit::chain::blind_balance_index )
 FC_REFLECT( steemit::chain::pending_blind_transfer_object, (id)(owner)(expiration)(to)(to_public_amount)(pending_commitments) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::pending_blind_transfer_object, steemit::chain::pending_blind_transfer_index )

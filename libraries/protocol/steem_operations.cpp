@@ -431,44 +431,68 @@ namespace steemit { namespace protocol {
    void blind_transfer_operation::validate()const
    { try {
       // ensure we can't overflow
+
       static_assert( STEEMIT_MAX_SHARE_SUPPLY < std::numeric_limits<int64_t>::max() / STEEMIT_MAX_BLIND_INPUTS );
       static_assert( STEEMIT_MAX_SHARE_SUPPLY < std::numeric_limits<int64_t>::max() / STEEMIT_MAX_BLIND_OUTPUTS );
       FC_ASSERT( inputs.size() <= STEEMIT_MAX_BLIND_INPUTS );
       FC_ASSERT( outputs.size() <= STEEMIT_MAX_BLIND_OUTPUTS );
 
-      validate_account_name( from );
+      FC_ASSERT( flags < 2 );
 
-      const auto&             in = inputs;
-      vector<commitment_type> out(outputs.size());
-      int64_t                 net_public = to_public_amount.amount.value;
-      FC_ASSERT( to_public_amount.amount >= 0 );
-      FC_ASSERT( to_public_amount.symbol == STEEM_SYMBOL ||
-                 to_public_amount.symbol == SBD_SYMBOL );
-
-      /// by requiring all inputs to be sorted we also prevent duplicate commitments on the input
-      for( uint32_t i = 1; i < in.size(); ++i )
-         FC_ASSERT( in[i-1] < in[i] );
-      FC_ASSERT( in.size() > 0 );
-
-      for( uint32_t i = 0; i < out.size(); ++i )
+      validate_account_name( from.account );
+      if( from.amount.amount == 0 )
       {
-         out[i] = outputs[i].commitment;
-         validate_account_name( outputs[i].owner );
-         if( i > 0 ) FC_ASSERT( out[i-1] < out[i] );
+         FC_ASSERT( from.balance_slot == balance_slots::none );
       }
-
-      // FC_ASSERT( in.size(), "there must be at least one input" );
-      FC_ASSERT( fc::ecc::verify_sum( in, out, net_public ), "", ("net_public", net_public) );
-
-      if( outputs.size() > 1 )
+      else
       {
-         for( auto out : outputs )
+         FC_ASSERT( from.amount.amount > 0 );
+         FC_ASSERT( from.amount.amount <= STEEMIT_MAX_SHARE_SUPPLY );
+         FC_ASSERT( from.balance_slot == balance_slots::checking
+                 || from.balance_slot == balance_slots::savings );
+         if( from.balance_slot == balance_slots::savings )
          {
-            auto info = fc::ecc::range_get_info( out.range_proof );
-            FC_ASSERT( info.max_value <= STEEMIT_MAX_SHARE_SUPPLY );
+            FC_ASSERT( (from.flags & blind_transfer_operation::defer) != 0 );
          }
       }
-      FC_ASSERT( fc::ecc::verify_sum( in, out, net_public ), "", ("net_public", net_public) );
+      FC_ASSERT( from.amount.symbol == STEEM_SYMBOL ||
+                 from.amount.symbol == SBD_SYMBOL );
+
+      asset to_amount = asset( 0, from.amount.symbol );
+      if( to.valid() )
+      {
+         validate_account_name( to->account );
+         FC_ASSERT( to->amount.amount > 0 );
+         FC_ASSERT( to->amount.amount <= STEEMIT_MAX_SHARE_SUPPLY );
+         FC_ASSERT( to.balance_slot == balance_slots::checking
+                 || to.balance_slot == balance_slots::savings );
+         FC_ASSERT( to->amount.symbol == from.amount.symbol );
+         to_amount = to->amount;
+      }
+
+      vector<commitment_type> ocommits(outputs.size());
+      int64_t                 net_public_amount = (to_amount - from.amount).amount;
+
+      /// by requiring all inputs/outputs to be sorted we also prevent duplicate commitments
+      for( uint32_t i = 1; i < inputs.size(); i++ )
+         FC_ASSERT( inputs[i-1] < inputs[i] );
+
+      for( uint32_t i = 1; i < outputs.size(); i++ )
+         FC_ASSERT( outputs[i-1] < outputs[i] );
+
+      for( uint32_t i = 0; i < outputs.size(); i++ )
+      {
+         validate_account_name( outputs[i].owner );
+         ocommits[i] = outputs[i].commitment;
+
+         auto info = fc::ecc::range_get_info( outputs[i].range_proof );
+         FC_ASSERT( info.max_value <= STEEMIT_MAX_SHARE_SUPPLY );
+
+         FC_ASSERT( outputs[i].balance_slot == balance_slots::checking
+                 || outputs[i].balance_slot == balance_slots::savings );
+      }
+
+      FC_ASSERT( fc::ecc::verify_sum( inputs, ocommits, net_public_amount ), "Cannot verify blind balance sum", ("net_public_amount", net_public_amount) );
    } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 } } // steemit::protocol
