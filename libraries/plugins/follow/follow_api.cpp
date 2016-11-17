@@ -33,8 +33,10 @@ vector< follow_object > follow_api_impl::get_followers( string following, string
    vector<follow_object> result;
    const auto& idx = app.chain_database()->get_index<follow_index>().indices().get<by_following_follower>();
    const auto& following_obj = app.chain_database()->get_account( following );
-   const auto& start_follower_obj = app.chain_database()->get_account( start_follower );
-   auto itr = idx.lower_bound( std::make_tuple( following_obj.id, start_follower_obj.id ) );
+   const auto& by_name_idx = app.chain_database()->get_index< account_index >().indices().get< by_name >();
+   const auto& start_follower_obj = by_name_idx.lower_bound( start_follower );
+   FC_ASSERT( start_follower_obj != by_name_idx.end(), "start_follower ${s} does not allow for a valid range of accounts.", ("s", start_follower) );
+   auto itr = idx.lower_bound( std::make_tuple( following_obj.id, start_follower_obj->id ) );
    while( itr != idx.end() && limit && itr->following == following_obj.id )
    {
       if( itr->what & ( 1 << type ) )
@@ -55,8 +57,10 @@ vector< follow_object > follow_api_impl::get_following( string follower, string 
    vector<follow_object> result;
    const auto& idx = app.chain_database()->get_index<follow_index>().indices().get<by_follower_following>();
    const auto& follower_obj = app.chain_database()->get_account( follower );
-   const auto& start_following_obj = app.chain_database()->get_account( start_following );
-   auto itr = idx.lower_bound( std::make_tuple( follower_obj.id, start_following_obj.id ) );
+   const auto& by_name_idx = app.chain_database()->get_index< account_index >().indices().get< by_name >();
+   const auto& start_following_obj = by_name_idx.lower_bound( start_following );
+   FC_ASSERT( start_following_obj != by_name_idx.end(), "start_following ${s} does not allow for a valid range of accounts.", ("s", start_following) );
+   auto itr = idx.lower_bound( std::make_tuple( follower_obj.id, start_following_obj->id ) );
    while( itr != idx.end() && limit && itr->follower == follower_obj.id )
    {
       if( itr->what & ( 1 << type ) )
