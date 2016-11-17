@@ -103,24 +103,10 @@ struct cancel_blind_transfer_operation : public base_operation {
    }
 };
 
-struct transfer_to_blind_operation : public base_operation {
-   account_name_type            from;
-   asset                        amount;
-   fc::ecc::blind_factor_type   blinding_factor; ///< TODO: can we make this a constant of some sort?
-   vector<blind_output>         outputs;
-
-   void  validate()const;
-   void  get_required_active_authorities( flat_set<account_name_type>& a )const
-   {
-      a.insert(from);
-   }
-};
-
 } } // steemit::protocol
 
 FC_REFLECT( steemit::protocol::blind_transfer_operation, (from)(to)(to_public_amount)(inputs)(outputs) )
 FC_REFLECT( steemit::protocol::blind_output, (commitment)(range_proof)(owner)(savings)(stealth_memo))
 FC_REFLECT( steemit::protocol::stealth_confirmation, (one_time_key)(to)(encrypted_memo) )
-FC_REFLECT( steemit::protocol::transfer_to_blind_operation, (from)(amount)(blinding_factor)(outputs) )
 FC_REFLECT( steemit::protocol::cancel_blind_transfer_operation, (from)(pending_input) )
 

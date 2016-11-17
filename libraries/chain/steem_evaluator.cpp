@@ -1922,26 +1922,6 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
    });
 }
 
-void transfer_to_blind_evaluator::do_apply( const transfer_to_blind_operation& op ) {
-   const auto& from = db().get_account( op.from );
-   FC_ASSERT( db().get_balance( from, op.amount.symbol ) >= op.amount, "Insufficient Balance" );
-
-   db().adjust_balance( from, -op.amount );
-
-   for( const auto& out : op.outputs ) {
-      db().create<blind_balance_object>( [&]( blind_balance_object& bbo ) {
-           bbo.symbol     = op.amount.symbol;
-           bbo.owner      = out.owner;
-           bbo.commitment = out.commitment;
-#ifndef IS_LOW_MEM
-           bbo.confirmation.resize( fc::raw::pack_size( out.stealth_memo ) );
-           fc::datastream<char*> ds (bbo.confirmation.data(), bbo.confirmation.size() );
-           fc::raw::pack( ds, out.stealth_memo );
-#endif
-      });
-   }
-}
-
 void blind_transfer_evaluator::do_apply( const blind_transfer_operation& op ) {
    const auto& from = db().get_account( op.from );
    const auto& to   = db().get_account( op.to );

@@ -471,37 +471,4 @@ namespace steemit { namespace protocol {
       FC_ASSERT( fc::ecc::verify_sum( in, out, net_public ), "", ("net_public", net_public) );
    } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
-   void transfer_to_blind_operation::validate()const 
-   { try {
-      FC_ASSERT( amount.amount > 0 );
-      validate_account_name( from );
-
-      vector<commitment_type> in;
-      vector<commitment_type> out(outputs.size());
-      int64_t                 net_public = amount.amount.value;
-      for( uint32_t i = 0; i < out.size(); ++i )
-      {
-         out[i] = outputs[i].commitment;
-         validate_account_name( outputs[i].owner );
-         /// require all outputs to be sorted prevents duplicates AND prevents implementations
-         /// from accidentally leaking information by how they arrange commitments.
-         if( i > 0 ) FC_ASSERT( out[i-1] < out[i], "all outputs must be sorted by commitment id" );
-      }
-      FC_ASSERT( out.size(), "there must be at least one output" );
-
-      auto public_c = fc::ecc::blind(blinding_factor,net_public);
-
-      FC_ASSERT( fc::ecc::verify_sum( {public_c}, out, 0 ), "", ("net_public",net_public) );
-
-      if( outputs.size() > 1 )
-      {
-         for( auto out : outputs )
-         {
-            auto info = fc::ecc::range_get_info( out.range_proof );
-            FC_ASSERT( info.max_value <= STEEMIT_MAX_SHARE_SUPPLY );
-         }
-      }
-
-   } FC_CAPTURE_AND_RETHROW( (*this) ) }
-
 } } // steemit::protocol

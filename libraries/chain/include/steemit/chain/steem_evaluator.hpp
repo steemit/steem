@@ -48,6 +48,5 @@ DEFINE_EVALUATOR( decline_voting_rights )
 DEFINE_EVALUATOR( reset_account )
 DEFINE_EVALUATOR( set_reset_account )
 DEFINE_EVALUATOR( blind_transfer )
-DEFINE_EVALUATOR( transfer_to_blind )
 
 } } // steemit::chain
