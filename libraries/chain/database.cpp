@@ -1096,6 +1096,8 @@ void database::update_witness_schedule4()
       modify( *itr, [&]( witness_object& wo ) { wo.schedule = witness_object::top19; } );
    }
 
+   auto num_elected = active_witnesses.size();
+
    /// Add miners from the top of the mining queue
    flat_set< witness_id_type > selected_miners;
    selected_miners.reserve( STEEMIT_MAX_MINER_WITNESSES );
@@ -1128,6 +1130,8 @@ void database::update_witness_schedule4()
       } );
    }
 
+   auto num_miners = selected_miners.size();
+
    /// Add the running witnesses in the lead
    const witness_schedule_object& wso = get_witness_schedule_object();
    fc::uint128 new_virtual_time = wso.current_virtual_time;
@@ -1152,6 +1156,8 @@ void database::update_witness_schedule4()
          ++witness_count;
       }
    }
+
+   auto num_timeshare = active_witnesses.size() - num_miners - num_elected;
 
    /// Update virtual schedule of processed witnesses
    bool reset_virtual_time = false;
@@ -1251,6 +1257,8 @@ void database::update_witness_schedule4()
       }
    }
 
+   assert( num_elected + num_miners + num_timeshare == active_witnesses.size() );
+
    modify( wso, [&]( witness_schedule_object& _wso )
    {
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
@@ -1265,6 +1273,10 @@ void database::update_witness_schedule4()
       }
 
       _wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
+      _wso.witness_pay_normalization_factor =
+           _wso.top19_weight * num_elected
+         + _wso.miner_weight * num_miners
+         + _wso.timeshare_weight * num_timeshare;
 
       /// shuffle current shuffled witnesses
       auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
@@ -2107,6 +2119,7 @@ void database::process_comment_cashout()
 void database::process_funds()
 {
    const auto& props = get_dynamic_global_properties();
+   const auto& wso = get_witness_schedule_object();
 
    if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
    {
@@ -2122,11 +2135,18 @@ void database::process_funds()
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
 
       const auto& cwit = get_witness( props.current_witness );
+      witness_reward *= STEEMIT_MAX_WITNESSES;
 
       if( cwit.schedule == witness_object::timeshare )
-         witness_reward = ( 5 * witness_reward * 21 ) / 25;
+         witness_reward *= wso.timeshare_weight;
+      else if( cwit.schedule == witness_object::miner )
+         witness_reward *= wso.miner_weight;
+      else if( cwit.schedule == witness_object::top19 )
+         witness_reward *= wso.top19_weight;
       else
-         witness_reward = ( witness_reward * 21 ) / 25;
+         wlog( "Encountered unknown witness type for witness: ${w}", ("w", cwit.owner) );
+
+      witness_reward /= wso.witness_pay_normalization_factor;
 
       new_steem = content_reward + vesting_reward + witness_reward;
 
@@ -2752,6 +2772,7 @@ void database::init_genesis( uint64_t init_supply )
          {
             w.owner        = STEEMIT_INIT_MINER_NAME + ( i ? fc::to_string(i) : std::string() );
             w.signing_key  = init_public_key;
+            w.schedule = witness_object::miner;
          } );
       }
 

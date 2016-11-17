@@ -151,6 +151,10 @@ namespace steemit { namespace chain {
          uint32_t                                                          next_shuffle_block_num = 1;
          fc::array< account_name_type, STEEMIT_MAX_WITNESSES >             current_shuffled_witnesses;
          uint8_t                                                           num_scheduled_witnesses = 1;
+         uint8_t                                                           top19_weight = 1;
+         uint8_t                                                           timeshare_weight = 5;
+         uint8_t                                                           miner_weight = 1;
+         uint32_t                                                          witness_pay_normalization_factor = 25;
          chain_properties                                                  median_props;
          version                                                           majority_version;
    };
@@ -243,7 +247,8 @@ FC_REFLECT( steemit::chain::witness_vote_object, (id)(witness)(account) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::witness_vote_index )
 
 FC_REFLECT( steemit::chain::witness_schedule_object,
-             (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)(median_props)
-             (majority_version)
+             (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)
+             (top19_weight)(timeshare_weight)(miner_weight)(witness_pay_normalization_factor)
+             (median_props)(majority_version)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )
