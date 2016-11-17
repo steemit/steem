@@ -279,26 +279,28 @@ typedef multi_index_container<
    indexed_by<
       ordered_unique< tag< by_id >, member< tag_stats_object, tag_stats_id_type, &tag_stats_object::id > >,
       ordered_unique< tag< by_tag >, member< tag_stats_object, tag_name_type, &tag_stats_object::tag > >,
+      /*
       ordered_non_unique< tag< by_comments >,
          composite_key< tag_stats_object,
-            member< tag_stats_object, tag_name_type, &tag_stats_object::tag >,
-            member< tag_stats_object, uint32_t, &tag_stats_object::comments >
+            member< tag_stats_object, uint32_t, &tag_stats_object::comments >,
+            member< tag_stats_object, tag_name_type, &tag_stats_object::tag >
          >,
          composite_key_compare< std::less< tag_name_type >, std::greater< uint32_t > >
       >,
       ordered_non_unique< tag< by_top_posts >,
          composite_key< tag_stats_object,
-            member< tag_stats_object, tag_name_type, &tag_stats_object::tag >,
-            member< tag_stats_object, uint32_t, &tag_stats_object::top_posts >
+            member< tag_stats_object, uint32_t, &tag_stats_object::top_posts >,
+            member< tag_stats_object, tag_name_type, &tag_stats_object::tag >
          >,
          composite_key_compare< std::less< tag_name_type >, std::greater< uint32_t > >
       >,
+      */
       ordered_non_unique< tag< by_trending >,
          composite_key< tag_stats_object,
-            member< tag_stats_object, tag_name_type, &tag_stats_object::tag >,
-            member< tag_stats_object, fc::uint128_t, &tag_stats_object::total_children_rshares2 >
+            member< tag_stats_object, fc::uint128_t, &tag_stats_object::total_children_rshares2 >,
+            member< tag_stats_object, tag_name_type, &tag_stats_object::tag >
          >,
-         composite_key_compare< std::less< tag_name_type >, std::greater< uint128_t > >
+         composite_key_compare< std::greater< uint128_t >, std::less< tag_name_type > >
       >
   >,
   allocator< tag_stats_object >

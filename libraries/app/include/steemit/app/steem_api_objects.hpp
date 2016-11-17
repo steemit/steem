@@ -8,6 +8,8 @@
 #include <steemit/chain/transaction_object.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
+#include <steemit/tags/tags_plugin.hpp>
+
 namespace steemit { namespace app {
 
 using namespace steemit::chain;
@@ -158,6 +160,26 @@ struct category_api_obj
    asset                total_payouts;
    uint32_t             discussions;
    time_point_sec       last_update;
+};
+
+struct tag_api_obj
+{
+   tag_api_obj( const tags::tag_stats_object& o ) :
+      name( o.tag ),
+      total_children_rshares2(o.total_children_rshares2),
+      total_payouts(o.total_payout),
+      net_votes(o.net_votes),
+      top_posts(o.top_posts),
+      comments(o.comments) {}
+
+   tag_api_obj() {}
+
+   string               name;
+   fc::uint128_t        total_children_rshares2;
+   asset                total_payouts;
+   int32_t              net_votes = 0;
+   uint32_t             top_posts = 0;
+   uint32_t             comments = 0;
 };
 
 struct account_api_obj
@@ -481,6 +503,15 @@ FC_REFLECT( steemit::app::feed_history_api_obj,
              (id)
              (current_median_history)
              (price_history)
+          )
+
+FC_REFLECT( steemit::app::tag_api_obj,
+            (name)
+            (total_children_rshares2)
+            (total_payouts)
+            (net_votes)
+            (top_posts)
+            (comments)
           )
 
 FC_REFLECT( steemit::app::witness_api_obj,

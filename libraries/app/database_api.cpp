@@ -1060,17 +1060,31 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
    return result;
 }
 
-vector<tags::tag_stats_object> database_api::get_trending_tags( string after, uint32_t limit )const {
-  vector<tags::tag_stats_object> result;
-  const auto& tags_stats_idx = my->_db.get_index<tags::tag_stats_index>().indices().get<tags::by_tag>();
-  auto itr = tags_stats_idx.lower_bound(after);
+vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limit )const
+{
+   limit = std::min( limit, uint32_t(100) );
+   vector<tag_api_obj> result;
+   result.reserve( limit );
 
-  while( itr != tags_stats_idx.end() && limit > 0 ) {
-     result.push_back(*itr);
-     --limit; ++itr;
-  }
+   const auto& nidx = my->_db.get_index<tags::tag_stats_index>().indices().get<tags::by_tag>();
 
-  return result;
+   const auto& ridx = my->_db.get_index<tags::tag_stats_index>().indices().get<tags::by_trending>();
+   auto itr = ridx.begin();
+   if( after != "" && nidx.size() )
+   {
+      auto nitr = nidx.lower_bound( after );
+      if( nitr == nidx.end() )
+         itr = ridx.end();
+      else
+         itr = ridx.iterator_to( *nitr );
+   }
+
+   while( itr != ridx.end() && result.size() < limit )
+   {
+      result.push_back( *itr );
+      ++itr;
+   }
+   return result;
 }
 
 discussion database_api::get_discussion( comment_id_type id )const {
@@ -1569,12 +1583,12 @@ state database_api::get_state( string path )const
       path = "trending";
 
    /// FETCH CATEGORY STATE
-   auto trending_cat = get_trending_categories( "", 100 );
-   for( const auto& c : trending_cat )
+   auto trending_tags = get_trending_tags( "", 100 );
+   for( const auto& t : trending_tags )
    {
-      string name = c.name;
-      _state.category_idx.trending.push_back( name );
-      _state.categories[ name ] = category_api_obj( c );
+      string name = t.name;
+      _state.tag_idx.trending.push_back( name );
+      _state.tags[ name ] = t;
    }
    auto best_cat     = get_best_categories( "", 50 );
    for( const auto& c : best_cat )
