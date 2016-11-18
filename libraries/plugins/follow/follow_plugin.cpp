@@ -86,7 +86,7 @@ struct pre_operation_visitor
          if( cv != cv_idx.end() )
          {
             const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
-            auto rep = rep_idx.find( db.get_account( op.author ).id );
+            auto rep = rep_idx.find( op.author );
 
             if( rep != rep_idx.end() )
             {
@@ -184,17 +184,16 @@ struct post_operation_visitor
          if( op.parent_author.size() > 0 ) return;
          auto& db = _plugin.database();
          const auto& c = db.get_comment( op.author, op.permlink );
-         const auto& author = db.get_account( op.author );
 
          if( c.created != db.head_block_time() ) return;
 
          const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
-         auto itr = idx.find( author.id );
+         auto itr = idx.find( op.author );
 
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
-         while( itr != idx.end() && itr->following == author.id )
+         while( itr != idx.end() && itr->following == op.author )
          {
             if( itr->what & ( 1 << blog ) )
             {
@@ -231,31 +230,30 @@ struct post_operation_visitor
 
          const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
-         auto author_id = db.get_account( op.author ).id;
-         auto last_blog = blog_idx.lower_bound( author_id );
+         auto last_blog = blog_idx.lower_bound( op.author );
          uint32_t next_id = 0;
 
-         if( last_blog != blog_idx.end() && last_blog->account == author_id )
+         if( last_blog != blog_idx.end() && last_blog->account == op.author )
          {
             next_id = last_blog->blog_feed_id + 1;
          }
 
-         if( comment_blog_idx.find( boost::make_tuple( c.id, author_id ) ) == comment_blog_idx.end() )
+         if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
             db.create< blog_object >( [&]( blog_object& b)
             {
-               b.account = author_id;
+               b.account = op.author;
                b.comment = c.id;
                b.blog_feed_id = next_id;
             });
 
             const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
-            auto old_blog = old_blog_idx.lower_bound( author_id );
+            auto old_blog = old_blog_idx.lower_bound( op.author );
 
-            while( old_blog->account == author_id && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
+            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
             {
                db.remove( *old_blog );
-               old_blog = old_blog_idx.lower_bound( author_id );
+               old_blog = old_blog_idx.lower_bound( op.author );
             }
          }
       }
@@ -272,14 +270,12 @@ struct post_operation_visitor
          if( comment.mode == archived )
             return;
 
-         const auto& voter_id = db.get_account( op.voter ).id;
-         const auto& author_id = db.get_account( op.author ).id;
          const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-         auto cv = cv_idx.find( boost::make_tuple( comment.id, voter_id ) );
+         auto cv = cv_idx.find( boost::make_tuple( comment.id, db.get_account( op.voter ).id ) );
 
          const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
-         auto voter_rep = rep_idx.find( voter_id );
-         auto author_rep = rep_idx.find( author_id );
+         auto voter_rep = rep_idx.find( op.voter );
+         auto author_rep = rep_idx.find( op.author );
 
          // Rules are a plugin, do not effect consensus, and are subject to change.
          // Rule #1: Must have non-negative reputation to effect another user's reputation
@@ -293,7 +289,7 @@ struct post_operation_visitor
 
             db.create< reputation_object >( [&]( reputation_object& r )
             {
-               r.account = author_id;
+               r.account = op.author;
                r.reputation = ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
             });
          }
