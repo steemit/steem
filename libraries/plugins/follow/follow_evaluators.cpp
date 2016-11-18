@@ -20,10 +20,8 @@ void follow_evaluator::do_apply( const follow_operation& o )
          return follow_map;
       }();
 
-      const auto& following = db().get_account( o.following );
-      const auto& follower = db().get_account( o.follower );
       const auto& idx = db().get_index<follow_index>().indices().get< by_follower_following >();
-      auto itr = idx.find( boost::make_tuple( follower.id, following.id ) );
+      auto itr = idx.find( boost::make_tuple( o.follower, o.following ) );
 
       uint16_t what = 0;
 
@@ -50,8 +48,8 @@ void follow_evaluator::do_apply( const follow_operation& o )
       {
          db().create< follow_object >( [&]( follow_object& obj )
          {
-            obj.follower = follower.id;
-            obj.following = following.id;
+            obj.follower = o.follower;
+            obj.following = o.following;
             obj.what = what;
          });
       }
@@ -74,24 +72,23 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       const auto& c = db.get_comment( o.author, o.permlink );
       FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
-      const auto& reblog_account = db.get_account( o.account );
       const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
       const auto& blog_comment_idx = db.get_index< blog_index >().indices().get< by_comment >();
 
       auto next_blog_id = 0;
-      auto last_blog = blog_idx.lower_bound( reblog_account.id );
+      auto last_blog = blog_idx.lower_bound( o.account );
 
-      if( last_blog != blog_idx.end() && last_blog->account == reblog_account.id )
+      if( last_blog != blog_idx.end() && last_blog->account == o.account )
       {
          next_blog_id = last_blog->blog_feed_id + 1;
       }
 
-      auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, reblog_account.id ) );
+      auto blog_itr = blog_comment_idx.find( boost::make_tuple( c.id, o.account ) );
 
       FC_ASSERT( blog_itr == blog_comment_idx.end(), "Account has already reblogged this post" );
       db.create< blog_object >( [&]( blog_object& b )
       {
-         b.account = reblog_account.id;
+         b.account = o.account;
          b.comment = c.id;
          b.reblogged_on = db.head_block_time();
          b.blog_feed_id = next_blog_id;
@@ -100,9 +97,9 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
       const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
-      auto itr = idx.find( reblog_account.id );
+      auto itr = idx.find( o.account );
 
-      while( itr != idx.end() && itr->following == reblog_account.id )
+      while( itr != idx.end() && itr->following == o.account )
       {
 
          if( itr->what & ( 1 << blog ) )
@@ -122,7 +119,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                auto& fd = db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = itr->follower;
-                  f.first_reblogged_by = reblog_account.id;
+                  f.first_reblogged_by = o.account;
                   f.first_reblogged_on = db.head_block_time();
                   f.comment = c.id;
                   f.reblogs = 1;

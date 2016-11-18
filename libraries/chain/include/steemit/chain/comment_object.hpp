@@ -27,12 +27,7 @@ namespace steemit { namespace chain {
       {
          return less( a.c_str(), b.c_str() );
       }
-      /*
-      bool operator()( const char* a, const char* b )const
-      {
-         return less( a, b );
-      }
-      */
+
       private:
          inline bool less( const char* a, const char* b )const
          {
