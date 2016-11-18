@@ -2057,6 +2057,8 @@ void database::cashout_comment_helper( const comment_object& comment )
          c.last_payout = head_block_time();
       } );
 
+      push_virtual_operation( comment_payout_update_operation( comment.author, to_string( comment.permlink ) ) );
+
       const auto& vote_idx = get_index< comment_vote_index >().indices().get< by_comment_voter >();
       auto vote_itr = vote_idx.lower_bound( comment.id );
       while( vote_itr != vote_idx.end() && vote_itr->comment == comment.id )

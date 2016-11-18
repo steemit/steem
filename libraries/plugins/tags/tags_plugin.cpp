@@ -356,6 +356,11 @@ struct operation_visitor {
        update_tags( c );
    }
 
+   void operator()( const comment_payout_update_operation& op )const {
+       const auto& c = _db.get_comment( op.author, op.permlink );
+       update_tags( c );
+   }
+
    template<typename Op>
    void operator()( Op&& )const{} /// ignore all other ops
 };

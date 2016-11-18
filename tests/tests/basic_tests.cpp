@@ -42,6 +42,30 @@ using namespace steemit::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( basic_tests, clean_database_fixture )
 
+BOOST_AUTO_TEST_CASE( parse_size_test )
+{
+   BOOST_CHECK_THROW( fc::parse_size( "" ), fc::parse_error_exception );
+   BOOST_CHECK_THROW( fc::parse_size( "k" ), fc::parse_error_exception );
+
+   BOOST_CHECK_EQUAL( fc::parse_size( "0" ), 0 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "1" ), 1 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "2" ), 2 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "3" ), 3 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "4" ), 4 );
+
+   BOOST_CHECK_EQUAL( fc::parse_size( "9" ),   9 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "10" ), 10 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "11" ), 11 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "12" ), 12 );
+
+   BOOST_CHECK_EQUAL( fc::parse_size( "314159265"), 314159265 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "1k" ), 1024 );
+   BOOST_CHECK_THROW( fc::parse_size( "1a" ), fc::parse_error_exception );
+   BOOST_CHECK_EQUAL( fc::parse_size( "1kb" ), 1000 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "1MiB" ), 1048576 );
+   BOOST_CHECK_EQUAL( fc::parse_size( "32G" ), 34359738368 );
+}
+
 /**
  * Verify that names are RFC-1035 compliant https://tools.ietf.org/html/rfc1035
  * https://github.com/cryptonomex/graphene/issues/15

@@ -121,7 +121,7 @@ class database_api
        */
       void cancel_all_subscriptions();
 
-      vector<tags::tag_stats_object> get_trending_tags( string after_tag, uint32_t limit )const;
+      vector<tag_api_obj> get_trending_tags( string after_tag, uint32_t limit )const;
 
       /**
        *  This API is a short-cut for returning all of the state required for a particular URL
