@@ -1078,7 +1078,10 @@ uint32_t database::get_pow_summary_target()const
    if( dgp.num_pow_witnesses >= 1004 )
       return 0;
 
-   return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
+   if( has_hardfork( STEEMIT_HARDFORK_0_16__551 ) )
+      return (0xFE00 - 0x0040 * dgp.num_pow_witnesses ) << 0x10;
+   else
+      return (0xFC00 - 0x0040 * dgp.num_pow_witnesses) << 0x10;
 }
 
 void database::update_witness_schedule4()
@@ -1089,6 +1092,7 @@ void database::update_witness_schedule4()
    /// Add the highest voted witnesses
    flat_set< witness_id_type > selected_voted;
    selected_voted.reserve( STEEMIT_MAX_VOTED_WITNESSES );
+
    const auto& widx         = get_index<witness_index>().indices().get<by_vote_name>();
    for( auto itr = widx.begin();
         itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
@@ -1098,7 +1102,10 @@ void database::update_witness_schedule4()
          continue;
       selected_voted.insert( itr->id );
       active_witnesses.push_back( itr->owner) ;
+      modify( *itr, [&]( witness_object& wo ) { wo.schedule = witness_object::top19; } );
    }
+
+   auto num_elected = active_witnesses.size();
 
    /// Add miners from the top of the mining queue
    flat_set< witness_id_type > selected_miners;
@@ -1116,6 +1123,7 @@ void database::update_witness_schedule4()
          {
             selected_miners.insert(mitr->id);
             active_witnesses.push_back(mitr->owner);
+            modify( *mitr, [&]( witness_object& wo ) { wo.schedule = witness_object::miner; } );
          }
       }
       // Remove processed miner from the queue
@@ -1130,6 +1138,8 @@ void database::update_witness_schedule4()
          obj.num_pow_witnesses--;
       } );
    }
+
+   auto num_miners = selected_miners.size();
 
    /// Add the running witnesses in the lead
    const witness_schedule_object& wso = get_witness_schedule_object();
@@ -1151,9 +1161,12 @@ void database::update_witness_schedule4()
           && selected_voted.find(sitr->id) == selected_voted.end() )
       {
          active_witnesses.push_back(sitr->owner);
+         modify( *sitr, [&]( witness_object& wo ) { wo.schedule = witness_object::timeshare; } );
          ++witness_count;
       }
    }
+
+   auto num_timeshare = active_witnesses.size() - num_miners - num_elected;
 
    /// Update virtual schedule of processed witnesses
    bool reset_virtual_time = false;
@@ -1253,6 +1266,8 @@ void database::update_witness_schedule4()
       }
    }
 
+   assert( num_elected + num_miners + num_timeshare == active_witnesses.size() );
+
    modify( wso, [&]( witness_schedule_object& _wso )
    {
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
@@ -1267,6 +1282,10 @@ void database::update_witness_schedule4()
       }
 
       _wso.num_scheduled_witnesses = std::max< uint8_t >( active_witnesses.size(), 1 );
+      _wso.witness_pay_normalization_factor =
+           _wso.top19_weight * num_elected
+         + _wso.miner_weight * num_miners
+         + _wso.timeshare_weight * num_timeshare;
 
       /// shuffle current shuffled witnesses
       auto now_hi = uint64_t(head_block_time().sec_since_epoch()) << 32;
@@ -2111,26 +2130,72 @@ void database::process_comment_cashout()
 void database::process_funds()
 {
    const auto& props = get_dynamic_global_properties();
+   const auto& wso = get_witness_schedule_object();
 
-   auto content_reward = get_content_reward();
-   auto curate_reward = get_curation_reward();
-   auto witness_pay = get_producer_reward();
-   auto vesting_reward = content_reward + curate_reward + witness_pay;
-
-   content_reward = content_reward + curate_reward;
-
-   if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
-      vesting_reward.amount = 0;
-   else
-      vesting_reward.amount.value *= 9;
-
-   modify( props, [&]( dynamic_global_property_object& p )
+   if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
    {
-       p.total_vesting_fund_steem += vesting_reward;
-       p.total_reward_fund_steem  += content_reward;
-       p.current_supply += content_reward + witness_pay + vesting_reward;
-       p.virtual_supply += content_reward + witness_pay + vesting_reward;
-   } );
+      /**
+       * At block 7,000,000 have a 9.5% instantaneous inflation rate, decreasing to 0.95% at a rate of 0.01%
+       * every 250k blocks. This narrowing will take approximately 20.5 years and will complete on block 220,750,000
+       *
+       * Using signed 64 bit integer, we don't have to worry about subtraction underflow until the year 224,020,500,263,646,647
+       * assuming there are no missed blocks.
+       */
+      auto new_steem = ( props.virtual_supply.amount *
+         std::max( (int64_t)( STEEMIT_INFLATION_RATE_START_PERCENT - head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD ), (int64_t)STEEMIT_INFLATION_RATE_STOP_PERCENT ) )
+         / ( STEEMIT_100_PERCENT * STEEMIT_BLOCKS_PER_YEAR );
+      auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT; /// 75% to content creator
+      auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
+      auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
+
+      const auto& cwit = get_witness( props.current_witness );
+      witness_reward *= STEEMIT_MAX_WITNESSES;
+
+      if( cwit.schedule == witness_object::timeshare )
+         witness_reward *= wso.timeshare_weight;
+      else if( cwit.schedule == witness_object::miner )
+         witness_reward *= wso.miner_weight;
+      else if( cwit.schedule == witness_object::top19 )
+         witness_reward *= wso.top19_weight;
+      else
+         wlog( "Encountered unknown witness type for witness: ${w}", ("w", cwit.owner) );
+
+      witness_reward /= wso.witness_pay_normalization_factor;
+
+      new_steem = content_reward + vesting_reward + witness_reward;
+
+      modify( props, [&]( dynamic_global_property_object& p )
+      {
+          p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
+          p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
+          p.current_supply           += asset( new_steem, STEEM_SYMBOL );
+          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
+      });
+
+      create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+   }
+   else
+   {
+      auto content_reward = get_content_reward();
+      auto curate_reward = get_curation_reward();
+      auto witness_pay = get_producer_reward();
+      auto vesting_reward = content_reward + curate_reward + witness_pay;
+
+      content_reward = content_reward + curate_reward;
+
+      if( props.head_block_number < STEEMIT_START_VESTING_BLOCK )
+         vesting_reward.amount = 0;
+      else
+         vesting_reward.amount.value *= 9;
+
+      modify( props, [&]( dynamic_global_property_object& p )
+      {
+          p.total_vesting_fund_steem += vesting_reward;
+          p.total_reward_fund_steem  += content_reward;
+          p.current_supply += content_reward + witness_pay + vesting_reward;
+          p.virtual_supply += content_reward + witness_pay + vesting_reward;
+      } );
+   }
 }
 
 void database::process_savings_withdraws()
@@ -2721,6 +2786,7 @@ void database::init_genesis( uint64_t init_supply )
          {
             w.owner        = STEEMIT_INIT_MINER_NAME + ( i ? fc::to_string(i) : std::string() );
             w.signing_key  = init_public_key;
+            w.schedule = witness_object::miner;
          } );
       }
 
@@ -3023,7 +3089,11 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         if( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+         int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
+         if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
+            steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
+
+         if( fho.price_history.size() > steemit_feed_history_window )
             fho.price_history.pop_front();
 
          if( fho.price_history.size() )
@@ -3034,7 +3104,7 @@ try {
                copy.push_back( i );
             }
 
-            std::sort( copy.begin(), copy.end() ); /// todo: use nth_item
+            std::sort( copy.begin(), copy.end() ); /// TODO: use nth_item
             fho.current_median_history = copy[copy.size()/2];
 
 #ifdef IS_TEST_NET
@@ -3788,6 +3858,10 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_15 == 15, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_15 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_15_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_15 ] = STEEMIT_HARDFORK_0_15_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_16 == 16, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_16 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_16_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_16 ] = STEEMIT_HARDFORK_0_16_VERSION;
+
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
@@ -4034,10 +4108,20 @@ void database::apply_hardfork( uint32_t hardfork )
          elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
 #endif
          break;
-       case  STEEMIT_HARDFORK_0_15:
+      case  STEEMIT_HARDFORK_0_15:
 #ifndef IS_TEST_NET
          elog( "HARDFORK 15 at block ${b}", ("b", head_block_num()) );
 #endif
+         break;
+      case STEEMIT_HARDFORK_0_16:
+#ifndef IS_TEST_NET
+         elog( "HARDFORK 16 at block ${b}", ("b", head_block_num()) );
+#endif
+         modify( get_feed_history(), [&]( feed_history_object& fho )
+         {
+            while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+               fho.price_history.pop_front();
+         });
          break;
       default:
          break;
@@ -4205,7 +4289,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             a.vesting_shares.amount *= magnitude;
             a.withdrawn             *= magnitude;
             a.to_withdraw           *= magnitude;
-            a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+            a.vesting_withdraw_rate  = asset( a.to_withdraw / STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_16, VESTS_SYMBOL );
             if( a.vesting_withdraw_rate.amount == 0 )
                a.vesting_withdraw_rate.amount = 1;
 

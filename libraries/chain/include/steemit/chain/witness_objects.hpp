@@ -26,6 +26,14 @@ namespace steemit { namespace chain {
    class witness_object : public object< witness_object_type, witness_object >
    {
       public:
+         enum witness_schedule_type
+         {
+            top19,
+            timeshare,
+            miner,
+            none
+         };
+
          template< typename Constructor, typename Allocator >
          witness_object( Constructor&& c, allocator< Allocator > a )
             :url( a )
@@ -67,6 +75,7 @@ namespace steemit { namespace chain {
           *  else takes turns being scheduled proportional to their votes.
           */
          share_type        votes;
+         witness_schedule_type schedule = none; /// How the witness was scheduled the last time it was scheduled
 
          /**
           * These fields are used for the witness scheduling algorithm which uses
@@ -142,6 +151,10 @@ namespace steemit { namespace chain {
          uint32_t                                                          next_shuffle_block_num = 1;
          fc::array< account_name_type, STEEMIT_MAX_WITNESSES >             current_shuffled_witnesses;
          uint8_t                                                           num_scheduled_witnesses = 1;
+         uint8_t                                                           top19_weight = 1;
+         uint8_t                                                           timeshare_weight = 5;
+         uint8_t                                                           miner_weight = 1;
+         uint32_t                                                          witness_pay_normalization_factor = 25;
          chain_properties                                                  median_props;
          version                                                           majority_version;
    };
@@ -214,11 +227,13 @@ namespace steemit { namespace chain {
 
 } }
 
+FC_REFLECT_ENUM( steemit::chain::witness_object::witness_schedule_type, (top19)(timeshare)(miner)(none) )
+
 FC_REFLECT( steemit::chain::witness_object,
              (id)
              (owner)
              (created)
-             (url)(votes)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
+             (url)(votes)(schedule)(virtual_last_update)(virtual_position)(virtual_scheduled_time)(total_missed)
              (last_aslot)(last_confirmed_block_num)(pow_worker)(signing_key)
              (props)
              (sbd_exchange_rate)(last_sbd_exchange_update)
@@ -232,7 +247,8 @@ FC_REFLECT( steemit::chain::witness_vote_object, (id)(witness)(account) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_vote_object, steemit::chain::witness_vote_index )
 
 FC_REFLECT( steemit::chain::witness_schedule_object,
-             (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)(median_props)
-             (majority_version)
+             (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)
+             (top19_weight)(timeshare_weight)(miner_weight)(witness_pay_normalization_factor)
+             (median_props)(majority_version)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )

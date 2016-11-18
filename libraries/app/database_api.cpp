@@ -1488,11 +1488,11 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
 
       const auto& c_idx = my->_db.get_index< follow::feed_index >().indices().get< follow::by_comment >();
       const auto& f_idx = my->_db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
-      auto feed_itr = f_idx.lower_bound( account.id );
+      auto feed_itr = f_idx.lower_bound( account.name );
 
       if( start_author.size() || start_permlink.size() )
       {
-         auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.id ) );
+         auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.name ) );
          FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
          feed_itr = f_idx.iterator_to( *start_c );
       }
@@ -1502,14 +1502,14 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
 
       while( result.size() < query.limit && feed_itr != f_idx.end() )
       {
-         if( feed_itr->account != account.id )
+         if( feed_itr->account != account.name )
             break;
          try
          {
             result.push_back( get_discussion( feed_itr->comment ) );
-            if( feed_itr->first_reblogged_by != account_id_type() )
+            if( feed_itr->first_reblogged_by != account_name_type() )
             {
-               result.back().first_reblogged_by = feed_itr->first_reblogged_by( my->_db ).name;
+               result.back().first_reblogged_by = feed_itr->first_reblogged_by;
                result.back().first_reblogged_on = feed_itr->first_reblogged_on;
             }
          }
@@ -1537,11 +1537,11 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
 
       const auto& c_idx = my->_db.get_index< follow::blog_index >().indices().get< follow::by_comment >();
       const auto& b_idx = my->_db.get_index< follow::blog_index >().indices().get< follow::by_blog >();
-      auto blog_itr = b_idx.lower_bound( account.id );
+      auto blog_itr = b_idx.lower_bound( account.name );
 
       if( start_author.size() || start_permlink.size() )
       {
-         auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.id ) );
+         auto start_c = c_idx.find( boost::make_tuple( my->_db.get_comment( start_author, start_permlink ).id, account.name ) );
          FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's blog" );
          blog_itr = b_idx.iterator_to( *start_c );
       }
@@ -1551,7 +1551,7 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
 
       while( result.size() < query.limit && blog_itr != b_idx.end() )
       {
-         if( blog_itr->account != account.id )
+         if( blog_itr->account != account.name )
             break;
          try
          {
