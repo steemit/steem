@@ -1594,7 +1594,7 @@ void convert_evaluator::do_apply( const convert_operation& o )
 
   auto steemit_conversion_delay = STEEMIT_CONVERSION_DELAY_PRE_HF_16;
   if( db().has_hardfork( STEEMIT_HARDFORK_0_16__551) )
-     steemit_conversion_delay = fc::microseconds( STEEMIT_CONVERSION_DELAY );
+     steemit_conversion_delay = STEEMIT_CONVERSION_DELAY;
 
   db().create<convert_request_object>( [&]( convert_request_object& obj )
   {
