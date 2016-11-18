@@ -13,8 +13,8 @@ class follow_api_impl
       follow_api_impl( steemit::app::application& _app )
          :app(_app) {}
 
-      vector< follow_object > get_followers( string following, string start_follower, follow_type type, uint16_t limit )const;
-      vector< follow_object > get_following( string follower, string start_following, follow_type type, uint16_t limit )const;
+      vector< follow_api_obj > get_followers( string following, string start_follower, follow_type type, uint16_t limit )const;
+      vector< follow_api_obj > get_following( string follower, string start_following, follow_type type, uint16_t limit )const;
 
       vector< feed_entry > get_feed_entries( string account, uint32_t entry_id, uint16_t limit )const;
       vector< comment_feed_entry > get_feed( string account, uint32_t entry_id, uint16_t limit )const;
@@ -27,10 +27,10 @@ class follow_api_impl
       steemit::app::application& app;
 };
 
-vector< follow_object > follow_api_impl::get_followers( string following, string start_follower, follow_type type, uint16_t limit )const
+vector< follow_api_obj > follow_api_impl::get_followers( string following, string start_follower, follow_type type, uint16_t limit )const
 {
    FC_ASSERT( limit <= 100 );
-   vector<follow_object> result;
+   vector< follow_api_obj > result;
    const auto& idx = app.chain_database()->get_index<follow_index>().indices().get<by_following_follower>();
    const auto& following_obj = app.chain_database()->get_account( following );
    const auto& by_name_idx = app.chain_database()->get_index< account_index >().indices().get< by_name >();
@@ -41,7 +41,11 @@ vector< follow_object > follow_api_impl::get_followers( string following, string
    {
       if( itr->what & ( 1 << type ) )
       {
-         result.push_back( *itr );
+         follow_api_obj entry;
+         entry.follower = itr->follower( *app.chain_database() ).name;
+         entry.following = itr->following( *app.chain_database() ).name;
+         entry.what = type;
+         result.push_back( entry );
          --limit;
       }
 
@@ -51,10 +55,10 @@ vector< follow_object > follow_api_impl::get_followers( string following, string
    return result;
 }
 
-vector< follow_object > follow_api_impl::get_following( string follower, string start_following, follow_type type, uint16_t limit )const
+vector< follow_api_obj > follow_api_impl::get_following( string follower, string start_following, follow_type type, uint16_t limit )const
 {
    FC_ASSERT( limit <= 100 );
-   vector<follow_object> result;
+   vector< follow_api_obj > result;
    const auto& idx = app.chain_database()->get_index<follow_index>().indices().get<by_follower_following>();
    const auto& follower_obj = app.chain_database()->get_account( follower );
    const auto& by_name_idx = app.chain_database()->get_index< account_index >().indices().get< by_name >();
@@ -65,7 +69,11 @@ vector< follow_object > follow_api_impl::get_following( string follower, string 
    {
       if( itr->what & ( 1 << type ) )
       {
-         result.push_back( *itr );
+         follow_api_obj entry;
+         entry.follower = itr->follower( *app.chain_database() ).name;
+         entry.following = itr->following( *app.chain_database() ).name;
+         entry.what = type;
+         result.push_back( entry );
          --limit;
       }
 
@@ -246,12 +254,12 @@ follow_api::follow_api( const steemit::app::api_context& ctx )
 
 void follow_api::on_api_startup() {}
 
-vector<follow_object> follow_api::get_followers( string following, string start_follower, follow_type type, uint16_t limit )const
+vector<follow_api_obj> follow_api::get_followers( string following, string start_follower, follow_type type, uint16_t limit )const
 {
    return my->get_followers( following, start_follower, type, limit );
 }
 
-vector<follow_object> follow_api::get_following( string follower, string start_following, follow_type type, uint16_t limit )const
+vector<follow_api_obj> follow_api::get_following( string follower, string start_following, follow_type type, uint16_t limit )const
 {
    return my->get_following( follower, start_following, type, limit );
 }
