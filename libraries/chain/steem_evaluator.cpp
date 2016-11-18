@@ -3,6 +3,7 @@
 #include <steemit/chain/custom_operation_interpreter.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/witness_objects.hpp>
+#include <steemit/chain/block_summary_object.hpp>
 
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
@@ -781,9 +782,13 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    }
    else
    {
+      int vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS_PRE_HF_16;
+      if( db().has_hardfork( STEEMIT_HARDFORK_0_16__551 ) )
+         vesting_withdraw_intervals = STEEMIT_VESTING_WITHDRAW_INTERVALS; /// 13 weeks = 1 quarter of a year
+
       db().modify( account, [&]( account_object& a )
       {
-         auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS, VESTS_SYMBOL );
+         auto new_vesting_withdraw_rate = asset( o.vesting_shares.amount / vesting_withdraw_intervals, VESTS_SYMBOL );
 
          if( new_vesting_withdraw_rate.amount == 0 )
             new_vesting_withdraw_rate.amount = 1;
@@ -1474,18 +1479,33 @@ void pow_evaluator::do_apply( const pow_operation& o ) {
 }
 
 
-void pow2_evaluator::do_apply( const pow2_operation& o ) {
-   const auto& work = o.work.get<pow2>();
-
+void pow2_evaluator::do_apply( const pow2_operation& o )
+{
    database& db = this->db();
-
+   const auto& dgp = db.get_dynamic_global_properties();
    uint32_t target_pow = db.get_pow_summary_target();
-   FC_ASSERT( work.input.prev_block == db.head_block_id(), "Work not for last block" );
-   FC_ASSERT( work.pow_summary < target_pow, "Insufficient work difficulty. Work: ${w}, Target: ${t}", ("w",work.pow_summary)("t", target_pow) );
+   account_name_type worker_account;
+
+   if( db.has_hardfork( STEEMIT_HARDFORK_0_16__551 ) )
+   {
+      const auto& work = o.work.get< equihash_pow >();
+      FC_ASSERT( work.prev_block == db.head_block_id(), "Equihash pow op not for last block" );
+      auto recent_block_num = db.get< block_stats_object, by_block_id >( work.input.prev_block ).block_num();
+      FC_ASSERT( recent_block_num > dgp.last_irreversible_block_num,
+         "Equihash pow done for block older than last irreversible block num" );
+      FC_ASSERT( work.pow_summary < target_pow, "Insufficient work difficulty. Work: ${w}, Target: ${t}", ("w",work.pow_summary)("t", target_pow) );
+      worker_account = work.input.worker_account;
+   }
+   else
+   {
+      const auto& work = o.work.get< pow2 >();
+      FC_ASSERT( work.input.prev_block == db.head_block_id(), "Work not for last block" );
+      FC_ASSERT( work.pow_summary < target_pow, "Insufficient work difficulty. Work: ${w}, Target: ${t}", ("w",work.pow_summary)("t", target_pow) );
+      worker_account = work.input.worker_account;
+   }
 
    FC_ASSERT( o.props.maximum_block_size >= STEEMIT_MIN_BLOCK_SIZE_LIMIT * 2, "Voted maximum block size is too small." );
 
-   const auto& dgp = db.get_dynamic_global_properties();
    db.modify( dgp, [&]( dynamic_global_property_object& p )
    {
       p.total_pow++;
@@ -1493,13 +1513,13 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
    });
 
    const auto& accounts_by_name = db.get_index<account_index>().indices().get<by_name>();
-   auto itr = accounts_by_name.find( work.input.worker_account );
+   auto itr = accounts_by_name.find( worker_account );
    if(itr == accounts_by_name.end())
    {
       FC_ASSERT( o.new_owner_key.valid(), "New owner key is not valid." );
       db.create< account_object >( [&]( account_object& acc )
       {
-         acc.name = work.input.worker_account;
+         acc.name = worker_account;
          acc.memo_key = *o.new_owner_key;
          acc.created = dgp.time;
          acc.last_vote_time = dgp.time;
@@ -1508,7 +1528,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
       db.create< account_authority_object >( [&]( account_authority_object& auth )
       {
-         auth.account = work.input.worker_account;
+         auth.account = worker_account;
          auth.owner = authority( 1, *o.new_owner_key, 1);
          auth.active = auth.owner;
          auth.posting = auth.owner;
@@ -1516,7 +1536,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
 
       db.create<witness_object>( [&]( witness_object& w )
       {
-          w.owner             = work.input.worker_account;
+          w.owner             = worker_account;
           w.props             = o.props;
           w.signing_key       = *o.new_owner_key;
           w.pow_worker        = dgp.total_pow;
@@ -1525,8 +1545,8 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
    else
    {
       FC_ASSERT( !o.new_owner_key.valid(), "Cannot specify an owner key unless creating account." );
-      const witness_object* cur_witness = db.find_witness( work.input.worker_account );
-      FC_ASSERT( cur_witness, "Witness must be created for existing account before mining." );
+      const witness_object* cur_witness = db.find_witness( worker_account );
+      FC_ASSERT( cur_witness, "Witness must be created for existing account before mining.");
       FC_ASSERT( cur_witness->pow_worker == 0, "This account is already scheduled for pow block production." );
       db.modify(*cur_witness, [&]( witness_object& w )
       {
@@ -1535,12 +1555,15 @@ void pow2_evaluator::do_apply( const pow2_operation& o ) {
       });
    }
 
-   /// pay the witness that includes this POW
-   asset inc_reward = db.get_pow_reward();
-   db.adjust_supply( inc_reward, true );
+   if( !db.has_hardfork( STEEMIT_HARDFORK_0_16__551) )
+   {
+      /// pay the witness that includes this POW
+      asset inc_reward = db.get_pow_reward();
+      db.adjust_supply( inc_reward, true );
 
-   const auto& inc_witness = db.get_account( dgp.current_witness );
-   db.create_vesting( inc_witness, inc_reward );
+      const auto& inc_witness = db.get_account( dgp.current_witness );
+      db.create_vesting( inc_witness, inc_reward );
+   }
 }
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
@@ -1562,12 +1585,16 @@ void convert_evaluator::do_apply( const convert_operation& o )
   const auto& fhistory = db().get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
 
+  auto steemit_conversion_delay = STEEMIT_CONVERSION_DELAY_PRE_HF_16;
+  if( db().has_hardfork( STEEMIT_HARDFORK_0_16__551) )
+     steemit_conversion_delay = STEEMIT_CONVERSION_DELAY;
+
   db().create<convert_request_object>( [&]( convert_request_object& obj )
   {
       obj.owner           = o.owner;
       obj.requestid       = o.requestid;
       obj.amount          = o.amount;
-      obj.conversion_date = db().head_block_time() + STEEMIT_CONVERSION_DELAY; // 1 week
+      obj.conversion_date = db().head_block_time() + steemit_conversion_delay;
   });
 
 }

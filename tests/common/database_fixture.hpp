@@ -211,6 +211,7 @@ struct database_fixture {
    void transfer( const string& from, const string& to, const share_type& steem );
    void convert( const string& account_name, const asset& amount );
    void vest( const string& from, const share_type& amount );
+   void vest( const string& account, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
    const asset& get_balance( const string& account_name )const;
