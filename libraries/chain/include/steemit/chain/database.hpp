@@ -403,6 +403,8 @@ namespace steemit { namespace chain {
 
          const std::string& get_json_schema() const;
 
+         void set_flush_interval( uint32_t flush_blocks );
+
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
@@ -468,6 +470,9 @@ namespace steemit { namespace chain {
          flat_map<uint32_t,block_id_type>  _checkpoints;
 
          node_property_object              _node_property_object;
+
+         uint32_t                      _flush_blocks = 0;
+         uint32_t                      _next_flush_block = 0;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
