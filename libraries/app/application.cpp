@@ -455,6 +455,7 @@ namespace detail {
                throw;
             }
          }
+         return false;
       } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
@@ -962,6 +963,9 @@ void application::get_max_block_age( int32_t& result )
 
 void application::shutdown_plugins()
 {
+   my->_p2p_network->close();
+   my->_p2p_network.reset();
+   fc::usleep( fc::seconds(1) );
    for( auto& entry : my->_plugins_enabled )
       entry.second->plugin_shutdown();
    return;
