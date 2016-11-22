@@ -246,6 +246,7 @@ namespace detail {
 
          if( !read_only )
          {
+            _self->_read_only = false;
             ilog( "Starting Steem node in write mode." );
             _max_block_age =_options->at("max-block-age").as<int32_t>();
 
@@ -305,6 +306,22 @@ namespace detail {
          {
             ilog( "Starting Steem node in read mode." );
             _chain_db->open( _data_dir / "blockchain", 0, _shared_file_size, chainbase::database::read_only );
+
+            if( _options->count( "read-forward-rpc" ) )
+            {
+               try
+               {
+                  auto ws_ptr = _self->_client.connect( _options->at( "read-forward-rpc" ).as< string >() );
+                  auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
+                  auto login = apic->get_remote_api< login_api >( 1 );
+                  FC_ASSERT( login->login( "", "" ) );
+                  _self->_remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
+               }
+               catch( fc::exception& e )
+               {
+                  wlog( "Error conencting to remote RPC, network api forwarding disabled.", ("e", e.to_detail_string()) );
+               }
+            }
          }
 
          if( _options->count("api-user") )
@@ -886,6 +903,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("shared-file-size", bpo::value<string>()->default_value("32G"), "Size of the shared memory file. Default: 32G")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
+         ("read-forward-rpc", bpo::value<string>(), "Endpoint to forward write API calls to for a read node" )
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
