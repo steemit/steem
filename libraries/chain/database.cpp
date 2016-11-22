@@ -2134,7 +2134,7 @@ void database::process_funds()
        */
       auto new_steem = ( props.virtual_supply.amount *
          std::max( (int64_t)( STEEMIT_INFLATION_RATE_START_PERCENT - head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD ), (int64_t)STEEMIT_INFLATION_RATE_STOP_PERCENT ) )
-         / ( STEEMIT_100_PERCENT * STEEMIT_BLOCKS_PER_YEAR );
+         / ( int64_t( STEEMIT_100_PERCENT ) * int64_t( STEEMIT_BLOCKS_PER_YEAR ) );
       auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT; /// 75% to content creator
       auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
