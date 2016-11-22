@@ -335,9 +335,9 @@ public:
       try
       {
          auto v = _remote_api->get_version();
-         result["server-blockchain-version"] = v.blockchain_version;
-         result["server-steem-revision"] = v.steem_revision;
-         result["server-fc-revision"] = v.fc_revision;
+         result["server_blockchain_version"] = v.blockchain_version;
+         result["server_steem_revision"] = v.steem_revision;
+         result["server_fc_revision"] = v.fc_revision;
       }
       catch( fc::exception& )
       {
