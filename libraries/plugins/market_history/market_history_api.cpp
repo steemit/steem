@@ -190,37 +190,58 @@ void market_history_api::on_api_startup() {}
 
 market_ticker market_history_api::get_ticker() const
 {
-   return my->get_ticker();
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_ticker();
+   });
 }
 
 market_volume market_history_api::get_volume() const
 {
-   return my->get_volume();
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_volume();
+   });
 }
 
 order_book market_history_api::get_order_book( uint32_t limit ) const
 {
-   return my->get_order_book( limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_order_book( limit );
+   });
 }
 
 std::vector< market_trade > market_history_api::get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit ) const
 {
-   return my->get_trade_history( start, end, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_trade_history( start, end, limit );
+   });
 }
 
 std::vector< market_trade > market_history_api::get_recent_trades( uint32_t limit ) const
 {
-   return my->get_recent_trades( limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_recent_trades( limit );
+   });
 }
 
 std::vector< bucket_object > market_history_api::get_market_history( uint32_t bucket_seconds, time_point_sec start, time_point_sec end ) const
 {
-   return my->get_market_history( bucket_seconds, start, end );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_market_history( bucket_seconds, start, end );
+   });
 }
 
 flat_set< uint32_t > market_history_api::get_market_history_buckets() const
 {
-   return my->get_market_history_buckets();
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_market_history_buckets();
+   });
 }
 
 } } // steemit::market_history

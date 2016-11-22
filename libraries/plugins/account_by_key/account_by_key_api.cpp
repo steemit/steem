@@ -52,7 +52,10 @@ void account_by_key_api::on_api_startup() {}
 
 vector< vector< account_name_type > > account_by_key_api::get_key_references( vector< public_key_type > keys )const
 {
-   return my->get_key_references( keys );
+   return my->_app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_key_references( keys );
+   });
 }
 
 } } // steemit::account_by_key
