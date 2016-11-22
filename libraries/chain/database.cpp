@@ -2128,13 +2128,18 @@ void database::process_funds()
       /**
        * At block 7,000,000 have a 9.5% instantaneous inflation rate, decreasing to 0.95% at a rate of 0.01%
        * every 250k blocks. This narrowing will take approximately 20.5 years and will complete on block 220,750,000
-       *
-       * Using signed 64 bit integer, we don't have to worry about subtraction underflow until the year 224,020,500,263,646,647
-       * assuming there are no missed blocks.
        */
-      auto new_steem = ( props.virtual_supply.amount *
-         std::max( (int64_t)( STEEMIT_INFLATION_RATE_START_PERCENT - head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD ), (int64_t)STEEMIT_INFLATION_RATE_STOP_PERCENT ) )
-         / ( int64_t( STEEMIT_100_PERCENT ) * int64_t( STEEMIT_BLOCKS_PER_YEAR ) );
+      int64_t start_inflation_rate = int64_t( STEEMIT_INFLATION_RATE_START_PERCENT );
+      int64_t inflation_rate_adjustment = int64_t( head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD );
+      int64_t inflation_rate_floor = int64_t( STEEMIT_INFLATION_RATE_STOP_PERCENT );
+
+      int64_t current_inflation_rate;
+      if( inflation_rate_adjustment <= start_inflation_rate )
+         current_inflation_rate = std::max( start_inflation_rate - inflation_rate_adjustment, inflation_rate_floor );
+      else
+         current_inflation_rate = inflation_rate_floor;
+
+      auto new_steem = ( props.virtual_supply.amount * current_inflation_rate ) / ( int64_t( STEEMIT_100_PERCENT ) * int64_t( STEEMIT_BLOCKS_PER_YEAR ) );
       auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT; /// 75% to content creator
       auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
