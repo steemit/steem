@@ -310,6 +310,7 @@ public:
       fc::mutable_variant_object result;
       //result["blockchain_name"]        = BLOCKCHAIN_NAME;
       //result["blockchain_description"] = BTS_BLOCKCHAIN_DESCRIPTION;
+      result["blockchain_version"]       = STEEMIT_BLOCKCHAIN_VERSION;
       result["client_version"]           = client_version;
       result["steem_revision"]           = graphene::utilities::git_revision_sha;
       result["steem_revision_age"]       = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
@@ -330,6 +331,18 @@ public:
       std::string os = "other";
 #endif
       result["build"] = os + " " + bitness;
+
+      try
+      {
+         auto v = _remote_api->get_version();
+         result["server-blockchain-version"] = v.blockchain_version;
+         result["server-steem-revision"] = v.steem_revision;
+         result["server-fc-revision"] = v.fc_revision;
+      }
+      catch( fc::exception& )
+      {
+         result["server"] = "could not retrieve server version information";
+      }
 
       return result;
    }
