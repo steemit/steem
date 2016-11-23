@@ -55,9 +55,22 @@ struct account_reputation
 
 struct follow_api_obj
 {
-   string      follower;
-   string      following;
-   follow_type what;
+   string                follower;
+   string                following;
+   vector< follow_type > what;
+};
+
+struct follow_count_api_obj
+{
+   follow_count_api_obj() {}
+   follow_count_api_obj( const follow_count_object& o ) :
+      account( o.account ),
+      follower_count( o.follower_count ),
+      following_count( o.following_count ) {}
+
+   string   account;
+   uint32_t follower_count  = 0;
+   uint32_t following_count = 0;
 };
 
 namespace detail
@@ -74,6 +87,8 @@ class follow_api
 
       vector< follow_api_obj > get_followers( string to, string start, follow_type type, uint16_t limit )const;
       vector< follow_api_obj > get_following( string from, string start, follow_type type, uint16_t limit )const;
+
+      follow_count_api_obj get_follow_count( string account )const;
 
       vector< feed_entry > get_feed_entries( string account, uint32_t entry_id = 0, uint16_t limit = 500 )const;
       vector< comment_feed_entry > get_feed( string account, uint32_t entry_id = 0, uint16_t limit = 500 )const;
@@ -95,10 +110,12 @@ FC_REFLECT( steemit::follow::blog_entry, (author)(permlink)(blog)(reblog_on)(ent
 FC_REFLECT( steemit::follow::comment_blog_entry, (comment)(blog)(reblog_on)(entry_id) );
 FC_REFLECT( steemit::follow::account_reputation, (account)(reputation) );
 FC_REFLECT( steemit::follow::follow_api_obj, (follower)(following)(what) );
+FC_REFLECT( steemit::follow::follow_count_api_obj, (account)(follower_count)(following_count) );
 
 FC_API( steemit::follow::follow_api,
    (get_followers)
    (get_following)
+   (get_follow_count)
    (get_feed_entries)
    (get_feed)
    (get_blog_entries)
