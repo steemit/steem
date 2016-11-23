@@ -1509,7 +1509,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
 #ifndef IS_LOW_MEM
       FC_ASSERT( limit <= 100 );
       result.reserve( limit );
-      int count = 0;
+      uint32_t count = 0;
       const auto& didx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
 
       if( before_date == time_point_sec() )

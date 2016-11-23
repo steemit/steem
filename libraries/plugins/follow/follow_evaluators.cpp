@@ -125,7 +125,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   f.reblogs = 1;
                   f.account_feed_id = next_id;
                });
-
             }
             else
             {
