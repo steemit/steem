@@ -2432,7 +2432,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
    {
-      resize_shared_mem( 1024 * 1024 * 32 ); // Due to number of blocks in the test, it requires a large file. (32 MB)
+      resize_shared_mem( 1024 * 1024 * 256 ); // Due to number of blocks in the test, it requires a large file. (32 MB)
 
       // Using the debug node plugin to manually set account balances to create required market conditions for this test
       auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
@@ -2536,7 +2536,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_account( "sam" ), [&]( account_object& a )
          {
-            a.sbd_balance = asset( ( 2 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+            a.sbd_balance = asset( ( 194 * sbd_balance.amount ) / 500, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
@@ -2544,12 +2544,14 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( 2 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+            gpo.current_sbd_supply = alice_sbd + asset( ( 194 * sbd_balance.amount ) / 500, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
       validate_database();
+
+      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
 
       auto last_print_rate = db.get_dynamic_global_properties().sbd_print_rate;
 
