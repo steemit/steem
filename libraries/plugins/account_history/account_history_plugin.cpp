@@ -174,7 +174,6 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
    flat_set<account_name_type> impacted;
    steemit::chain::database& db = database();
 
-   const auto& hist_idx = db.get_index<account_history_index>().indices().get<by_account>();
    const operation_object* new_obj = nullptr;
    app::operation_get_impacted_accounts( note.op, impacted );
 

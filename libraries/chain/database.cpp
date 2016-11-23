@@ -2790,7 +2790,7 @@ void database::init_genesis( uint64_t init_supply )
          } );
       }
 
-      const auto& gpo = create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
+      create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
       {
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;

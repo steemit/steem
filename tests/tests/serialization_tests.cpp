@@ -95,9 +95,9 @@ BOOST_AUTO_TEST_CASE( serialization_json_test )
       op.to = "bob";
       op.amount = asset(100,STEEM_SYMBOL);
 
-
       fc::variant test(op.amount);
       auto tmp = test.as<asset>();
+      BOOST_REQUIRE( tmp == op.amount );
 
       trx.operations.push_back( op );
       fc::variant packed(trx);

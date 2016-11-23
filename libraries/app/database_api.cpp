@@ -1380,8 +1380,6 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
    auto start_author = *( query.start_author );
    auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
 
-   const auto& account = my->_db.get_account( start_author );
-
    const auto& c_idx = my->_db.get_index< comment_index >().indices().get< by_permlink >();
    const auto& t_idx = my->_db.get_index< comment_index >().indices().get< by_author_last_update >();
    auto comment_itr = t_idx.lower_bound( start_author );

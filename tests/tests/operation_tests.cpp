@@ -656,7 +656,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
       {
          const auto& alice = db.get_account( "alice" );
-         const auto& bob = db.get_account( "bob" );
 
          signed_transaction tx;
          comment_operation comment_op;
@@ -3309,7 +3308,6 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       generate_block();
 
-      const auto& final_request_idx = db.get_index< account_recovery_request_index >().indices();
       BOOST_REQUIRE( new_request_idx.begin() == new_request_idx.end() );
 
       recover.new_owner_authority = authority( 1, generate_private_key( "expire" ).get_public_key(), 1 );
@@ -3459,16 +3457,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
 
       fc::ecc::private_key alice_priv1 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k1" ) );
       fc::ecc::private_key alice_priv2 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k2" ) );
-      /*
-      fc::ecc::private_key alice_priv3 = fc::ecc::private_key::regenerate( "alice_k3" );
-      fc::ecc::private_key alice_priv4 = fc::ecc::private_key::regenerate( "alice_k4" );
-      */
       public_key_type alice_pub1 = public_key_type( alice_priv1.get_public_key() );
-      public_key_type alice_pub2 = public_key_type( alice_priv2.get_public_key() );
-      /*
-      public_key_type alice_pub3 = public_key_type( alice_priv3 );
-      public_key_type alice_pub4 = public_key_type( alice_priv4 );
-      */
 
       generate_blocks( db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
       // cannot request account recovery until recovery account is approved
@@ -3512,7 +3501,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce1 = nonce;
       idump( (nonce1) );*/
-      uint64_t nonce1 = 98;
+      //uint64_t nonce1 = 98;
 
       generate_block();
 
@@ -5786,8 +5775,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
-      const auto& vote_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto vote_itr = vote_idx.find( boost::make_tuple( db.get_comment( "alice", string( "test" ) ).id, db.get_account( "alice" ).id ) );
+      db.get< comment_vote_object, by_comment_voter >( boost::make_tuple( db.get_comment( "alice", string( "test" ) ).id, db.get_account( "alice" ).id ) );
 
       vote.weight = 0;
       tx.clear();

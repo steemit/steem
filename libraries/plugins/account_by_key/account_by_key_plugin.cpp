@@ -164,8 +164,6 @@ void account_by_key_plugin_impl::update_key_lookup( const account_authority_obje
    for( const auto& item : a.posting.key_auths )
       new_keys.insert( item.first );
 
-   const auto& lookup_idx = db.get_index< key_lookup_index >().indices().get< by_key >();
-
    // For each key that needs a lookup
    for( const auto& key : new_keys )
    {
