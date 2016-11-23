@@ -21,8 +21,6 @@ void auth_util_plugin::plugin_initialize( const boost::program_options::variable
 
 void auth_util_plugin::plugin_startup()
 {
-   chain::database& db = database();
-
    app().register_api_factory< auth_util_api >( "auth_util_api" );
 }
 

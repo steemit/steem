@@ -1406,7 +1406,7 @@ BOOST_AUTO_TEST_CASE( steem_inflation )
 
          validate_database();
       }
-/*
+
       virtual_supply = gpo.virtual_supply;
       vesting_shares = gpo.total_vesting_shares;
       vesting_steem = gpo.total_vesting_fund_steem;
@@ -2079,8 +2079,6 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       BOOST_REQUIRE( reward->steem_volume == dave_steem_volume );
       BOOST_CHECK( reward->last_update == dave_reward_last_update );*/
 
-      auto dave_last_order_time = db.head_block_time();
-
       auto alice_balance = db.get_account( "alice" ).balance;
       auto bob_balance = db.get_account( "bob" ).balance;
       auto sam_balance = db.get_account( "sam" ).balance;
@@ -2514,7 +2512,6 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       auto comment_reward = ( gpo.total_reward_fund_steem.amount + 2000 ) - ( ( gpo.total_reward_fund_steem.amount + 2000 ) * 25 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT ;
       comment_reward /= 2;
       auto sbd_reward = ( comment_reward * gpo.sbd_print_rate ) / STEEMIT_100_PERCENT;
-      auto steem_reward = comment_reward - sbd_reward;
       auto alice_sbd = db.get_account( "alice" ).sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
       auto alice_steem = db.get_account( "alice" ).balance;
 

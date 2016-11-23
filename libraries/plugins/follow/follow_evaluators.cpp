@@ -116,7 +116,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
             if( feed_itr == comment_idx.end() )
             {
-               auto& fd = db.create< feed_object >( [&]( feed_object& f )
+               db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = itr->follower;
                   f.first_reblogged_by = o.account;
@@ -125,7 +125,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   f.reblogs = 1;
                   f.account_feed_id = next_id;
                });
-
             }
             else
             {

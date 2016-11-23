@@ -927,7 +927,7 @@ FC_REFLECT( steemit::wallet::wallet_data,
             (ws_password)
           )
 
-FC_REFLECT( steemit::wallet::brain_key_info, (brain_priv_key)(wif_priv_key) (pub_key));
+FC_REFLECT( steemit::wallet::brain_key_info, (brain_priv_key)(wif_priv_key) (pub_key))
 
 FC_REFLECT_DERIVED( steemit::wallet::signed_block_with_info, (steemit::chain::signed_block),
    (block_id)(signing_key)(transaction_ids) )
@@ -1021,4 +1021,4 @@ FC_API( steemit::wallet::wallet_api,
         (get_transaction)
       )
 
-FC_REFLECT( steemit::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) );
+FC_REFLECT( steemit::wallet::memo_data, (from)(to)(nonce)(check)(encrypted) )

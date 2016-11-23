@@ -120,12 +120,12 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
    results.reserve( limit );
 
    const auto& db = *app.chain_database();
-   const auto& feed_idx = app.chain_database()->get_index< feed_index >().indices().get< by_feed >();
+   const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
    auto itr = feed_idx.lower_bound( boost::make_tuple( account, entry_id ) );
 
    while( itr != feed_idx.end() && itr->account == account && results.size() < limit )
    {
-      const auto& comment = itr->comment( *app.chain_database() );
+      const auto& comment = itr->comment( db );
       comment_feed_entry entry;
       entry.comment = comment;
       entry.entry_id = itr->account_feed_id;

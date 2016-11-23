@@ -1269,12 +1269,12 @@ void database::update_witness_schedule4()
    modify( wso, [&]( witness_schedule_object& _wso )
    {
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
-      for( int i = 0; i < active_witnesses.size(); i++ )
+      for( size_t i = 0; i < active_witnesses.size(); i++ )
       {
          _wso.current_shuffled_witnesses[i] = active_witnesses[i];
       }
 
-      for( int i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+      for( size_t i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
       {
          _wso.current_shuffled_witnesses[i] = account_name_type();
       }
@@ -1425,12 +1425,12 @@ void database::update_witness_schedule()
             _wso.current_shuffled_witnesses.push_back( w );
             */
          // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
-         for( int i = 0; i < active_witnesses.size(); i++ )
+         for( size_t i = 0; i < active_witnesses.size(); i++ )
          {
             _wso.current_shuffled_witnesses[i] = active_witnesses[i];
          }
 
-         for( int i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+         for( size_t i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
          {
             _wso.current_shuffled_witnesses[i] = account_name_type();
          }
@@ -2790,7 +2790,7 @@ void database::init_genesis( uint64_t init_supply )
          } );
       }
 
-      const auto& gpo = create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
+      create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
       {
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;
@@ -3127,7 +3127,7 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
+         size_t steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
          if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
             steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
 
@@ -3500,10 +3500,14 @@ void database::update_last_irreversible_block()
       if( tmp_head )
          log_head_num = tmp_head->block_num();
 
-      while( log_head_num < dpo.last_irreversible_block_num )
+      if( log_head_num < dpo.last_irreversible_block_num )
       {
-         _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
-         log_head_num++;
+         while( log_head_num < dpo.last_irreversible_block_num )
+         {
+            _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+            log_head_num++;
+         }
+         _block_log.flush();
       }
    }
 }
@@ -3970,7 +3974,7 @@ void database::set_hardfork( uint32_t hardfork, bool apply_now )
 {
    auto const& hardforks = get_hardfork_property_object();
 
-   for( int i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEMIT_NUM_HARDFORKS; i++ )
+   for( uint32_t i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEMIT_NUM_HARDFORKS; i++ )
    {
       if( i <= STEEMIT_HARDFORK_0_5__54 )
          _hardfork_times[i] = head_block_time();

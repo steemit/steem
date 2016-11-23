@@ -50,6 +50,7 @@ get_raw_block_result raw_block_api::get_raw_block( get_raw_block_args args )
    result.block_id = block->id();
    result.previous = block->previous;
    result.timestamp = block->timestamp;
+   return result;
 }
 
 void raw_block_api::push_raw_block( std::string block_b64 )

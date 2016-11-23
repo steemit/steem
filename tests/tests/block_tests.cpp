@@ -286,7 +286,6 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       public_key_type init_account_pub_key  = init_account_priv_key.get_public_key();
-      const auto& account_idx = db1.get_index< account_index >();
 
       signed_transaction trx;
       account_create_operation cop;
@@ -331,11 +330,8 @@ BOOST_AUTO_TEST_CASE( tapos )
       database db1;
       db1.open(dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
 
-      const account_object& init1 = *db1.get_index<account_index>().indices().get<by_name>().find( STEEMIT_INIT_MINER_NAME );
-
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       public_key_type init_account_pub_key  = init_account_priv_key.get_public_key();
-      const auto& account_idx = db1.get_index< account_index >();
 
       auto b = db1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness( 1 ), init_account_priv_key, database::skip_nothing);
 
@@ -514,7 +510,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, clean_database_fixture )
       transaction tx;
       signed_transaction ptx;
 
-      const account_object& witness_account = db.get_account( STEEMIT_INIT_MINER_NAME );
+      db.get_account( STEEMIT_INIT_MINER_NAME );
       // transfer from committee account to Sam account
       transfer( STEEMIT_INIT_MINER_NAME, "sam", 100000 );
 
@@ -675,7 +671,6 @@ BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
       BOOST_REQUIRE( db.head_block_num() == 2 );
 
       int init_block_num = db.head_block_num();
-      fc::time_point_sec init_block_time = db.head_block_time();
       int miss_blocks = fc::minutes( 1 ).to_seconds() / STEEMIT_BLOCK_INTERVAL;
       auto witness = db.get_scheduled_witness( miss_blocks );
       auto block_time = db.get_slot_time( miss_blocks );
@@ -692,230 +687,6 @@ BOOST_FIXTURE_TEST_CASE( skip_block, clean_database_fixture )
    }
    FC_LOG_AND_RETHROW();
 }
-
-/***
- *  This test is designed to queue up 10 POW workers who should each get a turn
- *  once per round.  The difficulty should increase by 2x after each POW operation and
- *  decrease by half every time a POW witness produces a block.
- *
- *  After a POW witness has produced a block and their round is over, they become
- *  a regular witness scheduled based upon votes. Currently this test does nothing
- *  to set up votes. Further more the total non pow witnesses is less than the MAX
- *  witnesses which means after a POW witness produces they get included in the next
- *  round too.
- *
- *  Under normal conditions the top 19 will have more votes than any POW witness so
- *  this wouldn't happen.
- */
-/*
-BOOST_FIXTURE_TEST_CASE( pow_blocks, clean_database_fixture ) {
-try {
-   ACTOR(bob1);
-   ACTOR(bob2);
-   ACTOR(bob3);
-   ACTOR(bob4);
-   ACTOR(bob5);
-   ACTOR(bob6);
-   ACTOR(bob7);
-   ACTOR(bob8);
-   ACTOR(bob9);
-   ACTOR(bob10);
-   vector<string> names = {"bob1",
-                           "bob2",
-                           "bob3",
-                           "bob4",
-                           "bob5",
-                           "bob6",
-                           "bob7",
-                           "bob8",
-                           "bob9",
-                           "bob10"};
-
-   vector<private_key_type> keys = { bob1_private_key,
-                                     bob2_private_key,
-                                     bob3_private_key,
-                                     bob4_private_key,
-                                     bob5_private_key,
-                                     bob6_private_key,
-                                     bob7_private_key,
-                                     bob8_private_key,
-                                     bob9_private_key,
-                                     bob10_private_key };
-
-   generate_block();
-   generate_block();
-   generate_block();
-
-   pow_operation op;
-
-   op.block_id = db.head_block_id();
-
-   for( uint32_t i = 0; i < 10; ++i ) {
-      op.worker_account = names[i];
-      op.work.worker = keys[i].get_public_key();
-      do {
-         op.nonce++;
-         op.work.create( keys[i], op.work_input() );
-      } while ( db.get_pow_target() < op.work.work  );
-
-      trx.operations.clear();
-      trx.operations.push_back(op);
-      trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      db.push_transaction( trx );
-   }
-
-   /// TODO: actually add checks to detect when this is failing
-   for( uint32_t i = 0; i < 200; ++i ) {
-      auto next_witness = db.get_scheduled_witness(0);
-    //  wdump((i)(next_witness)(db.get_pow_target()));
-      generate_block(database::skip_witness_signature);
-   }
-
-
-} FC_LOG_AND_RETHROW() }
-*/
-/*
-BOOST_FIXTURE_TEST_CASE( pow_block, clean_database_fixture )
-{
-   try
-   {
-      ACTOR( alice )
-
-      auto init_miner_balance = db.get_account( STEEMIT_INIT_MINER_NAME ).balance;
-      auto target = db.get_pow_target();
-
-      signed_transaction tx;
-      pow_operation pow;
-      pow.block_id = db.head_block_id();
-      pow.worker_account = "alice";
-
-      do
-      {
-         pow.nonce++;
-         pow.work.create( alice_private_key, pow.work_input() );
-      } while ( db.get_pow_target() < pow.work.work );
-
-      tx.operations.push_back( pow );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      db.push_transaction( tx, 0 );
-      generate_block();
-
-      init_miner_balance += asset( STEEMIT_MIN_POW_REWARD.amount * STEEMIT_MAX_WITNESSES, STEEM_SYMBOL ) + STEEMIT_MIN_PRODUCER_REWARD;
-      auto alice_balance = db.get_account( "alice" ).balance;
-      auto alice_vesting_shares = db.get_account( "alice" ).vesting_shares;
-
-      BOOST_REQUIRE_EQUAL( db.get_account( STEEMIT_INIT_MINER_NAME ).balance.amount.value, init_miner_balance.amount.value );
-      BOOST_REQUIRE_EQUAL( db.get_pow_target(), target );
-      init_miner_balance.amount += ( STEEMIT_MAX_WITNESSES - ( db.head_block_num() % STEEMIT_MAX_WITNESSES ) ) * STEEMIT_MIN_PRODUCER_REWARD.amount;
-      generate_blocks( STEEMIT_MAX_WITNESSES - ( db.head_block_num() % STEEMIT_MAX_WITNESSES ) );
-
-      for (int i = 1; i <= STEEMIT_MAX_WITNESSES + 1; i++ )
-      {
-         BOOST_REQUIRE_EQUAL( db.get_scheduled_witness( 1 ), "alice" );
-         generate_block( 0, alice_private_key, 0 );
-         if ( alice_vesting_shares.amount.value == 0 )
-         {
-            alice_vesting_shares += STEEMIT_MIN_PRODUCER_REWARD * db.get_dynamic_global_properties().get_vesting_share_price();
-         }
-         else
-         {
-            alice_balance += STEEMIT_MIN_PRODUCER_REWARD;
-         }
-
-         BOOST_REQUIRE( db.get_account( "alice" ).vesting_shares == alice_vesting_shares );
-         BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_balance );
-      }
-
-      pow.block_id = db.head_block_id();
-
-      private_key_type bob_private_key = fc::ecc::private_key::regenerate( fc::sha256::hash( string( "bob" ) ) );
-      private_key_type sam_private_key = fc::ecc::private_key::regenerate( fc::sha256::hash( string( "sam" ) ) );
-
-      pow.worker_account = "bob";
-
-      do
-      {
-         pow.nonce++;
-         pow.work.create( bob_private_key, pow.work_input() );
-      } while ( db.get_pow_target() < pow.work.work );
-
-      tx.operations.clear();
-      tx.operations.push_back( pow );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      db.push_transaction( tx, 0 );
-
-      pow.worker_account = "sam";
-
-      do
-      {
-         pow.nonce++;
-         pow.work.create( sam_private_key, pow.work_input() );
-      } while ( db.get_pow_target() < pow.work.work );
-
-      tx.operations.clear();
-      tx.operations.push_back( pow );
-      db.push_transaction( tx, 0 );
-
-      init_miner_balance.amount += 3 * asset( STEEMIT_MIN_POW_REWARD.amount * STEEMIT_MAX_WITNESSES, STEEM_SYMBOL ).amount;
-
-   } FC_LOG_AND_RETHROW()
-}
-
-/*
-BOOST_FIXTURE_TEST_CASE( overproduction_test )
-{
-   try {
-      fc::temp_directory dir1( graphene::utilities::temp_directory_path() ),
-                         dir2( graphene::utilities::temp_directory_path() );
-      database db1,
-               db2;
-      db1.open( dir1.path(), INITIAL_TEST_SUPPLY );
-      db2.open( dir2.path(), INITIAL_TEST_SUPPLY );
-
-      auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
-      public_key_type init_account_pub_key  = init_account_priv_key.get_public_key();
-      const auto& account_idx = db1.get_index< account_index >();
-
-      //*
-      signed_transaction trx;
-      account_id_type alice_id = account_idx.get_next_id();
-      account_create_operation cop;
-      cop.new_account_name = "alice";
-      cop.creator = STEEMIT_INIT_MINER_NAME;
-      cop.owner = authority(1, init_account_pub_key, 1);
-      cop.active = cop.owner;
-      trx.operations.push_back(cop);
-      trx.set_expiration( db1.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( init_account_priv_key, db1.get_chain_id() );
-      PUSH_TX( db1, trx );
-      // generate blocks
-      // db1 : A
-      // db2 : B C D
-
-      auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
-
-      BOOST_CHECK( alice_id == db1.get_account( "alice" ).id );
-      //BOOST_CHECK(alice_id(db1).name == "alice");
-
-      b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
-      db1.push_block(b);
-      b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
-      db1.push_block(b);
-      STEEMIT_REQUIRE_THROW(alice_id(db2), fc::exception);
-      alice_id(db1); /// it should be included in the pending state
-      db1.clear_pending(); // clear it so that we can verify it was properly removed from pending state.
-      STEEMIT_REQUIRE_THROW(alice_id(db1), fc::exception);
-
-      PUSH_TX( db2, trx );
-
-      b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
-      db1.push_block(b);
-
-      BOOST_CHECK(alice_id(db1).name == "alice");
-      BOOST_CHECK(alice_id(db2).name == "alice");
-   } FC_LOG_AND_RETHROW()
-}
-//*/
 
 BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
 {
