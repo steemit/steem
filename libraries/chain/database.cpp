@@ -2859,26 +2859,7 @@ void database::notify_changed_objects()
 void database::set_flush_interval( uint32_t flush_blocks )
 {
    _flush_blocks = flush_blocks;
-   if( flush_blocks == 0 )
-   {
-      _next_flush_block = 0;
-      return;
-   }
-
-   uint32_t hb = head_block_num();
-   uint32_t lep = hb + 1 + flush_blocks * 9 / 10;
-   uint32_t rep = hb + 1 + flush_blocks;
-
-   // use time_point::now() as RNG source to pick block randomly between lep and rep
-   uint32_t span = rep - lep;
-   uint32_t x = lep;
-   if( span > 0 )
-   {
-      uint64_t now = uint64_t( fc::time_point::now().time_since_epoch().count() );
-      x += now % span;
-   }
-   _next_flush_block = x;
-   ilog( "Next flush scheduled at block ${b}", ("b", x) );
+   _next_flush_block = 0;
 }
 
 //////////////////// private methods ////////////////////
@@ -2925,11 +2906,31 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
    //fc::time_point end_time = fc::time_point::now();
    //fc::microseconds dt = end_time - begin_time;
-   if( _flush_blocks && (block_num == _next_flush_block) )
+   if( _flush_blocks != 0 )
    {
-      ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
-      chainbase::database::flush();
-      set_flush_interval( _flush_blocks );    // updates _next_flush_block
+      if( _next_flush_block == 0 )
+      {
+         uint32_t lep = block_num + 1 + _flush_blocks * 9 / 10;
+         uint32_t rep = block_num + 1 + _flush_blocks;
+
+         // use time_point::now() as RNG source to pick block randomly between lep and rep
+         uint32_t span = rep - lep;
+         uint32_t x = lep;
+         if( span > 0 )
+         {
+            uint64_t now = uint64_t( fc::time_point::now().time_since_epoch().count() );
+            x += now % span;
+         }
+         _next_flush_block = x;
+         ilog( "Next flush scheduled at block ${b}", ("b", x) );
+      }
+
+      if( _next_flush_block == block_num )
+      {
+         _next_flush_block = 0;
+         ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
+         chainbase::database::flush();
+      }
    }
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
