@@ -796,6 +796,7 @@ namespace detail {
       void shutdown()
       {
          _running = false;
+         fc::usleep( fc::seconds( 1 ) );
          if( _p2p_network )
             _p2p_network->close();
          if( _chain_db )
@@ -966,9 +967,6 @@ void application::get_max_block_age( int32_t& result )
 
 void application::shutdown_plugins()
 {
-   my->_p2p_network->close();
-   my->_p2p_network.reset();
-   fc::usleep( fc::seconds(1) );
    for( auto& entry : my->_plugins_enabled )
       entry.second->plugin_shutdown();
    return;
