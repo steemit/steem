@@ -3499,10 +3499,14 @@ void database::update_last_irreversible_block()
       if( tmp_head )
          log_head_num = tmp_head->block_num();
 
-      while( log_head_num < dpo.last_irreversible_block_num )
+      if( log_head_num < dpo.last_irreversible_block_num )
       {
-         _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
-         log_head_num++;
+         while( log_head_num < dpo.last_irreversible_block_num )
+         {
+            _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+            log_head_num++;
+         }
+         _block_log.flush();
       }
    }
 }
