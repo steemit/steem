@@ -40,6 +40,9 @@
 #include <fc/crypto/hex.hpp>
 #include <fc/smart_ref_impl.hpp>
 
+#include <graphene/utilities/git_revision.hpp>
+#include <fc/git_revision.hpp>
+
 namespace steemit { namespace app {
 
     login_api::login_api(const api_context& ctx)
@@ -112,6 +115,14 @@ namespace steemit { namespace app {
        return it->second;
     }
 
+    steem_version_info login_api::get_version()
+    {
+       return steem_version_info(
+         fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
+         fc::string( graphene::utilities::git_revision_sha ),
+         fc::string( fc::git_revision_sha ) );
+    }
+
     network_broadcast_api::network_broadcast_api(const api_context& a):_app(a.app)
     {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
@@ -180,9 +191,9 @@ namespace steemit { namespace app {
 
                 confirmation_callback callback = cb_it->second;
                 transaction_id_type txid_byval = txid;    // can't pass in by reference as it's going to be deleted
-                callback( fc::variant(transaction_confirmation{ txid_byval, block_num, -1, true}) ); 
+                callback( fc::variant(transaction_confirmation{ txid_byval, block_num, -1, true}) );
 
-                //fc::async( [capture_this,block_num,txid_byval,callback](){ 
+                //fc::async( [capture_this,block_num,txid_byval,callback](){
                 _callbacks.erase( cb_it );
              }
              _callbacks_expirations.erase( exp_it );
