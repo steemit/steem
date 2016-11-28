@@ -1495,9 +1495,14 @@ vector<account_name_type> database_api::get_miner_queue()const {
    return result;
 }
 
-fc::array< account_name_type, STEEMIT_MAX_WITNESSES > database_api::get_active_witnesses()const {
+vector< account_name_type > database_api::get_active_witnesses()const
+{
    const auto& wso = my->_db.get_witness_schedule_object();
-   return wso.current_shuffled_witnesses;
+   size_t n = wso.current_shuffled_witnesses.size();
+   vector< account_name_type > result(n);
+   for( size_t i=0; i<n; i++ )
+      result.push_back( wso.current_shuffled_witnesses[i] );
+   return result;
 }
 
 vector<discussion>  database_api::get_discussions_by_author_before_date(

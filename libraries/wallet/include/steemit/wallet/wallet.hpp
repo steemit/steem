@@ -137,7 +137,7 @@ class wallet_api
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
        */
-      fc::array< account_name_type, STEEMIT_MAX_WITNESSES > get_active_witnesses()const;
+      vector<account_name_type>                      get_active_witnesses()const;
 
       /**
        * Returns the queue of pow miners waiting to produce blocks.
