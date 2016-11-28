@@ -1032,7 +1032,8 @@ set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
 vector<account_name_type> wallet_api::get_miner_queue()const {
    return my->_remote_db->get_miner_queue();
 }
-fc::array< account_name_type, STEEMIT_MAX_WITNESSES > wallet_api::get_active_witnesses()const {
+
+std::vector< account_name_type > wallet_api::get_active_witnesses()const {
    return my->_remote_db->get_active_witnesses();
 }
 

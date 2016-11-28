@@ -133,7 +133,7 @@ class database_api
       vector<category_api_obj> get_active_categories( string after, uint32_t limit )const;
       vector<category_api_obj> get_recent_categories( string after, uint32_t limit )const;
 
-      fc::array< account_name_type, STEEMIT_MAX_WITNESSES > get_active_witnesses()const;
+      vector< account_name_type > get_active_witnesses()const;
       vector< account_name_type > get_miner_queue()const;
 
       /////////////////////////////
