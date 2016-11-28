@@ -236,9 +236,9 @@ namespace detail {
 
       void startup()
       { try {
-         _max_block_age =_options->at("max-block-age").as<int32_t>();
          _shared_file_size = fc::parse_size( _options->at( "shared-file-size" ).as< string >() );
          ilog( "shared_file_size is ${n} bytes", ("n", _shared_file_size) );
+         bool read_only = _options->count( "read-only" );
          register_builtin_apis();
 
          if( _options->count("shared-file-dir") )
@@ -246,59 +246,86 @@ namespace detail {
          else
             _shared_dir = _data_dir / "blockchain";
 
-
-         if( _options->count("resync-blockchain") )
-            _chain_db->wipe(_data_dir / "blockchain", _shared_dir, true);
-
-         _chain_db->set_flush_interval( _options->at("flush").as<uint32_t>() );
-
-         flat_map<uint32_t,block_id_type> loaded_checkpoints;
-         if( _options->count("checkpoint") )
+         if( !read_only )
          {
-            auto cps = _options->at("checkpoint").as<vector<string>>();
-            loaded_checkpoints.reserve( cps.size() );
-            for( auto cp : cps )
+            _self->_read_only = false;
+            ilog( "Starting Steem node in write mode." );
+            _max_block_age =_options->at("max-block-age").as<int32_t>();
+
+            if( _options->count("resync-blockchain") )
+               _chain_db->wipe(_data_dir / "blockchain", _shared_dir, true);
+
+            _chain_db->set_flush_interval( _options->at("flush").as<uint32_t>() );
+
+            flat_map<uint32_t,block_id_type> loaded_checkpoints;
+            if( _options->count("checkpoint") )
             {
-               auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type> >();
-               loaded_checkpoints[item.first] = item.second;
+               auto cps = _options->at("checkpoint").as<vector<string>>();
+               loaded_checkpoints.reserve( cps.size() );
+               for( auto cp : cps )
+               {
+                  auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type> >();
+                  loaded_checkpoints[item.first] = item.second;
+               }
             }
-         }
-         _chain_db->add_checkpoints( loaded_checkpoints );
+            _chain_db->add_checkpoints( loaded_checkpoints );
 
-         if( _options->count("replay-blockchain") )
-         {
-            ilog("Replaying blockchain on user request.");
-            _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+            if( _options->count("replay-blockchain") )
+            {
+               ilog("Replaying blockchain on user request.");
+               _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+            }
+            else
+            {
+               try
+               {
+                  _chain_db->open(_data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );\
+               }
+               catch( fc::assert_exception& )
+               {
+                  wlog( "Error when opening database. Attempting reindex..." );
+
+                  try
+                  {
+                     _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+                  }
+                  catch( chain::block_log_exception& )
+                  {
+                     wlog( "Error opening block log. Having to resync from network..." );
+                     _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );
+                  }
+               }
+            }
+
+            if( _options->count("force-validate") )
+            {
+               ilog( "All transaction signatures will be validated" );
+               _force_validate = true;
+            }
+
+            graphene::time::now();
          }
          else
          {
-            try
-            {
-               _chain_db->open(_data_dir / "blockchain", _shared_dir, 0, _shared_file_size );
-            }
-            catch( fc::assert_exception& )
-            {
-               wlog( "Error when opening database. Attempting reindex..." );
+            ilog( "Starting Steem node in read mode." );
+            _chain_db->open( _data_dir / "blockchain", 0, _shared_file_size, chainbase::database::read_only );
 
+            if( _options->count( "read-forward-rpc" ) )
+            {
                try
                {
-                  _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+                  auto ws_ptr = _self->_client.connect( _options->at( "read-forward-rpc" ).as< string >() );
+                  auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
+                  auto login = apic->get_remote_api< login_api >( 1 );
+                  FC_ASSERT( login->login( "", "" ) );
+                  _self->_remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
                }
-               catch( chain::block_log_exception& )
+               catch( fc::exception& e )
                {
-                  wlog( "Error opening block log. Having to resync from network..." );
-                  _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size );
+                  wlog( "Error conencting to remote RPC, network api forwarding disabled.", ("e", e.to_detail_string()) );
                }
             }
          }
-
-         if( _options->count("force-validate") )
-         {
-            ilog( "All transaction signatures will be validated" );
-            _force_validate = true;
-         }
-
-         graphene::time::now();
 
          if( _options->count("api-user") )
          {
@@ -336,7 +363,11 @@ namespace detail {
          }
          _running = true;
 
-         reset_p2p_node(_data_dir);
+         if( !read_only )
+         {
+            reset_p2p_node(_data_dir);
+         }
+
          reset_websocket_server();
          reset_websocket_tls_server();
       } FC_LOG_AND_RETHROW() }
@@ -886,6 +917,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("shared-file-size", bpo::value<string>()->default_value("32G"), "Size of the shared memory file. Default: 32G")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
+         ("read-forward-rpc", bpo::value<string>(), "Endpoint to forward write API calls to for a read node" )
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
@@ -899,6 +931,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("replay-blockchain", "Rebuild object graph by replaying all blocks")
          ("resync-blockchain", "Delete all blocks and re-sync with network from scratch")
          ("force-validate", "Force validation of all transactions")
+         ("read-only", "Node will not connect to p2p network and can only read from the chain state" )
          ;
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);
