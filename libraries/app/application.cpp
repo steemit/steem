@@ -224,10 +224,7 @@ namespace detail {
       {
       }
 
-      ~application_impl()
-      {
-         fc::remove_all(_data_dir / "blockchain/dblock");
-      }
+      ~application_impl(){}
 
       void register_builtin_apis()
       {
@@ -244,6 +241,11 @@ namespace detail {
          bool read_only = _options->count( "read-only" );
          register_builtin_apis();
 
+         if( _options->count("shared-file-dir") )
+            _shared_dir = fc::path( _options->at("shared-file-dir").as<string>() );
+         else
+            _shared_dir = _data_dir / "blockchain";
+
          if( !read_only )
          {
             _self->_read_only = false;
@@ -251,7 +253,7 @@ namespace detail {
             _max_block_age =_options->at("max-block-age").as<int32_t>();
 
             if( _options->count("resync-blockchain") )
-               _chain_db->wipe(_data_dir / "blockchain", true);
+               _chain_db->wipe(_data_dir / "blockchain", _shared_dir, true);
 
             _chain_db->set_flush_interval( _options->at("flush").as<uint32_t>() );
 
@@ -268,17 +270,16 @@ namespace detail {
             }
             _chain_db->add_checkpoints( loaded_checkpoints );
 
-
             if( _options->count("replay-blockchain") )
             {
                ilog("Replaying blockchain on user request.");
-               _chain_db->reindex( _data_dir / "blockchain", _shared_file_size );
+               _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
             }
             else
             {
                try
                {
-                  _chain_db->open(_data_dir / "blockchain", 0, _shared_file_size, chainbase::database::read_write );
+                  _chain_db->open(_data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );\
                }
                catch( fc::assert_exception& )
                {
@@ -286,12 +287,12 @@ namespace detail {
 
                   try
                   {
-                     _chain_db->reindex( _data_dir / "blockchain", _shared_file_size );
+                     _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
                   }
                   catch( chain::block_log_exception& )
                   {
                      wlog( "Error opening block log. Having to resync from network..." );
-                     _chain_db->open( _data_dir / "blockchain", 0, _shared_file_size, chainbase::database::read_write );
+                     _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );
                   }
                }
             }
@@ -410,6 +411,10 @@ namespace detail {
        */
       virtual bool has_item(const graphene::net::item_id& id) override
       {
+         // If the node is shutting down we don't care about fetching items
+         if( !_running )
+            return true;
+
          try
          {
             if( id.item_type == graphene::net::block_message_type )
@@ -495,7 +500,8 @@ namespace detail {
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         _chain_db->push_transaction( transaction_message.trx );
+         if( _running )
+            _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
       virtual void handle_message(const message& message_to_process) override
@@ -831,7 +837,10 @@ namespace detail {
          _running = false;
          fc::usleep( fc::seconds( 1 ) );
          if( _p2p_network )
+         {
             _p2p_network->close();
+            fc::usleep( fc::seconds( 1 ) ); // p2p node has some calls to the database, give it a second to shutdown before invalidating the chain db pointer
+         }
          if( _chain_db )
             _chain_db->close();
       }
@@ -839,6 +848,7 @@ namespace detail {
       application* _self;
 
       fc::path _data_dir;
+      fc::path _shared_dir;
       const bpo::variables_map* _options = nullptr;
       api_access _apiaccess;
 
@@ -903,6 +913,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("shared-file-dir", bpo::value<string>(), "Location of the shared memory file. Defaults to data_dir/blockchain")
          ("shared-file-size", bpo::value<string>()->default_value("32G"), "Size of the shared memory file. Default: 32G")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
