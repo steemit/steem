@@ -91,12 +91,12 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t shared_file_size )
+void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size )
 {
    try
    {
       init_schema();
-      chainbase::database::open( data_dir, chainbase::database::read_write, shared_file_size );
+      chainbase::database::open( shared_mem_dir, chainbase::database::read_write, shared_file_size );
 
       with_write_lock( [&]()
       {
@@ -124,16 +124,16 @@ void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t
       if( head_block_num() )
          _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
+   FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
 }
 
-void database::reindex( fc::path data_dir, uint64_t shared_file_size )
+void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size )
 {
    try
    {
       ilog( "Reindexing Blockchain" );
-      wipe( data_dir, false );
-      open( data_dir, 0, shared_file_size );
+      wipe( data_dir, shared_mem_dir, false );
+      open( data_dir, shared_mem_dir, 0, shared_file_size );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -177,16 +177,19 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
    }
-   FC_CAPTURE_AND_RETHROW( (data_dir) )
+   FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
 }
 
-void database::wipe(const fc::path& data_dir, bool include_blocks)
+void database::wipe( const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks)
 {
    close();
-   chainbase::database::wipe( data_dir );
+   chainbase::database::wipe( shared_mem_dir );
    if( include_blocks )
+   {
       fc::remove_all( data_dir / "block_log" );
+      fc::remove_all( data_dir / "block_log.index" );
+   }
 }
 
 void database::close(bool rewind)
