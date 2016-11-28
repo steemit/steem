@@ -321,8 +321,8 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
          db.modify( *itr, [&]( bucket_object& bo )
          {
             bo.blocks++;
-            bo.transactions = num_trx;
-            bo.bandwidth = trx_size;
+            bo.transactions += num_trx;
+            bo.bandwidth += trx_size;
          });
 
          _current_buckets.insert( itr->id );
