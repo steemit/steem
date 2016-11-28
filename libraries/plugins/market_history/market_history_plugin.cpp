@@ -36,8 +36,6 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
       auto& db = _self.database();
       const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
 
-      uint64_t history_seq = std::numeric_limits< uint64_t >::min();
-
       db.create< order_history_object >( [&]( order_history_object& ho )
       {
          ho.time = db.head_block_time();

@@ -1406,7 +1406,7 @@ BOOST_AUTO_TEST_CASE( steem_inflation )
 
          validate_database();
       }
-/*
+
       virtual_supply = gpo.virtual_supply;
       vesting_shares = gpo.total_vesting_shares;
       vesting_steem = gpo.total_vesting_fund_steem;
@@ -2079,8 +2079,6 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       BOOST_REQUIRE( reward->steem_volume == dave_steem_volume );
       BOOST_CHECK( reward->last_update == dave_reward_last_update );*/
 
-      auto dave_last_order_time = db.head_block_time();
-
       auto alice_balance = db.get_account( "alice" ).balance;
       auto bob_balance = db.get_account( "bob" ).balance;
       auto sam_balance = db.get_account( "sam" ).balance;
@@ -2432,7 +2430,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
    {
-      resize_shared_mem( 1024 * 1024 * 32 ); // Due to number of blocks in the test, it requires a large file. (32 MB)
+      resize_shared_mem( 1024 * 1024 * 256 ); // Due to number of blocks in the test, it requires a large file. (32 MB)
 
       // Using the debug node plugin to manually set account balances to create required market conditions for this test
       auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
@@ -2514,7 +2512,6 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       auto comment_reward = ( gpo.total_reward_fund_steem.amount + 2000 ) - ( ( gpo.total_reward_fund_steem.amount + 2000 ) * 25 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT ;
       comment_reward /= 2;
       auto sbd_reward = ( comment_reward * gpo.sbd_print_rate ) / STEEMIT_100_PERCENT;
-      auto steem_reward = comment_reward - sbd_reward;
       auto alice_sbd = db.get_account( "alice" ).sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
       auto alice_steem = db.get_account( "alice" ).balance;
 
@@ -2536,7 +2533,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_account( "sam" ), [&]( account_object& a )
          {
-            a.sbd_balance = asset( ( 2 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+            a.sbd_balance = asset( ( 194 * sbd_balance.amount ) / 500, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
@@ -2544,12 +2541,14 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       {
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
          {
-            gpo.current_sbd_supply = alice_sbd + asset( ( 2 * sbd_balance.amount ) / 5, SBD_SYMBOL );
+            gpo.current_sbd_supply = alice_sbd + asset( ( 194 * sbd_balance.amount ) / 500, SBD_SYMBOL );
          });
       }, database::skip_witness_signature );
 
       db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
       validate_database();
+
+      BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
 
       auto last_print_rate = db.get_dynamic_global_properties().sbd_print_rate;
 

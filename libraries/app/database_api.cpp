@@ -1583,8 +1583,6 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
       auto start_author = *( query.start_author );
       auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
 
-      const auto& account = my->_db.get_account( start_author );
-
       const auto& c_idx = my->_db.get_index< comment_index >().indices().get< by_permlink >();
       const auto& t_idx = my->_db.get_index< comment_index >().indices().get< by_author_last_update >();
       auto comment_itr = t_idx.lower_bound( start_author );
@@ -1732,12 +1730,16 @@ vector<account_name_type> database_api::get_miner_queue()const
    });
 }
 
-fc::array< account_name_type, STEEMIT_MAX_WITNESSES > database_api::get_active_witnesses()const
+vector< account_name_type > database_api::get_active_witnesses()const
 {
    return my->_db.with_read_lock( [&]()
    {
       const auto& wso = my->_db.get_witness_schedule_object();
-      return wso.current_shuffled_witnesses;
+      size_t n = wso.current_shuffled_witnesses.size();
+      vector< account_name_type > result(n);
+      for( size_t i=0; i<n; i++ )
+         result.push_back( wso.current_shuffled_witnesses[i] );
+      return result;
    });
 }
 
@@ -1752,7 +1754,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
 #ifndef IS_LOW_MEM
          FC_ASSERT( limit <= 100 );
          result.reserve( limit );
-         int count = 0;
+         uint32_t count = 0;
          const auto& didx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
 
          if( before_date == time_point_sec() )

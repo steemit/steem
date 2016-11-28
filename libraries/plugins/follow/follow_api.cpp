@@ -7,6 +7,14 @@ namespace steemit { namespace follow {
 namespace detail
 {
 
+inline void set_what( vector< follow_type >& what, uint16_t bitmask )
+{
+   if( bitmask & 1 << blog )
+      what.push_back( blog );
+   if( bitmask & 1 << ignore )
+      what.push_back( ignore );
+}
+
 class follow_api_impl
 {
    public:
@@ -15,6 +23,8 @@ class follow_api_impl
 
       vector< follow_api_obj > get_followers( string following, string start_follower, follow_type type, uint16_t limit )const;
       vector< follow_api_obj > get_following( string follower, string start_following, follow_type type, uint16_t limit )const;
+
+      follow_count_api_obj get_follow_count( string& account )const;
 
       vector< feed_entry > get_feed_entries( string account, uint32_t entry_id, uint16_t limit )const;
       vector< comment_feed_entry > get_feed( string account, uint32_t entry_id, uint16_t limit )const;
@@ -35,12 +45,12 @@ vector< follow_api_obj > follow_api_impl::get_followers( string following, strin
    auto itr = idx.lower_bound( std::make_tuple( following, start_follower ) );
    while( itr != idx.end() && limit && itr->following == following )
    {
-      if( itr->what & ( 1 << type ) )
+      if( type == undefined || itr->what & ( 1 << type ) )
       {
          follow_api_obj entry;
          entry.follower = itr->follower;
          entry.following = itr->following;
-         entry.what = type;
+         set_what( entry.what, itr->what );
          result.push_back( entry );
          --limit;
       }
@@ -59,18 +69,31 @@ vector< follow_api_obj > follow_api_impl::get_following( string follower, string
    auto itr = idx.lower_bound( std::make_tuple( follower, start_following ) );
    while( itr != idx.end() && limit && itr->follower == follower )
    {
-      if( itr->what & ( 1 << type ) )
+      if( type == undefined || itr->what & ( 1 << type ) )
       {
          follow_api_obj entry;
          entry.follower = itr->follower;
          entry.following = itr->following;
-         entry.what = type;
+         set_what( entry.what, itr->what );
          result.push_back( entry );
          --limit;
       }
 
       ++itr;
    }
+
+   return result;
+}
+
+follow_count_api_obj follow_api_impl::get_follow_count( string& account )const
+{
+   follow_count_api_obj result;
+   auto itr = app.chain_database()->find< follow_count_object, by_account >( account );
+
+   if( itr != nullptr )
+      result = *itr;
+   else
+      result.account = account;
 
    return result;
 }
@@ -120,12 +143,12 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
    results.reserve( limit );
 
    const auto& db = *app.chain_database();
-   const auto& feed_idx = app.chain_database()->get_index< feed_index >().indices().get< by_feed >();
+   const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
    auto itr = feed_idx.lower_bound( boost::make_tuple( account, entry_id ) );
 
    while( itr != feed_idx.end() && itr->account == account && results.size() < limit )
    {
-      const auto& comment = itr->comment( *app.chain_database() );
+      const auto& comment = itr->comment( db );
       comment_feed_entry entry;
       entry.comment = comment;
       entry.entry_id = itr->account_feed_id;
@@ -255,6 +278,14 @@ vector<follow_api_obj> follow_api::get_following( string follower, string start_
    return my->app.chain_database()->with_read_lock( [&]()
    {
       return my->get_following( follower, start_following, type, limit );
+   });
+}
+
+follow_count_api_obj follow_api::get_follow_count( string account )const
+{
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_follow_count( account );
    });
 }
 

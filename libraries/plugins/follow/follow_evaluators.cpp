@@ -24,6 +24,7 @@ void follow_evaluator::do_apply( const follow_operation& o )
       auto itr = idx.find( boost::make_tuple( o.follower, o.following ) );
 
       uint16_t what = 0;
+      bool is_following = false;
 
       for( auto target : o.what )
       {
@@ -31,6 +32,7 @@ void follow_evaluator::do_apply( const follow_operation& o )
          {
             case blog:
                what |= 1 << blog;
+               is_following = true;
                break;
             case ignore:
                what |= 1 << ignore;
@@ -44,6 +46,8 @@ void follow_evaluator::do_apply( const follow_operation& o )
       if( what & ( 1 << ignore ) )
          FC_ASSERT( !( what & ( 1 << blog ) ), "Cannot follow blog and ignore author at the same time" );
 
+      bool was_followed = false;
+
       if( itr == idx.end() )
       {
          db().create< follow_object >( [&]( follow_object& obj )
@@ -55,9 +59,57 @@ void follow_evaluator::do_apply( const follow_operation& o )
       }
       else
       {
+         was_followed = itr->what & 1 << blog;
+
          db().modify( *itr, [&]( follow_object& obj )
          {
             obj.what = what;
+         });
+      }
+
+      const auto& follower = db().find< follow_count_object, by_account >( o.follower );
+
+      if( follower == nullptr )
+      {
+         db().create< follow_count_object >( [&]( follow_count_object& obj )
+         {
+            obj.account = o.follower;
+
+            if( is_following )
+               obj.following_count = 1;
+         });
+      }
+      else
+      {
+         db().modify( *follower, [&]( follow_count_object& obj )
+         {
+            if( was_followed )
+               obj.following_count--;
+            if( is_following )
+               obj.following_count++;
+         });
+      }
+
+      const auto& following = db().find< follow_count_object, by_account >( o.following );
+
+      if( following == nullptr )
+      {
+         db().create< follow_count_object >( [&]( follow_count_object& obj )
+         {
+            obj.account = o.following;
+
+            if( is_following )
+               obj.follower_count = 1;
+         });
+      }
+      else
+      {
+         db().modify( *following, [&]( follow_count_object& obj )
+         {
+            if( was_followed )
+               obj.follower_count--;
+            if( is_following )
+               obj.follower_count++;
          });
       }
    }
@@ -116,7 +168,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
             if( feed_itr == comment_idx.end() )
             {
-               auto& fd = db.create< feed_object >( [&]( feed_object& f )
+               db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = itr->follower;
                   f.first_reblogged_by = o.account;
@@ -125,7 +177,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   f.reblogs = 1;
                   f.account_feed_id = next_id;
                });
-
             }
             else
             {

@@ -310,6 +310,7 @@ public:
       fc::mutable_variant_object result;
       //result["blockchain_name"]        = BLOCKCHAIN_NAME;
       //result["blockchain_description"] = BTS_BLOCKCHAIN_DESCRIPTION;
+      result["blockchain_version"]       = STEEMIT_BLOCKCHAIN_VERSION;
       result["client_version"]           = client_version;
       result["steem_revision"]           = graphene::utilities::git_revision_sha;
       result["steem_revision_age"]       = fc::get_approximate_relative_time_string( fc::time_point_sec( graphene::utilities::git_revision_unix_timestamp ) );
@@ -330,6 +331,18 @@ public:
       std::string os = "other";
 #endif
       result["build"] = os + " " + bitness;
+
+      try
+      {
+         auto v = _remote_api->get_version();
+         result["server_blockchain_version"] = v.blockchain_version;
+         result["server_steem_revision"] = v.steem_revision;
+         result["server_fc_revision"] = v.fc_revision;
+      }
+      catch( fc::exception& )
+      {
+         result["server"] = "could not retrieve server version information";
+      }
 
       return result;
    }
@@ -794,7 +807,7 @@ public:
             << "\n====================================================================================================="
             << "|=====================================================================================================\n";
 
-         for( int i = 0; i < orders.bids.size() || i < orders.asks.size(); i++ )
+         for( size_t i = 0; i < orders.bids.size() || i < orders.asks.size(); i++ )
          {
             if ( i < orders.bids.size() )
             {
@@ -1019,7 +1032,8 @@ set<string> wallet_api::list_accounts(const string& lowerbound, uint32_t limit)
 vector<account_name_type> wallet_api::get_miner_queue()const {
    return my->_remote_db->get_miner_queue();
 }
-fc::array< account_name_type, STEEMIT_MAX_WITNESSES > wallet_api::get_active_witnesses()const {
+
+std::vector< account_name_type > wallet_api::get_active_witnesses()const {
    return my->_remote_db->get_active_witnesses();
 }
 

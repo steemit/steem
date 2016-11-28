@@ -545,6 +545,8 @@ bool database::before_last_checkpoint()const
  */
 bool database::push_block(const signed_block& new_block, uint32_t skip)
 {
+   //fc::time_point begin_time = fc::time_point::now();
+
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
@@ -561,6 +563,11 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
          FC_CAPTURE_AND_RETHROW( (new_block) )
       });
    });
+
+   //fc::time_point end_time = fc::time_point::now();
+   //fc::microseconds dt = end_time - begin_time;
+   //if( ( new_block.block_num() % 10000 ) == 0 )
+   //   ilog( "push_block ${b} took ${t} microseconds", ("b", new_block.block_num())("t", dt.count()) );
    return result;
 }
 
@@ -1271,12 +1278,12 @@ void database::update_witness_schedule4()
    modify( wso, [&]( witness_schedule_object& _wso )
    {
       // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
-      for( int i = 0; i < active_witnesses.size(); i++ )
+      for( size_t i = 0; i < active_witnesses.size(); i++ )
       {
          _wso.current_shuffled_witnesses[i] = active_witnesses[i];
       }
 
-      for( int i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+      for( size_t i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
       {
          _wso.current_shuffled_witnesses[i] = account_name_type();
       }
@@ -1427,12 +1434,12 @@ void database::update_witness_schedule()
             _wso.current_shuffled_witnesses.push_back( w );
             */
          // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
-         for( int i = 0; i < active_witnesses.size(); i++ )
+         for( size_t i = 0; i < active_witnesses.size(); i++ )
          {
             _wso.current_shuffled_witnesses[i] = active_witnesses[i];
          }
 
-         for( int i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
+         for( size_t i = active_witnesses.size(); i < STEEMIT_MAX_WITNESSES; i++ )
          {
             _wso.current_shuffled_witnesses[i] = account_name_type();
          }
@@ -2137,13 +2144,15 @@ void database::process_funds()
       /**
        * At block 7,000,000 have a 9.5% instantaneous inflation rate, decreasing to 0.95% at a rate of 0.01%
        * every 250k blocks. This narrowing will take approximately 20.5 years and will complete on block 220,750,000
-       *
-       * Using signed 64 bit integer, we don't have to worry about subtraction underflow until the year 224,020,500,263,646,647
-       * assuming there are no missed blocks.
        */
-      auto new_steem = ( props.virtual_supply.amount *
-         std::max( (int64_t)( STEEMIT_INFLATION_RATE_START_PERCENT - head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD ), (int64_t)STEEMIT_INFLATION_RATE_STOP_PERCENT ) )
-         / ( STEEMIT_100_PERCENT * STEEMIT_BLOCKS_PER_YEAR );
+      int64_t start_inflation_rate = int64_t( STEEMIT_INFLATION_RATE_START_PERCENT );
+      int64_t inflation_rate_adjustment = int64_t( head_block_num() / STEEMIT_INFLATION_NARROWING_PERIOD );
+      int64_t inflation_rate_floor = int64_t( STEEMIT_INFLATION_RATE_STOP_PERCENT );
+
+      // below subtraction cannot underflow int64_t because inflation_rate_adjustment is <2^32
+      int64_t current_inflation_rate = std::max( start_inflation_rate - inflation_rate_adjustment, inflation_rate_floor );
+
+      auto new_steem = ( props.virtual_supply.amount * current_inflation_rate ) / ( int64_t( STEEMIT_100_PERCENT ) * int64_t( STEEMIT_BLOCKS_PER_YEAR ) );
       auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT; /// 75% to content creator
       auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
@@ -2790,7 +2799,7 @@ void database::init_genesis( uint64_t init_supply )
          } );
       }
 
-      const auto& gpo = create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
+      create< dynamic_global_property_object >( [&]( dynamic_global_property_object& p )
       {
          p.current_witness = STEEMIT_INIT_MINER_NAME;
          p.time = STEEMIT_GENESIS_TIME;
@@ -2856,10 +2865,18 @@ void database::notify_changed_objects()
 
 }
 
+void database::set_flush_interval( uint32_t flush_blocks )
+{
+   _flush_blocks = flush_blocks;
+   _next_flush_block = 0;
+}
+
 //////////////////// private methods ////////////////////
 
 void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
+   //fc::time_point begin_time = fc::time_point::now();
+
    auto block_num = next_block.block_num();
    if( _checkpoints.size() && _checkpoints.rbegin()->second != block_id_type() )
    {
@@ -2895,6 +2912,36 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (next_block) );*/
+
+   //fc::time_point end_time = fc::time_point::now();
+   //fc::microseconds dt = end_time - begin_time;
+   if( _flush_blocks != 0 )
+   {
+      if( _next_flush_block == 0 )
+      {
+         uint32_t lep = block_num + 1 + _flush_blocks * 9 / 10;
+         uint32_t rep = block_num + 1 + _flush_blocks;
+
+         // use time_point::now() as RNG source to pick block randomly between lep and rep
+         uint32_t span = rep - lep;
+         uint32_t x = lep;
+         if( span > 0 )
+         {
+            uint64_t now = uint64_t( fc::time_point::now().time_since_epoch().count() );
+            x += now % span;
+         }
+         _next_flush_block = x;
+         ilog( "Next flush scheduled at block ${b}", ("b", x) );
+      }
+
+      if( _next_flush_block == block_num )
+      {
+         _next_flush_block = 0;
+         ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
+         chainbase::database::flush();
+      }
+   }
+
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
 void database::_apply_block( const signed_block& next_block )
@@ -3089,7 +3136,7 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         int steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
+         size_t steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
          if( has_hardfork( STEEMIT_HARDFORK_0_16__551) )
             steemit_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
 
@@ -3460,10 +3507,14 @@ void database::update_last_irreversible_block()
       if( tmp_head )
          log_head_num = tmp_head->block_num();
 
-      while( log_head_num < dpo.last_irreversible_block_num )
+      if( log_head_num < dpo.last_irreversible_block_num )
       {
-         _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
-         log_head_num++;
+         while( log_head_num < dpo.last_irreversible_block_num )
+         {
+            _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+            log_head_num++;
+         }
+         _block_log.flush();
       }
    }
 }
@@ -3930,7 +3981,7 @@ void database::set_hardfork( uint32_t hardfork, bool apply_now )
 {
    auto const& hardforks = get_hardfork_property_object();
 
-   for( int i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEMIT_NUM_HARDFORKS; i++ )
+   for( uint32_t i = hardforks.last_hardfork + 1; i <= hardfork && i <= STEEMIT_NUM_HARDFORKS; i++ )
    {
       if( i <= STEEMIT_HARDFORK_0_5__54 )
          _hardfork_times[i] = head_block_time();

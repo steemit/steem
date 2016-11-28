@@ -656,7 +656,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
       {
          const auto& alice = db.get_account( "alice" );
-         const auto& bob = db.get_account( "bob" );
 
          signed_transaction tx;
          comment_operation comment_op;
@@ -1393,7 +1392,46 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       BOOST_REQUIRE( alice.vesting_withdraw_rate.amount.value == 0 );
       BOOST_REQUIRE( alice.to_withdraw.value == 0 );
       BOOST_REQUIRE( alice.next_vesting_withdrawal == fc::time_point_sec::maximum() );
+
+
+      BOOST_TEST_MESSAGE( "--- Test cancelling a withdraw when below the account creation fee" );
+      op.vesting_shares = alice.vesting_shares;
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_block();
       }
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         auto& wso = db.get_witness_schedule_object();
+
+         db.modify( wso, [&]( witness_schedule_object& w )
+         {
+            w.median_props.account_creation_fee = ASSET( "10.000 TESTS" );
+         });
+
+         db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply += wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" ) - gpo.total_vesting_fund_steem;
+            gpo.total_vesting_fund_steem = wso.median_props.account_creation_fee - ASSET( "0.001 TESTS" );
+         });
+
+         db.update_virtual_supply();
+      }, database::skip_witness_signature );
+
+      withdraw_vesting_operation op;
+      signed_transaction tx;
+      op.account = "alice";
+      op.vesting_shares = ASSET( "0.000000 VESTS" );
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).vesting_withdraw_rate == ASSET( "0.000000 VESTS" ) );
+      validate_database();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3309,7 +3347,6 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       generate_block();
 
-      const auto& final_request_idx = db.get_index< account_recovery_request_index >().indices();
       BOOST_REQUIRE( new_request_idx.begin() == new_request_idx.end() );
 
       recover.new_owner_authority = authority( 1, generate_private_key( "expire" ).get_public_key(), 1 );
@@ -3459,16 +3496,7 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
 
       fc::ecc::private_key alice_priv1 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k1" ) );
       fc::ecc::private_key alice_priv2 = fc::ecc::private_key::regenerate( fc::sha256::hash( "alice_k2" ) );
-      /*
-      fc::ecc::private_key alice_priv3 = fc::ecc::private_key::regenerate( "alice_k3" );
-      fc::ecc::private_key alice_priv4 = fc::ecc::private_key::regenerate( "alice_k4" );
-      */
       public_key_type alice_pub1 = public_key_type( alice_priv1.get_public_key() );
-      public_key_type alice_pub2 = public_key_type( alice_priv2.get_public_key() );
-      /*
-      public_key_type alice_pub3 = public_key_type( alice_priv3 );
-      public_key_type alice_pub4 = public_key_type( alice_priv4 );
-      */
 
       generate_blocks( db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD - fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
       // cannot request account recovery until recovery account is approved
@@ -3512,7 +3540,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce1 = nonce;
       idump( (nonce1) );*/
-      uint64_t nonce1 = 98;
+      //uint64_t nonce1 = 98;
 
       generate_block();
 
@@ -5786,8 +5814,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
-      const auto& vote_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
-      auto vote_itr = vote_idx.find( boost::make_tuple( db.get_comment( "alice", string( "test" ) ).id, db.get_account( "alice" ).id ) );
+      db.get< comment_vote_object, by_comment_voter >( boost::make_tuple( db.get_comment( "alice", string( "test" ) ).id, db.get_account( "alice" ).id ) );
 
       vote.weight = 0;
       tx.clear();

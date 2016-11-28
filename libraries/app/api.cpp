@@ -40,6 +40,9 @@
 #include <fc/crypto/hex.hpp>
 #include <fc/smart_ref_impl.hpp>
 
+#include <graphene/utilities/git_revision.hpp>
+#include <fc/git_revision.hpp>
+
 namespace steemit { namespace app {
 
     login_api::login_api(const api_context& ctx)
@@ -112,6 +115,14 @@ namespace steemit { namespace app {
        return it->second;
     }
 
+    steem_version_info login_api::get_version()
+    {
+       return steem_version_info(
+         fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
+         fc::string( graphene::utilities::git_revision_sha ),
+         fc::string( fc::git_revision_sha ) );
+    }
+
     network_broadcast_api::network_broadcast_api(const api_context& a):_app(a.app)
     {
        /// NOTE: cannot register callbacks in constructor because shared_from_this() is not valid.
@@ -147,47 +158,50 @@ namespace steemit { namespace app {
 
     void network_broadcast_api::on_applied_block( const signed_block& b )
     {
-       int32_t block_num = int32_t(b.block_num());
-       if( _callbacks.size() )
-       {
-          /// we need to ensure the database_api is not deleted for the life of the async operation
-          auto capture_this = shared_from_this();
-          for( int32_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
+       /// we need to ensure the database_api is not deleted for the life of the async operation
+       auto capture_this = shared_from_this();
+
+       fc::async( [this,capture_this,b]() {
+          int32_t block_num = int32_t(b.block_num());
+          if( _callbacks.size() )
           {
-             const auto& trx = b.transactions[trx_num];
-             auto id = trx.id();
-             auto itr = _callbacks.find(id);
-             if( itr != _callbacks.end() )
+             for( size_t trx_num = 0; trx_num < b.transactions.size(); ++trx_num )
              {
+                const auto& trx = b.transactions[trx_num];
+                auto id = trx.id();
+                auto itr = _callbacks.find(id);
+                if( itr == _callbacks.end() ) continue;
                 confirmation_callback callback = itr->second;
-                fc::async( [capture_this,id,block_num,trx_num,callback](){ callback( fc::variant(transaction_confirmation( id, block_num, trx_num, false )) ); } );
-                _callbacks.erase( itr );
+                itr->second = [](variant){};
+                callback( fc::variant(transaction_confirmation( id, block_num, int32_t(trx_num), false )) );
              }
           }
-       }
 
-       /// clear all expirations
-       while( true )
-       {
-          auto exp_it = _callbacks_expirations.begin();
-          if( exp_it == _callbacks_expirations.end() )
-             break;
-          if( exp_it->first > b.timestamp )
-             break;
-          for( const transaction_id_type& txid : exp_it->second )
+          /// clear all expirations
+          while( true )
           {
-             auto cb_it = _callbacks.find( txid );
-             // If it's empty, that means the transaction has been confirmed and has been deleted by the above check.
-             if( cb_it == _callbacks.end() )
-                continue;
-             std::shared_ptr< network_broadcast_api > capture_this = shared_from_this();
-             confirmation_callback callback = cb_it->second;
-             transaction_id_type txid_byval = txid;    // can't pass in by reference as it's going to be deleted
-             fc::async( [capture_this,block_num,txid_byval,callback](){ callback( fc::variant(transaction_confirmation{ txid_byval, block_num, -1, true}) ); } );
-             _callbacks.erase( cb_it );
+             auto exp_it = _callbacks_expirations.begin();
+             if( exp_it == _callbacks_expirations.end() )
+                break;
+             if( exp_it->first >= b.timestamp )
+                break;
+             for( const transaction_id_type& txid : exp_it->second )
+             {
+                auto cb_it = _callbacks.find( txid );
+                // If it's empty, that means the transaction has been confirmed and has been deleted by the above check.
+                if( cb_it == _callbacks.end() )
+                   continue;
+
+                confirmation_callback callback = cb_it->second;
+                transaction_id_type txid_byval = txid;    // can't pass in by reference as it's going to be deleted
+                callback( fc::variant(transaction_confirmation{ txid_byval, block_num, -1, true}) );
+
+                _callbacks.erase( cb_it );
+             }
+             _callbacks_expirations.erase( exp_it );
           }
-          _callbacks_expirations.erase( exp_it );
-       }
+       }); /// fc::async
+
     }
 
     void network_broadcast_api::broadcast_transaction(const signed_transaction& trx)

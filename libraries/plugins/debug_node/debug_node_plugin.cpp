@@ -306,7 +306,6 @@ uint32_t debug_node_plugin::debug_generate_blocks(
             if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
             debug_update( [=]( chain::database& db )
             {
-               const auto& scheduled_witness = db.get_witness( scheduled_witness_name );
                db.modify( db.get_witness( scheduled_witness_name ), [&]( chain::witness_object& w )
                {
                   w.signing_key = debug_public_key;

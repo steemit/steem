@@ -170,6 +170,17 @@ namespace steemit { namespace app {
          application& _app;
    };
 
+   struct steem_version_info
+   {
+      steem_version_info() {}
+      steem_version_info( fc::string bc_v, fc::string s_v, fc::string fc_v )
+         :blockchain_version( bc_v ), steem_revision( s_v ), fc_revision( fc_v ) {}
+
+      fc::string blockchain_version;
+      fc::string steem_revision;
+      fc::string fc_revision;
+   };
+
    /**
     * @brief The login_api class implements the bottom layer of the RPC API
     *
@@ -194,6 +205,8 @@ namespace steemit { namespace app {
 
          fc::api_ptr get_api_by_name( const string& api_name )const;
 
+         steem_version_info get_version();
+
          /// internal method, not exposed via JSON RPC
          void on_api_startup();
 
@@ -205,6 +218,7 @@ namespace steemit { namespace app {
 
 FC_REFLECT( steemit::app::network_broadcast_api::transaction_confirmation,
         (id)(block_num)(trx_num)(expired) )
+FC_REFLECT( steemit::app::steem_version_info, (blockchain_version)(steem_revision)(fc_revision) )
 //FC_REFLECT_TYPENAME( fc::ecc::compact_signature );
 //FC_REFLECT_TYPENAME( fc::ecc::commitment_type );
 
@@ -226,4 +240,5 @@ FC_API(steemit::app::network_node_api,
 FC_API(steemit::app::login_api,
        (login)
        (get_api_by_name)
+       (get_version)
      )

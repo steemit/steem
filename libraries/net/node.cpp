@@ -2350,7 +2350,6 @@ namespace graphene { namespace net { namespace detail {
     {
       VERIFY_CORRECT_THREAD();
       item_hash_t reference_point = peer->last_block_delegate_has_seen;
-      uint32_t reference_point_block_num = _delegate->get_block_number(peer->last_block_delegate_has_seen);
 
       // when we call _delegate->get_blockchain_synopsis(), we may yield and there's a
       // chance this peer's state will change before we get control back.  Save off
@@ -3366,7 +3365,7 @@ namespace graphene { namespace net { namespace detail {
           bool new_transaction_discovered = false;
           for (const item_hash_t& transaction_message_hash : contained_transaction_message_ids)
           {
-            size_t items_erased = _items_to_fetch.get<item_id_index>().erase(item_id(trx_message_type, transaction_message_hash));
+            _items_to_fetch.get<item_id_index>().erase(item_id(trx_message_type, transaction_message_hash));
             // there are two ways we could behave here: we could either act as if we received
             // the transaction outside the block and offer it to our peers, or we could just
             // forget about it (we would still advertise this block to our peers so they should

@@ -62,20 +62,19 @@ market_volume market_history_api_impl::get_volume() const
    auto db = app.chain_database();
    const auto& bucket_idx = db->get_index< bucket_index >().indices().get< by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( 0, db->head_block_time() - 86400 ) );
-   uint32_t bucket_size;
-
    market_volume result;
 
-   if( itr != bucket_idx.end() )
-      bucket_size = itr->seconds;
+   if( itr == bucket_idx.end() )
+      return result;
 
-   while( itr != bucket_idx.end() && itr->seconds == bucket_size )
+   uint32_t bucket_size = itr->seconds;
+   do
    {
       result.steem_volume.amount += itr->steem_volume;
       result.sbd_volume.amount += itr->sbd_volume;
 
       ++itr;
-   }
+   } while( itr != bucket_idx.end() && itr->seconds == bucket_size );
 
    return result;
 }
