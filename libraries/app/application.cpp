@@ -377,6 +377,10 @@ namespace detail {
        */
       virtual bool has_item(const graphene::net::item_id& id) override
       {
+         // If the node is shutting down we don't care about fetching items
+         if( !_running )
+            return true;
+
          try
          {
             if( id.item_type == graphene::net::block_message_type )
@@ -462,7 +466,8 @@ namespace detail {
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         _chain_db->push_transaction( transaction_message.trx );
+         if( _running )
+            _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
       virtual void handle_message(const message& message_to_process) override
@@ -798,7 +803,10 @@ namespace detail {
          _running = false;
          fc::usleep( fc::seconds( 1 ) );
          if( _p2p_network )
+         {
             _p2p_network->close();
+            fc::usleep( fc::seconds( 1 ) ); // p2p node has some calls to the database, give it a second to shutdown before invalidating the chain db pointer
+         }
          if( _chain_db )
             _chain_db->close();
       }
