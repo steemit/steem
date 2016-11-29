@@ -114,7 +114,7 @@ namespace detail {
          }
 
          if( _options->count("p2p-endpoint") )
-            _p2p_network->listen_on_endpoint(fc::ip::endpoint::from_string(_options->at("p2p-endpoint").as<string>()), true);
+            _p2p_network->listen_on_endpoint(resolve_string_to_ip_endpoints(_options->at("p2p-endpoint").as<string>()), true);
          else
             _p2p_network->listen_on_port(0, false);
 
@@ -173,7 +173,7 @@ namespace detail {
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
          ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
-         _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
+         _websocket_server->listen( resolve_string_to_ip_endpoints(_options->at("rpc-endpoint").as<string>()) );
          _websocket_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
@@ -193,7 +193,7 @@ namespace detail {
 
          _websocket_tls_server->on_connection([this]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
          ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
-         _websocket_tls_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-tls-endpoint").as<string>()) );
+         _websocket_tls_server->listen( resolve_string_to_ip_endpoints(_options->at("rpc-tls-endpoint").as<string>()) );
          _websocket_tls_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
