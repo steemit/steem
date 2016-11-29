@@ -229,7 +229,7 @@ struct account_api_obj
       withdrawn( a.withdrawn ),
       to_withdraw( a.to_withdraw ),
       withdraw_routes( a.withdraw_routes ),
-      proxied_vsf_votes( a.proxied_vsf_votes ),
+      proxied_vsf_votes( a.proxied_vsf_votes.size() ),
       witnesses_voted_for( a.witnesses_voted_for ),
       average_bandwidth( a.average_bandwidth ),
       lifetime_bandwidth( a.lifetime_bandwidth ),
@@ -239,7 +239,12 @@ struct account_api_obj
       last_post( a.last_post ),
       last_root_post( a.last_root_post ),
       post_bandwidth( a.post_bandwidth )
-   {}
+   {
+      size_t n = a.proxied_vsf_votes.size();
+      for( size_t i=0; i<n; i++ )
+         proxied_vsf_votes.push_back( a.proxied_vsf_votes[i] );
+   }
+
 
    account_api_obj(){}
 
@@ -298,7 +303,7 @@ struct account_api_obj
    share_type        to_withdraw;
    uint16_t          withdraw_routes;
 
-   fc::array< share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH > proxied_vsf_votes;
+   vector< share_type > proxied_vsf_votes;
 
    uint16_t          witnesses_voted_for;
 
