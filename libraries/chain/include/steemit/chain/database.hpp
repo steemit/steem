@@ -408,6 +408,7 @@ namespace steemit { namespace chain {
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
+         bool skip_transaction_delta_check = true;
 #endif
 
    protected:

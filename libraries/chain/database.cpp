@@ -432,6 +432,13 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
    {
+#ifdef IS_TEST_NET
+      if( !skip_transaction_delta_check )
+#endif
+      // Soft fork to prevent multiple transactions for an account in the same block
+      FC_ASSERT( !is_producing() || a.last_bandwidth_update < head_block_time(),
+         "Account already transacted this block." );
+
       modify( a, [&]( account_object& acnt )
       {
          acnt.lifetime_bandwidth += trx_size * STEEMIT_BANDWIDTH_PRECISION;
@@ -477,6 +484,13 @@ void database::update_account_market_bandwidth( const account_object& a, uint32_
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
    {
+#ifdef IS_TEST_NET
+      if( !skip_transaction_delta_check )
+#endif
+      // Soft fork to prevent multiple transactions for an account in the same block
+      FC_ASSERT( !is_producing() || a.last_market_bandwidth_update < head_block_time(),
+         "Account already transacted this block." );
+
       modify( a, [&]( account_object& acnt )
       {
          auto now = head_block_time();
