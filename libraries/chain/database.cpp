@@ -171,7 +171,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
          {
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
+               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
+               "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
             itr = _block_log.read_block( itr.second );
          }
@@ -2957,6 +2958,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
          ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
          chainbase::database::flush();
       }
+   }
+
+   uint32_t free_gb = uint32_t(get_free_memory() / (1024*1024*1024));
+   if( (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
+   {
+      ilog( "Free memory is now ${n}G", ("n", free_gb) );
+      _last_free_gb_printed = free_gb;
    }
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }

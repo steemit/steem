@@ -475,6 +475,8 @@ namespace steemit { namespace chain {
          uint32_t                      _flush_blocks = 0;
          uint32_t                      _next_flush_block = 0;
 
+         uint32_t                      _last_free_gb_printed = 0;
+
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
    };
