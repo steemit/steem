@@ -5838,5 +5838,45 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( account_bandwidth )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+      generate_block();
+      vest( "alice", ASSET( "10.000 TESTS" ) );
+      fund( "alice", ASSET( "10.000 TESTS" ) );
+      vest( "bob", ASSET( "10.000 TESTS" ) );
+
+      generate_block();
+      db.skip_transaction_delta_check = false;
+      BOOST_REQUIRE( db.get_account( "alice" ).last_bandwidth_update != db.head_block_time() );
+
+      signed_transaction tx;
+      transfer_operation op;
+
+      op.from = "alice";
+      op.to = "bob";
+      op.amount = ASSET( "1.000 TESTS" );
+
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).last_market_bandwidth_update == db.head_block_time() );
+
+      op.amount = ASSET( "0.100 TESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
