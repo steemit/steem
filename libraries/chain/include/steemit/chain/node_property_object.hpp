@@ -1,5 +1,4 @@
 #pragma once
-#include <graphene/db/object.hpp>
 
 namespace steemit { namespace chain {
 

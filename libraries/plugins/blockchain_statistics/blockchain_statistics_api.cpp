@@ -20,7 +20,7 @@ namespace detail
    statistics blockchain_statistics_api_impl::get_stats_for_time( fc::time_point_sec open, uint32_t interval )const
    {
       statistics result;
-      const auto& bucket_idx = _app.chain_database()->get_index_type< bucket_index >().indices().get< by_bucket >();
+      const auto& bucket_idx = _app.chain_database()->get_index< bucket_index >().indices().get< by_bucket >();
       auto itr = bucket_idx.lower_bound( boost::make_tuple( interval, open ) );
 
       if( itr != bucket_idx.end() )
@@ -32,7 +32,7 @@ namespace detail
    statistics blockchain_statistics_api_impl::get_stats_for_interval( fc::time_point_sec start, fc::time_point_sec end )const
    {
       statistics result;
-      const auto& bucket_itr = _app.chain_database()->get_index_type< bucket_index >().indices().get< by_bucket >();
+      const auto& bucket_itr = _app.chain_database()->get_index< bucket_index >().indices().get< by_bucket >();
       const auto& sizes = _app.get_plugin< blockchain_statistics_plugin >( BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets();
       auto size_itr = sizes.rbegin();
       auto time = start;
@@ -60,7 +60,7 @@ namespace detail
    statistics blockchain_statistics_api_impl::get_lifetime_stats()const
    {
       statistics result;
-      result += bucket_object_id_type()( *( _app.chain_database() ) );
+      result += bucket_id_type()( *( _app.chain_database() ) );
 
       return result;
    }
@@ -75,17 +75,26 @@ void blockchain_statistics_api::on_api_startup() {}
 
 statistics blockchain_statistics_api::get_stats_for_time( fc::time_point_sec open, uint32_t interval )const
 {
-   return my->get_stats_for_time( open, interval );
+   return my->_app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_stats_for_time( open, interval );
+   });
 }
 
 statistics blockchain_statistics_api::get_stats_for_interval( fc::time_point_sec start, fc::time_point_sec end )const
 {
-   return my->get_stats_for_interval( start, end );
+   return my->_app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_stats_for_interval( start, end );
+   });
 }
 
 statistics blockchain_statistics_api::get_lifetime_stats()const
 {
-   return my->get_lifetime_stats();
+   return my->_app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_lifetime_stats();
+   });
 }
 
 statistics& statistics::operator +=( const bucket_object& b )

@@ -1,7 +1,7 @@
 
 #include <steemit/chain/compound.hpp>
-#include <steemit/chain/protocol/asset.hpp>
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/asset.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant_object.hpp>
@@ -21,11 +21,11 @@
 #define VPOW_OFF        9
 #define REWARD_TYPES   10
 
-using steemit::chain::asset;
-using steemit::chain::share_type;
-using steemit::chain::calc_percent_reward_per_block;
-using steemit::chain::calc_percent_reward_per_round;
-using steemit::chain::calc_percent_reward_per_hour;
+using steemit::protocol::asset;
+using steemit::protocol::share_type;
+using steemit::protocol::calc_percent_reward_per_block;
+using steemit::protocol::calc_percent_reward_per_round;
+using steemit::protocol::calc_percent_reward_per_hour;
 
 /*
 Explanation of output
@@ -103,7 +103,7 @@ int main( int argc, char** argv, char** envp )
       share_type liquidity_reward = 0;
       share_type pow_reward = 0;
 
-      if( (block_num % STEEMIT_MAX_MINERS) == 0 )
+      if( (block_num % STEEMIT_MAX_WITNESSES) == 0 )
          ++pow_deficit;
 
       if( pow_deficit > 0 )
@@ -111,7 +111,7 @@ int main( int argc, char** argv, char** envp )
          pow_reward = calc_percent_reward_per_round< STEEMIT_POW_APR_PERCENT >( current_supply );
          pow_reward = std::max( pow_reward, STEEMIT_MIN_POW_REWARD.amount );
          if( block_num < STEEMIT_START_MINER_VOTING_BLOCK )
-            pow_reward *= STEEMIT_MAX_MINERS;
+            pow_reward *= STEEMIT_MAX_WITNESSES;
          --pow_deficit;
       }
       reward_delta[ POW_OFF ] = pow_reward;

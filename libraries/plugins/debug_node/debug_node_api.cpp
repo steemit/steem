@@ -6,9 +6,10 @@
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 
-#include <steemit/chain/protocol/block.hpp>
+#include <steemit/protocol/block.hpp>
+
+#include <steemit/chain/block_log.hpp>
 #include <steemit/chain/account_object.hpp>
-#include <steemit/chain/block_database.hpp>
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
@@ -57,6 +58,7 @@ class debug_node_api_impl
       void debug_stream_json_objects_flush();
       void debug_set_hardfork( uint32_t hardfork_id );
       bool debug_has_hardfork( uint32_t hardfork_id );
+      void debug_get_json_schema( std::string& schema );
       void debug_set_dev_key_prefix( std::string prefix );
       void debug_mine( debug_mine_result& result, const debug_mine_args& args );
       void debug_get_dev_key( get_dev_key_result& result, const get_dev_key_args& args );
@@ -130,8 +132,9 @@ void debug_node_api_impl::debug_mine( debug_mine_result& result, const debug_min
    else
       op.props = db->get_witness_schedule_object().median_props;
 
-   const auto& acct_idx  = db->get_index_type< chain::account_index >().indices().get< chain::by_name >();
+   const auto& acct_idx  = db->get_index< chain::account_index >().indices().get< chain::by_name >();
    auto acct_it = acct_idx.find( args.worker_account );
+   auto acct_auth = db->find< chain::account_authority_object, chain::by_account >( args.worker_account );
    bool has_account = (acct_it != acct_idx.end());
 
    fc::optional< fc::ecc::private_key > priv;
@@ -144,12 +147,12 @@ void debug_node_api_impl::debug_mine( debug_mine_result& result, const debug_min
    else
    {
       chain::public_key_type pubkey;
-      if( acct_it->active.key_auths.size() != 1 )
+      if( acct_auth->active.key_auths.size() != 1 )
       {
          elog( "debug_mine does not understand authority for miner account ${miner}", ("miner", args.worker_account) );
       }
-      FC_ASSERT( acct_it->active.key_auths.size() == 1 );
-      pubkey = acct_it->active.key_auths.begin()->first;
+      FC_ASSERT( acct_auth->active.key_auths.size() == 1 );
+      pubkey = acct_auth->active.key_auths.begin()->first;
       key_storage.maybe_get_private_key( priv, pubkey, args.worker_account );
    }
    FC_ASSERT( priv.valid(), "debug_node_api does not know private key for miner account ${miner}", ("miner", args.worker_account) );
@@ -175,29 +178,31 @@ uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename
    fc::path src_path = fc::path( src_filename );
    if( fc::is_directory( src_path ) )
    {
-      ilog( "Loading ${n} from block_database ${fn}", ("n", count)("fn", src_filename) );
+      ilog( "Loading ${n} from block_log ${fn}", ("n", count)("fn", src_filename) );
       idump( (src_filename)(count)(skip_validate_invariants) );
-      steemit::chain::block_database bdb;
-      bdb.open( src_path );
+      steemit::chain::block_log log;
+      log.open( src_path );
       uint32_t first_block = db->head_block_num()+1;
       uint32_t skip_flags = steemit::chain::database::skip_nothing;
       if( skip_validate_invariants )
          skip_flags = skip_flags | steemit::chain::database::skip_validate_invariants;
       for( uint32_t i=0; i<count; i++ )
       {
-         fc::optional< steemit::chain::signed_block > block = bdb.fetch_by_number( first_block+i );
-         if( !block.valid() )
+         //fc::optional< steemit::chain::signed_block > block = log.read_block( log.get_block_pos( first_block + i ) );
+         auto result = log.read_block( log.get_block_pos( first_block + i ) );
+
+         if( result.second == ~0 )
          {
             wlog( "Block database ${fn} only contained ${i} of ${n} requested blocks", ("i", i)("n", count)("fn", src_filename) );
             return i;
          }
          try
          {
-            db->push_block( *block, skip_flags );
+            db->push_block( result.first, skip_flags );
          }
          catch( const fc::exception& e )
          {
-            elog( "Got exception pushing block ${bn} : ${bid} (${i} of ${n})", ("bn", block->block_num())("bid", block->id())("i", i)("n", count) );
+            elog( "Got exception pushing block ${bn} : ${bid} (${i} of ${n})", ("bn", result.first.block_num())("bid", result.first.id())("i", i)("n", count) );
             elog( "Exception backtrace: ${bt}", ("bt", e.to_detail_string()) );
          }
       }
@@ -240,19 +245,19 @@ steemit::chain::hardfork_property_object debug_node_api_impl::debug_get_hardfork
 
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
 {
-   get_plugin()->debug_update( update );
+   //get_plugin()->debug_update( update );
 }
 
-fc::variant_object debug_node_api_impl::debug_get_edits()
+/*fc::variant_object debug_node_api_impl::debug_get_edits()
 {
    fc::mutable_variant_object result;
    get_plugin()->save_debug_updates( result );
    return fc::variant_object( std::move( result ) );
-}
+}*/
 
 void debug_node_api_impl::debug_set_edits( const fc::variant_object& edits )
 {
-   get_plugin()->load_debug_updates( edits );
+   //get_plugin()->load_debug_updates( edits );
 }
 
 std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > debug_node_api_impl::get_plugin()
@@ -262,12 +267,12 @@ std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > debug_node_api
 
 void debug_node_api_impl::debug_stream_json_objects( const std::string& filename )
 {
-   get_plugin()->set_json_object_stream( filename );
+   //get_plugin()->set_json_object_stream( filename );
 }
 
 void debug_node_api_impl::debug_stream_json_objects_flush()
 {
-   get_plugin()->flush_json_object_stream();
+   //get_plugin()->flush_json_object_stream();
 }
 
 void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
@@ -277,16 +282,21 @@ void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
    if( hardfork_id > STEEMIT_NUM_HARDFORKS )
       return;
 
-   fc::mutable_variant_object update;
-   auto hfp_id = steemit::chain::hardfork_property_id_type();
-   update( "_action", "set_hardfork" )( "id", hfp_id )( "hardfork_id", hardfork_id );
-   get_plugin()->debug_update( update );
+   get_plugin()->debug_update( [=]( database& db )
+   {
+      db.set_hardfork( hardfork_id, false );
+   });
 }
 
 bool debug_node_api_impl::debug_has_hardfork( uint32_t hardfork_id )
 {
    idump( (steemit::chain::hardfork_property_id_type()( *app.chain_database() ))(hardfork_id) );
    return steemit::chain::hardfork_property_id_type()( *app.chain_database() ).last_hardfork >= hardfork_id;
+}
+
+void debug_node_api_impl::debug_get_json_schema( std::string& schema )
+{
+   schema = app.chain_database()->get_json_schema();
 }
 
 } // detail
@@ -333,20 +343,26 @@ steemit::chain::hardfork_property_object debug_node_api::debug_get_hardfork_prop
    return my->debug_get_hardfork_property_object();
 }
 
+/*
 void debug_node_api::debug_update_object( fc::variant_object update )
 {
    my->debug_update_object( update );
 }
+*/
 
+/*
 fc::variant_object debug_node_api::debug_get_edits()
 {
    return my->debug_get_edits();
 }
+*/
 
+/*
 void debug_node_api::debug_set_edits( fc::variant_object edits )
 {
    my->debug_set_edits(edits);
 }
+*/
 
 void debug_node_api::debug_set_dev_key_prefix( std::string prefix )
 {
@@ -367,6 +383,7 @@ debug_mine_result debug_node_api::debug_mine( debug_mine_args args )
    return result;
 }
 
+/*
 void debug_node_api::debug_stream_json_objects( std::string filename )
 {
    my->debug_stream_json_objects( filename );
@@ -376,6 +393,7 @@ void debug_node_api::debug_stream_json_objects_flush()
 {
    my->debug_stream_json_objects_flush();
 }
+*/
 
 void debug_node_api::debug_set_hardfork( uint32_t hardfork_id )
 {
@@ -385,6 +403,13 @@ void debug_node_api::debug_set_hardfork( uint32_t hardfork_id )
 bool debug_node_api::debug_has_hardfork( uint32_t hardfork_id )
 {
    return my->debug_has_hardfork( hardfork_id );
+}
+
+std::string debug_node_api::debug_get_json_schema()
+{
+   std::string result;
+   my->debug_get_json_schema( result );
+   return result;
 }
 
 } } } // steemit::plugin::debug_node

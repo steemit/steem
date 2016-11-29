@@ -29,7 +29,7 @@ market_ticker market_history_api_impl::get_ticker() const
    market_ticker result;
 
    auto db = app.chain_database();
-   const auto& bucket_idx = db->get_index_type< bucket_index >().indices().get< by_bucket >();
+   const auto& bucket_idx = db->get_index< bucket_index >().indices().get< by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( 86400, db->head_block_time() - 86400 ) );
 
    if( itr != bucket_idx.end() )
@@ -60,22 +60,21 @@ market_ticker market_history_api_impl::get_ticker() const
 market_volume market_history_api_impl::get_volume() const
 {
    auto db = app.chain_database();
-   const auto& bucket_idx = db->get_index_type< bucket_index >().indices().get< by_bucket >();
+   const auto& bucket_idx = db->get_index< bucket_index >().indices().get< by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( 0, db->head_block_time() - 86400 ) );
-   uint32_t bucket_size;
-
    market_volume result;
 
-   if( itr != bucket_idx.end() )
-      bucket_size = itr->seconds;
+   if( itr == bucket_idx.end() )
+      return result;
 
-   while( itr != bucket_idx.end() && itr->seconds == bucket_size )
+   uint32_t bucket_size = itr->seconds;
+   do
    {
       result.steem_volume.amount += itr->steem_volume;
       result.sbd_volume.amount += itr->sbd_volume;
 
       ++itr;
-   }
+   } while( itr != bucket_idx.end() && itr->seconds == bucket_size );
 
    return result;
 }
@@ -84,7 +83,7 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
 {
    FC_ASSERT( limit <= 500 );
 
-   const auto& order_idx = app.chain_database()->get_index_type< steemit::chain::limit_order_index >().indices().get< steemit::chain::by_price >();
+   const auto& order_idx = app.chain_database()->get_index< steemit::chain::limit_order_index >().indices().get< steemit::chain::by_price >();
    auto itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
 
    order_book result;
@@ -117,7 +116,7 @@ order_book market_history_api_impl::get_order_book( uint32_t limit ) const
 std::vector< market_trade > market_history_api_impl::get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit ) const
 {
    FC_ASSERT( limit <= 1000 );
-   const auto& bucket_idx = app.chain_database()->get_index_type< order_history_index >().indices().get< by_time >();
+   const auto& bucket_idx = app.chain_database()->get_index< order_history_index >().indices().get< by_time >();
    auto itr = bucket_idx.lower_bound( start );
 
    std::vector< market_trade > result;
@@ -138,7 +137,7 @@ std::vector< market_trade > market_history_api_impl::get_trade_history( time_poi
 vector< market_trade > market_history_api_impl::get_recent_trades( uint32_t limit = 1000 ) const
 {
    FC_ASSERT( limit <= 1000 );
-   const auto& order_idx = app.chain_database()->get_index_type< order_history_index >().indices().get< by_time >();
+   const auto& order_idx = app.chain_database()->get_index< order_history_index >().indices().get< by_time >();
    auto itr = order_idx.rbegin();
 
    vector< market_trade > result;
@@ -158,7 +157,7 @@ vector< market_trade > market_history_api_impl::get_recent_trades( uint32_t limi
 
 std::vector< bucket_object > market_history_api_impl::get_market_history( uint32_t bucket_seconds, time_point_sec start, time_point_sec end ) const
 {
-   const auto& bucket_idx = app.chain_database()->get_index_type< bucket_index >().indices().get< by_bucket >();
+   const auto& bucket_idx = app.chain_database()->get_index< bucket_index >().indices().get< by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( bucket_seconds, start ) );
 
    std::vector< bucket_object > result;
@@ -173,7 +172,7 @@ std::vector< bucket_object > market_history_api_impl::get_market_history( uint32
    return result;
 }
 
-chain::flat_set< uint32_t > market_history_api_impl::get_market_history_buckets() const
+flat_set< uint32_t > market_history_api_impl::get_market_history_buckets() const
 {
    auto buckets = app.get_plugin< market_history_plugin >( MARKET_HISTORY_PLUGIN_NAME )->get_tracked_buckets();
    return buckets;
@@ -190,37 +189,58 @@ void market_history_api::on_api_startup() {}
 
 market_ticker market_history_api::get_ticker() const
 {
-   return my->get_ticker();
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_ticker();
+   });
 }
 
 market_volume market_history_api::get_volume() const
 {
-   return my->get_volume();
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_volume();
+   });
 }
 
 order_book market_history_api::get_order_book( uint32_t limit ) const
 {
-   return my->get_order_book( limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_order_book( limit );
+   });
 }
 
 std::vector< market_trade > market_history_api::get_trade_history( time_point_sec start, time_point_sec end, uint32_t limit ) const
 {
-   return my->get_trade_history( start, end, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_trade_history( start, end, limit );
+   });
 }
 
 std::vector< market_trade > market_history_api::get_recent_trades( uint32_t limit ) const
 {
-   return my->get_recent_trades( limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_recent_trades( limit );
+   });
 }
 
 std::vector< bucket_object > market_history_api::get_market_history( uint32_t bucket_seconds, time_point_sec start, time_point_sec end ) const
 {
-   return my->get_market_history( bucket_seconds, start, end );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_market_history( bucket_seconds, start, end );
+   });
 }
 
 flat_set< uint32_t > market_history_api::get_market_history_buckets() const
 {
-   return my->get_market_history_buckets();
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_market_history_buckets();
+   });
 }
 
 } } // steemit::market_history

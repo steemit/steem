@@ -1,6 +1,7 @@
+#pragma once
 #include <steemit/app/plugin.hpp>
 
-#include <graphene/db/generic_index.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
 
@@ -26,8 +27,13 @@
 namespace steemit { namespace market_history {
 
 using namespace chain;
-using namespace graphene::db;
 using steemit::app::application;
+
+enum market_history_object_types
+{
+   bucket_object_type        = ( MARKET_HISTORY_SPACE_ID << 8 ),
+   order_history_object_type = ( MARKET_HISTORY_SPACE_ID << 8 ) + 1
+};
 
 namespace detail
 {
@@ -55,13 +61,15 @@ class market_history_plugin : public steemit::app::plugin
       std::unique_ptr< detail::market_history_plugin_impl > _my;
 };
 
-struct bucket_object : public abstract_object< bucket_object >
+struct bucket_object : public object< bucket_object_type, bucket_object >
 {
-   static const uint8_t space_id = MARKET_HISTORY_SPACE_ID;
-   static const uint8_t type_id = 1;
+   template< typename Constructor, typename Allocator >
+   bucket_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
 
-   price high()const { return asset( high_sbd, SBD_SYMBOL ) / asset( high_steem, STEEM_SYMBOL ); }
-   price low()const { return asset( low_sbd, SBD_SYMBOL ) / asset( low_steem, STEEM_SYMBOL ); }
+   id_type              id;
 
    fc::time_point_sec   open;
    uint32_t             seconds = 0;
@@ -75,19 +83,36 @@ struct bucket_object : public abstract_object< bucket_object >
    share_type           close_sbd;
    share_type           steem_volume;
    share_type           sbd_volume;
+
+   price high()const { return asset( high_sbd, SBD_SYMBOL ) / asset( high_steem, STEEM_SYMBOL ); }
+   price low()const { return asset( low_sbd, SBD_SYMBOL ) / asset( low_steem, STEEM_SYMBOL ); }
 };
 
-struct order_history_object : public abstract_object< order_history_object >
+typedef oid< bucket_object > bucket_id_type;
+
+
+struct order_history_object : public object< order_history_object_type, order_history_object >
 {
-   fc::time_point_sec   time;
-   fill_order_operation op;
+   template< typename Constructor, typename Allocator >
+   order_history_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   id_type                          id;
+
+   fc::time_point_sec               time;
+   protocol::fill_order_operation   op;
 };
+
+typedef oid< order_history_object > order_history_id_type;
+
 
 struct by_bucket;
 typedef multi_index_container<
    bucket_object,
    indexed_by<
-      hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_id >, member< bucket_object, bucket_id_type, &bucket_object::id > >,
       ordered_unique< tag< by_bucket >,
          composite_key< bucket_object,
             member< bucket_object, uint32_t, &bucket_object::seconds >,
@@ -95,31 +120,34 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< uint32_t >, std::less< fc::time_point_sec > >
       >
-   >
-> bucket_object_multi_index_type;
+   >,
+   allocator< bucket_object >
+> bucket_index;
 
 struct by_time;
 typedef multi_index_container<
    order_history_object,
    indexed_by<
-      hashed_unique< tag< by_id >, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag< by_id >, member< order_history_object, order_history_id_type, &order_history_object::id > >,
       ordered_non_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
-   >
-> order_history_multi_index_type;
-
-typedef generic_index< bucket_object, bucket_object_multi_index_type >        bucket_index;
-typedef generic_index< order_history_object, order_history_multi_index_type > order_history_index;
+   >,
+   allocator< order_history_object >
+> order_history_index;
 
 } } // steemit::market_history
 
-FC_REFLECT_DERIVED( steemit::market_history::bucket_object, (graphene::db::object),
+FC_REFLECT( steemit::market_history::bucket_object,
+                     (id)
                      (open)(seconds)
                      (high_steem)(high_sbd)
                      (low_steem)(low_sbd)
                      (open_steem)(open_sbd)
                      (close_steem)(close_sbd)
                      (steem_volume)(sbd_volume) )
+CHAINBASE_SET_INDEX_TYPE( steemit::market_history::bucket_object, steemit::market_history::bucket_index )
 
-FC_REFLECT_DERIVED( steemit::market_history::order_history_object, (graphene::db::object),
+FC_REFLECT( steemit::market_history::order_history_object,
+                     (id)
                      (time)
                      (op) )
+CHAINBASE_SET_INDEX_TYPE( steemit::market_history::order_history_object, steemit::market_history::order_history_index )

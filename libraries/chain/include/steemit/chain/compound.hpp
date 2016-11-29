@@ -2,12 +2,12 @@
 
 #include <cstdint>
 
-#include <steemit/chain/config.hpp>
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/config.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <fc/uint128.hpp>
 
-namespace steemit { namespace chain {
+namespace steemit { namespace protocol {
 
 template< uint16_t percent, uint64_t multiply_constant, uint64_t shift_constant >
 share_type calc_percent_reward( share_type current_supply )
