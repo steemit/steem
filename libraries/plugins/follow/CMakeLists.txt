@@ -7,7 +7,7 @@ add_library( steemit_follow
              follow_evaluators.cpp
            )
 
-target_link_libraries( steemit_follow steemit_chain steemit_app graphene_time )
+target_link_libraries( steemit_follow steemit_chain steemit_protocol steemit_app graphene_time )
 target_include_directories( steemit_follow
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

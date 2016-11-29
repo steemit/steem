@@ -28,7 +28,7 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/io/json.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/types.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 
 #ifndef WIN32
@@ -72,7 +72,7 @@ int main( int argc, char** argv )
       auto show_key = [&]( const fc::ecc::private_key& priv_key )
       {
          fc::mutable_variant_object mvo;
-         steemit::chain::public_key_type pub_key = priv_key.get_public_key();
+         steemit::protocol::public_key_type pub_key = priv_key.get_public_key();
          mvo( "private_key", graphene::utilities::key_to_wif( priv_key ) )
             ( "public_key", std::string( pub_key ) )
             ;

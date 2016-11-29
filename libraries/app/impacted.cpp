@@ -22,7 +22,8 @@
  * THE SOFTWARE.
  */
 
-#include <steemit/chain/protocol/authority.hpp>
+#include <steemit/protocol/authority.hpp>
+
 #include <steemit/app/impacted.hpp>
 
 #include <fc/utility.hpp>
@@ -30,13 +31,13 @@
 namespace steemit { namespace app {
 
 using namespace fc;
-using namespace steemit::chain;
+using namespace steemit::protocol;
 
 // TODO:  Review all of these, especially no-ops
 struct get_impacted_account_visitor
 {
-   flat_set< string >& _impacted;
-   get_impacted_account_visitor( flat_set< string >& impact ):_impacted( impact ) {}
+   flat_set<account_name_type>& _impacted;
+   get_impacted_account_visitor( flat_set<account_name_type>& impact ):_impacted( impact ) {}
    typedef void result_type;
 
    template<typename T>
@@ -110,7 +111,7 @@ struct get_impacted_account_visitor
    {
       _impacted.insert( op.from );
 
-      if ( !op.to.empty() && op.to != op.from )
+      if ( op.to != account_name_type() && op.to != op.from )
       {
          _impacted.insert( op.to );
       }
@@ -249,13 +250,13 @@ struct get_impacted_account_visitor
    //void operator()( const operation& op ){}
 };
 
-void operation_get_impacted_accounts( const operation& op, flat_set< string >& result )
+void operation_get_impacted_accounts( const operation& op, flat_set<account_name_type>& result )
 {
    get_impacted_account_visitor vtor = get_impacted_account_visitor( result );
    op.visit( vtor );
 }
 
-void transaction_get_impacted_accounts( const transaction& tx, flat_set< string >& result )
+void transaction_get_impacted_accounts( const transaction& tx, flat_set<account_name_type>& result )
 {
    for( const auto& op : tx.operations )
       operation_get_impacted_accounts( op, result );

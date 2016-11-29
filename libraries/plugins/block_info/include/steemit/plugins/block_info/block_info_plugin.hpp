@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace steemit { namespace chain {
+namespace steemit { namespace protocol {
 struct signed_block;
 } }
 

@@ -1,11 +1,14 @@
 #pragma once
+#include <steemit/app/applied_operation.hpp>
 #include <steemit/app/state.hpp>
-#include <steemit/chain/protocol/types.hpp>
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/history_object.hpp>
+
 #include <steemit/tags/tags_plugin.hpp>
+
 #include <steemit/follow/follow_plugin.hpp>
 
 #include <fc/api.hpp>
@@ -24,6 +27,7 @@
 namespace steemit { namespace app {
 
 using namespace steemit::chain;
+using namespace steemit::protocol;
 using namespace std;
 
 struct order
@@ -117,20 +121,20 @@ class database_api
        */
       void cancel_all_subscriptions();
 
-      vector<tags::tag_stats_object> get_trending_tags( string after_tag, uint32_t limit )const;
+      vector<tag_api_obj> get_trending_tags( string after_tag, uint32_t limit )const;
 
       /**
        *  This API is a short-cut for returning all of the state required for a particular URL
        *  with a single query.
        */
       state get_state( string path )const;
-      vector<category_object> get_trending_categories( string after, uint32_t limit )const;
-      vector<category_object> get_best_categories( string after, uint32_t limit )const;
-      vector<category_object> get_active_categories( string after, uint32_t limit )const;
-      vector<category_object> get_recent_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_trending_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_best_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_active_categories( string after, uint32_t limit )const;
+      vector<category_api_obj> get_recent_categories( string after, uint32_t limit )const;
 
-      vector<string> get_active_witnesses()const;
-      vector<string> get_miner_queue()const;
+      vector< account_name_type > get_active_witnesses()const;
+      vector< account_name_type > get_miner_queue()const;
 
       /////////////////////////////
       // Blocks and transactions //
@@ -160,15 +164,20 @@ class database_api
       fc::variant_object get_config()const;
 
       /**
+       * @brief Return a JSON description of object representations
+       */
+      std::string get_schema()const;
+
+      /**
        * @brief Retrieve the current @ref dynamic_global_property_object
        */
-      dynamic_global_property_object get_dynamic_global_properties()const;
-      chain_properties               get_chain_properties()const;
-      price                          get_current_median_history_price()const;
-      feed_history_object            get_feed_history()const;
-      witness_schedule_object        get_witness_schedule()const;
-      hardfork_version               get_hardfork_version()const;
-      scheduled_hardfork             get_next_scheduled_hardfork()const;
+      dynamic_global_property_api_obj  get_dynamic_global_properties()const;
+      chain_properties                 get_chain_properties()const;
+      price                            get_current_median_history_price()const;
+      feed_history_api_obj             get_feed_history()const;
+      witness_schedule_api_obj         get_witness_schedule()const;
+      hardfork_version                 get_hardfork_version()const;
+      scheduled_hardfork               get_next_scheduled_hardfork()const;
 
       //////////
       // Keys //
@@ -194,7 +203,7 @@ class database_api
        *
        * This function has semantics identical to @ref get_objects
        */
-      vector<optional<account_object>> lookup_account_names(const vector<string>& account_names)const;
+      vector<optional<account_api_obj>> lookup_account_names(const vector<string>& account_names)const;
 
       /**
        * @brief Get names and IDs for registered accounts
@@ -209,16 +218,16 @@ class database_api
        */
       uint64_t get_account_count()const;
 
-      vector< owner_authority_history_object > get_owner_history( string account )const;
+      vector< owner_authority_history_api_obj > get_owner_history( string account )const;
 
-      optional< account_recovery_request_object > get_recovery_request( string account ) const;
+      optional< account_recovery_request_api_obj > get_recovery_request( string account ) const;
 
-      optional< escrow_object > get_escrow( string from, uint32_t escrow_id )const;
+      optional< escrow_api_obj > get_escrow( string from, uint32_t escrow_id )const;
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
-      vector< savings_withdraw_object > get_savings_withdraw_from( string account )const;
-      vector< savings_withdraw_object > get_savings_withdraw_to( string account )const;
+      vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
+      vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
 
       ///////////////
       // Witnesses //
@@ -231,23 +240,23 @@ class database_api
        *
        * This function has semantics identical to @ref get_objects
        */
-      vector<optional<witness_object>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
+      vector<optional<witness_api_obj>> get_witnesses(const vector<witness_id_type>& witness_ids)const;
 
-      vector<convert_request_object> get_conversion_requests( const string& account_name )const;
+      vector<convert_request_api_obj> get_conversion_requests( const string& account_name )const;
 
       /**
        * @brief Get the witness owned by a given account
        * @param account The name of the account whose witness should be retrieved
        * @return The witness object, or null if the account does not have a witness
        */
-      fc::optional< witness_object > get_witness_by_account( string account_name )const;
+      fc::optional< witness_api_obj > get_witness_by_account( string account_name )const;
 
       /**
        *  This method is used to fetch witnesses with pagination.
        *
        *  @return an array of `count` witnesses sorted by total votes after witness `from` with at most `limit' results.
        */
-      vector< witness_object > get_witnesses_by_vote( string from, uint32_t limit )const;
+      vector< witness_api_obj > get_witnesses_by_vote( string from, uint32_t limit )const;
 
       /**
        * @brief Get names and IDs for registered witnesses
@@ -255,7 +264,7 @@ class database_api
        * @param limit Maximum number of results to return -- must not exceed 1000
        * @return Map of witness names to corresponding IDs
        */
-      set<string> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
+      set<account_name_type> lookup_witness_accounts(const string& lower_bound_name, uint32_t limit)const;
 
       /**
        * @brief Get the total number of witnesses registered with the blockchain
@@ -364,7 +373,7 @@ class database_api
        *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
        *  pending payout means the pending payout of all children as well.
        */
-      vector<discussion>   get_replies_by_last_update( string start_author, string start_permlink, uint32_t limit )const;
+      vector<discussion>   get_replies_by_last_update( account_name_type start_author, string start_permlink, uint32_t limit )const;
 
 
 
@@ -383,7 +392,7 @@ class database_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map<uint32_t,operation_object> get_account_history( string account, uint64_t from, uint32_t limit )const;
+      map<uint32_t, applied_operation> get_account_history( string account, uint64_t from, uint32_t limit )const;
 
       ////////////////////////////
       // Handlers - not exposed //
@@ -395,8 +404,8 @@ class database_api
       void set_url( discussion& d )const;
       discussion get_discussion( comment_id_type )const;
 
-      static bool filter_default( const comment_object& c ) { return false; }
-      static bool exit_default( const comment_object& c ) { return false; }
+      static bool filter_default( const comment_api_obj& c ) { return false; }
+      static bool exit_default( const comment_api_obj& c )   { return false; }
       static bool tag_exit_default( const tags::tag_object& c ) { return false; }
 
       template<typename Index, typename StartItr>
@@ -404,9 +413,9 @@ class database_api
                                           const string& tag,
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr,
-                                          const std::function<bool(const comment_object&)>& filter = &database_api::filter_default,
-                                          const std::function<bool(const comment_object&)>& exit = &database_api::exit_default,
-                                          const std::function<bool(const tags::tag_object&)>& tag_exit = &database_api::tag_exit_default
+                                          const std::function< bool( const comment_api_obj& ) >& filter = &database_api::filter_default,
+                                          const std::function< bool( const comment_api_obj& ) >& exit   = &database_api::exit_default,
+                                          const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default
                                           )const;
       comment_id_type get_parent( const discussion_query& q )const;
 

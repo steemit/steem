@@ -1,7 +1,5 @@
 #include <steemit/app/plugin.hpp>
 
-#include <graphene/db/generic_index.hpp>
-
 #include <boost/multi_index/composite_key.hpp>
 
 //
@@ -25,42 +23,29 @@
 namespace steemit { namespace account_statistics {
 
 using namespace chain;
-using namespace graphene::db;
 using app::application;
 
-namespace detail
+enum account_statistics_plugin_object_types
 {
-   class account_statistics_plugin_impl;
-}
-
-class account_statistics_plugin : public steemit::app::plugin
-{
-   public:
-      account_statistics_plugin( application* app );
-      virtual ~account_statistics_plugin();
-
-      virtual std::string plugin_name()const override { return ACCOUNT_STATISTICS_PLUGIN_NAME; }
-      virtual void plugin_set_program_options(
-         boost::program_options::options_description& cli,
-         boost::program_options::options_description& cfg ) override;
-      virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
-      virtual void plugin_startup() override;
-
-      const flat_set< uint32_t >& get_tracked_buckets() const;
-      uint32_t get_max_history_per_bucket() const;
-      const flat_set< std::string >& get_tracked_accounts() const;
-
-   private:
-      friend class detail::account_statistics_plugin_impl;
-      std::unique_ptr< detail::account_statistics_plugin_impl > _my;
+   account_stats_bucket_object_type    = ( ACCOUNT_STATISTICS_SPACE_ID << 8 ),
+   account_activity_bucket_object_type = ( ACCOUNT_STATISTICS_SPACE_ID << 8 ) + 1
 };
 
-struct account_stats_bucket_object
-   : public abstract_object< account_stats_bucket_object >
+struct account_stats_bucket_object : public object< account_stats_bucket_object_type, account_stats_bucket_object >
 {
+   template< typename Constructor, typename Allocator >
+   account_stats_bucket_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   account_stats_bucket_object() {}
+
+   id_type              id;
+
    fc::time_point_sec   open;                                     ///< Open time of the bucket
    uint32_t             seconds = 0;                              ///< Seconds accounted for in the bucket
-   string               name;                                     ///< Account name
+   account_name_type    name;                                     ///< Account name
    uint32_t             transactions = 0;                         ///< Transactions this account signed
    uint32_t             market_bandwidth = 0;                     ///< Charged bandwidth for market transactions
    uint32_t             non_market_bandwidth = 0;                 ///< Charged bandwidth for non-market transactions
@@ -122,9 +107,20 @@ struct account_stats_bucket_object
    uint128_t            estimated_hashpower = 0;                  ///< Estimated hashpower
 };
 
-struct account_activity_bucket_object
-   : public abstract_object< account_activity_bucket_object >
+typedef account_stats_bucket_object::id_type account_stats_bucket_id_type;
+
+struct account_activity_bucket_object : public object< account_activity_bucket_object_type, account_activity_bucket_object >
 {
+   template< typename Constructor, typename Allocator >
+   account_activity_bucket_object( Constructor&& c, allocator< Allocator > a )
+   {
+      c( *this );
+   }
+
+   account_activity_bucket_object() {}
+
+   id_type              id;
+
    fc::time_point_sec   open;                                  ///< Open time for the bucket
    uint32_t             seconds = 0;                           ///< Seconds accounted for in the bucket
    uint32_t             active_market_accounts = 0;            ///< Active market accounts in the bucket
@@ -132,11 +128,39 @@ struct account_activity_bucket_object
    uint32_t             active_market_and_forum_accounts = 0;  ///< Active accounts in both the market and the forum
 };
 
+typedef account_activity_bucket_object::id_type account_activity_bucket_id_type;
+
+namespace detail
+{
+   class account_statistics_plugin_impl;
+}
+
+class account_statistics_plugin : public steemit::app::plugin
+{
+   public:
+      account_statistics_plugin( application* app );
+      virtual ~account_statistics_plugin();
+
+      virtual std::string plugin_name()const override { return ACCOUNT_STATISTICS_PLUGIN_NAME; }
+      virtual void plugin_set_program_options(
+         boost::program_options::options_description& cli,
+         boost::program_options::options_description& cfg ) override;
+      virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
+      virtual void plugin_startup() override;
+
+      const flat_set< uint32_t >& get_tracked_buckets() const;
+      uint32_t get_max_history_per_bucket() const;
+      const flat_set< std::string >& get_tracked_accounts() const;
+
+   private:
+      friend class detail::account_statistics_plugin_impl;
+      std::unique_ptr< detail::account_statistics_plugin_impl > _my;
+};
+
 } } // steemit::account_statistics
 
-FC_REFLECT_DERIVED(
-   steemit::account_statistics::account_stats_bucket_object,
-   (graphene::db::object),
+FC_REFLECT( steemit::account_statistics::account_stats_bucket_object,
+   (id)
    (open)
    (seconds)
    (name)
@@ -200,11 +224,11 @@ FC_REFLECT_DERIVED(
    (total_pow)
    (estimated_hashpower)
 )
+//SET_INDEX_TYPE( steemit::account_statistics::account_stats_bucket_object,)
 
-FC_REFLECT_DERIVED(
+FC_REFLECT(
    steemit::account_statistics::account_activity_bucket_object,
-   (graphene::db::object),
-
+   (id)
    (open)
    (seconds)
    (active_market_accounts)

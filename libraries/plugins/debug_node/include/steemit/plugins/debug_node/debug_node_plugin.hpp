@@ -8,7 +8,7 @@
 #include <map>
 #include <fstream>
 
-namespace steemit { namespace chain {
+namespace steemit { namespace protocol {
    struct chain_properties;
    struct pow2;
    struct signed_block;
@@ -50,7 +50,26 @@ class debug_node_plugin : public steemit::app::plugin
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
-      void debug_update( const fc::variant_object& update, uint32_t skip = steemit::chain::database::skip_nothing );
+      template< typename Lambda >
+      void debug_update( Lambda&& callback, uint32_t skip = steemit::chain::database::skip_nothing )
+      {
+         // this was a method on database in Graphene
+         chain::database& db = database();
+         chain::block_id_type head_id = db.head_block_id();
+         auto it = _debug_updates.find( head_id );
+         if( it == _debug_updates.end() )
+            it = _debug_updates.emplace( head_id, std::vector< std::function< void( chain::database& ) > >() ).first;
+         it->second.emplace_back( callback );
+
+         fc::optional<chain::signed_block> head_block = db.fetch_block_by_id( head_id );
+         FC_ASSERT( head_block.valid() );
+
+         // What the last block does has been changed by adding to node_property_object, so we have to re-apply it
+         db.pop_block();
+         db.push_block( *head_block, skip );
+      }
+
+
       uint32_t debug_generate_blocks(
          const std::string& debug_key,
          uint32_t count,
@@ -82,21 +101,22 @@ class debug_node_plugin : public steemit::app::plugin
    private:
       void on_changed_objects( const std::vector<graphene::db::object_id_type>& ids );
       void on_removed_objects( const std::vector<const graphene::db::object*> objs );
-      void on_applied_block( const chain::signed_block& b );
+      void on_applied_block( const protocol::signed_block& b );
 
       void apply_debug_updates();
 
+      std::map<protocol::public_key_type, fc::ecc::private_key> _private_keys;
+
       std::shared_ptr< detail::debug_node_plugin_impl > _my;
 
-      std::map<chain::public_key_type, fc::ecc::private_key> _private_keys;
-
-      std::shared_ptr< std::ofstream > _json_object_stream;
+      //std::shared_ptr< std::ofstream > _json_object_stream;
       boost::signals2::scoped_connection _applied_block_conn;
       boost::signals2::scoped_connection _changed_objects_conn;
       boost::signals2::scoped_connection _removed_objects_conn;
 
       std::vector< std::string > _edit_scripts;
-      std::map< chain::block_id_type, std::vector< fc::variant_object > > _debug_updates;
+      //std::map< protocol::block_id_type, std::vector< fc::variant_object > > _debug_updates;
+      std::map< protocol::block_id_type, std::vector< std::function< void( chain::database& ) > > > _debug_updates;
 };
 
 } } }

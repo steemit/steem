@@ -1,6 +1,6 @@
 #ifdef IS_TEST_NET
 #include <steemit/app/plugin.hpp>
-#include <steemit/chain/json_evaluator_registry.hpp>
+#include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/account_object.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -40,7 +40,7 @@ class test_plugin : public plugin
 
       std::string plugin_name()const override { return "TEST"; }
 
-      std::shared_ptr< json_evaluator_registry< test_op > > _evaluator_registry;
+      std::shared_ptr< generic_custom_operation_interpreter< test_op > > _evaluator_registry;
 };
 
 DEFINE_PLUGIN_EVALUATOR( test_plugin, test_a_operation, test_a );
@@ -68,12 +68,12 @@ void test_b_evaluator::do_apply( const test_b_operation& o )
 
 test_plugin::test_plugin( application* app ) : plugin( app )
 {
-   _evaluator_registry = std::make_shared< json_evaluator_registry< test_op > >( database() );
+   _evaluator_registry = std::make_shared< generic_custom_operation_interpreter< test_op > >( database() );
 
    _evaluator_registry->register_evaluator< test_a_evaluator >( *this );
    _evaluator_registry->register_evaluator< test_b_evaluator >( *this );
 
-   database().set_custom_json_evaluator( plugin_name(), _evaluator_registry );
+   database().set_custom_operation_interpreter( plugin_name(), _evaluator_registry );
 }
 
 } } // steemit::plugin_tests

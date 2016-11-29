@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
 #include <fc/api.hpp>
 

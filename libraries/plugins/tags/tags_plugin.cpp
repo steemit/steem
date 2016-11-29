@@ -2,12 +2,13 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/account_object.hpp>
 #include <steemit/chain/hardfork.hpp>
+#include <steemit/chain/operation_notification.hpp>
+#include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -20,6 +21,8 @@
 namespace steemit { namespace tags {
 
 namespace detail {
+
+using namespace steemit::protocol;
 
 class tags_plugin_impl
 {
@@ -34,7 +37,7 @@ class tags_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
+      void on_operation( const operation_notification& note );
 
       tags_plugin& _self;
 };
@@ -80,7 +83,7 @@ struct operation_visitor {
    }
 
    const tag_stats_object& get_stats( const string& tag )const {
-      const auto& stats_idx = _db.get_index_type<tag_stats_index>().indices().get<by_tag>();
+      const auto& stats_idx = _db.get_index<tag_stats_index>().indices().get<by_tag>();
       auto itr = stats_idx.find( tag );
       if( itr != stats_idx.end() ) return *itr;
 
@@ -93,20 +96,25 @@ struct operation_visitor {
    {
        const auto& stats = get_stats( current.tag );
        remove_stats( current, stats );
-       _db.modify( current, [&]( tag_object& obj ) {
-          obj.active            = comment.active;
-          obj.cashout           = comment.cashout_time;
-          obj.children          = comment.children;
-          obj.net_rshares       = comment.net_rshares.value;
-          obj.net_votes         = comment.net_votes;
-          obj.children_rshares2 = comment.children_rshares2;
-          obj.hot               = hot;
-          obj.total_payout      = comment.total_payout_value;
-          obj.mode              = comment.mode;
-          if( obj.mode != first_payout ) 
-            obj.promoted_balance = 0;
-      });
-      add_stats( current, stats );
+
+       if( comment.mode != archived ) {
+          _db.modify( current, [&]( tag_object& obj ) {
+             obj.active            = comment.active;
+             obj.cashout           = comment.cashout_time;
+             obj.children          = comment.children;
+             obj.net_rshares       = comment.net_rshares.value;
+             obj.net_votes         = comment.net_votes;
+             obj.children_rshares2 = comment.children_rshares2;
+             obj.hot               = hot;
+             obj.total_payout      = comment.total_payout_value;
+             obj.mode              = comment.mode;
+             if( obj.mode != first_payout )
+               obj.promoted_balance = 0;
+         });
+         add_stats( current, stats );
+       } else {
+          _db.remove( current );
+       }
    }
 
    void create_tag( const string& tag, const comment_object& comment, double hot )const {
@@ -171,7 +179,7 @@ struct operation_visitor {
       {
          try
          {
-            meta = fc::json::from_string( c.json_metadata ).as<comment_metadata>();
+            meta = fc::json::from_string( to_string( c.json_metadata ) ).as< comment_metadata >();
          }
          catch( const fc::exception& e )
          {
@@ -179,11 +187,11 @@ struct operation_visitor {
          }
       }
 
-      set<string> lower_tags;
+      set< string > lower_tags;
       for( const auto& tag : meta.tags )
-         lower_tags.insert(fc::to_lower( tag ) );
+         lower_tags.insert( fc::to_lower( tag ) );
 
-      lower_tags.insert( fc::to_lower(c.category) );
+      lower_tags.insert( fc::to_lower( to_string( c.category ) ) );
 
 
       bool safe_for_work = false;
@@ -198,20 +206,20 @@ struct operation_visitor {
       }
 
       meta.tags = lower_tags; /// TODO: std::move???
-      if( meta.tags.size() > 7 ) {
+      if( meta.tags.size() > 5 ) {
          //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
          if( safe_for_work )
-            meta.tags = set<string>({"", c.parent_permlink});
+            meta.tags = set< string >( {"", to_string( c.parent_permlink ) } );
          else
             meta.tags.clear();
       }
 
 
-      const auto& comment_idx = _db.get_index_type<tag_index>().indices().get<by_comment>();
+      const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
       auto citr = comment_idx.lower_bound( c.id );
 
-      map<string, const tag_object*> existing_tags;
-      vector<const tag_object*> remove_queue;
+      map< string, const tag_object* > existing_tags;
+      vector< const tag_object* > remove_queue;
       while( citr != comment_idx.end() && citr->comment == c.id ) {
          const tag_object* tag = &*citr;
          ++citr;
@@ -242,7 +250,7 @@ struct operation_visitor {
    }
 
    const peer_stats_object& get_or_create_peer_stats( account_id_type voter, account_id_type peer )const {
-      const auto& peeridx = _db.get_index_type<peer_stats_index>().indices().get<by_voter_peer>();
+      const auto& peeridx = _db.get_index<peer_stats_index>().indices().get<by_voter_peer>();
       auto itr = peeridx.find( boost::make_tuple( voter, peer ) );
       if( itr == peeridx.end() ) {
          return _db.create<peer_stats_object>( [&]( peer_stats_object& obj ) {
@@ -272,14 +280,14 @@ struct operation_visitor {
       if( voter.id == author.id ) return; /// ignore votes for yourself
       if( c.parent_author.size() ) return; /// only count top level posts
 
-      const auto& stat = get_or_create_peer_stats( voter.get_id(), author.get_id() );
+      const auto& stat = get_or_create_peer_stats( voter.id, author.id );
       _db.modify( stat, [&]( peer_stats_object& obj ) {
             obj.direct_votes++;
             obj.direct_positive_votes += vote > 0;
             obj.update_rank();
       });
 
-      const auto& voteidx = _db.get_index_type<comment_vote_index>().indices().get<by_comment_voter>();
+      const auto& voteidx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
       auto itr = voteidx.lower_bound( boost::make_tuple( comment_id_type(c.id), account_id_type() ) );
       while( itr != voteidx.end() && itr->comment == c.id ) {
          update_indirect_vote( voter.id, itr->voter, (itr->vote_percent > 0)  == (vote > 0) );
@@ -294,7 +302,7 @@ struct operation_visitor {
    void operator()( const transfer_operation& op )const {
       if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )  {
          vector<string> part; part.reserve(4);
-         auto path = op.memo; 
+         auto path = op.memo;
          boost::split( part, path, boost::is_any_of("/") );
          if( part[0].size() && part[0][0] == '@' ) {
             auto acnt = part[0].substr(1);
@@ -302,14 +310,14 @@ struct operation_visitor {
 
             auto c = _db.find_comment( acnt, perm );
             if( c && c->parent_author.size() == 0 ) {
-               const auto& comment_idx = _db.get_index_type<tag_index>().indices().get<by_comment>();
+               const auto& comment_idx = _db.get_index<tag_index>().indices().get<by_comment>();
                auto citr = comment_idx.lower_bound( c->id );
                while( citr != comment_idx.end() && citr->comment == c->id ) {
                   _db.modify( *citr, [&]( tag_object& t ) {
                       if( t.mode == first_payout )
                           t.promoted_balance += op.amount.amount;
                   });
-                  ++citr; 
+                  ++citr;
                }
             } else {
                ilog( "unable to find body" );
@@ -329,13 +337,13 @@ struct operation_visitor {
    }
 
    void operator()( const delete_comment_operation& op )const {
-      const auto& idx = _db.get_index_type<tag_index>().indices().get<by_author_comment>();
+      const auto& idx = _db.get_index<tag_index>().indices().get<by_author_comment>();
 
       const auto& auth = _db.get_account(op.author);
-      auto itr = idx.lower_bound( boost::make_tuple( auth.get_id() ) );
-      while( itr != idx.end() && itr->author == auth.get_id() ) {
+      auto itr = idx.lower_bound( boost::make_tuple( auth.id ) );
+      while( itr != idx.end() && itr->author == auth.id ) {
          const auto& tobj = *itr;
-         const auto* obj = _db.find_object( itr->comment );
+         const auto* obj = _db.find< comment_object >( itr->comment );
          ++itr;
          if( !obj ) {
             _db.remove( tobj );
@@ -348,18 +356,29 @@ struct operation_visitor {
        update_tags( c );
    }
 
+   void operator()( const comment_payout_update_operation& op )const {
+       const auto& c = _db.get_comment( op.author, op.permlink );
+       update_tags( c );
+   }
+
    template<typename Op>
    void operator()( Op&& )const{} /// ignore all other ops
 };
 
 
 
-void tags_plugin_impl::on_operation( const operation_object& op_obj ) {
-   try { /// plugins shouldn't ever throw
-      op_obj.op.visit( operation_visitor( database() ) );
-   } catch ( const fc::exception& e ) {
+void tags_plugin_impl::on_operation( const operation_notification& note ) {
+   try
+   {
+      /// plugins shouldn't ever throw
+      note.op.visit( operation_visitor( database() ) );
+   }
+   catch ( const fc::exception& e )
+   {
       edump( (e.to_detail_string()) );
-   } catch ( ... ) {
+   }
+   catch ( ... )
+   {
       elog( "unhandled exception" );
    }
 }
@@ -369,16 +388,13 @@ void tags_plugin_impl::on_operation( const operation_object& op_obj ) {
 tags_plugin::tags_plugin( application* app )
    : plugin( app ), my( new detail::tags_plugin_impl(*this) )
 {
-   //ilog("Loading account history plugin" );
+   database().add_plugin_index< tag_index >();
+   database().add_plugin_index< tag_stats_index >();
+   database().add_plugin_index< peer_stats_index >();
 }
 
 tags_plugin::~tags_plugin()
 {
-}
-
-std::string tags_plugin::plugin_name()const
-{
-   return "tags";
 }
 
 void tags_plugin::plugin_set_program_options(
@@ -391,10 +407,7 @@ void tags_plugin::plugin_set_program_options(
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing tags plugin" );
-   database().post_apply_operation.connect( [&]( const operation_object& b){ my->on_operation(b); } );
-   database().add_index< primary_index< tag_index  > >();
-   database().add_index< primary_index< tag_stats_index > >();
-   database().add_index< primary_index< peer_stats_index > >();
+   database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
 
    app().register_api_factory<tag_api>("tag_api");
 }

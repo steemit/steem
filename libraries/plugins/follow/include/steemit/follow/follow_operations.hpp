@@ -1,33 +1,34 @@
 #pragma once
 
-#include <steemit/chain/protocol/base.hpp>
+#include <steemit/protocol/base.hpp>
 
 #include <steemit/follow/follow_plugin.hpp>
 
 namespace steemit { namespace follow {
 
 using namespace std;
+using steemit::protocol::base_operation;
 
 struct follow_operation : base_operation
 {
-    string              follower;
-    string              following;
-    set< string >       what; /// blog, mute
+    account_name_type follower;
+    account_name_type following;
+    set< string >     what; /// blog, mute
 
     void validate()const;
 
-    void get_required_posting_authorities( flat_set< string >& a )const { a.insert( follower ); }
+    void get_required_posting_authorities( flat_set<account_name_type>& a )const { a.insert( follower ); }
 };
 
 struct reblog_operation : base_operation
 {
-   string account;
-   string author;
-   string permlink;
+   account_name_type account;
+   account_name_type author;
+   string            permlink;
 
    void validate()const;
 
-   void get_required_posting_authorities( flat_set< string >& a )const { a.insert( account ); }
+   void get_required_posting_authorities( flat_set<account_name_type>& a )const { a.insert( account ); }
 };
 
 typedef fc::static_variant<

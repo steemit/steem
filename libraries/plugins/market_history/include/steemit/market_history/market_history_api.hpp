@@ -2,7 +2,7 @@
 
 #include <steemit/market_history/market_history_plugin.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <fc/api.hpp>
 
@@ -107,7 +107,7 @@ class market_history_api
       /**
        * @brief Returns the bucket seconds being tracked by the plugin.
        */
-      chain::flat_set< uint32_t > get_market_history_buckets() const;
+      flat_set< uint32_t > get_market_history_buckets() const;
 
    private:
       std::shared_ptr< detail::market_history_api_impl > my;
