@@ -114,7 +114,12 @@ namespace detail {
          }
 
          if( _options->count("p2p-endpoint") )
-            _p2p_network->listen_on_endpoint(resolve_string_to_ip_endpoints(_options->at("p2p-endpoint").as<string>()), true);
+         {
+            auto p2p_endpoint = _options->at("p2p-endpoint").as<string>();
+            auto endpoints = resolve_string_to_ip_endpoints( p2p_endpoint );
+            FC_ASSERT( endpoints.size(), "p2p-endpoint ${hostname} did not resolve", ("hostname", p2p_endpoint) );
+            _p2p_network->listen_on_endpoint( endpoints[0], true);
+         }
          else
             _p2p_network->listen_on_port(0, false);
 
@@ -172,8 +177,11 @@ namespace detail {
          _websocket_server = std::make_shared<fc::http::websocket_server>();
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
-         ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
-         _websocket_server->listen( resolve_string_to_ip_endpoints(_options->at("rpc-endpoint").as<string>()) );
+         auto rpc_endpoint = _options->at("rpc-endpoint").as<string>();
+         ilog("Configured websocket rpc to listen on ${ip}", ("ip", rpc_endpoint));
+         auto endpoints = resolve_string_to_ip_endpoints( rpc_endpoint );
+         FC_ASSERT( endpoints.size(), "rpc-endpoint ${hostname} did not resolve", ("hostname", rpc_endpoint) );
+         _websocket_server->listen( endpoints[0] );
          _websocket_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
@@ -192,8 +200,11 @@ namespace detail {
          _websocket_tls_server = std::make_shared<fc::http::websocket_tls_server>( _options->at("server-pem").as<string>(), password );
 
          _websocket_tls_server->on_connection([this]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
-         ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
-         _websocket_tls_server->listen( resolve_string_to_ip_endpoints(_options->at("rpc-tls-endpoint").as<string>()) );
+         auto rpc_tls_endpoint = _options->at("rpc-tls-endpoint").as<string>();
+         ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip", rpc_tls_endpoint));
+         auto endpoints = resolve_string_to_ip_endpoints( rpc_tls_endpoint );
+         FC_ASSERT( endpoints.size(), "rpc-tls-endpoint ${hostname} did not resolve", ("hostname", rpc_tls_endpoint) );
+         _websocket_tls_server->listen( endpoints[0] );
          _websocket_tls_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
