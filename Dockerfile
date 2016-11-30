@@ -33,6 +33,24 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_STEEM_TESTNET=ON \
+        -DLOW_MEMORY_NODE=OFF \
+        -DCLEAR_VOTES=ON \
+        .. && \
+    make -j$(nproc) chain_test && \
+    ./tests/chain_test && \
+    cd /usr/local/src/steem && \
+    doxygen && \
+    programs/build_helpers/check_reflect.py && \
+    rm -rf /usr/local/src/steem/build
+
+RUN \
+    cd /usr/local/src/steem && \
+    git submodule update --init --recursive && \
+    mkdir build && \
+    cd build && \
+    cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
