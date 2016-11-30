@@ -4,12 +4,16 @@
 
 #include <steemit/app/impacted.hpp>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
+
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steemit/chain/generic_custom_operation_interpreter.hpp>
+#include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/json_evaluator_registry.hpp>
+
+#include <graphene/schema/schema.hpp>
+#include <graphene/schema/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -20,6 +24,8 @@ namespace steemit { namespace follow {
 
 namespace detail
 {
+
+using namespace steemit::protocol;
 
 class follow_plugin_impl
 {
@@ -33,24 +39,24 @@ class follow_plugin_impl
          return _self.database();
       }
 
-      void on_operation( const operation_object& op_obj );
-      void pre_operation( const operation_object& op_0bj );
+      void pre_operation( const operation_notification& op_obj );
+      void post_operation( const operation_notification& op_obj );
 
       follow_plugin&                                                                         _self;
-      std::shared_ptr< json_evaluator_registry< steemit::follow::follow_plugin_operation > > _evaluator_registry;
+      std::shared_ptr< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > > _custom_operation_interpreter;
 };
 
 void follow_plugin_impl::plugin_initialize()
 {
    // Each plugin needs its own evaluator registry.
-   _evaluator_registry = std::make_shared< json_evaluator_registry< steemit::follow::follow_plugin_operation > >( database() );
+   _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > >( database() );
 
    // Add each operation evaluator to the registry
-   _evaluator_registry->register_evaluator<follow_evaluator>( &_self );
-   _evaluator_registry->register_evaluator<reblog_evaluator>( &_self );
+   _custom_operation_interpreter->register_evaluator<follow_evaluator>( &_self );
+   _custom_operation_interpreter->register_evaluator<reblog_evaluator>( &_self );
 
    // Add the registry to the database so the database can delegate custom ops to the plugin
-   database().set_custom_json_evaluator( _self.plugin_name(), _evaluator_registry );
+   database().set_custom_operation_interpreter( _self.plugin_name(), _custom_operation_interpreter );
 }
 
 struct pre_operation_visitor
@@ -74,13 +80,13 @@ struct pre_operation_visitor
 
          if( c.mode == archived ) return;
 
-         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
+         const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
          auto cv = cv_idx.find( std::make_tuple( c.id, db.get_account( op.voter ).id ) );
 
          if( cv != cv_idx.end() )
          {
-            const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
-            auto rep = rep_idx.find( db.get_account( op.author ).id );
+            const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
+            auto rep = rep_idx.find( op.author );
 
             if( rep != rep_idx.end() )
             {
@@ -104,7 +110,7 @@ struct pre_operation_visitor
          if( comment == nullptr ) return;
          if( comment->parent_author.size() ) return;
 
-         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
 
          while( itr != feed_idx.end() && itr->comment == comment->id )
@@ -114,7 +120,7 @@ struct pre_operation_visitor
             db.remove( old_feed );
          }
 
-         const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
+         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
          auto blog_itr = blog_idx.lower_bound( comment->id );
 
          while( blog_itr != blog_idx.end() && blog_itr->comment == comment->id )
@@ -128,11 +134,11 @@ struct pre_operation_visitor
    }
 };
 
-struct on_operation_visitor
+struct post_operation_visitor
 {
    follow_plugin& _plugin;
 
-   on_operation_visitor( follow_plugin& plugin )
+   post_operation_visitor( follow_plugin& plugin )
       : _plugin( plugin ) {}
 
    typedef void result_type;
@@ -164,7 +170,7 @@ struct on_operation_visitor
 
             auto new_fop = follow_plugin_operation( fop );
             new_cop.json = fc::json::to_string( new_fop );
-            std::shared_ptr< generic_json_evaluator_registry > eval = _plugin.database().get_custom_json_evaluator( op.id );
+            std::shared_ptr< custom_operation_interpreter > eval = _plugin.database().get_custom_json_evaluator( op.id );
             eval->apply( new_cop );
          }
       }
@@ -181,41 +187,40 @@ struct on_operation_visitor
 
          if( c.created != db.head_block_time() ) return;
 
-         const auto& idx = db.get_index_type< follow_index >().indices().get< by_following_follower >();
-         const auto& comment_idx = db.get_index_type< feed_index >().indices().get< by_comment >();
+         const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
+         const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = idx.find( op.author );
 
-         const auto& feed_idx = db.get_index_type< feed_index >().indices().get< by_feed >();
+         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
          while( itr != idx.end() && itr->following == op.author )
          {
-            if( itr->what.find( follow_type::blog ) != itr->what.end() )
+            if( itr->what & ( 1 << blog ) )
             {
-               auto account_id = db.get_account( itr->follower ).id;
                uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( account_id );
+               auto last_feed = feed_idx.lower_bound( itr->follower );
 
-               if( last_feed != feed_idx.end() && last_feed->account == account_id )
+               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
                {
                   next_id = last_feed->account_feed_id + 1;
                }
 
-               if( comment_idx.find( boost::make_tuple( c.id, account_id ) ) == comment_idx.end() )
+               if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                {
                   db.create< feed_object >( [&]( feed_object& f )
                   {
-                     f.account = account_id;
+                     f.account = itr->follower;
                      f.comment = c.id;
                      f.account_feed_id = next_id;
                   });
 
-                  const auto& old_feed_idx = db.get_index_type< feed_index >().indices().get< by_old_feed >();
-                  auto old_feed = old_feed_idx.lower_bound( account_id );
+                  const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
+                  auto old_feed = old_feed_idx.lower_bound( itr->follower );
 
-                  while( old_feed->account == account_id && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                  while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
                   {
                      db.remove( *old_feed );
-                     old_feed = old_feed_idx.lower_bound( account_id );
+                     old_feed = old_feed_idx.lower_bound( itr->follower );
                   }
                }
             }
@@ -223,33 +228,32 @@ struct on_operation_visitor
             ++itr;
          }
 
-         const auto& blog_idx = db.get_index_type< blog_index >().indices().get< by_blog >();
-         const auto& comment_blog_idx = db.get_index_type< blog_index >().indices().get< by_comment >();
-         auto author_id = db.get_account( op.author ).id;
-         auto last_blog = blog_idx.lower_bound( author_id );
+         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
+         const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
+         auto last_blog = blog_idx.lower_bound( op.author );
          uint32_t next_id = 0;
 
-         if( last_blog != blog_idx.end() && last_blog->account == author_id )
+         if( last_blog != blog_idx.end() && last_blog->account == op.author )
          {
             next_id = last_blog->blog_feed_id + 1;
          }
 
-         if( comment_blog_idx.find( boost::make_tuple( c.id, author_id ) ) == comment_blog_idx.end() )
+         if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
             db.create< blog_object >( [&]( blog_object& b)
             {
-               b.account = author_id;
+               b.account = op.author;
                b.comment = c.id;
                b.blog_feed_id = next_id;
             });
 
-            const auto& old_blog_idx = db.get_index_type< blog_index >().indices().get< by_old_blog >();
-            auto old_blog = old_blog_idx.lower_bound( author_id );
+            const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
+            auto old_blog = old_blog_idx.lower_bound( op.author );
 
-            while( old_blog->account == author_id && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
+            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin.max_feed_size )
             {
                db.remove( *old_blog );
-               old_blog = old_blog_idx.lower_bound( author_id );
+               old_blog = old_blog_idx.lower_bound( op.author );
             }
          }
       }
@@ -266,14 +270,12 @@ struct on_operation_visitor
          if( comment.mode == archived )
             return;
 
-         const auto& voter_id = db.get_account( op.voter ).id;
-         const auto& author_id = db.get_account( op.author ).id;
-         const auto& cv_idx = db.get_index_type< comment_vote_index >().indices().get< by_comment_voter >();
-         auto cv = cv_idx.find( boost::make_tuple( comment.id, voter_id ) );
+         const auto& cv_idx = db.get_index< comment_vote_index >().indices().get< by_comment_voter >();
+         auto cv = cv_idx.find( boost::make_tuple( comment.id, db.get_account( op.voter ).id ) );
 
-         const auto& rep_idx = db.get_index_type< reputation_index >().indices().get< by_account >();
-         auto voter_rep = rep_idx.find( voter_id );
-         auto author_rep = rep_idx.find( author_id );
+         const auto& rep_idx = db.get_index< reputation_index >().indices().get< by_account >();
+         auto voter_rep = rep_idx.find( op.voter );
+         auto author_rep = rep_idx.find( op.author );
 
          // Rules are a plugin, do not effect consensus, and are subject to change.
          // Rule #1: Must have non-negative reputation to effect another user's reputation
@@ -287,7 +289,7 @@ struct on_operation_visitor
 
             db.create< reputation_object >( [&]( reputation_object& r )
             {
-               r.account = author_id;
+               r.account = op.author;
                r.reputation = ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
             });
          }
@@ -306,11 +308,11 @@ struct on_operation_visitor
    }
 };
 
-void follow_plugin_impl::pre_operation( const operation_object& op_obj )
+void follow_plugin_impl::pre_operation( const operation_notification& note )
 {
    try
    {
-      op_obj.op.visit( pre_operation_visitor( _self ) );
+      note.op.visit( pre_operation_visitor( _self ) );
    }
    catch( const fc::assert_exception& )
    {
@@ -318,11 +320,11 @@ void follow_plugin_impl::pre_operation( const operation_object& op_obj )
    }
 }
 
-void follow_plugin_impl::on_operation( const operation_object& op_obj )
+void follow_plugin_impl::post_operation( const operation_notification& note )
 {
    try
    {
-      op_obj.op.visit( on_operation_visitor( _self ) );
+      note.op.visit( post_operation_visitor( _self ) );
    }
    catch( fc::assert_exception )
    {
@@ -353,12 +355,13 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       ilog("Intializing follow plugin" );
       my->plugin_initialize();
 
-      database().pre_apply_operation.connect( [&]( const operation_object& o ){ my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_object& o ){ my->on_operation( o ); } );
-      database().add_index< primary_index< follow_index > >();
-      database().add_index< primary_index< feed_index > >();
-      database().add_index< primary_index< blog_index > >();
-      database().add_index< primary_index< reputation_index > >();
+      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      database().add_plugin_index< follow_index       >();
+      database().add_plugin_index< feed_index         >();
+      database().add_plugin_index< blog_index         >();
+      database().add_plugin_index< reputation_index   >();
+      database().add_plugin_index< follow_count_index >();
 
       if( options.count( "follow-max-feed-size" ) )
       {

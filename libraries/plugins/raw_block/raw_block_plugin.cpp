@@ -21,8 +21,6 @@ void raw_block_plugin::plugin_initialize( const boost::program_options::variable
 
 void raw_block_plugin::plugin_startup()
 {
-   chain::database& db = database();
-
    app().register_api_factory< raw_block_api >( "raw_block_api" );
 }
 

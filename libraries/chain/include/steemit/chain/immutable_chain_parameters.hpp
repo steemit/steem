@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-#include <steemit/chain/config.hpp>
+#include <steemit/protocol/config.hpp>
 
 namespace steemit { namespace chain {
 

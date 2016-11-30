@@ -1,8 +1,6 @@
 #include <steemit/app/application.hpp>
 
 #include <steemit/witness/witness.hpp>
-#include <steemit/account_history/account_history_plugin.hpp>
-#include <steemit/private_message/private_message_plugin.hpp>
 #include <steemit/manifest/plugins.hpp>
 
 #include <fc/exception/exception.hpp>
@@ -12,6 +10,10 @@
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
+
+#include <steemit/protocol/version.hpp>
+#include <graphene/utilities/git_revision.hpp>
+#include <fc/git_revision.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -32,6 +34,7 @@
 #include <graphene/utilities/key_conversion.hpp>
 
 using namespace steemit;
+using steemit::protocol::version;
 namespace bpo = boost::program_options;
 
 void write_default_logging_config_to_stream(std::ostream& out);
@@ -51,6 +54,7 @@ int main(int argc, char** argv) {
       std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
       std::cerr << "initminer private key: " << initminer_private_key << "\n";
       std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
+      std::cerr << "blockchain version: " << fc::string( STEEMIT_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #else
       std::cerr << "------------------------------------------------------\n\n";
@@ -58,6 +62,7 @@ int main(int argc, char** argv) {
       std::cerr << "------------------------------------------------------\n";
       std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
       std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
+      std::cerr << "blockchain version: " << fc::string( STEEMIT_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #endif
 
@@ -66,6 +71,7 @@ int main(int argc, char** argv) {
       app_options.add_options()
             ("help,h", "Print this help message and exit.")
             ("data-dir,d", bpo::value<boost::filesystem::path>()->default_value("witness_node_data_dir"), "Directory containing databases, configuration file, etc.")
+            ("version,v", "Print steemd version and exit.")
             ;
 
       bpo::variables_map options;
@@ -85,6 +91,14 @@ int main(int argc, char** argv) {
       {
         std::cerr << "Error parsing command line: " << e.what() << "\n";
         return 1;
+      }
+
+      if( options.count("version") )
+      {
+         std::cout << "steem_blockchain_version: " << fc::string( STEEMIT_BLOCKCHAIN_VERSION ) << "\n";
+         std::cout << "steem_git_revision:       " << fc::string( graphene::utilities::git_revision_sha ) << "\n";
+         std::cout << "fc_git_revision:          " << fc::string( fc::git_revision_sha ) << "\n";
+         return 0;
       }
 
       if( options.count("help") )

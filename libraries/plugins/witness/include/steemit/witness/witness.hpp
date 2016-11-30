@@ -31,8 +31,9 @@
 namespace steemit { namespace witness_plugin {
 
 using std::string;
-using chain::public_key_type;
+using protocol::public_key_type;
 using app::application;
+using steemit::protocol::block_id_type;
 
 namespace block_production_condition
 {
@@ -96,6 +97,7 @@ private:
    uint32_t _mining_threads = 0;
 
    uint64_t         _head_block_num       = 0;
+   block_id_type    _head_block_id        = block_id_type();
    uint64_t         _total_hashes         = 0;
    fc::time_point   _hash_start_time;
 
@@ -104,7 +106,7 @@ private:
    std::map<public_key_type, fc::ecc::private_key> _private_keys;
    std::set<string>                                _witnesses;
    std::map<string,public_key_type>                _miners;
-   chain::chain_properties                         _miner_prop_vote;
+   protocol::chain_properties                      _miner_prop_vote;
    fc::future<void>                                _block_production_task;
 };
 

@@ -26,9 +26,9 @@
 #include <steemit/app/application.hpp>
 #include <steemit/app/plugin.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
-#include <steemit/chain/exceptions.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/steem_object_types.hpp>
+#include <steemit/chain/database_exceptions.hpp>
 
 #include <graphene/net/core_messages.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -43,6 +43,7 @@
 #include <fc/rpc/api_connection.hpp>
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/network/resolve.hpp>
+#include <fc/string.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/path.hpp>
@@ -64,10 +65,10 @@ using graphene::net::message;
 using graphene::net::block_message;
 using graphene::net::trx_message;
 
-using chain::block_header;
-using chain::signed_block_header;
-using chain::signed_block;
-using chain::block_id_type;
+using protocol::block_header;
+using protocol::signed_block_header;
+using protocol::signed_block;
+using protocol::block_id_type;
 
 using std::vector;
 
@@ -113,7 +114,12 @@ namespace detail {
          }
 
          if( _options->count("p2p-endpoint") )
-            _p2p_network->listen_on_endpoint(fc::ip::endpoint::from_string(_options->at("p2p-endpoint").as<string>()), true);
+         {
+            auto p2p_endpoint = _options->at("p2p-endpoint").as<string>();
+            auto endpoints = resolve_string_to_ip_endpoints( p2p_endpoint );
+            FC_ASSERT( endpoints.size(), "p2p-endpoint ${hostname} did not resolve", ("hostname", p2p_endpoint) );
+            _p2p_network->listen_on_endpoint( endpoints[0], true);
+         }
          else
             _p2p_network->listen_on_port(0, false);
 
@@ -130,6 +136,7 @@ namespace detail {
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
          _p2p_network->connect_to_p2p_network();
+         idump( (_chain_db->head_block_id()) );
          _p2p_network->sync_from(graphene::net::item_id(graphene::net::core_message_type_enum::block_message_type,
                                               _chain_db->head_block_id()),
                                  std::vector<uint32_t>());
@@ -170,8 +177,11 @@ namespace detail {
          _websocket_server = std::make_shared<fc::http::websocket_server>();
 
          _websocket_server->on_connection([&]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
-         ilog("Configured websocket rpc to listen on ${ip}", ("ip",_options->at("rpc-endpoint").as<string>()));
-         _websocket_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-endpoint").as<string>()) );
+         auto rpc_endpoint = _options->at("rpc-endpoint").as<string>();
+         ilog("Configured websocket rpc to listen on ${ip}", ("ip", rpc_endpoint));
+         auto endpoints = resolve_string_to_ip_endpoints( rpc_endpoint );
+         FC_ASSERT( endpoints.size(), "rpc-endpoint ${hostname} did not resolve", ("hostname", rpc_endpoint) );
+         _websocket_server->listen( endpoints[0] );
          _websocket_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
@@ -190,8 +200,11 @@ namespace detail {
          _websocket_tls_server = std::make_shared<fc::http::websocket_tls_server>( _options->at("server-pem").as<string>(), password );
 
          _websocket_tls_server->on_connection([this]( const fc::http::websocket_connection_ptr& c ){ on_connection(c); } );
-         ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip",_options->at("rpc-tls-endpoint").as<string>()));
-         _websocket_tls_server->listen( fc::ip::endpoint::from_string(_options->at("rpc-tls-endpoint").as<string>()) );
+         auto rpc_tls_endpoint = _options->at("rpc-tls-endpoint").as<string>();
+         ilog("Configured websocket TLS rpc to listen on ${ip}", ("ip", rpc_tls_endpoint));
+         auto endpoints = resolve_string_to_ip_endpoints( rpc_tls_endpoint );
+         FC_ASSERT( endpoints.size(), "rpc-tls-endpoint ${hostname} did not resolve", ("hostname", rpc_tls_endpoint) );
+         _websocket_tls_server->listen( endpoints[0] );
          _websocket_tls_server->start_accept();
       } FC_CAPTURE_AND_RETHROW() }
 
@@ -217,15 +230,12 @@ namespace detail {
 
       application_impl(application* self)
          : _self(self),
-           _pending_trx_db(std::make_shared<graphene::db::object_database>()),
+           //_pending_trx_db(std::make_shared<graphene::db::object_database>()),
            _chain_db(std::make_shared<chain::database>())
       {
       }
 
-      ~application_impl()
-      {
-         fc::remove_all(_data_dir / "blockchain/dblock");
-      }
+      ~application_impl(){}
 
       void register_builtin_apis()
       {
@@ -237,86 +247,96 @@ namespace detail {
 
       void startup()
       { try {
-         bool clean = !fc::exists(_data_dir / "blockchain/dblock");
-         fc::create_directories(_data_dir / "blockchain/dblock");
-         fc::create_directories(_data_dir / "node/transaction_history");
-
-         _max_block_age =_options->at("max-block-age").as<int32_t>();
+         _shared_file_size = fc::parse_size( _options->at( "shared-file-size" ).as< string >() );
+         ilog( "shared_file_size is ${n} bytes", ("n", _shared_file_size) );
+         bool read_only = _options->count( "read-only" );
          register_builtin_apis();
 
-         if( _options->count("resync-blockchain") )
-            _chain_db->wipe(_data_dir / "blockchain", true);
+         if( _options->count("shared-file-dir") )
+            _shared_dir = fc::path( _options->at("shared-file-dir").as<string>() );
+         else
+            _shared_dir = _data_dir / "blockchain";
 
-         flat_map<uint32_t,block_id_type> loaded_checkpoints;
-         if( _options->count("checkpoint") )
+         if( !read_only )
          {
-            auto cps = _options->at("checkpoint").as<vector<string>>();
-            loaded_checkpoints.reserve( cps.size() );
-            for( auto cp : cps )
+            _self->_read_only = false;
+            ilog( "Starting Steem node in write mode." );
+            _max_block_age =_options->at("max-block-age").as<int32_t>();
+
+            if( _options->count("resync-blockchain") )
+               _chain_db->wipe(_data_dir / "blockchain", _shared_dir, true);
+
+            _chain_db->set_flush_interval( _options->at("flush").as<uint32_t>() );
+
+            flat_map<uint32_t,block_id_type> loaded_checkpoints;
+            if( _options->count("checkpoint") )
             {
-               auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type> >();
-               loaded_checkpoints[item.first] = item.second;
-            }
-         }
-         _chain_db->add_checkpoints( loaded_checkpoints );
-
-         if( _options->count("replay-blockchain") )
-         {
-            ilog("Replaying blockchain on user request.");
-            _chain_db->reindex(_data_dir/"blockchain" );
-         } else if( clean ) {
-
-            auto is_new = [&]() -> bool
-            {
-               // directory doesn't exist
-               if( !fc::exists( _data_dir ) )
-                  return true;
-               // if directory exists but is empty, return true; else false.
-               return ( fc::directory_iterator( _data_dir ) == fc::directory_iterator() );
-            };
-
-            auto is_outdated = [&]() -> bool
-            {
-               if( !fc::exists( _data_dir / "db_version" ) )
-                  return true;
-               std::string version_str;
-               fc::read_file_contents( _data_dir / "db_version", version_str );
-               return (version_str != GRAPHENE_CURRENT_DB_VERSION);
-            };
-            if( !is_new() && is_outdated() )
-            {
-               ilog("Replaying blockchain due to version upgrade");
-
-               fc::remove_all( _data_dir / "db_version" );
-               _chain_db->reindex(_data_dir / "blockchain" );
-
-               // doing this down here helps ensure that DB will be wiped
-               // if any of the above steps were interrupted on a previous run
-               if( !fc::exists( _data_dir / "db_version" ) )
+               auto cps = _options->at("checkpoint").as<vector<string>>();
+               loaded_checkpoints.reserve( cps.size() );
+               for( auto cp : cps )
                {
-                  std::ofstream db_version(
-                     (_data_dir / "db_version").generic_string().c_str(),
-                     std::ios::out | std::ios::binary | std::ios::trunc );
-                  std::string version_string = GRAPHENE_CURRENT_DB_VERSION;
-                  db_version.write( version_string.c_str(), version_string.size() );
-                  db_version.close();
+                  auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type> >();
+                  loaded_checkpoints[item.first] = item.second;
                }
-            } else {
-              _chain_db->open(_data_dir / "blockchain" );
             }
-         } else {
-            wlog("Detected unclean shutdown. Replaying blockchain...");
-            _chain_db->reindex(_data_dir / "blockchain" );
-         }
-         _pending_trx_db->open(_data_dir / "node/transaction_history" );
+            _chain_db->add_checkpoints( loaded_checkpoints );
 
-         if( _options->count("force-validate") )
+            if( _options->count("replay-blockchain") )
+            {
+               ilog("Replaying blockchain on user request.");
+               _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+            }
+            else
+            {
+               try
+               {
+                  _chain_db->open(_data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );\
+               }
+               catch( fc::assert_exception& )
+               {
+                  wlog( "Error when opening database. Attempting reindex..." );
+
+                  try
+                  {
+                     _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+                  }
+                  catch( chain::block_log_exception& )
+                  {
+                     wlog( "Error opening block log. Having to resync from network..." );
+                     _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );
+                  }
+               }
+            }
+
+            if( _options->count("force-validate") )
+            {
+               ilog( "All transaction signatures will be validated" );
+               _force_validate = true;
+            }
+
+            graphene::time::now();
+         }
+         else
          {
-            ilog( "All transaction signatures will be validated" );
-            _force_validate = true;
-         }
+            ilog( "Starting Steem node in read mode." );
+            _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_only );
 
-         graphene::time::now();
+            if( _options->count( "read-forward-rpc" ) )
+            {
+               try
+               {
+                  auto ws_ptr = _self->_client.connect( _options->at( "read-forward-rpc" ).as< string >() );
+                  auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
+                  auto login = apic->get_remote_api< login_api >( 1 );
+                  FC_ASSERT( login->login( "", "" ) );
+                  _self->_remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
+               }
+               catch( fc::exception& e )
+               {
+                  wlog( "Error conencting to remote RPC, network api forwarding disabled.", ("e", e.to_detail_string()) );
+               }
+            }
+         }
 
          if( _options->count("api-user") )
          {
@@ -352,8 +372,13 @@ namespace detail {
                _public_apis.push_back( name );
             }
          }
+         _running = true;
 
-         reset_p2p_node(_data_dir);
+         if( !read_only )
+         {
+            reset_p2p_node(_data_dir);
+         }
+
          reset_websocket_server();
          reset_websocket_tls_server();
       } FC_LOG_AND_RETHROW() }
@@ -397,6 +422,10 @@ namespace detail {
        */
       virtual bool has_item(const graphene::net::item_id& id) override
       {
+         // If the node is shutting down we don't care about fetching items
+         if( !_running )
+            return true;
+
          try
          {
             if( id.item_type == graphene::net::block_message_type )
@@ -418,69 +447,72 @@ namespace detail {
       virtual bool handle_block(const graphene::net::block_message& blk_msg, bool sync_mode,
                                 std::vector<fc::uint160_t>& contained_transaction_message_ids) override
       { try {
-
-         if (sync_mode)
-            fc_ilog(fc::logger::get("sync"),
-                    "chain pushing sync block #${block_num} ${block_hash}, head is ${head}", 
-                    ("block_num", blk_msg.block.block_num())
-                    ("block_hash", blk_msg.block_id)
-                    ("head", _chain_db->head_block_num()));
-         else
-            fc_ilog(fc::logger::get("sync"),
-                    "chain pushing block #${block_num} ${block_hash}, head is ${head}", 
-                    ("block_num", blk_msg.block.block_num())
-                    ("block_hash", blk_msg.block_id)
-                    ("head", _chain_db->head_block_num()));
-         if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
+         if( _running )
          {
-            ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
-                 ("t",blk_msg.block.timestamp)
-                 ("n", blk_msg.block.block_num()) );
-         }
-
-         time_point_sec now = graphene::time::now();
-
-         uint64_t max_accept_time = now.sec_since_epoch();
-         max_accept_time += allow_future_time;
-         FC_ASSERT( blk_msg.block.timestamp.sec_since_epoch() <= max_accept_time );
-
-         try {
-            // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
-            // you can help the network code out by throwing a block_older_than_undo_history exception.
-            // when the net code sees that, it will stop trying to push blocks from that chain, but
-            // leave that peer connected so that they can get sync blocks from us
-            bool result = _chain_db->push_block(blk_msg.block, (_is_block_producer | _force_validate) ? database::skip_nothing : database::skip_transaction_signatures);
-
-            if( !sync_mode && blk_msg.block.transactions.size() )
+            if (sync_mode)
+               fc_ilog(fc::logger::get("sync"),
+                     "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",
+                     ("block_num", blk_msg.block.block_num())
+                     ("block_hash", blk_msg.block_id)
+                     ("head", _chain_db->head_block_num()));
+            else
+               fc_ilog(fc::logger::get("sync"),
+                     "chain pushing block #${block_num} ${block_hash}, head is ${head}",
+                     ("block_num", blk_msg.block.block_num())
+                     ("block_hash", blk_msg.block_id)
+                     ("head", _chain_db->head_block_num()));
+            if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
             {
-               ilog( "Got ${t} transactions from network on block ${b}",
-                  ("t", blk_msg.block.transactions.size())
-                  ("b", blk_msg.block.block_num()) );
+               ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
+                  ("t",blk_msg.block.timestamp)
+                  ("n", blk_msg.block.block_num()) );
             }
 
-            return result;
-         } catch ( const steemit::chain::unlinkable_block_exception& e ) {
-            // translate to a graphene::net exception
-            fc_elog(fc::logger::get("sync"), 
-                    "Error when pushing block, current head block is ${head}:\n${e}", 
-                    ("e", e.to_detail_string())
-                    ("head", _chain_db->head_block_num()));
-            elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-            FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-         } catch( const fc::exception& e ) {
-            fc_elog(fc::logger::get("sync"), 
-                    "Error when pushing block, current head block is ${head}:\n${e}", 
-                    ("e", e.to_detail_string())
-                    ("head", _chain_db->head_block_num()));
-            elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
-            throw;
-         }
+            time_point_sec now = graphene::time::now();
 
+            uint64_t max_accept_time = now.sec_since_epoch();
+            max_accept_time += allow_future_time;
+            FC_ASSERT( blk_msg.block.timestamp.sec_since_epoch() <= max_accept_time );
+
+            try {
+               // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
+               // you can help the network code out by throwing a block_older_than_undo_history exception.
+               // when the net code sees that, it will stop trying to push blocks from that chain, but
+               // leave that peer connected so that they can get sync blocks from us
+               bool result = _chain_db->push_block(blk_msg.block, (_is_block_producer | _force_validate) ? database::skip_nothing : database::skip_transaction_signatures);
+
+               if( !sync_mode && blk_msg.block.transactions.size() )
+               {
+                  ilog( "Got ${t} transactions from network on block ${b}",
+                     ("t", blk_msg.block.transactions.size())
+                     ("b", blk_msg.block.block_num()) );
+               }
+
+               return result;
+            } catch ( const steemit::chain::unlinkable_block_exception& e ) {
+               // translate to a graphene::net exception
+               fc_elog(fc::logger::get("sync"),
+                     "Error when pushing block, current head block is ${head}:\n${e}",
+                     ("e", e.to_detail_string())
+                     ("head", _chain_db->head_block_num()));
+               elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+               FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+            } catch( const fc::exception& e ) {
+               fc_elog(fc::logger::get("sync"),
+                     "Error when pushing block, current head block is ${head}:\n${e}",
+                     ("e", e.to_detail_string())
+                     ("head", _chain_db->head_block_num()));
+               elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
+               throw;
+            }
+         }
+         return false;
       } FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
       virtual void handle_transaction(const graphene::net::trx_message& transaction_message) override
       { try {
-         _chain_db->push_transaction( transaction_message.trx );
+         if( _running )
+            _chain_db->push_transaction( transaction_message.trx );
       } FC_CAPTURE_AND_RETHROW( (transaction_message) ) }
 
       virtual void handle_message(const message& message_to_process) override
@@ -811,13 +843,27 @@ namespace detail {
          return;
       }
 
+      void shutdown()
+      {
+         _running = false;
+         fc::usleep( fc::seconds( 1 ) );
+         if( _p2p_network )
+         {
+            _p2p_network->close();
+            fc::usleep( fc::seconds( 1 ) ); // p2p node has some calls to the database, give it a second to shutdown before invalidating the chain db pointer
+         }
+         if( _chain_db )
+            _chain_db->close();
+      }
+
       application* _self;
 
       fc::path _data_dir;
+      fc::path _shared_dir;
       const bpo::variables_map* _options = nullptr;
       api_access _apiaccess;
 
-      std::shared_ptr<graphene::db::object_database>   _pending_trx_db;
+      //std::shared_ptr<graphene::db::object_database>   _pending_trx_db;
       std::shared_ptr<steemit::chain::database>        _chain_db;
       std::shared_ptr<graphene::net::node>             _p2p_network;
       std::shared_ptr<fc::http::websocket_server>      _websocket_server;
@@ -828,6 +874,9 @@ namespace detail {
       flat_map< std::string, std::function< fc::api_ptr( const api_context& ) > >   _api_factories_by_name;
       std::vector< std::string >                       _public_apis;
       int32_t                                          _max_block_age = -1;
+      uint64_t                                         _shared_file_size;
+
+      bool                                             _running;
 
       uint32_t allow_future_time = 5;
    };
@@ -849,10 +898,10 @@ application::~application()
    {
       my->_chain_db->close();
    }
-   if( my->_pending_trx_db )
+   /*if( my->_pending_trx_db )
    {
       my->_pending_trx_db->close();
-   }
+   }*/
 }
 
 void application::set_program_options(boost::program_options::options_description& command_line_options,
@@ -861,11 +910,13 @@ void application::set_program_options(boost::program_options::options_descriptio
    std::vector< std::string > default_apis;
    default_apis.push_back( "database_api" );
    default_apis.push_back( "login_api" );
+   default_apis.push_back( "account_by_key_api" );
    std::string str_default_apis = boost::algorithm::join( default_apis, " " );
 
    std::vector< std::string > default_plugins;
    default_plugins.push_back( "witness" );
    default_plugins.push_back( "account_history" );
+   default_plugins.push_back( "account_by_key" );
    std::string str_default_plugins = boost::algorithm::join( default_plugins, " " );
 
    configuration_file_options.add_options()
@@ -873,20 +924,25 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+         ("shared-file-dir", bpo::value<string>(), "Location of the shared memory file. Defaults to data_dir/blockchain")
+         ("shared-file-size", bpo::value<string>()->default_value("32G"), "Size of the shared memory file. Default: 32G")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
+         ("read-forward-rpc", bpo::value<string>(), "Endpoint to forward write API calls to for a read node" )
          ("server-pem,p", bpo::value<string>()->implicit_value("server.pem"), "The TLS certificate file for this server")
          ("server-pem-password,P", bpo::value<string>()->implicit_value(""), "Password for this certificate")
          ("api-user", bpo::value< vector<string> >()->composing(), "API user specification, may be specified multiple times")
          ("public-api", bpo::value< vector<string> >()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
+         ("flush", bpo::value< uint32_t >()->default_value(100000), "Flush shared memory file to disk this many blocks")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
          ("replay-blockchain", "Rebuild object graph by replaying all blocks")
          ("resync-blockchain", "Delete all blocks and re-sync with network from scratch")
          ("force-validate", "Force validation of all transactions")
+         ("read-only", "Node will not connect to p2p network and can only read from the chain state" )
          ;
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);
@@ -931,10 +987,10 @@ std::shared_ptr<chain::database> application::chain_database() const
 {
    return my->_chain_db;
 }
-std::shared_ptr<graphene::db::object_database> application::pending_trx_database() const
+/*std::shared_ptr<graphene::db::object_database> application::pending_trx_database() const
 {
    return my->_pending_trx_db;
-}
+}*/
 
 void application::set_block_production(bool producing_blocks)
 {
@@ -974,12 +1030,7 @@ void application::shutdown_plugins()
 }
 void application::shutdown()
 {
-   if( my->_p2p_network )
-      my->_p2p_network->close();
-   if( my->_chain_db )
-      my->_chain_db->close();
-   if( my->_pending_trx_db )
-      my->_pending_trx_db->close();
+   my->shutdown();
 }
 
 void application::register_abstract_plugin( std::shared_ptr< abstract_plugin > plug )

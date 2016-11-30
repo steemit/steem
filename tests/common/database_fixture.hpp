@@ -39,7 +39,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
    db.push_transaction( trx, ~0 ); \
 }
 
-#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
+/*#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
 {                                                         \
    std::string req_throw_info = fc::json::to_string(      \
       fc::mutable_variant_object()                        \
@@ -55,7 +55,10 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
    if( fc::enable_record_assert_trip )                    \
       std::cout << "STEEMIT_REQUIRE_THROW end "          \
          << req_throw_info << std::endl;                  \
-}
+}*/
+
+#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
+   BOOST_REQUIRE_THROW( expr, exc_type );
 
 #define STEEMIT_CHECK_THROW( expr, exc_type )            \
 {                                                         \
@@ -129,6 +132,8 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 
 namespace steemit { namespace chain {
 
+using namespace steemit::protocol;
+
 struct database_fixture {
    // the reason we use an app is to exercise the indexes of built-in
    //   plugins
@@ -201,13 +206,12 @@ struct database_fixture {
       const share_type& fee
    );
 
-   void update_object( const variant_object& vo );
-
    void fund( const string& account_name, const share_type& amount = 500000 );
    void fund( const string& account_name, const asset& amount );
    void transfer( const string& from, const string& to, const share_type& steem );
    void convert( const string& account_name, const asset& amount );
    void vest( const string& from, const share_type& amount );
+   void vest( const string& account, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
    const asset& get_balance( const string& account_name )const;
@@ -222,6 +226,8 @@ struct clean_database_fixture : public database_fixture
 {
    clean_database_fixture();
    ~clean_database_fixture();
+
+   void resize_shared_mem( uint64_t size );
 };
 
 struct live_database_fixture : public database_fixture

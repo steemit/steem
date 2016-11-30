@@ -4,7 +4,7 @@
 #include <fc/api.hpp>
 #include <fc/crypto/sha256.hpp>
 
-#include <steemit/chain/protocol/types.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <string>
 
@@ -23,12 +23,12 @@ struct check_authority_signature_params
    std::string                          account_name;
    std::string                          level;
    fc::sha256                           dig;
-   std::vector< chain::signature_type > sigs;
+   std::vector< protocol::signature_type > sigs;
 };
 
 struct check_authority_signature_result
 {
-   std::vector< chain::public_key_type > keys;
+   std::vector< protocol::public_key_type > keys;
 };
 
 class auth_util_api
