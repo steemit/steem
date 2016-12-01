@@ -1,3 +1,4 @@
+#test committ
 FROM phusion/baseimage:0.9.19
 
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
