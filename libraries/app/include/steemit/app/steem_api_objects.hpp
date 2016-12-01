@@ -231,11 +231,6 @@ struct account_api_obj
       withdraw_routes( a.withdraw_routes ),
       proxied_vsf_votes( a.proxied_vsf_votes.size() ),
       witnesses_voted_for( a.witnesses_voted_for ),
-      average_bandwidth( a.average_bandwidth ),
-      lifetime_bandwidth( a.lifetime_bandwidth ),
-      last_bandwidth_update( a.last_bandwidth_update ),
-      average_market_bandwidth( a.average_market_bandwidth ),
-      last_market_bandwidth_update( a.last_market_bandwidth_update ),
       last_post( a.last_post ),
       last_root_post( a.last_root_post ),
       post_bandwidth( a.post_bandwidth )
