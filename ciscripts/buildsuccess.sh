@@ -4,3 +4,4 @@ curl -XPOST -H "Authorization: token $GITHUB_SECRET" https://api.github.com/repo
   \"target_url\": \"${BUILD_URL}\",
   \"description\": \"Jenkins-CI reports build succeeded!!\"
 }"
+rm -rf $WORKSPACE/*

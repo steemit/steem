@@ -1,6 +1,6 @@
 #!/bin/bash
-sh -x ./buildpending.sh
-if sh -x ./buildscript.sh; then
+sh $WORKSPACE/ciscripts/buildpending.sh
+if sh $WORKSPACE/ciscripts/buildscript.sh; then
   echo BUILD SUCCESS
 else
   echo BUILD FAILURE
