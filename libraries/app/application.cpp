@@ -333,7 +333,7 @@ namespace detail {
                }
                catch( fc::exception& e )
                {
-                  wlog( "Error conencting to remote RPC, network api forwarding disabled.", ("e", e.to_detail_string()) );
+                  wlog( "Error connecting to remote RPC, network api forwarding disabled.  ${e}", ("e", e.to_detail_string()) );
                }
             }
          }
