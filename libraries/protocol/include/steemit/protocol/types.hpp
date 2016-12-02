@@ -82,9 +82,19 @@ namespace steemit {
          {
             const char* ap = (const char*)&a;
             const char* ab = (const char*)&b;
-            int count = sizeof(a);
-            while( *ap == *ab && count ) { ++ap; ++ab; --count; }
+            int count = sizeof(a) - 1;
+            while( *ap == *ab && count > 0 ) { ++ap; ++ab; --count; }
             return *ap < *ab;
+         }
+
+         bool operator()( const fc::fixed_string<>& a, const std::string& b )const
+         {
+            return std::string( a ) < b;
+         }
+
+         bool operator()( const std::string& a, const fc::fixed_string<>& b )const
+         {
+            return a < std::string( b );
          }
       };
 
