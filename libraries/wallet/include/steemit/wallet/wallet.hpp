@@ -128,6 +128,13 @@ class wallet_api
        */
       optional<signed_block_with_info>    get_block( uint32_t num );
 
+      /** Returns sequence of operations included/generated in a specified block
+       *
+       * @param block_num Block height of specified block
+       * @param only_virtual Whether to only return virtual operations
+       */
+      vector<applied_operation>           get_ops_in_block( uint32_t block_num, bool only_virtual = true );
+
       /** Return the current price feed history
        *
        * @returns Price feed history data on the blockchain
@@ -958,6 +965,7 @@ FC_API( steemit::wallet::wallet_api,
         (get_witness)
         (get_account)
         (get_block)
+        (get_ops_in_block)
         (get_feed_history)
         (get_conversion_requests)
         (get_account_history)
