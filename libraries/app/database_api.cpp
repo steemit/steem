@@ -39,6 +39,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // Blocks and transactions
       optional<block_header> get_block_header(uint32_t block_num)const;
       optional<signed_block> get_block(uint32_t block_num)const;
+      vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual)const;
 
       // Globals
       fc::variant_object get_config()const;
@@ -248,6 +249,31 @@ optional<signed_block> database_api_impl::get_block(uint32_t block_num)const
 {
    return _db.fetch_block_by_number(block_num);
 }
+
+vector<applied_operation> database_api::get_ops_in_block(uint32_t block_num, bool only_virtual)const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->get_ops_in_block( block_num, only_virtual );
+   });
+}
+
+vector<applied_operation> database_api_impl::get_ops_in_block(uint32_t block_num, bool only_virtual)const
+{
+   const auto& idx = _db.get_index< operation_index >().indices().get< by_location >();
+   auto itr = idx.lower_bound( block_num );
+   vector<applied_operation> result;
+   applied_operation temp;
+   while( itr != idx.end() && itr->block == block_num )
+   {
+      temp = *itr;
+      if( !only_virtual || is_virtual_operation(temp.op) )
+         result.push_back(temp);
+      ++itr;
+   }
+   return result;
+}
+
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
