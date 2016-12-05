@@ -98,8 +98,6 @@ namespace steemit { namespace chain {
          uint16_t          witnesses_voted_for = 0;
 
          time_point_sec    last_post;
-         time_point_sec    last_root_post = fc::time_point_sec::min();
-         uint32_t          post_bandwidth = 0;
 
          /// This function should be used only when the account votes for a witness directly
          share_type        witness_vote_weight()const {
@@ -409,7 +407,7 @@ FC_REFLECT( steemit::chain::account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)(last_root_post)(post_bandwidth)
+             (last_post)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_object, steemit::chain::account_index )
 
