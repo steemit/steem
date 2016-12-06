@@ -6,6 +6,7 @@
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/hardfork.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
@@ -388,9 +389,10 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
 tags_plugin::tags_plugin( application* app )
    : plugin( app ), my( new detail::tags_plugin_impl(*this) )
 {
-   database().add_plugin_index< tag_index >();
-   database().add_plugin_index< tag_stats_index >();
-   database().add_plugin_index< peer_stats_index >();
+   chain::database& db = database();
+   add_plugin_index< tag_index        >(db);
+   add_plugin_index< tag_stats_index  >(db);
+   add_plugin_index< peer_stats_index >(db);
 }
 
 tags_plugin::~tags_plugin()

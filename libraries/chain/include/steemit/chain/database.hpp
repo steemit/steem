@@ -90,12 +90,6 @@ namespace steemit { namespace chain {
          void wipe(const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks);
          void close(bool rewind = true);
 
-         template< typename T >
-         void add_plugin_index()
-         {
-            _plugin_index_signal.connect( [&](){ add_index< T >(); } );
-         }
-
          //////////////////// db_block.cpp ////////////////////
 
          /**
@@ -459,6 +453,10 @@ namespace steemit { namespace chain {
          protocol::hardfork_version    _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
 
          block_log                     _block_log;
+
+         // this function needs access to _plugin_index_signal
+         template< typename MultiIndexType >
+         friend void add_plugin_index( database& db );
 
          fc::signal< void() >          _plugin_index_signal;
 

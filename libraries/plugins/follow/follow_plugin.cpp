@@ -7,6 +7,7 @@
 #include <steemit/protocol/config.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/account_object.hpp>
@@ -353,15 +354,16 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    try
    {
       ilog("Intializing follow plugin" );
+      chain::database& db = database();
       my->plugin_initialize();
 
-      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
-      database().add_plugin_index< follow_index       >();
-      database().add_plugin_index< feed_index         >();
-      database().add_plugin_index< blog_index         >();
-      database().add_plugin_index< reputation_index   >();
-      database().add_plugin_index< follow_count_index >();
+      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      add_plugin_index< follow_index       >(db);
+      add_plugin_index< feed_index         >(db);
+      add_plugin_index< blog_index         >(db);
+      add_plugin_index< reputation_index   >(db);
+      add_plugin_index< follow_count_index >(db);
 
       if( options.count( "follow-max-feed-size" ) )
       {

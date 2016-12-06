@@ -2,6 +2,8 @@
 #include <steemit/account_by_key/account_by_key_objects.hpp>
 
 #include <steemit/chain/account_object.hpp>
+#include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
@@ -227,11 +229,12 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "Initializing account_by_key plugin" );
+      chain::database& db = database();
 
-      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
 
-      database().add_plugin_index< key_lookup_index >();
+      add_plugin_index< key_lookup_index >(db);
    }
    FC_CAPTURE_AND_RETHROW()
 }
