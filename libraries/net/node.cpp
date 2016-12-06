@@ -1981,28 +1981,25 @@ namespace graphene { namespace net { namespace detail {
             }
           }
         }
-        if (originating_peer->chain_id)
+        if ( !originating_peer->chain_id || *originating_peer->chain_id != STEEMIT_CHAIN_ID )
         {
-           if(*originating_peer->chain_id != STEEMIT_CHAIN_ID )
-           {
-              wlog("Received hello message from peer running a node for different blockchain.",
-                 ("my_chain_id", STEEMIT_CHAIN_ID)("their_chain_id", originating_peer->chain_id) );
+            wlog("Received hello message from peer running a node for different blockchain.",
+               ("my_chain_id", STEEMIT_CHAIN_ID)("their_chain_id", originating_peer->chain_id) );
 
-              std::ostringstream rejection_message;
-              rejection_message << "Your client is running a different chain id";
-              connection_rejected_message connection_rejected(_user_agent_string, core_protocol_version,
-                                                              originating_peer->get_socket().remote_endpoint(),
-                                                              rejection_reason_code::different_chain,
-                                                              rejection_message.str() );
+            std::ostringstream rejection_message;
+            rejection_message << "Your client is running a different chain id";
+            connection_rejected_message connection_rejected(_user_agent_string, core_protocol_version,
+                                                            originating_peer->get_socket().remote_endpoint(),
+                                                            rejection_reason_code::different_chain,
+                                                            rejection_message.str() );
 
-              originating_peer->their_state = peer_connection::their_connection_state::connection_rejected;
-              originating_peer->send_message( message( connection_rejected ) );
-              // for this type of message, we're immediately disconnecting this peer, instead of trying to
-              // allowing her to ask us for peers (any of our peers will be on the same chain as us, so there's no
-              // benefit of sharing them)
-              disconnect_from_peer(originating_peer, "Your client is on a different chain, please specify different seed nodes");
-              return;
-           }
+            originating_peer->their_state = peer_connection::their_connection_state::connection_rejected;
+            originating_peer->send_message( message( connection_rejected ) );
+            // for this type of message, we're immediately disconnecting this peer, instead of trying to
+            // allowing her to ask us for peers (any of our peers will be on the same chain as us, so there's no
+            // benefit of sharing them)
+            disconnect_from_peer(originating_peer, "Your client is on a different chain, please specify different seed nodes");
+            return;
         }
         if (already_connected_to_this_peer)
         {
