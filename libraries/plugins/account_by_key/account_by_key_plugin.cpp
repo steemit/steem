@@ -110,8 +110,16 @@ struct post_operation_visitor
 
    void operator()( const pow2_operation& op )const
    {
-      auto acct_itr = _plugin.database().find< account_authority_object, by_account >( op.work.get< pow2 >().input.worker_account );
-      if( acct_itr ) _plugin.my->update_key_lookup( *acct_itr );
+      if( _plugin.database().has_hardfork( STEEMIT_HARDFORK_0_16__551 ) )
+      {
+         auto acct_itr = _plugin.database().find< account_authority_object, by_account >( op.work.get< equihash_pow >().input.worker_account );
+         if( acct_itr ) _plugin.my->update_key_lookup( *acct_itr );
+      }
+      else
+      {
+         auto acct_itr = _plugin.database().find< account_authority_object, by_account >( op.work.get< pow2 >().input.worker_account );
+         if( acct_itr ) _plugin.my->update_key_lookup( *acct_itr );
+      }
    }
 
    void operator()( const hardfork_operation& op )const
