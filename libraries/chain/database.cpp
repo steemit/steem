@@ -268,9 +268,17 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
    if( !stats )
       return b;
 
-   signed_block block;
-   fc::raw::unpack( stats->packed_block, block );
-   b = block;
+   if( stats->packed_block.size() )
+   {
+      signed_block block;
+      fc::raw::unpack( stats->packed_block, block );
+      b = block;
+   }
+   else
+   {
+      b = _block_log.read_block_by_num( stats->block_num() );
+   }
+
    return b;
 }
 
@@ -3041,12 +3049,8 @@ void database::_apply_block( const signed_block& next_block )
    {
       assert( bso.block_num() == next_block_num ); // Probably can be taken out. Sanity check
       bso.block_id = next_block_id;
-      fc::raw::pack( bso.packed_block, next_block );
-      /*
-      auto size = fc::raw::pack_size( next_block );
-      bso.packed_block.resize( size );
-      fc::datastream<char*> ds( bso.packed_block.data(), size );
-      fc::raw::pack( ds, next_block );*/
+      if( !( get_node_properties().skip_flags & skip_block_log ) )
+         fc::raw::pack( bso.packed_block, next_block );
    });
 
    update_global_dynamic_data(next_block);
@@ -3523,9 +3527,9 @@ void database::update_last_irreversible_block()
 
    commit( dpo.last_irreversible_block_num );
 
-   // output to block log based on new last irreverisible block num
    if( !( get_node_properties().skip_flags & skip_block_log ) )
    {
+      // output to block log based on new last irreverisible block num
       const auto& tmp_head = _block_log.head();
       uint64_t log_head_num = 0;
 
@@ -3537,9 +3541,15 @@ void database::update_last_irreversible_block()
          while( log_head_num < dpo.last_irreversible_block_num )
          {
             _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+            _block_log.flush();
+
+            modify( get< block_stats_object >( log_head_num + 1 ), [&]( block_stats_object& bso )
+            {
+               bso.packed_block.clear();
+            });
+
             log_head_num++;
          }
-         _block_log.flush();
       }
    }
 }

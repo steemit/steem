@@ -218,6 +218,7 @@ namespace steemit { namespace chain {
       my->index_stream.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
       uint64_t pos;
       my->index_stream.read( (char*)&pos, sizeof( pos ) );
+      idump( (block_num)(pos) );
       return pos;
    }
 
@@ -250,7 +251,7 @@ namespace steemit { namespace chain {
       {
          my->block_stream.seekg( start_pos );
          fc::raw::unpack( my->block_stream, tmp );
-         start_pos = uint64_t(my->block_stream.tellg()) + 8;
+         start_pos = uint64_t( my->block_stream.tellg() ) + 8;
          my->index_stream.write( (char*)&start_pos, sizeof( start_pos ) );
       }
    }

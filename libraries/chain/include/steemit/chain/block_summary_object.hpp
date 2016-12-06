@@ -50,7 +50,6 @@ namespace steemit { namespace chain {
 
          id_type        id;
          block_id_type  block_id;
-         uint64_t       pos = -1;
          bip::vector< char, allocator< char > > packed_block;
 
          uint64_t block_num()const { return id._id + 1; }
@@ -74,5 +73,5 @@ namespace steemit { namespace chain {
 FC_REFLECT( steemit::chain::block_summary_object, (id)(block_id) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::block_summary_object, steemit::chain::block_summary_index )
 
-FC_REFLECT( steemit::chain::block_stats_object, (id)(block_id)(pos)(packed_block) )
+FC_REFLECT( steemit::chain::block_stats_object, (id)(block_id)(packed_block) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::block_stats_object, steemit::chain::block_stats_index )
