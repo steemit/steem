@@ -31,6 +31,7 @@
 
 #include <fc/api.hpp>
 #include <fc/rpc/api_connection.hpp>
+#include <fc/rpc/websocket_api.hpp>
 
 #include <boost/program_options.hpp>
 
@@ -41,6 +42,9 @@ namespace steemit { namespace app {
    class abstract_plugin;
    class plugin;
    class application;
+
+   class network_broadcast_api;
+   class login_api;
 
    class application
    {
@@ -116,6 +120,13 @@ namespace steemit { namespace app {
          fc::api_ptr create_api_by_name( const api_context& ctx );
 
          void get_max_block_age( int32_t& result );
+
+         bool _read_only = true;
+         fc::optional< fc::api< network_broadcast_api > > _remote_net_api;
+         fc::optional< fc::api< login_api > > _remote_login;
+         fc::http::websocket_connection_ptr _ws_ptr;
+         std::shared_ptr< fc::rpc::websocket_api_connection > _ws_apic;
+         fc::http::websocket_client _client;
 
       private:
          std::shared_ptr<detail::application_impl> my;

@@ -71,7 +71,7 @@ namespace steemit { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-         void open( const fc::path& data_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
+         void open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY, uint64_t shared_file_size = 0, uint32_t chainbase_flags = 0 );
 
          /**
           * @brief Rebuild object graph from block history and open detabase
@@ -79,7 +79,7 @@ namespace steemit { namespace chain {
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
-         void reindex( fc::path data_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
+         void reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -87,14 +87,8 @@ namespace steemit { namespace chain {
           *
           * Will close the database before wiping. Database will be closed when this function returns.
           */
-         void wipe(const fc::path& data_dir, bool include_blocks);
+         void wipe(const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks);
          void close(bool rewind = true);
-
-         template< typename T >
-         void add_plugin_index()
-         {
-            _plugin_index_signal.connect( [&](){ add_index< T >(); } );
-         }
 
          //////////////////// db_block.cpp ////////////////////
 
@@ -408,6 +402,7 @@ namespace steemit { namespace chain {
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
+         bool skip_transaction_delta_check = true;
 #endif
 
    protected:
@@ -459,6 +454,10 @@ namespace steemit { namespace chain {
 
          block_log                     _block_log;
 
+         // this function needs access to _plugin_index_signal
+         template< typename MultiIndexType >
+         friend void add_plugin_index( database& db );
+
          fc::signal< void() >          _plugin_index_signal;
 
          transaction_id_type           _current_trx_id;
@@ -473,6 +472,8 @@ namespace steemit { namespace chain {
 
          uint32_t                      _flush_blocks = 0;
          uint32_t                      _next_flush_block = 0;
+
+         uint32_t                      _last_free_gb_printed = 0;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;

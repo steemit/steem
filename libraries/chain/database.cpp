@@ -9,6 +9,7 @@
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/history_object.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
@@ -91,49 +92,58 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, uint64_t initial_supply, uint64_t shared_file_size )
+void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags )
 {
    try
    {
       init_schema();
-      chainbase::database::open( data_dir, chainbase::database::read_write, shared_file_size );
+      chainbase::database::open( shared_mem_dir, chainbase_flags, shared_file_size );
 
-      with_write_lock( [&]()
+      initialize_indexes();
+      initialize_evaluators();
+
+      if( chainbase_flags & chainbase::database::read_write )
       {
-         initialize_indexes();
-         initialize_evaluators();
+         if( !find< dynamic_global_property_object >() )
+            with_write_lock( [&]()
+            {
+               init_genesis( initial_supply );
+            });
 
          _block_log.open( data_dir / "block_log" );
 
-         if( !find< dynamic_global_property_object >() )
-            init_genesis( initial_supply );
-
-         init_hardforks();
+         auto log_head = _block_log.head();
 
          // block_log.head must be in block stats
          // If it is not, print warning and exit
-         auto log_head = _block_log.head();
-
          if( log_head && head_block_num() )
             FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
                "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
 
          // Rewind all undo state. This should return us to the state at the last irreversible block.
-         undo_all();
-      });
-      if( head_block_num() )
-         _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
+         with_write_lock( [&]()
+         {
+            undo_all();
+            FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
+               ("rev", revision())("head_block", head_block_num()) );
+         });
+
+         if( head_block_num() )
+            _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
+      }
+
+      init_hardforks();
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (data_dir) )
+   FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
 }
 
-void database::reindex( fc::path data_dir, uint64_t shared_file_size )
+void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size )
 {
    try
    {
       ilog( "Reindexing Blockchain" );
-      wipe( data_dir, false );
-      open( data_dir, 0, shared_file_size );
+      wipe( data_dir, shared_mem_dir, false );
+      open( data_dir, shared_mem_dir, 0, shared_file_size, chainbase::database::read_write );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -162,7 +172,8 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
          {
             auto cur_block_num = itr.first.block_num();
             if( cur_block_num % 100000 == 0 )
-               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num << "   \n";
+               std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
+               "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
             itr = _block_log.read_block( itr.second );
          }
@@ -177,16 +188,19 @@ void database::reindex( fc::path data_dir, uint64_t shared_file_size )
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
    }
-   FC_CAPTURE_AND_RETHROW( (data_dir) )
+   FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
 }
 
-void database::wipe(const fc::path& data_dir, bool include_blocks)
+void database::wipe( const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks)
 {
    close();
-   chainbase::database::wipe( data_dir );
+   chainbase::database::wipe( shared_mem_dir );
    if( include_blocks )
+   {
       fc::remove_all( data_dir / "block_log" );
+      fc::remove_all( data_dir / "block_log.index" );
+   }
 }
 
 void database::close(bool rewind)
@@ -429,6 +443,13 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
    {
+#ifdef IS_TEST_NET
+      if( !skip_transaction_delta_check )
+#endif
+      // Soft fork to prevent multiple transactions for an account in the same block
+      FC_ASSERT( !is_producing() || a.last_bandwidth_update < head_block_time(),
+         "Account already transacted this block." );
+
       modify( a, [&]( account_object& acnt )
       {
          acnt.lifetime_bandwidth += trx_size * STEEMIT_BANDWIDTH_PRECISION;
@@ -474,6 +495,13 @@ void database::update_account_market_bandwidth( const account_object& a, uint32_
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
    {
+#ifdef IS_TEST_NET
+      if( !skip_transaction_delta_check )
+#endif
+      // Soft fork to prevent multiple transactions for an account in the same block
+      FC_ASSERT( !is_producing() || a.last_market_bandwidth_update < head_block_time(),
+         "Account already transacted this block." );
+
       modify( a, [&]( account_object& acnt )
       {
          auto now = head_block_time();
@@ -2617,32 +2645,32 @@ std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evalua
 
 void database::initialize_indexes()
 {
-   add_index< dynamic_global_property_index           >();
-   add_index< account_index                           >();
-   add_index< account_authority_index                 >();
-   add_index< witness_index                           >();
-   add_index< transaction_index                       >();
-   add_index< block_summary_index                     >();
-   add_index< witness_schedule_index                  >();
-   add_index< comment_index                           >();
-   add_index< comment_vote_index                      >();
-   add_index< witness_vote_index                      >();
-   add_index< limit_order_index                       >();
-   add_index< feed_history_index                      >();
-   add_index< convert_request_index                   >();
-   add_index< liquidity_reward_balance_index          >();
-   add_index< operation_index                         >();
-   add_index< account_history_index                   >();
-   add_index< category_index                          >();
-   add_index< hardfork_property_index                 >();
-   add_index< withdraw_vesting_route_index            >();
-   add_index< owner_authority_history_index           >();
-   add_index< account_recovery_request_index          >();
-   add_index< change_recovery_account_request_index   >();
-   add_index< escrow_index                            >();
-   add_index< savings_withdraw_index                  >();
-   add_index< decline_voting_rights_request_index     >();
-   add_index< block_stats_index                       >();
+   add_core_index< dynamic_global_property_index           >(*this);
+   add_core_index< account_index                           >(*this);
+   add_core_index< account_authority_index                 >(*this);
+   add_core_index< witness_index                           >(*this);
+   add_core_index< transaction_index                       >(*this);
+   add_core_index< block_summary_index                     >(*this);
+   add_core_index< witness_schedule_index                  >(*this);
+   add_core_index< comment_index                           >(*this);
+   add_core_index< comment_vote_index                      >(*this);
+   add_core_index< witness_vote_index                      >(*this);
+   add_core_index< limit_order_index                       >(*this);
+   add_core_index< feed_history_index                      >(*this);
+   add_core_index< convert_request_index                   >(*this);
+   add_core_index< liquidity_reward_balance_index          >(*this);
+   add_core_index< operation_index                         >(*this);
+   add_core_index< account_history_index                   >(*this);
+   add_core_index< category_index                          >(*this);
+   add_core_index< hardfork_property_index                 >(*this);
+   add_core_index< withdraw_vesting_route_index            >(*this);
+   add_core_index< owner_authority_history_index           >(*this);
+   add_core_index< account_recovery_request_index          >(*this);
+   add_core_index< change_recovery_account_request_index   >(*this);
+   add_core_index< escrow_index                            >(*this);
+   add_core_index< savings_withdraw_index                  >(*this);
+   add_core_index< decline_voting_rights_request_index     >(*this);
+   add_core_index< block_stats_index                       >(*this);
 
    _plugin_index_signal();
 }
@@ -2931,6 +2959,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
          ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
          chainbase::database::flush();
       }
+   }
+
+   uint32_t free_gb = uint32_t(get_free_memory() / (1024*1024*1024));
+   if( (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
+   {
+      ilog( "Free memory is now ${n}G", ("n", free_gb) );
+      _last_free_gb_printed = free_gb;
    }
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
@@ -3487,8 +3522,6 @@ void database::update_last_irreversible_block()
       }
    }
 
-   // Revision for undo history is last irreverisivle block num - 1 because revision is 0 indexed
-   // and block num is 1 indexed.
    commit( dpo.last_irreversible_block_num );
 
    // output to block log based on new last irreverisible block num

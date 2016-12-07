@@ -6,6 +6,7 @@
 #include <steemit/chain/history_object.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 namespace steemit { namespace blockchain_statistics {
@@ -379,6 +380,8 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
 
 void blockchain_statistics_plugin_impl::post_operation( const operation_notification& o )
 {
+   try
+   {
    auto& db = _self.database();
 
    for( auto bucket_id : _current_buckets )
@@ -394,6 +397,7 @@ void blockchain_statistics_plugin_impl::post_operation( const operation_notifica
       }
       o.op.visit( operation_process( _self, bucket ) );
    }
+   } FC_CAPTURE_AND_RETHROW()
 }
 
 } // detail
@@ -422,12 +426,13 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
    try
    {
       ilog( "chain_stats_plugin: plugin_initialize() begin" );
+      chain::database& db = database();
 
-      database().applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
+      db.applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
+      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
+      db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
 
-      database().add_plugin_index< bucket_index >();
+      add_plugin_index< bucket_index >(db);
 
       if( options.count( "chain-stats-bucket-size" ) )
       {

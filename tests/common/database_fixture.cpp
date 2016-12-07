@@ -93,7 +93,7 @@ clean_database_fixture::~clean_database_fixture()
 
 void clean_database_fixture::resize_shared_mem( uint64_t size )
 {
-   db.wipe( data_dir->path(), true );
+   db.wipe( data_dir->path(), data_dir->path(), true );
    int argc = boost::unit_test::framework::master_test_suite().argc;
    char** argv = boost::unit_test::framework::master_test_suite().argv;
    for( int i=1; i<argc; i++ )
@@ -106,7 +106,7 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
    }
    init_account_pub_key = init_account_priv_key.get_public_key();
 
-   db.open( data_dir->path(), INITIAL_TEST_SUPPLY, size );
+   db.open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size, chainbase::database::read_write );
 
    boost::program_options::variables_map options;
 
@@ -139,7 +139,7 @@ live_database_fixture::live_database_fixture()
       auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
 
-      db.open( _chain_dir );
+      db.open( _chain_dir, _chain_dir );
       graphene::time::now();
 
       validate_database();
@@ -187,7 +187,7 @@ void database_fixture::open_database()
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
-      db.open( data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 ); // 8 MB file for testing
+      db.open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8, chainbase::database::read_write ); // 8 MB file for testing
    }
 }
 

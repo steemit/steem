@@ -52,6 +52,10 @@
       elog( "Caught plugin exception: ${e}", ("e", e.to_detail_string() ) );  \
       throw;                                                                  \
    }                                                                          \
+   catch( const fc::exception& e )                                            \
+   {                                                                          \
+      elog( "Caught exception in plugin: ${e}", ("e", e.to_detail_string() ) ); \
+   }                                                                          \
    catch( ... )                                                               \
    {                                                                          \
       wlog( "Caught unexpected exception in plugin" );                        \

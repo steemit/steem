@@ -267,42 +267,66 @@ void follow_api::on_api_startup() {}
 
 vector<follow_api_obj> follow_api::get_followers( string following, string start_follower, follow_type type, uint16_t limit )const
 {
-   return my->get_followers( following, start_follower, type, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_followers( following, start_follower, type, limit );
+   });
 }
 
 vector<follow_api_obj> follow_api::get_following( string follower, string start_following, follow_type type, uint16_t limit )const
 {
-   return my->get_following( follower, start_following, type, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_following( follower, start_following, type, limit );
+   });
 }
 
 follow_count_api_obj follow_api::get_follow_count( string account )const
 {
-   return my->get_follow_count( account );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_follow_count( account );
+   });
 }
 
 vector< feed_entry > follow_api::get_feed_entries( string account, uint32_t entry_id, uint16_t limit )const
 {
-   return my->get_feed_entries( account, entry_id, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_feed_entries( account, entry_id, limit );
+   });
 }
 
 vector< comment_feed_entry > follow_api::get_feed( string account, uint32_t entry_id, uint16_t limit )const
 {
-   return my->get_feed( account, entry_id, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_feed( account, entry_id, limit );
+   });
 }
 
 vector< blog_entry > follow_api::get_blog_entries( string account, uint32_t entry_id, uint16_t limit )const
 {
-   return my->get_blog_entries( account, entry_id, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_blog_entries( account, entry_id, limit );
+   });
 }
 
 vector< comment_blog_entry > follow_api::get_blog( string account, uint32_t entry_id, uint16_t limit )const
 {
-   return my->get_blog( account, entry_id, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_blog( account, entry_id, limit );
+   });
 }
 
 vector< account_reputation > follow_api::get_account_reputations( string lower_bound_name, uint32_t limit )const
 {
-   return my->get_account_reputations( lower_bound_name, limit );
+   return my->app.chain_database()->with_read_lock( [&]()
+   {
+      return my->get_account_reputations( lower_bound_name, limit );
+   });
 }
 
 } } // steemit::follow

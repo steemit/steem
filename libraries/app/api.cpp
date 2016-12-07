@@ -138,14 +138,17 @@ namespace steemit { namespace app {
 
     bool network_broadcast_api::check_max_block_age( int32_t max_block_age )
     {
-       if( max_block_age < 0 )
-          return false;
+       return _app.chain_database()->with_read_lock( [&]()
+       {
+          if( max_block_age < 0 )
+             return false;
 
-       fc::time_point_sec now = graphene::time::now();
-       std::shared_ptr< database > db = _app.chain_database();
-       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+          fc::time_point_sec now = graphene::time::now();
+          std::shared_ptr< database > db = _app.chain_database();
+          const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
 
-       return ( dgpo.time < now - fc::seconds( max_block_age ) );
+          return ( dgpo.time < now - fc::seconds( max_block_age ) );
+       });
     }
 
     void network_broadcast_api::set_max_block_age( int32_t max_block_age )
@@ -204,34 +207,68 @@ namespace steemit { namespace app {
     void network_broadcast_api::broadcast_transaction(const signed_transaction& trx)
     {
        trx.validate();
-       FC_ASSERT( !check_max_block_age( _max_block_age ) );
-       _app.chain_database()->push_transaction(trx);
-       _app.p2p_node()->broadcast_transaction(trx);
+
+       if( _app._read_only )
+       {
+          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          (*_app._remote_net_api)->broadcast_transaction( trx );
+       }
+       else
+       {
+          FC_ASSERT( !check_max_block_age( _max_block_age ) );
+          _app.chain_database()->push_transaction(trx);
+          _app.p2p_node()->broadcast_transaction(trx);
+       }
     }
+
     fc::variant network_broadcast_api::broadcast_transaction_synchronous(const signed_transaction& trx)
     {
-       promise<fc::variant>::ptr prom( new fc::promise<fc::variant>() );
-       broadcast_transaction_with_callback( [=]( const fc::variant& v ){
-          prom->set_value(v);
-       }, trx );
-       return future<fc::variant>(prom).wait();
+       if( _app._read_only )
+       {
+          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          return (*_app._remote_net_api)->broadcast_transaction_synchronous( trx );
+       }
+       else
+       {
+          promise<fc::variant>::ptr prom( new fc::promise<fc::variant>() );
+          broadcast_transaction_with_callback( [=]( const fc::variant& v ){
+             prom->set_value(v);
+          }, trx );
+          return future<fc::variant>(prom).wait();
+       }
     }
 
     void network_broadcast_api::broadcast_block( const signed_block& b )
     {
-       _app.chain_database()->push_block(b);
-       _app.p2p_node()->broadcast( graphene::net::block_message( b ));
+       if( _app._read_only )
+       {
+          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          (*_app._remote_net_api)->broadcast_block( b );
+       }
+       else
+       {
+          _app.chain_database()->push_block(b);
+          _app.p2p_node()->broadcast( graphene::net::block_message( b ));
+       }
     }
 
     void network_broadcast_api::broadcast_transaction_with_callback(confirmation_callback cb, const signed_transaction& trx)
     {
-       FC_ASSERT( !check_max_block_age( _max_block_age ) );
-       trx.validate();
-       _callbacks[trx.id()] = cb;
-       _callbacks_expirations[trx.expiration].push_back(trx.id());
+       if( _app._read_only )
+       {
+          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          (*_app._remote_net_api)->broadcast_transaction_with_callback( cb, trx );
+       }
+       else
+       {
+          FC_ASSERT( !check_max_block_age( _max_block_age ) );
+          trx.validate();
+          _callbacks[trx.id()] = cb;
+          _callbacks_expirations[trx.expiration].push_back(trx.id());
 
-       _app.chain_database()->push_transaction(trx);
-       _app.p2p_node()->broadcast_transaction(trx);
+          _app.chain_database()->push_transaction(trx);
+          _app.p2p_node()->broadcast_transaction(trx);
+       }
     }
 
     network_node_api::network_node_api( const api_context& a ) : _app( a.app )
