@@ -75,6 +75,17 @@ struct pre_operation_visitor
    }
 };
 
+struct pow2_work_get_account_visitor
+{
+   typedef const account_name_type* result_type;
+
+   template< typename WorkType >
+   result_type operator()( const WorkType& work )const
+   {
+      return &work.input.worker_account;
+   }
+};
+
 struct post_operation_visitor
 {
    account_by_key_plugin& _plugin;
@@ -112,7 +123,10 @@ struct post_operation_visitor
 
    void operator()( const pow2_operation& op )const
    {
-      auto acct_itr = _plugin.database().find< account_authority_object, by_account >( op.work.get< pow2 >().input.worker_account );
+      const account_name_type* worker_account = op.work.visit( pow2_work_get_account_visitor() );
+      if( worker_account == nullptr )
+         return;
+      auto acct_itr = _plugin.database().find< account_authority_object, by_account >( *worker_account );
       if( acct_itr ) _plugin.my->update_key_lookup( *acct_itr );
    }
 
