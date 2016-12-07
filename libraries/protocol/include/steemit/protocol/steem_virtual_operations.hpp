@@ -13,7 +13,7 @@ namespace steemit { namespace protocol {
          :author(a), permlink(p), sbd_payout(s), steem_payout(st), vesting_payout(v){}
 
       account_name_type author;
-      string permlink;
+      string            permlink;
       asset             sbd_payout;
       asset             steem_payout;
       asset             vesting_payout;
