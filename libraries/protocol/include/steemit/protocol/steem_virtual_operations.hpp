@@ -9,11 +9,11 @@ namespace steemit { namespace protocol {
 
    struct author_reward_operation : public virtual_operation {
       author_reward_operation(){}
-      author_reward_operation( const account_name_type& a, const account_name_type& p, const asset& s, const asset& st, const asset& v )
+      author_reward_operation( const account_name_type& a, const string& p, const asset& s, const asset& st, const asset& v )
          :author(a), permlink(p), sbd_payout(s), steem_payout(st), vesting_payout(v){}
 
       account_name_type author;
-      account_name_type permlink;
+      string            permlink;
       asset             sbd_payout;
       asset             steem_payout;
       asset             vesting_payout;
