@@ -160,7 +160,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
          skip_witness_schedule_check |
          skip_authority_check |
          skip_validate | /// no need to validate operations
-         skip_validate_invariants;
+         skip_validate_invariants |
+         skip_block_log;
 
       with_write_lock( [&]()
       {
@@ -3541,15 +3542,17 @@ void database::update_last_irreversible_block()
          while( log_head_num < dpo.last_irreversible_block_num )
          {
             _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
-            _block_log.flush();
 
-            modify( get< block_stats_object >( log_head_num + 1 ), [&]( block_stats_object& bso )
+            // Block stats object IDs are block num - 1, so the ID is ( log_head_num + 1 ) - 1
+            modify( get< block_stats_object >( log_head_num ), [&]( block_stats_object& bso )
             {
                bso.packed_block.clear();
             });
 
             log_head_num++;
          }
+
+         _block_log.flush();
       }
    }
 }

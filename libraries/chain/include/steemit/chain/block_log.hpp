@@ -51,7 +51,7 @@ namespace steemit { namespace chain {
          const optional< signed_block >& head()const;
 
       private:
-         void construct_index( uint64_t start_pos );
+         void construct_index();
 
          std::unique_ptr<detail::block_log_impl> my;
    };
