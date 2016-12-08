@@ -235,12 +235,12 @@ fc::optional< steemit::chain::signed_block > debug_node_api_impl::debug_pop_bloc
 
 steemit::chain::witness_schedule_object debug_node_api_impl::debug_get_witness_schedule()
 {
-   return steemit::chain::witness_schedule_id_type()( *app.chain_database() );
+   return app.chain_database()->get( steemit::chain::witness_schedule_id_type() );
 }
 
 steemit::chain::hardfork_property_object debug_node_api_impl::debug_get_hardfork_property_object()
 {
-   return steemit::chain::hardfork_property_id_type()( *app.chain_database() );
+   return app.chain_database()->get( steemit::chain::hardfork_property_id_type() );
 }
 
 void debug_node_api_impl::debug_update_object( const fc::variant_object& update )
@@ -290,8 +290,7 @@ void debug_node_api_impl::debug_set_hardfork( uint32_t hardfork_id )
 
 bool debug_node_api_impl::debug_has_hardfork( uint32_t hardfork_id )
 {
-   idump( (steemit::chain::hardfork_property_id_type()( *app.chain_database() ))(hardfork_id) );
-   return steemit::chain::hardfork_property_id_type()( *app.chain_database() ).last_hardfork >= hardfork_id;
+   return app.chain_database()->get( steemit::chain::hardfork_property_id_type() ).last_hardfork >= hardfork_id;
 }
 
 void debug_node_api_impl::debug_get_json_schema( std::string& schema )

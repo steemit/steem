@@ -247,24 +247,24 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
       auto alice_id = db1.get_account( "alice" ).id;
-      BOOST_CHECK( alice_id(db1).name == "alice" );
+      BOOST_CHECK( db1.get(alice_id).name == "alice" );
 
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
-      STEEMIT_REQUIRE_THROW(alice_id(db2), std::exception);
-      alice_id(db1); /// it should be included in the pending state
+      STEEMIT_REQUIRE_THROW(db2.get(alice_id), std::exception);
+      db1.get(alice_id); /// it should be included in the pending state
       db1.clear_pending(); // clear it so that we can verify it was properly removed from pending state.
-      STEEMIT_REQUIRE_THROW(alice_id(db1), std::exception);
+      STEEMIT_REQUIRE_THROW(db1.get(alice_id), std::exception);
 
       PUSH_TX( db2, trx );
 
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
 
-      BOOST_CHECK(alice_id(db1).name == "alice");
-      BOOST_CHECK(alice_id(db2).name == "alice");
+      BOOST_CHECK( db1.get(alice_id).name == "alice");
+      BOOST_CHECK( db2.get(alice_id).name == "alice");
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -756,7 +756,7 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       BOOST_REQUIRE( db.has_hardfork( 0 ) );
       BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
       BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
-      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() );
+      BOOST_REQUIRE( db.get(itr->op).timestamp == db.head_block_time() );
 
       BOOST_TEST_MESSAGE( "Testing hardfork is only applied once" );
       generate_block();
@@ -767,7 +767,7 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       BOOST_REQUIRE( db.has_hardfork( 0 ) );
       BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
       BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
-      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() - STEEMIT_BLOCK_INTERVAL );
+      BOOST_REQUIRE( db.get(itr->op).timestamp == db.head_block_time() - STEEMIT_BLOCK_INTERVAL );
    }
    FC_LOG_AND_RETHROW()
 }

@@ -114,7 +114,7 @@ vector< feed_entry > follow_api_impl::get_feed_entries( string account, uint32_t
 
    while( itr != feed_idx.end() && itr->account == account && results.size() < limit )
    {
-      const auto& comment = itr->comment( db );
+      const auto& comment = db.get( itr->comment );
       feed_entry entry;
       entry.author = comment.author;
       entry.permlink = to_string( comment.permlink );
@@ -148,7 +148,7 @@ vector< comment_feed_entry > follow_api_impl::get_feed( string account, uint32_t
 
    while( itr != feed_idx.end() && itr->account == account && results.size() < limit )
    {
-      const auto& comment = itr->comment( db );
+      const auto& comment = db.get( itr->comment );
       comment_feed_entry entry;
       entry.comment = comment;
       entry.entry_id = itr->account_feed_id;
@@ -181,7 +181,7 @@ vector< blog_entry > follow_api_impl::get_blog_entries( string account, uint32_t
 
    while( itr != blog_idx.end() && itr->account == account && results.size() < limit )
    {
-      const auto& comment = itr->comment( db );
+      const auto& comment = db.get( itr->comment );
       blog_entry entry;
       entry.author = comment.author;
       entry.permlink = to_string( comment.permlink );
@@ -213,7 +213,7 @@ vector< comment_blog_entry > follow_api_impl::get_blog( string account, uint32_t
 
    while( itr != blog_idx.end() && itr->account == account && results.size() < limit )
    {
-      const auto& comment = itr->comment( db );
+      const auto& comment = db.get( itr->comment );
       comment_blog_entry entry;
       entry.comment = comment;
       entry.blog = account;

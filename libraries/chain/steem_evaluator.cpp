@@ -369,7 +369,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
       {
-         FC_ASSERT( parent->root_comment( _db ).allow_replies, "The parent comment has disabled replies." );
+         FC_ASSERT( _db.get( parent->root_comment ).allow_replies, "The parent comment has disabled replies." );
          if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177) )
             FC_ASSERT( _db.calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "Discussion is frozen." );
       }
@@ -1116,7 +1116,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
-      const auto& root = comment.root_comment( _db );
+      const auto& root = _db.get( comment.root_comment );
       auto old_root_abs_rshares = root.children_abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time( comment ).sec_since_epoch();
@@ -1276,7 +1276,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       /// if the current net_rshares is less than 0, the post is getting 0 rewards so it is not factored into total rshares^2
       fc::uint128_t old_rshares = std::max(comment.net_rshares.value, int64_t(0));
-      const auto& root = comment.root_comment( _db );
+      const auto& root = _db.get( comment.root_comment );
       auto old_root_abs_rshares = root.children_abs_rshares.value;
 
       fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time( comment ).sec_since_epoch();
