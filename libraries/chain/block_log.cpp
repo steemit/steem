@@ -201,7 +201,7 @@ namespace steemit { namespace chain {
    {
       optional< signed_block > b;
       uint64_t pos = get_block_pos( block_num );
-      if( !pos )
+      if( ~pos )
          b = read_block( pos ).first;
       return b;
    }

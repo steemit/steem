@@ -277,7 +277,7 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
    }
    else
    {
-      b = _block_log.read_block_by_num( stats->block_num() );
+      b = _block_log.read_block_by_num( block_num );
    }
 
    return b;
