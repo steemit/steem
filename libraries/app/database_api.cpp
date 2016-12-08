@@ -1532,6 +1532,7 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
       FC_ASSERT( my->_follow_api, "Node is not running the follow plugin" );
       auto start_author = query.start_author ? *( query.start_author ) : "";
       auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
+      auto hide = query.hide ? *( query.hide ) : "";
 
       const auto& account = my->_db.get_account( query.tag );
 
@@ -1555,10 +1556,30 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
             break;
          try
          {
-            result.push_back( get_discussion( blog_itr->comment ) );
-            if( blog_itr->reblogged_on > time_point_sec() )
+            bool resteemed = blog_itr->reblogged_on > time_point_sec();
+
+            if( hide == "resteemed" )	// only show authored discussions
             {
-               result.back().first_reblogged_on = blog_itr->reblogged_on;
+                if( !resteemed )
+                {
+                    result.push_back( get_discussion( blog_itr->comment ) );
+                }
+            }
+            else if( hide == "authored" )	// only show resteemed discussions
+            {
+                if( resteemed )
+                {
+                    result.push_back( get_discussion( blog_itr->comment ) );
+                    result.back().first_reblogged_on = blog_itr->reblogged_on;
+                }
+            }
+            else	// show mixed
+            {
+                result.push_back( get_discussion( blog_itr->comment ) );
+                if( resteemed )
+                {
+                    result.back().first_reblogged_on = blog_itr->reblogged_on;
+                }
             }
          }
          catch ( const fc::exception& e )
@@ -1948,7 +1969,7 @@ state database_api::get_state( string path )const
             }
    #endif
          }
-         else if( part[1].size() == 0 || part[1] == "blog" )
+         else if( part[1].size() == 0 )
          {
             if( my->_follow_api )
             {
@@ -1969,7 +1990,41 @@ state database_api::get_state( string path )const
                }
             }
          }
-         else if( part[1].size() == 0 || part[1] == "feed" )
+         else if( part[1] == "blog" )
+         {
+            discussion_query q;
+            q.tag = eacnt.name;
+            q.limit = 20;
+            q.hide = "resteemed";
+            auto blog = get_discussions_by_blog( q );
+            eacnt.blog = vector< string >();
+
+            for( const auto& b : blog ) {
+                const auto link = b.author + "/" + b.permlink;
+                eacnt.blog->push_back( link );
+                _state.content[link] = std::move(b);
+                set_pending_payout( _state.content[ link ] );
+            }
+         }
+         else if( part[1] == "resteemed" )
+         {
+            discussion_query q;
+            q.tag = eacnt.name;
+            q.limit = 20;
+            q.hide = "authored";
+            auto blog = get_discussions_by_blog( q );
+            eacnt.resteemed = vector< string >();
+
+            for( const auto& b : blog ) {
+                const auto link = b.author + "/" + b.permlink;
+                eacnt.resteemed->push_back( link );
+                if( b.author.size() ) accounts.insert(b.author);
+                _state.content[link] = std::move(b);
+                set_pending_payout( _state.content[ link ] );
+                _state.content[ link ].first_reblogged_on = b.first_reblogged_on;
+            }
+         }
+         else if( part[1] == "feed" )
          {
             if( my->_follow_api )
             {
