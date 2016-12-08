@@ -1057,6 +1057,60 @@ BOOST_AUTO_TEST_CASE( transfer_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( signature_stripping )
+{
+   try
+   {
+      // Alice, Bob and Sam all have 2-of-3 multisig on corp.
+      // Legitimate tx signed by (Alice, Bob) goes through.
+      // Sam shouldn't be able to add or remove signatures to get the transaction to process multiple times.
+
+      ACTORS( (alice)(bob)(sam)(corp) )
+      fund( "corp", 10000 );
+
+      account_update_operation update_op;
+      update_op.account = "corp";
+      update_op.active = authority( 2, "alice", 1, "bob", 1, "sam", 1 );
+
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( update_op );
+
+      tx.sign( corp_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      transfer_operation transfer_op;
+      transfer_op.from = "corp";
+      transfer_op.to = "sam";
+      transfer_op.amount = ASSET( "1.000 TESTS" );
+
+      tx.operations.push_back( transfer_op );
+
+      tx.sign( alice_private_key, db.get_chain_id() );
+      signature_type alice_sig = tx.signatures.back();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      signature_type bob_sig = tx.signatures.back();
+      tx.sign( sam_private_key, db.get_chain_id() );
+      signature_type sam_sig = tx.signatures.back();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+
+      tx.signatures.clear();
+      tx.signatures.push_back( alice_sig );
+      tx.signatures.push_back( bob_sig );
+      db.push_transaction( tx, 0 );
+
+      tx.signatures.clear();
+      tx.signatures.push_back( alice_sig );
+      tx.signatures.push_back( sam_sig );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( transfer_apply )
 {
    try
