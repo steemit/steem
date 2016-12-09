@@ -21,6 +21,7 @@ RUN \
         pbzip2 \
         python3 \
         python3-dev \
+        lcov \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -43,6 +44,30 @@ RUN \
     cd /usr/local/src/steem && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
+    rm -rf /usr/local/src/steem/build
+
+RUN \
+    cd /usr/local/src/steem && \
+    git submodule update --init --recursive && \
+    mkdir build && \
+    cd build && \
+    cmake \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DENABLE_COVERAGE_TESTING=ON \
+        -DBUILD_STEEM_TESTNET=ON \
+        -DLOW_MEMORY_NODE=OFF \
+        -DCLEAR_VOTES=ON \
+        .. && \
+    make -j$(nproc) chain_test && \
+    cd .. && \
+    lcov --capture --initial --directory . --output-file build/base.info --no-external && \
+    ./build/tests/chain_test && \
+    lcov --capture --directory . --output-file build/test.info --no-external && \
+    lcov --add-tracefile build/base.info --add-tracefile build/test.info --output-file build/total.info && \
+    lcov -o build/interesting.info -r build/total.info tests/\* &&\
+    mkdir -p /var/jenkins_home/lcov && \
+    genhtml build/interesting.info --output-directory /var/jenkins_home/lcov && \
+    cd /usr/local/src/steem && \
     rm -rf /usr/local/src/steem/build
 
 RUN \
@@ -114,6 +139,7 @@ RUN \
         python-dev \
         python2.7-dev \
         python3-dev \
+        lcov \
     && \
     apt-get autoremove -y && \
     rm -rf \

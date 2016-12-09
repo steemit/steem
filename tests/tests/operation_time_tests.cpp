@@ -2426,6 +2426,8 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
    FC_LOG_AND_RETHROW()
 }
 
+// This test is too intensive without optimizations. Disable it when we build in debug
+#ifndef DEBUG
 BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
@@ -2568,6 +2570,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
 {
