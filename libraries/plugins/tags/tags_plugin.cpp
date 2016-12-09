@@ -189,7 +189,8 @@ struct operation_visitor {
       }
 
       set< string > lower_tags;
-      meta.tags.insert( fc::to_lower( to_string( c.category ) ) );
+      if( c.category != "" )
+         meta.tags.insert( fc::to_lower( to_string( c.category ) ) );
 
       uint8_t tag_limit = 5;
       uint8_t count = 0;
@@ -204,10 +205,9 @@ struct operation_visitor {
       }
 
       /// the universal tag applies to everything safe for work or nsfw with a non-negative payout
-      if( c.net_rshares >= 0 ||
+      if( c.net_rshares >= 0 &&
          (lower_tags.find( "spam" ) == lower_tags.end() &&
-         lower_tags.find( "nsfw" ) == lower_tags.end() &&
-         lower_tags.find( "test" ) == lower_tags.end() )  )
+         lower_tags.find( "test" ) == lower_tags.end() ) )
       {
          lower_tags.insert( string() ); /// add it to the universal tag
       }
