@@ -204,7 +204,7 @@ namespace steemit { namespace chain {
    {
       optional< signed_block > b;
       uint64_t pos = get_block_pos( block_num );
-      if( ~pos )
+      if( pos != npos )
          b = read_block( pos ).first;
       return b;
    }
@@ -214,7 +214,7 @@ namespace steemit { namespace chain {
       my->check_index_read();
 
       if( !( my->head && block_num <= protocol::block_header::num_from_id( my->head_id ) ) )
-         return ~0;
+         return npos;
       my->index_stream.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
       uint64_t pos;
       my->index_stream.read( (char*)&pos, sizeof( pos ) );
