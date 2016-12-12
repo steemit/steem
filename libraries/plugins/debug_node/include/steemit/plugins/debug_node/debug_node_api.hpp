@@ -43,6 +43,14 @@ struct debug_mine_result
 {
 };
 
+struct debug_equihash_test_result
+{
+   bool test_ff   = false;
+   bool test_can  = false;
+   bool test_full = false;
+   bool test_can_swap = false;
+};
+
 class debug_node_api
 {
    public:
@@ -135,6 +143,8 @@ class debug_node_api
 
       std::string debug_get_json_schema();
 
+      debug_equihash_test_result equihash_test( fc::equihash::proof p );
+
       std::shared_ptr< detail::debug_node_api_impl > my;
 };
 
@@ -157,6 +167,13 @@ FC_REFLECT( steemit::plugin::debug_node::debug_mine_args,
 FC_REFLECT( steemit::plugin::debug_node::debug_mine_result,
    )
 
+FC_REFLECT( steemit::plugin::debug_node::debug_equihash_test_result,
+   (test_ff)
+   (test_can)
+   (test_full)
+   (test_can_swap)
+   )
+
 FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_push_blocks)
        (debug_generate_blocks)
@@ -176,4 +193,5 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_set_dev_key_prefix)
        (debug_get_dev_key)
        (debug_mine)
+       (equihash_test)
      )
