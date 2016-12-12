@@ -248,7 +248,7 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
    auto b = _fork_db.fetch_block( id );
    if( !b )
    {
-      auto tmp = fetch_block_by_number( protocol::block_header::num_from_id( id ) );
+      auto tmp = _block_log.read_block_by_num( protocol::block_header::num_from_id( id ) );
 
       if( tmp && tmp->id() == id )
          return tmp;
@@ -264,21 +264,11 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
 {
    optional< signed_block > b;
 
-   const auto* stats = find< block_stats_object >( block_num - 1 );
-
-   if( !stats )
-      return b;
-
-   if( stats->packed_block.size() )
-   {
-      signed_block block;
-      fc::raw::unpack( stats->packed_block, block );
-      b = block;
-   }
+   auto results = _fork_db.fetch_block_by_number( block_num );
+   if( results.size() == 1 )
+      b = results[0]->data;
    else
-   {
       b = _block_log.read_block_by_num( block_num );
-   }
 
    return b;
 }
@@ -3050,8 +3040,6 @@ void database::_apply_block( const signed_block& next_block )
    {
       assert( bso.block_num() == next_block_num ); // Probably can be taken out. Sanity check
       bso.block_id = next_block_id;
-      if( !( get_node_properties().skip_flags & skip_block_log ) )
-         fc::raw::pack( bso.packed_block, next_block );
    });
 
    update_global_dynamic_data(next_block);
@@ -3542,13 +3530,6 @@ void database::update_last_irreversible_block()
          while( log_head_num < dpo.last_irreversible_block_num )
          {
             _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
-
-            // Block stats object IDs are block num - 1, so the ID is ( log_head_num + 1 ) - 1
-            modify( get< block_stats_object >( log_head_num ), [&]( block_stats_object& bso )
-            {
-               bso.packed_block.clear();
-            });
-
             log_head_num++;
          }
 
