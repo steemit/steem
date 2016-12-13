@@ -128,7 +128,13 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
          });
 
          if( head_block_num() )
-            _fork_db.start_block( *fetch_block_by_number( head_block_num() ) );
+         {
+            auto head_block = _block_log.read_block_by_num( head_block_num() );
+            // This assertion should be caught and a reindex should occur
+            FC_ASSERT( head_block.valid() && head_block->id() == head_block_id(), "Chain state does not match block log. Please reindex blockchain." );
+
+            _fork_db.start_block( *head_block );
+         }
       }
 
       init_hardforks();
@@ -248,7 +254,7 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
    auto b = _fork_db.fetch_block( id );
    if( !b )
    {
-      auto tmp = _block_log.read_block_by_num( protocol::block_header::num_from_id( id ) );
+      auto tmp = fetch_block_by_number( protocol::block_header::num_from_id( id ) );
 
       if( tmp && tmp->id() == id )
          return tmp;
@@ -264,11 +270,36 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
 {
    optional< signed_block > b;
 
+   /*
+   const auto* stats = find< block_stats_object >( block_num - 1 );
+
+   if( !stats )
+      return b;
+
+   if( stats->packed_block.size() )
+   {
+      signed_block block;
+      fc::raw::unpack( stats->packed_block, block );
+      b = block;
+   }
+   else
+   {
+      b = _block_log.read_block_by_num( block_num );
+   }
+   //*/
+
+   //*
+   try{
    auto results = _fork_db.fetch_block_by_number( block_num );
    if( results.size() == 1 )
       b = results[0]->data;
    else
       b = _block_log.read_block_by_num( block_num );
+   }
+   FC_LOG_AND_RETHROW()
+   //*/
+
+   //idump( (block_num)(b) );
 
    return b;
 }

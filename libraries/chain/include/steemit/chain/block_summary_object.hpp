@@ -43,12 +43,14 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          block_stats_object( Constructor&& c, allocator< Allocator > a )
+            :packed_block( a )
          {
             c( *this );
          }
 
          id_type        id;
          block_id_type  block_id;
+         bip::vector< char, allocator< char > > packed_block;
 
          uint64_t block_num()const { return id._id + 1; }
    };
@@ -71,5 +73,5 @@ namespace steemit { namespace chain {
 FC_REFLECT( steemit::chain::block_summary_object, (id)(block_id) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::block_summary_object, steemit::chain::block_summary_index )
 
-FC_REFLECT( steemit::chain::block_stats_object, (id)(block_id) )
+FC_REFLECT( steemit::chain::block_stats_object, (id)(block_id)(packed_block) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::block_stats_object, steemit::chain::block_stats_index )

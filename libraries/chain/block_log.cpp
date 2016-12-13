@@ -199,11 +199,15 @@ namespace steemit { namespace chain {
 
    optional< signed_block > block_log::read_block_by_num( uint32_t block_num )const
    {
+      try
+      {
       optional< signed_block > b;
       uint64_t pos = get_block_pos( block_num );
       if( ~pos )
          b = read_block( pos ).first;
       return b;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    uint64_t block_log::get_block_pos( uint32_t block_num ) const

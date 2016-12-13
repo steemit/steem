@@ -160,6 +160,8 @@ item_ptr fork_database::fetch_block(const block_id_type& id)const
 
 vector<item_ptr> fork_database::fetch_block_by_number(uint32_t num)const
 {
+   try
+   {
    vector<item_ptr> result;
    auto itr = _index.get<block_num>().find(num);
    while( itr != _index.get<block_num>().end() )
@@ -171,6 +173,8 @@ vector<item_ptr> fork_database::fetch_block_by_number(uint32_t num)const
       ++itr;
    }
    return result;
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 pair<fork_database::branch_type,fork_database::branch_type>
