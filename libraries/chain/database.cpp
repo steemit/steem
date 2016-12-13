@@ -9,6 +9,7 @@
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/history_object.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
@@ -2674,32 +2675,32 @@ std::shared_ptr< custom_operation_interpreter > database::get_custom_json_evalua
 
 void database::initialize_indexes()
 {
-   add_index< dynamic_global_property_index           >();
-   add_index< account_index                           >();
-   add_index< account_authority_index                 >();
-   add_index< witness_index                           >();
-   add_index< transaction_index                       >();
-   add_index< block_summary_index                     >();
-   add_index< witness_schedule_index                  >();
-   add_index< comment_index                           >();
-   add_index< comment_vote_index                      >();
-   add_index< witness_vote_index                      >();
-   add_index< limit_order_index                       >();
-   add_index< feed_history_index                      >();
-   add_index< convert_request_index                   >();
-   add_index< liquidity_reward_balance_index          >();
-   add_index< operation_index                         >();
-   add_index< account_history_index                   >();
-   add_index< category_index                          >();
-   add_index< hardfork_property_index                 >();
-   add_index< withdraw_vesting_route_index            >();
-   add_index< owner_authority_history_index           >();
-   add_index< account_recovery_request_index          >();
-   add_index< change_recovery_account_request_index   >();
-   add_index< escrow_index                            >();
-   add_index< savings_withdraw_index                  >();
-   add_index< decline_voting_rights_request_index     >();
-   add_index< block_stats_index                       >();
+   add_core_index< dynamic_global_property_index           >(*this);
+   add_core_index< account_index                           >(*this);
+   add_core_index< account_authority_index                 >(*this);
+   add_core_index< witness_index                           >(*this);
+   add_core_index< transaction_index                       >(*this);
+   add_core_index< block_summary_index                     >(*this);
+   add_core_index< witness_schedule_index                  >(*this);
+   add_core_index< comment_index                           >(*this);
+   add_core_index< comment_vote_index                      >(*this);
+   add_core_index< witness_vote_index                      >(*this);
+   add_core_index< limit_order_index                       >(*this);
+   add_core_index< feed_history_index                      >(*this);
+   add_core_index< convert_request_index                   >(*this);
+   add_core_index< liquidity_reward_balance_index          >(*this);
+   add_core_index< operation_index                         >(*this);
+   add_core_index< account_history_index                   >(*this);
+   add_core_index< category_index                          >(*this);
+   add_core_index< hardfork_property_index                 >(*this);
+   add_core_index< withdraw_vesting_route_index            >(*this);
+   add_core_index< owner_authority_history_index           >(*this);
+   add_core_index< account_recovery_request_index          >(*this);
+   add_core_index< change_recovery_account_request_index   >(*this);
+   add_core_index< escrow_index                            >(*this);
+   add_core_index< savings_withdraw_index                  >(*this);
+   add_core_index< decline_voting_rights_request_index     >(*this);
+   add_core_index< block_stats_index                       >(*this);
 
    _plugin_index_signal();
 }
