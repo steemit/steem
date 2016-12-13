@@ -3569,6 +3569,8 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
    FC_LOG_AND_RETHROW()
 }
 
+//#define CALCULATE_NONCES
+
 BOOST_AUTO_TEST_CASE( pow2_op )
 {
    try
@@ -3586,47 +3588,59 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       auto old_block_id = db.head_block_id();
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce1 = nonce;
-      idump( (nonce1) );*/
-      //uint64_t nonce1 = 98;
+      idump( (nonce1) );
+#else
+      uint64_t nonce1 = 98;
+#endif
 
       generate_block();
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary < target );
       uint64_t nonce2 = nonce;
-      idump( (nonce2) );*/
-      uint64_t nonce2 = 100;
+      idump( (nonce2) );
+#else
+      uint64_t nonce2 = 132;
+#endif
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce3 = nonce;
-      idump( (nonce3) );*/
-      uint64_t nonce3 = 132;
+      idump( (nonce3) );
+#else
+      uint64_t nonce3 = 211;
+#endif
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce4 = nonce;
-      idump( (nonce4) );*/
-      uint64_t nonce4 = 144;
+      idump( (nonce4) );
+#else
+      uint64_t nonce4 = 260;
+#endif
 
       // Test with nonce that doesn't match work, should fail
       BOOST_TEST_MESSAGE( "Testing pow with nonce that doesn't match work" );
@@ -3636,7 +3650,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       pow.work = work;
       STEEMIT_REQUIRE_THROW( pow.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "Testing failure on inssuficient work" );
+      BOOST_TEST_MESSAGE( "Testing failure on insufficient work" );
       signed_transaction tx;
       work.create( db.head_block_id(), "alice", nonce2 );
       work.prev_block = db.head_block_id();
@@ -3709,22 +3723,26 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       target = db.get_pow_summary_target();
       nonce = nonce4;
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( old_block_id, "bob", nonce );
+         idump( (work) );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce5 = nonce;
-      idump( (nonce5) );*/
-      uint32_t nonce5 = 248;
+      idump( (nonce5) );
+#else
+      uint32_t nonce5 = 305;
+#endif
 
       BOOST_TEST_MESSAGE( "Submit pow from existing account without witness object." );
 
       tx.operations.clear();
       tx.signatures.clear();
 
-      work.create( db.head_block_id(), "bob", nonce5 );
+      work.create( old_block_id, "bob", nonce5 );
       work.prev_block = db.head_block_id();
       pow.work = work;
       pow.new_owner_key.reset();
@@ -3750,26 +3768,31 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       target = db.get_pow_summary_target();
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( old_block_id, "sam", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce6 = nonce;
-      idump( (nonce6) );*/
-      uint64_t nonce6 = 336;
+      idump( (nonce6) );
+#else
+      uint64_t nonce6 = 360;
+#endif
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( old_block_id, "dave", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce7 = nonce;
-      idump( (nonce7) );*/
-      uint64_t nonce7 = 344;
-
+      idump( (nonce7) );
+#else
+      uint64_t nonce7 = 415;
+#endif
 
       // Test with wrong previous block id
       BOOST_TEST_MESSAGE( "Submit pow with an old block id" );
