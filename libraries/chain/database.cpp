@@ -114,12 +114,6 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
 
          auto log_head = _block_log.head();
 
-         // block_log.head must be in block stats
-         // If it is not, print warning and exit
-         if( log_head && head_block_num() )
-            FC_ASSERT( get< block_stats_object >( log_head->block_num() - 1 ).block_id == log_head->id(),
-               "Head block of log file is not included in current chain state. log_head: ${log_head}", ("log_head", log_head) );
-
          // Rewind all undo state. This should return us to the state at the last irreversible block.
          with_write_lock( [&]()
          {
@@ -231,7 +225,7 @@ void database::close(bool rewind)
 
 bool database::is_known_block( const block_id_type& id )const
 {
-   return _fork_db.is_known_block(id) || find< block_stats_object, by_block_id >( id );
+   return fetch_block_by_id( id ).valid();
 }
 
 /**
@@ -247,7 +241,18 @@ bool database::is_known_transaction( const transaction_id_type& id )const
 
 block_id_type database::get_block_id_for_num( uint32_t block_num )const
 {
-   return get< block_stats_object >( block_num - 1 ).block_id;
+   try
+   {
+      auto b = _block_log.read_block_by_num( block_num );
+      if( b.valid() )
+         return b->id();
+
+      auto results = _fork_db.fetch_block_by_number( block_num );
+      FC_ASSERT( results.size() == 1 );
+         return results[0]->data.id();
+
+   }
+   FC_CAPTURE_AND_RETHROW( (block_num) )
 }
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
@@ -2675,7 +2680,6 @@ void database::initialize_indexes()
    add_core_index< escrow_index                            >(*this);
    add_core_index< savings_withdraw_index                  >(*this);
    add_core_index< decline_voting_rights_request_index     >(*this);
-   add_core_index< block_stats_index                       >(*this);
 
    _plugin_index_signal();
 }
@@ -3042,12 +3046,6 @@ void database::_apply_block( const signed_block& next_block )
       apply_transaction( trx, skip );
       ++_current_trx_in_block;
    }
-
-   create< block_stats_object >( [&]( block_stats_object& bso )
-   {
-      assert( bso.block_num() == next_block_num ); // Probably can be taken out. Sanity check
-      bso.block_id = next_block_id;
-   });
 
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
