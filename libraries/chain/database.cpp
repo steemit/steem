@@ -245,7 +245,7 @@ bool database::is_known_transaction( const transaction_id_type& id )const
    return trx_idx.find( id ) != trx_idx.end();
 }
 
-block_id_type  database::get_block_id_for_num( uint32_t block_num )const
+block_id_type database::get_block_id_for_num( uint32_t block_num )const
 {
    return get< block_stats_object >( block_num - 1 ).block_id;
 }
@@ -255,7 +255,7 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
    auto b = _fork_db.fetch_block( id );
    if( !b )
    {
-      auto tmp = fetch_block_by_number( protocol::block_header::num_from_id( id ) );
+      auto tmp = _block_log.read_block_by_num( protocol::block_header::num_from_id( id ) );
 
       if( tmp && tmp->id() == id )
          return tmp;
@@ -271,36 +271,11 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
 {
    optional< signed_block > b;
 
-   /*
-   const auto* stats = find< block_stats_object >( block_num - 1 );
-
-   if( !stats )
-      return b;
-
-   if( stats->packed_block.size() )
-   {
-      signed_block block;
-      fc::raw::unpack( stats->packed_block, block );
-      b = block;
-   }
-   else
-   {
-      b = _block_log.read_block_by_num( block_num );
-   }
-   //*/
-
-   //*
-   try{
    auto results = _fork_db.fetch_block_by_number( block_num );
    if( results.size() == 1 )
       b = results[0]->data;
    else
       b = _block_log.read_block_by_num( block_num );
-   }
-   FC_LOG_AND_RETHROW()
-   //*/
-
-   //idump( (block_num)(b) );
 
    return b;
 }

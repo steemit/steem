@@ -41,12 +41,16 @@ namespace steemit { namespace chain {
 
             inline void check_index_read()
             {
+               try
+               {
                if( index_write )
                {
                   index_stream.close();
                   index_stream.open( index_file.generic_string().c_str(), LOG_READ );
                   index_write = false;
                }
+               }
+               FC_LOG_AND_RETHROW()
             }
 
             inline void check_index_write()
@@ -214,7 +218,7 @@ namespace steemit { namespace chain {
    {
       my->check_index_read();
 
-      if( !( my->head && block_num <= protocol::block_header::num_from_id( my->head_id ) ) )
+      if( !( my->head.valid() && block_num <= protocol::block_header::num_from_id( my->head_id ) && block_num > 0 ) )
          return npos;
       my->index_stream.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
       uint64_t pos;
