@@ -382,7 +382,7 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
       auto itr = idx.find( name );
       if ( itr != idx.end() )
       {
-         results.push_back( extended_account( *itr, _db.get< account_authority_object, by_account >( itr->name ) ) );
+         results.push_back( extended_account( *itr, _db ) );
 
          if( _follow_api )
          {
@@ -444,7 +444,7 @@ vector<optional<account_api_obj>> database_api_impl::lookup_account_names(const 
 
       if( itr )
       {
-         result.push_back( account_api_obj( *itr, _db.get< account_authority_object, by_account >( name ) ) );
+         result.push_back( account_api_obj( *itr, _db ) );
       }
       else
       {
@@ -591,6 +591,16 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
 
       return result;
    });
+}
+
+optional< account_bandwidth_api_obj > database_api::get_account_bandwidth( string account, bandwidth_type type )const
+{
+   optional< account_bandwidth_api_obj > result;
+   auto band = my->_db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( account, type ) );
+   if( band != nullptr )
+      result = *band;
+
+   return result;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1863,7 +1873,7 @@ state database_api::get_state( string path )const
 
       if( part[0].size() && part[0][0] == '@' ) {
          auto acnt = part[0].substr(1);
-         _state.accounts[acnt] = extended_account( my->_db.get_account(acnt), my->_db.get< account_authority_object, by_account >(acnt) );
+         _state.accounts[acnt] = extended_account( my->_db.get_account(acnt), my->_db );
          if( my->_follow_api )
          {
             _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;
@@ -2177,7 +2187,7 @@ state database_api::get_state( string path )const
       for( const auto& a : accounts )
       {
          _state.accounts.erase("");
-         _state.accounts[a] = extended_account( my->_db.get_account( a ), my->_db.get< account_authority_object, by_account >( a ) );
+         _state.accounts[a] = extended_account( my->_db.get_account( a ), my->_db );
          if( my->_follow_api )
          {
             _state.accounts[a].reputation = my->_follow_api->get_account_reputations( a, 1 )[0].reputation;

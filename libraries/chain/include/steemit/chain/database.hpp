@@ -149,9 +149,9 @@ namespace steemit { namespace chain {
          void old_update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
          /**
-          * Update an account's bandwidth and returns the new average bandwidth
+          * Update an account's bandwidth and returns if the account had the requisite bandwidth for the trx
           */
-         share_type update_account_bandwidth( const account_name_type& account, uint32_t trx_size, const bandwidth_type type );
+         bool update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
          void max_bandwidth_per_share()const;
 

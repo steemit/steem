@@ -49,6 +49,7 @@ typedef chain::withdraw_vesting_route_object           withdraw_vesting_route_ap
 typedef chain::decline_voting_rights_request_object    decline_voting_rights_request_api_obj;
 typedef chain::witness_vote_object                     witness_vote_api_obj;
 typedef chain::witness_schedule_object                 witness_schedule_api_obj;
+typedef chain::account_bandwidth_object                account_bandwidth_api_obj;
 
 struct comment_api_obj
 {
@@ -184,16 +185,12 @@ struct tag_api_obj
 
 struct account_api_obj
 {
-   account_api_obj( const chain::account_object& a, const chain::account_authority_object& auth ) :
+   account_api_obj( const chain::account_object& a, const chain::database& db ) :
       id( a.id ),
       name( a.name ),
-      owner( authority( auth.owner ) ),
-      active( authority( auth.active ) ),
-      posting( authority( auth.posting ) ),
       memo_key( a.memo_key ),
       json_metadata( to_string( a.json_metadata ) ),
       proxy( a.proxy ),
-      last_owner_update( auth.last_owner_update ),
       last_account_update( a.last_account_update ),
       created( a.created ),
       mined( a.mined ),
@@ -236,6 +233,46 @@ struct account_api_obj
       size_t n = a.proxied_vsf_votes.size();
       for( size_t i=0; i<n; i++ )
          proxied_vsf_votes.push_back( a.proxied_vsf_votes[i] );
+
+      const auto& auth = db.get< account_authority_object, by_account >( name );
+      owner = authority( auth.owner );
+      active = authority( auth.active );
+      posting = authority( auth.posting );
+      last_owner_update = auth.last_owner_update;
+
+      auto old_forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_forum ) );
+      if( old_forum != nullptr )
+      {
+         average_bandwidth = old_forum->average_bandwidth;
+         lifetime_bandwidth = old_forum->lifetime_bandwidth;
+         last_bandwidth_update = old_forum->last_bandwidth_update;
+      }
+
+      auto old_market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_market ) );
+      if( old_market != nullptr )
+      {
+         average_market_bandwidth = old_market->average_bandwidth;
+         last_market_bandwidth_update = old_market->last_bandwidth_update;
+      }
+
+      auto post = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::post ) );
+      if( post != nullptr )
+      {
+         last_root_post = post->last_bandwidth_update;
+         post_bandwidth = post->average_bandwidth;
+      }
+
+      auto forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::forum ) );
+      if( forum != nullptr )
+      {
+         new_average_bandwidth = forum->average_bandwidth;
+      }
+
+      auto market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::market ) );
+      if( market != nullptr )
+      {
+         new_average_market_bandwidth = market->average_bandwidth;
+      }
    }
 
 
@@ -300,15 +337,18 @@ struct account_api_obj
 
    uint16_t          witnesses_voted_for;
 
-   uint64_t          average_bandwidth;
-   uint64_t          lifetime_bandwidth;
+   share_type        average_bandwidth = 0;
+   share_type        lifetime_bandwidth = 0;
    time_point_sec    last_bandwidth_update;
 
-   uint64_t          average_market_bandwidth;
+   share_type        average_market_bandwidth = 0;
    time_point_sec    last_market_bandwidth_update;
    time_point_sec    last_post;
    time_point_sec    last_root_post;
-   uint32_t          post_bandwidth;
+   share_type        post_bandwidth = STEEMIT_100_PERCENT;
+
+   share_type        new_average_bandwidth;
+   share_type        new_average_market_bandwidth;
 };
 
 struct owner_authority_history_api_obj
@@ -471,6 +511,7 @@ FC_REFLECT( steemit::app::account_api_obj,
              (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
              (average_market_bandwidth)(last_market_bandwidth_update)
              (last_post)(last_root_post)(post_bandwidth)
+             (new_average_bandwidth)(new_average_market_bandwidth)
           )
 
 FC_REFLECT( steemit::app::owner_authority_history_api_obj,

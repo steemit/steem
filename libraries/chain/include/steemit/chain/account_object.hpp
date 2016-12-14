@@ -142,6 +142,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         account_bandwidth_object() {}
+
          id_type           id;
 
          account_name_type account;
