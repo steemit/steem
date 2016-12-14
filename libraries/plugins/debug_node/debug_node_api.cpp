@@ -189,13 +189,25 @@ uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename
       for( uint32_t i=0; i<count; i++ )
       {
          //fc::optional< steemit::chain::signed_block > block = log.read_block( log.get_block_pos( first_block + i ) );
-         auto result = log.read_block( log.get_block_pos( first_block + i ) );
-
-         if( result.second == ~0 )
+         uint64_t block_pos = log.get_block_pos( first_block + i );
+         if( block_pos == steemit::chain::block_log::npos )
          {
             wlog( "Block database ${fn} only contained ${i} of ${n} requested blocks", ("i", i)("n", count)("fn", src_filename) );
             return i;
          }
+
+         decltype( log.read_block(0) ) result;
+
+         try
+         {
+            result = log.read_block( block_pos );
+         }
+         catch( const fc::exception& e )
+         {
+            elog( "Could not read block ${i} of ${n}", ("i", i)("n", count) );
+            continue;
+         }
+
          try
          {
             db->push_block( result.first, skip_flags );

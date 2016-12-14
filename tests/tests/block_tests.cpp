@@ -74,7 +74,9 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             uint32_t cutoff_height = db.get_dynamic_global_properties().last_irreversible_block_num;
             if( cutoff_height >= 200 )
             {
-               cutoff_block = *(db.fetch_block_by_number( cutoff_height ));
+               auto block = db.fetch_block_by_number( cutoff_height );
+               BOOST_REQUIRE( block.valid() );
+               cutoff_block = *block;
                break;
             }
          }
