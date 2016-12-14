@@ -1157,7 +1157,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
 
          BOOST_TEST_MESSAGE( "Check feed_history" );
 
-         feed_history = feed_history_id_type()( db );
+         feed_history = db.get(feed_history_id_type());
          BOOST_REQUIRE( feed_history.current_median_history == feed_history.price_history[ ( i + 1 ) / 2 ] );
          BOOST_REQUIRE( feed_history.price_history[ i + 1 ] == ops[4].exchange_rate );
          validate_database();

@@ -1599,7 +1599,7 @@ void database::adjust_witness_votes( const account_object& a, share_type delta )
    auto itr = vidx.lower_bound( boost::make_tuple( a.id, witness_id_type() ) );
    while( itr != vidx.end() && itr->account == a.id )
    {
-      adjust_witness_vote( itr->witness(*this), delta );
+      adjust_witness_vote( get(itr->witness), delta );
       ++itr;
    }
 }
@@ -1792,7 +1792,7 @@ void database::process_vesting_withdrawals()
 
             if( to_deposit > 0 )
             {
-               const auto& to_account = itr->to_account( *this );
+               const auto& to_account = get(itr->to_account);
 
                modify( to_account, [&]( account_object& a )
                {
@@ -1812,7 +1812,7 @@ void database::process_vesting_withdrawals()
       {
          if( !itr->auto_vest )
          {
-            const auto& to_account = itr->to_account( *this );
+            const auto& to_account = get(itr->to_account);
 
             share_type to_deposit = ( ( fc::uint128_t ( to_withdraw.value ) * itr->percent ) / STEEMIT_100_PERCENT ).to_uint64();
             vests_deposited_as_steem += to_deposit;
@@ -1905,7 +1905,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
       // Pre-order traversal of the tree of child comments
       while( child_queue.size() )
       {
-         const auto& cur = child_queue.front()( *this );
+         const auto& cur = get(child_queue.front());
          child_queue.pop_front();
 
          if( cur.net_rshares > 0 )
@@ -1958,7 +1958,7 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
             if( claim > 0 ) // min_amt is non-zero satoshis
             {
                unclaimed_rewards -= claim;
-               const auto& voter = itr->voter(*this);
+               const auto& voter = get(itr->voter);
                auto reward = create_vesting( voter, asset( claim, STEEM_SYMBOL ) );
 
                push_virtual_operation( curation_reward_operation( voter.name, reward, c.author, to_string( c.permlink ) ) );
@@ -2335,7 +2335,7 @@ void database::pay_liquidity_reward()
       if( itr != ridx.end() && itr->volume_weight() > 0 )
       {
          adjust_supply( reward, true );
-         adjust_balance( itr->owner(*this), reward );
+         adjust_balance( get(itr->owner), reward );
          modify( *itr, [&]( liquidity_reward_balance_object& obj )
          {
             obj.steem_volume = 0;
@@ -2344,7 +2344,7 @@ void database::pay_liquidity_reward()
             obj.weight = 0;
          } );
 
-         push_virtual_operation( liquidity_reward_operation( itr->owner( *this ).name, reward ) );
+         push_virtual_operation( liquidity_reward_operation( get(itr->owner).name, reward ) );
       }
    }
 }
@@ -2539,7 +2539,7 @@ void database::process_decline_voting_rights()
 
    while( itr != request_idx.end() && itr->effective_date <= head_block_time() )
    {
-      const auto& account = itr->account(*this);
+      const auto& account = get(itr->account);
 
       /// remove all current votes
       std::array<share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH+1> delta;
@@ -2550,7 +2550,7 @@ void database::process_decline_voting_rights()
 
       clear_witness_votes( account );
 
-      modify( itr->account(*this), [&]( account_object& a )
+      modify( get(itr->account), [&]( account_object& a )
       {
          a.can_vote = false;
          a.proxy = STEEMIT_PROXY_TO_SELF_ACCOUNT;
@@ -3312,7 +3312,7 @@ const witness_object& database::validate_block_header( uint32_t skip, const sign
 {
    FC_ASSERT( head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous) );
    FC_ASSERT( head_block_time() < next_block.timestamp, "", ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()) );
-   const witness_object& witness = get_witness( next_block.witness ); //(*this);
+   const witness_object& witness = get_witness( next_block.witness );
 
    if( !(skip&skip_witness_signature) )
       FC_ASSERT( next_block.validate_signee( witness.signing_key ) );
@@ -4480,7 +4480,7 @@ void database::retally_witness_votes()
       auto wit_itr = vidx.lower_bound( boost::make_tuple( a.id, witness_id_type() ) );
       while( wit_itr != vidx.end() && wit_itr->account == a.id )
       {
-         adjust_witness_vote( wit_itr->witness(*this), a.witness_vote_weight() );
+         adjust_witness_vote( get(wit_itr->witness), a.witness_vote_weight() );
          ++wit_itr;
       }
    }

@@ -309,7 +309,7 @@ witness_schedule_api_obj database_api::get_witness_schedule()const
 {
    return my->_db.with_read_lock( [&]()
    {
-      return witness_schedule_id_type()( my->_db );
+      return my->_db.get(witness_schedule_id_type());
    });
 }
 
@@ -317,7 +317,7 @@ hardfork_version database_api::get_hardfork_version()const
 {
    return my->_db.with_read_lock( [&]()
    {
-      return hardfork_property_id_type()( my->_db ).current_hardfork_version;
+      return my->_db.get(hardfork_property_id_type()).current_hardfork_version;
    });
 }
 
@@ -326,7 +326,7 @@ scheduled_hardfork database_api::get_next_scheduled_hardfork() const
    return my->_db.with_read_lock( [&]()
    {
       scheduled_hardfork shf;
-      const auto& hpo = hardfork_property_id_type()( my->_db );
+      const auto& hpo = my->_db.get(hardfork_property_id_type());
       shf.hf_version = hpo.next_hardfork;
       shf.live_time = hpo.next_hardfork_time;
       return shf;
@@ -391,7 +391,7 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
 
          auto vitr = vidx.lower_bound( boost::make_tuple( itr->id, witness_id_type() ) );
          while( vitr != vidx.end() && vitr->account == itr->id ) {
-            results.back().witness_votes.insert(vitr->witness(_db).owner);
+            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
             ++vitr;
          }
       }
@@ -560,7 +560,7 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
          {
             withdraw_route r;
             r.from_account = account;
-            r.to_account = route->to_account( my->_db ).name;
+            r.to_account = my->_db.get( route->to_account ).name;
             r.percent = route->percent;
             r.auto_vest = route->auto_vest;
 
@@ -578,7 +578,7 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
          while( route != by_dest.end() && route->to_account == acc.id )
          {
             withdraw_route r;
-            r.from_account = route->from_account( my->_db ).name;
+            r.from_account = my->_db.get( route->from_account ).name;
             r.to_account = account;
             r.percent = route->percent;
             r.auto_vest = route->auto_vest;
@@ -823,7 +823,7 @@ vector< liquidity_balance > database_api_impl::get_liquidity_queue( string start
    while( itr != liq_idx.end() && result.size() < limit )
    {
       liquidity_balance bal;
-      bal.account = itr->owner( _db ).name;
+      bal.account = _db.get(itr->owner).name;
       bal.weight = itr->weight;
       result.push_back( bal );
 
@@ -1000,7 +1000,7 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
       auto itr = idx.lower_bound( cid );
       while( itr != idx.end() && itr->comment == cid )
       {
-         const auto& vo = itr->voter(my->_db);
+         const auto& vo = my->_db.get(itr->voter);
          vote_state vstate;
          vstate.voter = vo.name;
          vstate.weight = itr->weight;
@@ -1036,7 +1036,7 @@ vector<account_vote> database_api::get_account_votes( string voter )const
       auto end = idx.upper_bound( aid );
       while( itr != end )
       {
-         const auto& vo = itr->comment(my->_db);
+         const auto& vo = my->_db.get(itr->comment);
          account_vote avote;
          avote.authorperm = vo.author+"/"+to_string( vo.permlink );
          avote.weight = itr->weight;
@@ -1196,7 +1196,7 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
       map<uint32_t, applied_operation> result;
       while( itr != end )
       {
-         result[itr->sequence] = itr->op(my->_db);
+         result[itr->sequence] = my->_db.get(itr->op);
          ++itr;
       }
       return result;
@@ -1235,7 +1235,7 @@ vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limi
 
 discussion database_api::get_discussion( comment_id_type id )const
 {
-   discussion d = id(my->_db);
+   discussion d = my->_db.get(id);
    set_url( d );
    set_pending_payout( d );
    d.active_votes = get_active_votes( d.author, d.permlink );

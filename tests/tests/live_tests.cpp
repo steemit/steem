@@ -160,9 +160,9 @@ BOOST_AUTO_TEST_CASE( retally_votes )
       for( auto vote: by_account_witness_idx )
       {
          if( expected_votes.find( vote.witness ) == expected_votes.end() )
-            expected_votes[ vote.witness ] = vote.account( db ).witness_vote_weight();
+            expected_votes[ vote.witness ] = db.get( vote.account ).witness_vote_weight();
          else
-            expected_votes[ vote.witness ] += vote.account( db ).witness_vote_weight();
+            expected_votes[ vote.witness ] += db.get( vote.account ).witness_vote_weight();
       }
 
       db.retally_witness_votes();
