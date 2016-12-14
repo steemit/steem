@@ -146,7 +146,12 @@ namespace steemit { namespace chain {
           *  Deducts fee from the account and the share supply
           */
          void pay_fee( const account_object& a, asset fee );
-         void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
+         void old_update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
+
+         /**
+          * Update an account's bandwidth and returns the new average bandwidth
+          */
+         share_type update_account_bandwidth( const account_name_type& account, uint32_t trx_size, const bandwidth_type type );
 
          void max_bandwidth_per_share()const;
 

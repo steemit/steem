@@ -5904,7 +5904,6 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       generate_block();
       db.skip_transaction_delta_check = false;
-      BOOST_REQUIRE( db.get_account( "alice" ).last_bandwidth_update != db.head_block_time() );
 
       signed_transaction tx;
       transfer_operation op;
@@ -5919,7 +5918,8 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).last_market_bandwidth_update == db.head_block_time() );
+      auto last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::old_market ) ).last_bandwidth_update;
+      BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
 
       op.amount = ASSET( "0.100 TESTS" );
       tx.clear();

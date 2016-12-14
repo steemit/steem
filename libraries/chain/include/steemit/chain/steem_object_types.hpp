@@ -126,8 +126,8 @@ typedef oid< block_stats_object                     > block_stats_id_type;
 enum bandwidth_type
 {
    post,    ///< Rate limitting posting reward eligibility over time
-   forum,   ///< Rate limitting for all forum related actions
-   market   ///< Rate limitting for all other actions
+   old_forum,   ///< Rate limitting for all forum related actions
+   old_market   ///< Rate limitting for all other actions
 };
 
 } } //steemit::chain
@@ -236,4 +236,4 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )
 FC_REFLECT_TYPENAME( steemit::chain::buffer_type )
 
-FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market) )
+FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(old_forum)(old_market) )

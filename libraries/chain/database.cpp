@@ -448,7 +448,7 @@ void database::pay_fee( const account_object& account, asset fee )
    adjust_supply( -fee );
 }
 
-void database::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
+void database::old_update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
 { try {
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
@@ -505,6 +505,11 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
                ("total_vesting_shares", total_vshares) );
    }
 } FC_CAPTURE_AND_RETHROW() }
+
+share_type database::update_account_bandwidth( const account_name_type& account, uint32_t trx_size, const bandwidth_type type )
+{
+   return 0;
+}
 
 uint32_t database::witness_participation_rate()const
 {
@@ -3199,11 +3204,11 @@ void database::_apply_transaction(const signed_transaction& trx)
    for( const auto& auth : required ) {
       const auto& acnt = get_account(auth);
 
-      update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
+      old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
       for( const auto& op : trx.operations ) {
          if( is_market_operation( op ) )
          {
-            update_account_bandwidth( acnt, trx_size, bandwidth_type::market );
+            old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
             break;
          }
       }
