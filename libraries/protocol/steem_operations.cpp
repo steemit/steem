@@ -198,21 +198,22 @@ namespace steemit { namespace protocol {
       FC_ASSERT( work_input() == work.input, "Determninistic input does not match recorded input" );
       work.validate();
    }
+
+   struct pow2_operation_validate_visitor
+   {
+      typedef void result_type;
+
+      template< typename PowType >
+      void operator()( const PowType& pow )const
+      {
+         pow.validate();
+      }
+   };
+
    void pow2_operation::validate()const
    {
       props.validate();
-      switch( work.which() )
-      {
-         case pow2_work::tag< pow2 >::value:
-            work.get< pow2 >().validate();
-            break;
-         case pow2_work::tag< equihash_pow >::value:
-            work.get< equihash_pow >().validate();
-            break;
-         default:
-            FC_ASSERT( false, "POW2 Operation does not contain a proof of work" );
-            break;
-      }
+      work.visit( pow2_operation_validate_visitor() );
    }
 
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
