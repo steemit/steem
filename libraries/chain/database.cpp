@@ -4026,12 +4026,18 @@ void database::set_hardfork( uint32_t hardfork, bool apply_now )
 
 void database::apply_hardfork( uint32_t hardfork )
 {
+   auto log_hardfork = [this]( int hf )
+   {
+      if( _log_hardforks )
+      {
+         elog( "HARDFORK ${hf} at block ${b}", ("hf", hf)("b", head_block_num()) );
+      }
+   };
+
    switch( hardfork )
    {
       case STEEMIT_HARDFORK_0_1:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 1 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(1);
          perform_vesting_share_split( 1000000 );
 #ifdef IS_TEST_NET
          {
@@ -4048,50 +4054,34 @@ void database::apply_hardfork( uint32_t hardfork )
 #endif
          break;
       case STEEMIT_HARDFORK_0_2:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 2 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(2);
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_3:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 3 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(3);
          retally_witness_votes();
          break;
       case STEEMIT_HARDFORK_0_4:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 4 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(4);
          reset_virtual_schedule_time();
          break;
       case STEEMIT_HARDFORK_0_5:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 5 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(5);
          break;
       case STEEMIT_HARDFORK_0_6:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 6 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(6);
          retally_witness_vote_counts();
          retally_comment_children();
          break;
       case STEEMIT_HARDFORK_0_7:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 7 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(7);
          break;
       case STEEMIT_HARDFORK_0_8:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 8 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(8);
          retally_witness_vote_counts(true);
          break;
       case STEEMIT_HARDFORK_0_9:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 9 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(9);
          {
             for( const std::string& acc : hardfork9::get_compromised_accounts() )
             {
@@ -4110,20 +4100,14 @@ void database::apply_hardfork( uint32_t hardfork )
          }
          break;
       case STEEMIT_HARDFORK_0_10:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 10 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(10);
          retally_liquidity_weight();
          break;
       case STEEMIT_HARDFORK_0_11:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 11 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(11);
          break;
       case STEEMIT_HARDFORK_0_12:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 12 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(12);
          {
             const auto& comment_idx = get_index< comment_index >().indices();
 
@@ -4175,24 +4159,16 @@ void database::apply_hardfork( uint32_t hardfork )
          }
          break;
       case STEEMIT_HARDFORK_0_13:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 13 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(13);
          break;
       case STEEMIT_HARDFORK_0_14:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 14 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(14);
          break;
-      case  STEEMIT_HARDFORK_0_15:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 15 at block ${b}", ("b", head_block_num()) );
-#endif
+      case STEEMIT_HARDFORK_0_15:
+         log_hardfork(15);
          break;
       case STEEMIT_HARDFORK_0_16:
-#ifndef IS_TEST_NET
-         elog( "HARDFORK 16 at block ${b}", ("b", head_block_num()) );
-#endif
+         log_hardfork(16);
          modify( get_feed_history(), [&]( feed_history_object& fho )
          {
             while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )

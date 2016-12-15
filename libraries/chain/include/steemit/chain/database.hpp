@@ -44,6 +44,8 @@ namespace steemit { namespace chain {
          void set_producing( bool p ) { _is_producing = p;  }
          bool _is_producing = false;
 
+         bool _log_hardforks = true;
+
          enum validation_steps
          {
             skip_nothing                = 0,
