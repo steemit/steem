@@ -3535,7 +3535,9 @@ void database::update_last_irreversible_block()
       {
          while( log_head_num < dpo.last_irreversible_block_num )
          {
-            _block_log.append( *fetch_block_by_number( log_head_num + 1 ) );
+            auto b = fetch_block_by_number( log_head_num + 1 );
+            FC_ASSERT( b.valid() );
+            _block_log.append( *b );
             log_head_num++;
          }
 
