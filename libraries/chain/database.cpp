@@ -224,9 +224,9 @@ void database::close(bool rewind)
 }
 
 bool database::is_known_block( const block_id_type& id )const
-{
+{ try {
    return fetch_block_by_id( id ).valid();
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 /**
  * Only return true *if* the transaction has not expired or been invalidated. If this
@@ -234,10 +234,10 @@ bool database::is_known_block( const block_id_type& id )const
  * query things by blocks if they are that old.
  */
 bool database::is_known_transaction( const transaction_id_type& id )const
-{
+{ try {
    const auto& trx_idx = get_index<transaction_index>().indices().get<by_trx_id>();
    return trx_idx.find( id ) != trx_idx.end();
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 block_id_type database::get_block_id_for_num( uint32_t block_num )const
 {
@@ -256,7 +256,7 @@ block_id_type database::get_block_id_for_num( uint32_t block_num )const
 }
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
-{
+{ try {
    auto b = _fork_db.fetch_block( id );
    if( !b )
    {
@@ -270,10 +270,10 @@ optional<signed_block> database::fetch_block_by_id( const block_id_type& id )con
    }
 
    return b->data;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 optional<signed_block> database::fetch_block_by_number( uint32_t block_num )const
-{
+{ try {
    optional< signed_block > b;
 
    auto results = _fork_db.fetch_block_by_number( block_num );
@@ -283,20 +283,20 @@ optional<signed_block> database::fetch_block_by_number( uint32_t block_num )cons
       b = _block_log.read_block_by_num( block_num );
 
    return b;
-}
+} FC_LOG_AND_RETHROW() }
 
 const signed_transaction database::get_recent_transaction( const transaction_id_type& trx_id ) const
-{
+{ try {
    auto& index = get_index<transaction_index>().indices().get<by_trx_id>();
    auto itr = index.find(trx_id);
    FC_ASSERT(itr != index.end());
    signed_transaction trx;
    fc::raw::unpack( itr->packed_trx, trx );
    return trx;;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head_of_fork ) const
-{
+{ try {
    pair<fork_database::branch_type, fork_database::branch_type> branches = _fork_db.fetch_branch_from(head_block_id(), head_of_fork);
    if( !((branches.first.back()->previous_id() == branches.second.back()->previous_id())) )
    {
@@ -311,7 +311,7 @@ std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head
       result.emplace_back(fork_block->id);
    result.emplace_back(branches.first.back()->previous_id());
    return result;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 chain_id_type database::get_chain_id() const
 {
@@ -449,7 +449,7 @@ void database::pay_fee( const account_object& account, asset fee )
 }
 
 void database::update_account_bandwidth( const account_object& a, uint32_t trx_size )
-{
+{ try {
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
    {
@@ -497,11 +497,11 @@ void database::update_account_bandwidth( const account_object& a, uint32_t trx_s
          acnt.last_bandwidth_update = now;
       } );
    }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 
 void database::update_account_market_bandwidth( const account_object& a, uint32_t trx_size )
-{
+{ try {
    const auto& props = get_dynamic_global_properties();
    if( props.total_vesting_shares.amount > 0 )
    {
@@ -547,7 +547,7 @@ void database::update_account_market_bandwidth( const account_object& a, uint32_
          acnt.last_market_bandwidth_update = now;
       } );
    }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 uint32_t database::witness_participation_rate()const
 {
@@ -601,7 +601,7 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
 }
 
 bool database::_push_block(const signed_block& new_block)
-{
+{ try {
    uint32_t skip = get_node_properties().skip_flags;
    //uint32_t skip_undo_db = skip & skip_undo_block;
 
@@ -680,7 +680,7 @@ bool database::_push_block(const signed_block& new_block)
    }
 
    return false;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 /**
  * Attempts to push the transaction into the pending queue
@@ -2983,7 +2983,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 void database::_apply_block( const signed_block& next_block )
 { try {
    uint32_t next_block_num = next_block.block_num();
-   block_id_type next_block_id = next_block.id();
+   //block_id_type next_block_id = next_block.id();
 
    uint32_t skip = get_node_properties().skip_flags;
 
@@ -3048,10 +3048,10 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
+   update_last_irreversible_block();
+
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
-
-   update_last_irreversible_block();
 
    create_block_summary(next_block);
    clear_expired_transactions();
@@ -3306,7 +3306,7 @@ void database::apply_operation(const operation& op)
 }
 
 const witness_object& database::validate_block_header( uint32_t skip, const signed_block& next_block )const
-{
+{ try {
    FC_ASSERT( head_block_id() == next_block.previous, "", ("head_block_id",head_block_id())("next.prev",next_block.previous) );
    FC_ASSERT( head_block_time() < next_block.timestamp, "", ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()) );
    const witness_object& witness = get_witness( next_block.witness );
@@ -3326,18 +3326,18 @@ const witness_object& database::validate_block_header( uint32_t skip, const sign
    }
 
    return witness;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::create_block_summary(const signed_block& next_block)
-{
+{ try {
    block_summary_id_type sid( next_block.block_num() & 0xffff );
    modify( get< block_summary_object >( sid ), [&](block_summary_object& p) {
          p.block_id = next_block.id();
    });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_global_dynamic_data( const signed_block& b )
-{
+{ try {
    auto block_size = fc::raw::pack_size(b);
    const dynamic_global_property_object& _dgp =
       get_dynamic_global_properties();
@@ -3432,10 +3432,10 @@ void database::update_global_dynamic_data( const signed_block& b )
 
    //_undo_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_virtual_supply()
-{
+{ try {
    modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& dgp )
    {
       dgp.virtual_supply = dgp.current_supply
@@ -3456,10 +3456,10 @@ void database::update_virtual_supply()
             dgp.sbd_print_rate = ( ( STEEMIT_SBD_STOP_PERCENT - percent_sbd ) * STEEMIT_100_PERCENT ) / ( STEEMIT_SBD_STOP_PERCENT - STEEMIT_SBD_START_PERCENT );
       }
    });
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_signing_witness(const witness_object& signing_witness, const signed_block& new_block)
-{
+{ try {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t new_block_aslot = dpo.current_aslot + get_slot_at_time( new_block.timestamp );
 
@@ -3468,10 +3468,10 @@ void database::update_signing_witness(const witness_object& signing_witness, con
       _wit.last_aslot = new_block_aslot;
       _wit.last_confirmed_block_num = new_block.block_num();
    } );
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 void database::update_last_irreversible_block()
-{
+{ try {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
    /**
@@ -3544,7 +3544,7 @@ void database::update_last_irreversible_block()
          _block_log.flush();
       }
    }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 
 bool database::apply_order( const limit_order_object& new_order_object )
