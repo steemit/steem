@@ -3532,9 +3532,21 @@ void database::update_last_irreversible_block()
       {
          while( log_head_num < dpo.last_irreversible_block_num )
          {
-            auto b = fetch_block_by_number( log_head_num + 1 );
-            FC_ASSERT( b.valid(), "", ("log_head", log_head_num)("last_irreversible_block_num", dpo.last_irreversible_block_num)("head_block",head_block_num())("fork_db_size", _fork_db._max_size) );
-            _block_log.append( *b );
+            signed_block b;
+            auto blocks = _fork_db.fetch_block_by_number( log_head_num + 1 );
+
+            if( blocks.size() == 1 )
+               b = blocks[0]->data;
+            else
+            {
+               auto next = _fork_db.head();
+               while( next->num > log_head_num + 1 )
+                  next = next->prev.lock();
+
+               b = next->data;
+            }
+
+            _block_log.append( b );
             log_head_num++;
          }
 

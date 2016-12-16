@@ -96,8 +96,6 @@ void fork_database::set_max_size( uint32_t s )
    _max_size = s;
    if( !_head ) return;
 
-   ilog( "Deleting blocks with num less than ${n}", ("n", std::max(int64_t(0),int64_t(_head->num) - _max_size)) );
-
    { /// index
       auto& by_num_idx = _index.get<block_num>();
       auto itr = by_num_idx.begin();
