@@ -3048,10 +3048,10 @@ void database::_apply_block( const signed_block& next_block )
       ++_current_trx_in_block;
    }
 
-   update_last_irreversible_block();
-
    update_global_dynamic_data(next_block);
    update_signing_witness(signing_witness, next_block);
+
+   update_last_irreversible_block();
 
    create_block_summary(next_block);
    clear_expired_transactions();
@@ -3429,9 +3429,6 @@ void database::update_global_dynamic_data( const signed_block& b )
                  ("last_irreversible_block_num",_dgp.last_irreversible_block_num)("head", _dgp.head_block_number)
                  ("max_undo",STEEMIT_MAX_UNDO_HISTORY) );
    }
-
-   //_undo_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
-   _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
 } FC_CAPTURE_AND_RETHROW() }
 
 void database::update_virtual_supply()
@@ -3536,7 +3533,7 @@ void database::update_last_irreversible_block()
          while( log_head_num < dpo.last_irreversible_block_num )
          {
             auto b = fetch_block_by_number( log_head_num + 1 );
-            FC_ASSERT( b.valid() );
+            FC_ASSERT( b.valid(), "", ("log_head", log_head_num)("last_irreversible_block_num", dpo.last_irreversible_block_num)("head_block",head_block_num())("fork_db_size", _fork_db._max_size) );
             _block_log.append( *b );
             log_head_num++;
          }
@@ -3544,6 +3541,8 @@ void database::update_last_irreversible_block()
          _block_log.flush();
       }
    }
+
+   _fork_db.set_max_size( dpo.head_block_number - dpo.last_irreversible_block_num + 1 );
 } FC_CAPTURE_AND_RETHROW() }
 
 
