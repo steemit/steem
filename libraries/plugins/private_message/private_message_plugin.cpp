@@ -31,6 +31,7 @@
 #include <steemit/protocol/config.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 
 #include <fc/smart_ref_impl.hpp>
@@ -136,7 +137,8 @@ void private_message_plugin::plugin_set_program_options(
 void private_message_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing private message plugin" );
-   database().add_plugin_index< message_index >();
+   chain::database& db = database();
+   add_plugin_index< message_index >(db);
 
    app().register_api_factory<private_message_api>("private_message_api");
 

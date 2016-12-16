@@ -90,12 +90,6 @@ namespace steemit { namespace chain {
          void wipe(const fc::path& data_dir, const fc::path& shared_mem_dir, bool include_blocks);
          void close(bool rewind = true);
 
-         template< typename T >
-         void add_plugin_index()
-         {
-            _plugin_index_signal.connect( [&](){ add_index< T >(); } );
-         }
-
          //////////////////// db_block.cpp ////////////////////
 
          /**
@@ -460,6 +454,10 @@ namespace steemit { namespace chain {
 
          block_log                     _block_log;
 
+         // this function needs access to _plugin_index_signal
+         template< typename MultiIndexType >
+         friend void add_plugin_index( database& db );
+
          fc::signal< void() >          _plugin_index_signal;
 
          transaction_id_type           _current_trx_id;
@@ -474,6 +472,8 @@ namespace steemit { namespace chain {
 
          uint32_t                      _flush_blocks = 0;
          uint32_t                      _next_flush_block = 0;
+
+         uint32_t                      _last_free_gb_printed = 0;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
