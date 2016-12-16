@@ -21,10 +21,11 @@ RUN \
         pbzip2 \
         python3 \
         python3-dev \
-        lcov \
+        python3-pip \
     && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    pip3 install gcovr
 
 ADD . /usr/local/src/steem
 
@@ -48,6 +49,7 @@ RUN \
 
 RUN \
     cd /usr/local/src/steem && \
+    export LANG=en_US.UTF-8 && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
@@ -59,14 +61,9 @@ RUN \
         -DCLEAR_VOTES=ON \
         .. && \
     make -j$(nproc) chain_test && \
-    cd .. && \
-    lcov --capture --initial --directory . --output-file build/base.info --no-external && \
-    ./build/tests/chain_test && \
-    lcov --capture --directory . --output-file build/test.info --no-external && \
-    lcov --add-tracefile build/base.info --add-tracefile build/test.info --output-file build/total.info && \
-    lcov -o build/interesting.info -r build/total.info tests/\* &&\
-    mkdir -p /var/jenkins_home/lcov && \
-    genhtml build/interesting.info --output-directory /var/jenkins_home/lcov && \
+    ./tests/chain_test && \
+    mkdir -p /var/jenkins_home/cobertura && \    
+    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude="./tests"  --output="/var/jenkins_home/cobertura/coverage.xml" && \
     cd /usr/local/src/steem && \
     rm -rf /usr/local/src/steem/build
 
