@@ -44,7 +44,8 @@ will build out of the box without further effort:
         git \
         libssl-dev \
         libtool \
-        make
+        make \
+        pkg-config
 
     # Boost packages (also required)
     sudo apt-get install -y \
@@ -92,7 +93,8 @@ Here are the required packages:
         git \
         libssl-dev \
         libtool \
-        make
+        make \
+        pkg-config
 
     # Packages required to build Boost
     sudo apt-get install -y \
