@@ -55,13 +55,6 @@ void new_chain_banner( const steemit::chain::database& db )
       "*                              *\n"
       "********************************\n"
       "\n";
-   if( db.get_slot_at_time( graphene::time::now() ) > 200 )
-   {
-      std::cerr << "Your genesis seems to have an old timestamp\n"
-         "Please consider using the --genesis-timestamp option to give your genesis a recent timestamp\n"
-         "\n"
-         ;
-   }
    return;
 }
 
