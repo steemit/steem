@@ -1532,7 +1532,6 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
       FC_ASSERT( my->_follow_api, "Node is not running the follow plugin" );
       auto start_author = query.start_author ? *( query.start_author ) : "";
       auto start_permlink = query.start_permlink ? *( query.start_permlink ) : "";
-      auto hide = query.hide ? *( query.hide ) : "";
 
       const auto& account = my->_db.get_account( query.tag );
 
@@ -1558,14 +1557,14 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
          {
             bool resteemed = blog_itr->reblogged_on > time_point_sec();
 
-            if( hide == "resteemed" )	// only show authored discussions
+            if( query.filter_by.find( discussion_query_filter::blog ) != query.filter_by.end() )	// only show authored discussions
             {
                 if( !resteemed )
                 {
                     result.push_back( get_discussion( blog_itr->comment ) );
                 }
             }
-            else if( hide == "authored" )	// only show resteemed discussions
+            else if( query.filter_by.find( discussion_query_filter::resteemed ) != query.filter_by.end() )	// only show resteemed discussions
             {
                 if( resteemed )
                 {
@@ -1995,7 +1994,7 @@ state database_api::get_state( string path )const
             discussion_query q;
             q.tag = eacnt.name;
             q.limit = 20;
-            q.hide = "resteemed";
+            q.filter_by.insert( discussion_query_filter::blog );
             auto blog = get_discussions_by_blog( q );
             eacnt.blog = vector< string >();
 
@@ -2011,7 +2010,7 @@ state database_api::get_state( string path )const
             discussion_query q;
             q.tag = eacnt.name;
             q.limit = 20;
-            q.hide = "authored";
+            q.filter_by.insert( discussion_query_filter::resteemed );
             auto blog = get_discussions_by_blog( q );
             eacnt.resteemed = vector< string >();
 

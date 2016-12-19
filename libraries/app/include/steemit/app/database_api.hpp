@@ -76,6 +76,13 @@ enum withdraw_route_type
 
 class database_api_impl;
 
+enum discussion_query_filter
+{
+   blog,
+   resteemed,
+   num_filters
+};
+
 /**
  *  Defines the arguments to a query as a struct so it can be easily extended
  */
@@ -83,6 +90,7 @@ struct discussion_query {
    void validate()const{
       FC_ASSERT( filter_tags.find(tag) == filter_tags.end() );
       FC_ASSERT( limit <= 100 );
+      FC_ASSERT( filter_by.size() < discussion_query_filter::num_filters );
    }
 
    string           tag;
@@ -92,7 +100,7 @@ struct discussion_query {
    optional<string> start_permlink;
    optional<string> parent_author;
    optional<string> parent_permlink;
-   optional<string> hide;	// used for get_discussions_by_blog, either "authored" or "resteemed"
+   set<discussion_query_filter> filter_by;	// used for get_discussions_by_blog, either blog or resteemed
 };
 
 /**
@@ -433,9 +441,10 @@ FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
 FC_REFLECT( steemit::app::liquidity_balance, (account)(weight) );
 FC_REFLECT( steemit::app::withdraw_route, (from_account)(to_account)(percent)(auto_vest) );
 
-FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit)(hide) );
+FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit)(filter_by) );
 
 FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
+FC_REFLECT_ENUM( steemit::app::discussion_query_filter, (blog)(resteemed)(num_filters) );
 
 FC_API(steemit::app::database_api,
    // Subscriptions
