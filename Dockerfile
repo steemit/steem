@@ -2,6 +2,8 @@ FROM phusion/baseimage:0.9.19
 
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
+ENV LANG=en_US.UTF-8
+
 RUN \
     apt-get update && \
     apt-get install -y \
@@ -49,7 +51,6 @@ RUN \
 
 RUN \
     cd /usr/local/src/steem && \
-    export LANG=en_US.UTF-8 && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
@@ -62,8 +63,8 @@ RUN \
         .. && \
     make -j$(nproc) chain_test && \
     ./tests/chain_test && \
-    mkdir -p /var/jenkins_home/cobertura && \    
-    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude="./tests"  --output="/var/jenkins_home/cobertura/coverage.xml" && \
+    mkdir -p /var/cobertura && \
+    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude="./tests"  --output="/var/cobertura/coverage.xml" && \
     cd /usr/local/src/steem && \
     rm -rf /usr/local/src/steem/build
 
