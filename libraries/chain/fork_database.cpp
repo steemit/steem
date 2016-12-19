@@ -67,19 +67,7 @@ void  fork_database::_push_block(const item_ptr& item)
    }
 
    _index.insert(item);
-   if( !_head ) _head = item;
-   else if( item->num > _head->num )
-   {
-      _head = item;
-      uint32_t min_num = _head->num - std::min( _max_size, _head->num );
-//      ilog( "min block in fork DB ${n}, max_size: ${m}", ("n",min_num)("m",_max_size) );
-      auto& num_idx = _index.get<block_num>();
-      while( num_idx.size() && (*num_idx.begin())->num < min_num )
-         num_idx.erase( num_idx.begin() );
-
-      _unlinked_index.get<block_num>().erase(_head->num - _max_size);
-   }
-   //_push_next( item );
+   if( !_head || item->num > _head->num ) _head = item;
 }
 
 /**
