@@ -216,6 +216,31 @@ namespace steemit { namespace protocol {
       work.visit( pow2_operation_validate_visitor() );
    }
 
+   struct pow2_operation_get_required_active_visitor
+   {
+      typedef void result_type;
+
+      pow2_operation_get_required_active_visitor( flat_set< account_name_type >& required_active )
+         : _required_active( required_active ) {}
+
+      template< typename PowType >
+      void operator()( const PowType& work )const
+      {
+         _required_active.insert( work.input.worker_account );
+      }
+
+      flat_set<account_name_type>& _required_active;
+   };
+
+   void pow2_operation::get_required_active_authorities( flat_set<account_name_type>& a )const
+   {
+      if( !new_owner_key )
+      {
+         pow2_operation_get_required_active_visitor vtor( a );
+         work.visit( vtor );
+      }
+   }
+
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
    {
       input  = i;

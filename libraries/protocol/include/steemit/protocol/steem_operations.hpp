@@ -614,23 +614,7 @@ namespace steemit { namespace protocol {
 
       void validate()const;
 
-      void get_required_active_authorities( flat_set<account_name_type>& a )const
-      {
-         if( !new_owner_key )
-         {
-            switch( work.which() )
-            {
-               case pow2_work::tag< pow2 >::value:
-                  a.insert( work.get< pow2 >().input.worker_account );
-                  break;
-               case pow2_work::tag< equihash_pow >::value:
-                  a.insert( work.get< equihash_pow >().input.worker_account );
-                  break;
-               default:
-                  break;
-            }
-         }
-      }
+      void get_required_active_authorities( flat_set<account_name_type>& a )const;
 
       void get_required_authorities( vector< authority >& a )const
       {
