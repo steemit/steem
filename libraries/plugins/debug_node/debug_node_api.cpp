@@ -423,4 +423,45 @@ std::string debug_node_api::debug_get_json_schema()
    return result;
 }
 
+#include <fc/crypto/equihash.hpp>
+
+debug_equihash_test_result debug_node_api::equihash_test( fc::equihash::proof p )
+{
+   /*
+   _POW::Proof vp = p.to_vendor();
+   bool result = vp.FullTest();
+   elog( "Result of FullTest() is ${result}", ("result", result) );
+   */
+   debug_equihash_test_result result;
+   ilog( "Testing..." );
+   result.test_ff   = p.is_valid(false, false);
+   ilog( "test_ff=${t}", ("t", result.test_ff) );
+   result.test_can  = p.is_valid( true, false);
+   ilog( "test_can=${t}", ("t", result.test_can) );
+   result.test_full = p.is_valid(false,  true);
+   ilog( "test_full=${t}", ("t", result.test_full) );
+   result.test_can_swap = false;
+
+   if( result.test_ff && result.test_full )
+   {
+      bool ok = true;
+      p.canonize_indexes();
+      for( size_t i=0; i<p.inputs.size(); i++ )
+      {
+         for( size_t j=i+1; j<p.inputs.size(); j++ )
+         {
+            ok &= p.is_valid( true, true );
+            std::swap( p.inputs[i], p.inputs[j] );
+            ok &= !p.is_valid( true, true );
+            std::swap( p.inputs[i], p.inputs[j] );
+         }
+      }
+
+      result.test_can_swap = ok;
+   }
+   ilog( "test_can_swap=${t}", ("t", result.test_can_swap) );
+
+   return result;
+}
+
 } } } // steemit::plugin::debug_node

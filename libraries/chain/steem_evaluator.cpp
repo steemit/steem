@@ -1516,6 +1516,12 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       FC_ASSERT( recent_block_num > dgp.last_irreversible_block_num,
          "Equihash pow done for block older than last irreversible block num" );
       FC_ASSERT( work.pow_summary < target_pow, "Insufficient work difficulty. Work: ${w}, Target: ${t}", ("w",work.pow_summary)("t", target_pow) );
+      // TODO:  Decide whether to make this a softfork
+      // TODO:  After hardfork block number is known, move this check to validator
+      if( db.has_hardfork( STEEMIT_HARDFORK_0_17__698 ) )
+      {
+         FC_ASSERT( work.proof.is_valid( true, true ), "Work does not pass strict validation" );
+      }
       worker_account = work.input.worker_account;
    }
    else
