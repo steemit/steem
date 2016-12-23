@@ -2,26 +2,43 @@
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
+/*
+
+The bounds on asset serialization are as follows:
+
+index : field
+0     : decimals
+1..6  : symbol
+   7  : \0
+*/
+
 namespace steemit { namespace protocol {
       typedef boost::multiprecision::int128_t  int128_t;
 
-      uint8_t asset::decimals()const {
+      uint8_t asset::decimals()const
+      {
          auto a = (const char*)&symbol;
-         return a[0];
+         uint8_t result = uint8_t( a[0] );
+         FC_ASSERT( result < 15 );
+         return result;
       }
-      void asset::set_decimals(uint8_t d){
+
+      void asset::set_decimals(uint8_t d)
+      {
+         FC_ASSERT( d < 15 );
          auto a = (char*)&symbol;
          a[0] = d;
       }
 
-      std::string asset::symbol_name()const {
+      std::string asset::symbol_name()const
+      {
          auto a = (const char*)&symbol;
          FC_ASSERT( a[7] == 0 );
          return &a[1];
       }
 
-       int64_t asset::precision()const
-       {
+      int64_t asset::precision()const
+      {
          static int64_t table[] = {
                            1, 10, 100, 1000, 10000,
                            100000, 1000000, 10000000, 100000000ll,
@@ -30,7 +47,6 @@ namespace steemit { namespace protocol {
                            10000000000000ll, 100000000000000ll
                          };
          uint8_t d = decimals();
-         FC_ASSERT( d < 15 );
          return table[ d ];
       }
 
@@ -41,9 +57,11 @@ namespace steemit { namespace protocol {
          if( decimals() )
          {
             auto fract = amount.value % prec;
+            // prec is a power of ten, so for example when working with
+            // 7.005 we have fract = 5, prec = 1000.  So prec+fract=1005
+            // has the correct number of zeros and we can simply trim the
+            // leading 1.
             result += "." + fc::to_string(prec + fract).erase(0,1);
-            wlog( "prec is ${prec}   fract is ${fract}   p+f is ${pf}   result is ${result}",
-                ("prec", prec)("fract", fract)("result", result)("pf", prec+fract) );
          }
          return result + " " + symbol_name();
       }
