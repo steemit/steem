@@ -68,9 +68,13 @@ namespace steemit { namespace protocol {
                result.amount.value -= result.precision();
             }
             auto symbol = s.substr( space_pos + 1 );
+            size_t symbol_size = symbol.size();
 
-            if( symbol.size() )
-               memcpy( sy+1, symbol.c_str(), std::min(symbol.size(),size_t(6)) );
+            if( symbol_size > 0 )
+            {
+               FC_ASSERT( symbol_size <= 6 );
+               memcpy( sy+1, symbol.c_str(), symbol_size );
+            }
 
             return result;
          }
