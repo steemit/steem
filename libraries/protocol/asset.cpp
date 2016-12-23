@@ -16,12 +16,12 @@ namespace steemit { namespace protocol {
 
       std::string asset::symbol_name()const {
          auto a = (const char*)&symbol;
-         assert( a[7] == 0 );
+         FC_ASSERT( a[7] == 0 );
          return &a[1];
       }
 
-       int64_t asset::precision()const {
-
+       int64_t asset::precision()const
+       {
          static int64_t table[] = {
                            1, 10, 100, 1000, 10000,
                            100000, 1000000, 10000000, 100000000ll,
@@ -29,15 +29,21 @@ namespace steemit { namespace protocol {
                            100000000000ll, 1000000000000ll,
                            10000000000000ll, 100000000000000ll
                          };
-         return table[ decimals() ];
+         uint8_t d = decimals();
+         FC_ASSERT( d < 15 );
+         return table[ d ];
       }
 
-      string asset::to_string()const {
-         string result = fc::to_string(amount.value / precision());
+      string asset::to_string()const
+      {
+         int64_t prec = precision();
+         string result = fc::to_string(amount.value / prec);
          if( decimals() )
          {
-            auto fract = amount.value % precision();
-            result += "." + fc::to_string(precision() + fract).erase(0,1);
+            auto fract = amount.value % prec;
+            result += "." + fc::to_string(prec + fract).erase(0,1);
+            wlog( "prec is ${prec}   fract is ${fract}   p+f is ${pf}   result is ${result}",
+                ("prec", prec)("fract", fract)("result", result)("pf", prec+fract) );
          }
          return result + " " + symbol_name();
       }
@@ -50,22 +56,29 @@ namespace steemit { namespace protocol {
             auto space_pos = s.find( " " );
             auto dot_pos = s.find( "." );
 
+            FC_ASSERT( space_pos != std::string::npos );
+
             asset result;
             result.symbol = uint64_t(0);
             auto sy = (char*)&result.symbol;
-            *sy = (char) dot_pos; // Mask due to undefined architecture behavior
 
             auto intpart = s.substr( 0, dot_pos );
             result.amount = fc::to_int64(intpart);
             std::string fractpart;
             if( dot_pos != std::string::npos )
             {
+               FC_ASSERT( space_pos > dot_pos );
+
                auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
                result.set_decimals( fractpart.size() - 1 );
 
                result.amount.value *= result.precision();
                result.amount.value += fc::to_int64(fractpart);
                result.amount.value -= result.precision();
+            }
+            else
+            {
+               result.set_decimals( 0 );
             }
             auto symbol = s.substr( space_pos + 1 );
             size_t symbol_size = symbol.size();
