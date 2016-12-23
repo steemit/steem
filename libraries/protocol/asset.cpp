@@ -54,7 +54,7 @@ namespace steemit { namespace protocol {
       {
          int64_t prec = precision();
          string result = fc::to_string(amount.value / prec);
-         if( decimals() )
+         if( prec > 1 )
          {
             auto fract = amount.value % prec;
             // prec is a power of ten, so for example when working with
