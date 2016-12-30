@@ -7,3 +7,6 @@
 [submodule "libraries/protocol"]
 	path = libraries/protocol
 	url = git@github.com:steemit/steem_protocol.git
+[submodule "libraries/chain"]
+	path = libraries/chain
+	url = git@github.com:steemit/steem_chain.git
