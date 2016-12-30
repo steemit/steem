@@ -26,8 +26,10 @@ namespace steemit { namespace chain {
    using steemit::protocol::asset_symbol_type;
    using steemit::protocol::price;
 
-   class database_impl;
    class custom_operation_interpreter;
+   class database_impl;
+   class enode_tree;
+   class enode;
    struct operation_notification;
 
    /**
@@ -223,6 +225,27 @@ namespace steemit { namespace chain {
          fc::signal<void(const signed_transaction&)>     on_applied_transaction;
 
          /**
+          * This signal is emitted when an enode is pushed.  The new node's type, ID and parent
+          * have been assigned when this method is called.
+          *
+          * Other fields may or may not have been filled out.  Consult the code which is
+          * pushing the enode to determine what the state of other fields is.
+          *
+          * Enodes are designed to be stack allocated, so handlers cannot rely on the enode
+          * argument to continue to exist after the handler returns.
+          */
+         fc::signal<void( const enode& )>                on_push_enode;
+
+         /**
+          * This signal is emitted when an enode is finished processing and is about to be
+          * popped.
+          *
+          * Enodes are designed to be stack allocated, so handlers cannot rely on the enode
+          * argument to continue to exist after the handler returns.
+          */
+         fc::signal<void( const enode& )>                on_pop_enode;
+
+         /**
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
@@ -398,6 +421,9 @@ namespace steemit { namespace chain {
          const std::string& get_json_schema() const;
 
          void set_flush_interval( uint32_t flush_blocks );
+
+         //////////////////// enode functions ////////////////////
+         enode_tree& get_enode_tree();
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;

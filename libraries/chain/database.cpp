@@ -6,6 +6,8 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/database_exceptions.hpp>
 #include <steemit/chain/db_with.hpp>
+#include <steemit/chain/enode.hpp>
+#include <steemit/chain/chain_enodes.hpp>
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/history_object.hpp>
@@ -79,10 +81,15 @@ class database_impl
 
       database&                              _self;
       evaluator_registry< operation >        _evaluator_registry;
+      enode_tree                             _enode_tree;
 };
 
 database_impl::database_impl( database& self )
-   : _self(self), _evaluator_registry(self) {}
+   : _self(self), _evaluator_registry(self), _enode_tree()
+{
+   _enode_tree.on_push_enode = &self.on_push_enode;
+   _enode_tree.on_pop_enode = &self.on_pop_enode;
+}
 
 database::database()
    : _my( new database_impl(*this) ) {}
@@ -90,6 +97,11 @@ database::database()
 database::~database()
 {
    clear_pending();
+}
+
+enode_tree& database::get_enode_tree()
+{
+   return _my->_enode_tree;
 }
 
 void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags )
@@ -1061,6 +1073,10 @@ asset database::create_vesting( const account_object& to_account, asset steem )
 {
    try
    {
+      CREATE_ENODE( _my->_enode_tree, create_vesting_enode, cv_enode );
+
+      cv_enode.to_account = to_account.name;
+      cv_enode.steem = steem;
       const auto& cprops = get_dynamic_global_properties();
 
       /**
@@ -1076,22 +1092,22 @@ asset database::create_vesting( const account_object& to_account, asset steem )
        *
        *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
        */
-      asset new_vesting = steem * cprops.get_vesting_share_price();
+      cv_enode.new_vesting = steem * cprops.get_vesting_share_price();
 
       modify( to_account, [&]( account_object& to )
       {
-         to.vesting_shares += new_vesting;
+         to.vesting_shares += cv_enode.new_vesting;
       } );
 
       modify( cprops, [&]( dynamic_global_property_object& props )
       {
          props.total_vesting_fund_steem += steem;
-         props.total_vesting_shares += new_vesting;
+         props.total_vesting_shares += cv_enode.new_vesting;
       } );
 
-      adjust_proxied_witness_votes( to_account, new_vesting.amount );
+      adjust_proxied_witness_votes( to_account, cv_enode.new_vesting.amount );
 
-      return new_vesting;
+      return cv_enode.new_vesting;
    }
    FC_CAPTURE_AND_RETHROW( (to_account.name)(steem) )
 }
@@ -2982,8 +2998,12 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::_apply_block( const signed_block& next_block )
 { try {
+   _my->_enode_tree.clear();
+
+   {
+   CREATE_ANON_ENODE( _my->_enode_tree, block_enode );
+
    uint32_t next_block_num = next_block.block_num();
-   //block_id_type next_block_id = next_block.id();
 
    uint32_t skip = get_node_properties().skip_flags;
 
@@ -3075,6 +3095,7 @@ void database::_apply_block( const signed_block& next_block )
    process_decline_voting_rights();
 
    process_hardforks();
+   }  // The block enode is popped here, so we get a pop notification of the block enode before the applied_block signal
 
    // notify observers that the block has been applied
    notify_applied_block( next_block );
@@ -3198,12 +3219,14 @@ try {
 void database::apply_transaction(const signed_transaction& trx, uint32_t skip)
 {
    detail::with_skip_flags( *this, skip, [&]() { _apply_transaction(trx); });
-   notify_on_applied_transaction( trx );
 }
 
 void database::_apply_transaction(const signed_transaction& trx)
 { try {
+   CREATE_ENODE( _my->_enode_tree, transaction_enode, tx_enode );
+
    _current_trx_id = trx.id();
+   tx_enode.txid = _current_trx_id;
    uint32_t skip = get_node_properties().skip_flags;
 
    if( !(skip&skip_validate) )   /* issue #505 explains why this skip_flag is disabled */
@@ -3295,6 +3318,7 @@ void database::_apply_transaction(const signed_transaction& trx)
    }
    _current_trx_id = transaction_id_type();
 
+   notify_on_applied_transaction( trx );
 } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
 void database::apply_operation(const operation& op)
@@ -3385,6 +3409,8 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.time = b.timestamp;
       dgp.current_aslot += missed_blocks+1;
       dgp.average_block_size = (99 * dgp.average_block_size + block_size)/100;
+
+      _my->_enode_tree.get_enode_as< block_enode >().block_id = dgp.head_block_id;
 
       /**
        *  About once per minute the average network use is consulted and used to
