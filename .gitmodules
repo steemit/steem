@@ -4,3 +4,6 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
 	url = https://github.com/steemit/chainbase.git
+[submodule "libraries/protocol"]
+	path = libraries/protocol
+	url = git@github.com:steemit/steem_protocol.git
