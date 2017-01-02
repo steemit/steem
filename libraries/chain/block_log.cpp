@@ -172,16 +172,23 @@ namespace steemit { namespace chain {
 
    uint64_t block_log::append( const signed_block& b )
    {
-      my->check_block_write();
-      my->check_index_write();
+      try
+      {
+         my->check_block_write();
+         my->check_index_write();
 
-      uint64_t pos = my->block_stream.tellp();
-      fc::raw::pack( my->block_stream, b );
-      my->block_stream.write( (char*)&pos, sizeof( pos ) );
-      my->index_stream.write( (char*)&pos, sizeof( pos ) );
-      my->head = b;
-      my->head_id = b.id();
-      return pos;
+         uint64_t pos = my->block_stream.tellp();
+         FC_ASSERT( my->index_stream.tellp() == sizeof( uint64_t ) * ( b.block_num() - 1 ), "Append to index file occuring at wrong position.", ( "position", (uint64_t) my->index_stream.tellp() )( "expected",( b.block_num() - 1 ) * sizeof( uint64_t ) ) );
+         auto data = fc::raw::pack( b );
+         my->block_stream.write( data.data(), data.size() );
+         my->block_stream.write( (char*)&pos, sizeof( pos ) );
+         my->index_stream.write( (char*)&pos, sizeof( pos ) );
+         my->head = b;
+         my->head_id = b.id();
+
+         return pos;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    void block_log::flush()
@@ -208,7 +215,10 @@ namespace steemit { namespace chain {
       optional< signed_block > b;
       uint64_t pos = get_block_pos( block_num );
       if( pos != npos )
+      {
          b = read_block( pos ).first;
+         FC_ASSERT( b->block_num() == block_num , "Wrong block was read from block log.", ( "returned", b->block_num() )( "expected", block_num ));
+      }
       return b;
       }
       FC_LOG_AND_RETHROW()
