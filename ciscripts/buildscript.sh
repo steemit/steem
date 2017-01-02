@@ -6,3 +6,4 @@ fi
 sudo docker build -t=$IMAGE_NAME .
 sudo docker login --username=$DOCKER_USER --password=$DOCKER_PASS
 sudo docker push $IMAGE_NAME
+sudo docker run -it --rm -v /var/jenkins_home:/var/jenkins $IMAGE_NAME cp -r /var/cobertura /var/jenkins

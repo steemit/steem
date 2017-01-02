@@ -137,7 +137,6 @@ RUN \
         python-dev \
         python2.7-dev \
         python3-dev \
-        lcov \
     && \
     apt-get autoremove -y && \
     rm -rf \
