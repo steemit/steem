@@ -161,9 +161,9 @@ BOOST_AUTO_TEST_CASE( asset_test )
       BOOST_CHECK_THROW( check_sym(steem), fc::exception );
       BOOST_CHECK_THROW( asset::from_string( "1.00000000000000000000 TESTS" ), fc::exception );
       BOOST_CHECK_THROW( asset::from_string( "1.000TESTS" ), fc::exception );
-      BOOST_CHECK_THROW( asset::from_string( "1. 333 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1. 333 TESTS" ), fc::exception ); // Fails because symbol is '333 TESTS', which is too long
       BOOST_CHECK_THROW( asset::from_string( "1 .333 TESTS" ), fc::exception );
-      asset unusual = asset::from_string( "1. 333 X" );
+      asset unusual = asset::from_string( "1. 333 X" ); // Passes because symbol '333 X' is short enough
       FC_ASSERT( unusual.decimals() == 0 );
       FC_ASSERT( unusual.symbol_name() == "333 X" );
       BOOST_CHECK_THROW( asset::from_string( "1 .333 X" ), fc::exception );
