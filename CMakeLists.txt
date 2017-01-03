@@ -175,6 +175,8 @@ else( WIN32 ) # Apple AND Linux
         endif()
     endif()
 
+    set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+
     # based on http://www.delorie.com/gnu/docs/gdb/gdb_70.html
     # uncomment this line to tell GDB about macros (slows compile times)
     # set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-2 -g3" )
