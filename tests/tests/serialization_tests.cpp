@@ -127,6 +127,7 @@ BOOST_AUTO_TEST_CASE( asset_test )
       BOOST_CHECK_EQUAL( tmp.amount.value, 56 );
 
       BOOST_CHECK( std::abs( steem.to_real() - 123.456 ) < 0.0005 );
+      BOOST_CHECK_EQUAL( steem.amount.value, 123456 );
       BOOST_CHECK_EQUAL( steem.decimals(), 3 );
       BOOST_CHECK_EQUAL( steem.symbol_name(), "TESTS" );
       BOOST_CHECK_EQUAL( steem.to_string(), "123.456 TESTS" );
@@ -135,6 +136,7 @@ BOOST_AUTO_TEST_CASE( asset_test )
       BOOST_CHECK_EQUAL( asset(50000, STEEM_SYMBOL).to_string(), "50.000 TESTS" );
 
       BOOST_CHECK( std::abs( sbd.to_real() - 654.321 ) < 0.0005 );
+      BOOST_CHECK_EQUAL( sbd.amount.value, 654321 );
       BOOST_CHECK_EQUAL( sbd.decimals(), 3 );
       BOOST_CHECK_EQUAL( sbd.symbol_name(), "TBD" );
       BOOST_CHECK_EQUAL( sbd.to_string(), "654.321 TBD" );
@@ -170,6 +172,15 @@ BOOST_AUTO_TEST_CASE( asset_test )
       BOOST_CHECK_THROW( asset::from_string( "11111111111111111111111111111111111111111111111 TESTS" ), fc::exception );
       BOOST_CHECK_THROW( asset::from_string( "1.1.1 TESTS" ), fc::exception );
       BOOST_CHECK_THROW( asset::from_string( "1.abc TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( " TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1.333" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1.333 " ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( " " ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "  " ), fc::exception );
+
+      BOOST_CHECK_EQUAL( asset::from_string( "100 TESTS" ).amount.value, 100 );
    }
    FC_LOG_AND_RETHROW()
 }

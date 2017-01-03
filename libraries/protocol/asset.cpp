@@ -80,22 +80,23 @@ namespace steemit { namespace protocol {
             result.symbol = uint64_t(0);
             auto sy = (char*)&result.symbol;
 
-            auto intpart = s.substr( 0, dot_pos );
-            result.amount = fc::to_int64(intpart);
-            std::string fractpart;
             if( dot_pos != std::string::npos )
             {
                FC_ASSERT( space_pos > dot_pos );
 
+               auto intpart = s.substr( 0, dot_pos );
                auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
                result.set_decimals( fractpart.size() - 1 );
 
+               result.amount = fc::to_int64( intpart );
                result.amount.value *= result.precision();
-               result.amount.value += fc::to_int64(fractpart);
+               result.amount.value += fc::to_int64( fractpart );
                result.amount.value -= result.precision();
             }
             else
             {
+               auto intpart = s.substr( 0, space_pos );
+               result.amount = fc::to_int64( intpart );
                result.set_decimals( 0 );
             }
             auto symbol = s.substr( space_pos + 1 );
@@ -109,7 +110,7 @@ namespace steemit { namespace protocol {
 
             return result;
          }
-         FC_CAPTURE_LOG_AND_RETHROW( (from) )
+         FC_CAPTURE_AND_RETHROW( (from) )
       }
 
       bool operator == ( const price& a, const price& b )
