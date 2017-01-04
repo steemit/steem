@@ -141,6 +141,35 @@ BOOST_AUTO_TEST_CASE( asset_test )
       BOOST_CHECK_EQUAL( sbd.symbol, SBD_SYMBOL);
       BOOST_CHECK_EQUAL( asset(50, SBD_SYMBOL).to_string(), "0.050 TBD" );
       BOOST_CHECK_EQUAL( asset(50000, SBD_SYMBOL).to_string(), "50.000 TBD" );
+
+      BOOST_CHECK_THROW( steem.set_decimals(100), fc::exception );
+      char* steem_sy = (char*) &steem.symbol;
+      steem_sy[0] = 100;
+      BOOST_CHECK_THROW( steem.decimals(), fc::exception );
+      steem_sy[6] = 'A';
+      steem_sy[7] = 'A';
+
+      auto check_sym = []( const asset& a ) -> std::string
+      {
+         auto symbol = a.symbol_name();
+         wlog( "symbol_name is ${s}", ("s", symbol) );
+         return symbol;
+      };
+
+      BOOST_CHECK_THROW( check_sym(steem), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1.00000000000000000000 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1.000TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1. 333 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1 .333 TESTS" ), fc::exception );
+      asset unusual = asset::from_string( "1. 333 X" );
+      FC_ASSERT( unusual.decimals() == 0 );
+      FC_ASSERT( unusual.symbol_name() == "333 X" );
+      BOOST_CHECK_THROW( asset::from_string( "1 .333 X" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1 .333" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1 1.1" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "11111111111111111111111111111111111111111111111 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1.1.1 TESTS" ), fc::exception );
+      BOOST_CHECK_THROW( asset::from_string( "1.abc TESTS" ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
