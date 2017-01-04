@@ -989,6 +989,11 @@ optional<signed_block_with_info> wallet_api::get_block(uint32_t num)
    return my->_remote_db->get_block(num);
 }
 
+vector<applied_operation> wallet_api::get_ops_in_block(uint32_t block_num, bool only_virtual)
+{
+   return my->_remote_db->get_ops_in_block(block_num, only_virtual);
+}
+
 vector<account_api_obj> wallet_api::list_my_accounts()
 {
    FC_ASSERT( !is_locked(), "Wallet must be unlocked to list accounts" );

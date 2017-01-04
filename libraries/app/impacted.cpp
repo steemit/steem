@@ -43,6 +43,7 @@ struct get_impacted_account_visitor
    template<typename T>
    void operator()( const T& op )
    {
+      op.get_required_posting_authorities( _impacted );
       op.get_required_active_authorities( _impacted );
       op.get_required_owner_authorities( _impacted );
    }
