@@ -189,31 +189,30 @@ struct operation_visitor {
       }
 
       set< string > lower_tags;
+      if( c.category != "" )
+         meta.tags.insert( fc::to_lower( to_string( c.category ) ) );
+
+      uint8_t tag_limit = 5;
+      uint8_t count = 0;
       for( const auto& tag : meta.tags )
-         lower_tags.insert( fc::to_lower( tag ) );
-
-      lower_tags.insert( fc::to_lower( to_string( c.category ) ) );
-
-
-      bool safe_for_work = false;
-      /// the universal tag applies to everything safe for work or nsfw with a positive payout
-      if( c.net_rshares >= 0 ||
-          (lower_tags.find( "spam" ) == lower_tags.end() &&
-           lower_tags.find( "nsfw" ) == lower_tags.end() &&
-           lower_tags.find( "test" ) == lower_tags.end() )  )
       {
-         safe_for_work = true;
+         ++count;
+         if( count > tag_limit || lower_tags.size() > tag_limit )
+            break;
+         if( tag == "" )
+            continue;
+         lower_tags.insert( fc::to_lower( tag ) );
+      }
+
+      /// the universal tag applies to everything safe for work or nsfw with a non-negative payout
+      if( c.net_rshares >= 0 ||
+         (lower_tags.find( "spam" ) == lower_tags.end() &&
+         lower_tags.find( "test" ) == lower_tags.end() ) )
+      {
          lower_tags.insert( string() ); /// add it to the universal tag
       }
 
       meta.tags = lower_tags; /// TODO: std::move???
-      if( meta.tags.size() > 5 ) {
-         //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
-         if( safe_for_work )
-            meta.tags = set< string >( {"", to_string( c.parent_permlink ) } );
-         else
-            meta.tags.clear();
-      }
 
 
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
