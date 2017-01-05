@@ -63,7 +63,6 @@ struct operation_visitor {
               s.comments--;
            }
            s.net_votes   -= tag.net_votes;
-           s.total_payout += tag.total_payout;
       });
    }
    void add_stats( const tag_object& tag, const tag_stats_object& stats )const {
@@ -93,87 +92,8 @@ struct operation_visitor {
               });
    }
 
-   void update_tag( const tag_object& current, const comment_object& comment, double hot )const
+   comment_metadata filter_tags( const comment_object& c ) const
    {
-       const auto& stats = get_stats( current.tag );
-       remove_stats( current, stats );
-
-       if( comment.mode != archived ) {
-          _db.modify( current, [&]( tag_object& obj ) {
-             obj.active            = comment.active;
-             obj.cashout           = comment.cashout_time;
-             obj.children          = comment.children;
-             obj.net_rshares       = comment.net_rshares.value;
-             obj.net_votes         = comment.net_votes;
-             obj.children_rshares2 = comment.children_rshares2;
-             obj.hot               = hot;
-             obj.total_payout      = comment.total_payout_value;
-             obj.mode              = comment.mode;
-             if( obj.mode != first_payout )
-               obj.promoted_balance = 0;
-         });
-         add_stats( current, stats );
-       } else {
-          _db.remove( current );
-       }
-   }
-
-   void create_tag( const string& tag, const comment_object& comment, double hot )const {
-
-
-      comment_id_type parent;
-      account_id_type author = _db.get_account( comment.author ).id;
-
-      if( comment.parent_author.size() )
-         parent = _db.get_comment( comment.parent_author, comment.parent_permlink ).id;
-
-      const auto& tag_obj = _db.create<tag_object>( [&]( tag_object& obj ) {
-          obj.tag               = tag;
-          obj.comment           = comment.id;
-          obj.parent            = parent;
-          obj.created           = comment.created;
-          obj.active            = comment.active;
-          obj.cashout           = comment.cashout_time;
-          obj.net_votes         = comment.net_votes;
-          obj.children          = comment.children;
-          obj.net_rshares       = comment.net_rshares.value;
-          obj.children_rshares2 = comment.children_rshares2;
-          obj.total_payout      = comment.total_payout_value;
-          obj.author            = author;
-          obj.mode              = comment.mode;
-      });
-      add_stats( tag_obj, get_stats( tag ) );
-   }
-
-   /**
-    * https://medium.com/hacking-and-gonzo/how-reddit-ranking-algorithms-work-ef111e33d0d9#.lcbj6auuw
-    */
-   double calculate_hot( const comment_object& c, const time_point_sec& now )const {
-      /// new algorithm
-      auto s = c.net_rshares.value / 10000000;
-      /*
-      auto delta = std::max<int32_t>( (now - c.created).to_seconds(), 20*60 );
-      return s / delta;
-      */
-
-
-      /// reddit algorithm
-      //s = c.net_votes;
-      double order = log10( std::max<int64_t>( std::abs(s), 1) );
-      int sign = 0;
-      if( s > 0 ) sign = 1;
-      else if( s < 0 ) sign = -1;
-      auto seconds = c.created.sec_since_epoch();
-
-      return sign * order + double(seconds) / 10000.0;
-   }
-
-   /** finds tags that have been added or removed or updated */
-   void update_tags( const comment_object& c )const {
-      try {
-
-      auto hot = calculate_hot(c, _db.head_block_time() );
-
       comment_metadata meta;
 
       if( c.json_metadata.size() )
@@ -214,7 +134,88 @@ struct operation_visitor {
 
       meta.tags = lower_tags; /// TODO: std::move???
 
+      return meta;
+   }
 
+   void update_tag( const tag_object& current, const comment_object& comment, double hot )const
+   {
+       const auto& stats = get_stats( current.tag );
+       remove_stats( current, stats );
+
+       if( comment.mode != archived ) {
+          _db.modify( current, [&]( tag_object& obj ) {
+             obj.active            = comment.active;
+             obj.cashout           = comment.cashout_time;
+             obj.children          = comment.children;
+             obj.net_rshares       = comment.net_rshares.value;
+             obj.net_votes         = comment.net_votes;
+             obj.children_rshares2 = comment.children_rshares2;
+             obj.hot               = hot;
+             obj.mode              = comment.mode;
+             if( obj.mode != first_payout )
+               obj.promoted_balance = 0;
+         });
+         add_stats( current, stats );
+       } else {
+          _db.remove( current );
+       }
+   }
+
+   void create_tag( const string& tag, const comment_object& comment, double hot )const {
+
+
+      comment_id_type parent;
+      account_id_type author = _db.get_account( comment.author ).id;
+
+      if( comment.parent_author.size() )
+         parent = _db.get_comment( comment.parent_author, comment.parent_permlink ).id;
+
+      const auto& tag_obj = _db.create<tag_object>( [&]( tag_object& obj ) {
+          obj.tag               = tag;
+          obj.comment           = comment.id;
+          obj.parent            = parent;
+          obj.created           = comment.created;
+          obj.active            = comment.active;
+          obj.cashout           = comment.cashout_time;
+          obj.net_votes         = comment.net_votes;
+          obj.children          = comment.children;
+          obj.net_rshares       = comment.net_rshares.value;
+          obj.children_rshares2 = comment.children_rshares2;
+          obj.author            = author;
+          obj.mode              = comment.mode;
+      });
+      add_stats( tag_obj, get_stats( tag ) );
+   }
+
+   /**
+    * https://medium.com/hacking-and-gonzo/how-reddit-ranking-algorithms-work-ef111e33d0d9#.lcbj6auuw
+    */
+   double calculate_hot( const comment_object& c, const time_point_sec& now )const {
+      /// new algorithm
+      auto s = c.net_rshares.value / 10000000;
+      /*
+      auto delta = std::max<int32_t>( (now - c.created).to_seconds(), 20*60 );
+      return s / delta;
+      */
+
+
+      /// reddit algorithm
+      //s = c.net_votes;
+      double order = log10( std::max<int64_t>( std::abs(s), 1) );
+      int sign = 0;
+      if( s > 0 ) sign = 1;
+      else if( s < 0 ) sign = -1;
+      auto seconds = c.created.sec_since_epoch();
+
+      return sign * order + double(seconds) / 10000.0;
+   }
+
+   /** finds tags that have been added or removed or updated */
+   void update_tags( const comment_object& c )const {
+      try {
+
+      auto hot = calculate_hot(c, _db.head_block_time() );
+      auto meta = filter_tags( c );
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
       auto citr = comment_idx.lower_bound( c.id );
 
@@ -352,13 +353,23 @@ struct operation_visitor {
    }
 
    void operator()( const comment_reward_operation& op )const {
-       const auto& c = _db.get_comment( op.author, op.permlink );
-       update_tags( c );
+      const auto& c = _db.get_comment( op.author, op.permlink );
+      update_tags( c );
+
+      auto meta = filter_tags( c );
+
+      for( auto tag : meta.tags )
+      {
+         _db.modify( get_stats( tag ), [&]( tag_stats_object& ts )
+         {
+            ts.total_payout += op.payout;
+         });
+      }
    }
 
    void operator()( const comment_payout_update_operation& op )const {
-       const auto& c = _db.get_comment( op.author, op.permlink );
-       update_tags( c );
+      const auto& c = _db.get_comment( op.author, op.permlink );
+      update_tags( c );
    }
 
    template<typename Op>
