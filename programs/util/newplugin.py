@@ -10,7 +10,7 @@ add_library( {plugin_provider}_{plugin_name}
              {plugin_name}_api.cpp
            )
 
-target_link_libraries( {plugin_provider}_{plugin_name} steemit_app steemit_chain fc graphene_db )
+target_link_libraries( {plugin_provider}_{plugin_name} steemit_app steemit_chain steemit_protocol )
 target_include_directories( {plugin_provider}_{plugin_name}
                             PUBLIC "${{CMAKE_CURRENT_SOURCE_DIR}}/include" )
 """,
