@@ -5904,7 +5904,6 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       generate_block();
       db.skip_transaction_delta_check = false;
-      BOOST_REQUIRE( db.get_account( "alice" ).last_bandwidth_update != db.head_block_time() );
 
       signed_transaction tx;
       transfer_operation op;
@@ -5919,7 +5918,11 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).last_market_bandwidth_update == db.head_block_time() );
+      auto last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).last_bandwidth_update;
+      auto average_bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).average_bandwidth;
+      BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
+      BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
+      auto total_bandwidth = average_bandwidth;
 
       op.amount = ASSET( "0.100 TESTS" );
       tx.clear();
@@ -5927,7 +5930,12 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      db.push_transaction( tx, 0 );
+
+      last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).last_bandwidth_update;
+      average_bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).average_bandwidth;
+      BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
+      BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
    }
    FC_LOG_AND_RETHROW()
 }

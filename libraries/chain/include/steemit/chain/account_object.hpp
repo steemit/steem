@@ -97,26 +97,7 @@ namespace steemit { namespace chain {
 
          uint16_t          witnesses_voted_for = 0;
 
-         /**
-          *  This field tracks the average bandwidth consumed by this account and gets updated every time a transaction
-          *  is produced by this account using the following equation. It has units of micro-bytes-per-second.
-          *
-          *  W = STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS = 1 week in seconds
-          *  S = now - last_bandwidth_update
-          *  N = fc::raw::packsize( transaction ) * 1,000,000
-          *
-          *  average_bandwidth = MIN(0,average_bandwidth * (W-S) / W) +  N * S / W
-          *  last_bandwidth_update = T + S
-          */
-         uint64_t          average_bandwidth  = 0;
-         uint64_t          lifetime_bandwidth = 0;
-         time_point_sec    last_bandwidth_update;
-
-         uint64_t          average_market_bandwidth  = 0;
-         time_point_sec    last_market_bandwidth_update;
          time_point_sec    last_post;
-         time_point_sec    last_root_post = fc::time_point_sec::min();
-         uint32_t          post_bandwidth = 0;
 
          /// This function should be used only when the account votes for a witness directly
          share_type        witness_vote_weight()const {
@@ -150,6 +131,26 @@ namespace steemit { namespace chain {
          shared_authority  posting; ///< used for voting and posting
 
          time_point_sec    last_owner_update;
+   };
+
+   class account_bandwidth_object : public object< account_bandwidth_object_type, account_bandwidth_object >
+   {
+      public:
+         template< typename Constructor, typename Allocator >
+         account_bandwidth_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
+
+         account_bandwidth_object() {}
+
+         id_type           id;
+
+         account_name_type account;
+         bandwidth_type    type;
+         share_type        average_bandwidth;
+         share_type        lifetime_bandwidth;
+         time_point_sec    last_bandwidth_update;
    };
 
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
@@ -327,6 +328,23 @@ namespace steemit { namespace chain {
    > account_authority_index;
 
 
+   struct by_account_bandwidth_type;
+
+   typedef multi_index_container <
+      account_bandwidth_object,
+      indexed_by <
+         ordered_unique< tag< by_id >,
+            member< account_bandwidth_object, account_bandwidth_id_type, &account_bandwidth_object::id > >,
+         ordered_unique< tag< by_account_bandwidth_type >,
+            composite_key< account_bandwidth_object,
+               member< account_bandwidth_object, account_name_type, &account_bandwidth_object::account >,
+               member< account_bandwidth_object, bandwidth_type, &account_bandwidth_object::type >
+            >
+         >
+      >,
+      allocator< account_bandwidth_object >
+   > account_bandwidth_index;
+
    struct by_expiration;
 
    typedef multi_index_container <
@@ -391,9 +409,7 @@ FC_REFLECT( steemit::chain::account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
-             (average_market_bandwidth)(last_market_bandwidth_update)
-             (last_post)(last_root_post)(post_bandwidth)
+             (last_post)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_object, steemit::chain::account_index )
 
@@ -401,6 +417,10 @@ FC_REFLECT( steemit::chain::account_authority_object,
              (id)(account)(owner)(active)(posting)(last_owner_update)
 )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_authority_object, steemit::chain::account_authority_index )
+
+FC_REFLECT( steemit::chain::account_bandwidth_object,
+            (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update) )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_bandwidth_object, steemit::chain::account_bandwidth_index )
 
 FC_REFLECT( steemit::chain::owner_authority_history_object,
              (id)(account)(previous_owner_authority)(last_valid_time)

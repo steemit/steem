@@ -89,7 +89,7 @@ namespace steemit { namespace app {
    struct extended_account : public account_api_obj
    {
       extended_account(){}
-      extended_account( const account_object& a, const account_authority_object& auth ):account_api_obj( a, auth ){}
+      extended_account( const account_object& a, const database& db ):account_api_obj( a, db ){}
 
       asset                                   vesting_balance; /// convert vesting_shares to vesting steem
       share_type                              reputation = 0;
