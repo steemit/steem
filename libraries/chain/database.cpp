@@ -3963,6 +3963,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_16 == 16, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_16 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_16_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_16 ] = STEEMIT_HARDFORK_0_16_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_17 == 17, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_17 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_17_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_17 ] = STEEMIT_HARDFORK_0_17_VERSION;
 
 
    const auto& hardforks = get_hardfork_property_object();
@@ -4179,6 +4182,8 @@ void database::apply_hardfork( uint32_t hardfork )
             while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
                fho.price_history.pop_front();
          });
+         break;
+      case STEEMIT_HARDFORK_0_17:
          break;
       default:
          break;

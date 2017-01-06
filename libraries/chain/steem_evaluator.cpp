@@ -410,7 +410,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
       {
          auto post_bandwidth = band->average_bandwidth;
 
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && !_db.has_hardfork( STEEMIT_HARDFORK_0_17__733 ) )
          {
             auto post_delta_time = std::min( now.sec_since_epoch() - band->last_bandwidth_update.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
             auto old_weight = ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW;
