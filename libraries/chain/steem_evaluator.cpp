@@ -405,14 +405,18 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       uint16_t reward_weight = STEEMIT_100_PERCENT;
-      auto post_bandwidth = band->average_bandwidth;
 
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && o.parent_author == STEEMIT_ROOT_POST_PARENT )
+      if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
       {
-         auto post_delta_time = std::min( now.sec_since_epoch() - band->last_bandwidth_update.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
-         auto old_weight = ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW;
-         post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
-         reward_weight = uint16_t( std::min( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth.value * post_bandwidth.value ), uint64_t( STEEMIT_100_PERCENT ) ) );
+         auto post_bandwidth = band->average_bandwidth;
+
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
+         {
+            auto post_delta_time = std::min( now.sec_since_epoch() - band->last_bandwidth_update.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
+            auto old_weight = ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW;
+            post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
+            reward_weight = uint16_t( std::min( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth.value * post_bandwidth.value ), uint64_t( STEEMIT_100_PERCENT ) ) );
+         }
 
          _db.modify( *band, [&]( account_bandwidth_object& b )
          {
