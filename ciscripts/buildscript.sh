@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 export IMAGE_NAME="steemit/steem:${GIT_BRANCH#*/}"
 if [[ $IMAGE_NAME == "steemit/steem:stable" ]] ; then
   IMAGE_NAME="steemit/steem:latest"
