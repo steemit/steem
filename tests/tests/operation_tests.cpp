@@ -3598,35 +3598,41 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       generate_block();
 
-      /*do
+      /*
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary < target );
       uint64_t nonce2 = nonce;
-      idump( (nonce2) );*/
-      uint64_t nonce2 = 100;
+      idump( (nonce2) );
+      //*/
+      uint64_t nonce2 = 7;
 
-      /*do
+      /*
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce3 = nonce;
-      idump( (nonce3) );*/
-      uint64_t nonce3 = 132;
+      idump( (nonce3) );
+      //*/
+      uint64_t nonce3 = 257;
 
-      /*do
+      /*
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce4 = nonce;
-      idump( (nonce4) );*/
-      uint64_t nonce4 = 144;
+      idump( (nonce4) );
+      //*/
+      uint64_t nonce4 = 262;
 
       // Test with nonce that doesn't match work, should fail
       BOOST_TEST_MESSAGE( "Testing pow with nonce that doesn't match work" );
@@ -3709,15 +3715,17 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       target = db.get_pow_summary_target();
       nonce = nonce4;
 
-      /*do
+      /*
+      do
       {
          nonce++;
-         work.create( old_block_id, "bob", nonce );
+         work.create( db.head_block_id(), "bob", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce5 = nonce;
-      idump( (nonce5) );*/
-      uint32_t nonce5 = 248;
+      idump( (nonce5) );
+      //*/
+      uint32_t nonce5 = 365;
 
       BOOST_TEST_MESSAGE( "Submit pow from existing account without witness object." );
 
@@ -3750,25 +3758,29 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       target = db.get_pow_summary_target();
 
-      /*do
+      /*
+      do
       {
          nonce++;
          work.create( old_block_id, "sam", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce6 = nonce;
-      idump( (nonce6) );*/
-      uint64_t nonce6 = 336;
+      idump( (nonce6) );
+      //*/
+      uint64_t nonce6 = 373;
 
-      /*do
+      /*
+      do
       {
          nonce++;
          work.create( old_block_id, "dave", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce7 = nonce;
-      idump( (nonce7) );*/
-      uint64_t nonce7 = 344;
+      idump( (nonce7) );
+      //*/
+      uint64_t nonce7 = 406;
 
 
       // Test with wrong previous block id
