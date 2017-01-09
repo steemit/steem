@@ -6,6 +6,7 @@
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/hardfork.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/comment_object.hpp>
@@ -62,7 +63,6 @@ struct operation_visitor {
               s.comments--;
            }
            s.net_votes   -= tag.net_votes;
-           s.total_payout += tag.total_payout;
       });
    }
    void add_stats( const tag_object& tag, const tag_stats_object& stats )const {
@@ -92,6 +92,51 @@ struct operation_visitor {
               });
    }
 
+   comment_metadata filter_tags( const comment_object& c ) const
+   {
+      comment_metadata meta;
+
+      if( c.json_metadata.size() )
+      {
+         try
+         {
+            meta = fc::json::from_string( to_string( c.json_metadata ) ).as< comment_metadata >();
+         }
+         catch( const fc::exception& e )
+         {
+            // Do nothing on malformed json_metadata
+         }
+      }
+
+      set< string > lower_tags;
+      if( c.category != "" )
+         meta.tags.insert( fc::to_lower( to_string( c.category ) ) );
+
+      uint8_t tag_limit = 5;
+      uint8_t count = 0;
+      for( const auto& tag : meta.tags )
+      {
+         ++count;
+         if( count > tag_limit || lower_tags.size() > tag_limit )
+            break;
+         if( tag == "" )
+            continue;
+         lower_tags.insert( fc::to_lower( tag ) );
+      }
+
+      /// the universal tag applies to everything safe for work or nsfw with a non-negative payout
+      if( c.net_rshares >= 0 ||
+         (lower_tags.find( "spam" ) == lower_tags.end() &&
+         lower_tags.find( "test" ) == lower_tags.end() ) )
+      {
+         lower_tags.insert( string() ); /// add it to the universal tag
+      }
+
+      meta.tags = lower_tags; /// TODO: std::move???
+
+      return meta;
+   }
+
    void update_tag( const tag_object& current, const comment_object& comment, double hot )const
    {
        const auto& stats = get_stats( current.tag );
@@ -106,7 +151,6 @@ struct operation_visitor {
              obj.net_votes         = comment.net_votes;
              obj.children_rshares2 = comment.children_rshares2;
              obj.hot               = hot;
-             obj.total_payout      = comment.total_payout_value;
              obj.mode              = comment.mode;
              if( obj.mode != first_payout )
                obj.promoted_balance = 0;
@@ -137,7 +181,6 @@ struct operation_visitor {
           obj.children          = comment.children;
           obj.net_rshares       = comment.net_rshares.value;
           obj.children_rshares2 = comment.children_rshares2;
-          obj.total_payout      = comment.total_payout_value;
           obj.author            = author;
           obj.mode              = comment.mode;
       });
@@ -172,49 +215,7 @@ struct operation_visitor {
       try {
 
       auto hot = calculate_hot(c, _db.head_block_time() );
-
-      comment_metadata meta;
-
-      if( c.json_metadata.size() )
-      {
-         try
-         {
-            meta = fc::json::from_string( to_string( c.json_metadata ) ).as< comment_metadata >();
-         }
-         catch( const fc::exception& e )
-         {
-            // Do nothing on malformed json_metadata
-         }
-      }
-
-      set< string > lower_tags;
-      for( const auto& tag : meta.tags )
-         lower_tags.insert( fc::to_lower( tag ) );
-
-      lower_tags.insert( fc::to_lower( to_string( c.category ) ) );
-
-
-      bool safe_for_work = false;
-      /// the universal tag applies to everything safe for work or nsfw with a positive payout
-      if( c.net_rshares >= 0 ||
-          (lower_tags.find( "spam" ) == lower_tags.end() &&
-           lower_tags.find( "nsfw" ) == lower_tags.end() &&
-           lower_tags.find( "test" ) == lower_tags.end() )  )
-      {
-         safe_for_work = true;
-         lower_tags.insert( string() ); /// add it to the universal tag
-      }
-
-      meta.tags = lower_tags; /// TODO: std::move???
-      if( meta.tags.size() > 5 ) {
-         //wlog( "ignoring post ${a} because it has ${n} tags",("a", c.author + "/"+c.permlink)("n",meta.tags.size()));
-         if( safe_for_work )
-            meta.tags = set< string >( {"", to_string( c.parent_permlink ) } );
-         else
-            meta.tags.clear();
-      }
-
-
+      auto meta = filter_tags( c );
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
       auto citr = comment_idx.lower_bound( c.id );
 
@@ -352,13 +353,23 @@ struct operation_visitor {
    }
 
    void operator()( const comment_reward_operation& op )const {
-       const auto& c = _db.get_comment( op.author, op.permlink );
-       update_tags( c );
+      const auto& c = _db.get_comment( op.author, op.permlink );
+      update_tags( c );
+
+      auto meta = filter_tags( c );
+
+      for( auto tag : meta.tags )
+      {
+         _db.modify( get_stats( tag ), [&]( tag_stats_object& ts )
+         {
+            ts.total_payout += op.payout;
+         });
+      }
    }
 
    void operator()( const comment_payout_update_operation& op )const {
-       const auto& c = _db.get_comment( op.author, op.permlink );
-       update_tags( c );
+      const auto& c = _db.get_comment( op.author, op.permlink );
+      update_tags( c );
    }
 
    template<typename Op>
@@ -388,9 +399,10 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
 tags_plugin::tags_plugin( application* app )
    : plugin( app ), my( new detail::tags_plugin_impl(*this) )
 {
-   database().add_plugin_index< tag_index >();
-   database().add_plugin_index< tag_stats_index >();
-   database().add_plugin_index< peer_stats_index >();
+   chain::database& db = database();
+   add_plugin_index< tag_index        >(db);
+   add_plugin_index< tag_stats_index  >(db);
+   add_plugin_index< peer_stats_index >(db);
 }
 
 tags_plugin::~tags_plugin()

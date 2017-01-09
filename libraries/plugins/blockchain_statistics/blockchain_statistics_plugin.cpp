@@ -6,6 +6,7 @@
 #include <steemit/chain/history_object.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 namespace steemit { namespace blockchain_statistics {
@@ -258,7 +259,7 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    }
    else
    {
-      db.modify( bucket_id_type()( db ), [&]( bucket_object& bo )
+      db.modify( db.get( bucket_id_type() ), [&]( bucket_object& bo )
       {
          bo.blocks++;
       });
@@ -340,7 +341,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
       {
          delete_comment_operation op = o.op.get< delete_comment_operation >();
          auto comment = db.get_comment( op.author, op.permlink );
-         const auto& bucket = bucket_id( db );
+         const auto& bucket = db.get(bucket_id);
 
          db.modify( bucket, [&]( bucket_object& b )
          {
@@ -354,7 +355,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
       {
          withdraw_vesting_operation op = o.op.get< withdraw_vesting_operation >();
          auto& account = db.get_account( op.account );
-         const auto& bucket = bucket_id( db );
+         const auto& bucket = db.get(bucket_id);
 
          auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS;
          if( op.vesting_shares.amount > 0 && new_vesting_withdrawal_rate == 0 )
@@ -385,7 +386,7 @@ void blockchain_statistics_plugin_impl::post_operation( const operation_notifica
 
    for( auto bucket_id : _current_buckets )
    {
-      const auto& bucket = bucket_id( db );
+      const auto& bucket = db.get(bucket_id);
 
       if( !is_virtual_operation( o.op ) )
       {
@@ -425,12 +426,13 @@ void blockchain_statistics_plugin::plugin_initialize( const boost::program_optio
    try
    {
       ilog( "chain_stats_plugin: plugin_initialize() begin" );
+      chain::database& db = database();
 
-      database().applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
+      db.applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
+      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
+      db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
 
-      database().add_plugin_index< bucket_index >();
+      add_plugin_index< bucket_index >(db);
 
       if( options.count( "chain-stats-bucket-size" ) )
       {

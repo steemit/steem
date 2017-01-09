@@ -1157,7 +1157,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
 
          BOOST_TEST_MESSAGE( "Check feed_history" );
 
-         feed_history = feed_history_id_type()( db );
+         feed_history = db.get(feed_history_id_type());
          BOOST_REQUIRE( feed_history.current_median_history == feed_history.price_history[ ( i + 1 ) / 2 ] );
          BOOST_REQUIRE( feed_history.price_history[ i + 1 ] == ops[4].exchange_rate );
          validate_database();
@@ -2203,8 +2203,9 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       db.push_transaction( tx, 0 );
 
       uint64_t alice_post_bandwidth = STEEMIT_100_PERCENT;
+      auto bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::post ) ).average_bandwidth;
 
-      BOOST_REQUIRE( alice.post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( bandwidth == alice_post_bandwidth );
       BOOST_REQUIRE( db.get_comment( "alice", string( "test1" ) ).reward_weight == STEEMIT_100_PERCENT );
 
       tx.operations.clear();
@@ -2219,8 +2220,9 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       db.push_transaction( tx, 0 );
 
       alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+      bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::post ) ).average_bandwidth;
 
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( bandwidth == alice_post_bandwidth );
       BOOST_REQUIRE( db.get_comment( "alice", string( "test2" ) ).reward_weight == STEEMIT_100_PERCENT );
 
       generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
@@ -2235,8 +2237,9 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       db.push_transaction( tx, 0 );
 
       alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+      bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::post ) ).average_bandwidth;
 
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( bandwidth == alice_post_bandwidth );
       BOOST_REQUIRE( db.get_comment( "alice", string( "test3" ) ).reward_weight == STEEMIT_100_PERCENT );
 
       generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
@@ -2251,8 +2254,9 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       db.push_transaction( tx, 0 );
 
       alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
+      bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::post ) ).average_bandwidth;
 
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( bandwidth == alice_post_bandwidth );
       BOOST_REQUIRE( db.get_comment( "alice", string( "test4" ) ).reward_weight == STEEMIT_100_PERCENT );
 
       generate_blocks( db.head_block_time() + STEEMIT_MIN_ROOT_COMMENT_INTERVAL + fc::seconds( STEEMIT_BLOCK_INTERVAL ), true );
@@ -2268,8 +2272,9 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
 
       alice_post_bandwidth = STEEMIT_100_PERCENT + ( alice_post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() - STEEMIT_BLOCK_INTERVAL ) / STEEMIT_POST_AVERAGE_WINDOW );
       auto reward_weight = ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( alice_post_bandwidth * alice_post_bandwidth );
+      bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::post ) ).average_bandwidth;
 
-      BOOST_REQUIRE( db.get_account( "alice" ).post_bandwidth == alice_post_bandwidth );
+      BOOST_REQUIRE( bandwidth == alice_post_bandwidth );
       BOOST_REQUIRE( db.get_comment( "alice", string( "test5" ) ).reward_weight == reward_weight );
    }
    FC_LOG_AND_RETHROW()
@@ -2426,6 +2431,8 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
    FC_LOG_AND_RETHROW()
 }
 
+// This test is too intensive without optimizations. Disable it when we build in debug
+#ifndef DEBUG
 BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
@@ -2558,7 +2565,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
          auto& gpo = db.get_dynamic_global_properties();
          BOOST_REQUIRE( gpo.sbd_print_rate >= last_print_rate );
          last_print_rate = gpo.sbd_print_rate;
-         db_plugin->debug_generate_blocks( debug_key, 1, ~0 );
+         db_plugin->debug_generate_blocks( debug_key, 1, database::skip_witness_signature );
          validate_database();
       }
 
@@ -2568,6 +2575,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
 {

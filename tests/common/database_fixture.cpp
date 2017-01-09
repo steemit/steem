@@ -187,6 +187,7 @@ void database_fixture::open_database()
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
+      db._log_hardforks = false;
       db.open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8, chainbase::database::read_write ); // 8 MB file for testing
    }
 }
@@ -470,7 +471,7 @@ void database_fixture::set_price_feed( const price& new_price )
 #ifdef IS_TEST_NET
       !db.skip_price_feed_limit_check ||
 #endif
-      feed_history_id_type()( db ).current_median_history == new_price
+      db.get(feed_history_id_type()).current_median_history == new_price
    );
 }
 
@@ -493,7 +494,7 @@ vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
    while( itr != acc_hist_idx.begin() && ops.size() < num_ops )
    {
       itr--;
-      ops.push_back( fc::raw::unpack< steemit::chain::operation >( itr->op(db).serialized_op ) );
+      ops.push_back( fc::raw::unpack< steemit::chain::operation >( db.get(itr->op).serialized_op ) );
    }
 
    return ops;

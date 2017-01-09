@@ -2,6 +2,8 @@
 #include <steemit/account_by_key/account_by_key_objects.hpp>
 
 #include <steemit/chain/account_object.hpp>
+#include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
@@ -73,6 +75,17 @@ struct pre_operation_visitor
    }
 };
 
+struct pow2_work_get_account_visitor
+{
+   typedef const account_name_type* result_type;
+
+   template< typename WorkType >
+   result_type operator()( const WorkType& work )const
+   {
+      return &work.input.worker_account;
+   }
+};
+
 struct post_operation_visitor
 {
    account_by_key_plugin& _plugin;
@@ -110,7 +123,10 @@ struct post_operation_visitor
 
    void operator()( const pow2_operation& op )const
    {
-      auto acct_itr = _plugin.database().find< account_authority_object, by_account >( op.work.get< pow2 >().input.worker_account );
+      const account_name_type* worker_account = op.work.visit( pow2_work_get_account_visitor() );
+      if( worker_account == nullptr )
+         return;
+      auto acct_itr = _plugin.database().find< account_authority_object, by_account >( *worker_account );
       if( acct_itr ) _plugin.my->update_key_lookup( *acct_itr );
    }
 
@@ -227,11 +243,12 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "Initializing account_by_key plugin" );
+      chain::database& db = database();
 
-      database().pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
 
-      database().add_plugin_index< key_lookup_index >();
+      add_plugin_index< key_lookup_index >(db);
    }
    FC_CAPTURE_AND_RETHROW()
 }

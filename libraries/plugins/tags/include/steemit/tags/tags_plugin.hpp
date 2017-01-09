@@ -91,7 +91,6 @@ class tag_object : public object< tag_object_type, tag_object >
        *  be reviewed.
        */
       fc::uint128_t     children_rshares2;
-      asset             total_payout = asset( 0, SBD_SYMBOL );
       comment_mode      mode;
 
       account_id_type   author;
@@ -434,7 +433,7 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 FC_API( steemit::tags::tag_api, (get_tags) );
 
 FC_REFLECT( steemit::tags::tag_object,
-   (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(promoted_balance)(children)(children_rshares2)(total_payout)(mode)(author)(parent)(comment) )
+   (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(promoted_balance)(children)(children_rshares2)(mode)(author)(parent)(comment) )
 CHAINBASE_SET_INDEX_TYPE( steemit::tags::tag_object, steemit::tags::tag_index )
 
 FC_REFLECT( steemit::tags::tag_stats_object,

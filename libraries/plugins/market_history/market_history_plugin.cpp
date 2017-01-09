@@ -1,6 +1,7 @@
 #include <steemit/market_history/market_history_api.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
 namespace steemit { namespace market_history {
@@ -174,10 +175,11 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "market_history: plugin_initialize() begin" );
+      chain::database& db = database();
 
-      database().post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
-      database().add_plugin_index< bucket_index >();
-      database().add_plugin_index< order_history_index >();
+      db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
+      add_plugin_index< bucket_index        >(db);
+      add_plugin_index< order_history_index >(db);
 
       if( options.count("bucket-size" ) )
       {

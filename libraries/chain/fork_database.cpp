@@ -67,19 +67,7 @@ void  fork_database::_push_block(const item_ptr& item)
    }
 
    _index.insert(item);
-   if( !_head ) _head = item;
-   else if( item->num > _head->num )
-   {
-      _head = item;
-      uint32_t min_num = _head->num - std::min( _max_size, _head->num );
-//      ilog( "min block in fork DB ${n}, max_size: ${m}", ("n",min_num)("m",_max_size) );
-      auto& num_idx = _index.get<block_num>();
-      while( num_idx.size() && (*num_idx.begin())->num < min_num )
-         num_idx.erase( num_idx.begin() );
-
-      _unlinked_index.get<block_num>().erase(_head->num - _max_size);
-   }
-   //_push_next( item );
+   if( !_head || item->num > _head->num ) _head = item;
 }
 
 /**
@@ -160,6 +148,8 @@ item_ptr fork_database::fetch_block(const block_id_type& id)const
 
 vector<item_ptr> fork_database::fetch_block_by_number(uint32_t num)const
 {
+   try
+   {
    vector<item_ptr> result;
    auto itr = _index.get<block_num>().find(num);
    while( itr != _index.get<block_num>().end() )
@@ -171,6 +161,8 @@ vector<item_ptr> fork_database::fetch_block_by_number(uint32_t num)const
       ++itr;
    }
    return result;
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 pair<fork_database::branch_type,fork_database::branch_type>

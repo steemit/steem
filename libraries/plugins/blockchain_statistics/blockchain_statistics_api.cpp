@@ -60,7 +60,7 @@ namespace detail
    statistics blockchain_statistics_api_impl::get_lifetime_stats()const
    {
       statistics result;
-      result += bucket_id_type()( *( _app.chain_database() ) );
+      result += _app.chain_database()->get( bucket_id_type() );
 
       return result;
    }

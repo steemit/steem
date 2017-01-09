@@ -1057,6 +1057,60 @@ BOOST_AUTO_TEST_CASE( transfer_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( signature_stripping )
+{
+   try
+   {
+      // Alice, Bob and Sam all have 2-of-3 multisig on corp.
+      // Legitimate tx signed by (Alice, Bob) goes through.
+      // Sam shouldn't be able to add or remove signatures to get the transaction to process multiple times.
+
+      ACTORS( (alice)(bob)(sam)(corp) )
+      fund( "corp", 10000 );
+
+      account_update_operation update_op;
+      update_op.account = "corp";
+      update_op.active = authority( 2, "alice", 1, "bob", 1, "sam", 1 );
+
+      signed_transaction tx;
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( update_op );
+
+      tx.sign( corp_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+
+      transfer_operation transfer_op;
+      transfer_op.from = "corp";
+      transfer_op.to = "sam";
+      transfer_op.amount = ASSET( "1.000 TESTS" );
+
+      tx.operations.push_back( transfer_op );
+
+      tx.sign( alice_private_key, db.get_chain_id() );
+      signature_type alice_sig = tx.signatures.back();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      signature_type bob_sig = tx.signatures.back();
+      tx.sign( sam_private_key, db.get_chain_id() );
+      signature_type sam_sig = tx.signatures.back();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
+
+      tx.signatures.clear();
+      tx.signatures.push_back( alice_sig );
+      tx.signatures.push_back( bob_sig );
+      db.push_transaction( tx, 0 );
+
+      tx.signatures.clear();
+      tx.signatures.push_back( alice_sig );
+      tx.signatures.push_back( sam_sig );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( transfer_apply )
 {
    try
@@ -3515,6 +3569,9 @@ BOOST_AUTO_TEST_CASE( change_recovery_account )
    FC_LOG_AND_RETHROW()
 }
 
+
+//#define CALCULATE_NONCES
+
 BOOST_AUTO_TEST_CASE( pow2_op )
 {
    try
@@ -3532,47 +3589,59 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       auto old_block_id = db.head_block_id();
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce1 = nonce;
-      idump( (nonce1) );*/
+      idump( (nonce1) );
+#else
       //uint64_t nonce1 = 98;
+#endif
 
       generate_block();
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary < target );
       uint64_t nonce2 = nonce;
-      idump( (nonce2) );*/
-      uint64_t nonce2 = 100;
+      idump( (nonce2) );
+#else
+      uint64_t nonce2 = 7;
+#endif
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce3 = nonce;
-      idump( (nonce3) );*/
-      uint64_t nonce3 = 132;
+      idump( (nonce3) );
+#else
+      uint64_t nonce3 = 257;
+#endif
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( db.head_block_id(), "alice", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce4 = nonce;
-      idump( (nonce4) );*/
-      uint64_t nonce4 = 144;
+      idump( (nonce4) );
+#else
+      uint64_t nonce4 = 262;
+#endif
 
       // Test with nonce that doesn't match work, should fail
       BOOST_TEST_MESSAGE( "Testing pow with nonce that doesn't match work" );
@@ -3582,7 +3651,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       pow.work = work;
       STEEMIT_REQUIRE_THROW( pow.validate(), fc::exception );
 
-      BOOST_TEST_MESSAGE( "Testing failure on inssuficient work" );
+      BOOST_TEST_MESSAGE( "Testing failure on insufficient work" );
       signed_transaction tx;
       work.create( db.head_block_id(), "alice", nonce2 );
       work.prev_block = db.head_block_id();
@@ -3655,15 +3724,18 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       target = db.get_pow_summary_target();
       nonce = nonce4;
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
-         work.create( old_block_id, "bob", nonce );
+         work.create( db.head_block_id(), "bob", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce5 = nonce;
-      idump( (nonce5) );*/
-      uint32_t nonce5 = 248;
+      idump( (nonce5) );
+#else
+      uint32_t nonce5 = 365;
+#endif
 
       BOOST_TEST_MESSAGE( "Submit pow from existing account without witness object." );
 
@@ -3696,26 +3768,31 @@ BOOST_AUTO_TEST_CASE( pow2_op )
 
       target = db.get_pow_summary_target();
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( old_block_id, "sam", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce6 = nonce;
-      idump( (nonce6) );*/
-      uint64_t nonce6 = 336;
+      idump( (nonce6) );
+#else
+      uint64_t nonce6 = 373;
+#endif
 
-      /*do
+#ifdef CALCULATE_NONCES
+      do
       {
          nonce++;
          work.create( old_block_id, "dave", nonce );
          idump( (work.proof.is_valid())(work.pow_summary)(target) );
       } while( !work.proof.is_valid() || work.pow_summary >= target );
       uint64_t nonce7 = nonce;
-      idump( (nonce7) );*/
-      uint64_t nonce7 = 344;
-
+      idump( (nonce7) );
+#else
+      uint64_t nonce7 = 406;
+#endif
 
       // Test with wrong previous block id
       BOOST_TEST_MESSAGE( "Submit pow with an old block id" );
@@ -5850,7 +5927,6 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       generate_block();
       db.skip_transaction_delta_check = false;
-      BOOST_REQUIRE( db.get_account( "alice" ).last_bandwidth_update != db.head_block_time() );
 
       signed_transaction tx;
       transfer_operation op;
@@ -5865,7 +5941,11 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db.get_account( "alice" ).last_market_bandwidth_update == db.head_block_time() );
+      auto last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).last_bandwidth_update;
+      auto average_bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).average_bandwidth;
+      BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
+      BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
+      auto total_bandwidth = average_bandwidth;
 
       op.amount = ASSET( "0.100 TESTS" );
       tx.clear();
@@ -5873,7 +5953,12 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
       tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db.get_chain_id() );
 
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      db.push_transaction( tx, 0 );
+
+      last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).last_bandwidth_update;
+      average_bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).average_bandwidth;
+      BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
+      BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
    }
    FC_LOG_AND_RETHROW()
 }

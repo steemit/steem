@@ -39,6 +39,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // Blocks and transactions
       optional<block_header> get_block_header(uint32_t block_num)const;
       optional<signed_block> get_block(uint32_t block_num)const;
+      vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual)const;
 
       // Globals
       fc::variant_object get_config()const;
@@ -249,6 +250,31 @@ optional<signed_block> database_api_impl::get_block(uint32_t block_num)const
    return _db.fetch_block_by_number(block_num);
 }
 
+vector<applied_operation> database_api::get_ops_in_block(uint32_t block_num, bool only_virtual)const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->get_ops_in_block( block_num, only_virtual );
+   });
+}
+
+vector<applied_operation> database_api_impl::get_ops_in_block(uint32_t block_num, bool only_virtual)const
+{
+   const auto& idx = _db.get_index< operation_index >().indices().get< by_location >();
+   auto itr = idx.lower_bound( block_num );
+   vector<applied_operation> result;
+   applied_operation temp;
+   while( itr != idx.end() && itr->block == block_num )
+   {
+      temp = *itr;
+      if( !only_virtual || is_virtual_operation(temp.op) )
+         result.push_back(temp);
+      ++itr;
+   }
+   return result;
+}
+
+
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
 // Globals                                                          //
@@ -309,7 +335,7 @@ witness_schedule_api_obj database_api::get_witness_schedule()const
 {
    return my->_db.with_read_lock( [&]()
    {
-      return witness_schedule_id_type()( my->_db );
+      return my->_db.get(witness_schedule_id_type());
    });
 }
 
@@ -317,7 +343,7 @@ hardfork_version database_api::get_hardfork_version()const
 {
    return my->_db.with_read_lock( [&]()
    {
-      return hardfork_property_id_type()( my->_db ).current_hardfork_version;
+      return my->_db.get(hardfork_property_id_type()).current_hardfork_version;
    });
 }
 
@@ -326,7 +352,7 @@ scheduled_hardfork database_api::get_next_scheduled_hardfork() const
    return my->_db.with_read_lock( [&]()
    {
       scheduled_hardfork shf;
-      const auto& hpo = hardfork_property_id_type()( my->_db );
+      const auto& hpo = my->_db.get(hardfork_property_id_type());
       shf.hf_version = hpo.next_hardfork;
       shf.live_time = hpo.next_hardfork_time;
       return shf;
@@ -382,7 +408,7 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
       auto itr = idx.find( name );
       if ( itr != idx.end() )
       {
-         results.push_back( extended_account( *itr, _db.get< account_authority_object, by_account >( itr->name ) ) );
+         results.push_back( extended_account( *itr, _db ) );
 
          if( _follow_api )
          {
@@ -391,7 +417,7 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
 
          auto vitr = vidx.lower_bound( boost::make_tuple( itr->id, witness_id_type() ) );
          while( vitr != vidx.end() && vitr->account == itr->id ) {
-            results.back().witness_votes.insert(vitr->witness(_db).owner);
+            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
             ++vitr;
          }
       }
@@ -444,7 +470,7 @@ vector<optional<account_api_obj>> database_api_impl::lookup_account_names(const 
 
       if( itr )
       {
-         result.push_back( account_api_obj( *itr, _db.get< account_authority_object, by_account >( name ) ) );
+         result.push_back( account_api_obj( *itr, _db ) );
       }
       else
       {
@@ -465,7 +491,7 @@ set<string> database_api::lookup_accounts(const string& lower_bound_name, uint32
 
 set<string> database_api_impl::lookup_accounts(const string& lower_bound_name, uint32_t limit)const
 {
-   //FC_ASSERT( limit <= 1000 );
+   FC_ASSERT( limit <= 1000 );
    const auto& accounts_by_name = _db.get_index<account_index>().indices().get<by_name>();
    set<string> result;
 
@@ -560,7 +586,7 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
          {
             withdraw_route r;
             r.from_account = account;
-            r.to_account = route->to_account( my->_db ).name;
+            r.to_account = my->_db.get( route->to_account ).name;
             r.percent = route->percent;
             r.auto_vest = route->auto_vest;
 
@@ -578,7 +604,7 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
          while( route != by_dest.end() && route->to_account == acc.id )
          {
             withdraw_route r;
-            r.from_account = route->from_account( my->_db ).name;
+            r.from_account = my->_db.get( route->from_account ).name;
             r.to_account = account;
             r.percent = route->percent;
             r.auto_vest = route->auto_vest;
@@ -591,6 +617,16 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
 
       return result;
    });
+}
+
+optional< account_bandwidth_api_obj > database_api::get_account_bandwidth( string account, bandwidth_type type )const
+{
+   optional< account_bandwidth_api_obj > result;
+   auto band = my->_db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( account, type ) );
+   if( band != nullptr )
+      result = *band;
+
+   return result;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -823,7 +859,7 @@ vector< liquidity_balance > database_api_impl::get_liquidity_queue( string start
    while( itr != liq_idx.end() && result.size() < limit )
    {
       liquidity_balance bal;
-      bal.account = itr->owner( _db ).name;
+      bal.account = _db.get(itr->owner).name;
       bal.weight = itr->weight;
       result.push_back( bal );
 
@@ -1000,7 +1036,7 @@ vector<vote_state> database_api::get_active_votes( string author, string permlin
       auto itr = idx.lower_bound( cid );
       while( itr != idx.end() && itr->comment == cid )
       {
-         const auto& vo = itr->voter(my->_db);
+         const auto& vo = my->_db.get(itr->voter);
          vote_state vstate;
          vstate.voter = vo.name;
          vstate.weight = itr->weight;
@@ -1036,7 +1072,7 @@ vector<account_vote> database_api::get_account_votes( string voter )const
       auto end = idx.upper_bound( aid );
       while( itr != end )
       {
-         const auto& vo = itr->comment(my->_db);
+         const auto& vo = my->_db.get(itr->comment);
          account_vote avote;
          avote.authorperm = vo.author+"/"+to_string( vo.permlink );
          avote.weight = itr->weight;
@@ -1196,7 +1232,7 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
       map<uint32_t, applied_operation> result;
       while( itr != end )
       {
-         result[itr->sequence] = itr->op(my->_db);
+         result[itr->sequence] = my->_db.get(itr->op);
          ++itr;
       }
       return result;
@@ -1235,7 +1271,7 @@ vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limi
 
 discussion database_api::get_discussion( comment_id_type id )const
 {
-   discussion d = id(my->_db);
+   discussion d = my->_db.get(id);
    set_url( d );
    set_pending_payout( d );
    d.active_votes = get_active_votes( d.author, d.permlink );
@@ -1863,7 +1899,7 @@ state database_api::get_state( string path )const
 
       if( part[0].size() && part[0][0] == '@' ) {
          auto acnt = part[0].substr(1);
-         _state.accounts[acnt] = extended_account( my->_db.get_account(acnt), my->_db.get< account_authority_object, by_account >(acnt) );
+         _state.accounts[acnt] = extended_account( my->_db.get_account(acnt), my->_db );
          if( my->_follow_api )
          {
             _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;
@@ -2177,7 +2213,7 @@ state database_api::get_state( string path )const
       for( const auto& a : accounts )
       {
          _state.accounts.erase("");
-         _state.accounts[a] = extended_account( my->_db.get_account( a ), my->_db.get< account_authority_object, by_account >( a ) );
+         _state.accounts[a] = extended_account( my->_db.get_account( a ), my->_db );
          if( my->_follow_api )
          {
             _state.accounts[a].reputation = my->_follow_api->get_account_reputations( a, 1 )[0].reputation;

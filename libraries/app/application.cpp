@@ -333,7 +333,7 @@ namespace detail {
                }
                catch( fc::exception& e )
                {
-                  wlog( "Error conencting to remote RPC, network api forwarding disabled.", ("e", e.to_detail_string()) );
+                  wlog( "Error connecting to remote RPC, network api forwarding disabled.  ${e}", ("e", e.to_detail_string()) );
                }
             }
          }
@@ -523,9 +523,9 @@ namespace detail {
 
       bool is_included_block(const block_id_type& block_id)
       {
-        uint32_t block_num = block_header::num_from_id(block_id);
-        block_id_type block_id_in_preferred_chain = _chain_db->get_block_id_for_num(block_num);
-        return block_id == block_id_in_preferred_chain;
+         uint32_t block_num = block_header::num_from_id(block_id);
+         block_id_type block_id_in_preferred_chain = _chain_db->get_block_id_for_num(block_num);
+         return block_id == block_id_in_preferred_chain;
       }
 
       /**

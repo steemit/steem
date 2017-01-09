@@ -154,6 +154,14 @@ class database_api
        */
       optional<signed_block> get_block(uint32_t block_num)const;
 
+      /**
+       *  @brief Get sequence of operations included/generated within a particular block
+       *  @param block_num Height of the block whose generated virtual operations should be returned
+       *  @param only_virtual Whether to only include virtual operations in returned results (default: true)
+       *  @return sequence of operations included/generated within the block
+       */
+      vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual = true)const;
+
       /////////////
       // Globals //
       /////////////
@@ -225,6 +233,8 @@ class database_api
       optional< escrow_api_obj > get_escrow( string from, uint32_t escrow_id )const;
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
+
+      optional< account_bandwidth_api_obj > get_account_bandwidth( string account, bandwidth_type type )const;
 
       vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
       vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
@@ -462,6 +472,7 @@ FC_API(steemit::app::database_api,
    // Blocks and transactions
    (get_block_header)
    (get_block)
+   (get_ops_in_block)
    (get_state)
    (get_trending_categories)
    (get_best_categories)
@@ -493,6 +504,7 @@ FC_API(steemit::app::database_api,
    (get_recovery_request)
    (get_escrow)
    (get_withdraw_routes)
+   (get_account_bandwidth)
    (get_savings_withdraw_from)
    (get_savings_withdraw_to)
 

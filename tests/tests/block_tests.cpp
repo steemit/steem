@@ -58,6 +58,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
       signed_block cutoff_block;
       {
          database db;
+         db._log_hardforks = false;
          db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
          b = db.generate_block(db.get_slot_time(1), db.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
@@ -74,7 +75,9 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
             uint32_t cutoff_height = db.get_dynamic_global_properties().last_irreversible_block_num;
             if( cutoff_height >= 200 )
             {
-               cutoff_block = *(db.fetch_block_by_number( cutoff_height ));
+               auto block = db.fetch_block_by_number( cutoff_height );
+               BOOST_REQUIRE( block.valid() );
+               cutoff_block = *block;
                break;
             }
          }
@@ -82,6 +85,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
       }
       {
          database db;
+         db._log_hardforks = false;
          db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num() );
          b = cutoff_block;
@@ -107,6 +111,7 @@ BOOST_AUTO_TEST_CASE( undo_block )
       fc::temp_directory data_dir( graphene::utilities::temp_directory_path() );
       {
          database db;
+         db._log_hardforks = false;
          db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
          fc::time_point_sec now( STEEMIT_TESTING_GENESIS_TIMESTAMP );
          std::vector< time_point_sec > time_stack;
@@ -158,8 +163,10 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
       //TODO This test needs 6-7 ish witnesses prior to fork
 
       database db1;
+      db1._log_hardforks = false;
       db1.open( data_dir1.path(), data_dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
       database db2;
+      db2._log_hardforks = false;
       db2.open( data_dir2.path(), data_dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
@@ -221,7 +228,9 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
                          dir2( graphene::utilities::temp_directory_path() );
       database db1,
                db2;
+      db1._log_hardforks = false;
       db1.open( dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db2._log_hardforks = false;
       db2.open( dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
@@ -247,24 +256,24 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
       auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
       auto alice_id = db1.get_account( "alice" ).id;
-      BOOST_CHECK( alice_id(db1).name == "alice" );
+      BOOST_CHECK( db1.get(alice_id).name == "alice" );
 
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
-      STEEMIT_REQUIRE_THROW(alice_id(db2), std::exception);
-      alice_id(db1); /// it should be included in the pending state
+      STEEMIT_REQUIRE_THROW(db2.get(alice_id), std::exception);
+      db1.get(alice_id); /// it should be included in the pending state
       db1.clear_pending(); // clear it so that we can verify it was properly removed from pending state.
-      STEEMIT_REQUIRE_THROW(alice_id(db1), std::exception);
+      STEEMIT_REQUIRE_THROW(db1.get(alice_id), std::exception);
 
       PUSH_TX( db2, trx );
 
       b = db2.generate_block(db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
       db1.push_block(b);
 
-      BOOST_CHECK(alice_id(db1).name == "alice");
-      BOOST_CHECK(alice_id(db2).name == "alice");
+      BOOST_CHECK( db1.get(alice_id).name == "alice");
+      BOOST_CHECK( db2.get(alice_id).name == "alice");
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
       throw;
@@ -278,7 +287,9 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
                          dir2( graphene::utilities::temp_directory_path() );
       database db1,
                db2;
+      db1._log_hardforks = false;
       db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db2._log_hardforks = false;
       db2.open(dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
       BOOST_CHECK( db1.get_chain_id() == db2.get_chain_id() );
 
@@ -328,6 +339,7 @@ BOOST_AUTO_TEST_CASE( tapos )
    try {
       fc::temp_directory dir1( graphene::utilities::temp_directory_path() );
       database db1;
+      db1._log_hardforks = false;
       db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
@@ -756,7 +768,7 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       BOOST_REQUIRE( db.has_hardfork( 0 ) );
       BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
       BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
-      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() );
+      BOOST_REQUIRE( db.get(itr->op).timestamp == db.head_block_time() );
 
       BOOST_TEST_MESSAGE( "Testing hardfork is only applied once" );
       generate_block();
@@ -767,7 +779,7 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       BOOST_REQUIRE( db.has_hardfork( 0 ) );
       BOOST_REQUIRE( db.has_hardfork( STEEMIT_HARDFORK_0_1 ) );
       BOOST_REQUIRE( get_last_operations( 1 )[0].get< custom_operation >().data == vector< char >( op_msg.begin(), op_msg.end() ) );
-      BOOST_REQUIRE( itr->op(db).timestamp == db.head_block_time() - STEEMIT_BLOCK_INTERVAL );
+      BOOST_REQUIRE( db.get(itr->op).timestamp == db.head_block_time() - STEEMIT_BLOCK_INTERVAL );
    }
    FC_LOG_AND_RETHROW()
 }
