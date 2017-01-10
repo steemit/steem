@@ -3249,12 +3249,17 @@ void database::_apply_transaction(const signed_transaction& trx)
    for( const auto& auth : required ) {
       const auto& acnt = get_account(auth);
 
-      old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
+      if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
+         old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
+
       update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
+
       for( const auto& op : trx.operations ) {
          if( is_market_operation( op ) )
          {
-            old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
+            if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
+               old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
+
             update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
             break;
          }
