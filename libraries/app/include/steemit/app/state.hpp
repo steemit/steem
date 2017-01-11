@@ -79,6 +79,7 @@ namespace steemit { namespace app {
       vector<string>              replies; ///< author/slug mapping
       share_type                  author_reputation = 0;
       asset                       promoted = asset(0, SBD_SYMBOL);
+      uint32_t                    body_length = 0;
       optional<string>            first_reblogged_by;
       optional<time_point_sec>    first_reblogged_on;
    };
@@ -196,7 +197,7 @@ FC_REFLECT( steemit::app::account_vote, (authorperm)(weight)(rshares)(percent)(t
 FC_REFLECT( steemit::app::discussion_index, (category)(trending)(trending30)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(promoted)(cashout) )
 FC_REFLECT( steemit::app::category_index, (active)(recent)(best) )
 FC_REFLECT( steemit::app::tag_index, (trending) )
-FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::app::comment_api_obj), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted)(first_reblogged_by)(first_reblogged_on) )
+FC_REFLECT_DERIVED( steemit::app::discussion, (steemit::app::comment_api_obj), (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted)(body_length)(first_reblogged_by)(first_reblogged_on) )
 
 FC_REFLECT( steemit::app::state, (current_route)(props)(category_idx)(tag_idx)(categories)(tags)(content)(accounts)(pow_queue)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error)(market_data) )
 
