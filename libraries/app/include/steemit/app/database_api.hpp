@@ -88,6 +88,9 @@ struct discussion_query {
    string           tag;
    uint32_t         limit = 0;
    set<string>      filter_tags;
+   set<string>      select_authors; ///< list of authors to include, posts not by this author are filtered
+   set<string>      select_tags; ///< list of tags to include, posts without these tags are filtered
+   uint32_t         truncate_body = 0; ///< the number of bytes of the post body to return, 0 for all
    optional<string> start_author;
    optional<string> start_permlink;
    optional<string> parent_author;
@@ -412,7 +415,7 @@ class database_api
    private:
       void set_pending_payout( discussion& d )const;
       void set_url( discussion& d )const;
-      discussion get_discussion( comment_id_type )const;
+      discussion get_discussion( comment_id_type, uint32_t truncate_body = 0 )const;
 
       static bool filter_default( const comment_api_obj& c ) { return false; }
       static bool exit_default( const comment_api_obj& c )   { return false; }
@@ -423,6 +426,7 @@ class database_api
                                           const string& tag,
                                           comment_id_type parent,
                                           const Index& idx, StartItr itr,
+                                          uint32_t truncate_body = 0,
                                           const std::function< bool( const comment_api_obj& ) >& filter = &database_api::filter_default,
                                           const std::function< bool( const comment_api_obj& ) >& exit   = &database_api::exit_default,
                                           const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default
@@ -442,7 +446,7 @@ FC_REFLECT( steemit::app::scheduled_hardfork, (hf_version)(live_time) );
 FC_REFLECT( steemit::app::liquidity_balance, (account)(weight) );
 FC_REFLECT( steemit::app::withdraw_route, (from_account)(to_account)(percent)(auto_vest) );
 
-FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
+FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(select_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
 
 FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
 

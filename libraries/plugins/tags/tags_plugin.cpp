@@ -403,6 +403,7 @@ tags_plugin::tags_plugin( application* app )
    add_plugin_index< tag_index        >(db);
    add_plugin_index< tag_stats_index  >(db);
    add_plugin_index< peer_stats_index >(db);
+   add_plugin_index< author_tag_stats_index >(db);
 }
 
 tags_plugin::~tags_plugin()
