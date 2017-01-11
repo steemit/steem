@@ -40,6 +40,8 @@ namespace steemit { namespace chain {
     */
    class category_object : public object< category_object_type, category_object >
    {
+      category_object() = delete;
+
       public:
          template< typename Constructor, typename Allocator >
          category_object( Constructor&& c, allocator< Allocator > a )
@@ -100,6 +102,8 @@ namespace steemit { namespace chain {
 
    class comment_object : public object < comment_object_type, comment_object >
    {
+      comment_object() = delete;
+
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
