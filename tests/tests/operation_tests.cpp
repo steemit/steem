@@ -3599,7 +3599,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce1 = nonce;
       idump( (nonce1) );
 #else
-      //uint64_t nonce1 = 98;
+      //uint64_t nonce1 = 79;
 #endif
 
       generate_block();
@@ -3614,7 +3614,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce2 = nonce;
       idump( (nonce2) );
 #else
-      uint64_t nonce2 = 7;
+      uint64_t nonce2 = 91;
 #endif
 
 #ifdef CALCULATE_NONCES
@@ -3627,7 +3627,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce3 = nonce;
       idump( (nonce3) );
 #else
-      uint64_t nonce3 = 257;
+      uint64_t nonce3 = 162;
 #endif
 
 #ifdef CALCULATE_NONCES
@@ -3640,7 +3640,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce4 = nonce;
       idump( (nonce4) );
 #else
-      uint64_t nonce4 = 262;
+      uint64_t nonce4 = 184;
 #endif
 
       // Test with nonce that doesn't match work, should fail
@@ -3734,7 +3734,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce5 = nonce;
       idump( (nonce5) );
 #else
-      uint32_t nonce5 = 365;
+      uint32_t nonce5 = 364;
 #endif
 
       BOOST_TEST_MESSAGE( "Submit pow from existing account without witness object." );
@@ -3778,7 +3778,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce6 = nonce;
       idump( (nonce6) );
 #else
-      uint64_t nonce6 = 373;
+      uint64_t nonce6 = 387;
 #endif
 
 #ifdef CALCULATE_NONCES
@@ -3791,7 +3791,7 @@ BOOST_AUTO_TEST_CASE( pow2_op )
       uint64_t nonce7 = nonce;
       idump( (nonce7) );
 #else
-      uint64_t nonce7 = 406;
+      uint64_t nonce7 = 408;
 #endif
 
       // Test with wrong previous block id

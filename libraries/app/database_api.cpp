@@ -314,7 +314,7 @@ feed_history_api_obj database_api::get_feed_history()const
 {
    return my->_db.with_read_lock( [&]()
    {
-      return my->_db.get_feed_history();
+      return feed_history_api_obj( my->_db.get_feed_history() );
    });
 }
 
@@ -529,7 +529,7 @@ vector< owner_authority_history_api_obj > database_api::get_owner_history( strin
 
       while( itr != hist_idx.end() && itr->account == account )
       {
-         results.push_back( *itr );
+         results.push_back( owner_authority_history_api_obj( *itr ) );
          ++itr;
       }
 
@@ -547,7 +547,7 @@ optional< account_recovery_request_api_obj > database_api::get_recovery_request(
       auto req = rec_idx.find( account );
 
       if( req != rec_idx.end() )
-         result = *req;
+         result = account_recovery_request_api_obj( *req );
 
       return result;
    });
@@ -687,7 +687,7 @@ vector< witness_api_obj > database_api::get_witnesses_by_vote( string from, uint
             result.size() < limit &&
             itr->votes > 0 )
       {
-         result.push_back(*itr);
+         result.push_back( witness_api_obj( *itr ) );
          ++itr;
       }
       return result;
@@ -699,7 +699,7 @@ fc::optional<witness_api_obj> database_api_impl::get_witness_by_account( string 
    const auto& idx = _db.get_index< witness_index >().indices().get< by_name >();
    auto itr = idx.find( account_name );
    if( itr != idx.end() )
-      return *itr;
+      return witness_api_obj( *itr );
    return {};
 }
 
@@ -1262,7 +1262,7 @@ vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limi
 
       while( itr != ridx.end() && result.size() < limit )
       {
-         result.push_back( *itr );
+         result.push_back( tag_api_obj( *itr ) );
          ++itr;
       }
       return result;
@@ -1674,7 +1674,7 @@ vector<category_api_obj> database_api::get_trending_categories( string after, ui
       }
 
       while( itr != ridx.end() && result.size() < limit ) {
-         result.push_back( *itr );
+         result.push_back( category_api_obj( *itr ) );
          ++itr;
       }
       return result;
@@ -1833,7 +1833,7 @@ vector< savings_withdraw_api_obj > database_api::get_savings_withdraw_from( stri
       const auto& from_rid_idx = my->_db.get_index< savings_withdraw_index >().indices().get< by_from_rid >();
       auto itr = from_rid_idx.lower_bound( account );
       while( itr != from_rid_idx.end() && itr->from == account ) {
-         result.push_back( *itr );
+         result.push_back( savings_withdraw_api_obj( *itr ) );
          ++itr;
       }
       return result;
@@ -1848,7 +1848,7 @@ vector< savings_withdraw_api_obj > database_api::get_savings_withdraw_to( string
       const auto& to_complete_idx = my->_db.get_index< savings_withdraw_index >().indices().get< by_to_complete >();
       auto itr = to_complete_idx.lower_bound( account );
       while( itr != to_complete_idx.end() && itr->to == account ) {
-         result.push_back( *itr );
+         result.push_back( savings_withdraw_api_obj( *itr ) );
          ++itr;
       }
       return result;
