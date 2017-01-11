@@ -1109,6 +1109,7 @@ namespace steemit {
                 }
 
 #endif
+
                 return result;
             });
         }
@@ -1155,18 +1156,22 @@ namespace steemit {
                 }
 
                 while (itr != ridx.end() && result.size() < limit) {
-                    result.push_back(*itr);
+                    result.push_back(tag_api_obj(*itr));
                     ++itr;
                 }
                 return result;
             });
         }
 
-        discussion database_api::get_discussion(comment_id_type id) const {
+        discussion database_api::get_discussion(comment_id_type id, uint32_t truncate_body) const {
             discussion d = my->_db.get(id);
             set_url(d);
             set_pending_payout(d);
             d.active_votes = get_active_votes(d.author, d.permlink);
+            d.body_length = d.body.size();
+            if (truncate_body) {
+                d.body = d.body.substr(0, truncate_body);
+            }
             return d;
         }
 
@@ -1176,6 +1181,7 @@ namespace steemit {
                 const string &tag,
                 comment_id_type parent,
                 const Index &tidx, StartItr tidx_itr,
+                uint32_t truncate_body,
                 const std::function<bool(const comment_api_obj &)> &filter,
                 const std::function<bool(const comment_api_obj &)> &exit,
                 const std::function<bool(const tags::tag_object &)> &tag_exit
@@ -1215,7 +1221,7 @@ namespace steemit {
                     break;
                 }
                 try {
-                    result.push_back(get_discussion(tidx_itr->comment));
+                    result.push_back(get_discussion(tidx_itr->comment, truncate_body));
                     result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL);
 
                     if (filter(result.back())) {
@@ -1256,7 +1262,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0 || c.mode != first_payout;
                 });
             });
@@ -1271,7 +1277,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0;
                 }, exit_default, [](const tags::tag_object &t) {
                     return t.promoted_balance == 0;
@@ -1288,7 +1294,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0 || c.mode != second_payout;
                 });
             });
@@ -1303,7 +1309,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_created>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1316,7 +1322,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_active>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1332,7 +1338,7 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
                         fc::time_point::now() - fc::minutes(60)));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0;
                 });
             });
@@ -1354,7 +1360,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1367,7 +1373,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_children>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1381,7 +1387,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.net_rshares <= 0;
                 });
             });
@@ -1445,6 +1451,8 @@ namespace steemit {
 
                 const auto &account = my->_db.get_account(query.tag);
 
+                const auto &tag_idx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+
                 const auto &c_idx = my->_db.get_index<follow::blog_index>().indices().get<follow::by_comment>();
                 const auto &b_idx = my->_db.get_index<follow::blog_index>().indices().get<follow::by_blog>();
                 auto blog_itr = b_idx.lower_bound(account.name);
@@ -1456,7 +1464,7 @@ namespace steemit {
                     blog_itr = b_idx.iterator_to(*start_c);
                 }
 
-                vector<discussion> result;
+                vector <discussion> result;
                 result.reserve(query.limit);
 
                 while (result.size() < query.limit && blog_itr != b_idx.end()) {
@@ -1464,118 +1472,387 @@ namespace steemit {
                         break;
                     }
                     try {
-                        result.push_back(get_discussion(blog_itr->comment));
+                        if (query.select_authors.size() &&
+                            query.select_authors.find(blog_itr->account) ==
+                            query.select_authors.end()) {
+                            ++blog_itr;
+                            continue;
+                        }
+
+                        if (query.select_tags.size()) {
+                            auto tag_itr = tag_idx.lower_bound(blog_itr->comment);
+
+                            bool found = false;
+                            while (tag_itr != tag_idx.end() &&
+                                   tag_itr->comment == blog_itr->comment) {
+                                if (query.select_tags.find(tag_itr->tag) !=
+                                    query.select_tags.end()) {
+                                    found = true;
+                                    break;
+                                }
+                                ++tag_itr;
+                            }
+                            if (!found) {
+                                ++blog_itr;
+                                continue;
+                            }
+                        }
+
+                        result.push_back(get_discussion(blog_itr->comment, query.truncate_body));
                         if (blog_itr->reblogged_on > time_point_sec()) {
                             result.back().first_reblogged_on = blog_itr->reblogged_on;
                         }
-                    }
-                    catch (const fc::exception &e) {
-                        edump((e.to_detail_string()));
+                        return result;
                     }
 
-                    ++blog_itr;
-                }
-                return result;
-            });
-        }
+                    comment_id_type database_api::get_parent(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            comment_id_type parent;
+                            if (query.parent_author && query.parent_permlink) {
+                                parent = my->_db.get_comment(*query.parent_author, *query.parent_permlink).id;
+                            }
+                            return parent;
+                        });
+                    }
 
-        vector<discussion> database_api::get_discussions_by_comments(const discussion_query &query) const {
-            return my->_db.with_read_lock([&]() {
-                vector<discussion> result;
+                    vector <discussion> database_api::get_discussions_by_trending(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                                return c.children_rshares2 <= 0 ||
+                                       c.mode != first_payout;
+                            });
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_promoted(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                                return c.children_rshares2 <= 0;
+                            }, exit_default, [](const tags::tag_object &t) {
+                                return t.promoted_balance == 0;
+                            });
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_trending30(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                                return c.children_rshares2 <= 0 ||
+                                       c.mode != second_payout;
+                            });
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_created(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_created>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr);
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_active(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_active>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr);
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_cashout(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            vector <discussion> result;
+
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_cashout>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
+                                    fc::time_point::now() - fc::minutes(60)));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                                return c.children_rshares2 <= 0;
+                            });
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_payout(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            vector <discussion> result;
+                            return result;
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_votes(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr);
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_children(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_children>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr);
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_hot(const discussion_query &query) const {
+
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            auto tag = fc::to_lower(query.tag);
+                            auto parent = get_parent(query);
+
+                            const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
+                            auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
+
+                            return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                                return c.net_rshares <= 0;
+                            });
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_feed(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            FC_ASSERT(my->_follow_api, "Node is not running the follow plugin");
+                            auto start_author = query.start_author
+                                                ? *(query.start_author)
+                                                : "";
+                            auto start_permlink = query.start_permlink
+                                                  ? *(query.start_permlink)
+                                                  : "";
+
+                            const auto &account = my->_db.get_account(query.tag);
+
+                            const auto &c_idx = my->_db.get_index<follow::feed_index>().indices().get<follow::by_comment>();
+                            const auto &f_idx = my->_db.get_index<follow::feed_index>().indices().get<follow::by_feed>();
+                            auto feed_itr = f_idx.lower_bound(account.name);
+
+                            if (start_author.size() || start_permlink.size()) {
+                                auto start_c = c_idx.find(boost::make_tuple(my->_db.get_comment(start_author, start_permlink).id, account.name));
+                                FC_ASSERT(start_c !=
+                                          c_idx.end(), "Comment is not in account's feed");
+                                feed_itr = f_idx.iterator_to(*start_c);
+                            }
+
+                            vector <discussion> result;
+                            result.reserve(query.limit);
+
+                            while (result.size() < query.limit &&
+                                   feed_itr != f_idx.end()) {
+                                if (feed_itr->account != account.name) {
+                                    break;
+                                }
+                                try {
+                                    result.push_back(get_discussion(feed_itr->comment));
+                                    if (feed_itr->first_reblogged_by !=
+                                        account_name_type()) {
+                                        result.back().first_reblogged_by = feed_itr->first_reblogged_by;
+                                        result.back().first_reblogged_on = feed_itr->first_reblogged_on;
+                                    }
+                                }
+                                catch (const fc::exception &e) {
+                                    edump((e.to_detail_string()));
+                                }
+
+                                ++feed_itr;
+                            }
+                            return result;
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_blog(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            query.validate();
+                            FC_ASSERT(my->_follow_api, "Node is not running the follow plugin");
+                            auto start_author = query.start_author
+                                                ? *(query.start_author)
+                                                : "";
+                            auto start_permlink = query.start_permlink
+                                                  ? *(query.start_permlink)
+                                                  : "";
+
+                            const auto &account = my->_db.get_account(query.tag);
+
+                            const auto &c_idx = my->_db.get_index<follow::blog_index>().indices().get<follow::by_comment>();
+                            const auto &b_idx = my->_db.get_index<follow::blog_index>().indices().get<follow::by_blog>();
+                            auto blog_itr = b_idx.lower_bound(account.name);
+
+                            if (start_author.size() || start_permlink.size()) {
+                                auto start_c = c_idx.find(boost::make_tuple(my->_db.get_comment(start_author, start_permlink).id, account.name));
+                                FC_ASSERT(start_c !=
+                                          c_idx.end(), "Comment is not in account's blog");
+                                blog_itr = b_idx.iterator_to(*start_c);
+                            }
+
+                            vector <discussion> result;
+                            result.reserve(query.limit);
+
+                            while (result.size() < query.limit &&
+                                   blog_itr != b_idx.end()) {
+                                if (blog_itr->account != account.name) {
+                                    break;
+                                }
+                                try {
+                                    result.push_back(get_discussion(blog_itr->comment));
+                                    if (blog_itr->reblogged_on >
+                                        time_point_sec()) {
+                                        result.back().first_reblogged_on = blog_itr->reblogged_on;
+                                    }
+                                }
+                                catch (const fc::exception &e) {
+                                    edump((e.to_detail_string()));
+                                }
+
+                                ++blog_itr;
+                            }
+                            return result;
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_comments(const discussion_query &query) const {
+                        return my->_db.with_read_lock([&]() {
+                            vector <discussion> result;
 #ifndef IS_LOW_MEM
-                query.validate();
-                FC_ASSERT(query.start_author, "Must get comments for a specific author");
-                auto start_author = *(query.start_author);
-                auto start_permlink = query.start_permlink
-                                      ? *(query.start_permlink) : "";
+                            query.validate();
+                            FC_ASSERT(query.start_author, "Must get comments for a specific author");
+                            auto start_author = *(query.start_author);
+                            auto start_permlink = query.start_permlink
+                                                  ? *(query.start_permlink) : "";
 
-                const auto &c_idx = my->_db.get_index<comment_index>().indices().get<by_permlink>();
-                const auto &t_idx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
-                auto comment_itr = t_idx.lower_bound(start_author);
+                            const auto &c_idx = my->_db.get_index<comment_index>().indices().get<by_permlink>();
+                            const auto &t_idx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
+                            auto comment_itr = t_idx.lower_bound(start_author);
 
-                if (start_permlink.size()) {
-                    auto start_c = c_idx.find(boost::make_tuple(start_author, start_permlink));
-                    FC_ASSERT(start_c !=
-                              c_idx.end(), "Comment is not in account's comments");
-                    comment_itr = t_idx.iterator_to(*start_c);
-                }
+                            if (start_permlink.size()) {
+                                auto start_c = c_idx.find(boost::make_tuple(start_author, start_permlink));
+                                FC_ASSERT(start_c !=
+                                          c_idx.end(), "Comment is not in account's comments");
+                                comment_itr = t_idx.iterator_to(*start_c);
+                            }
 
-                result.reserve(query.limit);
+                            result.reserve(query.limit);
 
-                while (result.size() < query.limit &&
-                       comment_itr != t_idx.end()) {
-                    if (comment_itr->author != start_author) {
-                        break;
-                    }
-                    if (comment_itr->parent_author.size() > 0) {
-                        try {
-                            result.push_back(get_discussion(comment_itr->id));
-                        }
-                        catch (const fc::exception &e) {
-                            edump((e.to_detail_string()));
-                        }
-                    }
+                            while (result.size() < query.limit &&
+                                   comment_itr != t_idx.end()) {
+                                if (comment_itr->author != start_author) {
+                                    break;
+                                }
+                                if (comment_itr->parent_author.size() > 0) {
+                                    try {
+                                        result.push_back(get_discussion(comment_itr->id));
+                                    }
+                                    catch (const fc::exception &e) {
+                                        edump((e.to_detail_string()));
+                                    }
+                                }
 
-                    ++comment_itr;
-                }
+                                ++comment_itr;
+                            }
 #endif
-                return result;
-            });
-        }
-
-        vector<category_api_obj> database_api::get_trending_categories(string after, uint32_t limit) const {
-            return my->_db.with_read_lock([&]() {
-                limit = std::min(limit, uint32_t(100));
-                vector<category_api_obj> result;
-                result.reserve(limit);
-
-                const auto &nidx = my->_db.get_index<chain::category_index>().indices().get<by_name>();
-
-                const auto &ridx = my->_db.get_index<chain::category_index>().indices().get<by_rshares>();
-                auto itr = ridx.begin();
-                if (after != "" && nidx.size()) {
-                    auto nitr = nidx.lower_bound(after);
-                    if (nitr == nidx.end()) {
-                        itr = ridx.end();
-                    } else {
-                        itr = ridx.iterator_to(*nitr);
+                            return result;
+                        });
                     }
-                }
 
-                while (itr != ridx.end() && result.size() < limit) {
-                    result.push_back(*itr);
-                    ++itr;
-                }
-                return result;
-            });
-        }
+                    vector <category_api_obj> database_api::get_trending_categories(string after, uint32_t limit) const {
+                        return my->_db.with_read_lock([&]() {
+                            limit = std::min(limit, uint32_t(100));
+                            vector <category_api_obj> result;
+                            result.reserve(limit);
 
-        vector<category_api_obj> database_api::get_best_categories(string after, uint32_t limit) const {
-            return my->_db.with_read_lock([&]() {
-                limit = std::min(limit, uint32_t(100));
-                vector<category_api_obj> result;
-                result.reserve(limit);
-                return result;
-            });
-        }
+                            const auto &nidx = my->_db.get_index<chain::category_index>().indices().get<by_name>();
 
-        vector<category_api_obj> database_api::get_active_categories(string after, uint32_t limit) const {
-            return my->_db.with_read_lock([&]() {
-                limit = std::min(limit, uint32_t(100));
-                vector<category_api_obj> result;
-                result.reserve(limit);
-                return result;
-            });
-        }
+                            const auto &ridx = my->_db.get_index<chain::category_index>().indices().get<by_rshares>();
+                            auto itr = ridx.begin();
+                            if (after != "" && nidx.size()) {
+                                auto nitr = nidx.lower_bound(after);
+                                if (nitr == nidx.end()) {
+                                    itr = ridx.end();
+                                } else {
+                                    itr = ridx.iterator_to(*nitr);
+                                }
+                            }
 
-        vector<category_api_obj> database_api::get_recent_categories(string after, uint32_t limit) const {
-            return my->_db.with_read_lock([&]() {
-                limit = std::min(limit, uint32_t(100));
-                vector<category_api_obj> result;
-                result.reserve(limit);
-                return result;
-            });
-        }
+                            while (itr != ridx.end() && result.size() < limit) {
+                                result.push_back(*itr);
+                                ++itr;
+                            }
+                            return result;
+                        });
+                    }
+
+                    vector <category_api_obj> database_api::get_best_categories(string after, uint32_t limit) const {
+                        return my->_db.with_read_lock([&]() {
+                            limit = std::min(limit, uint32_t(100));
+                            vector <category_api_obj> result;
+                            result.reserve(limit);
+                            return result;
+                        });
+                    }
+
+                    vector <category_api_obj> database_api::get_active_categories(string after, uint32_t limit) const {
+                        return my->_db.with_read_lock([&]() {
+                            limit = std::min(limit, uint32_t(100));
+                            vector <category_api_obj> result;
+                            result.reserve(limit);
+                            return result;
+                        });
+                    }
+
+                    vector <category_api_obj> database_api::get_recent_categories(string after, uint32_t limit) const {
+                        return my->_db.with_read_lock([&]() {
+                            limit = std::min(limit, uint32_t(100));
+                            vector <category_api_obj> result;
+                            result.reserve(limit);
+                            return result;
+                        });
+                    }
 
 
 /**
@@ -1585,505 +1862,529 @@ namespace steemit {
  *  any accounts referenced by authors.
  *
  */
-        void database_api::recursively_fetch_content(state &_state, discussion &root, set<string> &referenced_accounts) const {
-            return my->_db.with_read_lock([&]() {
-                try {
-                    if (root.author.size()) {
-                        referenced_accounts.insert(root.author);
-                    }
-
-                    auto replies = get_content_replies(root.author, root.permlink);
-                    for (auto &r : replies) {
-                        try {
-                            recursively_fetch_content(_state, r, referenced_accounts);
-                            root.replies.push_back(r.author + "/" + r.permlink);
-                            _state.content[r.author + "/" +
-                                           r.permlink] = std::move(r);
-                            if (r.author.size()) {
-                                referenced_accounts.insert(r.author);
-                            }
-                        }
-                        catch (const fc::exception &e) {
-                            edump((e.to_detail_string()));
-                        }
-                    }
-                }
-                FC_CAPTURE_AND_RETHROW((root.author)(root.permlink))
-            });
-        }
-
-        vector<account_name_type> database_api::get_miner_queue() const {
-            return my->_db.with_read_lock([&]() {
-                vector<account_name_type> result;
-                const auto &pow_idx = my->_db.get_index<witness_index>().indices().get<by_pow>();
-
-                auto itr = pow_idx.upper_bound(0);
-                while (itr != pow_idx.end()) {
-                    if (itr->pow_worker) {
-                        result.push_back(itr->owner);
-                    }
-                    ++itr;
-                }
-                return result;
-            });
-        }
-
-        vector<account_name_type> database_api::get_active_witnesses() const {
-            return my->_db.with_read_lock([&]() {
-                const auto &wso = my->_db.get_witness_schedule_object();
-                size_t n = wso.current_shuffled_witnesses.size();
-                vector<account_name_type> result(n);
-                for (size_t i = 0; i < n; i++) {
-                    result.push_back(wso.current_shuffled_witnesses[i]);
-                }
-                return result;
-            });
-        }
-
-        vector<discussion> database_api::get_discussions_by_author_before_date(
-                string author, string start_permlink, time_point_sec before_date, uint32_t limit) const {
-            return my->_db.with_read_lock([&]() {
-                try {
-                    vector<discussion> result;
-#ifndef IS_LOW_MEM
-                    FC_ASSERT(limit <= 100);
-                    result.reserve(limit);
-                    uint32_t count = 0;
-                    const auto &didx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
-
-                    if (before_date == time_point_sec()) {
-                        before_date = time_point_sec::maximum();
-                    }
-
-                    auto itr = didx.lower_bound(boost::make_tuple(author, time_point_sec::maximum()));
-                    if (start_permlink.size()) {
-                        const auto &comment = my->_db.get_comment(author, start_permlink);
-                        if (comment.created < before_date) {
-                            itr = didx.iterator_to(comment);
-                        }
-                    }
-
-
-                    while (itr != didx.end() && itr->author == author &&
-                           count < limit) {
-                        if (itr->parent_author.size() == 0) {
-                            result.push_back(*itr);
-                            set_pending_payout(result.back());
-                            result.back().active_votes = get_active_votes(itr->author, to_string(itr->permlink));
-                            ++count;
-                        }
-                        ++itr;
-                    }
-
-#endif
-                    return result;
-                }
-                FC_CAPTURE_AND_RETHROW((author)(start_permlink)(before_date)(limit))
-            });
-        }
-
-        vector<savings_withdraw_api_obj> database_api::get_savings_withdraw_from(string account) const {
-            return my->_db.with_read_lock([&]() {
-                vector<savings_withdraw_api_obj> result;
-
-                const auto &from_rid_idx = my->_db.get_index<savings_withdraw_index>().indices().get<by_from_rid>();
-                auto itr = from_rid_idx.lower_bound(account);
-                while (itr != from_rid_idx.end() && itr->from == account) {
-                    result.push_back(*itr);
-                    ++itr;
-                }
-                return result;
-            });
-        }
-
-        vector<savings_withdraw_api_obj> database_api::get_savings_withdraw_to(string account) const {
-            return my->_db.with_read_lock([&]() {
-                vector<savings_withdraw_api_obj> result;
-
-                const auto &to_complete_idx = my->_db.get_index<savings_withdraw_index>().indices().get<by_to_complete>();
-                auto itr = to_complete_idx.lower_bound(account);
-                while (itr != to_complete_idx.end() && itr->to == account) {
-                    result.push_back(*itr);
-                    ++itr;
-                }
-                return result;
-            });
-        }
-
-
-        state database_api::get_state(string path) const {
-            return my->_db.with_read_lock([&]() {
-                state _state;
-                _state.props = get_dynamic_global_properties();
-                _state.current_route = path;
-                _state.feed_price = get_current_median_history_price();
-
-                try {
-                    if (path.size() && path[0] == '/') {
-                        path = path.substr(1);
-                    } /// remove '/' from front
-
-                    if (!path.size())
-                        path = "trending";
-
-                    /// FETCH CATEGORY STATE
-                    auto trending_tags = get_trending_tags("", 100);
-                    for (const auto &t : trending_tags) {
-                        string name = t.name;
-                        _state.tag_idx.trending.push_back(name);
-                        _state.tags[name] = t;
-                    }
-                    auto best_cat = get_best_categories("", 50);
-                    for (const auto &c : best_cat) {
-                        string name = c.name;
-                        _state.category_idx.best.push_back(name);
-                        _state.categories[name] = category_api_obj(c);
-                    }
-                    /// END FETCH CATEGORY STATE
-
-                    set<string> accounts;
-
-                    vector<string> part;
-                    part.reserve(4);
-                    boost::split(part, path, boost::is_any_of("/"));
-                    part.resize(std::max(part.size(), size_t(4))); // at least 4
-
-                    auto tag = fc::to_lower(part[1]);
-
-                    if (part[0].size() && part[0][0] == '@') {
-                        auto acnt = part[0].substr(1);
-                        _state.accounts[acnt] = extended_account(my->_db.get_account(acnt), my->_db);
-                        if (my->_follow_api) {
-                            _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations(acnt, 1)[0].reputation;
-                        }
-                        auto &eacnt = _state.accounts[acnt];
-                        if (part[1] == "transfers") {
-                            auto history = get_account_history(acnt, uint64_t(-1), 1000);
-                            for (auto &item : history) {
-                                switch (item.second.op.which()) {
-                                    case operation::tag<transfer_to_vesting_operation>::value:
-                                    case operation::tag<withdraw_vesting_operation>::value:
-                                    case operation::tag<interest_operation>::value:
-                                    case operation::tag<transfer_operation>::value:
-                                    case operation::tag<liquidity_reward_operation>::value:
-                                    case operation::tag<author_reward_operation>::value:
-                                    case operation::tag<curation_reward_operation>::value:
-                                    case operation::tag<transfer_to_savings_operation>::value:
-                                    case operation::tag<transfer_from_savings_operation>::value:
-                                    case operation::tag<cancel_transfer_from_savings_operation>::value:
-                                    case operation::tag<escrow_transfer_operation>::value:
-                                    case operation::tag<escrow_approve_operation>::value:
-                                    case operation::tag<escrow_dispute_operation>::value:
-                                    case operation::tag<escrow_release_operation>::value:
-                                        eacnt.transfer_history[item.first] = item.second;
-                                        break;
-                                    case operation::tag<comment_operation>::value:
-                                        //   eacnt.post_history[item.first] =  item.second;
-                                        break;
-                                    case operation::tag<limit_order_create_operation>::value:
-                                    case operation::tag<limit_order_cancel_operation>::value:
-                                    case operation::tag<fill_convert_request_operation>::value:
-                                    case operation::tag<fill_order_operation>::value:
-                                        //   eacnt.market_history[item.first] =  item.second;
-                                        break;
-                                    case operation::tag<vote_operation>::value:
-                                    case operation::tag<account_witness_vote_operation>::value:
-                                    case operation::tag<account_witness_proxy_operation>::value:
-                                        //   eacnt.vote_history[item.first] =  item.second;
-                                        break;
-                                    case operation::tag<account_create_operation>::value:
-                                    case operation::tag<account_update_operation>::value:
-                                    case operation::tag<witness_update_operation>::value:
-                                    case operation::tag<pow_operation>::value:
-                                    case operation::tag<custom_operation>::value:
-                                    default:
-                                        eacnt.other_history[item.first] = item.second;
-                                }
-                            }
-                        } else if (part[1] == "recent-replies") {
-                            auto replies = get_replies_by_last_update(acnt, "", 50);
-                            eacnt.recent_replies = vector<string>();
-                            for (const auto &reply : replies) {
-                                auto reply_ref =
-                                        reply.author + "/" + reply.permlink;
-                                _state.content[reply_ref] = reply;
-                                if (my->_follow_api) {
-                                    _state.accounts[reply_ref].reputation = my->_follow_api->get_account_reputations(reply.author, 1)[0].reputation;
-                                }
-                                eacnt.recent_replies->push_back(reply_ref);
-                            }
-                        } else if (part[1] == "posts" ||
-                                   part[1] == "comments") {
-#ifndef IS_LOW_MEM
-                            int count = 0;
-                            const auto &pidx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
-                            auto itr = pidx.lower_bound(acnt);
-                            eacnt.comments = vector<string>();
-
-                            while (itr != pidx.end() && itr->author == acnt &&
-                                   count < 20) {
-                                if (itr->parent_author.size()) {
-                                    const auto link = acnt + "/" +
-                                                      to_string(itr->permlink);
-                                    eacnt.comments->push_back(link);
-                                    _state.content[link] = *itr;
-                                    set_pending_payout(_state.content[link]);
-                                    ++count;
+                    void database_api::recursively_fetch_content(state &_state, discussion &root, set <string> &referenced_accounts) const {
+                        return my->_db.with_read_lock([&]() {
+                            try {
+                                if (root.author.size()) {
+                                    referenced_accounts.insert(root.author);
                                 }
 
+                                auto replies = get_content_replies(root.author, root.permlink);
+                                for (auto &r : replies) {
+                                    try {
+                                        recursively_fetch_content(_state, r, referenced_accounts);
+                                        root.replies.push_back(
+                                                r.author + "/" + r.permlink);
+                                        _state.content[r.author + "/" +
+                                                       r.permlink] = std::move(r);
+                                        if (r.author.size()) {
+                                            referenced_accounts.insert(r.author);
+                                        }
+                                    }
+                                    catch (const fc::exception &e) {
+                                        edump((e.to_detail_string()));
+                                    }
+                                }
+                            }
+                            FC_CAPTURE_AND_RETHROW((root.author)(root.permlink))
+                        });
+                    }
+
+                    vector <account_name_type> database_api::get_miner_queue() const {
+                        return my->_db.with_read_lock([&]() {
+                            vector <account_name_type> result;
+                            const auto &pow_idx = my->_db.get_index<witness_index>().indices().get<by_pow>();
+
+                            auto itr = pow_idx.upper_bound(0);
+                            while (itr != pow_idx.end()) {
+                                if (itr->pow_worker) {
+                                    result.push_back(itr->owner);
+                                }
                                 ++itr;
                             }
+                            return result;
+                        });
+                    }
+
+                    vector <account_name_type> database_api::get_active_witnesses() const {
+                        return my->_db.with_read_lock([&]() {
+                            const auto &wso = my->_db.get_witness_schedule_object();
+                            size_t n = wso.current_shuffled_witnesses.size();
+                            vector <account_name_type> result(n);
+                            for (size_t i = 0; i < n; i++) {
+                                result.push_back(wso.current_shuffled_witnesses[i]);
+                            }
+                            return result;
+                        });
+                    }
+
+                    vector <discussion> database_api::get_discussions_by_author_before_date(
+                            string author, string start_permlink, time_point_sec before_date, uint32_t limit) const {
+                        return my->_db.with_read_lock([&]() {
+                            try {
+                                vector <discussion> result;
+#ifndef IS_LOW_MEM
+                                FC_ASSERT(limit <= 100);
+                                result.reserve(limit);
+                                uint32_t count = 0;
+                                const auto &didx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
+
+                                if (before_date == time_point_sec()) {
+                                    before_date = time_point_sec::maximum();
+                                }
+
+                                auto itr = didx.lower_bound(boost::make_tuple(author, time_point_sec::maximum()));
+                                if (start_permlink.size()) {
+                                    const auto &comment = my->_db.get_comment(author, start_permlink);
+                                    if (comment.created < before_date) {
+                                        itr = didx.iterator_to(comment);
+                                    }
+                                }
+
+
+                                while (itr != didx.end() && itr->author == author &&
+                                       count < limit) {
+                                    if (itr->parent_author.size() == 0) {
+                                        result.push_back(*itr);
+                                        set_pending_payout(result.back());
+                                        result.back().active_votes = get_active_votes(itr->author, to_string(itr->permlink));
+                                        ++count;
+                                    }
+                                    ++itr;
+                                }
+
 #endif
-                        } else if (part[1].size() == 0 || part[1] == "blog") {
-                            if (my->_follow_api) {
-                                auto blog = my->_follow_api->get_blog_entries(eacnt.name, 0, 20);
-                                eacnt.blog = vector<string>();
+                                return result;
+                            }
+                            FC_CAPTURE_AND_RETHROW((author)(start_permlink)(before_date)(limit))
+                        });
+                    }
 
-                                for (auto b: blog) {
-                                    const auto link =
-                                            b.author + "/" + b.permlink;
-                                    eacnt.blog->push_back(link);
-                                    _state.content[link] = my->_db.get_comment(b.author, b.permlink);
-                                    set_pending_payout(_state.content[link]);
+                    vector <savings_withdraw_api_obj> database_api::get_savings_withdraw_from(string account) const {
+                        return my->_db.with_read_lock([&]() {
+                            vector <savings_withdraw_api_obj> result;
 
-                                    if (b.reblog_on > time_point_sec()) {
-                                        _state.content[link].first_reblogged_on = b.reblog_on;
+                            const auto &from_rid_idx = my->_db.get_index<savings_withdraw_index>().indices().get<by_from_rid>();
+                            auto itr = from_rid_idx.lower_bound(account);
+                            while (itr != from_rid_idx.end() &&
+                                   itr->from == account) {
+                                result.push_back(*itr);
+                                ++itr;
+                            }
+                            return result;
+                        });
+                    }
+
+                    vector <savings_withdraw_api_obj> database_api::get_savings_withdraw_to(string account) const {
+                        return my->_db.with_read_lock([&]() {
+                            vector <savings_withdraw_api_obj> result;
+
+                            const auto &to_complete_idx = my->_db.get_index<savings_withdraw_index>().indices().get<by_to_complete>();
+                            auto itr = to_complete_idx.lower_bound(account);
+                            while (itr != to_complete_idx.end() &&
+                                   itr->to == account) {
+                                result.push_back(*itr);
+                                ++itr;
+                            }
+                            return result;
+                        });
+                    }
+
+
+                    state database_api::get_state(string path) const {
+                        return my->_db.with_read_lock([&]() {
+                            state _state;
+                            _state.props = get_dynamic_global_properties();
+                            _state.current_route = path;
+                            _state.feed_price = get_current_median_history_price();
+
+                            try {
+                                if (path.size() && path[0] == '/') {
+                                    path = path.substr(1);
+                                } /// remove '/' from front
+
+                                if (!path.size()) {
+                                    path = "trending";
+                                }
+
+                                /// FETCH CATEGORY STATE
+                                auto trending_tags = get_trending_tags("", 100);
+                                for (const auto &t : trending_tags) {
+                                    string name = t.name;
+                                    _state.tag_idx.trending.push_back(name);
+                                    _state.tags[name] = t;
+                                }
+                                auto best_cat = get_best_categories("", 50);
+                                for (const auto &c : best_cat) {
+                                    string name = c.name;
+                                    _state.category_idx.best.push_back(name);
+                                    _state.categories[name] = category_api_obj(c);
+                                }
+                                /// END FETCH CATEGORY STATE
+
+                                set <string> accounts;
+
+                                vector <string> part;
+                                part.reserve(4);
+                                boost::split(part, path, boost::is_any_of("/"));
+                                part.resize(std::max(part.size(), size_t(4))); // at least 4
+
+                                auto tag = fc::to_lower(part[1]);
+
+                                if (part[0].size() && part[0][0] == '@') {
+                                    auto acnt = part[0].substr(1);
+                                    _state.accounts[acnt] = extended_account(my->_db.get_account(acnt), my->_db);
+                                    if (my->_follow_api) {
+                                        _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations(acnt, 1)[0].reputation;
+                                    }
+                                    auto &eacnt = _state.accounts[acnt];
+                                    if (part[1] == "transfers") {
+                                        auto history = get_account_history(acnt, uint64_t(-1), 1000);
+                                        for (auto &item : history) {
+                                            switch (item.second.op.which()) {
+                                                case operation::tag<transfer_to_vesting_operation>::value:
+                                                case operation::tag<withdraw_vesting_operation>::value:
+                                                case operation::tag<interest_operation>::value:
+                                                case operation::tag<transfer_operation>::value:
+                                                case operation::tag<liquidity_reward_operation>::value:
+                                                case operation::tag<author_reward_operation>::value:
+                                                case operation::tag<curation_reward_operation>::value:
+                                                case operation::tag<transfer_to_savings_operation>::value:
+                                                case operation::tag<transfer_from_savings_operation>::value:
+                                                case operation::tag<cancel_transfer_from_savings_operation>::value:
+                                                case operation::tag<escrow_transfer_operation>::value:
+                                                case operation::tag<escrow_approve_operation>::value:
+                                                case operation::tag<escrow_dispute_operation>::value:
+                                                case operation::tag<escrow_release_operation>::value:
+                                                    eacnt.transfer_history[item.first] = item.second;
+                                                    break;
+                                                case operation::tag<comment_operation>::value:
+                                                    //   eacnt.post_history[item.first] =  item.second;
+                                                    break;
+                                                case operation::tag<limit_order_create_operation>::value:
+                                                case operation::tag<limit_order_cancel_operation>::value:
+                                                case operation::tag<fill_convert_request_operation>::value:
+                                                case operation::tag<fill_order_operation>::value:
+                                                    //   eacnt.market_history[item.first] =  item.second;
+                                                    break;
+                                                case operation::tag<vote_operation>::value:
+                                                case operation::tag<account_witness_vote_operation>::value:
+                                                case operation::tag<account_witness_proxy_operation>::value:
+                                                    //   eacnt.vote_history[item.first] =  item.second;
+                                                    break;
+                                                case operation::tag<account_create_operation>::value:
+                                                case operation::tag<account_update_operation>::value:
+                                                case operation::tag<witness_update_operation>::value:
+                                                case operation::tag<pow_operation>::value:
+                                                case operation::tag<custom_operation>::value:
+                                                default:
+                                                    eacnt.other_history[item.first] = item.second;
+                                            }
+                                        }
+                                    } else if (part[1] == "recent-replies") {
+                                        auto replies = get_replies_by_last_update(acnt, "", 50);
+                                        eacnt.recent_replies = vector<string>();
+                                        for (const auto &reply : replies) {
+                                            auto reply_ref =
+                                                    reply.author + "/" +
+                                                    reply.permlink;
+                                            _state.content[reply_ref] = reply;
+                                            if (my->_follow_api) {
+                                                _state.accounts[reply_ref].reputation = my->_follow_api->get_account_reputations(reply.author, 1)[0].reputation;
+                                            }
+                                            eacnt.recent_replies->push_back(reply_ref);
+                                        }
+                                    } else if (part[1] == "posts" ||
+                                               part[1] == "comments") {
+#ifndef IS_LOW_MEM
+                                        int count = 0;
+                                        const auto &pidx = my->_db.get_index<comment_index>().indices().get<by_author_last_update>();
+                                        auto itr = pidx.lower_bound(acnt);
+                                        eacnt.comments = vector<string>();
+
+                                        while (itr != pidx.end() && itr->author == acnt &&
+                                               count < 20) {
+                                            if (itr->parent_author.size()) {
+                                                const auto link = acnt + "/" +
+                                                                  to_string(itr->permlink);
+                                                eacnt.comments->push_back(link);
+                                                _state.content[link] = *itr;
+                                                set_pending_payout(_state.content[link]);
+                                                ++count;
+                                            }
+
+                                            ++itr;
+                                        }
+#endif
+                                    } else if (part[1].size() == 0 ||
+                                               part[1] == "blog") {
+                                        if (my->_follow_api) {
+                                            auto blog = my->_follow_api->get_blog_entries(eacnt.name, 0, 20);
+                                            eacnt.blog = vector<string>();
+
+                                            for (auto b: blog) {
+                                                const auto link =
+                                                        b.author + "/" +
+                                                        b.permlink;
+                                                eacnt.blog->push_back(link);
+                                                _state.content[link] = my->_db.get_comment(b.author, b.permlink);
+                                                set_pending_payout(_state.content[link]);
+
+                                                if (b.reblog_on >
+                                                    time_point_sec()) {
+                                                    _state.content[link].first_reblogged_on = b.reblog_on;
+                                                }
+                                            }
+                                        }
+                                    } else if (part[1].size() == 0 ||
+                                               part[1] == "feed") {
+                                        if (my->_follow_api) {
+                                            auto feed = my->_follow_api->get_feed_entries(eacnt.name, 0, 20);
+                                            eacnt.feed = vector<string>();
+
+                                            for (auto f: feed) {
+                                                const auto link =
+                                                        f.author + "/" +
+                                                        f.permlink;
+                                                eacnt.feed->push_back(link);
+                                                _state.content[link] = my->_db.get_comment(f.author, f.permlink);
+                                                set_pending_payout(_state.content[link]);
+                                                if (f.reblog_by.size()) {
+                                                    _state.content[link].first_reblogged_by = f.reblog_by;
+                                                    _state.content[link].first_reblogged_on = f.reblog_on;
+                                                }
+                                            }
+                                        }
                                     }
                                 }
-                            }
-                        } else if (part[1].size() == 0 || part[1] == "feed") {
-                            if (my->_follow_api) {
-                                auto feed = my->_follow_api->get_feed_entries(eacnt.name, 0, 20);
-                                eacnt.feed = vector<string>();
+                                    /// pull a complete discussion
+                                else if (part[1].size() && part[1][0] == '@') {
 
-                                for (auto f: feed) {
-                                    const auto link =
-                                            f.author + "/" + f.permlink;
-                                    eacnt.feed->push_back(link);
-                                    _state.content[link] = my->_db.get_comment(f.author, f.permlink);
-                                    set_pending_payout(_state.content[link]);
-                                    if (f.reblog_by.size()) {
-                                        _state.content[link].first_reblogged_by = f.reblog_by;
-                                        _state.content[link].first_reblogged_on = f.reblog_on;
+                                    auto account = part[1].substr(1);
+                                    auto category = part[0];
+                                    auto slug = part[2];
+
+                                    auto key = account + "/" + slug;
+                                    auto dis = get_content(account, slug);
+
+                                    recursively_fetch_content(_state, dis, accounts);
+                                    _state.content[key] = std::move(dis);
+                                } else if (part[0] == "witnesses" ||
+                                           part[0] == "~witnesses") {
+                                    auto wits = get_witnesses_by_vote("", 50);
+                                    for (const auto &w : wits) {
+                                        _state.witnesses[w.owner] = w;
+                                    }
+                                    _state.pow_queue = get_miner_queue();
+                                } else if (part[0] == "trending") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_trending(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.trending.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "trending30") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_trending30(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.trending30.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "promoted") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_promoted(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.promoted.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "responses") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_children(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.responses.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (!part[0].size() ||
+                                           part[0] == "hot") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_hot(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.hot.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (!part[0].size() ||
+                                           part[0] == "promoted") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_promoted(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.promoted.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "votes") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_votes(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.votes.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "cashout") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_cashout(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.cashout.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "active") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_active(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.active.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "created") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_created(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.created.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else if (part[0] == "recent") {
+                                    discussion_query q;
+                                    q.tag = tag;
+                                    q.limit = 20;
+                                    auto trending_disc = get_discussions_by_created(q);
+
+                                    auto &didx = _state.discussion_idx[tag];
+                                    for (const auto &d : trending_disc) {
+                                        auto key = d.author + "/" + d.permlink;
+                                        didx.created.push_back(key);
+                                        if (d.author.size()) {
+                                            accounts.insert(d.author);
+                                        }
+                                        _state.content[key] = std::move(d);
+                                    }
+                                } else {
+                                    elog("What... no matches");
+                                }
+
+                                for (const auto &a : accounts) {
+                                    _state.accounts.erase("");
+                                    _state.accounts[a] = extended_account(my->_db.get_account(a), my->_db);
+                                    if (my->_follow_api) {
+                                        _state.accounts[a].reputation = my->_follow_api->get_account_reputations(a, 1)[0].reputation;
                                     }
                                 }
+                                for (auto &d : _state.content) {
+                                    d.second.active_votes = get_active_votes(d.second.author, d.second.permlink);
+                                }
+
+                                _state.witness_schedule = my->_db.get_witness_schedule_object();
+
+                            } catch (const fc::exception &e) {
+                                _state.error = e.to_detail_string();
                             }
-                        }
-                    }
-                        /// pull a complete discussion
-                    else if (part[1].size() && part[1][0] == '@') {
-
-                        auto account = part[1].substr(1);
-                        auto category = part[0];
-                        auto slug = part[2];
-
-                        auto key = account + "/" + slug;
-                        auto dis = get_content(account, slug);
-
-                        recursively_fetch_content(_state, dis, accounts);
-                        _state.content[key] = std::move(dis);
-                    } else if (part[0] == "witnesses" ||
-                               part[0] == "~witnesses") {
-                        auto wits = get_witnesses_by_vote("", 50);
-                        for (const auto &w : wits) {
-                            _state.witnesses[w.owner] = w;
-                        }
-                        _state.pow_queue = get_miner_queue();
-                    } else if (part[0] == "trending") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_trending(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.trending.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "trending30") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_trending30(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.trending30.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "promoted") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_promoted(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.promoted.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "responses") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_children(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.responses.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (!part[0].size() || part[0] == "hot") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_hot(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.hot.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (!part[0].size() || part[0] == "promoted") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_promoted(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.promoted.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "votes") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_votes(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.votes.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "cashout") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_cashout(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.cashout.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "active") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_active(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.active.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "created") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_created(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.created.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else if (part[0] == "recent") {
-                        discussion_query q;
-                        q.tag = tag;
-                        q.limit = 20;
-                        auto trending_disc = get_discussions_by_created(q);
-
-                        auto &didx = _state.discussion_idx[tag];
-                        for (const auto &d : trending_disc) {
-                            auto key = d.author + "/" + d.permlink;
-                            didx.created.push_back(key);
-                            if (d.author.size())
-                                accounts.insert(d.author);
-                            _state.content[key] = std::move(d);
-                        }
-                    } else {
-                        elog("What... no matches");
+                            return _state;
+                        });
                     }
 
-                    for (const auto &a : accounts) {
-                        _state.accounts.erase("");
-                        _state.accounts[a] = extended_account(my->_db.get_account(a), my->_db);
-                        if (my->_follow_api) {
-                            _state.accounts[a].reputation = my->_follow_api->get_account_reputations(a, 1)[0].reputation;
-                        }
-                    }
-                    for (auto &d : _state.content) {
-                        d.second.active_votes = get_active_votes(d.second.author, d.second.permlink);
+                    annotated_signed_transaction database_api::get_transaction(transaction_id_type id) const {
+                        return my->_db.with_read_lock([&]() {
+                            const auto &idx = my->_db.get_index<operation_index>().indices().get<by_transaction_id>();
+                            auto itr = idx.lower_bound(id);
+                            if (itr != idx.end() && itr->trx_id == id) {
+                                auto blk = my->_db.fetch_block_by_number(itr->block);
+                                FC_ASSERT(blk.valid());
+                                FC_ASSERT(blk->transactions.size() >
+                                          itr->trx_in_block);
+                                annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
+                                result.block_num = itr->block;
+                                result.transaction_num = itr->trx_in_block;
+                                return result;
+                            }
+                            FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
+                        });
                     }
 
-                    _state.witness_schedule = my->_db.get_witness_schedule_object();
 
-                } catch (const fc::exception &e) {
-                    _state.error = e.to_detail_string();
                 }
-                return _state;
-            });
-        }
-
-        annotated_signed_transaction database_api::get_transaction(transaction_id_type id) const {
-            return my->_db.with_read_lock([&]() {
-                const auto &idx = my->_db.get_index<operation_index>().indices().get<by_transaction_id>();
-                auto itr = idx.lower_bound(id);
-                if (itr != idx.end() && itr->trx_id == id) {
-                    auto blk = my->_db.fetch_block_by_number(itr->block);
-                    FC_ASSERT(blk.valid());
-                    FC_ASSERT(blk->transactions.size() > itr->trx_in_block);
-                    annotated_signed_transaction result = blk->transactions[itr->trx_in_block];
-                    result.block_num = itr->block;
-                    result.transaction_num = itr->trx_in_block;
-                    return result;
-                }
-                FC_ASSERT(false, "Unknown Transaction ${t}", ("t", id));
-            });
-        }
-
-
-    }
-} // steemit::app
+            } // steemit::app

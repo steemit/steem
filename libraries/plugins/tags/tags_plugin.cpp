@@ -110,7 +110,7 @@ namespace steemit {
                         ++count;
                         if (count > tag_limit ||
                             lower_tags.size() > tag_limit) {
-                                break;
+                            break;
                         }
                         if (tag == "") {
                             continue;
@@ -282,8 +282,9 @@ namespace steemit {
                     if (voter.id == author.id) {
                         return;
                     } /// ignore votes for yourself
-                    if (c.parent_author.size())
-                        return; /// only count top level posts
+                    if (c.parent_author.size()) {
+                        return;
+                    } /// only count top level posts
 
                     const auto &stat = get_or_create_peer_stats(voter.id, author.id);
                     _db.modify(stat, [&](peer_stats_object &obj) {
@@ -397,7 +398,6 @@ namespace steemit {
                     elog("unhandled exception");
                 }
             }
-
         } /// end detail namespace
 
         tags_plugin::tags_plugin(application *app)
@@ -406,6 +406,7 @@ namespace steemit {
             add_plugin_index<tag_index>(db);
             add_plugin_index<tag_stats_index>(db);
             add_plugin_index<peer_stats_index>(db);
+            add_plugin_index<author_tag_stats_index>(db);
         }
 
         tags_plugin::~tags_plugin() {
