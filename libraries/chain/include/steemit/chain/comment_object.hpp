@@ -128,7 +128,7 @@ namespace steemit { namespace chain {
          time_point_sec    active; ///< the last time this post was "touched" by voting or reply
          time_point_sec    last_payout;
 
-         uint8_t           depth = 0; ///< used to track max nested depth
+         uint16_t          depth = 0; ///< used to track max nested depth
          uint32_t          children = 0; ///< used to track the total number of children, grandchildren, etc...
 
          /**
