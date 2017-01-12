@@ -362,10 +362,12 @@ void comment_evaluator::do_apply( const comment_operation& o )
    if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
    {
       parent = &_db.get_comment( o.parent_author, o.parent_permlink );
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__767 ) )
-         FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
-      else
+      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__767 ) )
          FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17) );
+      else if( _db.is_producing() )
+         FC_ASSERT( parent->depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
+      else
+         FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
    auto now = _db.head_block_time();
 
