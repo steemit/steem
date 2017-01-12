@@ -1239,6 +1239,22 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
    });
 }
 
+vector<pair<string,uint32_t> > database_api::get_tags_used_by_author( const string& author )const {
+   return my->_db.with_read_lock( [&]()
+   {
+      const auto* acnt = my->_db.find_account( author );    
+      FC_ASSERT( acnt != nullptr );
+      const auto& tidx = my->_db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
+      auto itr = tidx.lower_bound( boost::make_tuple( acnt->id, 0 ) );
+      vector<pair<string,uint32_t> > result;
+      while( itr != tidx.end() && itr->author == acnt->id && result.size() < 1000 ) {
+        result.push_back( std::make_pair(itr->tag, itr->total_posts) );
+         ++itr;
+      }
+      return result;
+   } );
+}
+
 vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limit )const
 {
    return my->_db.with_read_lock( [&]()
@@ -1929,6 +1945,7 @@ state database_api::get_state( string path )const
       if( part[0].size() && part[0][0] == '@' ) {
          auto acnt = part[0].substr(1);
          _state.accounts[acnt] = extended_account( my->_db.get_account(acnt), my->_db );
+         _state.accounts[acnt].tags_usage = get_tags_used_by_author( acnt );
          if( my->_follow_api )
          {
             _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;

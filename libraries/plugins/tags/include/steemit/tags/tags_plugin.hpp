@@ -407,6 +407,7 @@ class author_tag_stats_object : public object< author_tag_stats_object_type, aut
 typedef oid< author_tag_stats_object > author_tag_stats_id_type;
 
 struct by_author_tag_posts;
+struct by_author_posts_tag;
 struct by_author_tag_rewards;
 struct by_tag_rewards_author;
 using std::less;
@@ -417,6 +418,14 @@ typedef chainbase::shared_multi_index_container<
   indexed_by<
       ordered_unique< tag< by_id >, 
         member< author_tag_stats_object, author_tag_stats_id_type, &author_tag_stats_object::id > 
+      >,
+      ordered_unique< tag< by_author_posts_tag >,
+         composite_key< author_tag_stats_object,
+            member< author_tag_stats_object, account_id_type, &author_tag_stats_object::author >,
+            member< author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts >,
+            member< author_tag_stats_object, string, &author_tag_stats_object::tag >
+         >,
+         composite_key_compare< less< account_id_type >, greater< uint32_t >, less< string > >
       >,
       ordered_unique< tag< by_author_tag_posts >,
          composite_key< author_tag_stats_object,
@@ -507,3 +516,6 @@ FC_REFLECT( steemit::tags::peer_stats_object,
 CHAINBASE_SET_INDEX_TYPE( steemit::tags::peer_stats_object, steemit::tags::peer_stats_index )
 
 FC_REFLECT( steemit::tags::comment_metadata, (tags) );
+
+FC_REFLECT( steemit::tags::author_tag_stats_object, (id)(author)(tag)(total_posts)(total_rewards) )
+CHAINBASE_SET_INDEX_TYPE( steemit::tags::author_tag_stats_object, steemit::tags::author_tag_stats_index )
