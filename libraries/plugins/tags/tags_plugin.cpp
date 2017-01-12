@@ -80,6 +80,14 @@ struct operation_visitor {
    void remove_tag( const tag_object& tag )const {
       /// TODO: update tag stats object
       _db.remove(tag);
+
+      const auto& idx = _db.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
+      auto itr = idx.lower_bound( boost::make_tuple(tag.author,tag.tag) );
+      if( itr != idx.end() && itr->author == tag.author && itr->tag == tag.tag ) {
+         _db.modify( *itr, [&]( author_tag_stats_object& stats ) {
+            stats.total_posts--;
+         });
+      }
    }
 
    const tag_stats_object& get_stats( const string& tag )const {
@@ -185,6 +193,21 @@ struct operation_visitor {
           obj.mode              = comment.mode;
       });
       add_stats( tag_obj, get_stats( tag ) );
+
+
+      const auto& idx = _db.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
+      auto itr = idx.lower_bound( boost::make_tuple(author,tag) );
+      if( itr != idx.end() && itr->author == author && itr->tag == tag ) {
+         _db.modify( *itr, [&]( author_tag_stats_object& stats ) {
+            stats.total_posts++;
+         });
+      } else {
+         _db.create<author_tag_stats_object>( [&]( author_tag_stats_object& stats ) {
+            stats.author = author;
+            stats.tag    = tag;
+            stats.total_posts = 1;
+         });
+      } 
    }
 
    /**

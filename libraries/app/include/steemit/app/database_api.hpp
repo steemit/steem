@@ -344,6 +344,8 @@ class database_api
       vector<discussion>   get_content_replies( string parent, string parent_permlink )const;
 
       ///@{ tags API
+      /** This API will return the top 1000 tags used by an author sorted by most frequently used */
+      vector<pair<string,uint32_t>> get_tags_used_by_author( const string& author )const;
       vector<discussion> get_discussions_by_trending( const discussion_query& query )const;
       vector<discussion> get_discussions_by_trending30( const discussion_query& query )const;
       vector<discussion> get_discussions_by_created( const discussion_query& query )const;
@@ -459,6 +461,7 @@ FC_API(steemit::app::database_api,
 
    // tags
    (get_trending_tags)
+   (get_tags_used_by_author)
    (get_discussions_by_trending)
    (get_discussions_by_trending30)
    (get_discussions_by_created)
