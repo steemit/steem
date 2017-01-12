@@ -3249,12 +3249,17 @@ void database::_apply_transaction(const signed_transaction& trx)
    for( const auto& auth : required ) {
       const auto& acnt = get_account(auth);
 
-      old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
+      if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
+         old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
+
       update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
+
       for( const auto& op : trx.operations ) {
          if( is_market_operation( op ) )
          {
-            old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
+            if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
+               old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
+
             update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
             break;
          }
@@ -3963,6 +3968,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_16 == 16, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_16 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_16_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_16 ] = STEEMIT_HARDFORK_0_16_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_17 == 17, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_17 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_17_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_17 ] = STEEMIT_HARDFORK_0_17_VERSION;
 
 
    const auto& hardforks = get_hardfork_property_object();
@@ -4179,6 +4187,8 @@ void database::apply_hardfork( uint32_t hardfork )
             while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
                fho.price_history.pop_front();
          });
+         break;
+      case STEEMIT_HARDFORK_0_17:
          break;
       default:
          break;
