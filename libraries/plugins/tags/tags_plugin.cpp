@@ -2,11 +2,19 @@
 
 #include <steemit/app/impacted.hpp>
 
+#include <steemit/protocol/config.hpp>
+
+#include <steemit/chain/database.hpp>
+#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/index.hpp>
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
+#include <fc/thread/thread.hpp>
+#include <fc/io/json.hpp>
+#include <fc/string.hpp>
 
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
@@ -73,6 +81,15 @@ namespace steemit {
                 void remove_tag(const tag_object &tag) const {
                     /// TODO: update tag stats object
                     _db.remove(tag);
+
+                    const auto &idx = _db.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
+                    auto itr = idx.lower_bound(boost::make_tuple(tag.author, tag.tag));
+                    if (itr != idx.end() && itr->author == tag.author &&
+                        itr->tag == tag.tag) {
+                        _db.modify(*itr, [&](author_tag_stats_object &stats) {
+                            stats.total_posts--;
+                        });
+                    }
                 }
 
                 const tag_stats_object &get_stats(const string &tag) const {
@@ -110,7 +127,7 @@ namespace steemit {
                         ++count;
                         if (count > tag_limit ||
                             lower_tags.size() > tag_limit) {
-                            break;
+                                break;
                         }
                         if (tag == "") {
                             continue;
@@ -179,6 +196,22 @@ namespace steemit {
                         obj.mode = comment.mode;
                     });
                     add_stats(tag_obj, get_stats(tag));
+
+
+                    const auto &idx = _db.get_index<author_tag_stats_index>().indices().get<by_author_tag_posts>();
+                    auto itr = idx.lower_bound(boost::make_tuple(author, tag));
+                    if (itr != idx.end() && itr->author == author &&
+                        itr->tag == tag) {
+                        _db.modify(*itr, [&](author_tag_stats_object &stats) {
+                            stats.total_posts++;
+                        });
+                    } else {
+                        _db.create<author_tag_stats_object>([&](author_tag_stats_object &stats) {
+                            stats.author = author;
+                            stats.tag = tag;
+                            stats.total_posts = 1;
+                        });
+                    }
                 }
 
                 /**
@@ -282,9 +315,8 @@ namespace steemit {
                     if (voter.id == author.id) {
                         return;
                     } /// ignore votes for yourself
-                    if (c.parent_author.size()) {
-                        return;
-                    } /// only count top level posts
+                    if (c.parent_author.size())
+                        return; /// only count top level posts
 
                     const auto &stat = get_or_create_peer_stats(voter.id, author.id);
                     _db.modify(stat, [&](peer_stats_object &obj) {
@@ -398,6 +430,7 @@ namespace steemit {
                     elog("unhandled exception");
                 }
             }
+
         } /// end detail namespace
 
         tags_plugin::tags_plugin(application *app)
