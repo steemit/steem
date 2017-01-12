@@ -17,6 +17,11 @@ namespace steemit { namespace chain {
     */
    struct shared_authority
    {
+      private:
+         shared_authority() = delete;
+
+      public:
+
       template< typename Allocator >
       shared_authority( const authority& a, const Allocator& alloc ) :
          account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),

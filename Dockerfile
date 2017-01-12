@@ -61,6 +61,7 @@ RUN \
         -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
+        -DCHAINBASE_CHECK_LOCKING=OFF \
         .. && \
     make -j$(nproc) chain_test && \
     ./tests/chain_test && \
