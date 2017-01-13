@@ -1,10 +1,7 @@
 #!/bin/bash
+export HOME="/var/lib/steemd"
 
-STEEMD="/usr/local/steemd-default/bin/steemd"
-
-if [[ "$USE_WAY_TOO_MUCH_RAM" ]]; then
-    STEEMD="/usr/local/steemd-full/bin/steemd"
-fi
+STEEMD="/usr/local/steemd-full/bin/steemd"
 
 chown -R steemd:steemd $HOME
 
@@ -30,48 +27,32 @@ if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     done
 fi
 
-if [[ ! -z "$STEEMD_WITNESS_NAME" ]]; then
-    ARGS+=" --witness=\"$STEEMD_WITNESS_NAME\""
-fi
-
-if [[ ! -z "$STEEMD_MINER_NAME" ]]; then
-    ARGS+=" --miner=[\"$STEEMD_MINER_NAME\",\"$STEEMD_PRIVATE_KEY\"]"
-    ARGS+=" --mining-threads=$(nproc)"
-fi
-
-if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
-    ARGS+=" --private-key=$STEEMD_PRIVATE_KEY"
-fi
-
 # overwrite local config with image one
-if [[ "$USE_FULL_WEB_NODE" ]]; then
-  cp /etc/steemd/fullnode.config.ini $HOME/config.ini
-else
-  cp /etc/steemd/config.ini $HOME/config.ini
-fi
+cp /etc/steemd/fullnode.config.ini $HOME/config.ini
 
 chown steemd:steemd $HOME/config.ini
 
-if [[ ! -d $HOME/blockchain ]]; then
-    if [[ -e /var/cache/steemd/blocks.tbz2 ]]; then
-        # init with blockchain cached in image
-        ARGS+=" --replay-blockchain"
-        mkdir -p $HOME/blockchain/database
-        cd $HOME/blockchain/database
-        tar xvjpf /var/cache/steemd/blocks.tbz2
-        chown -R steemd:steemd $HOME/blockchain
-    fi
-fi
-
-# without --data-dir it uses cwd as datadir(!)
-# who knows what else it dumps into current dir
 cd $HOME
 
-# slow down restart loop if flapping
-sleep 1
+# get blockchain state from an S3 bucket
+# if this url is not provieded then we might as well exit
+if [[ ! -z "$BLOCKCHAIN_URL" ]]; then
+  echo steemd: beginning download and decompress of $BLOCKCHAIN_URL
+  s3cmd get $BLOCKCHAIN_URL - | pbzip2 -m2000dc | tar x
+  if [[ $? -ne 0 ]]; then
+    echo error: unable to pull blockchain state from S3 - exitting
+    exit 1
+  fi
+else
+  echo error: no URL specified to get blockchain state from - exiting
+  exit 1
+fi
 
-#start multiple read-only instances based on the number of cores
-#attach to the local interface since a proxy will be used to loadbalance
+# change owner of downloaded blockchainstate to steemd user
+chown -R steemd:steemd /var/lib/steemd/*
+
+# start multiple read-only instances based on the number of cores
+# attach to the local interface since a proxy will be used to loadbalance
 if [[ "$USE_MULTICORE_READONLY" ]]; then
     exec chpst -usteemd \
         $STEEMD \
@@ -81,11 +62,11 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
             $ARGS \
             $STEEMD_EXTRA_OPTS \
             2>&1 &
-    #sleep for a moment to allow the writer node to be ready to accept connections from the readers
+    # sleep for a moment to allow the writer node to be ready to accept connections from the readers
     sleep 5
     PORT_NUM=8092
-    #don't generate endpoints in haproxy config if it already exists
-    #this prevents adding to it if the docker container is stopped/started
+    # don't generate endpoints in haproxy config if it already exists
+    # this prevents adding to it if the docker container is stopped/started
     if [[ ! -f /etc/haproxy/haproxy.steem.cfg ]]; then
         cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.steem.cfg
         for (( i=2; i<=$(nproc); i++ ))
@@ -107,10 +88,15 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
           ((PORT_NUM++))
           sleep 1
     done
-    #start haproxy now that the config file is complete with all endpoints
-    #all of the read-only processes will connect to the write node onport 8091
-    #haproxy will balance all incoming traffic on port 8090
-    /usr/sbin/haproxy -f /etc/haproxy/haproxy.steem.cfg 2>&1
+    # start haproxy now that the config file is complete with all endpoints
+    # all of the read-only processes will connect to the write node onport 8091
+    # haproxy will balance all incoming traffic on port 8090
+    /usr/sbin/haproxy -D -f /etc/haproxy/haproxy.steem.cfg 2>&1
+    # start runsv script that kills containers if they die
+    mkdir -p /etc/service/steemd
+    cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run
+    chmod +x /etc/service/steemd/run
+    runsv /etc/service/steemd
 else
     exec chpst -usteemd \
         $STEEMD \
@@ -119,5 +105,13 @@ else
             --data-dir=$HOME \
             $ARGS \
             $STEEMD_EXTRA_OPTS \
-            2>&1
+            2>&1&
+    mkdir -p /etc/service/steemd
+    if [[ ! "$SYNC_TO_S3" ]]; then
+      cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run
+    else
+      cp /usr/local/bin/sync-sv-run.sh /etc/service/steemd/run
+    fi
+    chmod +x /etc/service/steemd/run
+    runsv /etc/service/steemd
 fi
