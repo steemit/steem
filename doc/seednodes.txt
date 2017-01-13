@@ -1,12 +1,12 @@
 seed.riversteem.com:2001       # riverhead
-seed.steempower.org:2001       # charlieshrem
+##### seed.steempower.org:2001       # charlieshrem # not resolved
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
-steemd.pharesim.me:2001        # pharesim
+##### steemd.pharesim.me:2001        # pharesim # offline
 seed.jesta.us:2001             # jesta
 212.117.213.186:2016           # liondani
-anyx.co:2001                   # anyx
+##### anyx.co:2001                   # anyx # offline
 seed.xeldal.com:12150          # xeldal
 seed.steemnodes.com:2001       # wackou
 steem.clawmap.com:2001         # steempty
@@ -14,20 +14,17 @@ gtg.steem.house:2001           # gtg
 52.4.250.181:39705             # lafona
 52.63.172.229:2001             # rossco99
 212.47.249.84:40696            # ihashfury
-52.62.24.225:2001              # au1nethyb1
-104.40.230.35:2001             # aizensou
-seed.roelandp.nl:2001          # roelandp
+##### 52.62.24.225:2001              # au1nethyb1 # offline
+##### 104.40.230.35:2001             # aizensou # offline
+##### seed.roelandp.nl:2001          # roelandp # offline
 81.89.101.133:2001             # cyrano.witness
 45.55.54.83:2001               # tdv.witness
-seed.steem.network:2001        # someguy123
-46.252.27.1:1337               # jabbasteem
+##### seed.steem.network:2001        # someguy123 # offline
+##### 46.252.27.1:1337               # jabbasteem # offline
 steem.global:2001              # klye
-104.196.141.163:2001           # good-karma
+##### 104.196.141.163:2001           # good-karma # offline
 seed.royaltiffany.me:2001      # royaltiffany
 129.232.223.74:2001            # thecryptodrive
 steem-id.altexplorer.xyz:2001  # steem-id
 seed.bitcoiner.me:2001         # bitcoiner
-52.26.78.244:2001              # ?
-52.37.169.52:2001              # ?
-52.38.66.234:2001              # ?
 192.99.4.226:2001              # ?
