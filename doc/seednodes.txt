@@ -16,7 +16,7 @@ gtg.steem.house:2001           # gtg
 52.4.250.181:39705             # lafona
 52.63.172.229:2001             # rossco99
 212.47.249.84:40696            # ihashfury
-##### 52.62.24.225:2001              # au1nethyb1 # offline
+##### seed.steemfeeder.com:2001      # au1nethyb1 # offline
 ##### 104.40.230.35:2001             # aizensou # offline
 ##### seed.roelandp.nl:2001          # roelandp # offline
 81.89.101.133:2001             # cyrano.witness
@@ -31,3 +31,6 @@ seed.royaltiffany.me:2001      # royaltiffany
 steem-id.altexplorer.xyz:2001  # steem-id
 seed.bitcoiner.me:2001         # bitcoiner
 192.99.4.226:2001              # ?
+89.36.26.82:2001               # dragosroua
+104.198.222.18:2001            # bitcoinparadise
+138.197.17.188:2001            # chitty
