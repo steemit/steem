@@ -11,6 +11,7 @@ seed.xeldal.com:12150          # xeldal
 seed.steemnodes.com:2001       # wackou
 steem.clawmap.com:2001         # steempty
 gtg.steem.house:2001           # gtg
+192.99.3.29:2001               # joseph
 5.9.18.213:2001                # pfunk
 52.4.250.181:39705             # lafona
 52.63.172.229:2001             # rossco99
