@@ -16,6 +16,9 @@
 #include <steemit/chain/shared_db_merkle.hpp>
 #include <steemit/chain/operation_notification.hpp>
 
+#include <steemit/chain/util/asset.hpp>
+#include <steemit/chain/util/reward.hpp>
+
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 
@@ -2436,22 +2439,12 @@ void database::process_conversions()
 
 asset database::to_sbd( const asset& steem )const
 {
-   FC_ASSERT( steem.symbol == STEEM_SYMBOL );
-   const auto& feed_history = get_feed_history();
-   if( feed_history.current_median_history.is_null() )
-      return asset( 0, SBD_SYMBOL );
-
-   return steem * feed_history.current_median_history;
+   return util::to_sbd( get_feed_history().current_median_history, steem );
 }
 
 asset database::to_steem( const asset& sbd )const
 {
-   FC_ASSERT( sbd.symbol == SBD_SYMBOL );
-   const auto& feed_history = get_feed_history();
-   if( feed_history.current_median_history.is_null() )
-      return asset( 0, STEEM_SYMBOL );
-
-   return sbd * feed_history.current_median_history;
+   return util::to_steem( get_feed_history().current_median_history, sbd );
 }
 
 /**
@@ -2477,9 +2470,7 @@ share_type database::claim_rshare_reward( share_type rshares, uint16_t reward_we
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
    uint64_t payout = static_cast< uint64_t >( payout_u256 );
 
-   asset sbd_payout_value = to_sbd( asset(payout, STEEM_SYMBOL) );
-
-   if( sbd_payout_value < STEEMIT_MIN_PAYOUT_SBD )
+   if( util::is_comment_payout_dust( get_feed_history().current_median_history, payout ) )
       payout = 0;
 
    payout = std::min( payout, uint64_t( max_steem.amount.value ) );
