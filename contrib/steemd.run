@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export HOME="/var/lib/steemd"
+
 STEEMD="/usr/local/steemd-default/bin/steemd"
 
 if [[ "$USE_WAY_TOO_MUCH_RAM" ]]; then
