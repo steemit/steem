@@ -19,6 +19,7 @@
 #include <steemit/chain/util/asset.hpp>
 #include <steemit/chain/util/reward.hpp>
 #include <steemit/chain/util/uint256.hpp>
+#include <steemit/chain/util/reward.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -2002,6 +2003,21 @@ share_type database::pay_curators( const comment_object& c, share_type max_rewar
    } FC_CAPTURE_AND_RETHROW()
 }
 
+void fill_comment_reward_context_global_state( util::comment_reward_context& ctx, const database& db )
+{
+   const dynamic_global_property_object& dgpo = db.get_dynamic_global_properties();
+   ctx.total_reward_shares2 = dgpo.total_reward_shares2;
+   ctx.total_reward_fund_steem = dgpo.total_reward_fund_steem;
+   ctx.current_steem_price = db.get_feed_history().current_median_history;
+}
+
+void fill_comment_reward_context_local_state( util::comment_reward_context& ctx, const comment_object& comment )
+{
+   ctx.rshares = comment.net_rshares;
+   ctx.reward_weight = comment.reward_weight;
+   ctx.max_sbd = comment.max_accepted_payout;
+}
+
 void database::cashout_comment_helper( const comment_object& comment )
 {
    try
@@ -2010,7 +2026,11 @@ void database::cashout_comment_helper( const comment_object& comment )
 
       if( comment.net_rshares > 0 )
       {
-         uint128_t reward_tokens = uint128_t( claim_rshare_reward( comment.net_rshares, comment.reward_weight, to_steem( comment.max_accepted_payout ) ).value );
+         util::comment_reward_context ctx;
+         fill_comment_reward_context_local_state( ctx, comment );
+         fill_comment_reward_context_global_state( ctx, *this );
+         const share_type reward = util::get_rshare_reward( ctx );
+         uint128_t reward_tokens = uint128_t( reward.value );
 
          asset total_payout;
          if( reward_tokens > 0 )
@@ -2065,6 +2085,10 @@ void database::cashout_comment_helper( const comment_object& comment )
                c.total_payouts += total_payout;
             });
 
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
+            {
+               p.total_reward_fund_steem.amount -= reward;
+            });
          }
 
          fc::uint128_t old_rshares2 = util::calculate_vshares( comment.net_rshares.value );
@@ -2428,42 +2452,6 @@ asset database::to_sbd( const asset& steem )const
 asset database::to_steem( const asset& sbd )const
 {
    return util::to_steem( get_feed_history().current_median_history, sbd );
-}
-
-/**
- *  This method reduces the rshare^2 supply and returns the number of tokens are
- *  redeemed.
- */
-share_type database::claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem )
-{
-   try
-   {
-   FC_ASSERT( rshares > 0 );
-
-   const auto& props = get_dynamic_global_properties();
-
-   u256 rs(rshares.value);
-   u256 rf(props.total_reward_fund_steem.amount.value);
-   u256 total_rshares2 = util::to256( props.total_reward_shares2 );
-
-   u256 rs2 = util::to256( util::calculate_vshares( rshares.value ) );
-   rs2 = ( rs2 * reward_weight ) / STEEMIT_100_PERCENT;
-
-   u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
-   FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
-   uint64_t payout = static_cast< uint64_t >( payout_u256 );
-
-   if( util::is_comment_payout_dust( get_feed_history().current_median_history, payout ) )
-      payout = 0;
-
-   payout = std::min( payout, uint64_t( max_steem.amount.value ) );
-
-   modify( props, [&]( dynamic_global_property_object& p ){
-     p.total_reward_fund_steem.amount -= payout;
-   });
-
-   return payout;
-   } FC_CAPTURE_AND_RETHROW( (rshares)(max_steem) )
 }
 
 void database::account_recovery_processing()
