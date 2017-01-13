@@ -27,6 +27,8 @@ add_library( steemit_chain
              shared_authority.cpp
              block_log.cpp
 
+             util/reward.cpp
+
              ${HEADERS}
              ${hardfork_hpp_file}
              "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/chain/hardfork.hpp"
