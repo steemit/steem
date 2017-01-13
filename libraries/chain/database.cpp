@@ -18,6 +18,7 @@
 
 #include <steemit/chain/util/asset.hpp>
 #include <steemit/chain/util/reward.hpp>
+#include <steemit/chain/util/uint256.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -67,13 +68,6 @@ FC_REFLECT( steemit::chain::db_schema, (types)(object_types)(operation_type)(cus
 namespace steemit { namespace chain {
 
 using boost::container::flat_set;
-
-inline u256 to256( const fc::uint128& t ) {
-   u256 v(t.hi);
-   v <<= 64;
-   v += t.lo;
-   return v;
-}
 
 class database_impl
 {
@@ -1930,7 +1924,7 @@ share_type database::pay_discussions( const comment_object& c, share_type max_re
 
          if( cur.net_rshares > 0 )
          {
-            auto claim = static_cast< uint64_t >( ( to256( calculate_vshares( cur.net_rshares.value ) ) * max_rewards.value ) / to256( total_rshares2 ) );
+            auto claim = static_cast< uint64_t >( ( util::to256( calculate_vshares( cur.net_rshares.value ) ) * max_rewards.value ) / util::to256( total_rshares2 ) );
             unclaimed_rewards -= claim;
 
             if( claim > 0 )
@@ -2461,9 +2455,9 @@ share_type database::claim_rshare_reward( share_type rshares, uint16_t reward_we
 
    u256 rs(rshares.value);
    u256 rf(props.total_reward_fund_steem.amount.value);
-   u256 total_rshares2 = to256( props.total_reward_shares2 );
+   u256 total_rshares2 = util::to256( props.total_reward_shares2 );
 
-   u256 rs2 = to256( calculate_vshares( rshares.value ) );
+   u256 rs2 = util::to256( calculate_vshares( rshares.value ) );
    rs2 = ( rs2 * reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
