@@ -20,7 +20,7 @@ seed.steemfeeder.com:2001      # au1nethyb1
 ##### 104.40.230.35:2001             # aizensou # offline
 seed.roelandp.nl:2001          # roelandp
 81.89.101.133:2001             # cyrano.witness
-45.55.54.83:2001               # tdv.witness
+##### 45.55.54.83:2001               # tdv.witness # offline
 ##### seed.steem.network:2001        # someguy123 # offline
 ##### 46.252.27.1:1337               # jabbasteem # offline
 steem.global:2001              # klye
