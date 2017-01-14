@@ -16,7 +16,7 @@ gtg.steem.house:2001           # gtg
 lafonasteem.com:2001           # lafona
 52.63.172.229:2001             # rossco99
 212.47.249.84:40696            # ihashfury
-##### seed.steemfeeder.com:2001      # au1nethyb1 # offline
+seed.steemfeeder.com:2001      # au1nethyb1
 ##### 104.40.230.35:2001             # aizensou # offline
 seed.roelandp.nl:2001          # roelandp
 81.89.101.133:2001             # cyrano.witness
