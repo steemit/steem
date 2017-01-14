@@ -14,7 +14,7 @@ gtg.steem.house:2001           # gtg
 192.99.3.29:2001               # joseph
 5.9.18.213:2001                # pfunk
 lafonasteem.com:2001           # lafona
-52.63.172.229:2001             # rossco99
+seed.rossco99.com:2001         # rossco99
 212.47.249.84:40696            # ihashfury
 seed.steemfeeder.com:2001      # au1nethyb1
 ##### 104.40.230.35:2001             # aizensou # offline
@@ -27,7 +27,7 @@ steem.global:2001              # klye
 69.197.155.42:2001             # good-karma
 176.31.126.187:2001            # timcliff
 seed.royaltiffany.me:2001      # royaltiffany
-129.232.223.74:2001            # thecryptodrive
+seed.thecryptodrive.com:2001   # thecryptodrive
 steem-id.altexplorer.xyz:2001  # steem-id
 seed.bitcoiner.me:2001         # bitcoiner
 192.99.4.226:2001              # dele-puppy
