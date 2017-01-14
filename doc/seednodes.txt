@@ -3,7 +3,7 @@ seed.riversteem.com:2001       # riverhead
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
-##### steemd.pharesim.me:2001        # pharesim # offline
+steemd.pharesim.me:2001        # pharesim
 seed.jesta.us:2001             # jesta
 212.117.213.186:2016           # liondani
 ##### anyx.co:2001                   # anyx # offline
@@ -20,7 +20,6 @@ seed.steemfeeder.com:2001      # au1nethyb1
 ##### 104.40.230.35:2001             # aizensou # offline
 seed.roelandp.nl:2001          # roelandp
 81.89.101.133:2001             # cyrano.witness
-##### 45.55.54.83:2001               # tdv.witness # offline
 ##### seed.steem.network:2001        # someguy123 # offline
 ##### 46.252.27.1:1337               # jabbasteem # offline
 steem.global:2001              # klye
