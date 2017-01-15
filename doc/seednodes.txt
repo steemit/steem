@@ -17,7 +17,7 @@ lafonasteem.com:2001           # lafona
 seed.rossco99.com:2001         # rossco99
 212.47.249.84:40696            # ihashfury
 seed.steemfeeder.com:2001      # au1nethyb1
-##### 104.40.230.35:2001             # aizensou # offline
+52.175.211.168:2001            # aizensou
 seed.roelandp.nl:2001          # roelandp
 81.89.101.133:2001             # cyrano.witness
 ##### 46.252.27.1:1337               # jabbasteem # offline
