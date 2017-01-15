@@ -7,7 +7,6 @@ steemwitness.matthewniemerg.com:2001 # complexring
 steemd.pharesim.me:2001        # pharesim
 seed.jesta.us:2001             # jesta
 212.117.213.186:2016           # liondani
-##### anyx.co:2001                   # anyx # offline
 seed.xeldal.com:12150          # xeldal
 seed.steemnodes.com:2001       # wackou
 steem.clawmap.com:2001         # steempty
@@ -21,7 +20,6 @@ seed.steemfeeder.com:2001      # au1nethyb1
 52.175.211.168:2001            # aizensou
 seed.roelandp.nl:2001          # roelandp
 81.89.101.133:2001             # cyrano.witness
-##### 46.252.27.1:1337               # jabbasteem # offline
 steem.global:2001              # klye
 seed.esteem.ws:2001            # good-karma
 176.31.126.187:2001            # timcliff
