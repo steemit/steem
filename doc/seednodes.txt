@@ -27,6 +27,7 @@ seed.royaltiffany.me:2001      # royaltiffany
 129.232.223.74:2001            # thecryptodrive
 steem-id.altexplorer.xyz:2001  # steem-id
 seed.bitcoiner.me:2001         # bitcoiner
+104.199.118.92:2001            # clayop
 52.26.78.244:2001              # ?
 52.37.169.52:2001              # ?
 52.38.66.234:2001              # ?
