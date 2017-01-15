@@ -3,6 +3,7 @@ seed.riversteem.com:2001       # riverhead
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
+steemwitness.matthewniemerg.com:2001 # complexring
 steemd.pharesim.me:2001        # pharesim
 seed.jesta.us:2001             # jesta
 212.117.213.186:2016           # liondani
