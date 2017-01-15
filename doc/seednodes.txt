@@ -23,7 +23,7 @@ seed.roelandp.nl:2001          # roelandp
 ##### seed.steem.network:2001        # someguy123 # offline
 ##### 46.252.27.1:1337               # jabbasteem # offline
 steem.global:2001              # klye
-69.197.155.42:2001             # good-karma
+seed.esteem.ws:2001            # good-karma
 176.31.126.187:2001            # timcliff
 seed.royaltiffany.me:2001      # royaltiffany
 seed.thecryptodrive.com:2001   # thecryptodrive
