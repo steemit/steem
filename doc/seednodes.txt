@@ -29,6 +29,7 @@ seed.royaltiffany.me:2001      # royaltiffany
 seed.thecryptodrive.com:2001   # thecryptodrive
 steem-id.altexplorer.xyz:2001  # steem-id
 seed.bitcoiner.me:2001         # bitcoiner
+104.199.118.92:2001            # clayop
 192.99.4.226:2001              # dele-puppy
 89.36.26.82:2001               # dragosroua
 104.198.222.18:2001            # bitcoinparadise
