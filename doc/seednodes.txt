@@ -1,5 +1,4 @@
 seed.riversteem.com:2001       # riverhead
-##### seed.steempower.org:2001       # charlieshrem # not resolved
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
