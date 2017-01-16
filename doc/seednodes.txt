@@ -33,3 +33,4 @@ seed.bitcoiner.me:2001         # bitcoiner
 104.198.222.18:2001            # bitcoinparadise
 138.197.17.188:2001            # chitty
 88.99.33.113:2001              # cervantes
+seed.bhuz.info:2001            # bhuz
