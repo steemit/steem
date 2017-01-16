@@ -6,6 +6,7 @@ steemwitness.matthewniemerg.com:2001 # complexring
 steemd.pharesim.me:2001        # pharesim
 seed.jesta.us:2001             # jesta
 212.117.213.186:2016           # liondani
+anyx.co:2001                   # anyx
 seed.xeldal.com:12150          # xeldal
 seed.steemnodes.com:2001       # wackou
 steem.clawmap.com:2001         # steempty
