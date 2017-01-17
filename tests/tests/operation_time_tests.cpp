@@ -190,11 +190,6 @@ BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
    FC_LOG_AND_RETHROW()
 }*/
 
-BOOST_AUTO_TEST_CASE( discussion_rewards )
-{
-
-}
-
 /*
 BOOST_AUTO_TEST_CASE( comment_payout )
 {
