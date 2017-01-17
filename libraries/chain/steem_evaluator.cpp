@@ -523,18 +523,19 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( _db.is_producing() )
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__772 ) )
       {
-         // If older than 24 hours and comment editting is locked, reject op
-      }
-
-      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__772 ) )
-      {
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__306 ) );
+         // This will be moved to the witness plugin in a later release
+         if( _db.is_producing() )
+         {
+            // For now, use the same editting rules, but implement it as a soft fork.
             FC_ASSERT( comment.mode != archived, "The comment is archived." );
-         else if( _db.has_hardfork( STEEMIT_HARDFORK_0_10 ) )
-            FC_ASSERT( comment.last_payout == fc::time_point_sec::min(), "Can only edit during the first 24 hours." );
+         }
       }
+      else if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
+         FC_ASSERT( comment.mode != archived, "The comment is archived." );
+      else if( _db.has_hardfork( STEEMIT_HARDFORK_0_10 ) )
+         FC_ASSERT( comment.last_payout == fc::time_point_sec::min(), "Can only edit during the first 24 hours." );
 
       _db.modify( comment, [&]( comment_object& com )
       {
