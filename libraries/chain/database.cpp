@@ -758,14 +758,11 @@ signed_block database::generate_block(
    signed_block result;
    detail::with_skip_flags( *this, skip, [&]()
    {
-      database::with_write_lock( [&]()
+      try
       {
-         try
-         {
-            result = _generate_block( when, witness_owner, block_signing_private_key );
-         }
-         FC_CAPTURE_AND_RETHROW( (witness_owner) )
-      });
+         result = _generate_block( when, witness_owner, block_signing_private_key );
+      }
+      FC_CAPTURE_AND_RETHROW( (witness_owner) )
    });
    return result;
 }
