@@ -1723,30 +1723,40 @@ void database::clear_null_account_balance()
       adjust_supply( -total_sbd );
 }
 
+void update_children_rshares2( database& db, const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 )
+{
+   // Updates the children_rshares2 field of the comment and all its ancestors
+
+   const comment_object* current_comment = &c;
+   while( true )
+   {
+      db.modify( *current_comment, [&]( comment_object& comment )
+      {
+         comment.children_rshares2 -= old_rshares2;
+         comment.children_rshares2 += new_rshares2;
+      } );
+
+      if( current_comment->depth == 0 )
+         break;
+
+      current_comment = &db.get_comment( current_comment->parent_author, current_comment->parent_permlink );
+   }
+}
+
 /**
  * This method recursively tallies children_rshares2 for this post plus all of its parents,
  * TODO: this method can be skipped for validation-only nodes
  */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
 {
-   modify( c, [&](comment_object& comment )
+   update_children_rshares2( *this, c, old_rshares2, new_rshares2 );
+
+   const auto& dgpo = get_dynamic_global_properties();
+   modify( dgpo, [&]( dynamic_global_property_object& p )
    {
-      comment.children_rshares2 -= old_rshares2;
-      comment.children_rshares2 += new_rshares2;
+      p.total_reward_shares2 -= old_rshares2;
+      p.total_reward_shares2 += new_rshares2;
    } );
-   if( c.depth )
-   {
-      adjust_rshares2( get_comment( c.parent_author, c.parent_permlink ), old_rshares2, new_rshares2 );
-   }
-   else
-   {
-      const auto& cprops = get_dynamic_global_properties();
-      modify( cprops, [&]( dynamic_global_property_object& p )
-      {
-         p.total_reward_shares2 -= old_rshares2;
-         p.total_reward_shares2 += new_rshares2;
-      } );
-   }
 }
 
 void database::update_owner_authority( const account_object& account, const authority& owner_authority )
