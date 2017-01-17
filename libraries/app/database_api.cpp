@@ -4,6 +4,8 @@
 
 #include <steemit/protocol/get_config.hpp>
 
+#include <steemit/chain/util/reward.hpp>
+
 #include <fc/bloom_filter.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/crypto/hex.hpp>
@@ -1110,7 +1112,7 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      auto vshares = my->_db.calculate_vshares( d.net_rshares.value > 0 ? d.net_rshares.value : 0  );
+      auto vshares = steemit::chain::util::calculate_vshares( d.net_rshares.value > 0 ? d.net_rshares.value : 0  );
 
       //int64_t abs_net_rshares = llabs(d.net_rshares.value);
 
