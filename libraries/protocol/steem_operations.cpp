@@ -97,6 +97,20 @@ namespace steemit { namespace protocol {
       }
    }
 
+   void comment_payout_beneficiaries::validate()const
+   {
+      uint32_t sum = 0;
+
+      for( auto& route : beneficiaries )
+      {
+         validate_account_name( route.first );
+         FC_ASSERT( route.second <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+         sum += route.second;
+      }
+
+      FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" );
+   }
+
    void comment_options_operation::validate()const
    {
       validate_account_name( author );

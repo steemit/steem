@@ -107,7 +107,7 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a )
+            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a ), beneficiaries( a )
          {
             c( *this );
          }
@@ -168,6 +168,8 @@ namespace steemit { namespace chain {
          bool              allow_replies = true;      /// allows a post to disable replies.
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;
+
+         bip::vector< std::pair< account_name_type, uint16_t >, allocator< std::pair< account_name_type, uint16_t > > > beneficiaries;
    };
 
 
@@ -323,6 +325,7 @@ FC_REFLECT( steemit::chain::comment_object,
              (children_abs_rshares)(cashout_time)(max_cashout_time)
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
+             (beneficiaries)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
 
