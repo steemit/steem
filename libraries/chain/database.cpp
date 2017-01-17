@@ -1967,7 +1967,7 @@ void fill_comment_reward_context_local_state( util::comment_reward_context& ctx,
    ctx.max_sbd = comment.max_accepted_payout;
 }
 
-void database::cashout_comment_helper( const comment_object& comment )
+void database::cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment )
 {
    try
    {
@@ -1975,9 +1975,10 @@ void database::cashout_comment_helper( const comment_object& comment )
 
       if( comment.net_rshares > 0 )
       {
-         util::comment_reward_context ctx;
          fill_comment_reward_context_local_state( ctx, comment );
-         fill_comment_reward_context_global_state( ctx, *this );
+         if( !has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
+            fill_comment_reward_context_global_state( ctx, *this );
+
          const share_type reward = util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
@@ -2106,6 +2107,9 @@ void database::process_comment_cashout()
    if( !has_hardfork( STEEMIT_FIRST_CASHOUT_TIME ) )
       return;
 
+   util::comment_reward_context ctx;
+   fill_comment_reward_context_global_state( ctx, *this );
+
    int count = 0;
    const auto& cidx        = get_index<comment_index>().indices().get<by_cashout_time>();
    const auto& com_by_root = get_index< comment_index >().indices().get< by_root >();
@@ -2117,7 +2121,7 @@ void database::process_comment_cashout()
       while( itr != com_by_root.end() && itr->root_comment == current->root_comment )
       {
          const auto& comment = *itr; ++itr;
-         cashout_comment_helper( comment );
+         cashout_comment_helper( ctx, comment );
          ++count;
       }
       current = cidx.begin();
