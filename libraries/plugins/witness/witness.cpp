@@ -68,12 +68,7 @@ void witness_plugin::plugin_set_program_options(
          ("required-participation", bpo::bool_switch()->notifier([this](int e){_required_witness_participation = uint32_t(e*STEEMIT_1_PERCENT);}), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
          ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
           ("name of witness controlled by this node (e.g. " + witness_id_example+" )" ).c_str())
-         ("miner,m", bpo::value<vector<string>>()->composing()->multitoken(), "name of miner and its private key (e.g. [\"account\",\"WIF PRIVATE KEY\"] )" )
-         ("mining-threads,t", bpo::value<uint32_t>(),"Number of threads to use for proof of work mining" )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
-         ("miner-account-creation-fee", bpo::value<uint64_t>()->implicit_value(100000),"Account creation fee to be voted on upon successful POW - Minimum fee is 100.000 STEEM (written as 100000)")
-         ("miner-maximum-block-size", bpo::value<uint32_t>()->implicit_value(131072),"Maximum block size (in bytes) to be voted on upon successful POW - Max block size must be between 128 KB and 750 MB")
-         ("miner-sbd-interest-rate", bpo::value<uint32_t>()->implicit_value(1000),"SBD interest rate to be vote on upon successful POW - Default interest rate is 10% (written as 1000)")
          ;
    config_file_options.add(command_line_options);
 }
@@ -94,29 +89,6 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    LOAD_VALUE_SET(options, "witness", _witnesses, string)
    edump((_witnesses));
 
-   if( options.count("miner") ) {
-
-      const vector<string> miner_to_wif_pair_strings = options["miner"].as<vector<string>>();
-      for( auto p : miner_to_wif_pair_strings )
-      {
-         auto m = steemit::app::dejsonify<pair<string,string>>(p);
-         idump((m));
-
-         fc::optional<fc::ecc::private_key> private_key = graphene::utilities::wif_to_key(m.second);
-         FC_ASSERT( private_key.valid(), "unable to parse private key" );
-         _private_keys[private_key->get_public_key()] = *private_key;
-         _miners[m.first] = private_key->get_public_key();
-      }
-   }
-
-   if( options.count("mining-threads") )
-   {
-      _mining_threads = std::min( options["mining-threads"].as<uint32_t>(), uint32_t(64) );
-      _thread_pool.resize( _mining_threads );
-      for( uint32_t i = 0; i < _mining_threads; ++i )
-         _thread_pool[i] = std::make_shared<fc::thread>();
-   }
-
    if( options.count("private-key") )
    {
       const std::vector<std::string> keys = options["private-key"].as<std::vector<std::string>>();
@@ -126,36 +98,6 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
          FC_ASSERT( private_key.valid(), "unable to parse private key" );
          _private_keys[private_key->get_public_key()] = *private_key;
       }
-   }
-
-   if( options.count("miner-account-creation-fee") )
-   {
-      const uint64_t account_creation_fee = options["miner-account-creation-fee"].as<uint64_t>();
-
-      if( account_creation_fee < STEEMIT_MIN_ACCOUNT_CREATION_FEE )
-         wlog( "miner-account-creation-fee is below the minimum fee, using minimum instead" );
-      else
-         _miner_prop_vote.account_creation_fee.amount = account_creation_fee;
-   }
-
-   if( options.count( "miner-maximum-block-size" ) )
-   {
-      const uint32_t maximum_block_size = options["miner-maximum-block-size"].as<uint32_t>();
-
-      if( maximum_block_size < STEEMIT_MIN_BLOCK_SIZE_LIMIT )
-         wlog( "miner-maximum-block-size is below the minimum block size limit, using default of 128 KB instead" );
-      else if ( maximum_block_size > STEEMIT_MAX_BLOCK_SIZE )
-      {
-         wlog( "miner-maximum-block-size is above the maximum block size limit, using maximum of 750 MB instead" );
-         _miner_prop_vote.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
-      }
-      else
-         _miner_prop_vote.maximum_block_size = maximum_block_size;
-   }
-
-   if( options.count( "miner-sbd-interest-rate" ) )
-   {
-      _miner_prop_vote.sbd_interest_rate = options["miner-sbd-interest-rate"].as<uint32_t>();
    }
 
    ilog("witness plugin:  plugin_initialize() end");
@@ -177,27 +119,16 @@ void witness_plugin::plugin_startup()
          _production_skip_flags |= steemit::chain::database::skip_undo_history_check;
       }
       schedule_production_loop();
-   } else
-      elog("No witnesses configured! Please add witness names and private keys to configuration.");
-   if( !_miners.empty() )
-   {
-      ilog("Starting mining...");
-      d.applied_block.connect( [this]( const protocol::signed_block& b ){ this->on_applied_block(b); } );
    }
    else
    {
-      elog("No miners configured! Please add miner names and private keys to configuration.");
+      elog("No witnesses configured! Please add witness names and private keys to configuration.");
    }
    ilog("witness plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
 
 void witness_plugin::plugin_shutdown()
 {
-   if( !_miners.empty() )
-   {
-      ilog( "shutting downing mining threads" );
-      _thread_pool.clear();
-   }
    return;
 }
 
@@ -381,219 +312,6 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
    } while( retry < 2 );
 
    return block_production_condition::exception_producing_block;
-}
-
-/**
- * Every time a block is produced, this method is called. This method will iterate through all
- * mining accounts specified by commandline and for which the private key is known. The first
- * account that isn't already scheduled in the mining queue is selected to mine for the
- * BLOCK_INTERVAL minus 1 second. If a POW is solved or a a new block comes in then the
- * worker will stop early.
- *
- * Work is farmed out to N threads in parallel based upon the value specified on the command line.
- *
- * The miner assumes that the next block will be produced on time and that network propagation
- * will take at least 1 second. This 1 second consists of the time it took to receive the block
- * and how long it will take to broadcast the work. In other words, we assume 0.5s broadcast times
- * and therefore do not even attempt work that cannot be delivered on time.
- */
-void witness_plugin::on_applied_block(const steemit::protocol::signed_block& b)
-{ try {
-  if( !_mining_threads || _miners.size() == 0 ) return;
-  chain::database& db = database();
-
-   const auto& dgp = db.get_dynamic_global_properties();
-   double hps   = (_total_hashes*1000000)/(fc::time_point::now()-_hash_start_time).count();
-   uint64_t i_hps = uint64_t(hps+0.5);
-
-   uint32_t summary_target = db.get_pow_summary_target();
-
-   double target = fc::sha256::inverse_approx_log_32_double( summary_target );
-   static const double max_target = std::ldexp( 1.0, 256 );
-
-   double seconds_needed = 0.0;
-   if( i_hps > 0 )
-   {
-      double hashes_needed = max_target / target;
-      seconds_needed = hashes_needed / i_hps;
-   }
-
-   uint64_t minutes_needed = uint64_t( seconds_needed / 60.0 + 0.5 );
-
-   fc::sha256 hash_target;
-   hash_target.set_to_inverse_approx_log_32( summary_target );
-
-   if( _total_hashes > 0 )
-      ilog( "hash rate: ${x} hps  target: ${t} queue: ${l} estimated time to produce: ${m} minutes",
-              ("x",i_hps) ("t",hash_target.str()) ("m", minutes_needed ) ("l",dgp.num_pow_witnesses)
-         );
-
-
-  _head_block_num = b.block_num();
-  _head_block_id = b.id();
-  /// save these variables to be captured by worker lambda
-
-  for( const auto& miner : _miners ) {
-    const auto* w = db.find_witness( miner.first );
-    if( !w || w->pow_worker == 0 ) {
-       auto miner_pub_key = miner.second; //a.active.key_auths.begin()->first;
-       auto priv_key_itr = _private_keys.find(miner_pub_key);
-       if( priv_key_itr == _private_keys.end() ) {
-          continue; /// skipping miner for lack of private key
-       }
-
-       auto miner_priv_key = priv_key_itr->second;
-       start_mining( miner_pub_key, priv_key_itr->second, miner.first, b );
-       break;
-    } else {
-        // ilog( "Skipping miner ${m} because it is already scheduled to produce a block", ("m",miner) );
-    }
-  } // for miner in miners
-
-} catch ( const fc::exception& e ) { ilog( "exception thrown while attempting to mine" ); }
-}
-
-void witness_plugin::start_mining(
-   const fc::ecc::public_key& pub,
-   const fc::ecc::private_key& pk,
-   const string& miner,
-   const steemit::protocol::signed_block& b )
-{
-   static uint64_t seed = fc::time_point::now().time_since_epoch().count();
-   static uint64_t start = fc::city_hash64( (const char*)&seed, sizeof(seed) );
-   chain::database& db = database();
-   auto head_block_num  = b.block_num();
-   auto head_block_time = b.timestamp;
-   auto block_id = b.id();
-   fc::thread* mainthread = &fc::thread::current();
-   _total_hashes = 0;
-   _hash_start_time = fc::time_point::now();
-   auto stop = head_block_time + fc::seconds( STEEMIT_BLOCK_INTERVAL * 2 );
-   uint32_t thread_num = 0;
-   uint32_t num_threads = _mining_threads;
-   uint32_t target = db.get_pow_summary_target();
-   const auto& acct_idx  = db.get_index< chain::account_index >().indices().get< chain::by_name >();
-   auto acct_it = acct_idx.find( miner );
-   bool has_account = (acct_it != acct_idx.end());
-   bool has_hardfork_16 = db.has_hardfork( STEEMIT_HARDFORK_0_16__551 );
-   for( auto& t : _thread_pool )
-   {
-      thread_num++;
-      t->async( [=]()
-      {
-         if( has_hardfork_16 )
-         {
-            protocol::pow2_operation op;
-            protocol::equihash_pow work;
-            work.input.prev_block = block_id;
-            work.input.worker_account = miner;
-            work.input.nonce = start + thread_num;
-            op.props = _miner_prop_vote;
-
-            while( true )
-            {
-               if( steemit::time::now() > stop )
-               {
-                  // ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
-                  return;
-               }
-               if( this->_head_block_num != head_block_num )
-               {
-                  // wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
-                  return;
-               }
-
-               ++this->_total_hashes;
-               work.input.nonce += num_threads;
-               work.create( block_id, miner, work.input.nonce );
-
-               if( work.proof.is_valid() && work.pow_summary < target )
-               {
-                  protocol::signed_transaction trx;
-                  work.prev_block = this->_head_block_id;
-                  op.work = work;
-                  if( !has_account )
-                     op.new_owner_key = pub;
-                  trx.operations.push_back( op );
-                  trx.ref_block_num = head_block_num;
-                  trx.ref_block_prefix = work.input.prev_block._hash[1];
-                  trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-                  trx.sign( pk, STEEMIT_CHAIN_ID );
-                  ++this->_head_block_num;
-                  mainthread->async( [this,miner,trx]()
-                  {
-                     try
-                     {
-                        database().push_transaction( trx );
-                        ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
-                        p2p_node().broadcast( graphene::net::trx_message(trx) );
-                     }
-                     catch( const fc::exception& e )
-                     {
-                        // wdump((e.to_detail_string()));
-                     }
-                  });
-                  return;
-               }
-            }
-         }
-         else // delete after hardfork 16
-         {
-            protocol::pow2_operation op;
-            protocol::pow2 work;
-            work.input.prev_block = block_id;
-            work.input.worker_account = miner;
-            work.input.nonce = start + thread_num;
-            op.props = _miner_prop_vote;
-            while( true )
-            {
-               //  if( ((op.nonce/num_threads) % 1000) == 0 ) idump((op.nonce));
-               if( steemit::time::now() > stop )
-               {
-                  // ilog( "stop mining due to time out, nonce: ${n}", ("n",op.nonce) );
-                  return;
-               }
-               if( this->_head_block_num != head_block_num )
-               {
-                  // wlog( "stop mining due new block arrival, nonce: ${n}", ("n",op.nonce));
-                  return;
-               }
-
-               ++this->_total_hashes;
-               work.input.nonce += num_threads;
-               work.create( block_id, miner, work.input.nonce );
-               if( work.pow_summary < target )
-               {
-                  ++this->_head_block_num; /// signal other workers to stop
-                  protocol::signed_transaction trx;
-                  op.work = work;
-                  if( !has_account )
-                     op.new_owner_key = pub;
-                  trx.operations.push_back(op);
-                  trx.ref_block_num = head_block_num;
-                  trx.ref_block_prefix = work.input.prev_block._hash[1];
-                  trx.set_expiration( head_block_time + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-                  trx.sign( pk, STEEMIT_CHAIN_ID );
-                  mainthread->async( [this,miner,trx]()
-                  {
-                     try
-                     {
-                        database().push_transaction( trx );
-                        ilog( "Broadcasting Proof of Work for ${miner}", ("miner",miner) );
-                        p2p_node().broadcast( graphene::net::trx_message(trx) );
-                     }
-                     catch( const fc::exception& e )
-                     {
-                        // wdump((e.to_detail_string()));
-                     }
-                  } );
-                  return;
-               }
-            }
-         }
-      } );
-      thread_num++;
-   }
 }
 
 STEEMIT_DEFINE_PLUGIN( witness, steemit::witness_plugin::witness_plugin )
