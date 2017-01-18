@@ -23,6 +23,131 @@ using namespace steemit::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
+BOOST_AUTO_TEST_CASE( comment_payout_equalize )
+{
+   try
+   {
+      ACTORS( (alice)(bob)(dave)
+              (ulysses)(vivian)(wendy) )
+
+      struct author_actor
+      {
+         author_actor(
+            const std::string& n,
+            fc::ecc::private_key pk,
+            fc::optional<asset> mpay = fc::optional<asset>() )
+            : name(n), private_key(pk), max_accepted_payout(mpay) {}
+         std::string             name;
+         fc::ecc::private_key    private_key;
+         fc::optional< asset >   max_accepted_payout;
+      };
+
+      struct voter_actor
+      {
+         voter_actor( const std::string& n, fc::ecc::private_key pk, std::string fa )
+            : name(n), private_key(pk), favorite_author(fa) {}
+         std::string             name;
+         fc::ecc::private_key    private_key;
+         std::string             favorite_author;
+      };
+
+
+      std::vector< author_actor > authors;
+      std::vector< voter_actor > voters;
+
+      authors.emplace_back( "alice", alice_private_key );
+      authors.emplace_back( "bob"  , bob_private_key, ASSET( "0.000 TBD" ) );
+      authors.emplace_back( "dave" , dave_private_key );
+      voters.emplace_back( "ulysses", ulysses_private_key, "alice");
+      voters.emplace_back( "vivian" , vivian_private_key , "bob"  );
+      voters.emplace_back( "wendy"  , wendy_private_key  , "dave" );
+
+      // A,B,D : posters
+      // U,V,W : voters
+
+      // set a ridiculously high STEEM price ($1 / satoshi) to disable dust threshold
+      set_price_feed( price( asset::from_string( "0.001 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
+
+      for( const auto& voter : voters )
+      {
+         fund( voter.name, 10000 );
+         vest( voter.name, 10000 );
+      }
+
+      // authors all write in the same block, but Bob declines payout
+      for( const auto& author : authors )
+      {
+         signed_transaction tx;
+         comment_operation com;
+         com.author = author.name;
+         com.permlink = "mypost";
+         com.parent_author = STEEMIT_ROOT_POST_PARENT;
+         com.parent_permlink = "test";
+         com.title = "Hello from "+author.name;
+         com.body = "Hello, my name is "+author.name;
+         tx.operations.push_back( com );
+
+         if( author.max_accepted_payout.valid() )
+         {
+            comment_options_operation copt;
+            copt.author = com.author;
+            copt.permlink = com.permlink;
+            copt.max_accepted_payout = *(author.max_accepted_payout);
+            tx.operations.push_back( copt );
+         }
+
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( author.private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+      }
+
+      generate_blocks(1);
+
+      // voters all vote in the same block with the same stake
+      for( const auto& voter : voters )
+      {
+         signed_transaction tx;
+         vote_operation vote;
+         vote.voter = voter.name;
+         vote.author = voter.favorite_author;
+         vote.permlink = "mypost";
+         vote.weight = STEEMIT_100_PERCENT;
+         tx.operations.push_back( vote );
+         tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( voter.private_key, db.get_chain_id() );
+         db.push_transaction( tx, 0 );
+      }
+
+      auto reward_steem = db.get_dynamic_global_properties().total_reward_fund_steem;
+      auto total_rshares2 = db.get_dynamic_global_properties().total_reward_shares2;
+
+      // generate a few blocks to seed the reward fund
+      generate_blocks(10);
+      ilog( "dgpo: ${dgpo}", ("dgpo", db.get_dynamic_global_properties()) );
+
+      generate_blocks( db.get_comment( "alice", string( "mypost" ) ).cashout_time, true );
+      for( const auto& author : authors )
+      {
+         const account_object& a = db.get_account(author.name);
+         ilog( "${n} : ${steem} ${sbd}", ("n", author.name)("steem", a.balance)("sbd", a.sbd_balance) );
+      }
+      for( const auto& voter : voters )
+      {
+         const account_object& a = db.get_account(voter.name);
+         ilog( "${n} : ${steem} ${sbd}", ("n", voter.name)("steem", a.balance)("sbd", a.sbd_balance) );
+      }
+
+      const account_object& alice_account = db.get_account("alice");
+      const account_object& bob_account   = db.get_account("bob");
+      const account_object& dave_account  = db.get_account("dave");
+
+      BOOST_CHECK( alice_account.sbd_balance == ASSET( "10720.000 TBD" ) );
+      BOOST_CHECK( bob_account.sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_CHECK( dave_account.sbd_balance == alice_account.sbd_balance );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 /*BOOST_AUTO_TEST_CASE( comment_payout )
 {
    try
@@ -823,6 +948,8 @@ BOOST_AUTO_TEST_CASE( nested_comments )
    FC_LOG_AND_RETHROW()
 }
 */
+
+
 BOOST_AUTO_TEST_CASE( vesting_withdrawals )
 {
    try
