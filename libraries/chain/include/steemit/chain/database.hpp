@@ -315,7 +315,6 @@ namespace steemit { namespace chain {
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
-         share_type pay_discussions( const comment_object& c, share_type max_rewards );
          share_type pay_curators( const comment_object& c, share_type max_rewards );
          void cashout_comment_helper( const comment_object& comment );
          void process_comment_cashout();
@@ -333,7 +332,6 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
-         uint16_t get_discussion_rewards_percent() const;
          uint16_t get_curation_rewards_percent() const;
 
          void  pay_liquidity_reward();
