@@ -1593,10 +1593,30 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
             break;
          try
          {
-            result.push_back( get_discussion( blog_itr->comment ) );
-            if( blog_itr->reblogged_on > time_point_sec() )
+            bool resteemed = blog_itr->reblogged_on > time_point_sec();
+
+            if( query.filter_by.find( discussion_query_filter::blog ) != query.filter_by.end() )	// only show authored discussions
             {
-               result.back().first_reblogged_on = blog_itr->reblogged_on;
+                if( !resteemed )
+                {
+                    result.push_back( get_discussion( blog_itr->comment ) );
+                }
+            }
+            else if( query.filter_by.find( discussion_query_filter::resteemed ) != query.filter_by.end() )	// only show resteemed discussions
+            {
+                if( resteemed )
+                {
+                    result.push_back( get_discussion( blog_itr->comment ) );
+                    result.back().first_reblogged_on = blog_itr->reblogged_on;
+                }
+            }
+            else	// show mixed
+            {
+                result.push_back( get_discussion( blog_itr->comment ) );
+                if( resteemed )
+                {
+                    result.back().first_reblogged_on = blog_itr->reblogged_on;
+                }
             }
          }
          catch ( const fc::exception& e )
@@ -1986,7 +2006,7 @@ state database_api::get_state( string path )const
             }
    #endif
          }
-         else if( part[1].size() == 0 || part[1] == "blog" )
+         else if( part[1].size() == 0 )
          {
             if( my->_follow_api )
             {
@@ -2007,7 +2027,41 @@ state database_api::get_state( string path )const
                }
             }
          }
-         else if( part[1].size() == 0 || part[1] == "feed" )
+         else if( part[1] == "blog" )
+         {
+            discussion_query q;
+            q.tag = eacnt.name;
+            q.limit = 20;
+            q.filter_by.insert( discussion_query_filter::blog );
+            auto blog = get_discussions_by_blog( q );
+            eacnt.blog = vector< string >();
+
+            for( const auto& b : blog ) {
+                const auto link = b.author + "/" + b.permlink;
+                eacnt.blog->push_back( link );
+                _state.content[link] = std::move(b);
+                set_pending_payout( _state.content[ link ] );
+            }
+         }
+         else if( part[1] == "resteemed" )
+         {
+            discussion_query q;
+            q.tag = eacnt.name;
+            q.limit = 20;
+            q.filter_by.insert( discussion_query_filter::resteemed );
+            auto blog = get_discussions_by_blog( q );
+            eacnt.resteemed = vector< string >();
+
+            for( const auto& b : blog ) {
+                const auto link = b.author + "/" + b.permlink;
+                eacnt.resteemed->push_back( link );
+                if( b.author.size() ) accounts.insert(b.author);
+                _state.content[link] = std::move(b);
+                set_pending_payout( _state.content[ link ] );
+                _state.content[ link ].first_reblogged_on = b.first_reblogged_on;
+            }
+         }
+         else if( part[1] == "feed" )
          {
             if( my->_follow_api )
             {
