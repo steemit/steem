@@ -194,7 +194,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
    {
 #ifndef IS_TEST_NET
       if( _db.has_hardfork( STEEMIT_HARDFORK_0_11 ) )
-         FC_ASSERT( _db.head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "Owner authority can only be updated once a minute." );
+         FC_ASSERT( _db.head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "Owner authority can only be updated once an hour." );
 #endif
 
       if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) ) // TODO: Add HF 15
