@@ -133,9 +133,7 @@ struct operation_visitor {
       }
 
       /// the universal tag applies to everything safe for work or nsfw with a non-negative payout
-      if( c.net_rshares >= 0 ||
-         (lower_tags.find( "spam" ) == lower_tags.end() &&
-         lower_tags.find( "test" ) == lower_tags.end() ) )
+      if( c.net_rshares >= 0 )
       {
          lower_tags.insert( string() ); /// add it to the universal tag
       }
