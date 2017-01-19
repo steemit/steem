@@ -24,9 +24,12 @@
 
 #include <graphene/time/time.hpp>
 
+#include <fc/exception/exception.hpp>
 #include <fc/network/ntp.hpp>
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
+
+#include <atomic>
 
 namespace graphene {
     namespace time {

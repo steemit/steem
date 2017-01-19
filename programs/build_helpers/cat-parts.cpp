@@ -1,5 +1,5 @@
-
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <iostream>
 #include <sstream>

@@ -445,13 +445,11 @@ namespace steemit {
             } FC_CAPTURE_AND_RETHROW((new_price))
 
             generate_blocks(STEEMIT_BLOCKS_PER_HOUR);
-            BOOST_REQUIRE(
-#ifdef
-                    IS_TEST_NET
-                    !db.skip_price_feed_limit_check ||
+#ifdef IS_TEST_NET
+            BOOST_REQUIRE(!db.skip_price_feed_limit_check || db.get(feed_history_id_type()).current_median_history == new_price);
+#else
+            BOOST_REQUIRE(db.get(feed_history_id_type()).current_median_history == new_price);
 #endif
-                    db.get(feed_history_id_type()).current_median_history == new_price
-            );
         }
 
         const asset &database_fixture::get_balance(const string &account_name) const {

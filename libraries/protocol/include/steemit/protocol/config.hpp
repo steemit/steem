@@ -21,7 +21,7 @@
 #define STEEMIT_ADDRESS_PREFIX                  "TST"
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
-//#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
+#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 #define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS)
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*4) /// 4 hours

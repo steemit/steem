@@ -1,3 +1,7 @@
+#include <openssl/md5.h>
+
+#include <boost/iostreams/device/mapped_file.hpp>
+
 #include <steemit/protocol/steem_operations.hpp>
 
 #include <steemit/chain/block_summary_object.hpp>
@@ -9,6 +13,7 @@
 #include <steemit/chain/evaluator_registry.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/index.hpp>
+#include <steemit/chain/snapshot_state.hpp>
 #include <steemit/chain/steem_evaluator.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
@@ -20,7 +25,6 @@
 #include <fc/container/deque.hpp>
 
 #include <fc/io/fstream.hpp>
-#include <steemit/chain/snapshot_state.hpp>
 #include <fc/io/json.hpp>
 
 #define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )

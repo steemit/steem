@@ -10,9 +10,9 @@ fi
 
 chown -R steemd:steemd $HOME
 
-# seed nodes come from doc/seednodes.txt which is
-# installed by docker into /etc/steemd/seednodes.txt
-SEED_NODES="$(cat /etc/steemd/seednodes.txt | awk -F' ' '{print $1}')"
+# seed nodes come from doc/seednodes which is
+# installed by docker into /etc/steemd/seednodes
+SEED_NODES="$(cat /etc/steemd/seednodes | awk -F' ' '{print $1}')"
 
 ARGS=""
 
