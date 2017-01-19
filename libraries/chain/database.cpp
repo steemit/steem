@@ -2970,13 +2970,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
             x += now % span;
          }
          _next_flush_block = x;
-         ilog( "Next flush scheduled at block ${b}", ("b", x) );
+         //ilog( "Next flush scheduled at block ${b}", ("b", x) );
       }
 
       if( _next_flush_block == block_num )
       {
          _next_flush_block = 0;
-         ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
+         //ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
          chainbase::database::flush();
       }
    }

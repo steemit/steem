@@ -1259,7 +1259,7 @@ vector<tag_api_obj> database_api::get_trending_tags( string after, uint32_t limi
 {
    return my->_db.with_read_lock( [&]()
    {
-      limit = std::min( limit, uint32_t(100) );
+      limit = std::min( limit, uint32_t(1000) );
       vector<tag_api_obj> result;
       result.reserve( limit );
 
@@ -1566,6 +1566,7 @@ vector<discussion> database_api::get_discussions_by_feed( const discussion_query
             result.push_back( get_discussion( feed_itr->comment ) );
             if( feed_itr->first_reblogged_by != account_name_type() )
             {
+               result.back().reblogged_by = vector<account_name_type>( feed_itr->reblogged_by.begin(), feed_itr->reblogged_by.end() );
                result.back().first_reblogged_by = feed_itr->first_reblogged_by;
                result.back().first_reblogged_on = feed_itr->first_reblogged_on;
             }
@@ -1918,19 +1919,12 @@ state database_api::get_state( string path )const
          path = "trending";
 
       /// FETCH CATEGORY STATE
-      auto trending_tags = get_trending_tags( "", 100 );
+      auto trending_tags = get_trending_tags( std::string(), 1000 );
       for( const auto& t : trending_tags )
       {
          string name = t.name;
          _state.tag_idx.trending.push_back( name );
          _state.tags[ name ] = t;
-      }
-      auto best_cat     = get_best_categories( "", 50 );
-      for( const auto& c : best_cat )
-      {
-         string name = c.name;
-         _state.category_idx.best.push_back( name );
-         _state.categories[ name ] = category_api_obj( c );
       }
       /// END FETCH CATEGORY STATE
 
@@ -1948,7 +1942,8 @@ state database_api::get_state( string path )const
          _state.accounts[acnt].tags_usage = get_tags_used_by_author( acnt );
          if( my->_follow_api )
          {
-            _state.accounts[acnt].reputation = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;
+            _state.accounts[acnt].guest_bloggers = my->_follow_api->get_blog_authors( acnt );
+            _state.accounts[acnt].reputation     = my->_follow_api->get_account_reputations( acnt, 1 )[0].reputation;
          }
          auto& eacnt = _state.accounts[acnt];
          if( part[1] == "transfers" ) {
@@ -2066,7 +2061,9 @@ state database_api::get_state( string path )const
                   set_pending_payout( _state.content[ link ] );
                   if( f.reblog_by.size() )
                   {
-                     _state.content[link].first_reblogged_by = f.reblog_by;
+                     if( f.reblog_by.size() )
+                        _state.content[link].first_reblogged_by = f.reblog_by[0];
+                     _state.content[link].reblogged_by = f.reblog_by;
                      _state.content[link].first_reblogged_on = f.reblog_on;
                   }
                }
