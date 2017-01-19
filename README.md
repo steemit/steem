@@ -1,6 +1,6 @@
-# Introducing Steem (beta)
+# Introducing Golos (beta)
 
-Steem is an experimental Proof of Work blockchain with an unproven consensus
+Golos is an experimental Proof of Work blockchain with an unproven consensus
 algorithm.
 
   - Currency symbol STEEM
@@ -9,7 +9,7 @@ algorithm.
 
 # Public Announcement & Discussion
 
-Steem was announced on the
+Golos was announced on the
 [Bitcointalk forum](https://bitcointalk.org/index.php?topic=1410943.new) prior to
 the start of any mining.
 
@@ -66,7 +66,7 @@ time to a whitespace delimited list of seed nodes (with port).
 
 # How to Mine
 
-The mining algorithm used by Steem requires the owner to have access to the
+The mining algorithm used by Golos requires the owner to have access to the
 private key used by the account. This means it does not favor mining pools.
 
     ./steemd --miner=["accountname","${WIFPRIVATEKEY}"] \

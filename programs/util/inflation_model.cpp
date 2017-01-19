@@ -1,13 +1,8 @@
 
 #include <steemit/chain/compound.hpp>
 #include <steemit/protocol/asset.hpp>
-#include <steemit/protocol/types.hpp>
 
 #include <fc/io/json.hpp>
-#include <fc/variant_object.hpp>
-
-#include <iostream>
-#include <vector>
 
 #define CURATE_OFF      0
 #define VCURATE_OFF     1
@@ -60,10 +55,9 @@ Some possible sources of inaccuracy, the direction and estimated relative sizes 
 
 */
 
-int main( int argc, char** argv, char** envp )
-{
-   std::vector< share_type > reward_delta;
-   std::vector< share_type > reward_total;
+int main(int argc, char **argv, char **envp) {
+    std::vector<share_type> reward_delta;
+    std::vector<share_type> reward_total;
 
 /*
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
@@ -71,83 +65,87 @@ int main( int argc, char** argv, char** envp )
 #define STEEMIT_FIRST_CASHOUT_TIME              (fc::time_point_sec(1467590400))  /// July 4th
 */
 
-   uint32_t liquidity_begin_block = (1467590400 - 1458835200) / 3;
-   uint32_t pow_deficit = 100;
+    uint32_t liquidity_begin_block = STEEMIT_START_VESTING_BLOCK;
+    uint32_t pow_deficit = 100;
 
-   for( int i=0; i<REWARD_TYPES; i++ )
-   {
-      reward_delta.emplace_back();
-      reward_total.emplace_back();
-   }
+    for (int i = 0; i < REWARD_TYPES; i++) {
+        reward_delta.emplace_back();
+        reward_total.emplace_back();
+    }
 
-   auto block_inflation_model = [&]( uint32_t block_num, share_type& current_supply )
-   {
-      uint32_t vesting_factor = (block_num < STEEMIT_START_VESTING_BLOCK) ? 0 : 9;
+    auto block_inflation_model = [&](uint32_t block_num, share_type &current_supply) {
+        uint32_t vesting_factor = (block_num < STEEMIT_START_VESTING_BLOCK) ? 0
+                                                                            : 9;
 
-      share_type curate_reward   = calc_percent_reward_per_block< STEEMIT_CURATE_APR_PERCENT >( current_supply );
-      reward_delta[ CURATE_OFF ] = std::max( curate_reward, STEEMIT_MIN_CURATE_REWARD.amount );
-      reward_delta[ VCURATE_OFF ] = reward_delta[ CURATE_OFF ] * vesting_factor;
+        share_type curate_reward = calc_percent_reward_per_block<STEEMIT_CURATE_APR_PERCENT>(current_supply);
+        reward_delta[CURATE_OFF] = std::max(curate_reward, STEEMIT_MIN_CURATE_REWARD.amount);
+        reward_delta[VCURATE_OFF] = reward_delta[CURATE_OFF] * vesting_factor;
 
-      share_type content_reward  = calc_percent_reward_per_block< STEEMIT_CONTENT_APR_PERCENT >( current_supply );
-      reward_delta[ CONTENT_OFF ] = std::max( content_reward, STEEMIT_MIN_CONTENT_REWARD.amount );
-      reward_delta[ VCONTENT_OFF ] = reward_delta[ CONTENT_OFF ] * vesting_factor;
+        share_type content_reward = calc_percent_reward_per_block<STEEMIT_CONTENT_APR_PERCENT>(current_supply);
+        reward_delta[CONTENT_OFF] = std::max(content_reward, STEEMIT_MIN_CONTENT_REWARD.amount);
+        reward_delta[VCONTENT_OFF] = reward_delta[CONTENT_OFF] * vesting_factor;
 
-      share_type producer_reward = calc_percent_reward_per_block< STEEMIT_PRODUCER_APR_PERCENT >( current_supply );
-      reward_delta[ PRODUCER_OFF ] = std::max( producer_reward, STEEMIT_MIN_PRODUCER_REWARD.amount );
-      reward_delta[ VPRODUCER_OFF ] = reward_delta[ PRODUCER_OFF ] * vesting_factor;
+        share_type producer_reward = calc_percent_reward_per_block<STEEMIT_PRODUCER_APR_PERCENT>(current_supply);
+        reward_delta[PRODUCER_OFF] = std::max(producer_reward, STEEMIT_MIN_PRODUCER_REWARD.amount);
+        reward_delta[VPRODUCER_OFF] =
+                reward_delta[PRODUCER_OFF] * vesting_factor;
 
-      current_supply += reward_delta[CURATE_OFF] + reward_delta[VCURATE_OFF] + reward_delta[CONTENT_OFF] + reward_delta[VCONTENT_OFF] + reward_delta[PRODUCER_OFF] + reward_delta[VPRODUCER_OFF];
-      // supply for above is computed by using pre-updated supply for computing all 3 amounts.
-      // supply for below reward types is basically a self-contained event which updates the supply immediately before the next reward type's computation.
+        current_supply += reward_delta[CURATE_OFF] + reward_delta[VCURATE_OFF] +
+                          reward_delta[CONTENT_OFF] +
+                          reward_delta[VCONTENT_OFF] +
+                          reward_delta[PRODUCER_OFF] +
+                          reward_delta[VPRODUCER_OFF];
+        // supply for above is computed by using pre-updated supply for computing all 3 amounts.
+        // supply for below reward types is basically a self-contained event which updates the supply immediately before the next reward type's computation.
 
-      share_type liquidity_reward = 0;
-      share_type pow_reward = 0;
+        share_type liquidity_reward = 0;
+        share_type pow_reward = 0;
 
-      if( (block_num % STEEMIT_MAX_WITNESSES) == 0 )
-         ++pow_deficit;
+        if ((block_num % STEEMIT_MAX_WITNESSES) == 0) {
+            ++pow_deficit;
+        }
 
-      if( pow_deficit > 0 )
-      {
-         pow_reward = calc_percent_reward_per_round< STEEMIT_POW_APR_PERCENT >( current_supply );
-         pow_reward = std::max( pow_reward, STEEMIT_MIN_POW_REWARD.amount );
-         if( block_num < STEEMIT_START_MINER_VOTING_BLOCK )
-            pow_reward *= STEEMIT_MAX_WITNESSES;
-         --pow_deficit;
-      }
-      reward_delta[ POW_OFF ] = pow_reward;
-      reward_delta[ VPOW_OFF ] = reward_delta[ POW_OFF ] * vesting_factor;
+        if (pow_deficit > 0) {
+            pow_reward = calc_percent_reward_per_round<STEEMIT_POW_APR_PERCENT>(current_supply);
+            pow_reward = std::max(pow_reward, STEEMIT_MIN_POW_REWARD.amount);
+            if (block_num < STEEMIT_START_MINER_VOTING_BLOCK) {
+                pow_reward *= STEEMIT_MAX_WITNESSES;
+            }
+            --pow_deficit;
+        }
+        reward_delta[POW_OFF] = pow_reward;
+        reward_delta[VPOW_OFF] = reward_delta[POW_OFF] * vesting_factor;
 
-      current_supply += reward_delta[ POW_OFF ] + reward_delta[ VPOW_OFF ];
+        current_supply += reward_delta[POW_OFF] + reward_delta[VPOW_OFF];
 
-      if( (block_num > liquidity_begin_block) && ((block_num % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0) )
-      {
-         liquidity_reward = calc_percent_reward_per_hour< STEEMIT_LIQUIDITY_APR_PERCENT >( current_supply );
-         liquidity_reward = std::max( liquidity_reward, STEEMIT_MIN_LIQUIDITY_REWARD.amount );
-      }
-      reward_delta[ LIQUIDITY_OFF ] = liquidity_reward;
-      reward_delta[ VLIQUIDITY_OFF ] = reward_delta[ LIQUIDITY_OFF ] * vesting_factor;
-      current_supply += reward_delta[ LIQUIDITY_OFF ] + reward_delta[ VLIQUIDITY_OFF ];
+        if ((block_num > liquidity_begin_block) &&
+            ((block_num % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0)) {
+            liquidity_reward = calc_percent_reward_per_hour<STEEMIT_LIQUIDITY_APR_PERCENT>(current_supply);
+            liquidity_reward = std::max(liquidity_reward, STEEMIT_MIN_LIQUIDITY_REWARD.amount);
+        }
+        reward_delta[LIQUIDITY_OFF] = liquidity_reward;
+        reward_delta[VLIQUIDITY_OFF] =
+                reward_delta[LIQUIDITY_OFF] * vesting_factor;
+        current_supply +=
+                reward_delta[LIQUIDITY_OFF] + reward_delta[VLIQUIDITY_OFF];
 
-      for( int i=0; i<REWARD_TYPES; i++ )
-      {
-         reward_total[i] += reward_delta[i];
-      }
+        for (int i = 0; i < REWARD_TYPES; i++) {
+            reward_total[i] += reward_delta[i];
+        }
 
-      return;
-   };
+        return;
+    };
 
-   share_type current_supply = 0;
+    share_type current_supply = STEEMIT_INIT_SUPPLY;
 
-   for( uint32_t b=1; b<10*STEEMIT_BLOCKS_PER_YEAR; b++ )
-   {
-      block_inflation_model( b, current_supply );
-      if( b%1000 == 0 )
-      {
-         fc::mutable_variant_object mvo;
-         mvo("rvec", reward_total)("b", b)("s", current_supply);
-         std::cout << fc::json::to_string(mvo) << std::endl;
-      }
-   }
+    for (uint32_t b = 1; b < 10 * STEEMIT_BLOCKS_PER_YEAR; b++) {
+        block_inflation_model(b, current_supply);
+        if (b % 1000 == 0) {
+            fc::mutable_variant_object mvo;
+            mvo("rvec", reward_total)("b", b)("s", current_supply);
+            std::cout << fc::json::to_string(mvo) << std::endl;
+        }
+    }
 
-   return 0;
+    return 0;
 }

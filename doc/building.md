@@ -1,4 +1,4 @@
-# Building Steem
+# Building Golos
 
 ## Compile-Time Options (cmake)
 
@@ -32,7 +32,7 @@ We ship a Dockerfile.  This builds both common node type binaries.
 
 ## Building on Ubuntu 16.04
 
-For Ubuntu 16.04 users, after installing the right packages with `apt` Steem
+For Ubuntu 16.04 users, after installing the right packages with `apt` Golos
 will build out of the box without further effort:
 
     # Required packages
@@ -108,14 +108,14 @@ Here are the required packages:
         libreadline-dev \
         perl
 
-Steem requires Boost 1.57 or later. The Boost provided in the Ubuntu 14.04
-package manager (Boost 1.55) is too old. So building Steem on Ubuntu 14.04
+Golos requires Boost 1.57 or later. The Boost provided in the Ubuntu 14.04
+package manager (Boost 1.55) is too old. So building Golos on Ubuntu 14.04
 requires downloading and installing a more recent version of Boost.
 
 According to [this mailing list
 post](http://boost.2283326.n4.nabble.com/1-58-1-bugfix-release-necessary-td4674686.html),
 Boost 1.58 is not compatible with gcc 4.8 (the default C++ compiler for
-Ubuntu 14.04) when compiling in C++11 mode (which Steem does). So we will
+Ubuntu 14.04) when compiling in C++11 mode (which Golos does). So we will
 use Boost 1.57; if you try to build with any other version, you will
 probably have a bad time.
 

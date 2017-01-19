@@ -10,7 +10,7 @@ from time import sleep
 
 # local imports
 from steemdebugnode import DebugNode
-from steemapi.steemnoderpc import SteemNodeRPC
+from steemapi.steemnoderpc import GolosNodeRPC
 
 WAITING = True
 
@@ -20,9 +20,9 @@ def main( ):
       print( "This script only works on POSIX systems" )
       return
 
-   parser = ArgumentParser( description='Run a steemd debug node on an existing chain, trigger a hardfork' \
+   parser = ArgumentParser( description='Run a golosd debug node on an existing chain, trigger a hardfork' \
                               ' and verify hardfork does not break invariants or block production' )
-   parser.add_argument( '--steemd', '-s', type=str, required=True, help='The location of a steemd binary to run the debug node' )
+   parser.add_argument( '--golosd', '-s', type=str, required=True, help='The location of a golosd binary to run the debug node' )
    parser.add_argument( '--data-dir', '-d', type=str, required=True, help='The location of an existing data directory. ' + \
                         'The debug node will pull blocks from this directory when replaying the chain. The directory ' + \
                         'will not be changed.' )
@@ -33,17 +33,17 @@ def main( ):
 
    steemd = Path( args.steemd )
    if( not steemd.exists() ):
-      print( 'Error: steemd does not exist.' )
+      print( 'Error: golosd does not exist.' )
       return
 
    steemd = steemd.resolve()
    if( not steemd.is_file() ):
-      print( 'Error: steemd is not a file.' )
+      print( 'Error: golosd is not a file.' )
       return
 
    data_dir = Path( args.data_dir )
    if( not data_dir.exists() ):
-      print( 'Error: data_dir does not exist or is not a properly constructed steemd data directory' )
+      print( 'Error: data_dir does not exist or is not a properly constructed golosd data directory' )
 
    data_dir = data_dir.resolve()
    if( not data_dir.is_dir() ):
@@ -67,7 +67,7 @@ def main( ):
 
 
 def run_steemd_tests( debug_node ):
-   from steemapi.steemnoderpc import SteemNodeRPC
+   from steemapi.steemnoderpc import GolosNodeRPC
 
    try:
       print( 'Replaying blocks...', )
@@ -81,7 +81,7 @@ def run_steemd_tests( debug_node ):
       print( "Triggering payouts" )
       sys.stdout.flush()
       debug_node.debug_generate_blocks_until( 1467590400 - 3 )
-      rpc = SteemNodeRPC( 'ws://127.0.0.1:8095', '', '' )
+      rpc = GolosNodeRPC( 'ws://127.0.0.1:8095', '', '' )
       ret = rpc.lookup_accounts( '', str( 0xFFFFFFFF ) )
 
       debug_node.debug_generate_blocks( 1 )

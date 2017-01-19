@@ -28,9 +28,10 @@
 
 #include <fc/thread/future.hpp>
 
-namespace steemit { namespace account_history {
-using namespace chain;
-using app::application;
+namespace steemit {
+    namespace account_history {
+        using namespace chain;
+        using app::application;
 
 //
 // Plugins should #define their SPACE_ID's so plugins with
@@ -46,41 +47,44 @@ using app::application;
 #define ACCOUNT_HISTORY_SPACE_ID 5
 #endif
 
-enum account_history_object_type
-{
-   key_account_object_type = 0,
-   bucket_object_type = 1 ///< used in market_history_plugin
-};
+        enum account_history_object_type {
+            key_account_object_type = 0,
+            bucket_object_type = 1 ///< used in market_history_plugin
+        };
 
 
-namespace detail
-{
-    class account_history_plugin_impl;
-}
+        namespace detail {
+            class account_history_plugin_impl;
+        }
 
 /**
  *  This plugin is designed to track a range of operations by account so that one node
  *  doesn't need to hold the full operation history in memory.
  */
-class account_history_plugin : public steemit::app::plugin
-{
-   public:
-      account_history_plugin( application* app );
-      virtual ~account_history_plugin();
+        class account_history_plugin : public steemit::app::plugin {
+        public:
+            account_history_plugin(application *app);
 
-      std::string plugin_name()const override;
-      virtual void plugin_set_program_options(
-         boost::program_options::options_description& cli,
-         boost::program_options::options_description& cfg) override;
-      virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
-      virtual void plugin_startup() override;
+            virtual ~account_history_plugin();
+
+            std::string plugin_name() const override;
+
+            virtual void plugin_set_program_options(
+                    boost::program_options::options_description &cli,
+                    boost::program_options::options_description &cfg) override;
+
+            virtual void plugin_initialize(const boost::program_options::variables_map &options) override;
+
+            virtual void plugin_startup() override;
 
 
-      flat_map<string,string> tracked_accounts()const; /// map start_range to end_range
+            flat_map<string, string> tracked_accounts() const; /// map start_range to end_range
 
-      friend class detail::account_history_plugin_impl;
-      std::unique_ptr<detail::account_history_plugin_impl> my;
-};
+            friend class detail::account_history_plugin_impl;
 
-} } //steemit::account_history
+            std::unique_ptr<detail::account_history_plugin_impl> my;
+        };
+
+    }
+} //steemit::account_history
 

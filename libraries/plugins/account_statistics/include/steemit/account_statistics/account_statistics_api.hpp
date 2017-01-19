@@ -4,28 +4,30 @@
 
 #include <fc/api.hpp>
 
-namespace steemit{ namespace app {
-   struct api_context;
-} }
-
-namespace steemit { namespace account_statistics {
-
-namespace detail
-{
-   class account_statistics_api_impl;
+namespace steemit {
+    namespace app {
+        struct api_context;
+    }
 }
 
-class account_statistics_api
-{
-   public:
-      account_statistics_api( const steemit::app::api_context& ctx );
+namespace steemit {
+    namespace account_statistics {
 
-      void on_api_startup();
+        namespace detail {
+            class account_statistics_api_impl;
+        }
 
-   private:
-      std::shared_ptr< detail::account_statistics_api_impl > _my;
-};
+        class account_statistics_api {
+        public:
+            account_statistics_api(const steemit::app::api_context &ctx);
 
-} } // steemit::account_statistics
+            void on_api_startup();
 
-FC_API( steemit::account_statistics::account_statistics_api, )
+        private:
+            std::shared_ptr<detail::account_statistics_api_impl> _my;
+        };
+
+    }
+} // steemit::account_statistics
+
+FC_API(steemit::account_statistics::account_statistics_api,)

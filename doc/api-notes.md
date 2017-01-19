@@ -62,7 +62,7 @@ There are three methods to secure the API:
 - Limit access to the API socket to a trusted LAN by firewall configuration
 - Limit access to particular API's with username/password authentication
 
-The Steem developers recommend using the first of these methods to secure the API by binding to localhost, as follows:
+The Golos developers recommend using the first of these methods to secure the API by binding to localhost, as follows:
 
     rpc-endpoint = 127.0.0.1:8090
 
