@@ -1222,7 +1222,7 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
 {
    return my->_db.with_read_lock( [&]()
    {
-      FC_ASSERT( limit <= 2000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
+      FC_ASSERT( limit <= 10000, "Limit of ${l} is greater than maxmimum allowed", ("l",limit) );
       FC_ASSERT( from >= limit, "From must be greater than limit" );
    //   idump((account)(from)(limit));
       const auto& idx = my->_db.get_index<account_history_index>().indices().get<by_account>();
@@ -1908,7 +1908,7 @@ state database_api::get_state( string path )const
          }
          auto& eacnt = _state.accounts[acnt];
          if( part[1] == "transfers" ) {
-            auto history = get_account_history( acnt, uint64_t(-1), 1000 );
+            auto history = get_account_history( acnt, uint64_t(-1), 10000 );
             for( auto& item : history ) {
                switch( item.second.op.which() ) {
                   case operation::tag<transfer_to_vesting_operation>::value:
