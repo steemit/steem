@@ -1242,7 +1242,7 @@ map< uint32_t, applied_operation > database_api::get_account_history( string acc
 vector<pair<string,uint32_t> > database_api::get_tags_used_by_author( const string& author )const {
    return my->_db.with_read_lock( [&]()
    {
-      const auto* acnt = my->_db.find_account( author );    
+      const auto* acnt = my->_db.find_account( author );
       FC_ASSERT( acnt != nullptr );
       const auto& tidx = my->_db.get_index<tags::author_tag_stats_index>().indices().get<tags::by_author_posts_tag>();
       auto itr = tidx.lower_bound( boost::make_tuple( acnt->id, 0 ) );
@@ -1615,14 +1615,14 @@ vector<discussion> database_api::get_discussions_by_blog( const discussion_query
             break;
          try
          {
-            if( query.select_authors.size() && 
+            if( query.select_authors.size() &&
                 query.select_authors.find( blog_itr->account ) == query.select_authors.end() ) {
-               ++blog_itr; 
+               ++blog_itr;
                continue;
             }
 
             if( query.select_tags.size() ) {
-               auto tag_itr = tag_idx.lower_bound( blog_itr->comment ); 
+               auto tag_itr = tag_idx.lower_bound( blog_itr->comment );
 
                bool found = false;
                while( tag_itr != tag_idx.end() && tag_itr->comment == blog_itr->comment ) {
@@ -1919,12 +1919,10 @@ state database_api::get_state( string path )const
          path = "trending";
 
       /// FETCH CATEGORY STATE
-      auto trending_tags = get_trending_tags( std::string(), 1000 );
+      auto trending_tags = get_trending_tags( std::string(), 50 );
       for( const auto& t : trending_tags )
       {
-         string name = t.name;
-         _state.tag_idx.trending.push_back( name );
-         _state.tags[ name ] = t;
+         _state.tag_idx.trending.push_back( string( t.name ) );
       }
       /// END FETCH CATEGORY STATE
 
@@ -2247,6 +2245,17 @@ state database_api::get_state( string path )const
             didx.created.push_back( key );
             if( d.author.size() ) accounts.insert(d.author);
             _state.content[key] = std::move(d);
+         }
+      }
+      else if( part[0] == "tags" )
+      {
+         _state.tag_idx.trending.clear();
+         auto trending_tags = get_trending_tags( std::string(), 250 );
+         for( const auto& t : trending_tags )
+         {
+            string name = t.name;
+            _state.tag_idx.trending.push_back( name );
+            _state.tags[ name ] = t;
          }
       }
       else {
