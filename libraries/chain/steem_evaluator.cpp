@@ -463,7 +463,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
             from_string( com.category, o.parent_permlink );
             com.root_comment = com.id;
             com.cashout_time = _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) ?
-               _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS :
+               _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 :
                fc::time_point_sec::maximum();
          }
          else
@@ -474,6 +474,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.category = parent->category;
             com.root_comment = parent->root_comment;
             com.cashout_time = fc::time_point_sec::maximum();
+         }
+
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+         {
+            com.cashout_time = com.created + STEEMIT_CASHOUT_WINDOW_SECONDS;
          }
 
          #ifndef IS_LOW_MEM
@@ -1137,7 +1142,10 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       if( rshares > 0 && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
       {
-         FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__769) )
+            FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
+         else
+            FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
       }
 
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
@@ -1153,15 +1161,20 @@ void vote_evaluator::do_apply( const vote_operation& o )
       const auto& root = _db.get( comment.root_comment );
       auto old_root_abs_rshares = root.children_abs_rshares.value;
 
-      fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time( comment ).sec_since_epoch();
-      fc::uint128_t new_cashout_time_sec;
+      fc::uint128_t avg_cashout_sec;
 
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !_db.has_hardfork( STEEMIT_HARDFORK_0_13__257)  )
-         new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      else
-         new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+      {
+         fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time( comment ).sec_since_epoch();
+         fc::uint128_t new_cashout_time_sec;
 
-      auto avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !_db.has_hardfork( STEEMIT_HARDFORK_0_13__257)  )
+            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+         else
+            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+
+         avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
+      }
 
       FC_ASSERT( abs_rshares > 0, "Cannot vote with 0 rshares." );
 
@@ -1182,13 +1195,17 @@ void vote_evaluator::do_apply( const vote_operation& o )
       _db.modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
-            c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
-         else
-            c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
-         if( c.max_cashout_time == fc::time_point_sec::maximum() )
-            c.max_cashout_time = _db.head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+         if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+         {
+            if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
+               c.cashout_time = c.last_payout + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
+            else
+               c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+
+            if( c.max_cashout_time == fc::time_point_sec::maximum() )
+               c.max_cashout_time = _db.head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+         }
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
@@ -1314,19 +1331,23 @@ void vote_evaluator::do_apply( const vote_operation& o )
       const auto& root = _db.get( comment.root_comment );
       auto old_root_abs_rshares = root.children_abs_rshares.value;
 
-      fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time( comment ).sec_since_epoch();
-      fc::uint128_t new_cashout_time_sec;
-
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! _db.has_hardfork( STEEMIT_HARDFORK_0_13__257 )  )
-         new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
-      else
-         new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
-
       fc::uint128_t avg_cashout_sec;
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 )
-         avg_cashout_sec = cur_cashout_time_sec;
-      else
-         avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
+
+      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+      {
+         fc::uint128_t cur_cashout_time_sec = _db.calculate_discussion_payout_time( comment ).sec_since_epoch();
+         fc::uint128_t new_cashout_time_sec;
+
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! _db.has_hardfork( STEEMIT_HARDFORK_0_13__257 )  )
+            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+         else
+            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
+
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 )
+            avg_cashout_sec = cur_cashout_time_sec;
+         else
+            avg_cashout_sec = ( cur_cashout_time_sec * old_root_abs_rshares + new_cashout_time_sec * abs_rshares ) / ( old_root_abs_rshares + abs_rshares );
+      }
 
       _db.modify( comment, [&]( comment_object& c )
       {
@@ -1352,13 +1373,17 @@ void vote_evaluator::do_apply( const vote_operation& o )
       _db.modify( root, [&]( comment_object& c )
       {
          c.children_abs_rshares += abs_rshares;
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
-            c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
-         else
-            c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
-         if( c.max_cashout_time == fc::time_point_sec::maximum() )
-            c.max_cashout_time = _db.head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+         if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+         {
+            if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
+               c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
+            else
+               c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
+
+            if( c.max_cashout_time == fc::time_point_sec::maximum() )
+               c.max_cashout_time = _db.head_block_time() + fc::seconds( STEEMIT_MAX_CASHOUT_WINDOW_SECONDS );
+         }
       });
 
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
