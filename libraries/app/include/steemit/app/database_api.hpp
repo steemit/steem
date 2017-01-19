@@ -15,7 +15,6 @@
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
-
 #include <fc/network/ip.hpp>
 
 #include <boost/container/flat_set.hpp>
