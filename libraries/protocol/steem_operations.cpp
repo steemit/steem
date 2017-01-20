@@ -494,4 +494,11 @@ namespace steemit { namespace protocol {
       FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
+   void delegate_vesting_shares_operation::validate()const
+   {
+      validate_account_name( delegator );
+      validate_account_name( delegatee );
+      FC_ASSERT( vesting_shares.symbol == VESTS_SYMBOL );
+   }
+
 } } // steemit::protocol
