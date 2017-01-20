@@ -397,7 +397,7 @@ namespace steemit {
 
             id_type id;
             account_id_type author;
-            string tag;
+            tag_name_type tag;
             asset total_rewards = asset(0, SBD_SYMBOL);
             uint32_t total_posts = 0;
         };
@@ -421,33 +421,33 @@ namespace steemit {
                                 composite_key<author_tag_stats_object,
                                         member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>,
                                         member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts>,
-                                        member<author_tag_stats_object, string, &author_tag_stats_object::tag>
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>
                                 >,
-                                composite_key_compare<less<account_id_type>, greater<uint32_t>, less<string>>
+                                composite_key_compare<less<account_id_type>, greater<uint32_t>, less<tag_name_type>>
                         >,
                         ordered_unique<tag<by_author_tag_posts>,
                                 composite_key<author_tag_stats_object,
                                         member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>,
-                                        member<author_tag_stats_object, string, &author_tag_stats_object::tag>,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>,
                                         member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts>
                                 >,
-                                composite_key_compare<less<account_id_type>, less<string>, greater<uint32_t>>
+                                composite_key_compare<less<account_id_type>, less<tag_name_type>, greater<uint32_t>>
                         >,
                         ordered_unique<tag<by_author_tag_rewards>,
                                 composite_key<author_tag_stats_object,
                                         member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>,
-                                        member<author_tag_stats_object, string, &author_tag_stats_object::tag>,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>,
                                         member<author_tag_stats_object, asset, &author_tag_stats_object::total_rewards>
                                 >,
-                                composite_key_compare<less<account_id_type>, less<string>, greater<asset>>
+                                composite_key_compare<less<account_id_type>, less<tag_name_type>, greater<asset>>
                         >,
                         ordered_unique<tag<by_tag_rewards_author>,
                                 composite_key<author_tag_stats_object,
-                                        member<author_tag_stats_object, string, &author_tag_stats_object::tag>,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>,
                                         member<author_tag_stats_object, asset, &author_tag_stats_object::total_rewards>,
                                         member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>
                                 >,
-                                composite_key_compare<less<string>, greater<asset>, less<account_id_type>>
+                                composite_key_compare<less<tag_name_type>, greater<asset>, less<account_id_type>>
                         >
                 >
         > author_tag_stats_index;

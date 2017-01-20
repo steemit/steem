@@ -1745,11 +1745,9 @@ namespace steemit {
                     }
 
                     /// FETCH CATEGORY STATE
-                    auto trending_tags = get_trending_tags(std::string(), 1000);
+                    auto trending_tags = get_trending_tags(std::string(), 50);
                     for (const auto &t : trending_tags) {
-                        string name = t.name;
-                        _state.tag_idx.trending.push_back(name);
-                        _state.tags[name] = t;
+                        _state.tag_idx.trending.push_back(string(t.name));
                     }
                     /// END FETCH CATEGORY STATE
 
@@ -1910,6 +1908,7 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
                         auto trending_disc = get_discussions_by_trending(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -1925,6 +1924,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_trending30(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -1940,6 +1941,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_promoted(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -1955,6 +1958,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_children(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -1970,6 +1975,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_hot(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -1985,6 +1992,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_promoted(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -2000,6 +2009,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_votes(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -2015,6 +2026,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_cashout(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -2030,6 +2043,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_active(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -2045,6 +2060,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_created(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -2060,6 +2077,8 @@ namespace steemit {
                         discussion_query q;
                         q.tag = tag;
                         q.limit = 20;
+                        q.truncate_body = 1024;
+
                         auto trending_disc = get_discussions_by_created(q);
 
                         auto &didx = _state.discussion_idx[tag];
@@ -2070,6 +2089,14 @@ namespace steemit {
                                 accounts.insert(d.author);
                             }
                             _state.content[key] = std::move(d);
+                        }
+                    } else if (part[0] == "tags") {
+                        _state.tag_idx.trending.clear();
+                        auto trending_tags = get_trending_tags(std::string(), 250);
+                        for (const auto &t : trending_tags) {
+                            string name = t.name;
+                            _state.tag_idx.trending.push_back(name);
+                            _state.tags[name] = t;
                         }
                     } else {
                         elog("What... no matches");
