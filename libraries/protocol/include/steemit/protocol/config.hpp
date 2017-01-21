@@ -10,7 +10,7 @@
 #define BLOCKCHAIN_NAME "GOLOSTEST"
 #define STEEMIT_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(BLOCKCHAIN_NAME)))
 #define STEEMIT_INIT_PUBLIC_KEY_STR             (std::string( steemit::protocol::public_key_type(STEEMIT_INIT_PRIVATE_KEY.get_public_key()) ))
-#define STEEMIT_CHAIN_ID                        (fc::sha256::hash("testnet"))
+#define STEEMIT_CHAIN_ID                        (fc::sha256::hash(BLOCKCHAIN_NAME))
 
 #define VESTS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< VESTS with 6 digits of precision
 #define STEEM_SYMBOL  (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< STEEM with 3 digits of precision
@@ -109,11 +109,13 @@
 #define STEEMIT_1_TENTH_PERCENT                 (STEEMIT_100_PERCENT/1000)
 #define STEEMIT_DEFAULT_SBD_INTEREST_RATE       (10*STEEMIT_1_PERCENT) ///< 10% APR
 
-#define STEEMIT_INFLATION_RATE_START_PERCENT    (978) // Fixes block 7,000,000 to 9.5%
+#define STEEMIT_INFLATION_RATE_START_PERCENT    (1578) // Fixes block 7,000,000 to 15%
 #define STEEMIT_INFLATION_RATE_STOP_PERCENT     (95) // 0.95%
 #define STEEMIT_INFLATION_NARROWING_PERIOD      (250000) // Narrow 0.01% every 250k blocks
-#define STEEMIT_CONTENT_REWARD_PERCENT          (75*STEEMIT_1_PERCENT) //75% of inflation, 7.125% inflation
-#define STEEMIT_VESTING_FUND_PERCENT            (15*STEEMIT_1_PERCENT) //15% of inflation, 1.425% inflation
+#define STEEMIT_CONTENT_REWARD_PERCENT          (66.67*STEEMIT_1_PERCENT) //66% of inflation,
+//7.125% inflation
+#define STEEMIT_VESTING_FUND_PERCENT            (26.67*STEEMIT_1_PERCENT) //26% of inflation,
+//1.425% inflation
 
 #define STEEMIT_MINER_PAY_PERCENT               (STEEMIT_1_PERCENT) // 1%
 #define STEEMIT_MIN_RATION                      100000
@@ -126,8 +128,7 @@
 
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
-
-#define STEEMIT_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )
+#define STEEMIT_MINING_REWARD                   asset( 666, STEEM_SYMBOL )
 #define STEEMIT_EQUIHASH_N                      140
 #define STEEMIT_EQUIHASH_K                      6
 
@@ -145,8 +146,6 @@
 #define STEEMIT_OWNER_CHALLENGE_FEE             asset( 30000, STEEM_SYMBOL )
 #define STEEMIT_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
 #define STEEMIT_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
-
-
 
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)
