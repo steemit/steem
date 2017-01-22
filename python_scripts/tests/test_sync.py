@@ -11,7 +11,7 @@ import getopt
 from pathlib import Path
 
 class WatchDog( object ):
-    def __init__( self, steemd, config_file=None, args='', plugins=[], apis=[], steemd_out=None, steemd_err=None ):
+    def __init__( self, steemd, config_file=None, seed_file=None, args='', plugins=[], apis=[], steemd_out=None, steemd_err=None ):
         """ Creates a steemd WatchDog.
           It can be ran by using 'with WatchDog:'
           While in the context of 'with' the debug node will continue to run.
@@ -31,6 +31,7 @@ class WatchDog( object ):
         self._FNULL = None
         self._steemd_bin = steemd
         self._config_file = config_file
+        self._seed_file = seed_file
         self._temp_data_dir = TemporaryDirectory()
 
         self.plugins = plugins
@@ -56,7 +57,6 @@ class WatchDog( object ):
        return "# no seed-node in config file or command line\n" \
            + "rpc-endpoint = 127.0.0.1:8090              # bind to localhost to secure RPC API access\n" \
            + "seed-node = seed.riversteem.com:2001       # riverhead\n" \
-           + "seed-node = seed.steempower.org:2001       # charlieshrem\n" \
            + "seed-node = steem-seed1.abit-more.com:2001 # abit\n" \
            + "seed-node = 52.74.152.79:2001              # smooth\n" \
            + "enable-plugin = witness "+ " ".join( self.plugins ) + "\n" \
@@ -74,7 +74,7 @@ class WatchDog( object ):
         localRpc = SteemNodeRPC("ws://localhost:8090", "", "", num_retries=3)
         print("WATCHDOG: Connection Established")
         remoteRpc = SteemNodeRPC("wss://steemit.com/wspa", "", "", num_retries=3)
-        remoteProps = localRpc.get_dynamic_global_properties()
+        remoteProps = remoteRpc.get_dynamic_global_properties()
         while True:
             localProps = localRpc.get_dynamic_global_properties()
             local_block_number = localProps['last_irreversible_block_num']
@@ -88,15 +88,16 @@ class WatchDog( object ):
                 second_to_last = last_local_block_number
                 last_irreversible_block_num = remoteProps['last_irreversible_block_num']
                 last_local_block_number = local_block_number
-                if(localRpc.get_block(local_block_number)['witness_signature'] == remoteRpc.get_block(last_irreversible_block_number)['witness_signature']):
-                    print("\nWATCHDOG: Successfully synced")
-                    steemd.kill()
-                    sys.exit(0)
-                else:
-                    print("\nWATCHDOG: Fatal error... client forked")
-                    steemd.kill()
-                    sys.exit(2)
-                    return # We are all the way synced
+                if(local_block_number>=last_irreversible_block_num):
+                    if(localRpc.get_block(last_irreversible_block_num)['witness_signature'] == remoteRpc.get_block(last_irreversible_block_num)['witness_signature']):
+                        print("\nWATCHDOG: Successfully synced")
+                        steemd.kill()
+                        sys.exit(0)
+                    else:
+                        print("\nWATCHDOG: Fatal error... client forked")
+                        steemd.kill()
+                        sys.exit(2)
+                        return # We are all the way synced
                 # print(local_block_number) #DEBUG
             sleep(10)
         return
@@ -108,8 +109,13 @@ class WatchDog( object ):
                 configiniSource = configFile.read()
         with open(self._temp_data_dir .name+"/witness_node_data_dir/config.ini", 'w') as configini:
             configini.write(configiniSource)
-
-        steemdaemon = subprocess.Popen(self._steemd_bin, cwd=self._temp_data_dir.name, stdout=self.steemd_out, stderr=self.steemd_err)
+        steemd_args = []
+        steemd_args.append(self._steemd_bin)
+        with open(self._seed_file, "r") as f:
+            for line in f:
+                steemd_args.append(" --seed-node="+line.split(' ',1)[0])
+        print(steemd_args)
+        steemdaemon = subprocess.Popen(steemd_args, cwd=self._temp_data_dir.name, stdout=self.steemd_out, stderr=self.steemd_err)
         sleep(5)
         t1 = threading.Thread(target=self.watchForHangDurringSync, args=[steemdaemon]) # Begin watching in another thread.
         t1.start()
@@ -127,8 +133,12 @@ def main():
     parser.add_argument( '--steemd', '-s', type=str, required=True, help='The location of a steemd binary to run the debug node' )
     parser.add_argument( '--config-file', '-c', type=str, required=False, help='The location of an existing config file' )
     parser.add_argument( '--log-file', '-l', type=str, required=False, help='The location of the file which will be logged to.' )
+    parser.add_argument( '--seed-nodes', '-sn', type=str, required=False, help='The location of the file which contains seed nodes.' )
     args = parser.parse_args()
 
+    config = None
+    seeds = None
+    logs = None
     steemd = Path( args.steemd )
     if( not steemd.exists() ):
        print( 'Error: steemd does not exist.' )
@@ -138,18 +148,36 @@ def main():
     if( not steemd.is_file() ):
        print( 'Error: steemd is not a file.' )
        return
+
     if(args.config_file is not None):
         config = Path( args.config_file )
-        if( not steemd.exists() ):
+        if( not config.exists() ):
            print( 'Error: config does not exist.' )
            return
 
         config = config.resolve()
-        if( not steemd.is_file() ):
+        if( not config.is_file() ):
            print( 'Error: config is not a file.' )
            return
-    #self, steemd, data_dir, args='', plugins=[], apis=[], steemd_out=None, steemd_err=None
-    watchdog = WatchDog(args.steemd, args.config_file, steemd_out=args.log_file, steemd_err=args.log_file)
+
+        config = args.config_file
+
+    if(args.log_file is not None):
+        logs = args.log_file
+
+    if(args.seed_nodes is not None):
+        seeds = Path( args.seed_nodes )
+        if( not seeds.exists() ):
+           print( 'Error: seeds does not exist.' )
+           return
+
+        seeds = seeds.resolve()
+        if( not seeds.is_file() ):
+           print( 'Error: seeds is not a file.' )
+           return
+
+        seeds = args.seed_nodes
+    watchdog = WatchDog(args.steemd, config, seed_file=seeds, steemd_out=logs, steemd_err=logs)
     watchdog.begin()
 
 if __name__ == "__main__":
