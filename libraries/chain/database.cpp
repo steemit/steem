@@ -2867,12 +2867,11 @@ namespace steemit {
                     });
 
                     create<account_authority_object>([&](account_authority_object &auth) {
-                        auth.owner = account.keys.owner_key;
+                        auth.account = account.name;
                         auth.owner.weight_threshold = 1;
+                        auth.owner = account.keys.owner_key;
                         auth.active = account.keys.active_key;
-                        auth.active.weight_threshold = 1;
                         auth.posting = account.keys.posting_key;
-                        auth.account = STEEMIT_MINER_ACCOUNT;
                     });
                 }
                 std::cout << "Imported " << snapshot.accounts.size()

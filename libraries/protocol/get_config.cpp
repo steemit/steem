@@ -121,7 +121,6 @@ namespace steemit {
             result["STEEM_SYMBOL"] = STEEM_SYMBOL;
             result["VESTS_SYMBOL"] = VESTS_SYMBOL;
             result["BLOCKCHAIN_NAME"] = BLOCKCHAIN_NAME;
-            result["STEEMIT_CHAIN_ID"] = STEEMIT_CHAIN_ID;
             result["STEEMIT_ADDRESS_PREFIX"] = STEEMIT_ADDRESS_PREFIX;
 
             return result;
