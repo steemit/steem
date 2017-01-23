@@ -2095,6 +2095,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_trending( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2110,6 +2111,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_trending30( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2126,6 +2128,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_promoted( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2141,6 +2144,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_children( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2155,6 +2159,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_hot( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2169,6 +2174,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_promoted( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2183,6 +2189,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_votes( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2197,6 +2204,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_cashout( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2211,6 +2219,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_active( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2225,6 +2234,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_created( q );
 
          auto& didx = _state.discussion_idx[tag];
@@ -2239,6 +2249,7 @@ state database_api::get_state( string path )const
          discussion_query q;
          q.tag = tag;
          q.limit = 20;
+         q.truncate_body = 1024;
          auto trending_disc = get_discussions_by_created( q );
 
          auto& didx = _state.discussion_idx[tag];
