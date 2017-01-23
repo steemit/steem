@@ -2087,4 +2087,30 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    _db.adjust_proxied_witness_votes( acnt, op.reward_vests.amount );
 }
 
+void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
+{
+   database& _db = db();
+   FC_ASSERT( _db.has_hardfork(), "delegate_vesting_shares_operation is not enabled until HF 17" ); //TODO: Delete after hardfork
+
+   const auto& delegator = _db.get_account( op.delegator );
+   const auto& delegatee = _db.get_account( op.delegatee );
+   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+
+   // If delegation doesn't exist, create it
+   if( delegation == nullptr )
+   {
+
+   }
+   // Else if the delegation is increasing
+   else if( op.vesting_shares > delegation->vesting_shares )
+   {
+
+   }
+   // Else the delegation is decreasing
+   else
+   {
+
+   }
+}
+
 } } // steemit::chain
