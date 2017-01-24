@@ -364,6 +364,7 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       add_plugin_index< blog_index         >(db);
       add_plugin_index< reputation_index   >(db);
       add_plugin_index< follow_count_index >(db);
+      add_plugin_index< blog_author_stats_index >(db);
 
       if( options.count( "follow-max-feed-size" ) )
       {
