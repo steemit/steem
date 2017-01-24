@@ -1296,6 +1296,9 @@ discussion database_api::get_discussion( comment_id_type id, uint32_t truncate_b
    d.body_length = d.body.size();
    if( truncate_body ) {
       d.body = d.body.substr( 0, truncate_body );
+
+      if( !fc::is_utf8( d.body ) )
+         d.body = fc::prune_invalid_utf8( d.body );
    }
    return d;
 }
