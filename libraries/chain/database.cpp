@@ -586,17 +586,16 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    bool result;
    detail::with_skip_flags( *this, skip, [&]()
    {
-      detail::without_pending_transactions( *this, std::move(_pending_tx),
-      [&]()
+      with_write_lock( [&]()
       {
-         try
+         detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
          {
-            with_write_lock( [&]()
+            try
             {
                result = _push_block(new_block);
-            });
-         }
-         FC_CAPTURE_AND_RETHROW( (new_block) )
+            }
+            FC_CAPTURE_AND_RETHROW( (new_block) )
+         });
       });
    });
 
@@ -764,7 +763,7 @@ signed_block database::generate_block(
          result = _generate_block( when, witness_owner, block_signing_private_key );
       }
       FC_CAPTURE_AND_RETHROW( (witness_owner) )
-   } );
+   });
    return result;
 }
 
@@ -2868,9 +2867,12 @@ void database::init_genesis( uint64_t init_supply )
 
 void database::validate_transaction( const signed_transaction& trx )
 {
-   auto session = start_undo_session( true );
-   _apply_transaction( trx );
-   session.undo();
+   database::with_write_lock( [&]()
+   {
+      auto session = start_undo_session( true );
+      _apply_transaction( trx );
+      session.undo();
+   });
 }
 
 void database::notify_changed_objects()
@@ -2968,13 +2970,13 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
             x += now % span;
          }
          _next_flush_block = x;
-         ilog( "Next flush scheduled at block ${b}", ("b", x) );
+         //ilog( "Next flush scheduled at block ${b}", ("b", x) );
       }
 
       if( _next_flush_block == block_num )
       {
          _next_flush_block = 0;
-         ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
+         //ilog( "Flushing database shared memory at block ${b}", ("b", block_num) );
          chainbase::database::flush();
       }
    }
