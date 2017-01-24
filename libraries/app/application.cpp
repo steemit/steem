@@ -948,7 +948,6 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
          ("flush", bpo::value< uint32_t >()->default_value(100000), "Flush shared memory file to disk this many blocks")
-         ("enable-ntp", bpo::value< bool >()->default_value(false), "Enable built-in NTP client")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
