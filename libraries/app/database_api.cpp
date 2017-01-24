@@ -1774,7 +1774,8 @@ vector< account_name_type > database_api::get_active_witnesses()const
    {
       const auto& wso = my->_db.get_witness_schedule_object();
       size_t n = wso.current_shuffled_witnesses.size();
-      vector< account_name_type > result(n);
+      vector< account_name_type > result;
+      result.reserve( n );
       for( size_t i=0; i<n; i++ )
          result.push_back( wso.current_shuffled_witnesses[i] );
       return result;
