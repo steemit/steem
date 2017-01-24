@@ -2308,21 +2308,40 @@ namespace steemit {
             static_assert(STEEMIT_BLOCK_INTERVAL ==
                           3, "this code assumes a 3-second time interval");
             asset percent(protocol::calc_percent_reward_per_block<STEEMIT_PRODUCER_APR_PERCENT>(props.virtual_supply.amount), STEEM_SYMBOL);
-            auto pay = std::max(percent, STEEMIT_MIN_PRODUCER_REWARD);
+
             const auto &witness_account = get_account(props.current_witness);
 
-            /// pay witness in vesting shares
-            if (props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK ||
-                (witness_account.vesting_shares.amount.value == 0)) {
-                // const auto& witness_obj = get_witness( props.current_witness );
-                create_vesting(witness_account, pay);
-            } else {
-                modify(get_account(witness_account.name), [&](account_object &a) {
-                    a.balance += pay;
-                });
-            }
+            if (has_hardfork(STEEMIT_HARDFORK_0_16)) {
+                auto pay = std::max(percent, STEEMIT_MIN_PRODUCER_REWARD);
 
-            return pay;
+                /// pay witness in vesting shares
+                if (props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK ||
+                    (witness_account.vesting_shares.amount.value == 0)) {
+                    // const auto& witness_obj = get_witness( props.current_witness );
+                    create_vesting(witness_account, pay);
+                } else {
+                    modify(get_account(witness_account.name), [&](account_object &a) {
+                        a.balance += pay;
+                    });
+                }
+
+                return pay;
+            } else {
+                auto pay = std::max(percent, STEEMIT_MIN_PRODUCER_REWARD_PRE_HF_16);
+
+                /// pay witness in vesting shares
+                if (props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK ||
+                    (witness_account.vesting_shares.amount.value == 0)) {
+                    // const auto& witness_obj = get_witness( props.current_witness );
+                    create_vesting(witness_account, pay);
+                } else {
+                    modify(get_account(witness_account.name), [&](account_object &a) {
+                        a.balance += pay;
+                    });
+                }
+
+                return pay;
+            }
         }
 
         asset database::get_pow_reward() const {
@@ -2341,7 +2360,12 @@ namespace steemit {
             static_assert(STEEMIT_MAX_WITNESSES ==
                           21, "this code assumes 21 per round");
             asset percent(calc_percent_reward_per_round<STEEMIT_POW_APR_PERCENT>(props.virtual_supply.amount), STEEM_SYMBOL);
-            return std::max(percent, STEEMIT_MIN_POW_REWARD);
+
+            if (has_hardfork(STEEMIT_HARDFORK_0_16)) {
+                return std::max(percent, STEEMIT_MIN_POW_REWARD_PRE_HF_16);
+            } else {
+                return std::max(percent, STEEMIT_MIN_POW_REWARD);
+            }
         }
 
 

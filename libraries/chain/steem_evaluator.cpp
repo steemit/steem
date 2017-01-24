@@ -812,7 +812,7 @@ namespace steemit {
                                                  : from_account;
 
             FC_ASSERT(_db.get_balance(from_account, STEEM_SYMBOL) >=
-                      o.amount, "Account does not have sufficient STEEM for transfer.");
+                      o.amount, "Account does not have sufficient GOLOS for transfer.");
             _db.adjust_balance(from_account, -o.amount);
             _db.create_vesting(to_account, o.amount);
         }
