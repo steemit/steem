@@ -13,6 +13,10 @@ using steemit::app::application;
 
 namespace detail { class follow_plugin_impl; }
 
+struct dcma_takedown {
+   vector< pair< steemit::protocol::account_name_type, string > >  author_permlinks;
+};
+
 class follow_plugin : public steemit::app::plugin
 {
    public:
@@ -28,6 +32,10 @@ class follow_plugin : public steemit::app::plugin
       friend class detail::follow_plugin_impl;
       std::unique_ptr<detail::follow_plugin_impl> my;
       uint32_t max_feed_size = 500;
+
+      void takedown( const steemit::chain::comment_object& c, const steemit::protocol::account_name_type& reporter );
 };
 
 } } //steemit::follow
+
+FC_REFLECT( steemit::follow::dcma_takedown, (author_permlinks) )

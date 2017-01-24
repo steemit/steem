@@ -45,6 +45,7 @@ class follow_plugin_impl
 
       follow_plugin&                                                                         _self;
       std::shared_ptr< generic_custom_operation_interpreter< steemit::follow::follow_plugin_operation > > _custom_operation_interpreter;
+      set<account_name_type> _dmca_authority; ///< account names that have authority to take down posts via DMCA by resteeming them
 };
 
 void follow_plugin_impl::plugin_initialize()
@@ -257,6 +258,7 @@ struct post_operation_visitor
                old_blog = old_blog_idx.lower_bound( op.author );
             }
          }
+         _plugin.takedown( c, c.author );
       }
       FC_LOG_AND_RETHROW()
    }
@@ -345,6 +347,7 @@ void follow_plugin::plugin_set_program_options(
 {
    cli.add_options()
       ("follow-max-feed-size", boost::program_options::value< uint32_t >()->default_value( 500 ), "Set the maximum size of cached feed for an account" )
+      ("follow-dmca-authority", boost::program_options::value< std::vector<std::string> >()->composing()->multitoken(), "Account name with authority to execute DCMA takedown" )
       ;
    cfg.add( cli );
 }
@@ -370,6 +373,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
          uint32_t feed_size = options[ "follow-max-feed-size" ].as< uint32_t >();
          max_feed_size = feed_size;
       }
+
+      LOAD_VALUE_SET(options, "follow-dmca-authority", my->_dmca_authority, account_name_type);
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -377,6 +382,31 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
 void follow_plugin::plugin_startup()
 {
    app().register_api_factory<follow_api>("follow_api");
+}
+
+void follow_plugin::takedown( const steemit::chain::comment_object& c, const steemit::protocol::account_name_type& reporter )
+{
+   auto& db = database();
+
+   if( my->_dmca_authority.find( reporter ) != my->_dmca_authority.end() )
+   {
+      if( c.parent_permlink == "dcma-takedown" && c.parent_author == steemit::protocol::account_name_type() )
+      {
+         auto td = fc::json::from_string( c.json_metadata.c_str() ).as< dcma_takedown >();
+
+         for( const auto& ap : td.author_permlinks )
+         {
+            const auto* tdc = db.find_comment( ap.first, ap.second );
+            if( tdc )
+            {
+               db.modify( *tdc, [&]( comment_object& co )
+               {
+                  from_string( co.body, std::string( "Content removed due to a [DCMA takedown request.](/dcma-takedown/@" + std::string( c.author ) + "/" + std::string( c.permlink.c_str() ) ) );
+               });
+            }
+         }
+      }
+   }
 }
 
 } } // steemit::follow
