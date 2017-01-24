@@ -2013,6 +2013,7 @@ state database_api::get_state( string path )const
                   case operation::tag<liquidity_reward_operation>::value:
                   case operation::tag<author_reward_operation>::value:
                   case operation::tag<curation_reward_operation>::value:
+                  case operation::tag<comment_benefactor_reward_operation>::value:
                   case operation::tag<transfer_to_savings_operation>::value:
                   case operation::tag<transfer_from_savings_operation>::value:
                   case operation::tag<cancel_transfer_from_savings_operation>::value:
