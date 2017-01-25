@@ -2096,20 +2096,87 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    const auto& delegatee = _db.get_account( op.delegatee );
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
 
+   auto available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - ( delegator.to_withdraw - delegator.withdrawn );
+
+   FC_ASSERT( op.vesting_shares >= asset( 100000000000 ) || op.vesting_shares.amount == 0 ); // 100k vesting shares. TODO: This is a placeholder
+
    // If delegation doesn't exist, create it
    if( delegation == nullptr )
    {
+      FC_ASSERT( available_shares >= op.vesting_shares, "Account does not have enough vesting shares to delegate." );
 
+      _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& obj )
+      {
+         obj.delegator = op.delegator;
+         obj.delegatee = op.delegatee;
+         obj.vesting_shares = op.vesting_shares;
+         obj.min_delegation_time = _db.head_block_time();
+      });
+
+      _db.modify( delegator, [&]( account_object& a )
+      {
+         a.delegated_vesting_shares += op.vesting_shares;
+      });
+
+      _db.modify( delegatee, [&]( account_object& a )
+      {
+         a.received_vesting_shares += op.vesting_shares;
+      });
    }
    // Else if the delegation is increasing
    else if( op.vesting_shares > delegation->vesting_shares )
    {
+      FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
 
+      auto delta = op.vesting_shares - delegation->vesting_shares;
+
+      _db.modify( delegator, [&]( account_object& a )
+      {
+         a.delegated_vesting_shares += delta;
+      });
+
+      _db.modify( delegatee, [&]( account_object& a )
+      {
+         a.received_vesting_shares += delta;
+      });
+
+      _db.modify( *delegation, [&]( vesting_delegation_object& obj )
+      {
+         obj.vesting_shares = op.vesting_shares;
+      });
    }
    // Else the delegation is decreasing
+   else if( op.vesting_shares > delegation->vesting_shares );
+   {
+      FC_ASSERT( delegation->min_delegation_time <= _db.head_block_time(), "Delegation cannot be removed yet." );
+
+      auto delta = delegation->vesting_shares - op.vesting_shares;
+
+      _db.create< vesting_delegation_expiration_object >( vesting_delegation_expiration_object& obj )
+      {
+         obj.delegator = op.delegator;
+         obj.vesting_shares = delta;
+         obj.expiration = _db.head_block_time() + fc::days( 7 ); // TODO: Replace with config constant with payout change branch
+      });
+
+      _db.modify( delegator, [&]( account_object& a )
+      {
+         a.delegated_vesting_shares -= delta;
+      });
+
+      _db.modify( delegatee, [&]( account_object& a )
+      {
+         a.received_vesting_shares -= delta;
+      });
+
+      _db.modify( *delegation, [&]( vesting_delegation_object& obj )
+      {
+         obj.vesting_shares = op.vesting_shares;
+      });
+   }
    else
    {
-
+      FC_ASSERT( false, "Something must change." );
    }
 }
 
