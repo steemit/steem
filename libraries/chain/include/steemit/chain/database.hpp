@@ -315,7 +315,6 @@ namespace steemit { namespace chain {
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
-         share_type pay_discussions( const comment_object& c, share_type max_rewards );
          share_type pay_curators( const comment_object& c, share_type max_rewards );
          void cashout_comment_helper( const comment_object& comment );
          void process_comment_cashout();
@@ -326,7 +325,6 @@ namespace steemit { namespace chain {
          void expire_escrow_ratification();
          void process_decline_voting_rights();
          void update_median_feed();
-         share_type claim_rshare_reward( share_type rshares, uint16_t reward_weight, asset max_steem );
 
          asset get_liquidity_reward()const;
          asset get_content_reward()const;
@@ -334,11 +332,7 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
-         uint16_t get_discussion_rewards_percent() const;
          uint16_t get_curation_rewards_percent() const;
-
-         uint128_t get_content_constant_s() const;
-         uint128_t calculate_vshares( uint128_t rshares ) const;
 
          void  pay_liquidity_reward();
 

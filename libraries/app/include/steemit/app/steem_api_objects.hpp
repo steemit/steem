@@ -226,11 +226,11 @@ struct account_api_obj
       withdrawn( a.withdrawn ),
       to_withdraw( a.to_withdraw ),
       withdraw_routes( a.withdraw_routes ),
-      proxied_vsf_votes( a.proxied_vsf_votes.size() ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post )
    {
       size_t n = a.proxied_vsf_votes.size();
+      proxied_vsf_votes.reserve( n );
       for( size_t i=0; i<n; i++ )
          proxied_vsf_votes.push_back( a.proxied_vsf_votes[i] );
 

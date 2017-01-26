@@ -146,6 +146,20 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          b.blog_feed_id = next_blog_id;
       });
 
+      const auto& stats_idx = db.get_index< blog_author_stats_index,by_blogger_guest_count>();
+      auto stats_itr = stats_idx.lower_bound( boost::make_tuple( o.account, c.author ) );
+      if( stats_itr != stats_idx.end() && stats_itr->blogger == o.account && stats_itr->guest == c.author ) {
+         db.modify( *stats_itr, [&]( blog_author_stats_object& s ) {
+            ++s.count;
+         });
+      } else {
+         db.create<blog_author_stats_object>( [&]( blog_author_stats_object& s ) {
+            s.count = 1;
+            s.blogger = o.account;
+            s.guest   = c.author;
+         });
+      }
+
       const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
       const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
@@ -171,6 +185,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                db.create< feed_object >( [&]( feed_object& f )
                {
                   f.account = itr->follower;
+                  f.reblogged_by.push_back( o.account );
                   f.first_reblogged_by = o.account;
                   f.first_reblogged_on = db.head_block_time();
                   f.comment = c.id;
@@ -182,6 +197,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
             {
                db.modify( *feed_itr, [&]( feed_object& f )
                {
+                  f.reblogged_by.push_back( o.account );
                   f.reblogs++;
                });
             }

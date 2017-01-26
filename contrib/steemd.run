@@ -13,6 +13,7 @@ chown -R steemd:steemd $HOME
 
 # seed nodes come from doc/seednodes.txt which is
 # installed by docker into /etc/steemd/seednodes.txt
+SEED_NODES_FILE="/etc/steemd/seednodes.txt"
 SEED_NODES="$(cat /etc/steemd/seednodes.txt | awk -F' ' '{print $1}')"
 
 ARGS=""
@@ -47,7 +48,11 @@ if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
 fi
 
 # overwrite local config with image one
-cp /etc/steemd/config.ini $HOME/config.ini
+if [[ "$USE_FULL_WEB_NODE" ]]; then
+  cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+else
+  cp /etc/steemd/config.ini $HOME/config.ini
+fi
 
 chown steemd:steemd $HOME/config.ini
 chown steemd:steemd $TEST_SYNC
@@ -80,8 +85,61 @@ if [[ -z "$RUN_SYNC_TEST" -o ! "$RUN_SYNC_TEST" ]]; then
           2>&1
 fi
 
+
 if [[ "$RUN_SYNC_TEST" ]]; then
   exec chpst -usteemd \
-      $TEST_SYNC --steemd $STEEMD --config-file $HOME/config.ini \
+      $TEST_SYNC --steemd $STEEMD --config-file $HOME/config.ini --seed-nodes $SEED_NODES_FILE \
       2>$1
+fi
+
+#start multiple read-only instances based on the number of cores
+#attach to the local interface since a proxy will be used to loadbalance
+if [[ "$USE_MULTICORE_READONLY" ]]; then
+    exec chpst -usteemd \
+        $STEEMD \
+            --rpc-endpoint=127.0.0.1:8091 \
+            --p2p-endpoint=0.0.0.0:2001 \
+            --data-dir=$HOME \
+            $ARGS \
+            $STEEMD_EXTRA_OPTS \
+            2>&1 &
+    #sleep for a moment to allow the writer node to be ready to accept connections from the readers
+    sleep 5
+    PORT_NUM=8092
+    #don't generate endpoints in haproxy config if it already exists
+    #this prevents adding to it if the docker container is stopped/started
+    if [[ ! -f /etc/haproxy/haproxy.steem.cfg ]]; then
+        cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.steem.cfg
+        for (( i=2; i<=$(nproc); i++ ))
+          do
+            echo server server$PORT_NUM 127.0.0.1:$PORT_NUM maxconn 10000 weight 10 cookie server$PORT_NUM check >> /etc/haproxy/haproxy.steem.cfg
+            ((PORT_NUM++))
+        done
+    fi
+    PORT_NUM=8092
+    for (( i=2; i<=$(nproc); i++ ))
+      do
+        exec chpst -usteemd \
+        $STEEMD \
+          --rpc-endpoint=127.0.0.1:$PORT_NUM \
+          --data-dir=$HOME \
+          --read-forward-rpc=127.0.0.1:8091 \
+          --read-only \
+          2>&1 &
+          ((PORT_NUM++))
+          sleep 1
+    done
+    #start haproxy now that the config file is complete with all endpoints
+    #all of the read-only processes will connect to the write node onport 8091
+    #haproxy will balance all incoming traffic on port 8090
+    /usr/sbin/haproxy -f /etc/haproxy/haproxy.steem.cfg 2>&1
+else
+    exec chpst -usteemd \
+        $STEEMD \
+            --rpc-endpoint=0.0.0.0:8090 \
+            --p2p-endpoint=0.0.0.0:2001 \
+            --data-dir=$HOME \
+            $ARGS \
+            $STEEMD_EXTRA_OPTS \
+            2>&1
 fi

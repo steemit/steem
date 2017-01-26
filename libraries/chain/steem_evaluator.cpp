@@ -5,6 +5,8 @@
 #include <steemit/chain/witness_objects.hpp>
 #include <steemit/chain/block_summary_object.hpp>
 
+#include <steemit/chain/util/reward.hpp>
+
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
 #include <boost/locale/encoding_utf.hpp>
@@ -192,7 +194,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
    {
 #ifndef IS_TEST_NET
       if( _db.has_hardfork( STEEMIT_HARDFORK_0_11 ) )
-         FC_ASSERT( _db.head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "Owner authority can only be updated once a minute." );
+         FC_ASSERT( _db.head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "Owner authority can only be updated once an hour." );
 #endif
 
       if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) ) // TODO: Add HF 15
@@ -359,9 +361,15 @@ void comment_evaluator::do_apply( const comment_operation& o )
    comment_id_type id;
 
    const comment_object* parent = nullptr;
-   if( o.parent_author != STEEMIT_ROOT_POST_PARENT ) {
+   if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
+   {
       parent = &_db.get_comment( o.parent_author, o.parent_permlink );
-      FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
+      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__767 ) )
+         FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17) );
+      else if( _db.is_producing() )
+         FC_ASSERT( parent->depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
+      else
+         FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
    auto now = _db.head_block_time();
 
@@ -515,7 +523,16 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__772 ) )
+      {
+         // This will be moved to the witness plugin in a later release
+         if( _db.is_producing() )
+         {
+            // For now, use the same editting rules, but implement it as a soft fork.
+            FC_ASSERT( comment.mode != archived, "The comment is archived." );
+         }
+      }
+      else if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
          FC_ASSERT( comment.mode != archived, "The comment is archived." );
       else if( _db.has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min(), "Can only edit during the first 24 hours." );
@@ -1177,8 +1194,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
-      new_rshares = _db.calculate_vshares( new_rshares );
-      old_rshares = _db.calculate_vshares( old_rshares );
+      new_rshares = util::calculate_vshares( new_rshares );
+      old_rshares = util::calculate_vshares( old_rshares );
 
       const auto& cat = _db.get_category( comment.category );
       _db.modify( cat, [&]( category_object& c ){
@@ -1230,16 +1247,17 @@ void vote_evaluator::do_apply( const vote_operation& o )
                total2 *= total2;
                cv.weight = static_cast<uint64_t>( rshares3 / total2 );
             } else {// cv.weight = W(R_1) - W(R_0)
+               const uint128_t two_s = 2 * util::get_content_constant_s();
                if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
                {
-                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( 2 * _db.get_content_constant_s() + old_vote_rshares.value ) ).to_uint64();
-                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( 2 * _db.get_content_constant_s() + comment.vote_rshares.value ) ).to_uint64();
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( two_s + old_vote_rshares.value ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( two_s + comment.vote_rshares.value ) ).to_uint64();
                   cv.weight = new_weight - old_weight;
                }
                else
                {
-                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( 2 * _db.get_content_constant_s() + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
-                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( 2 * _db.get_content_constant_s() + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
+                  uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * old_vote_rshares.value ) ) / ( two_s + ( 1000000 * old_vote_rshares.value ) ) ).to_uint64();
+                  uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( 1000000 * comment.vote_rshares.value ) ) / ( two_s + ( 1000000 * comment.vote_rshares.value ) ) ).to_uint64();
                   cv.weight = new_weight - old_weight;
                }
             }
@@ -1346,8 +1364,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
-      new_rshares = _db.calculate_vshares( new_rshares );
-      old_rshares = _db.calculate_vshares( old_rshares );
+      new_rshares = util::calculate_vshares( new_rshares );
+      old_rshares = util::calculate_vshares( old_rshares );
 
       _db.modify( comment, [&]( comment_object& c )
       {

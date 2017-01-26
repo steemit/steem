@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/chain/*.hpp")
+file(GLOB HEADERS "include/steemit/chain/*.hpp" "include/steemit/chain/util/*.hpp")
 
 if( MSVC )
    set( hardfork_hpp_file "${CMAKE_CURRENT_SOURCE_DIR}/include/steemit/chain/hardfork.hpp" )
@@ -26,6 +26,8 @@ add_library( steemit_chain
              steem_objects.cpp
              shared_authority.cpp
              block_log.cpp
+
+             util/reward.cpp
 
              ${HEADERS}
              ${hardfork_hpp_file}
