@@ -268,7 +268,7 @@ namespace steemit {
                             } else {
                                 try {
                                     _chain_db->open(_data_dir /
-                                                    "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write);\
+                                                    "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write);\
 
                                 }
                                 catch (fc::assert_exception &) {
@@ -281,7 +281,7 @@ namespace steemit {
                                     catch (chain::block_log_exception &) {
                                         wlog("Error opening block log. Having to resync from network...");
                                         _chain_db->open(_data_dir /
-                                                        "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write);
+                                                        "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write);
                                     }
                                 }
                             }
@@ -295,7 +295,7 @@ namespace steemit {
                         } else {
                             ilog("Starting Golos node in read mode.");
                             _chain_db->open(_data_dir /
-                                            "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_only);
+                                            "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_only);
 
                             if (_options->count("read-forward-rpc")) {
                                 try {

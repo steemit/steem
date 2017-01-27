@@ -137,7 +137,7 @@ namespace steemit {
             try {
                 ilog("Reindexing Blockchain");
                 wipe(data_dir, shared_mem_dir, false);
-                open(data_dir, shared_mem_dir, 0, shared_file_size, chainbase::database::read_write);
+                open(data_dir, shared_mem_dir, STEEMIT_INIT_SUPPLY, shared_file_size, chainbase::database::read_write);
                 _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
                 auto start = fc::time_point::now();
