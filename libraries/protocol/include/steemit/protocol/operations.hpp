@@ -59,6 +59,7 @@ namespace steemit { namespace protocol {
             reset_account_operation,
             set_reset_account_operation,
             claim_reward_balance_operation,
+            delegate_vesting_shares_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
@@ -72,7 +73,8 @@ namespace steemit { namespace protocol {
             shutdown_witness_operation,
             fill_transfer_from_savings_operation,
             hardfork_operation,
-            comment_payout_update_operation
+            comment_payout_update_operation,
+            return_vesting_delegation_operation
          > operation;
 
    /*void operation_get_required_authorities( const operation& op,

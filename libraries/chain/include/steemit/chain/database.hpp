@@ -438,6 +438,7 @@ namespace steemit { namespace chain {
          void update_last_irreversible_block();
          void clear_expired_transactions();
          void clear_expired_orders();
+         void clear_expired_delegations();
          void process_header_extensions( const signed_block& next_block );
 
          void init_hardforks();

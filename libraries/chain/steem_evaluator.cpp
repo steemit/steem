@@ -2090,20 +2090,24 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
    database& _db = db();
-   FC_ASSERT( _db.has_hardfork(), "delegate_vesting_shares_operation is not enabled until HF 17" ); //TODO: Delete after hardfork
+   FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ), "delegate_vesting_shares_operation is not enabled until HF 17" ); //TODO: Delete after hardfork
 
    const auto& delegator = _db.get_account( op.delegator );
    const auto& delegatee = _db.get_account( op.delegatee );
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
 
-   auto available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - ( delegator.to_withdraw - delegator.withdrawn );
+   auto available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
 
-   FC_ASSERT( op.vesting_shares >= asset( 100000000000 ) || op.vesting_shares.amount == 0 ); // 100k vesting shares. TODO: This is a placeholder
+   const auto& wso = _db.get_witness_schedule_object();
+   const auto& gpo = _db.get_dynamic_global_properties();
+   auto min_delegation = asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
+   auto min_update = wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
 
    // If delegation doesn't exist, create it
    if( delegation == nullptr )
    {
       FC_ASSERT( available_shares >= op.vesting_shares, "Account does not have enough vesting shares to delegate." );
+      FC_ASSERT( op.vesting_shares >= min_delegation, "Account must delegate a minimum of ${v}", ("v", min_delegation) );
 
       _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& obj )
       {
@@ -2124,7 +2128,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       });
    }
    // Else if the delegation is increasing
-   else if( op.vesting_shares > delegation->vesting_shares )
+   else if( op.vesting_shares - delegation->vesting_shares >= min_update )
    {
       FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
 
@@ -2146,13 +2150,15 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       });
    }
    // Else the delegation is decreasing
-   else if( op.vesting_shares > delegation->vesting_shares );
+   else if( delegation->vesting_shares - op.vesting_shares >= min_update || delegation->vesting_shares == op.vesting_shares )
    {
       FC_ASSERT( delegation->min_delegation_time <= _db.head_block_time(), "Delegation cannot be removed yet." );
+      if( delegation->vesting_shares != op.vesting_shares )
+         FC_ASSERT( delegation->vesting_shares - op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
 
       auto delta = delegation->vesting_shares - op.vesting_shares;
 
-      _db.create< vesting_delegation_expiration_object >( vesting_delegation_expiration_object& obj )
+      _db.create< vesting_delegation_expiration_object >( [&]( vesting_delegation_expiration_object& obj )
       {
          obj.delegator = op.delegator;
          obj.vesting_shares = delta;
@@ -2176,7 +2182,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    }
    else
    {
-      FC_ASSERT( false, "Something must change." );
+      FC_ASSERT( false, "Delegation must change by at least ${v}", ("v", min_update) );
    }
 }
 
