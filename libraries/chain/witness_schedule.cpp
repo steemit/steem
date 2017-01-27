@@ -75,16 +75,17 @@ void update_median_witness_props( database& db )
 
 void update_witness_schedule4( database& db )
 {
+   const witness_schedule_object& wso = db.get_witness_schedule_object();
    vector< account_name_type > active_witnesses;
    active_witnesses.reserve( STEEMIT_MAX_WITNESSES );
 
    /// Add the highest voted witnesses
    flat_set< witness_id_type > selected_voted;
-   selected_voted.reserve( STEEMIT_MAX_VOTED_WITNESSES );
+   selected_voted.reserve( wso.max_voted_witnesses );
 
    const auto& widx = db.get_index<witness_index>().indices().get<by_vote_name>();
    for( auto itr = widx.begin();
-        itr != widx.end() && selected_voted.size() <  STEEMIT_MAX_VOTED_WITNESSES;
+        itr != widx.end() && selected_voted.size() < wso.max_voted_witnesses;
         ++itr )
    {
       if( db.has_hardfork( STEEMIT_HARDFORK_0_14__278 ) && (itr->signing_key == public_key_type()) )
@@ -98,11 +99,11 @@ void update_witness_schedule4( database& db )
 
    /// Add miners from the top of the mining queue
    flat_set< witness_id_type > selected_miners;
-   selected_miners.reserve( STEEMIT_MAX_MINER_WITNESSES );
+   selected_miners.reserve( wso.max_miner_witnesses );
    const auto& gprops = db.get_dynamic_global_properties();
    const auto& pow_idx      = db.get_index<witness_index>().indices().get<by_pow>();
    auto mitr = pow_idx.upper_bound(0);
-   while( mitr != pow_idx.end() && selected_miners.size() < STEEMIT_MAX_MINER_WITNESSES )
+   while( mitr != pow_idx.end() && selected_miners.size() < wso.max_miner_witnesses )
    {
       // Only consider a miner who is not a top voted witness
       if( selected_voted.find(mitr->id) == selected_voted.end() )
@@ -131,7 +132,6 @@ void update_witness_schedule4( database& db )
    auto num_miners = selected_miners.size();
 
    /// Add the running witnesses in the lead
-   const witness_schedule_object& wso = db.get_witness_schedule_object();
    fc::uint128 new_virtual_time = wso.current_virtual_time;
    const auto& schedule_idx = db.get_index<witness_index>().indices().get<by_schedule_time>();
    auto sitr = schedule_idx.begin();
@@ -214,7 +214,7 @@ void update_witness_schedule4( database& db )
       {
          witnesses_on_version += ver_itr->second;
 
-         if( witnesses_on_version >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+         if( witnesses_on_version >= wso.hardfork_required_witnesses )
          {
             majority_version = ver_itr->first;
             break;
@@ -227,7 +227,7 @@ void update_witness_schedule4( database& db )
 
       while( hf_itr != hardfork_version_votes.end() )
       {
-         if( hf_itr->second >= STEEMIT_HARDFORK_REQUIRED_WITNESSES )
+         if( hf_itr->second >= wso.hardfork_required_witnesses )
          {
             const auto& hfp = db.get_hardfork_property_object();
             if( hfp.next_hardfork != std::get<0>( hf_itr->first ) ||

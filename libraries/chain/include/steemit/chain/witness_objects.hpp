@@ -159,6 +159,11 @@ namespace steemit { namespace chain {
          uint32_t                                                          witness_pay_normalization_factor = 25;
          chain_properties                                                  median_props;
          version                                                           majority_version;
+
+         uint8_t max_voted_witnesses            = STEEMIT_MAX_VOTED_WITNESSES_HF0;
+         uint8_t max_miner_witnesses            = STEEMIT_MAX_MINER_WITNESSES_HF0;
+         uint8_t max_runner_witnesses           = STEEMIT_MAX_RUNNER_WITNESSES_HF0;
+         uint8_t hardfork_required_witnesses    = STEEMIT_HARDFORK_REQUIRED_WITNESSES;
    };
 
 
@@ -252,5 +257,9 @@ FC_REFLECT( steemit::chain::witness_schedule_object,
              (id)(current_virtual_time)(next_shuffle_block_num)(current_shuffled_witnesses)(num_scheduled_witnesses)
              (top19_weight)(timeshare_weight)(miner_weight)(witness_pay_normalization_factor)
              (median_props)(majority_version)
+             (max_voted_witnesses)
+             (max_miner_witnesses)
+             (max_runner_witnesses)
+             (hardfork_required_witnesses)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::witness_schedule_object, steemit::chain::witness_schedule_index )
