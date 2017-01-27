@@ -2362,9 +2362,9 @@ namespace steemit {
             asset percent(calc_percent_reward_per_round<STEEMIT_POW_APR_PERCENT>(props.virtual_supply.amount), STEEM_SYMBOL);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_16)) {
-                return std::max(percent, STEEMIT_MIN_POW_REWARD_PRE_HF_16);
-            } else {
                 return std::max(percent, STEEMIT_MIN_POW_REWARD);
+            } else {
+                return std::max(percent, STEEMIT_MIN_POW_REWARD_PRE_HF_16);
             }
         }
 
