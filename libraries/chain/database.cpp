@@ -1725,7 +1725,7 @@ void database::clear_null_account_balance()
 
 void update_children_rshares2( database& db, const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 )
 {
-   // Updates the children_rshares2 field of the comment and all its ancestors
+   // Iteratively updates the children_rshares2 of this comment and all of its ancestors
 
    const comment_object* current_comment = &c;
    while( true )
@@ -1744,8 +1744,9 @@ void update_children_rshares2( database& db, const comment_object& c, const fc::
 }
 
 /**
- * This method recursively tallies children_rshares2 for this post plus all of its parents,
- * TODO: this method can be skipped for validation-only nodes
+ * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
+ * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
+ * and dgpo.total_reward_shares2 is the total number of rshares2 outstanding.
  */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
 {
