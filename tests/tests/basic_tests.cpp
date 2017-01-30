@@ -157,24 +157,28 @@ BOOST_AUTO_TEST_CASE( merkle_root )
 
    digest_type dA, dB, dC, dD, dE, dI, dJ, dK, dM, dN, dO;
 
-   /*
-      A=d(0,1)
-         / \
-        0   1
-   */
+   /****************
+    *              *
+    *   A=d(0,1)   *
+    *      / \     *
+    *     0   1    *
+    *              *
+    ****************/
 
    dA = d(t[0], t[1]);
 
    block.transactions.push_back( tx[1] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dA) );
 
-   /*
-            I=d(A,B)
-           /        \
-      A=d(0,1)      B=2
-         / \        /
-        0   1      2
-   */
+   /*************************
+    *                       *
+    *         I=d(A,B)      *
+    *        /        \     *
+    *   A=d(0,1)      B=2   *
+    *      / \        /     *
+    *     0   1      2      *
+    *                       *
+    *************************/
 
    dB = t[2];
    dI = d(dA, dB);
@@ -182,13 +186,16 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[2] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dI) );
 
-   /*
-          I=d(A,B)
-           /    \
-      A=d(0,1)   B=d(2,3)
-         / \    /   \
-        0   1  2     3
-   */
+   /***************************
+    *                         *
+    *       I=d(A,B)          *
+    *        /    \           *
+    *   A=d(0,1)   B=d(2,3)   *
+    *      / \    /   \       *
+    *     0   1  2     3      *
+    *                         *
+    ***************************
+    */
 
    dB = d(t[2], t[3]);
    dI = d(dA, dB);
@@ -196,15 +203,17 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[3] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dI) );
 
-   /*
-                     __M=d(I,J)__
-                    /            \
-            I=d(A,B)              J=C
-           /        \            /
-      A=d(0,1)   B=d(2,3)      C=4
-         / \        / \        /
-        0   1      2   3      4
-   */
+   /***************************************
+    *                                     *
+    *                  __M=d(I,J)__       *
+    *                 /            \      *
+    *         I=d(A,B)              J=C   *
+    *        /        \            /      *
+    *   A=d(0,1)   B=d(2,3)      C=4      *
+    *      / \        / \        /        *
+    *     0   1      2   3      4         *
+    *                                     *
+    ***************************************/
 
    dC = t[4];
    dJ = dC;
@@ -213,15 +222,17 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[4] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dM) );
 
-   /*
-                     __M=d(I,J)__
-                    /            \
-            I=d(A,B)              J=C
-           /        \            /
-      A=d(0,1)   B=d(2,3)   C=d(4,5)
-         / \        / \        / \
-        0   1      2   3      4   5
-   */
+   /**************************************
+    *                                    *
+    *                 __M=d(I,J)__       *
+    *                /            \      *
+    *        I=d(A,B)              J=C   *
+    *       /        \            /      *
+    *  A=d(0,1)   B=d(2,3)   C=d(4,5)    *
+    *     / \        / \        / \      *
+    *    0   1      2   3      4   5     *
+    *                                    *
+    **************************************/
 
    dC = d(t[4], t[5]);
    dJ = dC;
@@ -230,15 +241,17 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[5] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dM) );
 
-   /*
-                     __M=d(I,J)__
-                    /            \
-            I=d(A,B)              J=d(C,D)
-           /        \            /        \
-      A=d(0,1)   B=d(2,3)   C=d(4,5)      D=6
-         / \        / \        / \        /
-        0   1      2   3      4   5      6
-   */
+   /***********************************************
+    *                                             *
+    *                  __M=d(I,J)__               *
+    *                 /            \              *
+    *         I=d(A,B)              J=d(C,D)      *
+    *        /        \            /        \     *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)      D=6   *
+    *      / \        / \        / \        /     *
+    *     0   1      2   3      4   5      6      *
+    *                                             *
+    ***********************************************/
 
    dD = t[6];
    dJ = d(dC, dD);
@@ -247,15 +260,17 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[6] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dM) );
 
-   /*
-                     __M=d(I,J)__
-                    /            \
-            I=d(A,B)              J=d(C,D)
-           /        \            /        \
-      A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)
-         / \        / \        / \        / \
-        0   1      2   3      4   5      6   7
-   */
+   /*************************************************
+    *                                               *
+    *                  __M=d(I,J)__                 *
+    *                 /            \                *
+    *         I=d(A,B)              J=d(C,D)        *
+    *        /        \            /        \       *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)   *
+    *      / \        / \        / \        / \     *
+    *     0   1      2   3      4   5      6   7    *
+    *                                               *
+    *************************************************/
 
    dD = d(t[6], t[7]);
    dJ = d(dC, dD);
@@ -264,17 +279,19 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[7] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dM) );
 
-   /*
-                                _____________O=d(M,N)______________
-                               /                                   \
-                     __M=d(I,J)__                                  N=K
-                    /            \                              /
-            I=d(A,B)              J=d(C,D)                 K=E
-           /        \            /        \            /
-      A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)      E=8
-         / \        / \        / \        / \        /
-        0   1      2   3      4   5      6   7      8
-   */
+   /************************************************************************
+    *                                                                      *
+    *                             _____________O=d(M,N)______________      *
+    *                            /                                   \     *
+    *                  __M=d(I,J)__                                  N=K   *
+    *                 /            \                              /        *
+    *         I=d(A,B)              J=d(C,D)                 K=E           *
+    *        /        \            /        \            /                 *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)      E=8                 *
+    *      / \        / \        / \        / \        /                   *
+    *     0   1      2   3      4   5      6   7      8                    *
+    *                                                                      *
+    ************************************************************************/
 
    dE = t[8];
    dK = dE;
@@ -284,17 +301,19 @@ BOOST_AUTO_TEST_CASE( merkle_root )
    block.transactions.push_back( tx[8] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dO) );
 
-   /*
-                                _____________O=d(M,N)______________
-                               /                                   \
-                     __M=d(I,J)__                                  N=K
-                    /            \                              /
-            I=d(A,B)              J=d(C,D)                 K=E
-           /        \            /        \            /
-      A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)   E=d(8,9)
-         / \        / \        / \        / \        / \
-        0   1      2   3      4   5      6   7      8   9
-   */
+   /************************************************************************
+    *                                                                      *
+    *                             _____________O=d(M,N)______________      *
+    *                            /                                   \     *
+    *                  __M=d(I,J)__                                  N=K   *
+    *                 /            \                              /        *
+    *         I=d(A,B)              J=d(C,D)                 K=E           *
+    *        /        \            /        \            /                 *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)   E=d(8,9)               *
+    *      / \        / \        / \        / \        / \                 *
+    *     0   1      2   3      4   5      6   7      8   9                *
+    *                                                                      *
+    ************************************************************************/
 
    dE = d(t[8], t[9]);
    dK = dE;
