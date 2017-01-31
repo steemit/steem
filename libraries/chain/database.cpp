@@ -548,7 +548,7 @@ bool database::update_account_bandwidth( const account_object& a, uint32_t trx_s
          b.last_bandwidth_update = head_block_time();
       });
 
-      fc::uint128 account_vshares( a.vesting_shares.amount.value );
+      fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
       fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
       fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
       fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
@@ -2318,6 +2318,8 @@ void database::initialize_indexes()
    add_core_index< savings_withdraw_index                  >(*this);
    add_core_index< decline_voting_rights_request_index     >(*this);
    add_core_index< reward_fund_index                       >(*this);
+   add_core_index< vesting_delegation_index                >(*this);
+   add_core_index< vesting_delegation_expiration_index     >(*this);
 
    _plugin_index_signal();
 }

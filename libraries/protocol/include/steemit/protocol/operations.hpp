@@ -60,6 +60,7 @@ namespace steemit { namespace protocol {
             set_reset_account_operation,
             claim_reward_balance_operation,
             delegate_vesting_shares_operation,
+            account_create_with_delegation_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,

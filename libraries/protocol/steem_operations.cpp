@@ -39,6 +39,27 @@ namespace steemit { namespace protocol {
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
    }
 
+   void account_create_with_delegation_operation::validate() const
+   {
+      validate_account_name( new_account_name );
+      validate_account_name( creator );
+      FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ), "Account creation fee must be STEEM" );
+      FC_ASSERT( is_asset_type( delegation, VESTS_SYMBOL ), "Delegation must be VESTS" );
+
+      owner.validate();
+      active.validate();
+      posting.validate();
+
+      if( json_metadata.size() > 0 )
+      {
+         FC_ASSERT( fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8" );
+         FC_ASSERT( fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON" );
+      }
+
+      FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Account creation fee cannot be negative" );
+      FC_ASSERT( delegation >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
+   }
+
    void account_update_operation::validate() const
    {
       validate_account_name( account );
@@ -498,7 +519,8 @@ namespace steemit { namespace protocol {
    {
       validate_account_name( delegator );
       validate_account_name( delegatee );
-      FC_ASSERT( vesting_shares.symbol == VESTS_SYMBOL );
+      FC_ASSERT( is_asset_type( vesting_shares, VESTS_SYMBOL ), "Delegation must be VESTS" );
+      FC_ASSERT( vesting_shares >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
    }
 
 } } // steemit::protocol
