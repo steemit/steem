@@ -30,6 +30,10 @@ namespace steemit { namespace chain {
    class custom_operation_interpreter;
    struct operation_notification;
 
+   namespace util {
+      struct comment_reward_context;
+   }
+
    /**
     *   @class database
     *   @brief tracks the blockchain state in an extensible manner
@@ -316,7 +320,7 @@ namespace steemit { namespace chain {
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
          share_type pay_curators( const comment_object& c, share_type max_rewards );
-         void cashout_comment_helper( const comment_object& comment );
+         void cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment );
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
