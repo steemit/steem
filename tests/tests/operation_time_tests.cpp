@@ -9,6 +9,8 @@
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
+#include <steemit/chain/util/reward.hpp>
+
 #include <steemit/plugins/debug_node/debug_node_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
@@ -66,7 +68,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       // U,V,W : voters
 
       // set a ridiculously high STEEM price ($1 / satoshi) to disable dust threshold
-      set_price_feed( price( asset::from_string( "0.001 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "0.001 TESTS" ), ASSET( "1.000 TBD" ) ) );
 
       for( const auto& voter : voters )
       {
@@ -119,7 +121,6 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       }
 
       auto reward_steem = db.get_dynamic_global_properties().total_reward_fund_steem;
-      auto total_rshares2 = db.get_dynamic_global_properties().total_reward_shares2;
 
       // generate a few blocks to seed the reward fund
       generate_blocks(10);
@@ -144,6 +145,67 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       BOOST_CHECK( alice_account.sbd_balance == ASSET( "10720.000 TBD" ) );
       BOOST_CHECK( bob_account.sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_CHECK( dave_account.sbd_balance == alice_account.sbd_balance );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( comment_payout_dust )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: comment_payout_dust" );
+
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      vest( "alice", ASSET( "10.000 TESTS" ) );
+      vest( "bob", ASSET( "10.000 TESTS" ) );
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      generate_block();
+      validate_database();
+
+      comment_operation comment;
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "test";
+      vote_operation vote;
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = 81 * STEEMIT_1_PERCENT;
+
+      signed_transaction tx;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      validate_database();
+
+      comment.author = "bob";
+      vote.voter = "bob";
+      vote.author = "bob";
+      vote.weight = 59 * STEEMIT_1_PERCENT;
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      validate_database();
+
+      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time );
+
+      // If comments are paid out independent of order, then the last satoshi of STEEM cannot be divided among them
+      BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_fund_steem == ASSET( "0.001 TESTS" ) );
+
+      validate_database();
+
+      BOOST_TEST_MESSAGE( "Done" );
    }
    FC_LOG_AND_RETHROW()
 }
