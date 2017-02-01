@@ -6,7 +6,7 @@ if [[ $IMAGE_NAME == "steemit/steem:stable" ]] ; then
 fi
 # switch workspace into directory used for branch
 mkdir ${GIT_BRANCH#*/}
-cp -r temp-repo-folder/* ${GIT_BRANCH#*/}
+cp -a temp-repo-folder/. ${GIT_BRANCH#*/}
 rm -rf temp-repo-folder/*
 cd ${GIT_BRANCH#*/}
 sudo docker build -t=$IMAGE_NAME .
