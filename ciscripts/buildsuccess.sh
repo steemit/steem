@@ -1,11 +1,11 @@
 #/bin/bash
-#testcommit
+cd $BUILD_SPACE
 curl -XPOST -H "Authorization: token $GITHUB_SECRET" https://api.github.com/repos/steemit/steem/statuses/$(git rev-parse HEAD) -d "{
   \"state\": \"success\",
   \"target_url\": \"${BUILD_URL}\",
   \"description\": \"Jenkins-CI reports build succeeded!!\",
   \"context\": \"jenkins-ci-steemit\"
 }"
-rm -rf $WORKSPACE/${GIT_BRANCH#*/}
+rm -rf $WORKSPACE/$BUILD_SPACE
 # make docker cleanup after itself and delete all exited containers
 sudo docker rm -v $(docker ps -a -q -f status=exited) || true
