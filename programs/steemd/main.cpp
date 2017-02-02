@@ -193,7 +193,10 @@ int main(int argc, char** argv) {
          exit_promise->set_value(signal);
       }, SIGTERM);
 
-      ilog("Started witness node on a chain with ${h} blocks.", ("h", node->chain_database()->head_block_num()));
+      node->chain_database()->with_read_lock( [&]()
+      {
+         ilog("Started witness node on a chain with ${h} blocks.", ("h", node->chain_database()->head_block_num()));
+      });
 
       exit_promise->wait();
       node->shutdown_plugins();
