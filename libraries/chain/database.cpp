@@ -187,18 +187,6 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
-
-      const auto& comment_idx = get_index< comment_index, by_root >();
-      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
-      {
-         auto cashout_time = calculate_discussion_payout_time( *itr );
-         if( cashout_time == fc::time_point_sec::maximum() )
-            continue;
-
-         ilog( "Updating comment payout: ${a} ${p}  --- Old Cashout Time: ${t1} --- New Cashout Time: ${t2}",
-               ("a", itr->author)("p", itr->permlink)("t1", cashout_time)
-               ("t2", std::max( cashout_time, itr->created + STEEMIT_CASHOUT_WINDOW_SECONDS )));
-      }
    }
    FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
@@ -3701,10 +3689,10 @@ void database::apply_hardfork( uint32_t hardfork )
              * This will result in a very complex and redundant iteration. The simple solution, albeit
              * containing inefficiencies is a simple iteration over all comments.
              *
-             * by_root will iterate over all root posts first, which will adjust the calls to calculate_discussion_payout_time
+             * by_parent will iterate over all root posts first, which will adjust the calls to calculate_discussion_payout_time
              * before calling on a child commment.
              */
-            const auto& comment_idx = get_index< comment_index, by_root >();
+            const auto& comment_idx = get_index< comment_index, by_parent >();
             for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
             {
                auto cashout_time = calculate_discussion_payout_time( *itr );
