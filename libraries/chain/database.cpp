@@ -1641,7 +1641,11 @@ void database::cashout_comment_helper( util::comment_reward_context& ctx, const 
          c.total_vote_weight = 0;
          c.max_cashout_time = fc::time_point_sec::maximum();
 
-         if( c.parent_author == STEEMIT_ROOT_POST_PARENT )
+         if( has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+         {
+            c.cashout_time = fc::time_point_sec::maximum();
+         }
+         else if( c.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
                c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
