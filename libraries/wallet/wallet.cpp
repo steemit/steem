@@ -2059,15 +2059,8 @@ map<uint32_t,applied_operation> wallet_api::get_account_history( string account,
    return result;
 }
 
-app::state wallet_api::get_state( string url )
-{
-   auto before = fc::time_point::now();
-   auto s = my->_remote_db->get_state(url);
-   auto after = fc::time_point::now();
-
-   ilog( "Execution Time: ${d}", ("d", after - before) );
-
-   return s;
+app::state wallet_api::get_state( string url ) {
+   return my->_remote_db->get_state(url);
 }
 
 vector< withdraw_route > wallet_api::get_withdraw_routes( string account, withdraw_route_type type )const

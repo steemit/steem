@@ -148,8 +148,7 @@ struct operation_visitor {
        const auto& stats = get_stats( current.tag );
        remove_stats( current, stats );
 
-       if( comment.mode != archived )
-       {
+       if( comment.mode != archived ) {
           _db.modify( current, [&]( tag_object& obj ) {
              obj.active            = comment.active;
              obj.cashout           = comment.cashout_time;
@@ -162,11 +161,8 @@ struct operation_visitor {
              if( obj.mode != first_payout )
                obj.promoted_balance = 0;
          });
-
          add_stats( current, stats );
-       }
-       else
-       {
+       } else {
           _db.remove( current );
        }
    }
@@ -369,11 +365,9 @@ struct operation_visitor {
       auto itr = idx.lower_bound( boost::make_tuple( auth.id ) );
       while( itr != idx.end() && itr->author == auth.id ) {
          const auto& tobj = *itr;
-         const auto& stats = get_stats( tobj.tag );
          const auto* obj = _db.find< comment_object >( itr->comment );
          ++itr;
          if( !obj ) {
-            remove_stats( tobj, stats );
             _db.remove( tobj );
          }
       }

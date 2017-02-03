@@ -187,6 +187,18 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      const auto& comment_idx = get_index< comment_index, by_root >();
+      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
+      {
+         auto cashout_time = calculate_discussion_payout_time( *itr );
+         if( cashout_time == fc::time_point_sec::maximum() )
+            continue;
+
+         ilog( "Updating comment payout: ${a} ${p}  --- Old Cashout Time: ${t1} --- New Cashout Time: ${t2}",
+               ("a", itr->author)("p", itr->permlink)("t1", cashout_time)
+               ("t2", std::max( cashout_time, itr->created + STEEMIT_CASHOUT_WINDOW_SECONDS )));
+      }
    }
    FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
@@ -3616,7 +3628,7 @@ void database::apply_hardfork( uint32_t hardfork )
                   {
                      modify( *itr, [&]( comment_object & c )
                      {
-                        c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+                        c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
                         c.mode = first_payout;
                      });
                   }
@@ -3695,12 +3707,13 @@ void database::apply_hardfork( uint32_t hardfork )
             const auto& comment_idx = get_index< comment_index, by_root >();
             for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
             {
-               if( itr->cashout_time == fc::time_point_sec::maximum() )
+               auto cashout_time = calculate_discussion_payout_time( *itr );
+               if( cashout_time == fc::time_point_sec::maximum() )
                   continue;
 
                modify( *itr, [&]( comment_object& c )
                {
-                  c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+                  c.cashout_time = std::max( cashout_time, c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
                });
             }
          }

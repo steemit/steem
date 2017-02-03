@@ -1142,7 +1142,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
       if( rshares > 0 && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
       {
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__769) )
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
             FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
          else
             FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
@@ -1169,7 +1169,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          fc::uint128_t new_cashout_time_sec;
 
          if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && !_db.has_hardfork( STEEMIT_HARDFORK_0_13__257)  )
-            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
          else
             new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
 
@@ -1199,7 +1199,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
          {
             if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout > fc::time_point_sec::min() )
-               c.cashout_time = c.last_payout + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
+               c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
             else
                c.cashout_time = fc::time_point_sec( std::min( uint32_t( avg_cashout_sec.to_uint64() ), c.max_cashout_time.sec_since_epoch() ) );
 
@@ -1339,7 +1339,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          fc::uint128_t new_cashout_time_sec;
 
          if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && ! _db.has_hardfork( STEEMIT_HARDFORK_0_13__257 )  )
-            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+            new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
          else
             new_cashout_time_sec = _db.head_block_time().sec_since_epoch() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12;
 
