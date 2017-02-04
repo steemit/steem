@@ -1,14 +1,20 @@
 #!groovy
-node {
-  stage 'Checkout'
-  checkout scm
-  properties([pipelineTriggers([[$class: 'GitHubPushTrigger']])]) // required to enable webhooks for a job
-  stage 'Build'
-  try {
-    sh 'ciscripts/triggerbuild.sh'
-    sh 'ciscripts/buildsuccess.sh'
-  } catch (err) {
-    currentBuild.results = 'FAILURE'
-    sh 'ciscripts/buildfailure.sh'
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        sh 'ciscripts/triggerbuild.sh'
+      }
+    }
+  }
+  post {
+    success {
+      sh 'ciscripts/buildsuccess.sh'
+    }
+    failure {
+      sh 'ciscripts/buildfailure.sh'
+      slackSend (color: '#961515', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+    }
   }
 }
