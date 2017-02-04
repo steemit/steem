@@ -1,4 +1,5 @@
 #!/bin/bash
+#
 set -e
 export IMAGE_NAME="steemit/steem:$BRANCH_NAME"
 if [[ $IMAGE_NAME == "steemit/steem:stable" ]] ; then
