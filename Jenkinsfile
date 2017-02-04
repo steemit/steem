@@ -14,7 +14,7 @@ pipeline {
     }
     failure {
       sh 'ciscripts/buildfailure.sh'
-      slackSend (color: '#961515', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+      slackSend (color: '#ff0000', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
     }
   }
 }
