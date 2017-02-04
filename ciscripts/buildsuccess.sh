@@ -6,6 +6,6 @@ curl -XPOST -H "Authorization: token $GITHUB_SECRET" https://api.github.com/repo
   \"description\": \"Jenkins-CI reports build succeeded!!\",
   \"context\": \"jenkins-ci-steemit\"
 }"
-#rm -rf $WORKSPACE/*
+rm -rf $WORKSPACE/*
 # make docker cleanup after itself and delete all exited containers
 sudo docker rm -v $(docker ps -a -q -f status=exited) || true
