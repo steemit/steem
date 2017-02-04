@@ -1,7 +1,7 @@
 #!groovy
 node {
   try {
-    properties([pipelineTriggers([[$class: 'GitHubPushTrigger'], pollSCM('H/2 * * * *')])])
+    properties([pipelineTriggers([[$class: 'GitHubPushTrigger']])])
     checkout scm
     sh 'ciscripts/triggerbuild.sh'
     sh 'ciscripts/buildsuccess.sh'
