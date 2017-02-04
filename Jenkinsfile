@@ -1,8 +1,10 @@
 #!groovy
 node {
+  stage 'Checkout'
+  checkout scm
+  properties([pipelineTriggers([[$class: 'GitHubPushTrigger']])]) // required to enable webhooks for a job
+  stage 'Build'
   try {
-    properties([pipelineTriggers([[$class: 'GitHubPushTrigger']])])
-    checkout scm
     sh 'ciscripts/triggerbuild.sh'
     sh 'ciscripts/buildsuccess.sh'
   } catch (err) {
