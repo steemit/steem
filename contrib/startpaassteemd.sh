@@ -39,24 +39,20 @@ cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
 # get blockchain state from an S3 bucket
 # if this url is not provieded then we might as well exit
-if [[ ! -z "$BLOCKCHAIN_URL" ]]; then
-  echo steemd: beginning download and decompress of $BLOCKCHAIN_URL
-  if [[ ! "$SYNC_TO_S3" ]]; then
-    mkdir -p /mnt/ramdisk
-    mount -t ramfs -o size=34816m ramfs /mnt/ramdisk
-    s3cmd get $BLOCKCHAIN_URL - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
-    ln -s blockchain/block_log /mnt/ramdisk/blockchain/block_log
-    ln -s blockchain/block_log.index /mnt/ramdisk/blockchain/block_log.index
-    ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
-  else
-    s3cmd get $BLOCKCHAIN_URL - | pbzip2 -m2000dc | tar x
-  fi
-  if [[ $? -ne 0 ]]; then
-    echo error: unable to pull blockchain state from S3 - exitting
-    exit 1
-  fi
+S3_DOWNLOAD_BUCKET=steemit-$NODE_ENV-blockchainstate
+echo steemd: beginning download and decompress of s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
+if [[ ! "$SYNC_TO_S3" ]]; then
+  mkdir -p /mnt/ramdisk
+  mount -t ramfs -o size=34816m ramfs /mnt/ramdisk
+  s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  ln -s blockchain/block_log /mnt/ramdisk/blockchain/block_log
+  ln -s blockchain/block_log.index /mnt/ramdisk/blockchain/block_log.index
+  ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
 else
-  echo error: no URL specified to get blockchain state from - exiting
+  s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+fi
+if [[ $? -ne 0 ]]; then
+  echo error: unable to pull blockchain state from S3 - exitting
   exit 1
 fi
 
@@ -75,19 +71,19 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
             $STEEMD_EXTRA_OPTS \
             2>&1 &
     # sleep for a moment to allow the writer node to be ready to accept connections from the readers
-    sleep 15
+    sleep 30
     PORT_NUM=8092
-    # don't generate endpoints in haproxy config if it already exists
-    # this prevents adding to it if the docker container is stopped/started
     cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-    for (( i=2; i<=$(nproc); i++ ))
+    CORES=$(nproc)
+    PROCESSES=$((CORES * 4))
+    for (( i=2; i<=$PROCESSES; i++ ))
       do
         echo server localhost:$PORT_NUM\; >> /etc/nginx/healthcheck.conf
         ((PORT_NUM++))
     done
     echo } >> /etc/nginx/healthcheck.conf
     PORT_NUM=8092
-    for (( i=2; i<=$(nproc); i++ ))
+    for (( i=2; i<=$PROCESSES; i++ ))
       do
         exec chpst -usteemd \
         $STEEMD \

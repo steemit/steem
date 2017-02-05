@@ -12,7 +12,7 @@ fi
 # after uploading, kill runsv causing the container to exit
 # and ecs-agent will start a new container starting the process over
 BLOCKCHAIN_TIME=$(
-    curl --silent --max-time 3 \
+    curl --silent --max-time 20 \
         --data '{"id":39,"method":"get_dynamic_global_properties","params":[]}' \
         localhost:8090 | jq -r .result.time
 )
@@ -21,7 +21,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
   BLOCKCHAIN_SECS=`date -d $BLOCKCHAIN_TIME +%s`
   CURRENT_SECS=`date +%s`
 
-  # if we're within 5 seconds of current time, call it synced and begin the upload
+  # if we're within 10 seconds of current time, call it synced and begin the upload
   BLOCK_AGE=$((${CURRENT_SECS} - ${BLOCKCHAIN_SECS}))
   if [[ ${BLOCK_AGE} -le 10 ]]; then
     STEEMD_PID=`pgrep -f p2p-endpoint`
@@ -32,17 +32,18 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     cd $HOME
     echo steemdsync: compressing blockchainstate...
     tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 blockchain
-    FILE_NAME=blockchain`date '+%d'`.tar.bz2
+    FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    S3_UPLOAD_BUCKET=steemit-$NODE_ENV-blockchainstate
     echo steemdsync: uploading $FILE_NAME to $S3_UPLOAD_BUCKET
     aws s3 cp blockchain.tar.bz2 s3://$S3_UPLOAD_BUCKET/$FILE_NAME
     if [[ ! $? -eq 0 ]]; then
     	echo ALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_UPLOAD_BUCKET
     	exit 1
     fi
-    echo steemdsync: replacing current version of blockchain.tar.bz2 with $FILE_NAME
-    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain.tar.bz2
+    echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
+    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
     if [[ ! $? -eq 0 ]]; then
-    	echo ALERT! steemdsync was unable to overwrite blockchain.tar.bz2 with $FILE_NAME
+    	echo ALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1
     fi
     # kill the container starting the process over again
