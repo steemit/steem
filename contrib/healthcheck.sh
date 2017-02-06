@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# if this is a syncing node, it will regularly be down
+# so all we need to know is that this healthcheck script is up and responding
+if [[ -e /tmp/issyncnode ]]; then
+  echo Status: 200
+  echo Content-type:text/plain
+  echo
+  echo The sync node is up and running.
+  exit 0
+fi
+
 BLOCKCHAIN_TIME=$(
     curl --silent --max-time 3 \
         --data '{"id":39,"method":"get_dynamic_global_properties","params":[]}' \
@@ -15,16 +25,6 @@ if [[ ${BLOCKCHAIN_TIME} == "null" ]]; then
   echo Content-type:text/plain
   echo
   echo The node is currently not responding.
-  exit 0
-fi
-
-# if this is a syncing node, it will regularly be down
-# so all we need to know is that this healthcheck script is up and responding
-if [[ "$SYNC_TO_S3" ]]; then
-  echo Status: 200
-  echo Content-type:text/plain
-  echo
-  echo The sync node is up and running.
   exit 0
 fi
 

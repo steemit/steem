@@ -51,6 +51,8 @@ if [[ ! "$SYNC_TO_S3" ]]; then
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
   s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  touch /tmp/issyncnode
+  chown www-data:www-data /tmp/issyncnode
 fi
 if [[ $? -ne 0 ]]; then
   echo error: unable to pull blockchain state from S3 - exitting
