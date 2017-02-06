@@ -90,6 +90,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
         $STEEMD \
           --rpc-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
+          --shared-file-dir=/mnt/ramdisk/blockchain \
           --read-forward-rpc=127.0.0.1:8091 \
           --read-only \
           2>&1 &
