@@ -248,6 +248,11 @@ struct get_impacted_account_visitor
       _impacted.insert( op.account );
    }
 
+   void operator()( const claim_reward_balance_operation& op )
+   {
+      _impacted.insert( op.account );
+   }
+
    //void operator()( const operation& op ){}
 };
 

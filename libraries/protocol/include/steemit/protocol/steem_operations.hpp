@@ -855,6 +855,17 @@ namespace steemit { namespace protocol {
       void get_required_owner_authorities( flat_set<account_name_type>& a )const{ a.insert( account ); }
       void validate() const;
    };
+
+   struct claim_reward_balance_operation : public base_operation
+   {
+      account_name_type account;
+      asset             reward_steem;
+      asset             reward_sbd;
+      asset             reward_vests;
+
+      void get_required_posting_authorities( flat_set< account_name_type >& a )const{ a.insert( account ); }
+      void validate() const;
+   };
 } } // steemit::protocol
 
 
@@ -926,3 +937,4 @@ FC_REFLECT( steemit::protocol::request_account_recovery_operation, (recovery_acc
 FC_REFLECT( steemit::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steemit::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
 FC_REFLECT( steemit::protocol::decline_voting_rights_operation, (account)(decline) );
+FC_REFLECT( steemit::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )

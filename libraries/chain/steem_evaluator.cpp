@@ -2013,4 +2013,25 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
    });
 }
 
+void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operation& op )
+{
+   database& _db = db();
+   const auto& acnt = _db.get_account( op.account );
+
+   FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM." );
+   FC_ASSERT( op.reward_sbd <= acnt.reward_sbd_balance, "Cannot claim that much SBD." );
+   FC_ASSERT( op.reward_vests <= acnt.reward_vesting_balance, "Cannot claim that much VESTS." );
+
+   _db.modify( acnt, [&]( account_object& a )
+   {
+      a.balance += op.reward_steem;
+      a.sbd_balance += op.reward_sbd;
+      a.vesting_shares += op.reward_vests;
+
+      a.reward_steem_balance -= op.reward_steem;
+      a.reward_sbd_balance -= op.reward_sbd;
+      a.reward_vesting_balance -= op.reward_vests;
+   });
+}
+
 } } // steemit::chain
