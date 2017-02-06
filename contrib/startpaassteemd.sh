@@ -48,6 +48,7 @@ if [[ ! "$SYNC_TO_S3" ]]; then
   ln -s blockchain/block_log /mnt/ramdisk/blockchain/block_log
   ln -s blockchain/block_log.index /mnt/ramdisk/blockchain/block_log.index
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
+  chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
   s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
 fi
