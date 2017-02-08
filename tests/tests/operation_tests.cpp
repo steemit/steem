@@ -460,15 +460,15 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( alice_comment.abs_rshares.value == 0 );
       BOOST_REQUIRE( alice_comment.cashout_time == fc::time_point_sec( db.head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
 
-      #ifndef IS_LOW_MEM
+#ifndef IS_LOW_MEM
          BOOST_REQUIRE( to_string( alice_comment.title ) == op.title );
          BOOST_REQUIRE( to_string( alice_comment.body ) == op.body );
          //BOOST_REQUIRE( alice_comment.json_metadata == op.json_metadata );
-      #else
+#else
          BOOST_REQUIRE( to_string( alice_comment.title ) == "" );
          BOOST_REQUIRE( to_string( alice_comment.body ) == "" );
          //BOOST_REQUIRE( alice_comment.json_metadata == "" );
-      #endif
+#endif
 
       validate_database();
 

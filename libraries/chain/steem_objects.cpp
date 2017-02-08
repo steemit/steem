@@ -1,10 +1,7 @@
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
 
-#include <fc/uint128.hpp>
 
-namespace steemit { namespace chain {
+namespace steemit {
+    namespace chain {
 
 /*set< string > account_member_index::get_account_members( const account_object& a ) const
 {
@@ -121,4 +118,5 @@ void account_member_index::object_modified( const object& after )
     }
 }*/
 
-} } // steemit::chain
+    }
+} // steemit::chain

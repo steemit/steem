@@ -1,47 +1,53 @@
 #pragma once
+
 #include <steemit/protocol/exceptions.hpp>
 #include <steemit/protocol/operations.hpp>
 
-namespace steemit { namespace chain {
+namespace steemit {
+    namespace chain {
 
-class database;
+        class database;
 
-template< typename OperationType=steemit::protocol::operation >
-class evaluator
-{
-   public:
-      virtual void apply(const OperationType& op) = 0;
-      virtual int get_type()const = 0;
-};
+        template<typename OperationType=steemit::protocol::operation>
+        class evaluator {
+        public:
+            virtual void apply(const OperationType &op) = 0;
 
-template< typename EvaluatorType, typename OperationType=steemit::protocol::operation >
-class evaluator_impl : public evaluator<OperationType>
-{
-   public:
-      typedef OperationType operation_sv_type;
-      // typedef typename EvaluatorType::operation_type op_type;
+            virtual int get_type() const = 0;
+        };
 
-      evaluator_impl( database& d )
-         : _db(d) {}
+        template<typename EvaluatorType, typename OperationType=steemit::protocol::operation>
+        class evaluator_impl : public evaluator<OperationType> {
+        public:
+            typedef OperationType operation_sv_type;
+            // typedef typename EvaluatorType::operation_type op_type;
 
-      virtual void apply(const OperationType& o) final override
-      {
-         auto* eval = static_cast< EvaluatorType* >(this);
-         const auto& op = o.template get< typename EvaluatorType::operation_type >();
-         eval->do_apply(op);
-      }
+            evaluator_impl(database &d)
+                    : _db(d) {
+            }
 
-      virtual int get_type()const override { return OperationType::template tag< typename EvaluatorType::operation_type >::value; }
+            virtual void apply(const OperationType &o) final override {
+                auto *eval = static_cast< EvaluatorType * >(this);
+                const auto &op = o.template get<typename EvaluatorType::operation_type>();
+                eval->do_apply(op);
+            }
 
-      database& db() { return _db; }
+            virtual int get_type() const override {
+                return OperationType::template tag<typename EvaluatorType::operation_type>::value;
+            }
 
-   protected:
-      database& _db;
-};
+            database &db() {
+                return _db;
+            }
 
-} }
+        protected:
+            database &_db;
+        };
 
-#define DEFINE_EVALUATOR( X ) \
+    }
+}
+
+#define DEFINE_EVALUATOR(X) \
 class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator > \
 {                                                                           \
    public:                                                                  \

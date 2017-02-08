@@ -1,17 +1,7 @@
-# Introducing Steem (beta)
+# Introducing Golos (beta)
 
-Steem is an experimental Proof of Work blockchain with an unproven consensus
+Golos is an experimental Proof of Work blockchain with an unproven consensus
 algorithm.
-
-  - Currency symbol STEEM
-  - 1.000 STEEM block reward at launch
-  - Approximately 100% APR long term inflation rate
-
-# Public Announcement & Discussion
-
-Steem was announced on the
-[Bitcointalk forum](https://bitcointalk.org/index.php?topic=1410943.new) prior to
-the start of any mining.
 
 # No Support & No Warranty
 
@@ -38,10 +28,10 @@ dockerized container.  Both common binary types are included.
 To run a p2p node (ca. 2GB of memory is required at the moment):
 
     docker run \
-        -d -p 2001:2001 -p 8090:8090 --name steemd-default \
-        steemit/steem
+        -d -p 2001:2001 -p 8090:8090 --name golosd-default \
+        golosit/golos
 
-    docker logs -f steemd-default  # follow along
+    docker logs -f golosd-default  # follow along
 
 ## Dockerized Full Node
 
@@ -50,10 +40,10 @@ that uses ca. 14GB of memory and growing:
 
     docker run \
         --env USE_WAY_TOO_MUCH_RAM=1 \
-        -d -p 2001:2001 -p 8090:8090 --name steemd-full \
-        steemit/steem
+        -d -p 2001:2001 -p 8090:8090 --name golosd-full \
+        golosit/golos
 
-    docker logs -f steemd-full
+    docker logs -f golosd-full
 
 # Seed Nodes
 
@@ -66,11 +56,11 @@ time to a whitespace delimited list of seed nodes (with port).
 
 # How to Mine
 
-The mining algorithm used by Steem requires the owner to have access to the
+The mining algorithm used by Golos requires the owner to have access to the
 private key used by the account. This means it does not favor mining pools.
 
-    ./steemd --miner=["accountname","${WIFPRIVATEKEY}"] \
-        --witness="accountname" --seed-node="52.38.66.234:2001"
+    ./golosd --miner=["accountname","${WIFPRIVATEKEY}"] \
+        --witness="accountname" --seed-node="95.85.13.229:2225"
 
 Make sure that your accountname is unique and not already used by someone
 else or your proof of work might not be accepted by the blockchain.

@@ -5,82 +5,88 @@
 
 #include <fc/static_variant.hpp>
 
-namespace fc
-{
-   using namespace steemit::protocol;
+namespace fc {
+    using namespace steemit::protocol;
 
-   std::string name_from_type( const std::string& type_name );
+    std::string name_from_type(const std::string &type_name);
 
-   struct from_operation
-   {
-      variant& var;
-      from_operation( variant& dv )
-         : var( dv ) {}
+    struct from_operation {
+        variant &var;
 
-      typedef void result_type;
-      template<typename T> void operator()( const T& v )const
-      {
-         auto name = name_from_type( fc::get_typename< T >::name() );
-         var = variant( std::make_pair( name, v ) );
-      }
-   };
+        from_operation(variant &dv)
+                : var(dv) {
+        }
 
-   struct get_operation_name
-   {
-      string& name;
-      get_operation_name( string& dv )
-         : name( dv ) {}
+        typedef void result_type;
 
-      typedef void result_type;
-      template< typename T > void operator()( const T& v )const
-      {
-         name = name_from_type( fc::get_typename< T >::name() );
-      }
-   };
+        template<typename T>
+        void operator()(const T &v) const {
+            auto name = name_from_type(fc::get_typename<T>::name());
+            var = variant(std::make_pair(name, v));
+        }
+    };
+
+    struct get_operation_name {
+        string &name;
+
+        get_operation_name(string &dv)
+                : name(dv) {
+        }
+
+        typedef void result_type;
+
+        template<typename T>
+        void operator()(const T &v) const {
+            name = name_from_type(fc::get_typename<T>::name());
+        }
+    };
 }
 
-namespace steemit { namespace protocol {
+namespace steemit {
+    namespace protocol {
 
-struct operation_validate_visitor
-{
-   typedef void result_type;
-   template<typename T>
-   void operator()( const T& v )const { v.validate(); }
-};
+        struct operation_validate_visitor {
+            typedef void result_type;
 
-struct operation_get_required_auth_visitor
-{
-   typedef void result_type;
+            template<typename T>
+            void operator()(const T &v) const {
+                v.validate();
+            }
+        };
 
-   flat_set< account_name_type >&        active;
-   flat_set< account_name_type >&        owner;
-   flat_set< account_name_type >&        posting;
-   std::vector< authority >&  other;
+        struct operation_get_required_auth_visitor {
+            typedef void result_type;
 
-   operation_get_required_auth_visitor(
-         flat_set< account_name_type >& a,
-         flat_set< account_name_type >& own,
-         flat_set< account_name_type >& post,
-         std::vector< authority >& oth )
-      : active( a ), owner( own ), posting( post ), other( oth ) {}
+            flat_set <account_name_type> &active;
+            flat_set <account_name_type> &owner;
+            flat_set <account_name_type> &posting;
+            std::vector<authority> &other;
 
-   template< typename T >
-   void operator()( const T& v )const
-   {
-      v.get_required_active_authorities( active );
-      v.get_required_owner_authorities( owner );
-      v.get_required_posting_authorities( posting );
-      v.get_required_authorities( other );
-   }
-};
+            operation_get_required_auth_visitor(
+                    flat_set <account_name_type> &a,
+                    flat_set <account_name_type> &own,
+                    flat_set <account_name_type> &post,
+                    std::vector<authority> &oth)
+                    : active(a), owner(own), posting(post), other(oth) {
+            }
 
-} } // steemit::protocol
+            template<typename T>
+            void operator()(const T &v) const {
+                v.get_required_active_authorities(active);
+                v.get_required_owner_authorities(owner);
+                v.get_required_posting_authorities(posting);
+                v.get_required_authorities(other);
+            }
+        };
+
+    }
+} // steemit::protocol
 
 //
 // Place DEFINE_OPERATION_TYPE in a .cpp file to define
 // functions related to your operation type
 //
-#define DEFINE_OPERATION_TYPE( OperationType )                             \
+#define DEFINE_OPERATION_TYPE(OperationType)                             \
 namespace fc {                                                             \
                                                                            \
 void to_variant( const OperationType& var,  fc::variant& vo )              \

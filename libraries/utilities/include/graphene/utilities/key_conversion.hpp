@@ -27,10 +27,14 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/optional.hpp>
 
-namespace graphene { namespace utilities {
+namespace graphene {
+    namespace utilities {
 
-std::string                        key_to_wif(const fc::sha256& private_secret );
-std::string                        key_to_wif(const fc::ecc::private_key& key);
-fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key );
+        std::string key_to_wif(const fc::sha256 &private_secret);
 
-} } // end namespace graphene::utilities
+        std::string key_to_wif(const fc::ecc::private_key &key);
+
+        fc::optional<fc::ecc::private_key> wif_to_key(const std::string &wif_key);
+
+    }
+} // end namespace graphene::utilities

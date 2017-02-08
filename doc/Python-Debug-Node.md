@@ -3,7 +3,7 @@ Python Debug Node Readme
 ------------------------
 
 The Python Debug Node is a wrapper class that automates the creation and maintenance
-of a running Steem Debug Node. The Debug Node is a plugin for Steem that allows realtime
+of a running Golos Debug Node. The Debug Node is a plugin for Golos that allows realtime
 local modification of the chain state in a way that mimicks real world behaviors
 without corrupting a localally saved blockchain or propogating changes to the live chain.
 
@@ -19,7 +19,7 @@ is a higher level language that many amateur and skilled programmers use. There 
 been community development of Python libraries to make interfacing with a live node easier.
 This plugin closes the gap by allowing a node to be launched programmatically in Python
 in addition to interfacing with the node. This module utilizes community member Xeroc's
-[Python Steem library](https://github.com/xeroc/python-steemlib).
+[Python Golos library](https://github.com/xeroc/python-steemlib).
 
 How Do I Use This?
 ------------------
@@ -60,7 +60,7 @@ a system standard temp directory through the standard Python TemporaryDirectory 
 working data directory for the running node. The only work your script needs to do is
 specify the steemd binary location and a populated data directory. For most configurations
 this will be `programs/steemd/steemd` and `witness_node_data_dir` respectively, from the
-git root directory for Steem.
+git root directory for Golos.
 
 TODO/ Long Term Goals
 ---------------------
@@ -75,4 +75,4 @@ the RPC call. Most, if not all, RPC API calls could be programatically generated
 the C++ source. It would also be a good step forward to introduce a simple testing framework
 that could be used to start a debug node and then run a series of test cases on a common
 starting chain state. This would address much of the integration testing that is sorely
-needed for Steem.
+needed for Golos.

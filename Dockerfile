@@ -30,35 +30,35 @@ RUN \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     pip3 install gcovr
 
-ADD . /usr/local/src/steem
+ADD . /usr/local/src/golos
 
 RUN \
-    cd /usr/local/src/steem && \
+    cd /usr/local/src/golos && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
         -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_STEEM_TESTNET=ON \
+        -DBUILD_GOLOS_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         .. && \
     make -j$(nproc) chain_test && \
     ./tests/chain_test && \
-    cd /usr/local/src/steem && \
+    cd /usr/local/src/golos && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
-    rm -rf /usr/local/src/steem/build
+    rm -rf /usr/local/src/golos/build
 
 RUN \
-    cd /usr/local/src/steem && \
+    cd /usr/local/src/golos && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
         -DCMAKE_BUILD_TYPE=Debug \
         -DENABLE_COVERAGE_TESTING=ON \
-        -DBUILD_STEEM_TESTNET=ON \
+        -DBUILD_GOLOS_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         .. && \
@@ -66,20 +66,20 @@ RUN \
     ./tests/chain_test && \
     mkdir -p /var/cobertura && \
     gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*"  --output="/var/cobertura/coverage.xml" && \
-    cd /usr/local/src/steem && \
-    rm -rf /usr/local/src/steem/build
+    cd /usr/local/src/golos && \
+    rm -rf /usr/local/src/golos/build
 
 RUN \
-    cd /usr/local/src/steem && \
+    cd /usr/local/src/golos && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-default \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/golosd-default \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
         -DCLEAR_VOTES=ON \
-        -DBUILD_STEEM_TESTNET=OFF \
+        -DBUILD_GOLOS_TESTNET=OFF \
         .. \
     && \
     make -j$(nproc) && \
@@ -89,16 +89,16 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/steemd-full \
+        -DCMAKE_INSTALL_PREFIX=/usr/local/golosd-full \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=OFF \
-        -DBUILD_STEEM_TESTNET=OFF \
+        -DBUILD_GOLOS_TESTNET=OFF \
         .. \
     && \
     make -j$(nproc) && \
     make install && \
-    rm -rf /usr/local/src/steem
+    rm -rf /usr/local/src/golos
 
 RUN \
     apt-get remove -y \
@@ -148,30 +148,30 @@ RUN \
         /usr/include \
         /usr/local/include
 
-RUN useradd -s /bin/bash -m -d /var/lib/steemd steemd
+RUN useradd -s /bin/bash -m -d /var/lib/golosd golosd
 
-RUN mkdir /var/cache/steemd && \
-    chown steemd:steemd -R /var/cache/steemd
+RUN mkdir /var/cache/golosd && \
+    chown golosd:golosd -R /var/cache/golosd
 
 # add blockchain cache to image
-#ADD $STEEMD_BLOCKCHAIN /var/cache/steemd/blocks.tbz2
+#ADD $STEEMD_BLOCKCHAIN /var/cache/golosd/blocks.tbz2
 
-ENV HOME /var/lib/steemd
-RUN chown steemd:steemd -R /var/lib/steemd
+ENV HOME /var/lib/golosd
+RUN chown golosd:golosd -R /var/lib/golosd
 
-VOLUME ["/var/lib/steemd"]
+VOLUME ["/var/lib/golosd"]
 
 # rpc service:
 EXPOSE 8090
 # p2p service:
 EXPOSE 2001
 
-RUN mkdir -p /etc/service/steemd
-ADD contrib/steemd.run /etc/service/steemd/run
-RUN chmod +x /etc/service/steemd/run
+RUN mkdir -p /etc/service/golosd
+ADD contrib/golosd.run /etc/service/golosd/run
+RUN chmod +x /etc/service/golosd/run
 
 # add seednodes from documentation to image
-ADD doc/seednodes.txt /etc/steemd/seednodes.txt
+ADD doc/seednodes /etc/golosd/seednodes
 
 # the following adds lots of logging info to stdout
-ADD contrib/config-for-docker.ini /etc/steemd/config.ini
+ADD contrib/config-for-docker.ini /etc/golosd/config.ini

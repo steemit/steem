@@ -1,4 +1,4 @@
-The git guidelines for SteemIt are influenced by the
+The git guidelines for Golos are influenced by the
 [Graphene](https://github.com/cryptonomex/graphene/wiki/How-we-use-version-control)
 git guidelines as well as [Git
 Flow](http://nvie.com/posts/a-successful-git-branching-model/) and [this
@@ -7,7 +7,7 @@ post](http://www.draconianoverlord.com/2013/09/07/no-cherry-picking.html).
 
 ## Branches
 
-- `master`: Points to the current release of Steem.  Witnesses should be
+- `master`: Points to the current release of Golos.  Witnesses should be
   running this branch. Each release commit will be tagged
   `vMajor.Hardfork.Release`. When we get ready to release we will merge
   feature branches into `develop` and then do a single merge into `master`

@@ -1,15 +1,15 @@
-add_executable( size_checker main.cpp )
-if( UNIX AND NOT APPLE )
-  set(rt_library rt )
+add_executable(size_checker main.cpp)
+if(UNIX AND NOT APPLE)
+    set(rt_library rt)
 endif()
 
-target_link_libraries( size_checker
-                       PRIVATE steemit_chain steemit_protocol fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries(size_checker
+        PRIVATE golos_chain golos_protocol fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS})
 
-install( TARGETS
-   size_checker
+install(TARGETS
+        size_checker
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        )
