@@ -3,4 +3,4 @@
 	url = https://github.com/steemit/fc.git
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/steemit/chainbase.git
+	url = https://github.com/GolosChain/chainbase.git
