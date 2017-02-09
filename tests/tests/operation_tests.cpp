@@ -6441,13 +6441,6 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx );
 
-      comment.author = "bob";
-      tx.clear();
-      tx.operations.push_back( comment );
-      tx.sign( bob_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
-
-
       BOOST_TEST_MESSAGE( "--- Test failure on more than 8 benefactors" );
       for( size_t i = 0; i < 8; i++ )
       {
@@ -6467,16 +6460,58 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       BOOST_TEST_MESSAGE( "--- Test specifying a non-existent benefactor" );
       b.beneficiaries.clear();
       b.beneficiaries.push_back( std::make_pair( account_name_type( "dave" ), STEEMIT_1_PERCENT ) );
-      op.extenstions.clear();
-      op.extensions.insert( )
+      op.extensions.clear();
+      op.extensions.insert( b );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
-      // Test setting when comment has been voted on
 
-      // Test success
+      BOOST_TEST_MESSAGE( "--- Test setting when comment has been voted on" );
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.voter = "bob";
+      vote.weight = STEEMIT_100_PERCENT;
 
-      // Test setting when there are already beneficiaries
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( std::make_pair( account_name_type( "bob" ), 25 * STEEMIT_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
 
-      // Payout and verify rewards were split properly
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test success" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+
+
+      BOOST_TEST_MESSAGE( "--- Test setting when there are already beneficiaries" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( std::make_pair( account_name_type( "sam" ), 25 * STEEMIT_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Payout and verify rewards were split properly" );
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time );
+
+      idump( (db.get_comment( "alice", string( "test" ) ))(db.get_account("alice"))(db.get_account("bob")) );
    }
    FC_LOG_AND_RETHROW()
 }
