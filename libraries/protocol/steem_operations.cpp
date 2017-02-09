@@ -97,6 +97,18 @@ namespace steemit { namespace protocol {
       }
    }
 
+   struct comment_options_extension_validate_visitor
+   {
+      comment_options_extension_validate_visitor() {}
+
+      typedef void result_type;
+
+      void operator()( const comment_payout_beneficiaries& cpb ) const
+      {
+         cpb.validate();
+      }
+   };
+
    void comment_payout_beneficiaries::validate()const
    {
       uint32_t sum = 0;
@@ -119,6 +131,8 @@ namespace steemit { namespace protocol {
       FC_ASSERT( max_accepted_payout.symbol == SBD_SYMBOL, "Max accepted payout must be in SBD" );
       FC_ASSERT( max_accepted_payout.amount.value >= 0, "Cannot accept less than 0 payout" );
       validate_permlink( permlink );
+      for( auto& e : extensions )
+         e.visit( comment_options_extension_validate_visitor() );
    }
 
    void delete_comment_operation::validate()const
