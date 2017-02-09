@@ -23,6 +23,11 @@
  */
 #include <cstdlib>
 #include <iostream>
+
+#ifdef BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE unit_tests
+#endif
+
 #include <boost/test/included/unit_test.hpp>
 
 // extern uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP;

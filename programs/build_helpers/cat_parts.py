@@ -54,8 +54,8 @@ def main(program_name, args):
                 pass
             except:
                 print(
-                'Unexpected error occured while trying to create directory "{}"'.format(
-                    out_file.parent.absolute().as_posix()))
+                    'Unexpected error occured while trying to create directory "{}"'.format(
+                        out_file.parent.absolute().as_posix()))
                 raise
         elif not out_file.parent.is_dir():
             print('"{}" is not a directory'.format(

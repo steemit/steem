@@ -45,7 +45,7 @@ tree = etree.parse("doxygen/xml/index.xml")
 root = tree.getroot()
 for child in root:
     if (child.tag == "compound") and (
-        child.attrib.get("kind") in ["struct", "class"]):
+                child.attrib.get("kind") in ["struct", "class"]):
         process_class_node(child)
 
 s_static_names = set(["space_id", "type_id"])

@@ -446,7 +446,9 @@ namespace steemit {
 
             generate_blocks(STEEMIT_BLOCKS_PER_HOUR);
 #ifdef IS_TEST_NET
-            BOOST_REQUIRE(!db.skip_price_feed_limit_check || db.get(feed_history_id_type()).current_median_history == new_price);
+            BOOST_REQUIRE(!db.skip_price_feed_limit_check ||
+                          db.get(feed_history_id_type()).current_median_history ==
+                          new_price);
 #else
             BOOST_REQUIRE(db.get(feed_history_id_type()).current_median_history == new_price);
 #endif

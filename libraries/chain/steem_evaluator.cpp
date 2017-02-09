@@ -2098,6 +2098,5 @@ namespace steemit {
                 a.reset_account = op.reset_account;
             });
         }
-
     }
 } // steemit::chain

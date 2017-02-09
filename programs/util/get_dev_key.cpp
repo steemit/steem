@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
             if ((dev_key_prefix == "-h")
                 || (dev_key_prefix == "--help")
                     ) {
-                        need_help = true;
+                need_help = true;
             }
         }
 

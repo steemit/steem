@@ -18,8 +18,8 @@ struct mystruct {
 };
 
 FC_REFLECT(mystruct,
-        (alpha)
-                (beta)
+(alpha)
+        (beta)
 );
 
 void process(std::shared_ptr<abstract_schema> s) {

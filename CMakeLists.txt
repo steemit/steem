@@ -47,7 +47,8 @@ list(APPEND BOOST_COMPONENTS thread
         unit_test_framework
         context
         locale)
-set(Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF")
+
+option(Boost_USE_STATIC_LIBS "Build with Boost static libraries usage" TRUE)
 
 option(BUILD_GOLOS_TESTNET "Build source for test network (ON OR OFF)" OFF)
 message(STATUS "BUILD_GOLOS_TESTNET: ${BUILD_GOLOS_TESTNET}")
@@ -59,7 +60,7 @@ if(BUILD_GOLOS_TESTNET)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DIS_TEST_NET")
 endif()
 
-option(LOW_MEMORY_NODE "Build source for low memory node (ON OR OFF)" OFF)
+option(LOW_MEMORY_NODE "Build source for low memory node (ON OR OFF)" FALSE)
 message(STATUS "LOW_MEMORY_NODE: ${LOW_MEMORY_NODE}")
 if(LOW_MEMORY_NODE)
     message(STATUS "     ")

@@ -156,8 +156,8 @@ def main(args):
         command.append('-DBOOST_ROOT={}'.format(boost_dir_path))
         command.append(
             '-DBoost_ADDITIONAL_VERSIONS="{major}.{minor}.{patch};{major}.{minor}"'
-            .format(major=version["major"], minor=version["minor"],
-                    patch=version["patch"]))
+                .format(major=version["major"], minor=version["minor"],
+                        patch=version["patch"]))
 
     # Maybe add OpenSSL flags
     if hasattr(args, "openssl_dir"):
