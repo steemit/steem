@@ -1092,23 +1092,35 @@ asset database::create_vesting( const account_object& to_account, asset steem, b
        *
        *  128 bit math is requred due to multiplying of 64 bit numbers. This is done in asset and price.
        */
-      asset new_vesting = steem * cprops.get_vesting_share_price();
+      asset new_vesting = steem * ( to_reward_balance ? cprops.get_reward_vesting_share_price() : cprops.get_vesting_share_price() );
 
       modify( to_account, [&]( account_object& to )
       {
          if( to_reward_balance )
+         {
             to.reward_vesting_balance += new_vesting;
+            to.reward_vesting_steem += steem;
+         }
          else
             to.vesting_shares += new_vesting;
       } );
 
       modify( cprops, [&]( dynamic_global_property_object& props )
       {
-         props.total_vesting_fund_steem += steem;
-         props.total_vesting_shares += new_vesting;
+         if( to_reward_balance )
+         {
+            props.pending_rewarded_vesting_shares += new_vesting;
+            props.pending_rewarded_vesting_steem += steem;
+         }
+         else
+         {
+            props.total_vesting_fund_steem += steem;
+            props.total_vesting_shares += new_vesting;
+         }
       } );
 
-      adjust_proxied_witness_votes( to_account, new_vesting.amount );
+      if( !to_reward_balance )
+         adjust_proxied_witness_votes( to_account, new_vesting.amount );
 
       return new_vesting;
    }
@@ -4160,6 +4172,7 @@ void database::validate_invariants()const
       asset total_supply = asset( 0, STEEM_SYMBOL );
       asset total_sbd = asset( 0, SBD_SYMBOL );
       asset total_vesting = asset( 0, VESTS_SYMBOL );
+      asset pending_vesting_steem = asset( 0, STEEM_SYMBOL );
       share_type total_vsf_votes = share_type( 0 );
 
       auto gpo = get_dynamic_global_properties();
@@ -4179,12 +4192,12 @@ void database::validate_invariants()const
          total_sbd += itr->reward_sbd_balance;
          total_vesting += itr->vesting_shares;
          total_vesting += itr->reward_vesting_balance;
+         pending_vesting_steem += itr->reward_vesting_steem;
          total_vsf_votes += ( itr->proxy == STEEMIT_PROXY_TO_SELF_ACCOUNT ?
                                  itr->witness_vote_weight() :
                                  ( STEEMIT_MAX_PROXY_RECURSION_DEPTH > 0 ?
                                       itr->proxied_vsf_votes[STEEMIT_MAX_PROXY_RECURSION_DEPTH - 1] :
-                                      itr->vesting_shares.amount ) )
-                           + itr->reward_vesting_balance.amount;
+                                      itr->vesting_shares.amount ) );
       }
 
       const auto& convert_request_idx = get_index< convert_request_index >().indices();
@@ -4256,14 +4269,15 @@ void database::validate_invariants()const
             total_children_rshares2 += itr->children_rshares2;
       }
 
-      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem;
+      total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
       FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
-      FC_ASSERT( gpo.total_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
+      FC_ASSERT( gpo.total_vesting_shares + gpo.pending_rewarded_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
       FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
       FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
+      FC_ASSERT( gpo.pending_rewarded_vesting_steem == pending_vesting_steem, "", ("pending_rewarded_vesting_steem",gpo.pending_rewarded_vesting_steem)("pending_vesting_steem", pending_vesting_steem));
 
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
       if ( !get_feed_history().current_median_history.is_null() )

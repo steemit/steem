@@ -491,7 +491,7 @@ namespace steemit { namespace protocol {
       FC_ASSERT( reward_steem.amount >= 0, "Cannot claim a negative amount" );
       FC_ASSERT( reward_sbd.amount >= 0, "Cannot claim a negative amount" );
       FC_ASSERT( reward_vests.amount >= 0, "Cannot claim a negative amount" );
-      FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_steem.amount > 0, "Must claim something." );
+      FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
    }
 
 } } // steemit::protocol

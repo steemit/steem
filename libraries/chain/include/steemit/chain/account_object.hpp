@@ -88,6 +88,7 @@ namespace steemit { namespace chain {
          asset             reward_sbd_balance = asset( 0, SBD_SYMBOL );
          asset             reward_steem_balance = asset( 0, STEEM_SYMBOL );
          asset             reward_vesting_balance = asset( 0, VESTS_SYMBOL );
+         asset             reward_vesting_steem = asset( 0, STEEM_SYMBOL );
 
          share_type        curation_rewards = 0;
          share_type        posting_rewards = 0;
