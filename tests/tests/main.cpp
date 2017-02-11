@@ -26,9 +26,11 @@
 
 #ifdef BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE unit_tests
-#endif
-
+#include <boost/test/unit_test.hpp>
+#else
+#define BOOST_TEST_MAIN
 #include <boost/test/included/unit_test.hpp>
+#endif
 
 // extern uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP;
 

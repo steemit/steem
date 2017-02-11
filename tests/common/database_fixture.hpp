@@ -1,7 +1,9 @@
-#pragma once
+#ifndef DATABASE_FIXTURE_HPP
+#define DATABASE_FIXTURE_HPP
 
 #include <steemit/app/application.hpp>
 #include <steemit/chain/database.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 
@@ -144,7 +146,7 @@ namespace steemit {
             public_key_type committee_key;
             account_id_type committee_account;
             fc::ecc::private_key private_key = fc::ecc::private_key::generate();
-            fc::ecc::private_key init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            fc::ecc::private_key init_account_priv_key;
             string debug_key = graphene::utilities::key_to_wif(init_account_priv_key);
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
             uint32_t default_skip = 0 | database::skip_undo_history_check |
@@ -162,14 +164,14 @@ namespace steemit {
             ~database_fixture() {
             }
 
-            static fc::ecc::private_key generate_private_key(string seed = "init_key");
+            static fc::ecc::private_key generate_private_key(string seed);
 
             string generate_anon_acct_name();
 
             void open_database();
 
             void generate_block(uint32_t skip = 0,
-                    const fc::ecc::private_key &key = generate_private_key("init_key"),
+                    const fc::ecc::private_key &key = generate_private_key(BLOCKCHAIN_NAME),
                     int miss_blocks = 0);
 
             /**
@@ -263,3 +265,4 @@ namespace steemit {
 
     }
 }
+#endif

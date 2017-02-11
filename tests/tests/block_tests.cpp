@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             signed_block b;
 
             // TODO:  Don't generate this here
-            auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             signed_block cutoff_block;
             {
                 database db;
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
                 fc::time_point_sec now(STEEMIT_TESTING_GENESIS_TIMESTAMP);
                 std::vector<time_point_sec> time_stack;
 
-                auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+                auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
                 for (uint32_t i = 0; i < 5; ++i) {
                     now = db.get_slot_time(1);
                     time_stack.push_back(now);
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             db2._log_hardforks = false;
             db2.open(data_dir2.path(), data_dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write);
 
-            auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             for (uint32_t i = 0; i < 10; ++i) {
                 auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
                 try {
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             db2._log_hardforks = false;
             db2.open(dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write);
 
-            auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
             db1.get_index<account_index>();
 
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             auto skip_sigs = database::skip_transaction_signatures |
                              database::skip_authority_check;
 
-            auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
 
             signed_transaction trx;
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             db1._log_hardforks = false;
             db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write);
 
-            auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             public_key_type init_account_pub_key = init_account_priv_key.get_public_key();
 
             auto b = db1.generate_block(db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
@@ -506,7 +506,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
             );
 
             // Sam is the creator of accounts
-            auto init_account_priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
+            auto init_account_priv_key = STEEMIT_INIT_PRIVATE_KEY;
             private_key_type sam_key = generate_private_key("sam");
             account_object sam_account_object = account_create("sam", sam_key.get_public_key());
 

@@ -56,7 +56,7 @@ namespace steemit {
 
                 //ahplugin->plugin_startup();
                 db_plugin->plugin_startup();
-                vest("initminer", 10000);
+                vest(STEEMIT_INIT_MINER_NAME, 10000);
 
                 // Fill up the rest of the required miners
                 for (int i = STEEMIT_NUM_INIT_MINERS;
@@ -120,7 +120,7 @@ namespace steemit {
             db.set_hardfork(STEEMIT_NUM_HARDFORKS);
             generate_block();
 
-            vest("initminer", 10000);
+            vest(STEEMIT_INIT_MINER_NAME, 10000);
 
             // Fill up the rest of the required miners
             for (int i = STEEMIT_NUM_INIT_MINERS;
@@ -173,10 +173,6 @@ namespace steemit {
         }
 
         fc::ecc::private_key database_fixture::generate_private_key(string seed) {
-            static const fc::ecc::private_key committee = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")));
-            if (seed == "init_key") {
-                return committee;
-            }
             return fc::ecc::private_key::regenerate(fc::sha256::hash(seed));
         }
 
