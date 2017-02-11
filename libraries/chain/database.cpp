@@ -599,16 +599,19 @@ namespace steemit {
             //fc::time_point begin_time = fc::time_point::now();
 
             bool result;
-            detail::with_skip_flags(*this, skip, [&]() {
-                detail::without_pending_transactions(*this, std::move(_pending_tx),
-                        [&]() {
-                            try {
-                                with_write_lock([&]() {
-                                    result = _push_block(new_block);
-                                });
-                            }
-                            FC_CAPTURE_AND_RETHROW((new_block))
-                        });
+            detail::with_skip_flags( *this, skip, [&]()
+            {
+                with_write_lock( [&]()
+                {
+                    detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
+                    {
+                        try
+                        {
+                            result = _push_block(new_block);
+                        }
+                        FC_CAPTURE_AND_RETHROW( (new_block) )
+                    });
+                });
             });
 
             //fc::time_point end_time = fc::time_point::now();
@@ -763,11 +766,13 @@ namespace steemit {
                 uint32_t skip /* = 0 */
         ) {
             signed_block result;
-            detail::with_skip_flags(*this, skip, [&]() {
-                try {
-                    result = _generate_block(when, witness_owner, block_signing_private_key);
-                }
-                FC_CAPTURE_AND_RETHROW((witness_owner))
+            detail::with_skip_flags( *this, skip, [&]() {
+                database::with_write_lock( [&]() {
+                    try {
+                        result = _generate_block(when, witness_owner, block_signing_private_key);
+                    }
+                    FC_CAPTURE_AND_RETHROW( (witness_owner) )
+                });
             });
             return result;
         }
@@ -2372,7 +2377,7 @@ namespace steemit {
         void database::pay_liquidity_reward() {
 #ifdef IS_TEST_NET
             if( !liquidity_rewards_enabled )
-      return;
+                return;
 #endif
 
             if ((head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0) {
@@ -2922,9 +2927,11 @@ namespace steemit {
 
 
         void database::validate_transaction(const signed_transaction &trx) {
-            auto session = start_undo_session(true);
-            _apply_transaction(trx);
-            session.undo();
+            database::with_write_lock([&]() {
+                auto session = start_undo_session(true);
+                _apply_transaction(trx);
+                session.undo();
+            });
         }
 
         void database::notify_changed_objects() {
@@ -3234,7 +3241,7 @@ namespace steemit {
 
 #ifdef IS_TEST_NET
                             if( skip_price_feed_limit_check )
-               return;
+                                return;
 #endif
                             if (has_hardfork(STEEMIT_HARDFORK_0_14__230)) {
                                 const auto &gpo = get_dynamic_global_properties();
@@ -4137,17 +4144,17 @@ namespace steemit {
                 case STEEMIT_HARDFORK_0_1:
                     perform_vesting_share_split(10000);
 #ifdef IS_TEST_NET
-                {
-            custom_operation test_op;
-            string op_msg = "Testnet: Hardfork applied";
-            test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
-            test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            operation op = test_op;   // we need the operation object to live to the end of this scope
-            operation_notification note( op );
-            notify_pre_apply_operation( note );
-            notify_post_apply_operation( note );
-         }
-         break;
+                    {
+                        custom_operation test_op;
+                        string op_msg = "Testnet: Hardfork applied";
+                        test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
+                        test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
+                        operation op = test_op;   // we need the operation object to live to the end of this scope
+                        operation_notification note( op );
+                        notify_pre_apply_operation( note );
+                        notify_post_apply_operation( note );
+                    }
+                    break;
 #endif
                     break;
                 case STEEMIT_HARDFORK_0_2:
@@ -4471,9 +4478,9 @@ namespace steemit {
 // Low memory nodes only need immediate child count, full nodes track total children
 #ifdef IS_LOW_MEM
                     modify( get_comment( itr->parent_author, itr->parent_permlink ), [&]( comment_object& c )
-         {
-            c.children++;
-         });
+                    {
+                        c.children++;
+                    });
 #else
                     const comment_object *parent = &get_comment(itr->parent_author, itr->parent_permlink);
                     while (parent) {
