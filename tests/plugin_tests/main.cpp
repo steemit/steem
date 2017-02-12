@@ -28,7 +28,6 @@
 #define BOOST_TEST_MODULE plugin_tests
 #include <boost/test/unit_test.hpp>
 #else
-#define BOOST_TEST_MAIN
 #include <boost/test/included/unit_test.hpp>
 #endif
 
