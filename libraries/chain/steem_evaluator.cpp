@@ -208,7 +208,7 @@ namespace steemit {
             const auto &account_auth = _db.get<account_authority_object, by_account>(o.account);
 
             if (o.owner) {
-#ifndef IS_TEST_NET
+#ifndef STEEMIT_BUILD_TESTNET
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_11))
                     FC_ASSERT(_db.head_block_time() -
                               account_auth.last_owner_update >

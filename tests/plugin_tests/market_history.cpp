@@ -1,4 +1,4 @@
-#ifdef IS_TEST_NET
+#ifdef STEEMIT_BUILD_TESTNET
 
 #include <boost/test/unit_test.hpp>
 
