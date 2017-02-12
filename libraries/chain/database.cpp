@@ -2361,8 +2361,8 @@ namespace steemit {
 
             static_assert(STEEMIT_BLOCK_INTERVAL ==
                           3, "this code assumes a 3-second time interval");
-            static_assert(STEEMIT_MAX_WITNESSES ==
-                          21, "this code assumes 21 per round");
+//            static_assert(STEEMIT_MAX_WITNESSES ==
+//                          21, "this code assumes 21 per round");
             asset percent(calc_percent_reward_per_round<STEEMIT_POW_APR_PERCENT>(props.virtual_supply.amount), STEEM_SYMBOL);
 
             if (has_hardfork(STEEMIT_HARDFORK_0_16)) {
