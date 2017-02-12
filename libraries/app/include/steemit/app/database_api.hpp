@@ -461,15 +461,14 @@ namespace steemit {
             }
 
             template<typename Index, typename StartItr>
-            vector<discussion> get_discussions(const discussion_query &q,
+            vector<discussion> get_discussions(const discussion_query &query,
                     const string &tag,
                     comment_id_type parent,
-                    const Index &idx, StartItr itr,
+                    const Index &tidx, StartItr tidx_itr,
                     uint32_t truncate_body = 0,
                     const std::function<bool(const comment_api_obj &)> &filter = &database_api::filter_default,
                     const std::function<bool(const comment_api_obj &)> &exit = &database_api::exit_default,
-                    const std::function<bool(const tags::tag_object &)> &tag_exit = &database_api::tag_exit_default
-            ) const;
+                    const std::function<bool(const tags::tag_object &)> &tag_exit = &database_api::tag_exit_default) const;
 
             comment_id_type get_parent(const discussion_query &q) const;
 

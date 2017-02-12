@@ -175,70 +175,14 @@ namespace steemit {
             map<string, tag_api_obj> tags;
 
             /**
-             *  Convert's vesting shares
+             *  map from account/slug to full nested discussion
              */
-            struct extended_account : public account_api_obj {
-                extended_account() {
-                }
-
-                extended_account(const account_object &a, const database &db)
-                        : account_api_obj(a, db) {
-                }
-
-                asset vesting_balance; /// convert vesting_shares to vesting steem
-                share_type reputation = 0;
-                map<uint64_t, applied_operation> transfer_history; /// transfer to/from vesting
-                map<uint64_t, applied_operation> market_history; /// limit order / cancel / fill
-                map<uint64_t, applied_operation> post_history;
-                map<uint64_t, applied_operation> vote_history;
-                map<uint64_t, applied_operation> other_history;
-                set<string> witness_votes;
-                vector<pair<string, uint32_t>> tags_usage;
-
-                optional<map<uint32_t, extended_limit_order>> open_orders;
-                optional<vector<string>> comments; /// permlinks for this user
-                optional<vector<string>> blog; /// blog posts for this user
-                optional<vector<string>> feed; /// feed posts for this user
-                optional<vector<string>> recent_replies; /// blog posts for this user
-                map<string, vector<string>> blog_category; /// blog posts for this user
-                optional<vector<string>> recommended; /// posts recommened for this user
-            };
-
-
-            struct candle_stick {
-                time_point_sec open_time;
-                uint32_t period = 0;
-                double high = 0;
-                double low = 0;
-                double open = 0;
-                double close = 0;
-                double steem_volume = 0;
-                double dollar_volume = 0;
-            };
-
-            struct order_history_item {
-                time_point_sec time;
-                string type; // buy or sell
-                asset sbd_quantity;
-                asset steem_quantity;
-                double real_price = 0;
-            };
-
-            struct market {
-                vector<extended_limit_order> bids;
-                vector<extended_limit_order> asks;
-                vector<order_history_item> history;
-                vector<int> available_candlesticks;
-                vector<int> available_zoom;
-                int current_candlestick = 0;
-                int current_zoom = 0;
-                vector<candle_stick> price_history;
-            };
+            map<string, discussion> content;
+            map<string, extended_account> accounts;
 
             /**
-             *  This struct is designed
+             * The list of miners who are queued to produce work
              */
-
             vector<account_name_type> pow_queue;
             map<string, witness_api_obj> witnesses;
             witness_schedule_api_obj witness_schedule;
@@ -246,6 +190,7 @@ namespace steemit {
             string error;
             optional<market> market_data;
         };
+
     }
 }
 

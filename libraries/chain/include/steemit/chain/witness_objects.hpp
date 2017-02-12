@@ -26,6 +26,8 @@ namespace steemit {
          */
         class witness_object
                 : public object<witness_object_type, witness_object> {
+            witness_object() = delete;
+
         public:
             enum witness_schedule_type {
                 top19,

@@ -72,6 +72,8 @@ namespace steemit {
 
         class savings_withdraw_object
                 : public object<savings_withdraw_object_type, savings_withdraw_object> {
+            savings_withdraw_object() = delete;
+
         public:
             template<typename Constructor, typename Allocator>
             savings_withdraw_object(Constructor &&c, allocator <Allocator> a)
@@ -145,6 +147,8 @@ namespace steemit {
          */
         class feed_history_object
                 : public object<feed_history_object_type, feed_history_object> {
+            feed_history_object() = delete;
+
         public:
             template<typename Constructor, typename Allocator>
             feed_history_object(Constructor &&c, allocator <Allocator> a)

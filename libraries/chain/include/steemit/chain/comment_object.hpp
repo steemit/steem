@@ -37,6 +37,8 @@ namespace steemit {
         class category_object
                 : public object<category_object_type, category_object> {
         public:
+            category_object() = delete;
+
             template<typename Constructor, typename Allocator>
             category_object(Constructor &&c, allocator <Allocator> a)
                     :name(a) {
@@ -100,6 +102,8 @@ namespace steemit {
         class comment_object
                 : public object<comment_object_type, comment_object> {
         public:
+            comment_object() = delete;
+
             template<typename Constructor, typename Allocator>
             comment_object(Constructor &&c, allocator <Allocator> a)
                     :category(a), parent_permlink(a), permlink(a), title(a),

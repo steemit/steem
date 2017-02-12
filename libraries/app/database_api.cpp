@@ -299,7 +299,7 @@ namespace steemit {
 
         feed_history_api_obj database_api::get_feed_history() const {
             return my->_db.with_read_lock([&]() {
-                return my->_db.get_feed_history();
+                return feed_history_api_obj(my->_db.get_feed_history());
             });
         }
 
@@ -476,7 +476,7 @@ namespace steemit {
                 auto itr = hist_idx.lower_bound(account);
 
                 while (itr != hist_idx.end() && itr->account == account) {
-                    results.push_back(*itr);
+                    results.push_back(owner_authority_history_api_obj(*itr));
                     ++itr;
                 }
 
@@ -492,7 +492,7 @@ namespace steemit {
                 auto req = rec_idx.find(account);
 
                 if (req != rec_idx.end()) {
-                    result = *req;
+                    result = account_recovery_request_api_obj(*req);
                 }
 
                 return result;
@@ -622,7 +622,7 @@ namespace steemit {
                 while (itr != vote_idx.end() &&
                        result.size() < limit &&
                        itr->votes > 0) {
-                    result.push_back(*itr);
+                    result.push_back(witness_api_obj(*itr));
                     ++itr;
                 }
                 return result;
@@ -633,7 +633,7 @@ namespace steemit {
             const auto &idx = _db.get_index<witness_index>().indices().get<by_name>();
             auto itr = idx.find(account_name);
             if (itr != idx.end()) {
-                return *itr;
+                return witness_api_obj(*itr);
             }
             return {};
         }
@@ -1171,18 +1171,22 @@ namespace steemit {
                 }
 
                 while (itr != ridx.end() && result.size() < limit) {
-                    result.push_back(*itr);
+                    result.push_back(tag_api_obj(*itr));
                     ++itr;
                 }
                 return result;
             });
         }
 
-        discussion database_api::get_discussion(comment_id_type id) const {
+        discussion database_api::get_discussion(comment_id_type id, uint32_t truncate_body) const {
             discussion d = my->_db.get(id);
             set_url(d);
             set_pending_payout(d);
             d.active_votes = get_active_votes(d.author, d.permlink);
+            d.body_length = d.body.size();
+            if (truncate_body) {
+                d.body = d.body.substr(0, truncate_body);
+            }
             return d;
         }
 
@@ -1192,10 +1196,10 @@ namespace steemit {
                 const string &tag,
                 comment_id_type parent,
                 const Index &tidx, StartItr tidx_itr,
+                uint32_t truncate_body,
                 const std::function<bool(const comment_api_obj &)> &filter,
                 const std::function<bool(const comment_api_obj &)> &exit,
-                const std::function<bool(const tags::tag_object &)> &tag_exit
-        ) const {
+                const std::function<bool(const tags::tag_object &)> &tag_exit) const {
 //   idump((query));
             vector<discussion> result;
 
@@ -1231,7 +1235,7 @@ namespace steemit {
                     break;
                 }
                 try {
-                    result.push_back(get_discussion(tidx_itr->comment));
+                    result.push_back(get_discussion(tidx_itr->comment, truncate_body));
                     result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL);
 
                     if (filter(result.back())) {
@@ -1272,7 +1276,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0 || c.mode != first_payout;
                 });
             });
@@ -1287,7 +1291,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0;
                 }, exit_default, [](const tags::tag_object &t) {
                     return t.promoted_balance == 0;
@@ -1304,7 +1308,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0 || c.mode != second_payout;
                 });
             });
@@ -1319,7 +1323,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_created>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1332,7 +1336,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_active>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1348,7 +1352,7 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
                         fc::time_point::now() - fc::minutes(60)));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.children_rshares2 <= 0;
                 });
             });
@@ -1370,7 +1374,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1383,7 +1387,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_children>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr);
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body);
             });
         }
 
@@ -1397,7 +1401,7 @@ namespace steemit {
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
-                return get_discussions(query, tag, parent, tidx, tidx_itr, [](const comment_api_obj &c) {
+                return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [](const comment_api_obj &c) {
                     return c.net_rshares <= 0;
                 });
             });
@@ -1462,6 +1466,8 @@ namespace steemit {
 
                 const auto &account = my->_db.get_account(query.tag);
 
+                const auto &tag_idx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+
                 const auto &c_idx = my->_db.get_index<follow::blog_index>().indices().get<follow::by_comment>();
                 const auto &b_idx = my->_db.get_index<follow::blog_index>().indices().get<follow::by_blog>();
                 auto blog_itr = b_idx.lower_bound(account.name);
@@ -1481,7 +1487,33 @@ namespace steemit {
                         break;
                     }
                     try {
-                        result.push_back(get_discussion(blog_itr->comment));
+                        if (query.select_authors.size() &&
+                            query.select_authors.find(blog_itr->account) ==
+                            query.select_authors.end()) {
+                            ++blog_itr;
+                            continue;
+                        }
+
+                        if (query.select_tags.size()) {
+                            auto tag_itr = tag_idx.lower_bound(blog_itr->comment);
+
+                            bool found = false;
+                            while (tag_itr != tag_idx.end() &&
+                                   tag_itr->comment == blog_itr->comment) {
+                                if (query.select_tags.find(tag_itr->tag) !=
+                                    query.select_tags.end()) {
+                                    found = true;
+                                    break;
+                                }
+                                ++tag_itr;
+                            }
+                            if (!found) {
+                                ++blog_itr;
+                                continue;
+                            }
+                        }
+
+                        result.push_back(get_discussion(blog_itr->comment, query.truncate_body));
                         if (blog_itr->reblogged_on > time_point_sec()) {
                             result.back().first_reblogged_on = blog_itr->reblogged_on;
                         }
@@ -1560,7 +1592,7 @@ namespace steemit {
                 }
 
                 while (itr != ridx.end() && result.size() < limit) {
-                    result.push_back(*itr);
+                    result.push_back(category_api_obj(*itr));
                     ++itr;
                 }
                 return result;
@@ -1706,7 +1738,7 @@ namespace steemit {
                 const auto &from_rid_idx = my->_db.get_index<savings_withdraw_index>().indices().get<by_from_rid>();
                 auto itr = from_rid_idx.lower_bound(account);
                 while (itr != from_rid_idx.end() && itr->from == account) {
-                    result.push_back(*itr);
+                    result.push_back(savings_withdraw_api_obj(*itr));
                     ++itr;
                 }
                 return result;
@@ -1720,7 +1752,7 @@ namespace steemit {
                 const auto &to_complete_idx = my->_db.get_index<savings_withdraw_index>().indices().get<by_to_complete>();
                 auto itr = to_complete_idx.lower_bound(account);
                 while (itr != to_complete_idx.end() && itr->to == account) {
-                    result.push_back(*itr);
+                    result.push_back(savings_withdraw_api_obj(*itr));
                     ++itr;
                 }
                 return result;

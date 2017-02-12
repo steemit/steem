@@ -18,6 +18,8 @@ namespace steemit {
          */
         class transaction_object
                 : public object<transaction_object_type, transaction_object> {
+            transaction_object() = delete;
+
         public:
             template<typename Constructor, typename Allocator>
             transaction_object(Constructor &&c, allocator <Allocator> a)
