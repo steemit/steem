@@ -1,4 +1,5 @@
 #ifdef IS_TEST_NET
+
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/protocol/exceptions.hpp>
