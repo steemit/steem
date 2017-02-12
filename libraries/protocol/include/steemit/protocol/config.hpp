@@ -3,8 +3,8 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 16, 2) )
-#define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
+#define STEEMIT_BLOCKCHAIN_VERSION              (version(0, 16, 3))
+#define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     (hardfork_version(STEEMIT_BLOCKCHAIN_VERSION))
 
 #ifdef IS_TEST_NET
 #define BLOCKCHAIN_NAME "GOLOSTEST"
