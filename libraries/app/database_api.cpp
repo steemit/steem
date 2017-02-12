@@ -1186,6 +1186,10 @@ namespace steemit {
             d.body_length = d.body.size();
             if (truncate_body) {
                 d.body = d.body.substr(0, truncate_body);
+
+                if (!fc::is_utf8(d.body)) {
+                    d.body = fc::prune_invalid_utf8(d.body);
+                }
             }
             return d;
         }
