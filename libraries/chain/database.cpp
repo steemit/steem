@@ -957,7 +957,7 @@ namespace steemit {
 
         inline const void database::push_virtual_operation(const operation &op, bool force) {
             if (!force) {
-#if defined( IS_LOW_MEM ) && !defined( IS_TEST_NET )
+#if defined( IS_LOW_MEM ) && !defined( STEEMIT_BUILD_TESTNET )
                 return;
 #endif
             }
@@ -2351,7 +2351,7 @@ namespace steemit {
         asset database::get_pow_reward() const {
             const auto &props = get_dynamic_global_properties();
 
-#ifndef IS_TEST_NET
+#ifndef STEEMIT_BUILD_TESTNET
             /// 0 block rewards until at least STEEMIT_MAX_WITNESSES have produced a POW
             if (props.num_pow_witnesses < STEEMIT_MAX_WITNESSES &&
                 props.head_block_number < STEEMIT_START_VESTING_BLOCK) {
@@ -2374,7 +2374,7 @@ namespace steemit {
 
 
         void database::pay_liquidity_reward() {
-#ifdef IS_TEST_NET
+#ifdef STEEMIT_BUILD_TESTNET
             if (!liquidity_rewards_enabled) {
                 return;
             }
@@ -2867,7 +2867,7 @@ namespace steemit {
                     p.maximum_block_size = STEEMIT_MAX_BLOCK_SIZE;
                 });
 
-#ifndef IS_TEST_NET
+#ifndef STEEMIT_BUILD_TESTNET
                 auto snapshot_path = string("./snapshot5392323.json");
                 auto snapshot_file = fc::path(snapshot_path);
                 FC_ASSERT(fc::exists(snapshot_file), "Snapshot file '${file}' was not found.", ("file", snapshot_file));
@@ -3239,7 +3239,7 @@ namespace steemit {
                             std::sort(copy.begin(), copy.end()); /// TODO: use nth_item
                             fho.current_median_history = copy[copy.size() / 2];
 
-#ifdef IS_TEST_NET
+#ifdef STEEMIT_BUILD_TESTNET
                             if (skip_price_feed_limit_check) {
                                 return;
                             }
@@ -4144,7 +4144,7 @@ namespace steemit {
             switch (hardfork) {
                 case STEEMIT_HARDFORK_0_1:
                     perform_vesting_share_split(10000);
-#ifdef IS_TEST_NET
+#ifdef STEEMIT_BUILD_TESTNET
                     {
                         custom_operation test_op;
                         string op_msg = "Testnet: Hardfork applied";

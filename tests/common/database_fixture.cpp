@@ -441,7 +441,7 @@ namespace steemit {
             } FC_CAPTURE_AND_RETHROW((new_price))
 
             generate_blocks(STEEMIT_BLOCKS_PER_HOUR);
-#ifdef IS_TEST_NET
+#ifdef STEEMIT_BUILD_TESTNET
             BOOST_REQUIRE(!db.skip_price_feed_limit_check ||
                           db.get(feed_history_id_type()).current_median_history ==
                           new_price);

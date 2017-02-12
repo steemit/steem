@@ -9,10 +9,10 @@ namespace steemit {
         fc::variant_object get_config() {
             fc::mutable_variant_object result;
 
-#ifdef IS_TEST_NET
-            result[ "IS_TEST_NET" ] = true;
+#ifdef STEEMIT_BUILD_TESTNET
+            result[ "STEEMIT_BUILD_TESTNET" ] = true;
 #else
-            result["IS_TEST_NET"] = false;
+            result["STEEMIT_BUILD_TESTNET"] = false;
 #endif
 
             result["GRAPHENE_CURRENT_DB_VERSION"] = GRAPHENE_CURRENT_DB_VERSION;
