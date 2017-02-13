@@ -73,10 +73,17 @@
 #define STEEMIT_INIT_MINER_NAME                 "initminer"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
-#define STEEMIT_MAX_VOTED_WITNESSES             19
-#define STEEMIT_MAX_MINER_WITNESSES             1
-#define STEEMIT_MAX_RUNNER_WITNESSES            1
-#define STEEMIT_MAX_WITNESSES                   (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
+
+#define STEEMIT_MAX_WITNESSES                   21
+
+#define STEEMIT_MAX_VOTED_WITNESSES_HF0         19
+#define STEEMIT_MAX_MINER_WITNESSES_HF0         1
+#define STEEMIT_MAX_RUNNER_WITNESSES_HF0        1
+
+#define STEEMIT_MAX_VOTED_WITNESSES_HF17        20
+#define STEEMIT_MAX_MINER_WITNESSES_HF17        0
+#define STEEMIT_MAX_RUNNER_WITNESSES_HF17       1
+
 #define STEEMIT_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 20 dpos witnesses (19 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define STEEMIT_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define STEEMIT_MAX_MEMO_SIZE                   2048
@@ -230,6 +237,9 @@
 #define GRAPHENE_CURRENT_DB_VERSION             "GPH2.4"
 
 #define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
+
+#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
+#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
 /**
  *  Reserved Account IDs with special meaning
