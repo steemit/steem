@@ -431,7 +431,8 @@ class database_api
                                           uint32_t truncate_body = 0,
                                           const std::function< bool( const comment_api_obj& ) >& filter = &database_api::filter_default,
                                           const std::function< bool( const comment_api_obj& ) >& exit   = &database_api::exit_default,
-                                          const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default
+                                          const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default,
+                                          bool ignore_parent = false
                                           )const;
       comment_id_type get_parent( const discussion_query& q )const;
 

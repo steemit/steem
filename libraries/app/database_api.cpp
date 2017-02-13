@@ -1312,10 +1312,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   uint32_t truncate_body,
                                                   const std::function< bool(const comment_api_obj& ) >& filter,
                                                   const std::function< bool(const comment_api_obj& ) >& exit,
-                                                  const std::function< bool(const tags::tag_object& ) >& tag_exit
+                                                  const std::function< bool(const tags::tag_object& ) >& tag_exit,
+                                                  bool ignore_parent
                                                   )const
 {
-//   idump((query));
+   // idump((query));
    vector<discussion> result;
 
    const auto& cidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
@@ -1348,7 +1349,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                ("count", count)("itr_count", itr_count)("filter_count", filter_count)("exc_count", exc_count) );
          break;
       }
-      if( tidx_itr->tag != tag || tidx_itr->parent != parent )
+      if( tidx_itr->tag != tag || ( !ignore_parent && tidx_itr->parent != parent ) )
          break;
       try
       {
@@ -1399,9 +1400,9 @@ vector<discussion> database_api::get_discussions_by_payout( const discussion_que
       auto parent = get_parent( query );
 
       const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_net_rshares>();
-      auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, std::numeric_limits<uint64_t>::max() ) );
+      auto tidx_itr = tidx.lower_bound( tag );
 
-      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0; } );
+      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
    });
 }
 
@@ -2115,7 +2116,7 @@ state database_api::get_state( string path )const
          auto& didx = _state.discussion_idx[tag];
          for( const auto& d : trending_disc ) {
             auto key = d.author +"/" + d.permlink;
-            didx.trending.push_back( key );
+            didx.payout.push_back( key );
             if( d.author.size() ) accounts.insert(d.author);
             _state.content[key] = std::move(d);
          }
