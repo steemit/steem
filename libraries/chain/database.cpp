@@ -1641,7 +1641,11 @@ void database::cashout_comment_helper( util::comment_reward_context& ctx, const 
          c.total_vote_weight = 0;
          c.max_cashout_time = fc::time_point_sec::maximum();
 
-         if( c.parent_author == STEEMIT_ROOT_POST_PARENT )
+         if( has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+         {
+            c.cashout_time = fc::time_point_sec::maximum();
+         }
+         else if( c.parent_author == STEEMIT_ROOT_POST_PARENT )
          {
             if( has_hardfork( STEEMIT_HARDFORK_0_12__177 ) && c.last_payout == fc::time_point_sec::min() )
                c.cashout_time = head_block_time() + STEEMIT_SECOND_CASHOUT_WINDOW;
@@ -1700,12 +1704,19 @@ void database::process_comment_cashout()
    auto current = cidx.begin();
    while( current != cidx.end() && current->cashout_time <= head_block_time() )
    {
-      auto itr = com_by_root.lower_bound( current->root_comment );
-      while( itr != com_by_root.end() && itr->root_comment == current->root_comment )
+      if( has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
       {
-         const auto& comment = *itr; ++itr;
-         cashout_comment_helper( ctx, comment );
-         ++count;
+         cashout_comment_helper( ctx, *current );
+      }
+      else
+      {
+         auto itr = com_by_root.lower_bound( current->root_comment );
+         while( itr != com_by_root.end() && itr->root_comment == current->root_comment )
+         {
+            const auto& comment = *itr; ++itr;
+            cashout_comment_helper( ctx, comment );
+            ++count;
+         }
       }
       current = cidx.begin();
    }
@@ -3609,7 +3620,7 @@ void database::apply_hardfork( uint32_t hardfork )
                   {
                      modify( *itr, [&]( comment_object & c )
                      {
-                        c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS;
+                        c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
                         c.mode = first_payout;
                      });
                   }
@@ -3658,19 +3669,66 @@ void database::apply_hardfork( uint32_t hardfork )
          });
          break;
       case STEEMIT_HARDFORK_0_17:
-         static_assert(
+         {
+            static_assert(
              STEEMIT_MAX_VOTED_WITNESSES_HF0 + STEEMIT_MAX_MINER_WITNESSES_HF0 + STEEMIT_MAX_RUNNER_WITNESSES_HF0 == STEEMIT_MAX_WITNESSES,
              "HF0 witness counts must add up to STEEMIT_MAX_WITNESSES" );
-         static_assert(
-             STEEMIT_MAX_VOTED_WITNESSES_HF17 + STEEMIT_MAX_MINER_WITNESSES_HF17 + STEEMIT_MAX_RUNNER_WITNESSES_HF17 == STEEMIT_MAX_WITNESSES,
-             "HF17 witness counts must add up to STEEMIT_MAX_WITNESSES" );
+            static_assert(
+               STEEMIT_MAX_VOTED_WITNESSES_HF17 + STEEMIT_MAX_MINER_WITNESSES_HF17 + STEEMIT_MAX_RUNNER_WITNESSES_HF17 == STEEMIT_MAX_WITNESSES,
+               "HF17 witness counts must add up to STEEMIT_MAX_WITNESSES" );
 
-         modify( get_witness_schedule_object(), [&]( witness_schedule_object& wso )
-         {
-            wso.max_voted_witnesses = STEEMIT_MAX_VOTED_WITNESSES_HF17;
-            wso.max_miner_witnesses = STEEMIT_MAX_MINER_WITNESSES_HF17;
-            wso.max_runner_witnesses = STEEMIT_MAX_RUNNER_WITNESSES_HF17;
-         });
+            modify( get_witness_schedule_object(), [&]( witness_schedule_object& wso )
+            {
+               wso.max_voted_witnesses = STEEMIT_MAX_VOTED_WITNESSES_HF17;
+               wso.max_miner_witnesses = STEEMIT_MAX_MINER_WITNESSES_HF17;
+               wso.max_runner_witnesses = STEEMIT_MAX_RUNNER_WITNESSES_HF17;
+            });
+
+            /*
+            * For all current comments we will either keep their current cashout time, or extend it to 1 week
+            * after creation.
+            *
+            * We cannot do a simple iteration by cashout time because we are editting cashout time.
+            * More specifically, we will be adding an explicit cashout time to all comments with parents.
+            * To find all discussions that have not been paid out we fir iterate over posts by cashout time.
+            * Before the hardfork these are all root posts. Iterate over all of their children, adding each
+            * to a specific list. Next, update payout times for all discussions on the root post. This defines
+            * the min cashout time for each child in the discussion. Then iterate over the children and set
+            * their cashout time in a similar way, grabbing the root post as their inherent cashout time.
+            */
+            const auto& comment_idx = get_index< comment_index, by_cashout_time >();
+            const auto& by_root_idx = get_index< comment_index, by_root >();
+            vector< const comment_object* > root_posts;
+            root_posts.reserve( 60000 );
+            vector< const comment_object* > replies;
+            replies.reserve( 100000 );
+
+            for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time < fc::time_point_sec::maximum(); ++itr )
+            {
+               root_posts.push_back( &(*itr) );
+
+               for( auto reply_itr = by_root_idx.lower_bound( itr->id ); reply_itr != by_root_idx.end() && reply_itr->root_comment == itr->id; ++reply_itr )
+               {
+                  replies.push_back( &(*reply_itr) );
+               }
+            }
+
+            for( auto itr : root_posts )
+            {
+               modify( *itr, [&]( comment_object& c )
+               {
+                  c.cashout_time = std::max( c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time );
+               });
+            }
+
+            for( auto itr : replies )
+            {
+               modify( *itr, [&]( comment_object& c )
+               {
+                  c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+               });
+            }
+         }
          break;
       default:
          break;
