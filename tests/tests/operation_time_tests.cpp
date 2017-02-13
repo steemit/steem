@@ -124,9 +124,10 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
 
       // generate a few blocks to seed the reward fund
       generate_blocks(10);
-      ilog( "dgpo: ${dgpo}", ("dgpo", db.get_dynamic_global_properties()) );
+      //ilog( "dgpo: ${dgpo}", ("dgpo", db.get_dynamic_global_properties()) );
 
       generate_blocks( db.get_comment( "alice", string( "mypost" ) ).cashout_time, true );
+      /*
       for( const auto& author : authors )
       {
          const account_object& a = db.get_account(author.name);
@@ -137,14 +138,15 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
          const account_object& a = db.get_account(voter.name);
          ilog( "${n} : ${steem} ${sbd}", ("n", voter.name)("steem", a.balance)("sbd", a.sbd_balance) );
       }
+      */
 
       const account_object& alice_account = db.get_account("alice");
       const account_object& bob_account   = db.get_account("bob");
       const account_object& dave_account  = db.get_account("dave");
 
-      BOOST_CHECK( alice_account.sbd_balance == ASSET( "10720.000 TBD" ) );
-      BOOST_CHECK( bob_account.sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_CHECK( dave_account.sbd_balance == alice_account.sbd_balance );
+      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "10720.000 TBD" ) );
+      BOOST_CHECK( bob_account.reward_sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_CHECK( dave_account.reward_sbd_balance == alice_account.reward_sbd_balance );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -1357,37 +1359,14 @@ BOOST_AUTO_TEST_CASE( convert_delay )
       ACTORS( (alice) )
       generate_block();
       vest( "alice", ASSET( "10.000 TESTS" ) );
+      fund( "alice", ASSET( "25.000 TBD" ) );
 
       set_price_feed( price( asset::from_string( "1.250 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
 
       convert_operation op;
-      comment_operation comment;
-      vote_operation vote;
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
 
-      comment.author = "alice";
-      comment.title = "foo";
-      comment.body = "bar";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      tx.operations.push_back( comment );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      tx.operations.clear();
-      tx.signatures.clear();
-      vote.voter = "alice";
-      vote.author = "alice";
-      vote.permlink = "test";
-      vote.weight = STEEMIT_100_PERCENT;
-      tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time, true );
-
-      auto start_balance = asset( db.get_comment( "alice", string( "test" ) ).total_payout_value.amount / 2, SBD_SYMBOL );
+      auto start_balance = ASSET( "25.000 TBD" );
 
       BOOST_TEST_MESSAGE( "Setup conversion to TESTS" );
       tx.operations.clear();
@@ -1631,31 +1610,9 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       BOOST_TEST_MESSAGE( "Testing interest over smallest interest period" );
 
       convert_operation op;
-      comment_operation comment;
-      vote_operation vote;
       signed_transaction tx;
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
 
-      comment.author = "alice";
-      comment.title = "foo";
-      comment.body = "bar";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      tx.operations.push_back( comment );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      tx.operations.clear();
-      tx.signatures.clear();
-      vote.voter = "alice";
-      vote.author = "alice";
-      vote.permlink = "test";
-      vote.weight = STEEMIT_100_PERCENT;
-      tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time, true );
+      fund( "alice", ASSET( "31.903 TBD" ) );
 
       auto start_time = db.get_account( "alice" ).sbd_seconds_last_update;
       auto alice_sbd = db.get_account( "alice" ).sbd_balance;
@@ -1741,30 +1698,11 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       set_price_feed( exchange_rate );
 
       signed_transaction tx;
-      comment_operation comment;
-      comment.author = "alice";
-      comment.permlink = "test";
-      comment.parent_permlink = "test";
-      comment.title = "foo";
-      comment.body = "bar";
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      tx.operations.push_back( comment );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
 
-      vote_operation vote;
-      vote.voter = "alice";
-      vote.weight = STEEMIT_100_PERCENT;
-      vote.author = "alice";
-      vote.permlink = "test";
-      tx.operations.clear();
-      tx.signatures.clear();
-      tx.operations.push_back( vote );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
-
-      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time, true );
+      fund( "alice", ASSET( "25.522 TBD" ) );
       asset alice_sbd = db.get_account( "alice" ).sbd_balance;
+
+      generate_block();
 
       fund( "alice", alice_sbd.amount );
       fund( "bob", alice_sbd.amount );
@@ -2652,8 +2590,8 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
       auto comment_reward = ( gpo.total_reward_fund_steem.amount + 2000 ) - ( ( gpo.total_reward_fund_steem.amount + 2000 ) * 25 * STEEMIT_1_PERCENT ) / STEEMIT_100_PERCENT ;
       comment_reward /= 2;
       auto sbd_reward = ( comment_reward * gpo.sbd_print_rate ) / STEEMIT_100_PERCENT;
-      auto alice_sbd = db.get_account( "alice" ).sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
-      auto alice_steem = db.get_account( "alice" ).balance;
+      auto alice_sbd = db.get_account( "alice" ).sbd_balance + db.get_account( "alice" ).reward_sbd_balance + asset( sbd_reward, STEEM_SYMBOL ) * exchange_rate;
+      auto alice_steem = db.get_account( "alice" ).balance + db.get_account( "alice" ).reward_steem_balance ;
 
       BOOST_TEST_MESSAGE( "Checking printing SBD has slowed" );
       BOOST_REQUIRE( db.get_dynamic_global_properties().sbd_print_rate < STEEMIT_100_PERCENT );
@@ -2663,8 +2601,8 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 
       validate_database();
 
-      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd );
-      BOOST_REQUIRE( db.get_account( "alice" ).balance > alice_steem );
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance + db.get_account( "alice" ).reward_sbd_balance == alice_sbd );
+      BOOST_REQUIRE( db.get_account( "alice" ).balance + db.get_account( "alice" ).reward_steem_balance > alice_steem );
 
       BOOST_TEST_MESSAGE( "Letting percent market cap fall to 2% to verify printing of SBD turns back on" );
 

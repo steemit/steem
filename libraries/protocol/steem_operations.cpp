@@ -482,5 +482,16 @@ namespace steemit { namespace protocol {
       FC_ASSERT( current_reset_account != reset_account, "new reset account cannot be current reset account" );
    }
 
+   void claim_reward_balance_operation::validate()const
+   {
+      validate_account_name( account );
+      FC_ASSERT( is_asset_type( reward_steem, STEEM_SYMBOL ), "Reward Steem must be STEEM" );
+      FC_ASSERT( is_asset_type( reward_sbd, SBD_SYMBOL ), "Reward Steem must be SBD" );
+      FC_ASSERT( is_asset_type( reward_vests, VESTS_SYMBOL ), "Reward Steem must be VESTS" );
+      FC_ASSERT( reward_steem.amount >= 0, "Cannot claim a negative amount" );
+      FC_ASSERT( reward_sbd.amount >= 0, "Cannot claim a negative amount" );
+      FC_ASSERT( reward_vests.amount >= 0, "Cannot claim a negative amount" );
+      FC_ASSERT( reward_steem.amount > 0 || reward_sbd.amount > 0 || reward_vests.amount > 0, "Must claim something." );
+   }
 
 } } // steemit::protocol

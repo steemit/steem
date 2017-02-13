@@ -5817,5 +5817,183 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( claim_reward_balance_validate )
+{
+   try
+   {
+      claim_reward_balance_operation op;
+      op.account = "alice";
+      op.reward_steem = ASSET( "0.000 TESTS" );
+      op.reward_sbd = ASSET( "0.000 TBD" );
+      op.reward_vests = ASSET( "0.000000 VESTS" );
+
+
+      BOOST_TEST_MESSAGE( "Testing all 0 amounts" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "Testing single reward claims" );
+      op.reward_steem.amount = 1000;
+      op.validate();
+
+      op.reward_steem.amount = 0;
+      op.reward_sbd.amount = 1000;
+      op.validate();
+
+      op.reward_sbd.amount = 0;
+      op.reward_vests.amount = 1000;
+      op.validate();
+
+      op.reward_vests.amount = 0;
+
+
+      BOOST_TEST_MESSAGE( "Testing wrong STEEM symbol" );
+      op.reward_steem = ASSET( "1.000 WRONG" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "Testing wrong SBD symbol" );
+      op.reward_steem = ASSET( "1.000 TESTS" );
+      op.reward_sbd = ASSET( "1.000 WRONG" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "Testing wrong VESTS symbol" );
+      op.reward_sbd = ASSET( "1.000 TBD" );
+      op.reward_vests = ASSET( "1.000000 WRONG" );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "Testing a single negative amount" );
+      op.reward_steem.amount = 1000;
+      op.reward_sbd.amount = -1000;
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_reward_balance_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: decline_voting_rights_authorities" );
+
+      claim_reward_balance_operation op;
+      op.account = "alice";
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: claim_reward_balance_apply" );
+      BOOST_TEST_MESSAGE( "--- Setting up test state" );
+
+      ACTORS( (alice) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      db_plugin->debug_update( []( database& db )
+      {
+         db.modify( db.get_account( "alice" ), []( account_object& a )
+         {
+            a.reward_steem_balance = ASSET( "10.000 TESTS" );
+            a.reward_sbd_balance = ASSET( "10.000 TBD" );
+            a.reward_vesting_balance = ASSET( "10.000000 VESTS" );
+            a.reward_vesting_steem = ASSET( "10.000 TESTS" );
+         });
+
+         db.modify( db.get_dynamic_global_properties(), []( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply += ASSET( "20.000 TESTS" );
+            gpo.current_sbd_supply += ASSET( "10.000 TBD" );
+            gpo.virtual_supply += ASSET( "20.000 TESTS" );
+            gpo.pending_rewarded_vesting_shares += ASSET( "10.000000 VESTS" );
+            gpo.pending_rewarded_vesting_steem += ASSET( "10.000 TESTS" );
+         });
+      });
+
+      generate_block();
+      validate_database();
+
+      auto alice_steem = db.get_account( "alice" ).balance;
+      auto alice_sbd = db.get_account( "alice" ).sbd_balance;
+      auto alice_vests = db.get_account( "alice" ).vesting_shares;
+
+
+      BOOST_TEST_MESSAGE( "--- Attempting to claim more STEEM than exists in the reward balance." );
+
+      claim_reward_balance_operation op;
+      signed_transaction tx;
+
+      op.account = "alice";
+      op.reward_steem = ASSET( "20.000 TESTS" );
+      op.reward_sbd = ASSET( "0.000 TBD" );
+      op.reward_vests = ASSET( "0.000000 VESTS" );
+
+      tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Claiming a partial reward balance" );
+
+      op.reward_steem = ASSET( "0.000 TESTS" );
+      op.reward_vests = ASSET( "5.000000 VESTS" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_steem + op.reward_steem );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_steem_balance == ASSET( "10.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd + op.reward_sbd );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_sbd_balance == ASSET( "10.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).vesting_shares == alice_vests + op.reward_vests );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_balance == ASSET( "5.000000 VESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_steem == ASSET( "5.000 TESTS" ) );
+      validate_database();
+
+      alice_vests += op.reward_vests;
+
+
+      BOOST_TEST_MESSAGE( "--- Claiming the full reward balance" );
+
+      op.reward_steem = ASSET( "10.000 TESTS" );
+      op.reward_sbd = ASSET( "10.000 TBD" );
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_REQUIRE( db.get_account( "alice" ).balance == alice_steem + op.reward_steem );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).sbd_balance == alice_sbd + op.reward_sbd );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).vesting_shares == alice_vests + op.reward_vests );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_balance == ASSET( "0.000000 VESTS" ) );
+      BOOST_REQUIRE( db.get_account( "alice" ).reward_vesting_steem == ASSET( "0.000 TESTS" ) );
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

@@ -2040,4 +2040,44 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
    });
 }
 
+void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operation& op )
+{
+   database& _db = db();
+   const auto& acnt = _db.get_account( op.account );
+
+   FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM." );
+   FC_ASSERT( op.reward_sbd <= acnt.reward_sbd_balance, "Cannot claim that much SBD." );
+   FC_ASSERT( op.reward_vests <= acnt.reward_vesting_balance, "Cannot claim that much VESTS." );
+
+   asset reward_vesting_steem_to_move = asset( 0, STEEM_SYMBOL );
+   if( op.reward_vests == acnt.reward_vesting_balance )
+      reward_vesting_steem_to_move = acnt.reward_vesting_steem;
+   else
+      reward_vesting_steem_to_move = asset( ( ( uint128_t( op.reward_vests.amount.value ) * uint128_t( acnt.reward_vesting_steem.amount.value ) )
+         / uint128_t( acnt.reward_vesting_balance.amount.value ) ).to_uint64(), STEEM_SYMBOL );
+
+   _db.adjust_reward_balance( acnt, -op.reward_steem );
+   _db.adjust_reward_balance( acnt, -op.reward_sbd );
+   _db.adjust_balance( acnt, op.reward_steem );
+   _db.adjust_balance( acnt, op.reward_sbd );
+
+   _db.modify( acnt, [&]( account_object& a )
+   {
+      a.vesting_shares += op.reward_vests;
+      a.reward_vesting_balance -= op.reward_vests;
+      a.reward_vesting_steem -= reward_vesting_steem_to_move;
+   });
+
+   _db.modify( _db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+   {
+      gpo.total_vesting_shares += op.reward_vests;
+      gpo.total_vesting_fund_steem += reward_vesting_steem_to_move;
+
+      gpo.pending_rewarded_vesting_shares -= op.reward_vests;
+      gpo.pending_rewarded_vesting_steem -= reward_vesting_steem_to_move;
+   });
+
+   _db.adjust_proxied_witness_votes( acnt, op.reward_vests.amount );
+}
+
 } } // steemit::chain
