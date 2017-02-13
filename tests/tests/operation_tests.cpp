@@ -6450,6 +6450,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       b.beneficiaries.push_back( std::make_pair( account_name_type( "bob" ), STEEMIT_1_PERCENT ) );
       op.author = "alice";
       op.permlink = "test";
+      op.allow_curation_rewards = false;
       op.extensions.insert( b );
       tx.clear();
       tx.operations.push_back( op );
@@ -6509,9 +6510,24 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.sign( bob_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time );
+      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time - STEEMIT_BLOCK_INTERVAL );
 
-      idump( (db.get_comment( "alice", string( "test" ) ))(db.get_account("alice"))(db.get_account("bob")) );
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [=]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply -= gpo.total_reward_fund_steem;
+            gpo.total_reward_fund_steem = ASSET( "100.000 TESTS" );
+            gpo.current_supply += gpo.total_reward_fund_steem;
+         });
+      });
+
+      generate_block();
+
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_vesting_steem.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) / 3 == db.get_account( "bob" ).reward_vesting_steem.amount );
    }
    FC_LOG_AND_RETHROW()
 }
