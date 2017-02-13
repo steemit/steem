@@ -2029,14 +2029,14 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
       reward_vesting_steem_to_move = asset( ( ( uint128_t( op.reward_vests.amount.value ) * uint128_t( acnt.reward_vesting_steem.amount.value ) )
          / uint128_t( acnt.reward_vesting_balance.amount.value ) ).to_uint64(), STEEM_SYMBOL );
 
+   _db.adjust_reward_balance( acnt, -op.reward_steem );
+   _db.adjust_reward_balance( acnt, -op.reward_sbd );
+   _db.adjust_balance( acnt, op.reward_steem );
+   _db.adjust_balance( acnt, op.reward_sbd );
+
    _db.modify( acnt, [&]( account_object& a )
    {
-      a.balance += op.reward_steem;
-      a.sbd_balance += op.reward_sbd;
       a.vesting_shares += op.reward_vests;
-
-      a.reward_steem_balance -= op.reward_steem;
-      a.reward_sbd_balance -= op.reward_sbd;
       a.reward_vesting_balance -= op.reward_vests;
       a.reward_vesting_steem -= reward_vesting_steem_to_move;
    });

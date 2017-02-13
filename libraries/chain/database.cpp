@@ -1041,11 +1041,8 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
 
          if( to_reward_balance )
          {
-            modify( to_account, [&]( account_object& a )
-            {
-               a.reward_sbd_balance += sbd;
-               a.reward_steem_balance += asset( to_steem, STEEM_SYMBOL );
-            });
+            adjust_reward_balance( to_account, sbd );
+            adjust_reward_balance( to_account, asset( to_steem, STEEM_SYMBOL ) );
          }
          else
          {
@@ -3801,6 +3798,23 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 }
 
 
+void database::adjust_reward_balance( const account_object& a, const asset& delta )
+{
+   modify( a, [&]( account_object& acnt )
+   {
+      switch( delta.symbol )
+      {
+         case STEEM_SYMBOL:
+            acnt.reward_steem_balance += delta;
+            break;
+         case SBD_SYMBOL:
+            acnt.reward_sbd_balance += delta;
+            break;
+         default:
+            FC_ASSERT( false, "invalid symbol" );
+      }
+   });
+}
 
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
