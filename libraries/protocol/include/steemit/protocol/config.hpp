@@ -154,7 +154,9 @@
 #define STEEMIT_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
 #define STEEMIT_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
 
-
+#define STEEMIT_POST_REWARD_FUND_NAME           ("post")
+#define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
+#define STEEMIT_RECENT_RSHARES_DECAY_RATE       (fc::days(30))
 
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)
