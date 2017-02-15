@@ -194,6 +194,85 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      start = fc::time_point::now();
+            const auto& gpo = get_dynamic_global_properties();
+            auto reward_steem = gpo.total_reward_fund_steem;
+
+            idump( (gpo) );
+
+            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
+            {
+               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 90;
+               rfo.reward_balance = asset( ( reward_steem.amount.value * rfo.percent_content_rewards ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
+               reward_steem -= rfo.reward_balance;
+               idump( (rfo) );
+            });
+
+            modify( get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
+            {
+               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 10;
+               rfo.reward_balance = reward_steem;
+               idump( (rfo) );
+            });
+
+            modify( gpo, [&]( dynamic_global_property_object& g )
+            {
+               g.total_reward_fund_steem = asset( 0, STEEM_SYMBOL );
+               g.total_reward_shares2 = 0;
+            });
+
+            /*
+            * For all current comments we will either keep their current cashout time, or extend it to 1 week
+            * after creation.
+            *
+            * We cannot do a simple iteration by cashout time because we are editting cashout time.
+            * More specifically, we will be adding an explicit cashout time to all comments with parents.
+            * To find all discussions that have not been paid out we fir iterate over posts by cashout time.
+            * Before the hardfork these are all root posts. Iterate over all of their children, adding each
+            * to a specific list. Next, update payout times for all discussions on the root post. This defines
+            * the min cashout time for each child in the discussion. Then iterate over the children and set
+            * their cashout time in a similar way, grabbing the root post as their inherent cashout time.
+            */
+            const auto& comment_idx = get_index< comment_index, by_cashout_time >();
+            const auto& by_root_idx = get_index< comment_index, by_root >();
+            vector< const comment_object* > root_posts;
+            root_posts.reserve( 60000 );
+            vector< const comment_object* > replies;
+            replies.reserve( 100000 );
+
+            for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time < fc::time_point_sec::maximum(); ++itr )
+            {
+               root_posts.push_back( &(*itr) );
+
+               for( auto reply_itr = by_root_idx.lower_bound( itr->id ); reply_itr != by_root_idx.end() && reply_itr->root_comment == itr->id; ++reply_itr )
+               {
+                  replies.push_back( &(*reply_itr) );
+               }
+            }
+
+            for( auto itr : root_posts )
+            {
+               modify( *itr, [&]( comment_object& c )
+               {
+                  c.cashout_time = std::max( c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time );
+                  c.children_rshares2 = 0;
+               });
+            }
+
+            for( auto itr : replies )
+            {
+               modify( *itr, [&]( comment_object& c )
+               {
+                  c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+                  c.children_rshares2 = 0;
+               });
+            }
+
+            end = fc::time_point::now();
+      ilog( "Est HF logic time, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
@@ -1586,7 +1665,8 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       {
          fill_comment_reward_context_local_state( ctx, comment );
 
-         const share_type reward = util::get_rshare_reward( ctx );
+         const share_type reward = has_hardfork( STEEMIT_HARDFORK_0_17__774 ) ?
+            util::get_rshare_reward( ctx, get_reward_fund( comment ).name ) : util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
          asset total_payout;
@@ -1746,13 +1826,15 @@ void database::process_comment_cashout()
 
    auto current = cidx.begin();
    //  add all rshares about to be cashed out to the reward funds
-   if( funds.size() )
+   if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
    {
       while( current != cidx.end() && current->cashout_time <= head_block_time() )
       {
          if( current->net_rshares > 0 )
          {
-            funds[ get_reward_fund( *current ).id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value );
+            const auto& rf = get_reward_fund( *current );
+            funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf.name );
+            FC_ASSERT( funds[ rf.id._id ].recent_rshares2 < std::numeric_limits< uint64_t >::max() );
             ++current;
          }
       }
@@ -1790,6 +1872,12 @@ void database::process_comment_cashout()
             const auto& comment = *itr; ++itr;
             ctx.total_reward_shares2 = gpo.total_reward_shares2;
             ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
+            if( funds.size() )
+            {
+               const auto& rf = get_reward_fund( *current );
+               funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf.name );
+            }
+
             auto reward = cashout_comment_helper( ctx, comment );
 
             if( reward > 0 )
@@ -1805,7 +1893,7 @@ void database::process_comment_cashout()
       current = cidx.begin();
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+   if( funds.size() )
    {
       for( size_t i = 0; i < funds.size(); i++ )
       {
@@ -1847,7 +1935,9 @@ void database::process_funds()
       int64_t current_inflation_rate = std::max( start_inflation_rate - inflation_rate_adjustment, inflation_rate_floor );
 
       auto new_steem = ( props.virtual_supply.amount * current_inflation_rate ) / ( int64_t( STEEMIT_100_PERCENT ) * int64_t( STEEMIT_BLOCKS_PER_YEAR ) );
-      auto content_reward = pay_reward_funds( ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT ); /// 75% to content creator
+      auto content_reward = ( new_steem * STEEMIT_CONTENT_REWARD_PERCENT ) / STEEMIT_100_PERCENT;
+      if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+         content_reward = pay_reward_funds( content_reward ); /// 75% to content creator
       auto vesting_reward = ( new_steem * STEEMIT_VESTING_FUND_PERCENT ) / STEEMIT_100_PERCENT; /// 15% to vesting fund
       auto witness_reward = new_steem - content_reward - vesting_reward; /// Remaining 10% to witness pay
 
@@ -1869,10 +1959,11 @@ void database::process_funds()
 
       modify( props, [&]( dynamic_global_property_object& p )
       {
-          p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
-          p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
-          p.current_supply           += asset( new_steem, STEEM_SYMBOL );
-          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
+         p.total_vesting_fund_steem += asset( vesting_reward, STEEM_SYMBOL );
+         if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+            p.total_reward_fund_steem  += asset( content_reward, STEEM_SYMBOL );
+         p.current_supply           += asset( new_steem, STEEM_SYMBOL );
+         p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
       create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
@@ -3812,7 +3903,7 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
-            rfo.percent_content_rewards = STEEMIT_100_PERCENT;
+            rfo.percent_content_rewards = 0;
          });
 
          create< reward_fund_object >( [&]( reward_fund_object& rfo )
@@ -3838,14 +3929,26 @@ void database::apply_hardfork( uint32_t hardfork )
                wso.max_runner_witnesses = STEEMIT_MAX_RUNNER_WITNESSES_HF17;
             });
 
+            const auto& gpo = get_dynamic_global_properties();
+            auto reward_steem = gpo.total_reward_fund_steem;
+
             modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
                rfo.percent_content_rewards = STEEMIT_1_PERCENT * 90;
+               rfo.reward_balance = asset( ( reward_steem.amount.value * rfo.percent_content_rewards ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
+               reward_steem -= rfo.reward_balance;
             });
 
             modify( get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
                rfo.percent_content_rewards = STEEMIT_1_PERCENT * 10;
+               rfo.reward_balance = reward_steem;
+            });
+
+            modify( gpo, [&]( dynamic_global_property_object& g )
+            {
+               g.total_reward_fund_steem = asset( 0, STEEM_SYMBOL );
+               g.total_reward_shares2 = 0;
             });
 
             /*
@@ -3882,6 +3985,7 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *itr, [&]( comment_object& c )
                {
                   c.cashout_time = std::max( c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time );
+                  c.children_rshares2 = 0;
                });
             }
 
@@ -3890,6 +3994,7 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *itr, [&]( comment_object& c )
                {
                   c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
+                  c.children_rshares2 = 0;
                });
             }
          }
@@ -4028,14 +4133,19 @@ void database::validate_invariants()const
             total_children_rshares2 += itr->children_rshares2;
       }
 
+      const auto& reward_idx = get_index< reward_fund_index, by_id >();
+
+      for( auto itr = reward_idx.begin(); itr != reward_idx.end(); ++itr )
+      {
+         total_supply += itr->reward_balance;
+      }
+
       total_supply += gpo.total_vesting_fund_steem + gpo.total_reward_fund_steem + gpo.pending_rewarded_vesting_steem;
 
       FC_ASSERT( gpo.current_supply == total_supply, "", ("gpo.current_supply",gpo.current_supply)("total_supply",total_supply) );
       FC_ASSERT( gpo.current_sbd_supply == total_sbd, "", ("gpo.current_sbd_supply",gpo.current_sbd_supply)("total_sbd",total_sbd) );
       FC_ASSERT( gpo.total_vesting_shares + gpo.pending_rewarded_vesting_shares == total_vesting, "", ("gpo.total_vesting_shares",gpo.total_vesting_shares)("total_vesting",total_vesting) );
       FC_ASSERT( gpo.total_vesting_shares.amount == total_vsf_votes, "", ("total_vesting_shares",gpo.total_vesting_shares)("total_vsf_votes",total_vsf_votes) );
-      FC_ASSERT( gpo.total_reward_shares2 == total_rshares2, "", ("gpo.total",gpo.total_reward_shares2)("check.total",total_rshares2)("delta",gpo.total_reward_shares2-total_rshares2));
-      FC_ASSERT( total_rshares2 == total_children_rshares2, "", ("total_rshares2", total_rshares2)("total_children_rshares2",total_children_rshares2));
       FC_ASSERT( gpo.pending_rewarded_vesting_steem == pending_vesting_steem, "", ("pending_rewarded_vesting_steem",gpo.pending_rewarded_vesting_steem)("pending_vesting_steem", pending_vesting_steem));
 
       FC_ASSERT( gpo.virtual_supply >= gpo.current_supply );
