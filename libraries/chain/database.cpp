@@ -1561,8 +1561,8 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
             }
             ++itr;
          }
-         max_rewards -= unclaimed_rewards;
       }
+      max_rewards -= unclaimed_rewards;
 
       return unclaimed_rewards;
    } FC_CAPTURE_AND_RETHROW()
@@ -1606,7 +1606,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             auto vest_created = create_vesting( author, vesting_steem, has_hardfork( STEEMIT_HARDFORK_0_17__659 ) );
             auto sbd_payout = create_sbd( author, sbd_steem, has_hardfork( STEEMIT_HARDFORK_0_17__659 ) );
 
-            adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+            adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( curation_tokens, STEEM_SYMBOL ) ) );
 
             /*if( sbd_created.symbol == SBD_SYMBOL )
                adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
@@ -1637,6 +1637,9 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                c.total_payouts += total_payout;
             });
          }
+
+         if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+            adjust_rshares2( comment, util::calculate_vshares( comment.net_rshares.value ), 0 );
       }
 
       modify( cat, [&]( category_object& c )
@@ -1701,6 +1704,8 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 #endif
          }
       }
+
+      return claimed_reward;
    } FC_CAPTURE_AND_RETHROW( (comment) )
 }
 
@@ -1785,17 +1790,14 @@ void database::process_comment_cashout()
             const auto& comment = *itr; ++itr;
             ctx.total_reward_shares2 = gpo.total_reward_shares2;
             ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
-            fc::uint128_t old_rshares2 = util::calculate_vshares( comment.net_rshares.value );
             auto reward = cashout_comment_helper( ctx, comment );
 
-            if( comment.net_rshares > 0 )
+            if( reward > 0 )
             {
                modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& p )
                {
                   p.total_reward_fund_steem.amount -= reward;
                });
-
-               adjust_rshares2( comment, old_rshares2, 0 );
             }
          }
       }
