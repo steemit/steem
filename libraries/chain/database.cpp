@@ -194,85 +194,6 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
-
-      start = fc::time_point::now();
-            const auto& gpo = get_dynamic_global_properties();
-            auto reward_steem = gpo.total_reward_fund_steem;
-
-            idump( (gpo) );
-
-            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
-            {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 90;
-               rfo.reward_balance = asset( ( reward_steem.amount.value * rfo.percent_content_rewards ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
-               reward_steem -= rfo.reward_balance;
-               idump( (rfo) );
-            });
-
-            modify( get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
-            {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 10;
-               rfo.reward_balance = reward_steem;
-               idump( (rfo) );
-            });
-
-            modify( gpo, [&]( dynamic_global_property_object& g )
-            {
-               g.total_reward_fund_steem = asset( 0, STEEM_SYMBOL );
-               g.total_reward_shares2 = 0;
-            });
-
-            /*
-            * For all current comments we will either keep their current cashout time, or extend it to 1 week
-            * after creation.
-            *
-            * We cannot do a simple iteration by cashout time because we are editting cashout time.
-            * More specifically, we will be adding an explicit cashout time to all comments with parents.
-            * To find all discussions that have not been paid out we fir iterate over posts by cashout time.
-            * Before the hardfork these are all root posts. Iterate over all of their children, adding each
-            * to a specific list. Next, update payout times for all discussions on the root post. This defines
-            * the min cashout time for each child in the discussion. Then iterate over the children and set
-            * their cashout time in a similar way, grabbing the root post as their inherent cashout time.
-            */
-            const auto& comment_idx = get_index< comment_index, by_cashout_time >();
-            const auto& by_root_idx = get_index< comment_index, by_root >();
-            vector< const comment_object* > root_posts;
-            root_posts.reserve( 60000 );
-            vector< const comment_object* > replies;
-            replies.reserve( 100000 );
-
-            for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time < fc::time_point_sec::maximum(); ++itr )
-            {
-               root_posts.push_back( &(*itr) );
-
-               for( auto reply_itr = by_root_idx.lower_bound( itr->id ); reply_itr != by_root_idx.end() && reply_itr->root_comment == itr->id; ++reply_itr )
-               {
-                  replies.push_back( &(*reply_itr) );
-               }
-            }
-
-            for( auto itr : root_posts )
-            {
-               modify( *itr, [&]( comment_object& c )
-               {
-                  c.cashout_time = std::max( c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time );
-                  c.children_rshares2 = 0;
-               });
-            }
-
-            for( auto itr : replies )
-            {
-               modify( *itr, [&]( comment_object& c )
-               {
-                  c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
-                  c.children_rshares2 = 0;
-               });
-            }
-
-            end = fc::time_point::now();
-      ilog( "Est HF logic time, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
-
-      validate_invariants();
    }
    FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
@@ -3936,14 +3857,14 @@ void database::apply_hardfork( uint32_t hardfork )
 
             modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 90;
+               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 62;
                rfo.reward_balance = asset( ( reward_steem.amount.value * rfo.percent_content_rewards ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
                reward_steem -= rfo.reward_balance;
             });
 
             modify( get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 10;
+               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 38;
                rfo.reward_balance = reward_steem;
             });
 

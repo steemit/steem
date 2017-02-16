@@ -124,22 +124,20 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
 
       // generate a few blocks to seed the reward fund
       generate_blocks(10);
-      ilog( "dgpo: ${dgpo}", ("dgpo", db.get_dynamic_global_properties()) );
-
-      const auto& rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
-      idump( (rf) );
+      //const auto& rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
+      //idump( (rf) );
 
       generate_blocks( db.get_comment( "alice", string( "mypost" ) ).cashout_time, true );
       /*
       for( const auto& author : authors )
       {
          const account_object& a = db.get_account(author.name);
-         ilog( "${n} : ${steem} ${sbd}", ("n", author.name)("steem", a.balance)("sbd", a.sbd_balance) );
+         ilog( "${n} : ${steem} ${sbd}", ("n", author.name)("steem", a.reward_steem_balance)("sbd", a.reward_sbd_balance) );
       }
       for( const auto& voter : voters )
       {
          const account_object& a = db.get_account(voter.name);
-         ilog( "${n} : ${steem} ${sbd}", ("n", voter.name)("steem", a.balance)("sbd", a.sbd_balance) );
+         ilog( "${n} : ${steem} ${sbd}", ("n", voter.name)("steem", a.reward_steem_balance)("sbd", a.reward_sbd_balance) );
       }
       */
 
@@ -147,7 +145,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       const account_object& bob_account   = db.get_account("bob");
       const account_object& dave_account  = db.get_account("dave");
 
-      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "10720.000 TBD" ) );
+      BOOST_CHECK( alice_account.reward_sbd_balance == ASSET( "9633.000 TBD" ) );
       BOOST_CHECK( bob_account.reward_sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_CHECK( dave_account.reward_sbd_balance == alice_account.reward_sbd_balance );
    }
