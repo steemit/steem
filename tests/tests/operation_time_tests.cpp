@@ -124,7 +124,10 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
 
       // generate a few blocks to seed the reward fund
       generate_blocks(10);
-      //ilog( "dgpo: ${dgpo}", ("dgpo", db.get_dynamic_global_properties()) );
+      ilog( "dgpo: ${dgpo}", ("dgpo", db.get_dynamic_global_properties()) );
+
+      const auto& rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
+      idump( (rf) );
 
       generate_blocks( db.get_comment( "alice", string( "mypost" ) ).cashout_time, true );
       /*
@@ -202,8 +205,13 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
 
       generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time );
 
+      //idump( (db.get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME )) );
+
+      //generate_block;
+
       // If comments are paid out independent of order, then the last satoshi of STEEM cannot be divided among them
-      BOOST_REQUIRE( db.get_dynamic_global_properties().total_reward_fund_steem == ASSET( "0.001 TESTS" ) );
+      const auto rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
+      BOOST_REQUIRE( rf.reward_balance == ASSET( "0.001 TESTS" ) );
 
       validate_database();
 

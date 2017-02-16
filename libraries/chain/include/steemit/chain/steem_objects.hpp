@@ -264,6 +264,7 @@ namespace steemit { namespace chain {
          fc::uint128_t           recent_rshares2 = 0;
          time_point_sec          last_update;
          uint16_t                percent_content_rewards = 0;
+         uint64_t                content_constant = 0;
    };
 
    struct by_price;
@@ -518,5 +519,6 @@ FC_REFLECT( steemit::chain::reward_fund_object,
             (recent_rshares2)
             (last_update)
             (percent_content_rewards)
+            (content_constant)
          )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::reward_fund_object, steemit::chain::reward_fund_index )

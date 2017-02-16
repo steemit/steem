@@ -35,7 +35,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund_name_type& rf_name )
+uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund_object& rf_object )
 {
    try
    {
@@ -48,7 +48,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
 
    //idump( (ctx) );
 
-   u256 rs2 = to256( calculate_vshares( ctx.rshares.value, rf_name ) );
+   u256 rs2 = to256( calculate_vshares( ctx.rshares.value, rf_object ) );
    rs2 = ( rs2 * ctx.reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
@@ -73,11 +73,28 @@ uint128_t calculate_vshares( const uint128_t& rshares )
    return rshares_plus_s * rshares_plus_s - s * s;
 }
 
-uint128_t calculate_vshares( const uint128_t& rshares, const reward_fund_name_type& rf )
+uint128_t calculate_vshares( const uint128_t& rshares, const reward_fund_object& rf )
 {
-   uint128_t s = get_content_constant_s().to_uint64() / STEEMIT_VOTE_DUST_THRESHOLD;
-   uint128_t rshares_plus_s = ( rshares / STEEMIT_VOTE_DUST_THRESHOLD ) + s;
-   return rshares_plus_s * rshares_plus_s - s * s;
+   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME )
+   {
+      // r^2 + 2rs
+      uint128_t s = rf.content_constant;
+      uint128_t rshares_plus_s = rshares + s;
+      return rshares_plus_s * rshares_plus_s - s * s;
+   }
+   else if( rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
+   {
+      // r^2 / ( s + r )
+      // Can be optimized to r - r * s / ( r + s ) Needs investigation to determine what the loss of precision is (if any)
+      // This optimization is worth noting because it could be implemented using only 64-bit math
+      uint128_t rshares_2 = ( rshares * rshares );
+      uint128_t rshares_plus_s = rshares + rf.content_constant;
+      return rshares_2 / rshares_plus_s;
+   }
+
+   wlog( "Unknown reward fund ${rf}", ("rf",rf) );
+
+   return 0;
 }
 
 } } }

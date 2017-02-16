@@ -1666,7 +1666,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
          fill_comment_reward_context_local_state( ctx, comment );
 
          const share_type reward = has_hardfork( STEEMIT_HARDFORK_0_17__774 ) ?
-            util::get_rshare_reward( ctx, get_reward_fund( comment ).name ) : util::get_rshare_reward( ctx );
+            util::get_rshare_reward( ctx, get_reward_fund( comment ) ) : util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
          asset total_payout;
@@ -1833,7 +1833,7 @@ void database::process_comment_cashout()
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
-            funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf.name );
+            funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf );
             FC_ASSERT( funds[ rf.id._id ].recent_rshares2 < std::numeric_limits< uint64_t >::max() );
             ++current;
          }
@@ -1875,7 +1875,7 @@ void database::process_comment_cashout()
             if( funds.size() )
             {
                const auto& rf = get_reward_fund( *current );
-               funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf.name );
+               funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf );
             }
 
             auto reward = cashout_comment_helper( ctx, comment );
@@ -3904,6 +3904,7 @@ void database::apply_hardfork( uint32_t hardfork )
             rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
             rfo.percent_content_rewards = 0;
+            rfo.content_constant = util::get_content_constant_s().to_uint64();
          });
 
          create< reward_fund_object >( [&]( reward_fund_object& rfo )
@@ -3911,6 +3912,7 @@ void database::apply_hardfork( uint32_t hardfork )
             rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
             rfo.percent_content_rewards = 0;
+            rfo.content_constant = util::get_content_constant_s().to_uint64();
          });
          break;
       case STEEMIT_HARDFORK_0_17:

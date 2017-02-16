@@ -31,7 +31,7 @@ struct comment_reward_context
 
 uint64_t get_rshare_reward( const comment_reward_context& ctx );
 
-uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund_name_type& rf );
+uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund_object& rf );
 
 inline uint128_t get_content_constant_s()
 {
@@ -40,7 +40,7 @@ inline uint128_t get_content_constant_s()
 
 uint128_t calculate_vshares( const uint128_t& rshares );
 
-uint128_t calculate_vshares( const uint128_t& rshares, const reward_fund_name_type& rf );
+uint128_t calculate_vshares( const uint128_t& rshares, const reward_fund_object& rf );
 
 inline bool is_comment_payout_dust( const price& p, uint64_t steem_payout )
 {
