@@ -1590,7 +1590,6 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             util::get_rshare_reward( ctx, get_reward_fund( comment ) ) : util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
-         asset total_payout;
          if( reward_tokens > 0 )
          {
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent( comment ) ) / STEEMIT_100_PERCENT ).to_uint64();
@@ -1609,17 +1608,8 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
             adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( curation_tokens, STEEM_SYMBOL ) ) );
 
-            /*if( sbd_created.symbol == SBD_SYMBOL )
-               adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
-            else
-               adjust_total_payout( comment, to_sbd( asset( vesting_steem + sbd_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
-               */
-
-            // stats only.. TODO: Move to plugin...
-            total_payout = to_sbd( asset( reward_tokens.to_uint64(), STEEM_SYMBOL ) );
-
             push_virtual_operation( author_reward_operation( comment.author, to_string( comment.permlink ), sbd_payout.first, sbd_payout.second, vest_created ) );
-            push_virtual_operation( comment_reward_operation( comment.author, to_string( comment.permlink ), total_payout ) );
+            push_virtual_operation( comment_reward_operation( comment.author, to_string( comment.permlink ), to_sbd( asset( claimed_reward, STEEM_SYMBOL ) ) ) );
 
             #ifndef IS_LOW_MEM
                modify( comment, [&]( comment_object& c )
@@ -1635,7 +1625,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 
             modify( cat, [&]( category_object& c )
             {
-               c.total_payouts += total_payout;
+               c.total_payouts += to_sbd( asset( claimed_reward, STEEM_SYMBOL ) );
             });
          }
 
@@ -1726,6 +1716,7 @@ void database::process_comment_cashout()
    vector< share_type > steem_awarded;
    const auto& reward_idx = get_index< reward_fund_index, by_id >();
 
+   // Decay recent rshares of each fund
    for( auto itr = reward_idx.begin(); itr != reward_idx.end(); ++itr )
    {
       // Add all reward funds to the local cache and decay their recent rshares
@@ -1746,7 +1737,7 @@ void database::process_comment_cashout()
    const auto& com_by_root = get_index< comment_index >().indices().get< by_root >();
 
    auto current = cidx.begin();
-   //  add all rshares about to be cashed out to the reward funds
+   //  add all rshares about to be cashed out to the reward funds. This ensures equal satoshi per rshare payment
    if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
    {
       while( current != cidx.end() && current->cashout_time <= head_block_time() )
@@ -1793,6 +1784,10 @@ void database::process_comment_cashout()
             const auto& comment = *itr; ++itr;
             ctx.total_reward_shares2 = gpo.total_reward_shares2;
             ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
+
+            // This extra logic is for when the funds are created in HF 16. We are using this data to preload
+            // recent rshares 2 to prevent any downtime in payouts at HF 17. After HF 17, we can capture
+            // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
             if( funds.size() )
             {
                const auto& rf = get_reward_fund( *current );
@@ -1814,6 +1809,7 @@ void database::process_comment_cashout()
       current = cidx.begin();
    }
 
+   // Write the cached fund state back to the database
    if( funds.size() )
    {
       for( size_t i = 0; i < funds.size(); i++ )
@@ -2062,6 +2058,7 @@ share_type database::pay_reward_funds( share_type reward )
 
       used_rewards += r;
 
+      // Sanity check to ensure we aren't printing more STEEM than has been allocated through inflation
       FC_ASSERT( used_rewards <= reward );
    }
 
