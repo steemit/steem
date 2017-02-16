@@ -436,8 +436,8 @@ struct comment_options_extension_visitor
       {
          for( auto& b : cpb.beneficiaries )
          {
-            auto acc = _db.find< account_object, by_name >( b.first );
-            FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.first) );
+            auto acc = _db.find< account_object, by_name >( b.account );
+            FC_ASSERT( acc != nullptr, "Beneficiary \"${a}\" must exist.", ("a", b.account) );
             c.beneficiaries.push_back( b );
          }
       });

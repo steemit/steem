@@ -6378,38 +6378,69 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Test Comment Beneficiaries Validate" );
       comment_options_operation op;
 
       op.author = "alice";
       op.permlink = "test";
 
+      BOOST_TEST_MESSAGE( "--- Testing more than 100% weight on a single route" );
       comment_payout_beneficiaries b;
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "bob" ), STEEMIT_100_PERCENT + 1 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEMIT_100_PERCENT + 1 ) );
       op.extensions.insert( b );
       STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
-
+      BOOST_TEST_MESSAGE( "--- Testing more than 100% total weight" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "bob" ), STEEMIT_1_PERCENT * 75 ) );
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "sam" ), STEEMIT_1_PERCENT * 75 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEMIT_1_PERCENT * 75 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), STEEMIT_1_PERCENT * 75 ) );
       op.extensions.clear();
       op.extensions.insert( b );
       STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
+      BOOST_TEST_MESSAGE( "--- Testing maximum number of routes" );
       b.beneficiaries.clear();
       for( size_t i = 0; i < 127; i++ )
       {
-         b.beneficiaries.push_back( std::make_pair( account_name_type( "foo" + fc::to_string( i ) ), 1 ) );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "foo" + fc::to_string( i ) ), 1 ) );
       }
 
       op.extensions.clear();
+      std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
       op.extensions.insert( b );
       op.validate();
 
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "bar" ), 1 ) );
+      BOOST_TEST_MESSAGE( "--- Testing one too many routes" );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bar" ), 1 ) );
+      std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
       op.extensions.clear();
       op.extensions.insert( b );
       STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing duplicate accounts" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT * 2 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing incorrect account sort order" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEMIT_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      STEEMIT_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing correct account sort order" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEMIT_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      op.validate();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -6442,12 +6473,13 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       db.push_transaction( tx );
 
       BOOST_TEST_MESSAGE( "--- Test failure on more than 8 benefactors" );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEMIT_1_PERCENT ) );
+
       for( size_t i = 0; i < 8; i++ )
       {
-         b.beneficiaries.push_back( std::make_pair( account_name_type( STEEMIT_INIT_MINER_NAME + fc::to_string( i ) ), STEEMIT_1_PERCENT ) );
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( STEEMIT_INIT_MINER_NAME + fc::to_string( i ) ), STEEMIT_1_PERCENT ) );
       }
 
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "bob" ), STEEMIT_1_PERCENT ) );
       op.author = "alice";
       op.permlink = "test";
       op.allow_curation_rewards = false;
@@ -6460,7 +6492,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       BOOST_TEST_MESSAGE( "--- Test specifying a non-existent benefactor" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "dave" ), STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "dave" ), STEEMIT_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       tx.clear();
@@ -6476,7 +6508,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       vote.weight = STEEMIT_100_PERCENT;
 
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "bob" ), 25 * STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), 25 * STEEMIT_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
 
@@ -6497,7 +6529,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       BOOST_TEST_MESSAGE( "--- Test setting when there are already beneficiaries" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( std::make_pair( account_name_type( "sam" ), 25 * STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), 25 * STEEMIT_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       tx.sign( alice_private_key, db.get_chain_id() );

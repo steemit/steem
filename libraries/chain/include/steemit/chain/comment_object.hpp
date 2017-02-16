@@ -11,6 +11,8 @@
 
 namespace steemit { namespace chain {
 
+   using protocol::beneficiary_route_type;
+
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
@@ -170,7 +172,7 @@ namespace steemit { namespace chain {
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;
 
-         bip::vector< std::pair< account_name_type, uint16_t >, allocator< std::pair< account_name_type, uint16_t > > > beneficiaries;
+         bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > beneficiaries;
    };
 
 

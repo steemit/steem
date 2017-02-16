@@ -1596,19 +1596,17 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent( comment ) ) / STEEMIT_100_PERCENT ).to_uint64();
             share_type author_tokens = reward_tokens.to_uint64() - curation_tokens;
 
-            idump( (author_tokens) );
             curation_tokens = pay_curators( comment, curation_tokens );
             author_tokens += curation_tokens;
-            idump( (author_tokens) );
             share_type total_beneficiary = 0;
 
             claimed_reward = author_tokens + curation_tokens;
 
             for( auto& b : comment.beneficiaries )
             {
-               auto benefactor_tokens = ( author_tokens * b.second ) / STEEMIT_100_PERCENT;
-               auto vest_created = create_vesting( get_account( b.first ), benefactor_tokens, has_hardfork( STEEMIT_HARDFORK_0_17__659 ) );
-               push_virtual_operation( comment_benefactor_reward_operation( b.first, comment.author, to_string( comment.permlink ), vest_created ) );
+               auto benefactor_tokens = ( author_tokens * b.weight ) / STEEMIT_100_PERCENT;
+               auto vest_created = create_vesting( get_account( b.account ), benefactor_tokens, has_hardfork( STEEMIT_HARDFORK_0_17__659 ) );
+               push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), vest_created ) );
                author_tokens -= benefactor_tokens;
                total_beneficiary += benefactor_tokens;
             }

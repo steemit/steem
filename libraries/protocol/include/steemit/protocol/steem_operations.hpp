@@ -78,9 +78,21 @@ namespace steemit { namespace protocol {
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
    };
 
+   struct beneficiary_route_type
+   {
+      beneficiary_route_type() {}
+      beneficiary_route_type( const account_name_type& a, const uint16_t& w ) : account( a ), weight( w ){}
+
+      account_name_type account;
+      uint16_t          weight;
+
+      // For use by std::sort such that the route is sorted first by name (ascending)
+      bool operator < ( const beneficiary_route_type& o )const { return string_less()( account, o.account ); }
+   };
+
    struct comment_payout_beneficiaries
    {
-      vector< std::pair< account_name_type, uint16_t > > beneficiaries;
+      vector< beneficiary_route_type > beneficiaries;
 
       void validate()const;
    };
@@ -988,6 +1000,7 @@ FC_REFLECT( steemit::protocol::limit_order_cancel_operation, (owner)(orderid) )
 
 FC_REFLECT( steemit::protocol::delete_comment_operation, (author)(permlink) );
 
+FC_REFLECT( steemit::protocol::beneficiary_route_type, (account)(weight) )
 FC_REFLECT( steemit::protocol::comment_payout_beneficiaries, (beneficiaries) )
 FC_REFLECT_TYPENAME( steemit::protocol::comment_options_extension )
 FC_REFLECT( steemit::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )

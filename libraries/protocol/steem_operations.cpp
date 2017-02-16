@@ -113,15 +113,25 @@ namespace steemit { namespace protocol {
    {
       uint32_t sum = 0;
 
+      FC_ASSERT( beneficiaries.size(), "Must specify at least one beneficiary" );
       FC_ASSERT( beneficiaries.size() < 128, "Cannot specify more than 127 beneficiaries." ); // Require size serializtion fits in one byte.
 
-      for( auto& route : beneficiaries )
+      string_less str_cmp;
+
+      for( size_t i = 0; i < beneficiaries.size() - 1; i++ )
       {
-         validate_account_name( route.first );
-         FC_ASSERT( route.second <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
-         sum += route.second;
+         validate_account_name( beneficiaries[i].account );
+         FC_ASSERT( beneficiaries[i].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+         sum += beneficiaries[i].weight;
          FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
+         FC_ASSERT( beneficiaries[i] < beneficiaries[i + 1], "Benficiaries must be specified in sorted order (account ascending)" );
       }
+
+      size_t i = beneficiaries.size() - 1;
+      validate_account_name( beneficiaries[i].account );
+      FC_ASSERT( beneficiaries[i].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+      sum += beneficiaries[i].weight;
+      FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
    }
 
    void comment_options_operation::validate()const
