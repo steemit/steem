@@ -145,8 +145,8 @@ namespace steemit { namespace chain {
          const witness_schedule_object&         get_witness_schedule_object()const;
          const hardfork_property_object&        get_hardfork_property_object()const;
 
-
-         const time_point_sec   calculate_discussion_payout_time( const comment_object& comment )const;
+         const time_point_sec                   calculate_discussion_payout_time( const comment_object& comment )const;
+         const reward_fund_object&              get_reward_fund( const comment_object& c )const;
 
          /**
           *  Deducts fee from the account and the share supply
@@ -318,8 +318,8 @@ namespace steemit { namespace chain {
           */
          void clear_witness_votes( const account_object& a );
          void process_vesting_withdrawals();
-         share_type pay_curators( const comment_object& c, share_type max_rewards );
-         void cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment );
+         share_type pay_curators( const comment_object& c, share_type& max_rewards );
+         share_type cashout_comment_helper( util::comment_reward_context& ctx, const comment_object& comment );
          void process_comment_cashout();
          void process_funds();
          void process_conversions();
@@ -335,7 +335,9 @@ namespace steemit { namespace chain {
          asset get_curation_reward()const;
          asset get_pow_reward()const;
 
-         uint16_t get_curation_rewards_percent() const;
+         uint16_t get_curation_rewards_percent( const comment_object& c ) const;
+
+         share_type pay_reward_funds( share_type reward );
 
          void  pay_liquidity_reward();
 
