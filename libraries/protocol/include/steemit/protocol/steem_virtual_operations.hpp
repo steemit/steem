@@ -145,7 +145,6 @@ namespace steemit { namespace protocol {
       string            permlink;
    };
 
-<<<<<<< d8834439a092347b51bcb5bc0bdfe5f6e63a3d46
    struct return_vesting_delegation_operation : public virtual_operation
    {
       return_vesting_delegation_operation() {}

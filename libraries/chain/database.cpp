@@ -1533,7 +1533,6 @@ share_type database::pay_curators( const comment_object& c, share_type& max_rewa
 
       if( !c.allow_curation_rewards )
       {
-         ilog( "" );
          unclaimed_rewards = 0;
          max_rewards = 0;
       }
@@ -1596,10 +1595,8 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             share_type curation_tokens = ( ( reward_tokens * get_curation_rewards_percent( comment ) ) / STEEMIT_100_PERCENT ).to_uint64();
             share_type author_tokens = reward_tokens.to_uint64() - curation_tokens;
 
-            curation_tokens = pay_curators( comment, curation_tokens );
-            author_tokens += curation_tokens;
+            author_tokens += pay_curators( comment, curation_tokens );
             share_type total_beneficiary = 0;
-
             claimed_reward = author_tokens + curation_tokens;
 
             for( auto& b : comment.beneficiaries )
