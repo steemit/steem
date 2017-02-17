@@ -2700,9 +2700,8 @@ void database::_apply_block( const signed_block& next_block )
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_orders();
-   update_witness_schedule(*this);
    clear_expired_delegations();
-   update_witness_schedule();
+   update_witness_schedule(*this);
 
    update_median_feed();
    update_virtual_supply();
