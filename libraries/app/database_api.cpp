@@ -1312,10 +1312,11 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                                                   uint32_t truncate_body,
                                                   const std::function< bool(const comment_api_obj& ) >& filter,
                                                   const std::function< bool(const comment_api_obj& ) >& exit,
-                                                  const std::function< bool(const tags::tag_object& ) >& tag_exit
+                                                  const std::function< bool(const tags::tag_object& ) >& tag_exit,
+                                                  bool ignore_parent
                                                   )const
 {
-//   idump((query));
+   // idump((query));
    vector<discussion> result;
 
    const auto& cidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
@@ -1348,7 +1349,7 @@ vector<discussion> database_api::get_discussions( const discussion_query& query,
                ("count", count)("itr_count", itr_count)("filter_count", filter_count)("exc_count", exc_count) );
          break;
       }
-      if( tidx_itr->tag != tag || tidx_itr->parent != parent )
+      if( tidx_itr->tag != tag || ( !ignore_parent && tidx_itr->parent != parent ) )
          break;
       try
       {
@@ -1390,7 +1391,7 @@ comment_id_type database_api::get_parent( const discussion_query& query )const
    });
 }
 
-vector<discussion> database_api::get_discussions_by_trending( const discussion_query& query )const
+vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const
 {
    return my->_db.with_read_lock( [&]()
    {
@@ -1398,10 +1399,10 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
       auto tag = fc::to_lower( query.tag );
       auto parent = get_parent( query );
 
-      const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
-      auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, first_payout, parent, fc::uint128_t::max_value() )  );
+      const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_net_rshares>();
+      auto tidx_itr = tidx.lower_bound( tag );
 
-      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0 || c.mode != first_payout; } );
+      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
    });
 }
 
@@ -1420,10 +1421,29 @@ vector<discussion> database_api::get_discussions_by_promoted( const discussion_q
    });
 }
 
+vector<discussion> database_api::get_discussions_by_trending( const discussion_query& query )const
+{
+
+   return my->_db.with_read_lock( [&]()
+   {
+      query.validate();
+      auto tag = fc::to_lower( query.tag );
+      auto parent = get_parent( query );
+
+      const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_trending>();
+      auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, std::numeric_limits<double>::max() )  );
+
+      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ) { return c.net_rshares <= 0; } );
+   });
+}
+
 vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const
 {
    return my->_db.with_read_lock( [&]()
    {
+      if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
+         return vector< discussion >();
+
       query.validate();
       auto tag = fc::to_lower( query.tag );
       auto parent = get_parent( query );
@@ -1479,15 +1499,6 @@ vector<discussion> database_api::get_discussions_by_cashout( const discussion_qu
       auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, fc::time_point::now() - fc::minutes(60) ) );
 
       return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0; } );
-   });
-}
-
-vector<discussion> database_api::get_discussions_by_payout( const discussion_query& query )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      vector<discussion> result;
-      return result;
    });
 }
 
@@ -2093,6 +2104,22 @@ state database_api::get_state( string path )const
             _state.witnesses[w.owner] = w;
          }
          _state.pow_queue = get_miner_queue();
+      }
+      else if( part[0] == "payout"  )
+      {
+         discussion_query q;
+         q.tag = tag;
+         q.limit = 20;
+         q.truncate_body = 1024;
+         auto trending_disc = get_discussions_by_payout( q );
+
+         auto& didx = _state.discussion_idx[tag];
+         for( const auto& d : trending_disc ) {
+            auto key = d.author +"/" + d.permlink;
+            didx.payout.push_back( key );
+            if( d.author.size() ) accounts.insert(d.author);
+            _state.content[key] = std::move(d);
+         }
       }
       else if( part[0] == "trending"  )
       {
