@@ -78,6 +78,30 @@ namespace steemit { namespace protocol {
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
    };
 
+   struct beneficiary_route_type
+   {
+      beneficiary_route_type() {}
+      beneficiary_route_type( const account_name_type& a, const uint16_t& w ) : account( a ), weight( w ){}
+
+      account_name_type account;
+      uint16_t          weight;
+
+      // For use by std::sort such that the route is sorted first by name (ascending)
+      bool operator < ( const beneficiary_route_type& o )const { return string_less()( account, o.account ); }
+   };
+
+   struct comment_payout_beneficiaries
+   {
+      vector< beneficiary_route_type > beneficiaries;
+
+      void validate()const;
+   };
+
+   typedef static_variant<
+            comment_payout_beneficiaries
+           > comment_options_extension;
+
+   typedef flat_set< comment_options_extension > comment_options_extensions_type;
 
    /**
     *  Authors of posts may not want all of the benefits that come from creating a post. This
@@ -96,7 +120,7 @@ namespace steemit { namespace protocol {
       uint16_t          percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
       bool              allow_votes            = true;      /// allows a post to receive votes;
       bool              allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
-      extensions_type   extensions;
+      comment_options_extensions_type extensions;
 
       void validate()const;
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
@@ -975,6 +999,10 @@ FC_REFLECT( steemit::protocol::limit_order_create2_operation, (owner)(orderid)(a
 FC_REFLECT( steemit::protocol::limit_order_cancel_operation, (owner)(orderid) )
 
 FC_REFLECT( steemit::protocol::delete_comment_operation, (author)(permlink) );
+
+FC_REFLECT( steemit::protocol::beneficiary_route_type, (account)(weight) )
+FC_REFLECT( steemit::protocol::comment_payout_beneficiaries, (beneficiaries) )
+FC_REFLECT_TYPENAME( steemit::protocol::comment_options_extension )
 FC_REFLECT( steemit::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
 FC_REFLECT( steemit::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );

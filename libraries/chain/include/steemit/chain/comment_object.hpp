@@ -11,6 +11,8 @@
 
 namespace steemit { namespace chain {
 
+   using protocol::beneficiary_route_type;
+
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
@@ -107,7 +109,7 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a )
+            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a ), beneficiaries( a )
          {
             c( *this );
          }
@@ -154,6 +156,7 @@ namespace steemit { namespace chain {
          /** tracks the total payout this comment has received over time, measured in SBD */
          asset             total_payout_value = asset(0, SBD_SYMBOL);
          asset             curator_payout_value = asset(0, SBD_SYMBOL);
+         asset             beneficiary_payout_value = asset( 0, SBD_SYMBOL );
 
          share_type        author_rewards = 0;
 
@@ -168,6 +171,8 @@ namespace steemit { namespace chain {
          bool              allow_replies = true;      /// allows a post to disable replies.
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;
+
+         bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > beneficiaries;
    };
 
 
@@ -321,8 +326,9 @@ FC_REFLECT( steemit::chain::comment_object,
              (depth)(children)(children_rshares2)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
+             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
+             (beneficiaries)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
 

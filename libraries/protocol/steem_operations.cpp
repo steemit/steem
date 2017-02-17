@@ -97,6 +97,42 @@ namespace steemit { namespace protocol {
       }
    }
 
+   struct comment_options_extension_validate_visitor
+   {
+      comment_options_extension_validate_visitor() {}
+
+      typedef void result_type;
+
+      void operator()( const comment_payout_beneficiaries& cpb ) const
+      {
+         cpb.validate();
+      }
+   };
+
+   void comment_payout_beneficiaries::validate()const
+   {
+      uint32_t sum = 0;
+
+      FC_ASSERT( beneficiaries.size(), "Must specify at least one beneficiary" );
+      FC_ASSERT( beneficiaries.size() < 128, "Cannot specify more than 127 beneficiaries." ); // Require size serializtion fits in one byte.
+
+      string_less str_cmp;
+
+      validate_account_name( beneficiaries[0].account );
+      FC_ASSERT( beneficiaries[0].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+      sum += beneficiaries[0].weight;
+      FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
+
+      for( size_t i = 1; i < beneficiaries.size(); i++ )
+      {
+         validate_account_name( beneficiaries[i].account );
+         FC_ASSERT( beneficiaries[i].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+         sum += beneficiaries[i].weight;
+         FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
+         FC_ASSERT( beneficiaries[i - 1] < beneficiaries[i], "Benficiaries must be specified in sorted order (account ascending)" );
+      }
+   }
+
    void comment_options_operation::validate()const
    {
       validate_account_name( author );
@@ -104,6 +140,8 @@ namespace steemit { namespace protocol {
       FC_ASSERT( max_accepted_payout.symbol == SBD_SYMBOL, "Max accepted payout must be in SBD" );
       FC_ASSERT( max_accepted_payout.amount.value >= 0, "Cannot accept less than 0 payout" );
       validate_permlink( permlink );
+      for( auto& e : extensions )
+         e.visit( comment_options_extension_validate_visitor() );
    }
 
    void delete_comment_operation::validate()const

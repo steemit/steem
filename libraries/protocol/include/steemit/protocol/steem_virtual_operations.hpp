@@ -154,6 +154,18 @@ namespace steemit { namespace protocol {
       asset             vesting_shares;
    };
 
+   struct comment_benefactor_reward_operation : public virtual_operation
+   {
+      comment_benefactor_reward_operation() {}
+      comment_benefactor_reward_operation( const account_name_type& b, const account_name_type& a, const string& p, const asset& r )
+         : benefactor( b ), author( a ), permlink( p ), reward( r ) {}
+
+      account_name_type benefactor;
+      account_name_type author;
+      string            permlink;
+      asset             reward;
+   };
+
 } } //steemit::protocol
 
 FC_REFLECT( steemit::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
@@ -169,3 +181,4 @@ FC_REFLECT( steemit::protocol::fill_transfer_from_savings_operation, (from)(to)(
 FC_REFLECT( steemit::protocol::hardfork_operation, (hardfork_id) )
 FC_REFLECT( steemit::protocol::comment_payout_update_operation, (author)(permlink) )
 FC_REFLECT( steemit::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
+FC_REFLECT( steemit::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
