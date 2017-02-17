@@ -466,6 +466,18 @@ class wallet_api
        */
       annotated_signed_transaction update_account_memo_key( string account_name, public_key_type key, bool broadcast );
 
+
+      /**
+       * This method delegates VESTS from one account to another.
+       *
+       * @param delegator The name of the account delegating VESTS
+       * @param delegatee The name of the account receiving VESTS
+       * @param vesting_shares The amount of VESTS to delegate
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+       annotated_signed_transaction delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast );
+
+
       /**
        *  This method is used to convert a JSON transaction to its transaction ID.
        */
@@ -981,6 +993,7 @@ FC_API( steemit::wallet::wallet_api,
         (update_account_auth_threshold)
         (update_account_meta)
         (update_account_memo_key)
+        (delegate_vesting_shares)
         (update_witness)
         (set_voting_proxy)
         (vote_for_witness)

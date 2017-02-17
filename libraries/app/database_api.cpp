@@ -1918,6 +1918,47 @@ vector< savings_withdraw_api_obj > database_api::get_savings_withdraw_to( string
    });
 }
 
+vector< vesting_delegation_api_obj > database_api::get_vesting_delegations( string account, string from, uint32_t limit )const
+{
+   FC_ASSERT( limit <= 1000 );
+
+   return my->_db.with_read_lock( [&]()
+   {
+      vector< vesting_delegation_api_obj > result;
+      result.reserve( limit );
+
+      const auto& delegation_idx = my->_db.get_index< vesting_delegation_index, by_delegation >();
+      auto itr = delegation_idx.lower_bound( boost::make_tuple( account, from ) );
+      while( result.size() < limit && itr != delegation_idx.end() && itr->delegator == account )
+      {
+         result.push_back( *itr );
+         ++itr;
+      }
+
+      return result;
+   });
+}
+
+vector< vesting_delegation_expiration_api_obj > database_api::get_expiring_vesting_delegations( string account, time_point_sec from, uint32_t limit )const
+{
+   FC_ASSERT( limit <= 1000 );
+
+   return my->_db.with_read_lock( [&]()
+   {
+      vector< vesting_delegation_expiration_api_obj > result;
+      result.reserve( limit );
+
+      const auto& exp_idx = my->_db.get_index< vesting_delegation_expiration_index, by_account_expiration >();
+      auto itr = exp_idx.lower_bound( boost::make_tuple( account, from ) );
+      while( result.size() < limit && itr != exp_idx.end() && itr->delegator == account )
+      {
+         result.push_back( *itr );
+         ++itr;
+      }
+
+      return result;
+   });
+}
 
 state database_api::get_state( string path )const
 {

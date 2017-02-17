@@ -1632,6 +1632,27 @@ annotated_signed_transaction wallet_api::update_account_memo_key( string account
    return my->sign_transaction( tx, broadcast );
 }
 
+annotated_signed_transaction wallet_api::delegate_vesting_shares( string delegator, string delegatee, asset vesting_shares, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   auto accounts = my->_remote_db->get_accounts( { delegator, delegatee } );
+   FC_ASSERT( accounts.size() == 2 , "One or more of the accounts specified do not exist." );
+   FC_ASSERT( delegator == accounts[0].name, "Delegator account is not right?" );
+   FC_ASSERT( delegatee == accounts[1].name, "Delegator account is not right?" );
+
+   delegate_vesting_shares_operation op;
+   op.delegator = delegator;
+   op.delegatee = delegatee;
+   op.vesting_shares = vesting_shares;
+
+   signed_transaction tx;
+   tx.operations.push_back( op );
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
 /**
  *  This method will genrate new owner, active, and memo keys for the new account which
  *  will be controlable by this wallet.
