@@ -9,6 +9,7 @@ namespace steemit{ namespace chain {
 using namespace steemit::protocol;
 
 DEFINE_EVALUATOR( account_create )
+DEFINE_EVALUATOR( account_create_with_delegation )
 DEFINE_EVALUATOR( account_update )
 DEFINE_EVALUATOR( transfer )
 DEFINE_EVALUATOR( transfer_to_vesting )
@@ -48,5 +49,6 @@ DEFINE_EVALUATOR( decline_voting_rights )
 DEFINE_EVALUATOR( reset_account )
 DEFINE_EVALUATOR( set_reset_account )
 DEFINE_EVALUATOR( claim_reward_balance )
+DEFINE_EVALUATOR( delegate_vesting_shares )
 
 } } // steemit::chain

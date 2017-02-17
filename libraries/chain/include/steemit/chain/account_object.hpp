@@ -94,6 +94,9 @@ namespace steemit { namespace chain {
          share_type        posting_rewards = 0;
 
          asset             vesting_shares = asset( 0, VESTS_SYMBOL ); ///< total vesting shares held by this account, controls its voting power
+         asset             delegated_vesting_shares = asset( 0, VESTS_SYMBOL );
+         asset             received_vesting_shares = asset( 0, VESTS_SYMBOL );
+
          asset             vesting_withdraw_rate = asset( 0, VESTS_SYMBOL ); ///< at the time this is updated it can be at most vesting_shares/104
          time_point_sec    next_vesting_withdrawal = fc::time_point_sec::maximum(); ///< after every withdrawal this is incremented by 1 week
          share_type        withdrawn = 0; /// Track how many shares have been withdrawn
@@ -117,6 +120,8 @@ namespace steemit { namespace chain {
                                     proxied_vsf_votes.end(),
                                     share_type() );
          }
+
+         asset effective_vesting_shares()const { return vesting_shares - delegated_vesting_shares + received_vesting_shares; }
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
@@ -160,6 +165,41 @@ namespace steemit { namespace chain {
          share_type        average_bandwidth;
          share_type        lifetime_bandwidth;
          time_point_sec    last_bandwidth_update;
+   };
+
+   class vesting_delegation_object : public object< vesting_delegation_object_type, vesting_delegation_object >
+   {
+      public:
+         template< typename Constructor, typename Allocator >
+         vesting_delegation_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
+
+         vesting_delegation_object() {}
+
+         id_type           id;
+         account_name_type delegator;
+         account_name_type delegatee;
+         asset             vesting_shares;
+         time_point_sec    min_delegation_time;
+   };
+
+   class vesting_delegation_expiration_object : public object< vesting_delegation_expiration_object_type, vesting_delegation_expiration_object >
+   {
+      public:
+         template< typename Constructor, typename Allocator >
+         vesting_delegation_expiration_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
+
+         vesting_delegation_expiration_object() {}
+
+         id_type           id;
+         account_name_type delegator;
+         asset             vesting_shares;
+         time_point_sec    expiration;
    };
 
    class owner_authority_history_object : public object< owner_authority_history_object_type, owner_authority_history_object >
@@ -358,6 +398,51 @@ namespace steemit { namespace chain {
       allocator< account_bandwidth_object >
    > account_bandwidth_index;
 
+   struct by_delegation;
+
+   typedef multi_index_container <
+      vesting_delegation_object,
+      indexed_by <
+         ordered_unique< tag< by_id >,
+            member< vesting_delegation_object, vesting_delegation_id_type, &vesting_delegation_object::id > >,
+         ordered_unique< tag< by_delegation >,
+            composite_key< vesting_delegation_object,
+               member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator >,
+               member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee >
+            >,
+            composite_key_compare< protocol::string_less, protocol::string_less >
+         >
+      >,
+      allocator< vesting_delegation_object >
+   > vesting_delegation_index;
+
+   struct by_expiration;
+   struct by_account_expiration;
+
+   typedef multi_index_container <
+      vesting_delegation_expiration_object,
+      indexed_by <
+         ordered_unique< tag< by_id >,
+            member< vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id > >,
+         ordered_unique< tag< by_expiration >,
+            composite_key< vesting_delegation_expiration_object,
+               member< vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration >,
+               member< vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id >
+            >,
+            composite_key_compare< std::less< time_point_sec >, std::less< vesting_delegation_expiration_id_type > >
+         >,
+         ordered_unique< tag< by_account_expiration >,
+            composite_key< vesting_delegation_expiration_object,
+               member< vesting_delegation_expiration_object, account_name_type, &vesting_delegation_expiration_object::delegator >,
+               member< vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration >,
+               member< vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id >
+            >,
+            composite_key_compare< std::less< account_name_type >, std::less< time_point_sec >, std::less< vesting_delegation_expiration_id_type > >
+         >
+      >,
+      allocator< vesting_delegation_expiration_object >
+   > vesting_delegation_expiration_index;
+
    struct by_expiration;
 
    typedef multi_index_container <
@@ -419,7 +504,8 @@ FC_REFLECT( steemit::chain::account_object,
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
              (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
              (reward_steem_balance)(reward_sbd_balance)(reward_vesting_balance)(reward_vesting_steem)
-             (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
+             (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)
+             (vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
@@ -435,6 +521,14 @@ CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_authority_object, steemit::cha
 FC_REFLECT( steemit::chain::account_bandwidth_object,
             (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_bandwidth_object, steemit::chain::account_bandwidth_index )
+
+FC_REFLECT( steemit::chain::vesting_delegation_object,
+            (id)(delegator)(delegatee)(vesting_shares)(min_delegation_time) )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::vesting_delegation_object, steemit::chain::vesting_delegation_index )
+
+FC_REFLECT( steemit::chain::vesting_delegation_expiration_object,
+            (id)(delegator)(vesting_shares)(expiration) )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::vesting_delegation_expiration_object, steemit::chain::vesting_delegation_expiration_index )
 
 FC_REFLECT( steemit::chain::owner_authority_history_object,
              (id)(account)(previous_owner_authority)(last_valid_time)

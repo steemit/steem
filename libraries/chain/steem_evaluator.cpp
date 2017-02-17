@@ -117,7 +117,15 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.", ( "creator.balance", creator.balance )( "required", o.fee ) );
 
-   if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )  {
+   if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ) )
+   {
+      const witness_schedule_object& wso = _db.get_witness_schedule_object();
+      FC_ASSERT( o.fee >= wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ), "Insufficient Fee: ${f} required, ${p} provided.",
+                 ("f", wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ) )
+                 ("p", o.fee) );
+   }
+   else if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+   {
       const witness_schedule_object& wso = _db.get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee)
@@ -172,6 +180,97 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
       auth.active = o.active;
       auth.posting = o.posting;
       auth.last_owner_update = fc::time_point_sec::min();
+   });
+
+   if( o.fee.amount > 0 )
+      _db.create_vesting( new_account, o.fee );
+}
+
+void account_create_with_delegation_evaluator::do_apply( const account_create_with_delegation_operation& o )
+{
+   database& _db = db();
+   FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ), "Account creation with delegation is not enabled until hardfork 17" );
+
+   const auto& creator = _db.get_account( o.creator );
+   const auto& props = _db.get_dynamic_global_properties();
+   const witness_schedule_object& wso = _db.get_witness_schedule_object();
+
+   FC_ASSERT( creator.balance >= o.fee, "Insufficient balance to create account.",
+               ( "creator.balance", creator.balance )
+               ( "required", o.fee ) );
+
+   FC_ASSERT( creator.vesting_shares - creator.delegated_vesting_shares >= o.delegation, "Insufficient vesting shares to delegate to new account.",
+               ( "creator.vesting_shares", creator.vesting_shares )
+               ( "creator.delegated_vesting_shares", creator.delegated_vesting_shares )( "required", o.delegation ) );
+
+   auto target_delegation = asset( wso.median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER * STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO, STEEM_SYMBOL ) * props.get_vesting_share_price();
+
+   auto current_delegation = asset( o.fee.amount * STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO, STEEM_SYMBOL ) * props.get_vesting_share_price() + o.delegation;
+
+   FC_ASSERT( current_delegation >= target_delegation, "Inssufficient Delegation ${f} required, ${p} provided.",
+               ("f", target_delegation )
+               ( "p", current_delegation )
+               ( "account_creation_fee", wso.median_props.account_creation_fee )
+               ( "o.fee", o.fee )
+               ( "o.delegation", o.delegation ) );
+
+   FC_ASSERT( o.fee >= wso.median_props.account_creation_fee, "Insufficient Fee: ${f} required, ${p} provided.",
+               ("f", wso.median_props.account_creation_fee)
+               ("p", o.fee) );
+
+   for( auto& a : o.owner.account_auths )
+   {
+      _db.get_account( a.first );
+   }
+
+   for( auto& a : o.active.account_auths )
+   {
+      _db.get_account( a.first );
+   }
+
+   for( auto& a : o.posting.account_auths )
+   {
+      _db.get_account( a.first );
+   }
+
+   _db.modify( creator, [&]( account_object& c )
+   {
+      c.balance -= o.fee;
+      c.delegated_vesting_shares += o.delegation;
+   });
+
+   const auto& new_account = _db.create< account_object >( [&]( account_object& acc )
+   {
+      acc.name = o.new_account_name;
+      acc.memo_key = o.memo_key;
+      acc.created = props.time;
+      acc.last_vote_time = props.time;
+      acc.mined = false;
+
+      acc.recovery_account = o.creator;
+
+      acc.received_vesting_shares += o.delegation;
+
+      #ifndef IS_LOW_MEM
+         from_string( acc.json_metadata, o.json_metadata );
+      #endif
+   });
+
+   _db.create< account_authority_object >( [&]( account_authority_object& auth )
+   {
+      auth.account = o.new_account_name;
+      auth.owner = o.owner;
+      auth.active = o.active;
+      auth.posting = o.posting;
+      auth.last_owner_update = fc::time_point_sec::min();
+   });
+
+   _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& vdo )
+   {
+      vdo.delegator = o.creator;
+      vdo.delegatee = o.new_account_name;
+      vdo.vesting_shares = o.delegation;
+      vdo.min_delegation_time = _db.head_block_time() + STEEMIT_CREATE_ACCOUNT_DELEGATION_TIME;
    });
 
    if( o.fee.amount > 0 )
@@ -811,7 +910,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    const auto& account = _db.get_account( o.account );
 
    FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
-   FC_ASSERT( account.vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
+   FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
    if( !account.mined && _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
    {
@@ -1110,7 +1209,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    }
    FC_ASSERT( used_power <= current_power, "Account does not have enough power to vote." );
 
-   int64_t abs_rshares    = ((uint128_t(voter.vesting_shares.amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
+   int64_t abs_rshares    = ((uint128_t(voter.effective_vesting_shares().amount.value) * used_power) / (STEEMIT_100_PERCENT)).to_uint64();
    if( !_db.has_hardfork( STEEMIT_HARDFORK_0_14__259 ) && abs_rshares == 0 ) abs_rshares = 1;
 
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
@@ -2085,6 +2184,107 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    });
 
    _db.adjust_proxied_witness_votes( acnt, op.reward_vests.amount );
+}
+
+void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
+{
+   database& _db = db();
+   FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ), "delegate_vesting_shares_operation is not enabled until HF 17" ); //TODO: Delete after hardfork
+
+   const auto& delegator = _db.get_account( op.delegator );
+   const auto& delegatee = _db.get_account( op.delegatee );
+   auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
+
+   auto available_shares = delegator.vesting_shares - delegator.delegated_vesting_shares - asset( delegator.to_withdraw - delegator.withdrawn, VESTS_SYMBOL );
+
+   const auto& wso = _db.get_witness_schedule_object();
+   const auto& gpo = _db.get_dynamic_global_properties();
+   auto min_delegation = asset( wso.median_props.account_creation_fee.amount * 10, STEEM_SYMBOL ) * gpo.get_vesting_share_price();
+   auto min_update = wso.median_props.account_creation_fee * gpo.get_vesting_share_price();
+
+   // If delegation doesn't exist, create it
+   if( delegation == nullptr )
+   {
+      FC_ASSERT( available_shares >= op.vesting_shares, "Account does not have enough vesting shares to delegate." );
+      FC_ASSERT( op.vesting_shares >= min_delegation, "Account must delegate a minimum of ${v}", ("v", min_delegation) );
+
+      _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& obj )
+      {
+         obj.delegator = op.delegator;
+         obj.delegatee = op.delegatee;
+         obj.vesting_shares = op.vesting_shares;
+         obj.min_delegation_time = _db.head_block_time();
+      });
+
+      _db.modify( delegator, [&]( account_object& a )
+      {
+         a.delegated_vesting_shares += op.vesting_shares;
+      });
+
+      _db.modify( delegatee, [&]( account_object& a )
+      {
+         a.received_vesting_shares += op.vesting_shares;
+      });
+   }
+   // Else if the delegation is increasing
+   else if( op.vesting_shares - delegation->vesting_shares >= min_update )
+   {
+      FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
+
+      auto delta = op.vesting_shares - delegation->vesting_shares;
+
+      _db.modify( delegator, [&]( account_object& a )
+      {
+         a.delegated_vesting_shares += delta;
+      });
+
+      _db.modify( delegatee, [&]( account_object& a )
+      {
+         a.received_vesting_shares += delta;
+      });
+
+      _db.modify( *delegation, [&]( vesting_delegation_object& obj )
+      {
+         obj.vesting_shares = op.vesting_shares;
+      });
+   }
+   // Else the delegation is decreasing
+   else if( delegation->vesting_shares - op.vesting_shares >= min_update || delegation->vesting_shares == op.vesting_shares )
+   {
+      FC_ASSERT( delegation->min_delegation_time <= _db.head_block_time(), "Delegation cannot be removed yet." );
+      if( delegation->vesting_shares != op.vesting_shares )
+         FC_ASSERT( delegation->vesting_shares - op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+
+      auto delta = delegation->vesting_shares - op.vesting_shares;
+
+      _db.create< vesting_delegation_expiration_object >( [&]( vesting_delegation_expiration_object& obj )
+      {
+         obj.delegator = op.delegator;
+         obj.vesting_shares = delta;
+         obj.expiration = _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS; // TODO: Replace with config constant with payout change branch
+      });
+
+      _db.modify( delegatee, [&]( account_object& a )
+      {
+         a.received_vesting_shares -= delta;
+      });
+
+      if( op.vesting_shares.amount > 0 )
+      {
+         _db.modify( *delegation, [&]( vesting_delegation_object& obj )
+         {
+            obj.vesting_shares = op.vesting_shares;
+         });
+      }
+      else
+      {
+         _db.remove( *delegation );
+      }
+   }
+   else
+   {
+      FC_ASSERT( false, "Delegation must change by at least ${v}", ("v", min_update) );
+   }
 }
 
 } } // steemit::chain

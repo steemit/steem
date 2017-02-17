@@ -24,6 +24,25 @@ namespace steemit { namespace protocol {
    };
 
 
+   struct account_create_with_delegation_operation : public base_operation
+   {
+      asset             fee;
+      asset             delegation;
+      account_name_type creator;
+      account_name_type new_account_name;
+      authority         owner;
+      authority         active;
+      authority         posting;
+      public_key_type   memo_key;
+      string            json_metadata;
+
+      extensions_type   extensions;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(creator); }
+   };
+
+
    struct account_update_operation : public base_operation
    {
       account_name_type             account;
@@ -866,6 +885,25 @@ namespace steemit { namespace protocol {
       void get_required_posting_authorities( flat_set< account_name_type >& a )const{ a.insert( account ); }
       void validate() const;
    };
+
+   /**
+    * Delegate vesting shares from one account to the other. The vesting shares are still owned
+    * by the original account, but content voting rights and bandwidth allocation are transferred
+    * to the receiving account. This sets the delegation to `vesting_shares`, increasing it or
+    * decreasing it as needed. (i.e. a delegation of 0 removes the delegation)
+    *
+    * When a delegation is removed the shares are placed in limbo for a week to prevent a satoshi
+    * of VESTS from voting on the same content twice.
+    */
+   struct delegate_vesting_shares_operation : public base_operation
+   {
+      account_name_type delegator;        ///< The account delegating vesting shares
+      account_name_type delegatee;        ///< The account receiving vesting shares
+      asset             vesting_shares;   ///< The amount of vesting shares delegated
+
+      void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( delegator ); }
+      void validate() const;
+   };
 } } // steemit::protocol
 
 
@@ -899,6 +937,18 @@ FC_REFLECT( steemit::protocol::account_create_operation,
             (posting)
             (memo_key)
             (json_metadata) )
+
+FC_REFLECT( steemit::protocol::account_create_with_delegation_operation,
+            (fee)
+            (delegation)
+            (creator)
+            (new_account_name)
+            (owner)
+            (active)
+            (posting)
+            (memo_key)
+            (json_metadata)
+            (extensions) )
 
 FC_REFLECT( steemit::protocol::account_update_operation,
             (account)
@@ -938,3 +988,4 @@ FC_REFLECT( steemit::protocol::recover_account_operation, (account_to_recover)(n
 FC_REFLECT( steemit::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
 FC_REFLECT( steemit::protocol::decline_voting_rights_operation, (account)(decline) );
 FC_REFLECT( steemit::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
+FC_REFLECT( steemit::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );

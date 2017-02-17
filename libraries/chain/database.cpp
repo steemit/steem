@@ -548,7 +548,7 @@ bool database::update_account_bandwidth( const account_object& a, uint32_t trx_s
          b.last_bandwidth_update = head_block_time();
       });
 
-      fc::uint128 account_vshares( a.vesting_shares.amount.value );
+      fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
       fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
       fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
       fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
@@ -2272,6 +2272,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< reset_account_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< set_reset_account_evaluator              >();
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
+   _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
+   _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
 }
 
 void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
@@ -2318,6 +2320,8 @@ void database::initialize_indexes()
    add_core_index< savings_withdraw_index                  >(*this);
    add_core_index< decline_voting_rights_request_index     >(*this);
    add_core_index< reward_fund_index                       >(*this);
+   add_core_index< vesting_delegation_index                >(*this);
+   add_core_index< vesting_delegation_expiration_index     >(*this);
 
    _plugin_index_signal();
 }
@@ -2696,6 +2700,7 @@ void database::_apply_block( const signed_block& next_block )
    create_block_summary(next_block);
    clear_expired_transactions();
    clear_expired_orders();
+   clear_expired_delegations();
    update_witness_schedule(*this);
 
    update_median_feed();
@@ -3397,6 +3402,25 @@ void database::clear_expired_orders()
    {
       cancel_order( *itr );
       itr = orders_by_exp.begin();
+   }
+}
+
+void database::clear_expired_delegations()
+{
+   auto now = head_block_time();
+   const auto& delegations_by_exp = get_index< vesting_delegation_expiration_index, by_expiration >();
+   auto itr = delegations_by_exp.begin();
+   while( itr != delegations_by_exp.end() && itr->expiration < now )
+   {
+      modify( get_account( itr->delegator ), [&]( account_object& a )
+      {
+         a.delegated_vesting_shares -= itr->vesting_shares;
+      });
+
+      push_virtual_operation( return_vesting_delegation_operation( itr->delegator, itr->vesting_shares ) );
+
+      remove( *itr );
+      itr = delegations_by_exp.begin();
    }
 }
 
