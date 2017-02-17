@@ -910,7 +910,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
    const auto& account = _db.get_account( o.account );
 
    FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
-   FC_ASSERT( account.vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
+   FC_ASSERT( account.vesting_shares - account.delegated_vesting_shares >= o.vesting_shares, "Account does not have sufficient Steem Power for withdraw." );
 
    if( !account.mined && _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
    {
@@ -2261,12 +2261,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          obj.delegator = op.delegator;
          obj.vesting_shares = delta;
-         obj.expiration = _db.head_block_time() + fc::days( 7 ); // TODO: Replace with config constant with payout change branch
-      });
-
-      _db.modify( delegator, [&]( account_object& a )
-      {
-         a.delegated_vesting_shares -= delta;
+         obj.expiration = _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS; // TODO: Replace with config constant with payout change branch
       });
 
       _db.modify( delegatee, [&]( account_object& a )
@@ -2274,10 +2269,17 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          a.received_vesting_shares -= delta;
       });
 
-      _db.modify( *delegation, [&]( vesting_delegation_object& obj )
+      if( op.vesting_shares.amount > 0 )
       {
-         obj.vesting_shares = op.vesting_shares;
-      });
+         _db.modify( *delegation, [&]( vesting_delegation_object& obj )
+         {
+            obj.vesting_shares = op.vesting_shares;
+         });
+      }
+      else
+      {
+         _db.remove( *delegation );
+      }
    }
    else
    {

@@ -886,11 +886,20 @@ namespace steemit { namespace protocol {
       void validate() const;
    };
 
+   /**
+    * Delegate vesting shares from one account to the other. The vesting shares are still owned
+    * by the original account, but content voting rights and bandwidth allocation are transferred
+    * to the receiving account. This sets the delegation to `vesting_shares`, increasing it or
+    * decreasing it as needed. (i.e. a delegation of 0 removes the delegation)
+    *
+    * When a delegation is removed the shares are placed in limbo for a week to prevent a satoshi
+    * of VESTS from voting on the same content twice.
+    */
    struct delegate_vesting_shares_operation : public base_operation
    {
-      account_name_type delegator;
-      account_name_type delegatee;
-      asset             vesting_shares;
+      account_name_type delegator;        ///< The account delegating vesting shares
+      account_name_type delegatee;        ///< The account receiving vesting shares
+      asset             vesting_shares;   ///< The amount of vesting shares delegated
 
       void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( delegator ); }
       void validate() const;
