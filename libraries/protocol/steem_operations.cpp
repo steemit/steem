@@ -118,20 +118,19 @@ namespace steemit { namespace protocol {
 
       string_less str_cmp;
 
-      for( size_t i = 0; i < beneficiaries.size() - 1; i++ )
+      validate_account_name( beneficiaries[0].account );
+      FC_ASSERT( beneficiaries[0].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
+      sum += beneficiaries[0].weight;
+      FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
+
+      for( size_t i = 1; i < beneficiaries.size(); i++ )
       {
          validate_account_name( beneficiaries[i].account );
          FC_ASSERT( beneficiaries[i].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
          sum += beneficiaries[i].weight;
          FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
-         FC_ASSERT( beneficiaries[i] < beneficiaries[i + 1], "Benficiaries must be specified in sorted order (account ascending)" );
+         FC_ASSERT( beneficiaries[i - 1] < beneficiaries[i], "Benficiaries must be specified in sorted order (account ascending)" );
       }
-
-      size_t i = beneficiaries.size() - 1;
-      validate_account_name( beneficiaries[i].account );
-      FC_ASSERT( beneficiaries[i].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );
-      sum += beneficiaries[i].weight;
-      FC_ASSERT( sum <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to a comment" ); // Have to check incrementally to avoid overflow
    }
 
    void comment_options_operation::validate()const
