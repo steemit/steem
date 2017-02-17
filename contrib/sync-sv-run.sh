@@ -3,7 +3,7 @@
 # if the writer node dies by itself, kill runsv causing the container to exit
 STEEMD_PID=`pgrep -f p2p-endpoint`
 if [[ ! $? -eq 0 ]]; then
-  echo ALERT! steemdsync has quit unexpectedly, starting a new instance..
+  echo NOTIFYALERT! steemdsync has quit unexpectedly, starting a new instance..
   RUN_SV_PID=`pgrep -f /etc/service/steemd`
   kill -9 $RUN_SV_PID
 fi
@@ -37,13 +37,13 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     echo steemdsync: uploading $FILE_NAME to $S3_UPLOAD_BUCKET
     aws s3 cp blockchain.tar.bz2 s3://$S3_UPLOAD_BUCKET/$FILE_NAME
     if [[ ! $? -eq 0 ]]; then
-    	echo ALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_UPLOAD_BUCKET
+    	echo NOTIFYALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_UPLOAD_BUCKET
     	exit 1
     fi
     echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
     aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
     if [[ ! $? -eq 0 ]]; then
-    	echo ALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
+    	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1
     fi
     # kill the container starting the process over again
