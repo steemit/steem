@@ -22,14 +22,19 @@
  * THE SOFTWARE.
  */
 #pragma once
+
 #include <memory>
 
-namespace graphene { namespace db { 
+namespace graphene {
+    namespace db {
 
-     class peer;
-     typedef std::shared_ptr<peer> peer_ptr;
+        class peer;
 
-     class peer_ram;
-     typedef std::shared_ptr<peer_ram> peer_ram_ptr;
+        typedef std::shared_ptr<peer> peer_ptr;
 
-}} // namespace graphene::db 
+        class peer_ram;
+
+        typedef std::shared_ptr<peer_ram> peer_ram_ptr;
+
+    }
+} // namespace graphene::db

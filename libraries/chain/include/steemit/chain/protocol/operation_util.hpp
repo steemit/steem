@@ -14,7 +14,7 @@
 // Place DECLARE_OPERATION_TYPE in a .hpp file to declare
 // functions related to your operation type
 //
-#define DECLARE_OPERATION_TYPE( OperationType )                       \
+#define DECLARE_OPERATION_TYPE(OperationType)                       \
 namespace fc {                                                        \
                                                                       \
 void to_variant( const OperationType&, fc::variant& );                \

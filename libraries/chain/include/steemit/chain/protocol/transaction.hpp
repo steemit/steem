@@ -1,122 +1,135 @@
 #pragma once
+
 #include <steemit/chain/protocol/operations.hpp>
 #include <steemit/chain/protocol/sign_state.hpp>
 #include <steemit/chain/protocol/types.hpp>
 
 #include <numeric>
 
-namespace steemit { namespace chain {
+namespace steemit {
+    namespace chain {
 
-   struct transaction
-   {
-      uint16_t           ref_block_num    = 0;
-      uint32_t           ref_block_prefix = 0;
+        struct transaction {
+            uint16_t ref_block_num = 0;
+            uint32_t ref_block_prefix = 0;
 
-      fc::time_point_sec expiration;
+            fc::time_point_sec expiration;
 
-      vector<operation>  operations;
-      extensions_type    extensions;
+            vector<operation> operations;
+            extensions_type extensions;
 
-      digest_type         digest()const;
-      transaction_id_type id()const;
-      void                validate() const;
-      digest_type         sig_digest( const chain_id_type& chain_id )const;
+            digest_type digest() const;
 
-      void set_expiration( fc::time_point_sec expiration_time );
-      void set_reference_block( const block_id_type& reference_block );
+            transaction_id_type id() const;
 
-      template<typename Visitor>
-      vector<typename Visitor::result_type> visit( Visitor&& visitor )
-      {
-         vector<typename Visitor::result_type> results;
-         for( auto& op : operations )
-            results.push_back(op.visit( std::forward<Visitor>( visitor ) ));
-         return results;
-      }
-      template<typename Visitor>
-      vector<typename Visitor::result_type> visit( Visitor&& visitor )const
-      {
-         vector<typename Visitor::result_type> results;
-         for( auto& op : operations )
-            results.push_back(op.visit( std::forward<Visitor>( visitor ) ));
-         return results;
-      }
+            void validate() const;
 
-      void get_required_authorities( flat_set<string>& active,
-                                     flat_set<string>& owner,
-                                     flat_set<string>& posting,
-                                     vector<authority>& other )const;
-   };
+            digest_type sig_digest(const chain_id_type &chain_id) const;
 
-   struct signed_transaction : public transaction
-   {
-      signed_transaction( const transaction& trx = transaction() )
-         : transaction(trx){}
+            void set_expiration(fc::time_point_sec expiration_time);
 
-      const signature_type& sign( const private_key_type& key, const chain_id_type& chain_id );
+            void set_reference_block(const block_id_type &reference_block);
 
-      signature_type sign( const private_key_type& key, const chain_id_type& chain_id )const;
+            template<typename Visitor>
+            vector<typename Visitor::result_type> visit(Visitor &&visitor) {
+                vector<typename Visitor::result_type> results;
+                for (auto &op : operations) {
+                    results.push_back(op.visit(std::forward<Visitor>(visitor)));
+                }
+                return results;
+            }
 
-      set<public_key_type> get_required_signatures(
-         const chain_id_type& chain_id,
-         const flat_set<public_key_type>& available_keys,
-         const authority_getter& get_active,
-         const authority_getter& get_owner,
-         const authority_getter& get_posting,
-         uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
-         )const;
+            template<typename Visitor>
+            vector<typename Visitor::result_type> visit(Visitor &&visitor) const {
+                vector<typename Visitor::result_type> results;
+                for (auto &op : operations) {
+                    results.push_back(op.visit(std::forward<Visitor>(visitor)));
+                }
+                return results;
+            }
 
-      void verify_authority(
-         const chain_id_type& chain_id,
-         const authority_getter& get_active,
-         const authority_getter& get_owner,
-         const authority_getter& get_posting,
-         uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH )const;
+            void get_required_authorities(flat_set<string> &active,
+                    flat_set<string> &owner,
+                    flat_set<string> &posting,
+                    vector<authority> &other) const;
+        };
 
-      set<public_key_type> minimize_required_signatures(
-         const chain_id_type& chain_id,
-         const flat_set<public_key_type>& available_keys,
-         const authority_getter& get_active,
-         const authority_getter& get_owner,
-         const authority_getter& get_posting,
-         uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
-         ) const;
+        struct signed_transaction : public transaction {
+            signed_transaction(const transaction &trx = transaction())
+                    : transaction(trx) {
+            }
 
-      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
+            const signature_type &sign(const private_key_type &key, const chain_id_type &chain_id);
 
-      vector<signature_type> signatures;
+            signature_type sign(const private_key_type &key, const chain_id_type &chain_id) const;
 
-      digest_type merkle_digest()const;
+            set<public_key_type> get_required_signatures(
+                    const chain_id_type &chain_id,
+                    const flat_set<public_key_type> &available_keys,
+                    const authority_getter &get_active,
+                    const authority_getter &get_owner,
+                    const authority_getter &get_posting,
+                    uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
+            ) const;
 
-      void clear() { operations.clear(); signatures.clear(); }
-   };
+            void verify_authority(
+                    const chain_id_type &chain_id,
+                    const authority_getter &get_active,
+                    const authority_getter &get_owner,
+                    const authority_getter &get_posting,
+                    uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH) const;
 
-   void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
-                          const authority_getter& get_active,
-                          const authority_getter& get_owner,
-                          const authority_getter& get_posting,
-                          uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH,
-                          bool allow_committe = false,
-                          const flat_set<string>& active_aprovals = flat_set<string>(),
-                          const flat_set<string>& owner_aprovals = flat_set<string>(),
-                          const flat_set<string>& posting_approvals = flat_set<string>());
+            set<public_key_type> minimize_required_signatures(
+                    const chain_id_type &chain_id,
+                    const flat_set<public_key_type> &available_keys,
+                    const authority_getter &get_active,
+                    const authority_getter &get_owner,
+                    const authority_getter &get_posting,
+                    uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
+            ) const;
 
+            flat_set<public_key_type> get_signature_keys(const chain_id_type &chain_id) const;
 
-   struct annotated_signed_transaction : public signed_transaction {
-      annotated_signed_transaction(){}
-      annotated_signed_transaction( const signed_transaction& trx )
-      :signed_transaction(trx),transaction_id(trx.id()){}
+            vector<signature_type> signatures;
 
-      transaction_id_type transaction_id;
-      uint32_t            block_num = 0;
-      uint32_t            transaction_num = 0;
-   };
+            digest_type merkle_digest() const;
+
+            void clear() {
+                operations.clear();
+                signatures.clear();
+            }
+        };
+
+        void verify_authority(const vector<operation> &ops, const flat_set<public_key_type> &sigs,
+                const authority_getter &get_active,
+                const authority_getter &get_owner,
+                const authority_getter &get_posting,
+                uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH,
+                bool allow_committe = false,
+                const flat_set<string> &active_aprovals = flat_set<string>(),
+                const flat_set<string> &owner_aprovals = flat_set<string>(),
+                const flat_set<string> &posting_approvals = flat_set<string>());
 
 
-   /// @} transactions group
+        struct annotated_signed_transaction : public signed_transaction {
+            annotated_signed_transaction() {
+            }
 
-} } // steemit::chain
+            annotated_signed_transaction(const signed_transaction &trx)
+                    : signed_transaction(trx), transaction_id(trx.id()) {
+            }
 
-FC_REFLECT( steemit::chain::transaction, (ref_block_num)(ref_block_prefix)(expiration)(operations)(extensions) )
-FC_REFLECT_DERIVED( steemit::chain::signed_transaction, (steemit::chain::transaction), (signatures) )
-FC_REFLECT_DERIVED( steemit::chain::annotated_signed_transaction, (steemit::chain::signed_transaction), (transaction_id)(block_num)(transaction_num) );
+            transaction_id_type transaction_id;
+            uint32_t block_num = 0;
+            uint32_t transaction_num = 0;
+        };
+
+
+        /// @} transactions group
+
+    }
+} // steemit::chain
+
+FC_REFLECT(steemit::chain::transaction, (ref_block_num)(ref_block_prefix)(expiration)(operations)(extensions))
+FC_REFLECT_DERIVED(steemit::chain::signed_transaction, (steemit::chain::transaction), (signatures))
+FC_REFLECT_DERIVED(steemit::chain::annotated_signed_transaction, (steemit::chain::signed_transaction), (transaction_id)(block_num)(transaction_num));

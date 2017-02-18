@@ -1,17 +1,17 @@
 file(GLOB HEADERS "include/steemit/private_message/*.hpp")
 
-add_library( steemit_private_message
-             private_message_plugin.cpp
-           )
+add_library(steemit_private_message
+        private_message_plugin.cpp
+        )
 
-target_link_libraries( steemit_private_message steemit_chain steemit_app graphene_time )
-target_include_directories( steemit_private_message
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+target_link_libraries(steemit_private_message steemit_chain steemit_app graphene_time)
+target_include_directories(steemit_private_message
+        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-install( TARGETS
-   steemit_private_message
+install(TARGETS
+        steemit_private_message
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        )

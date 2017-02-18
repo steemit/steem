@@ -26,30 +26,40 @@
 #include <steemit/app/plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
-namespace steemit { namespace delayed_node {
-namespace detail { struct delayed_node_plugin_impl; }
+namespace steemit {
+    namespace delayed_node {
+        namespace detail { struct delayed_node_plugin_impl; }
 
-using app::application;
+        using app::application;
 
-class delayed_node_plugin : public steemit::app::plugin
-{
-   std::unique_ptr<detail::delayed_node_plugin_impl> my;
-public:
-   delayed_node_plugin( application* app );
-   virtual ~delayed_node_plugin();
+        class delayed_node_plugin : public steemit::app::plugin {
+            std::unique_ptr<detail::delayed_node_plugin_impl> my;
+        public:
+            delayed_node_plugin(application *app);
 
-   std::string plugin_name()const override { return "delayed_node"; }
-   virtual void plugin_set_program_options(boost::program_options::options_description&,
-                                           boost::program_options::options_description& cfg) override;
-   virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
-   virtual void plugin_startup() override;
-   void mainloop();
+            virtual ~delayed_node_plugin();
 
-protected:
-   void connection_failed();
-   void connect();
-   void sync_with_trusted_node();
-};
+            std::string plugin_name() const override {
+                return "delayed_node";
+            }
 
-} } //steemit::account_history
+            virtual void plugin_set_program_options(boost::program_options::options_description &,
+                    boost::program_options::options_description &cfg) override;
+
+            virtual void plugin_initialize(const boost::program_options::variables_map &options) override;
+
+            virtual void plugin_startup() override;
+
+            void mainloop();
+
+        protected:
+            void connection_failed();
+
+            void connect();
+
+            void sync_with_trusted_node();
+        };
+
+    }
+} //steemit::account_history
 

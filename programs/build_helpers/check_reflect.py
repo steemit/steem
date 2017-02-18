@@ -8,6 +8,7 @@ import xml.etree.ElementTree as etree
 
 other_issues = []
 
+
 def process_node(path, node):
     """
     if node.tag == "TestCase":
@@ -20,14 +21,16 @@ def process_node(path, node):
             process_node(cpath, child)
         return
     """
-    #print("unknown node", node.tag)
+    # print("unknown node", node.tag)
     print(node.tag)
     return
 
+
 name2members_doxygen = {}
 
+
 def process_class_node(node):
-    result = {"name":"", "vmembers":[]}
+    result = {"name": "", "vmembers": []}
     for child in node:
         if child.tag == "name":
             result["name"] = child.text
@@ -38,10 +41,12 @@ def process_class_node(node):
     name2members_doxygen[result["name"]] = result["vmembers"]
     return
 
+
 tree = etree.parse("doxygen/xml/index.xml")
 root = tree.getroot()
 for child in root:
-    if (child.tag == "compound") and (child.attrib.get("kind") in ["struct", "class"]):
+    if (child.tag == "compound") and (
+        child.attrib.get("kind") in ["struct", "class"]):
         process_class_node(child)
 
 s_static_names = set(["space_id", "type_id"])
@@ -49,7 +54,7 @@ s_static_names = set(["space_id", "type_id"])
 for k, v in name2members_doxygen.items():
     name2members_doxygen[k] = [x for x in v if x not in s_static_names]
 
-#with open("stuff/member_enumerator.out", "r") as f:
+# with open("stuff/member_enumerator.out", "r") as f:
 #    name2members_fc = json.load(f)
 
 # scan for FC_REFLECT( graphene::... in all cpp,hpp files under libraries/ programs/ tests/
@@ -72,8 +77,10 @@ FC_REFLECT_DERIVED\s*[(]
 
 re_bubble_item = re.compile(r"\s*[(]\s*([a-zA-Z0-9_]+)\s*")
 
+
 def bubble_list(x):
     return [re_bubble_item.match(e).group(1) for e in x.split(")")[:-1]]
+
 
 name2members_re = {}
 
@@ -84,14 +91,16 @@ for root, dirs, files in os.walk("."):
         if not (filename.endswith(".cpp") or filename.endswith(".hpp")):
             continue
         try:
-            with open( os.path.join(root, filename), "r", encoding="utf8" ) as f:
+            with open(os.path.join(root, filename), "r", encoding="utf8") as f:
                 content = f.read()
                 for m in re_reflect.finditer(content):
                     cname = m.group(1)
                     members = bubble_list(m.group(2))
                     name2members_re[cname] = members
                     if cname.endswith("_object"):
-                        other_issues.append("FC_REFLECT on {} should be FC_REFLECT_DERIVED".format(cname))
+                        other_issues.append(
+                            "FC_REFLECT on {} should be FC_REFLECT_DERIVED".format(
+                                cname))
                         print(other_issues[-1])
                 for m in re_reflect_derived.finditer(content):
                     cname = m.group(1)
@@ -99,6 +108,7 @@ for root, dirs, files in os.walk("."):
                     name2members_re[cname] = members
         except OSError as e:
             pass
+
 
 def validate_members(name2members_ref, name2members_test):
     ok_items = []
@@ -111,7 +121,7 @@ def validate_members(name2members_ref, name2members_test):
         elif len(set(name2members_test[name])) != len(name2members_test[name]):
             m2occ = {}
             for m in name2members_test[name]:
-                m2occ[m] = m2occ.get(m, 0)+1
+                m2occ[m] = m2occ.get(m, 0) + 1
             error_items.append(name)
             print("")
             print("error in", name)
@@ -122,7 +132,8 @@ def validate_members(name2members_ref, name2members_test):
             print("error in", name)
             print("doxygen:", name2members_ref[name])
             print("fc     :", name2members_test[name])
-            print("diff   :", set(name2members_ref[name]).symmetric_difference(set(name2members_test[name])) )
+            print("diff   :", set(name2members_ref[name]).symmetric_difference(
+                set(name2members_test[name])))
         else:
             ok_items.append(name)
 
@@ -141,7 +152,9 @@ def validate_members(name2members_ref, name2members_test):
     for item in error_items:
         print(item)
 
-    return {"ok_items" : ok_items, "ne_items" : ne_items, "error_items" : error_items, "other_issues" : other_issues}
+    return {"ok_items": ok_items, "ne_items": ne_items,
+            "error_items": error_items, "other_issues": other_issues}
+
 
 if __name__ == "__main__":
     result = validate_members(name2members_doxygen, name2members_re)

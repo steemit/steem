@@ -30,17 +30,19 @@
 
 #include <fc/string.hpp>
 
-namespace steemit { namespace app {
+namespace steemit {
+    namespace app {
 
-using namespace fc;
+        using namespace fc;
 
-void operation_get_impacted_accounts(
-   const steemit::chain::operation& op,
-   fc::flat_set<string>& result );
+        void operation_get_impacted_accounts(
+                const steemit::chain::operation &op,
+                fc::flat_set<string> &result);
 
-void transaction_get_impacted_accounts(
-   const steemit::chain::transaction& tx,
-   fc::flat_set<string>& result
-   );
+        void transaction_get_impacted_accounts(
+                const steemit::chain::transaction &tx,
+                fc::flat_set<string> &result
+        );
 
-} } // steemit::app
+    }
+} // steemit::app

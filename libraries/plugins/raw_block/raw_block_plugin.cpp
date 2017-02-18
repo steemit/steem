@@ -5,31 +5,34 @@
 
 #include <string>
 
-namespace steemit { namespace plugin { namespace raw_block {
+namespace steemit {
+    namespace plugin {
+        namespace raw_block {
 
-raw_block_plugin::raw_block_plugin( application* app ) : plugin( app ) {}
-raw_block_plugin::~raw_block_plugin() {}
+            raw_block_plugin::raw_block_plugin(application *app) : plugin(app) {
+            }
 
-std::string raw_block_plugin::plugin_name()const
-{
-   return "raw_block";
-}
+            raw_block_plugin::~raw_block_plugin() {
+            }
 
-void raw_block_plugin::plugin_initialize( const boost::program_options::variables_map& options )
-{
-}
+            std::string raw_block_plugin::plugin_name() const {
+                return "raw_block";
+            }
 
-void raw_block_plugin::plugin_startup()
-{
-   chain::database& db = database();
+            void raw_block_plugin::plugin_initialize(const boost::program_options::variables_map &options) {
+            }
 
-   app().register_api_factory< raw_block_api >( "raw_block_api" );
-}
+            void raw_block_plugin::plugin_startup() {
+                chain::database &db = database();
 
-void raw_block_plugin::plugin_shutdown()
-{
-}
+                app().register_api_factory<raw_block_api>("raw_block_api");
+            }
 
-} } } // steemit::plugin::raw_block
+            void raw_block_plugin::plugin_shutdown() {
+            }
 
-STEEMIT_DEFINE_PLUGIN( raw_block, steemit::plugin::raw_block::raw_block_plugin )
+        }
+    }
+} // steemit::plugin::raw_block
+
+STEEMIT_DEFINE_PLUGIN(raw_block, steemit::plugin::raw_block::raw_block_plugin)

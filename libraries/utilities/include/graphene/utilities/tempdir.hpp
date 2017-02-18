@@ -27,8 +27,10 @@
 
 #include <fc/filesystem.hpp>
 
-namespace graphene { namespace utilities {
+namespace graphene {
+    namespace utilities {
 
-fc::path temp_directory_path();
+        fc::path temp_directory_path();
 
-} } // graphene::utilities
+    }
+} // graphene::utilities

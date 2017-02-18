@@ -11,107 +11,112 @@
 #include <steemit/chain/protocol/block.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
-namespace steemit { namespace app {
-   struct api_context;
-} }
-
-namespace steemit { namespace plugin { namespace debug_node {
-
-namespace detail {
-class debug_node_api_impl;
+namespace steemit {
+    namespace app {
+        struct api_context;
+    }
 }
 
-class debug_node_api
-{
-   public:
-      debug_node_api( const steemit::app::api_context& ctx );
+namespace steemit {
+    namespace plugin {
+        namespace debug_node {
 
-      void on_api_startup();
+            namespace detail {
+                class debug_node_api_impl;
+            }
 
-      /**
-       * Push blocks from existing database.
-       */
-      uint32_t debug_push_blocks( std::string src_filename, uint32_t count, bool skip_validate_invariants = false );
+            class debug_node_api {
+            public:
+                debug_node_api(const steemit::app::api_context &ctx);
 
-      /**
-       * Generate blocks locally.
-       */
-      uint32_t debug_generate_blocks( std::string debug_key, uint32_t count );
+                void on_api_startup();
 
-      /*
-       * Generate blocks locally until a specified head block time. Can generate them sparsely.
-       */
-      uint32_t debug_generate_blocks_until( std::string debug_key, fc::time_point_sec head_block_time, bool generate_sparsely = true );
+                /**
+                 * Push blocks from existing database.
+                 */
+                uint32_t debug_push_blocks(std::string src_filename, uint32_t count, bool skip_validate_invariants = false);
 
-      /*
-       * Pop a block from the blockchain, returning it
-       */
-      fc::optional< steemit::chain::signed_block > debug_pop_block();
+                /**
+                 * Generate blocks locally.
+                 */
+                uint32_t debug_generate_blocks(std::string debug_key, uint32_t count);
 
-      /*
-       * Push an already constructed block onto the blockchain. For use with pop_block to traverse state block by block.
-       */
-      // not implemented
-      //void debug_push_block( steemit::chain::signed_block& block );
+                /*
+                 * Generate blocks locally until a specified head block time. Can generate them sparsely.
+                 */
+                uint32_t debug_generate_blocks_until(std::string debug_key, fc::time_point_sec head_block_time, bool generate_sparsely = true);
 
-      steemit::chain::witness_schedule_object debug_get_witness_schedule();
+                /*
+                 * Pop a block from the blockchain, returning it
+                 */
+                fc::optional<steemit::chain::signed_block> debug_pop_block();
 
-      steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
+                /*
+                 * Push an already constructed block onto the blockchain. For use with pop_block to traverse state block by block.
+                 */
+                // not implemented
+                //void debug_push_block( steemit::chain::signed_block& block );
 
-      /**
-       * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
-       */
-      void debug_update_object( fc::variant_object update );
+                steemit::chain::witness_schedule_object debug_get_witness_schedule();
 
-      fc::variant_object debug_get_edits();
+                steemit::chain::hardfork_property_object debug_get_hardfork_property_object();
 
-      void debug_set_edits( fc::variant_object edits );
+                /**
+                 * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
+                 */
+                void debug_update_object(fc::variant_object update);
 
-      /**
-       * Start a node with given initial path.
-       */
-      // not implemented
-      //void start_node( std::string name, std::string initial_db_path );
+                fc::variant_object debug_get_edits();
 
-      /**
-       * Save the database to disk.
-       */
-      // not implemented
-      //void save_db( std::string db_path );
+                void debug_set_edits(fc::variant_object edits);
 
-      /**
-       * Stream objects to file.  (Hint:  Create with mkfifo and pipe it to a script)
-       */
+                /**
+                 * Start a node with given initial path.
+                 */
+                // not implemented
+                //void start_node( std::string name, std::string initial_db_path );
 
-      void debug_stream_json_objects( std::string filename );
+                /**
+                 * Save the database to disk.
+                 */
+                // not implemented
+                //void save_db( std::string db_path );
 
-      /**
-       * Flush streaming file.
-       */
-      void debug_stream_json_objects_flush();
+                /**
+                 * Stream objects to file.  (Hint:  Create with mkfifo and pipe it to a script)
+                 */
 
-      void debug_set_hardfork( uint32_t hardfork_id );
+                void debug_stream_json_objects(std::string filename);
 
-      bool debug_has_hardfork( uint32_t hardfork_id );
+                /**
+                 * Flush streaming file.
+                 */
+                void debug_stream_json_objects_flush();
 
-      std::shared_ptr< detail::debug_node_api_impl > my;
-};
+                void debug_set_hardfork(uint32_t hardfork_id);
 
-} } }
+                bool debug_has_hardfork(uint32_t hardfork_id);
+
+                std::shared_ptr<detail::debug_node_api_impl> my;
+            };
+
+        }
+    }
+}
 
 FC_API(steemit::plugin::debug_node::debug_node_api,
-       (debug_push_blocks)
-       (debug_generate_blocks)
-       (debug_generate_blocks_until)
-       (debug_pop_block)
-       //(debug_push_block)
-       (debug_update_object)
-       (debug_get_edits)
-       (debug_set_edits)
-       (debug_stream_json_objects)
-       (debug_stream_json_objects_flush)
-       (debug_set_hardfork)
-       (debug_has_hardfork)
-       (debug_get_witness_schedule)
-       (debug_get_hardfork_property_object)
-     )
+        (debug_push_blocks)
+                (debug_generate_blocks)
+                (debug_generate_blocks_until)
+                (debug_pop_block)
+                //(debug_push_block)
+                (debug_update_object)
+                (debug_get_edits)
+                (debug_set_edits)
+                (debug_stream_json_objects)
+                (debug_stream_json_objects_flush)
+                (debug_set_hardfork)
+                (debug_has_hardfork)
+                (debug_get_witness_schedule)
+                (debug_get_hardfork_property_object)
+)

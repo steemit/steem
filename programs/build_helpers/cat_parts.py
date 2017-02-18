@@ -3,8 +3,10 @@
 import sys
 from pathlib import Path
 
+
 def print_usage(program_name):
     print("usage: {} DIR OUTFILE".format(program_name))
+
 
 def generate_concatenated_outfile(input_dir, suffix_filter="hf"):
     def predicate(path):
@@ -14,12 +16,14 @@ def generate_concatenated_outfile(input_dir, suffix_filter="hf"):
             return true
         else:
             return path.suffix == ("." + suffix_filter)
+
     input_files = [p for p in input_dir.iterdir() if predicate(p)]
     output = ""
     for p in sorted(input_files):
         with p.open(mode='r') as f:
             output += f.read()
     return output
+
 
 def main(program_name, args):
     if len(args) < 2:
@@ -34,7 +38,8 @@ def main(program_name, args):
     out_file = Path(args[1])
     if out_file.exists():
         if not out_file.is_file():
-            print('Chosen OUTFILE "{}" is not a file'.format(out_file.absolute().as_posix()))
+            print('Chosen OUTFILE "{}" is not a file'.format(
+                out_file.absolute().as_posix()))
             return 1
         new_outfile_contents = generate_concatenated_outfile(input_dir)
         with out_file.open(mode='r') as f:
@@ -48,10 +53,13 @@ def main(program_name, args):
             except FileExistsError:
                 pass
             except:
-                print('Unexpected error occured while trying to create directory "{}"'.format(out_file.parent.absolute().as_posix()))
+                print(
+                'Unexpected error occured while trying to create directory "{}"'.format(
+                    out_file.parent.absolute().as_posix()))
                 raise
         elif not out_file.parent.is_dir():
-            print('"{}" is not a directory'.format(out_file.parent.absolute().as_posix()))
+            print('"{}" is not a directory'.format(
+                out_file.parent.absolute().as_posix()))
             return 1
         new_outfile_contents = generate_concatenated_outfile(input_dir)
 

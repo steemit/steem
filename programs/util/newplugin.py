@@ -1,173 +1,175 @@
 #!/usr/bin/env python3
 
 templates = {
-"CMakeLists.txt" :
-"""file(GLOB HEADERS "include/{plugin_provider}/plugins/{plugin_name}/*.hpp")
+    "CMakeLists.txt":
+        """file(GLOB HEADERS "include/{plugin_provider}/plugins/{plugin_name}/*.hpp")
 
-add_library( {plugin_provider}_{plugin_name}
-             ${{HEADERS}}
-             {plugin_name}_plugin.cpp
-             {plugin_name}_api.cpp
+        add_library( {plugin_provider}_{plugin_name}
+                     ${{HEADERS}}
+                     {plugin_name}_plugin.cpp
+                     {plugin_name}_api.cpp
+                   )
+
+        target_link_libraries( {plugin_provider}_{plugin_name} steemit_app steemit_chain fc graphene_db )
+        target_include_directories( {plugin_provider}_{plugin_name}
+                                    PUBLIC "${{CMAKE_CURRENT_SOURCE_DIR}}/include" )
+        """,
+
+    "include/{plugin_provider}/plugins/{plugin_name}/{plugin_name}_api.hpp":
+        """
+        #pragma once
+
+        #include <fc/api.hpp>
+
+        namespace steemit {{ namespace app {{
+           struct api_context;
+        }} }}
+
+        namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
+
+        namespace detail {{
+        class {plugin_name}_api_impl;
+        }}
+
+        class {plugin_name}_api
+        {{
+           public:
+              {plugin_name}_api( const steemit::app::api_context& ctx );
+
+              void on_api_startup();
+
+              // TODO:  Add API methods here
+
+           private:
+              std::shared_ptr< detail::{plugin_name}_api_impl > my;
+        }};
+
+        }} }} }}
+
+        FC_API( {plugin_provider}::plugin::{plugin_name}::{plugin_name}_api,
+           // TODO:  Add method bubble list here
            )
+        """,
 
-target_link_libraries( {plugin_provider}_{plugin_name} steemit_app steemit_chain fc graphene_db )
-target_include_directories( {plugin_provider}_{plugin_name}
-                            PUBLIC "${{CMAKE_CURRENT_SOURCE_DIR}}/include" )
-""",
+    "include/{plugin_provider}/plugins/{plugin_name}/{plugin_name}_plugin.hpp":
+        """
+        #pragma once
 
-"include/{plugin_provider}/plugins/{plugin_name}/{plugin_name}_api.hpp" :
-"""
-#pragma once
+        #include <steemit/app/plugin.hpp>
 
-#include <fc/api.hpp>
+        namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
 
-namespace steemit {{ namespace app {{
-   struct api_context;
-}} }}
+        class {plugin_name}_plugin : public steemit::app::plugin
+        {{
+           public:
+              {plugin_name}_plugin();
+              virtual ~{plugin_name}_plugin();
 
-namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
+              virtual std::string plugin_name()const override;
+              virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
+              virtual void plugin_startup() override;
+              virtual void plugin_shutdown() override;
+        }};
 
-namespace detail {{
-class {plugin_name}_api_impl;
-}}
+        }} }} }}
+        """,
 
-class {plugin_name}_api
-{{
-   public:
-      {plugin_name}_api( const steemit::app::api_context& ctx );
+    "{plugin_name}_api.cpp":
+        """
+        #include <steemit/app/api_context.hpp>
+        #include <steemit/app/application.hpp>
 
-      void on_api_startup();
+        #include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_api.hpp>
+        #include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_plugin.hpp>
 
-      // TODO:  Add API methods here
+        namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
 
-   private:
-      std::shared_ptr< detail::{plugin_name}_api_impl > my;
-}};
+        namespace detail {{
 
-}} }} }}
+        class {plugin_name}_api_impl
+        {{
+           public:
+              {plugin_name}_api_impl( steemit::app::application& _app );
 
-FC_API( {plugin_provider}::plugin::{plugin_name}::{plugin_name}_api,
-   // TODO:  Add method bubble list here
-   )
-""",
+              std::shared_ptr< {plugin_provider}::plugin::{plugin_name}::{plugin_name}_plugin > get_plugin();
 
-"include/{plugin_provider}/plugins/{plugin_name}/{plugin_name}_plugin.hpp" :
-"""
-#pragma once
+              steemit::app::application& app;
+        }};
 
-#include <steemit/app/plugin.hpp>
+        {plugin_name}_api_impl::{plugin_name}_api_impl( steemit::app::application& _app ) : app( _app )
+        {{}}
 
-namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
+        std::shared_ptr< {plugin_provider}::plugin::{plugin_name}::{plugin_name}_plugin > {plugin_name}_api_impl::get_plugin()
+        {{
+           return app.get_plugin< {plugin_name}_plugin >( "{plugin_name}" );
+        }}
 
-class {plugin_name}_plugin : public steemit::app::plugin
-{{
-   public:
-      {plugin_name}_plugin();
-      virtual ~{plugin_name}_plugin();
+        }} // detail
 
-      virtual std::string plugin_name()const override;
-      virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
-      virtual void plugin_startup() override;
-      virtual void plugin_shutdown() override;
-}};
+        {plugin_name}_api::{plugin_name}_api( const steemit::app::api_context& ctx )
+        {{
+           my = std::make_shared< detail::{plugin_name}_api_impl >(ctx.app);
+        }}
 
-}} }} }}
-""",
+        void {plugin_name}_api::on_api_startup() {{ }}
 
-"{plugin_name}_api.cpp" :
-"""
-#include <steemit/app/api_context.hpp>
-#include <steemit/app/application.hpp>
+        }} }} }} // {plugin_provider}::plugin::{plugin_name}
+        """,
 
-#include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_api.hpp>
-#include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_plugin.hpp>
+    "{plugin_name}_plugin.cpp":
+        """
 
-namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
+        #include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_api.hpp>
+        #include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_plugin.hpp>
 
-namespace detail {{
+        #include <string>
 
-class {plugin_name}_api_impl
-{{
-   public:
-      {plugin_name}_api_impl( steemit::app::application& _app );
+        namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
 
-      std::shared_ptr< {plugin_provider}::plugin::{plugin_name}::{plugin_name}_plugin > get_plugin();
+        {plugin_name}_plugin::{plugin_name}_plugin() {{}}
+        {plugin_name}_plugin::~{plugin_name}_plugin() {{}}
 
-      steemit::app::application& app;
-}};
+        std::string {plugin_name}_plugin::plugin_name()const
+        {{
+           return "{plugin_name}";
+        }}
 
-{plugin_name}_api_impl::{plugin_name}_api_impl( steemit::app::application& _app ) : app( _app )
-{{}}
+        void {plugin_name}_plugin::plugin_initialize( const boost::program_options::variables_map& options )
+        {{
+        }}
 
-std::shared_ptr< {plugin_provider}::plugin::{plugin_name}::{plugin_name}_plugin > {plugin_name}_api_impl::get_plugin()
-{{
-   return app.get_plugin< {plugin_name}_plugin >( "{plugin_name}" );
-}}
+        void {plugin_name}_plugin::plugin_startup()
+        {{
+           chain::database& db = database();
 
-}} // detail
+           app().register_api_factory< {plugin_name}_api >( "{plugin_name}_api" );
+        }}
 
-{plugin_name}_api::{plugin_name}_api( const steemit::app::api_context& ctx )
-{{
-   my = std::make_shared< detail::{plugin_name}_api_impl >(ctx.app);
-}}
+        void {plugin_name}_plugin::plugin_shutdown()
+        {{
+        }}
 
-void {plugin_name}_api::on_api_startup() {{ }}
+        }} }} }} // {plugin_provider}::plugin::{plugin_name}
 
-}} }} }} // {plugin_provider}::plugin::{plugin_name}
-""",
-
-"{plugin_name}_plugin.cpp" :
-"""
-
-#include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_api.hpp>
-#include <{plugin_provider}/plugins/{plugin_name}/{plugin_name}_plugin.hpp>
-
-#include <string>
-
-namespace {plugin_provider} {{ namespace plugin {{ namespace {plugin_name} {{
-
-{plugin_name}_plugin::{plugin_name}_plugin() {{}}
-{plugin_name}_plugin::~{plugin_name}_plugin() {{}}
-
-std::string {plugin_name}_plugin::plugin_name()const
-{{
-   return "{plugin_name}";
-}}
-
-void {plugin_name}_plugin::plugin_initialize( const boost::program_options::variables_map& options )
-{{
-}}
-
-void {plugin_name}_plugin::plugin_startup()
-{{
-   chain::database& db = database();
-
-   app().register_api_factory< {plugin_name}_api >( "{plugin_name}_api" );
-}}
-
-void {plugin_name}_plugin::plugin_shutdown()
-{{
-}}
-
-}} }} }} // {plugin_provider}::plugin::{plugin_name}
-
-STEEMIT_DEFINE_PLUGIN( {plugin_name}, {plugin_provider}::plugin::{plugin_name}::{plugin_name}_plugin )
-""",
+        STEEMIT_DEFINE_PLUGIN( {plugin_name}, {plugin_provider}::plugin::{plugin_name}::{plugin_name}_plugin )
+        """,
 }
 
 import argparse
 import os
 import sys
 
+
 def main(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument("provider", help="Name of plugin provider (steemit for plugins developed by Steemit)")
+    parser.add_argument("provider",
+                        help="Name of plugin provider (steemit for plugins developed by Steemit)")
     parser.add_argument("name", help="Name of plugin to create")
     args = parser.parse_args(argv[1:])
     ctx = {
-           "plugin_provider" : args.provider,
-           "plugin_name" : args.name,
-          }
+        "plugin_provider": args.provider,
+        "plugin_name": args.name,
+    }
 
     outdir = os.path.join("libraries", "plugins", ctx["plugin_name"])
     for t_fn, t_content in templates.items():
@@ -180,6 +182,7 @@ def main(argv):
             f.write(content)
 
     return
+
 
 if __name__ == "__main__":
     main(sys.argv)
