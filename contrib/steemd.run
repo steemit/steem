@@ -74,7 +74,7 @@ cd $HOME
 
 # slow down restart loop if flapping
 sleep 1
-if [[ -z "$RUN_SYNC_TEST" -o ! "$RUN_SYNC_TEST" ]]; then
+if [[ -z "$RUN_SYNC_TEST" -o !"$RUN_SYNC_TEST" ]]; then
   exec chpst -usteemd \
       $STEEMD \
           --rpc-endpoint=0.0.0.0:8090 \
