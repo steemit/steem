@@ -6316,13 +6316,19 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto sam_vest = db.get_account( "sam" ).vesting_shares;
 
-      BOOST_TEST_MESSAGE( "--- Testing failure delegating more vesting shares than account has." );
+      BOOST_TEST_MESSAGE( "--- Test failure when delegating 0 VESTS" );
       tx.clear();
       op.delegator = "sam";
       op.delegatee = "dave";
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing failure delegating more vesting shares than account has." );
+      tx.clear();
       op.vesting_shares = asset( sam_vest.amount + 1, VESTS_SYMBOL );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( sam_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
