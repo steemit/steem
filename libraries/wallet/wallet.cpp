@@ -735,15 +735,15 @@ public:
             total_vest  += a.vesting_shares;
             total_sbd  += a.sbd_balance;
             out << std::left << std::setw( 17 ) << std::string(a.name)
-                << std::right << std::setw(20) << fc::variant(a.balance).as_string() <<" "
-                << std::right << std::setw(20) << fc::variant(a.vesting_shares).as_string() <<" "
-                << std::right << std::setw(20) << fc::variant(a.sbd_balance).as_string() <<"\n";
+                << std::right << std::setw(18) << fc::variant(a.balance).as_string() <<" "
+                << std::right << std::setw(26) << fc::variant(a.vesting_shares).as_string() <<" "
+                << std::right << std::setw(16) << fc::variant(a.sbd_balance).as_string() <<"\n";
          }
          out << "-------------------------------------------------------------------------\n";
             out << std::left << std::setw( 17 ) << "TOTAL"
-                << std::right << std::setw(20) << fc::variant(total_steem).as_string() <<" "
-                << std::right << std::setw(20) << fc::variant(total_vest).as_string() <<" "
-                << std::right << std::setw(20) << fc::variant(total_sbd).as_string() <<"\n";
+                << std::right << std::setw(18) << fc::variant(total_steem).as_string() <<" "
+                << std::right << std::setw(26) << fc::variant(total_vest).as_string() <<" "
+                << std::right << std::setw(16) << fc::variant(total_sbd).as_string() <<"\n";
          return out.str();
       };
       m["get_account_history"] = []( variant result, const fc::variants& a ) {
