@@ -361,7 +361,7 @@ class wallet_api
        *  @param json_meta JSON Metadata associated with the new account
        *  @param broadcast true if you wish to broadcast the transaction
        */
-      annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, bool broadcast );
+      annotated_signed_transaction create_account( string creator, string new_account_name, string json_meta, asset steem_fee, asset delegated_vests, bool broadcast );
 
       /**
        * This method is used by faucets to create new accounts for other users which must
@@ -381,6 +381,8 @@ class wallet_api
       annotated_signed_transaction create_account_with_keys( string creator,
                                             string newname,
                                             string json_meta,
+                                            asset steem_fee,
+                                            asset delegated_vests,
                                             public_key_type owner,
                                             public_key_type active,
                                             public_key_type posting,
@@ -930,6 +932,8 @@ class wallet_api
       string decrypt_memo( string memo );
 
       annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
+
+      annotated_signed_transaction claim_reward_balance( string account, asset reward_steem, asset reward_sbd, asset reward_vests, bool broadcast );
 };
 
 struct plain_keys {
@@ -1023,6 +1027,7 @@ FC_API( steemit::wallet::wallet_api,
         (get_encrypted_memo)
         (decrypt_memo)
         (decline_voting_rights)
+        (claim_reward_balance)
 
         // private message api
         (send_private_message)
