@@ -5999,8 +5999,11 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
 
       BOOST_REQUIRE( delegation != nullptr);
       BOOST_REQUIRE( delegation->delegator == op.creator);
+      BOOST_REQUIRE( delegation->delegatee == op.new_account_name );
       BOOST_REQUIRE( delegation->vesting_shares == ASSET( "10000.000000 VESTS" ) );
       BOOST_REQUIRE( delegation->min_delegation_time == db.head_block_time() + STEEMIT_CREATE_ACCOUNT_DELEGATION_TIME );
+      auto del_amt = delegation->vesting_shares;
+      auto exp_time = delegation->min_delegation_time;
 
       generate_block();
 
@@ -6040,6 +6043,24 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       fund( "alice" , asset( db.get_witness_schedule_object().median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER * STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO , STEEM_SYMBOL ));
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
 
+      validate_database();
+
+      tx.clear();
+      delegate_vesting_shares_operation delegate;
+      delegate.delegator = "alice";
+      delegate.delegatee = "bob";
+      delegate.vesting_shares = ASSET( "0.000000 VESTS" );
+      tx.operations.push_back( delegate );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      auto itr = db.get_index< vesting_delegation_expiration_index, by_id >().begin();
+      auto end = db.get_index< vesting_delegation_expiration_index, by_id >().end();
+
+      BOOST_REQUIRE( itr != end );
+      BOOST_REQUIRE( itr->delegator == "alice" );
+      BOOST_REQUIRE( itr->vesting_shares == del_amt );
+      BOOST_REQUIRE( itr->expiration == exp_time );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -6295,13 +6316,19 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
 
       auto sam_vest = db.get_account( "sam" ).vesting_shares;
 
-      BOOST_TEST_MESSAGE( "--- Testing failure delegating more vesting shares than account has." );
+      BOOST_TEST_MESSAGE( "--- Test failure when delegating 0 VESTS" );
       tx.clear();
       op.delegator = "sam";
       op.delegatee = "dave";
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( sam_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing failure delegating more vesting shares than account has." );
+      tx.clear();
       op.vesting_shares = asset( sam_vest.amount + 1, VESTS_SYMBOL );
       tx.operations.push_back( op );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( sam_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
 
