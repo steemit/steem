@@ -1294,8 +1294,40 @@ feed_history_api_obj wallet_api::get_feed_history()const { return my->_remote_db
 annotated_signed_transaction wallet_api::create_account_with_keys( string creator,
                                       string new_account_name,
                                       string json_meta,
+                                      public_key_type owner,
+                                      public_key_type active,
+                                      public_key_type posting,
+                                      public_key_type memo,
+                                      bool broadcast )const
+{ try {
+   FC_ASSERT( !is_locked() );
+   account_create_operation op;
+   op.creator = creator;
+   op.new_account_name = new_account_name;
+   op.owner = authority( 1, owner, 1 );
+   op.active = authority( 1, active, 1 );
+   op.posting = authority( 1, posting, 1 );
+   op.memo_key = memo;
+   op.json_metadata = json_meta;
+   op.fee = my->_remote_db->get_chain_properties().account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+} FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta)(owner)(active)(memo)(broadcast) ) }
+
+/**
+ * This method is used by faucets to create new accounts for other users which must
+ * provide their desired keys. The resulting account may not be controllable by this
+ * wallet.
+ */
+annotated_signed_transaction wallet_api::create_account_with_keys_delegated( string creator,
                                       asset steem_fee,
                                       asset delegated_vests,
+                                      string new_account_name,
+                                      string json_meta,
                                       public_key_type owner,
                                       public_key_type active,
                                       public_key_type posting,
@@ -1660,7 +1692,7 @@ annotated_signed_transaction wallet_api::delegate_vesting_shares( string delegat
  *  This method will genrate new owner, active, and memo keys for the new account which
  *  will be controlable by this wallet.
  */
-annotated_signed_transaction wallet_api::create_account( string creator, string new_account_name, string json_meta, asset steem_fee, asset delegated_vests, bool broadcast )
+annotated_signed_transaction wallet_api::create_account( string creator, string new_account_name, string json_meta, bool broadcast )
 { try {
    FC_ASSERT( !is_locked() );
    auto owner = suggest_brain_key();
@@ -1671,7 +1703,25 @@ annotated_signed_transaction wallet_api::create_account( string creator, string 
    import_key( active.wif_priv_key );
    import_key( posting.wif_priv_key );
    import_key( memo.wif_priv_key );
-   return create_account_with_keys( creator, new_account_name, json_meta, steem_fee, delegated_vests, owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
+   return create_account_with_keys( creator, new_account_name, json_meta, owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
+} FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta) ) }
+
+/**
+ *  This method will genrate new owner, active, and memo keys for the new account which
+ *  will be controlable by this wallet.
+ */
+annotated_signed_transaction wallet_api::create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast )
+{ try {
+   FC_ASSERT( !is_locked() );
+   auto owner = suggest_brain_key();
+   auto active = suggest_brain_key();
+   auto posting = suggest_brain_key();
+   auto memo = suggest_brain_key();
+   import_key( owner.wif_priv_key );
+   import_key( active.wif_priv_key );
+   import_key( posting.wif_priv_key );
+   import_key( memo.wif_priv_key );
+   return create_account_with_keys_delegated( creator, steem_fee, delegated_vests, new_account_name, json_meta,  owner.pub_key, active.pub_key, posting.pub_key, memo.pub_key, broadcast );
 } FC_CAPTURE_AND_RETHROW( (creator)(new_account_name)(json_meta) ) }
 
 
