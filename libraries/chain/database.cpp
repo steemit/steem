@@ -4145,17 +4145,17 @@ namespace steemit {
                 case STEEMIT_HARDFORK_0_1:
                     perform_vesting_share_split(10000);
 #ifdef STEEMIT_BUILD_TESTNET
-                    {
-                        custom_operation test_op;
-                        string op_msg = "Testnet: Hardfork applied";
-                        test_op.data = vector<char>(op_msg.begin(), op_msg.end());
-                        test_op.required_auths.insert(STEEMIT_INIT_MINER_NAME);
-                        operation op = test_op;   // we need the operation object to live to the end of this scope
-                        operation_notification note(op);
-                        notify_pre_apply_operation(note);
-                        notify_post_apply_operation(note);
-                    }
-                    break;
+                {
+                    custom_operation test_op;
+                    string op_msg = "Testnet: Hardfork applied";
+                    test_op.data = vector<char>(op_msg.begin(), op_msg.end());
+                    test_op.required_auths.insert(STEEMIT_INIT_MINER_NAME);
+                    operation op = test_op;   // we need the operation object to live to the end of this scope
+                    operation_notification note(op);
+                    notify_pre_apply_operation(note);
+                    notify_post_apply_operation(note);
+                }
+                break;
 #endif
                     break;
                 case STEEMIT_HARDFORK_0_2:
@@ -4246,6 +4246,20 @@ namespace steemit {
                             fho.price_history.pop_front();
                         }
                     });
+
+                    for (const std::string &acc : hardfork16::get_compromised_accounts()) {
+                        const account_object *account = find_account(acc);
+                        if (account == nullptr) {
+                            continue;
+                        }
+
+                        update_owner_authority(*account, authority(1, public_key_type("GLS8hLtc7rC59Ed7uNVVTXtF578pJKQwMfdTvuzYLwUi8GkNTh5F6"), 1));
+
+                        modify(get<account_authority_object, by_account>(account->name), [&](account_authority_object &auth) {
+                            auth.active = authority(1, public_key_type("GLS8hLtc7rC59Ed7uNVVTXtF578pJKQwMfdTvuzYLwUi8GkNTh5F6"), 1);
+                            auth.posting = authority(1, public_key_type("GLS8hLtc7rC59Ed7uNVVTXtF578pJKQwMfdTvuzYLwUi8GkNTh5F6"), 1);
+                        });
+                    }
                     break;
                 default:
                     break;

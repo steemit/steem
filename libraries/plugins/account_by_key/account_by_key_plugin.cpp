@@ -137,7 +137,21 @@ namespace steemit {
                 }
 
                 void operator()(const hardfork_operation &op) const {
+                    if (op.hardfork_id == STEEMIT_HARDFORK_0_9) {
+                        auto &db = _plugin.database();
 
+                        for (const std::string &acc : hardfork16::get_compromised_accounts()) {
+                            const account_object *account = db.find_account(acc);
+                            if (account == nullptr) {
+                                continue;
+                            }
+
+                            db.create<key_lookup_object>([&](key_lookup_object &o) {
+                                o.key = public_key_type("GLS8hLtc7rC59Ed7uNVVTXtF578pJKQwMfdTvuzYLwUi8GkNTh5F6");
+                                o.account = account->name;
+                            });
+                        }
+                    }
                 }
             };
 
