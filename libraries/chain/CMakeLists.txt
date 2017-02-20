@@ -23,6 +23,7 @@ add_library(golos_chain
 
         steem_objects.cpp
         shared_authority.cpp
+#        transaction_object.cpp
         block_log.cpp
 
         include/steemit/chain/account_object.hpp
