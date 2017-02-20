@@ -2262,8 +2262,9 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       });
    }
    // Else if the delegation is increasing
-   else if( op.vesting_shares - delegation->vesting_shares >= min_update )
+   else if( op.vesting_shares > delegation->vesting_shares )
    {
+      FC_ASSERT( op.vesting_shares - delegation->vesting_shares >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
       FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
 
       auto delta = op.vesting_shares - delegation->vesting_shares;
@@ -2284,11 +2285,9 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       });
    }
    // Else the delegation is decreasing
-   else if( delegation->vesting_shares - op.vesting_shares >= min_update || delegation->vesting_shares == op.vesting_shares )
+   else if( delegation->vesting_shares > op.vesting_shares )
    {
-      FC_ASSERT( delegation->min_delegation_time <= _db.head_block_time(), "Delegation cannot be removed yet." );
-      if( delegation->vesting_shares != op.vesting_shares )
-         FC_ASSERT( delegation->vesting_shares - op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+      FC_ASSERT( delegation->vesting_shares - op.vesting_shares >= min_delegation || op.vesting_shares.amount == 0, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
 
       auto delta = delegation->vesting_shares - op.vesting_shares;
 
@@ -2296,7 +2295,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
       {
          obj.delegator = op.delegator;
          obj.vesting_shares = delta;
-         obj.expiration = _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS; // TODO: Replace with config constant with payout change branch
+         obj.expiration = std::max( _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS, delegation->min_delegation_time );
       });
 
       _db.modify( delegatee, [&]( account_object& a )
