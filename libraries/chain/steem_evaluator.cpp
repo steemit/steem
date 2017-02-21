@@ -1127,8 +1127,6 @@ namespace steemit {
                 FC_ASSERT(max_vote_denom > 0);
 
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {
-                    FC_ASSERT(max_vote_denom ==
-                              200);   // TODO: Remove this assert
                     used_power = (used_power / max_vote_denom) + 1;
                 } else {
                     used_power =
