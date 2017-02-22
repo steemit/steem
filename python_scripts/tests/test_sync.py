@@ -86,7 +86,7 @@ class WatchDog(object):
         localRpc = SteemNodeRPC("ws://localhost:8090", "", "", num_retries=3)
         print("WATCHDOG: Connection Established")
         remoteRpc = SteemNodeRPC(
-            "wss://steemit.com/wspa", "", "", num_retries=3)
+            "wss://steemd.steemit.com", "", "", num_retries=3)
         remoteProps = remoteRpc.get_dynamic_global_properties()
         while True:
             localProps = localRpc.get_dynamic_global_properties()
@@ -96,7 +96,13 @@ class WatchDog(object):
                 duplicates += 1
                 if duplicates > 10:
                     # We have been on the same block for 100 seconds.
-                    panic(second_to_last, local_block_number)
+                    print(
+                     "\nWATCHDOG: Error syncing between block #" +
+                     str(second_to_last) +
+                     " and #" +
+                     str(last_local_block_number))
+                    steemd.kill()
+                    sys.exit(1)
                     return
             else:
                 duplicates = 0
@@ -128,6 +134,10 @@ class WatchDog(object):
             configini.write(configiniSource)
         steemd_args = []
         steemd_args.append(self._steemd_bin)
+        steemd_args.append("--rpc-endpoint=127.0.0.1:8090")
+        steemd_args.append("--public-api=database_api")
+        steemd_args.append("--public-api=login_api")
+        steemd_args.append("--enable-plugin=witness")
         with open(self._seed_file, "r") as f:
             for line in f:
                 steemd_args.append(" --seed-node=" + line.split(' ', 1)[0])
