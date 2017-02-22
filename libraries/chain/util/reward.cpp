@@ -17,7 +17,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
 
    //idump( (ctx) );
 
-   u256 rs2 = to256( calculate_vshares( ctx.rshares.value ) );
+   u256 rs2 = to256( calculate_claims( ctx.rshares.value ) );
    rs2 = ( rs2 * ctx.reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
@@ -42,16 +42,15 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
    FC_ASSERT( ctx.rshares > 0 );
    FC_ASSERT( ctx.total_reward_shares2 > 0 );
 
-   u256 rs(ctx.rshares.value);
    u256 rf(ctx.total_reward_fund_steem.amount.value);
-   u256 total_rshares2 = to256( ctx.total_reward_shares2 );
+   u256 total_claims = to256( ctx.total_reward_shares2 );
 
    //idump( (ctx) );
 
-   u256 rs2 = to256( calculate_vshares( ctx.rshares.value, rf_object ) );
-   rs2 = ( rs2 * ctx.reward_weight ) / STEEMIT_100_PERCENT;
+   u256 claim = to256( calculate_claims( ctx.rshares.value, rf_object ) );
+   claim = ( claim * ctx.reward_weight ) / STEEMIT_100_PERCENT;
 
-   u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
+   u256 payout_u256 = ( rf * claim ) / total_claims;
    FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
    uint64_t payout = static_cast< uint64_t >( payout_u256 );
 
@@ -66,21 +65,20 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint128_t calculate_vshares( const uint128_t& rshares )
+uint128_t calculate_claims( const uint128_t& rshares )
 {
    uint128_t s = get_content_constant_s();
    uint128_t rshares_plus_s = rshares + s;
    return rshares_plus_s * rshares_plus_s - s * s;
 }
 
-uint128_t calculate_vshares( const uint128_t& rshares, const reward_fund_object& rf )
+uint128_t calculate_claims( const uint128_t& rshares, const reward_fund_object& rf )
 {
    if( rf.name == STEEMIT_POST_REWARD_FUND_NAME )
    {
       // r^2 + 2rs
-      uint128_t s = rf.content_constant;
-      uint128_t rshares_plus_s = rshares + s;
-      return rshares_plus_s * rshares_plus_s - s * s;
+      uint128_t rshares_plus_s = rshares + rf.content_constant;
+      return rshares_plus_s * rshares_plus_s + rf.content_constant * rf.content_constant;
    }
    else if( rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
    {

@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE( reward_funds )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( recent_rshares2_decay )
+BOOST_AUTO_TEST_CASE( recent_claims_decay )
 {
    try
    {
@@ -316,7 +316,7 @@ BOOST_AUTO_TEST_CASE( recent_rshares2_decay )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      auto alice_vshares = util::calculate_vshares( db.get_comment( "alice", string( "test" ) ).net_rshares.value, db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ) );
+      auto alice_vshares = util::calculate_claims( db.get_comment( "alice", string( "test" ) ).net_rshares.value, db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ) );
 
       generate_blocks( 5 );
 
@@ -334,12 +334,12 @@ BOOST_AUTO_TEST_CASE( recent_rshares2_decay )
       {
          const auto& post_rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
 
-         BOOST_REQUIRE( post_rf.recent_rshares2 == alice_vshares );
+         BOOST_REQUIRE( post_rf.recent_claims == alice_vshares );
          validate_database();
       }
 
       auto bob_cashout_time = db.get_comment( "bob", string( "test" ) ).cashout_time;
-      auto bob_vshares = util::calculate_vshares( db.get_comment( "bob", string( "test" ) ).net_rshares.value, db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ) );
+      auto bob_vshares = util::calculate_claims( db.get_comment( "bob", string( "test" ) ).net_rshares.value, db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ) );
 
       generate_block();
 
@@ -348,7 +348,7 @@ BOOST_AUTO_TEST_CASE( recent_rshares2_decay )
          alice_vshares -= ( alice_vshares * STEEMIT_BLOCK_INTERVAL ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
          const auto& post_rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
 
-         BOOST_REQUIRE( post_rf.recent_rshares2 == alice_vshares );
+         BOOST_REQUIRE( post_rf.recent_claims == alice_vshares );
 
          generate_block();
 
@@ -358,7 +358,7 @@ BOOST_AUTO_TEST_CASE( recent_rshares2_decay )
          alice_vshares -= ( alice_vshares * STEEMIT_BLOCK_INTERVAL ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
          const auto& post_rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
 
-         BOOST_REQUIRE( post_rf.recent_rshares2 == alice_vshares + bob_vshares );
+         BOOST_REQUIRE( post_rf.recent_claims == alice_vshares + bob_vshares );
          validate_database();
       }
    }

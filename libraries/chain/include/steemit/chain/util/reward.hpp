@@ -38,9 +38,9 @@ inline uint128_t get_content_constant_s()
    return uint128_t( uint64_t(2000000000000ll) ); // looking good for posters
 }
 
-uint128_t calculate_vshares( const uint128_t& rshares );
+uint128_t calculate_claims( const uint128_t& rshares );
 
-uint128_t calculate_vshares( const uint128_t& rshares, const reward_fund_object& rf );
+uint128_t calculate_claims( const uint128_t& rshares, const reward_fund_object& rf );
 
 inline bool is_comment_payout_dust( const price& p, uint64_t steem_payout )
 {

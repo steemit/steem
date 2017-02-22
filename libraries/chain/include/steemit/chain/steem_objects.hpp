@@ -261,7 +261,7 @@ namespace steemit { namespace chain {
          reward_fund_id_type     id;
          reward_fund_name_type   name;
          asset                   reward_balance = asset( 0, STEEM_SYMBOL );
-         fc::uint128_t           recent_rshares2 = 0;
+         fc::uint128_t           recent_claims = 0;
          time_point_sec          last_update;
          uint16_t                percent_content_rewards = 0;
          uint64_t                content_constant = 0;
@@ -516,7 +516,7 @@ FC_REFLECT( steemit::chain::reward_fund_object,
             (id)
             (name)
             (reward_balance)
-            (recent_rshares2)
+            (recent_claims)
             (last_update)
             (percent_content_rewards)
             (content_constant)

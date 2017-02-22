@@ -1345,8 +1345,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
-      new_rshares = util::calculate_vshares( new_rshares );
-      old_rshares = util::calculate_vshares( old_rshares );
+      new_rshares = util::calculate_claims( new_rshares );
+      old_rshares = util::calculate_claims( old_rshares );
 
       const auto& cat = _db.get_category( comment.category );
       _db.modify( cat, [&]( category_object& c ){
@@ -1529,8 +1529,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
-      new_rshares = util::calculate_vshares( new_rshares );
-      old_rshares = util::calculate_vshares( old_rshares );
+      new_rshares = util::calculate_claims( new_rshares );
+      old_rshares = util::calculate_claims( old_rshares );
 
       _db.modify( comment, [&]( comment_object& c )
       {
