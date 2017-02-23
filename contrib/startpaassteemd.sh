@@ -34,17 +34,28 @@ chown steemd:steemd $HOME/config.ini
 
 cd $HOME
 
+mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
+cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
+
 # get blockchain state from an S3 bucket
 # if this url is not provieded then we might as well exit
-if [[ ! -z "$BLOCKCHAIN_URL" ]]; then
-  echo steemd: beginning download and decompress of $BLOCKCHAIN_URL
-  s3cmd get $BLOCKCHAIN_URL - | pbzip2 -m2000dc | tar x
-  if [[ $? -ne 0 ]]; then
-    echo error: unable to pull blockchain state from S3 - exitting
-    exit 1
-  fi
+S3_DOWNLOAD_BUCKET=steemit-$NODE_ENV-blockchainstate
+echo steemd: beginning download and decompress of s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
+if [[ ! "$SYNC_TO_S3" ]]; then
+  mkdir -p /mnt/ramdisk
+  mount -t ramfs -o size=34816m ramfs /mnt/ramdisk
+  s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  ln -s blockchain/block_log /mnt/ramdisk/blockchain/block_log
+  ln -s blockchain/block_log.index /mnt/ramdisk/blockchain/block_log.index
+  ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
+  chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
-  echo error: no URL specified to get blockchain state from - exiting
+  s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  touch /tmp/issyncnode
+  chown www-data:www-data /tmp/issyncnode
+fi
+if [[ $? -ne 0 ]]; then
+  echo error: unable to pull blockchain state from S3 - exitting
   exit 1
 fi
 
@@ -63,44 +74,54 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
             $STEEMD_EXTRA_OPTS \
             2>&1 &
     # sleep for a moment to allow the writer node to be ready to accept connections from the readers
-    sleep 5
+    sleep 30
     PORT_NUM=8092
-    # don't generate endpoints in haproxy config if it already exists
-    # this prevents adding to it if the docker container is stopped/started
-    if [[ ! -f /etc/haproxy/haproxy.steem.cfg ]]; then
-        cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.steem.cfg
-        for (( i=2; i<=$(nproc); i++ ))
-          do
-            echo server server$PORT_NUM 127.0.0.1:$PORT_NUM maxconn 10000 weight 10 cookie server$PORT_NUM check >> /etc/haproxy/haproxy.steem.cfg
-            ((PORT_NUM++))
-        done
-    fi
+    cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
+    CORES=$(nproc)
+    PROCESSES=$((CORES * 4))
+    for (( i=2; i<=$PROCESSES; i++ ))
+      do
+        echo server localhost:$PORT_NUM\; >> /etc/nginx/healthcheck.conf
+        ((PORT_NUM++))
+    done
+    echo } >> /etc/nginx/healthcheck.conf
     PORT_NUM=8092
-    for (( i=2; i<=$(nproc); i++ ))
+    for (( i=2; i<=$PROCESSES; i++ ))
       do
         exec chpst -usteemd \
         $STEEMD \
           --rpc-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
+          --shared-file-dir=/mnt/ramdisk/blockchain \
           --read-forward-rpc=127.0.0.1:8091 \
           --read-only \
           2>&1 &
           ((PORT_NUM++))
           sleep 1
     done
-    # start haproxy now that the config file is complete with all endpoints
+    # start nginx now that the config file is complete with all endpoints
     # all of the read-only processes will connect to the write node onport 8091
-    # haproxy will balance all incoming traffic on port 8090
-    /usr/sbin/haproxy -D -f /etc/haproxy/haproxy.steem.cfg 2>&1
+    # nginx will balance all incoming traffic on port 8090
+    rm /etc/nginx/sites-enabled/default
+    cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
+    /etc/init.d/fcgiwrap restart
+    service nginx restart
     # start runsv script that kills containers if they die
     mkdir -p /etc/service/steemd
     cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run
     chmod +x /etc/service/steemd/run
     runsv /etc/service/steemd
 else
+    cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
+    echo server localhost:8091\; >> /etc/nginx/healthcheck.conf
+    echo } >> /etc/nginx/healthcheck.conf
+    rm /etc/nginx/sites-enabled/default
+    cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
+    /etc/init.d/fcgiwrap restart
+    service nginx restart
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=0.0.0.0:8090 \
+            --rpc-endpoint=0.0.0.0:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \

@@ -3,6 +3,7 @@ FROM phusion/baseimage:0.9.19
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
 ENV LANG=en_US.UTF-8
+ENV VERSION=0.17.0a
 
 RUN \
     apt-get update && \
@@ -25,7 +26,8 @@ RUN \
         python3 \
         python3-dev \
         python3-pip \
-        haproxy \
+        nginx \
+        fcgiwrap \
         s3cmd \
         awscli \
         jq \
@@ -182,18 +184,19 @@ ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
 RUN chmod +x /usr/local/bin/steem-sv-run.sh
 
-# add/overwrite the haproxy config file for multicore readonly processes
-# and create the socket directory for haproxy
-RUN mkdir -p /run/haproxy
-ADD contrib/config-for-haproxy /etc/haproxy/haproxy.cfg
+# add nginx templates
+ADD contrib/steemd.nginx.conf /etc/nginx/steemd.nginx.conf
+ADD contrib/healthcheck.conf.template /etc/nginx/healthcheck.conf.template
 
 # add PaaS startup script and service script
 ADD contrib/startpaassteemd.sh /usr/local/bin/startpaassteemd.sh
 ADD contrib/paas-sv-run.sh /usr/local/bin/paas-sv-run.sh
 ADD contrib/sync-sv-run.sh /usr/local/bin/sync-sv-run.sh
+ADD contrib/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/startpaassteemd.sh
 RUN chmod +x /usr/local/bin/paas-sv-run.sh
 RUN chmod +x /usr/local/bin/sync-sv-run.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # new entrypoint for all instances
 # this enables exitting of the container when the writer node dies
