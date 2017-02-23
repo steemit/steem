@@ -23,9 +23,9 @@
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1476788400))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*15) /// 15 minutes
+#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hour
 #define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS)
-#define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24) /// 24 hours
+#define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*5) /// 5 hours
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*20) /// 20 hours
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
 

@@ -2032,10 +2032,10 @@ namespace steemit {
                                 author_tokens, STEEM_SYMBOL)));
 
                         /*if( sbd_created.symbol == SBD_SYMBOL )
-               adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
-            else
-               adjust_total_payout( comment, to_sbd( asset( vesting_steem + sbd_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
-               */
+                           adjust_total_payout( comment, sbd_created + to_sbd( asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+                        else
+                           adjust_total_payout( comment, to_sbd( asset( vesting_steem + sbd_steem, STEEM_SYMBOL ) ), to_sbd( asset( reward_tokens.to_uint64() - author_tokens, STEEM_SYMBOL ) ) );
+                           */
 
                         // stats only.. TODO: Move to plugin...
                         total_payout = to_sbd(asset(reward_tokens.to_uint64(), STEEM_SYMBOL));
@@ -2070,9 +2070,9 @@ namespace steemit {
 
                 modify(comment, [&](comment_object &c) {
                     /**
-         * A payout is only made for positive rshares, negative rshares hang around
-         * for the next time this post might get an upvote.
-         */
+                    * A payout is only made for positive rshares, negative rshares hang around
+                    * for the next time this post might get an upvote.
+                    */
                     if (c.net_rshares > 0) {
                         c.net_rshares = 0;
                     }
@@ -2085,18 +2085,18 @@ namespace steemit {
                     if (c.parent_author == STEEMIT_ROOT_POST_PARENT) {
                         if (has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
                             c.last_payout == fc::time_point_sec::min()) {
-                            c.cashout_time = head_block_time() +
-                                             STEEMIT_SECOND_CASHOUT_WINDOW;
+                                c.cashout_time = head_block_time() +
+                                                 STEEMIT_SECOND_CASHOUT_WINDOW;
                         } else {
-                            c.cashout_time = fc::time_point_sec::maximum();
+                                c.cashout_time = fc::time_point_sec::maximum();
                         }
                     }
 
                     if (calculate_discussion_payout_time(c) ==
                         fc::time_point_sec::maximum()) {
-                        c.mode = archived;
+                            c.mode = archived;
                     } else {
-                        c.mode = second_payout;
+                            c.mode = second_payout;
                     }
 
                     c.last_payout = head_block_time();
