@@ -65,6 +65,22 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
+uint64_t get_vote_weight( uint128_t vote_rshares, const reward_fund_object& rf )
+{
+   uint64_t result = 0;
+   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
+   {
+      uint128_t two_alpha = rf.content_constant * 2;
+      result = ( ( std::numeric_limits< uint64_t >::max() * vote_rshares ) / ( two_alpha + vote_rshares ) ).to_uint64();
+   }
+   else
+   {
+      wlog( "Unknown reward fund type ${rf}", ("rf",rf.name) );
+   }
+
+   return result;
+}
+
 uint128_t calculate_claims( const uint128_t& rshares )
 {
    uint128_t s = get_content_constant_s();
@@ -74,25 +90,20 @@ uint128_t calculate_claims( const uint128_t& rshares )
 
 uint128_t calculate_claims( const uint128_t& rshares, const reward_fund_object& rf )
 {
-   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME )
+   uint128_t result = 0;
+   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
    {
-      // r^2 + 2rs
-      uint128_t rshares_plus_s = rshares + rf.content_constant;
-      return rshares_plus_s * rshares_plus_s + rf.content_constant * rf.content_constant;
+      // k * ( ( r + a )^2 - a^2 ) / ( r + 40a )
+      uint128_t rshares_plus_a = rshares + rf.content_constant;
+      uint128_t rshares_plus_forty_a = rshares + rf.content_constant * 40;
+      result = ( STEEMIT_REWARD_SCALING_CONSTANT_K * ( rshares_plus_a * rshares_plus_a - rf.content_constant * rf.content_constant ) ) / rshares_plus_forty_a;
    }
-   else if( rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
+   else
    {
-      // r^2 / ( s + r )
-      // Can be optimized to r - r * s / ( r + s ) Needs investigation to determine what the loss of precision is (if any)
-      // This optimization is worth noting because it could be implemented using only 64-bit math
-      uint128_t rshares_2 = ( rshares * rshares );
-      uint128_t rshares_plus_s = rshares + rf.content_constant;
-      return rshares_2 / rshares_plus_s;
+      wlog( "Unknown reward fund type ${rf}", ("rf",rf.name) );
    }
 
-   wlog( "Unknown reward fund ${rf}", ("rf",rf) );
-
-   return 0;
+   return result;
 }
 
 } } }

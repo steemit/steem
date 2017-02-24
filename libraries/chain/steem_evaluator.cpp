@@ -1404,6 +1404,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
                cv.weight = static_cast<uint64_t>( rshares3 / total2 );
             } else {// cv.weight = W(R_1) - W(R_0)
                const uint128_t two_s = 2 * util::get_content_constant_s();
+               if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+               {
+                  const auto& reward_fund = _db.get_reward_fund( comment );
+                  uint64_t old_weight = util::get_vote_weight( old_vote_rshares.value, reward_fund );
+                  uint64_t new_weight = util::get_vote_weight( comment.vote_rshares.value, reward_fund );
+               }
                if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
                {
                   uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( two_s + old_vote_rshares.value ) ).to_uint64();

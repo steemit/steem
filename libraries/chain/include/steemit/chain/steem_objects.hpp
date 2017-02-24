@@ -263,8 +263,9 @@ namespace steemit { namespace chain {
          asset                   reward_balance = asset( 0, STEEM_SYMBOL );
          fc::uint128_t           recent_claims = 0;
          time_point_sec          last_update;
-         uint16_t                percent_content_rewards = 0;
          uint64_t                content_constant = 0;
+         uint16_t                percent_curation_rewards = 0;
+         uint16_t                percent_content_rewards = 0;
    };
 
    struct by_price;
@@ -518,7 +519,8 @@ FC_REFLECT( steemit::chain::reward_fund_object,
             (reward_balance)
             (recent_claims)
             (last_update)
-            (percent_content_rewards)
             (content_constant)
+            (percent_curation_rewards)
+            (percent_content_rewards)
          )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::reward_fund_object, steemit::chain::reward_fund_index )

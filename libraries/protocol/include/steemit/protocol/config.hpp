@@ -161,6 +161,7 @@
 #define STEEMIT_POST_REWARD_FUND_NAME           ("post")
 #define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
 #define STEEMIT_RECENT_RSHARES_DECAY_RATE       (fc::days(30))
+#define STEEMIT_REWARD_SCALING_CONSTANT_K       (1000000)
 
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)

@@ -33,6 +33,8 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx );
 
 uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund_object& rf );
 
+uint64_t get_vote_weight( uint128_t vote_rshares, const reward_fund_object& rf );
+
 inline uint128_t get_content_constant_s()
 {
    return uint128_t( uint64_t(2000000000000ll) ); // looking good for posters
