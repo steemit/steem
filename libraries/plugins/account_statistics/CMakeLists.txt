@@ -1,9 +1,16 @@
 file(GLOB HEADERS "include/steemit/account_statistics/*.hpp")
 
-add_library(golos_account_statistics
-        account_statistics_plugin.cpp
-        account_statistics_api.cpp
-        )
+if(BUILD_SHARED_LIBRARIES)
+    add_library(golos_account_statistics SHARED
+            account_statistics_plugin.cpp
+            account_statistics_api.cpp
+            )
+else()
+    add_library(golos_account_statistics STATIC
+            account_statistics_plugin.cpp
+            account_statistics_api.cpp
+            )
+endif()
 
 target_link_libraries(golos_account_statistics golos_chain golos_protocol golos_app)
 target_include_directories(golos_account_statistics

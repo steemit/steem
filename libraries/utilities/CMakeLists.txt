@@ -19,9 +19,15 @@ set(sources
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
 list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 
-add_library(graphene_utilities
-        ${sources}
-        ${HEADERS})
+if(BUILD_SHARED_LIBRARIES)
+    add_library(graphene_utilities SHARED
+            ${sources}
+            ${HEADERS})
+else()
+    add_library(graphene_utilities STATIC
+            ${sources}
+            ${HEADERS})
+endif()
 target_link_libraries(graphene_utilities fc)
 target_include_directories(graphene_utilities
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

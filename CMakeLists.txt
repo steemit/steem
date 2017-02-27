@@ -50,6 +50,8 @@ list(APPEND BOOST_COMPONENTS thread
 
 option(Boost_USE_STATIC_LIBS "Build with Boost static libraries usage" TRUE)
 
+option(BUILD_SHARED_LIBRARIES "Build shared libraries" FALSE)
+
 option(BUILD_GOLOS_TESTNET "Build source for test network (ON OR OFF)" OFF)
 message(STATUS "BUILD_GOLOS_TESTNET: ${BUILD_GOLOS_TESTNET}")
 if(BUILD_GOLOS_TESTNET)

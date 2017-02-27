@@ -7,7 +7,11 @@ set(SOURCES node.cpp
         peer_connection.cpp
         message_oriented_connection.cpp)
 
-add_library(graphene_net ${SOURCES} ${HEADERS})
+if(BUILD_SHARED_LIBRARIES)
+    add_library(graphene_net SHARED ${SOURCES} ${HEADERS})
+else()
+    add_library(graphene_net STATIC ${SOURCES} ${HEADERS})
+endif()
 
 target_link_libraries(graphene_net
         PUBLIC fc)
