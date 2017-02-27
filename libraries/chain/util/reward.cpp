@@ -65,13 +65,13 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint64_t get_vote_weight( uint128_t vote_rshares, const reward_fund_object& rf )
+uint64_t get_vote_weight( uint64_t vote_rshares, const reward_fund_object& rf )
 {
    uint64_t result = 0;
    if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
    {
       uint128_t two_alpha = rf.content_constant * 2;
-      result = ( ( std::numeric_limits< uint64_t >::max() * vote_rshares ) / ( two_alpha + vote_rshares ) ).to_uint64();
+      result = ( uint128_t( vote_rshares, 0 ) / ( two_alpha + vote_rshares ) ).to_uint64();
    }
    else
    {
@@ -93,10 +93,11 @@ uint128_t calculate_claims( const uint128_t& rshares, const reward_fund_object& 
    uint128_t result = 0;
    if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
    {
-      // k * ( ( r + a )^2 - a^2 ) / ( r + 40a )
+      // ( ( r + a )^2 - a^2 ) / ( r + g )
+      // In this implementation g = 40a
       uint128_t rshares_plus_a = rshares + rf.content_constant;
-      uint128_t rshares_plus_forty_a = rshares + rf.content_constant * 40;
-      result = ( STEEMIT_REWARD_SCALING_CONSTANT_K * ( rshares_plus_a * rshares_plus_a - rf.content_constant * rf.content_constant ) ) / rshares_plus_forty_a;
+      uint128_t rshares_plus_g = rshares + rf.content_constant * STEEMIT_CONTENT_G_CONST;
+      result = ( rshares_plus_a * rshares_plus_a - rf.content_constant * rf.content_constant ) / rshares_plus_g;
    }
    else
    {

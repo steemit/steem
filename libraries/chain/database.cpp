@@ -3853,7 +3853,7 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
-            rfo.content_constant = uint64_t(277777777777ll); // 1E13 / 36
+            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF17;
             rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
             rfo.percent_content_rewards = 0;
          });
@@ -3862,7 +3862,7 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
-            rfo.content_constant = uint64_t(277777777777ll); // 1E13 / 36
+            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF17;
             rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
             rfo.percent_content_rewards = 0;
          });
