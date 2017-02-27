@@ -1,8 +1,14 @@
 file(GLOB HEADERS "include/steemit/delayed_node/*.hpp")
 
-add_library(golos_delayed_node
-        delayed_node_plugin.cpp
-        )
+if(BUILD_SHARED_LIBRARIES)
+    add_library(golos_delayed_node SHARED
+            delayed_node_plugin.cpp
+            )
+else()
+    add_library(golos_delayed_node STATIC
+            delayed_node_plugin.cpp
+            )
+endif()
 
 target_link_libraries(golos_delayed_node golos_chain golos_protocol golos_app)
 target_include_directories(golos_delayed_node

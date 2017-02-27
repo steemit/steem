@@ -1,10 +1,18 @@
 file(GLOB HEADERS "include/steemit/plugins/debug_node/*.hpp")
 
-add_library(golos_debug_node
-        ${HEADERS}
-        debug_node_plugin.cpp
-        debug_node_api.cpp
-        )
+if(BUILD_SHARED_LIBRARIES)
+    add_library(golos_debug_node SHARED
+            ${HEADERS}
+            debug_node_plugin.cpp
+            debug_node_api.cpp
+            )
+else()
+    add_library(golos_debug_node STATIC
+            ${HEADERS}
+            debug_node_plugin.cpp
+            debug_node_api.cpp
+            )
+endif()
 
 target_link_libraries(golos_debug_node golos_app golos_chain golos_protocol fc)
 target_include_directories(golos_debug_node

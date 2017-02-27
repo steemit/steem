@@ -1,13 +1,24 @@
 file(GLOB HEADERS "include/steemit/app/*.hpp")
 
-add_library(golos_app
-        database_api.cpp
-        api.cpp
-        application.cpp
-        impacted.cpp
-        plugin.cpp
-        ${HEADERS}
-        )
+if(BUILD_SHARED_LIBRARIES)
+    add_library(golos_app SHARED
+            database_api.cpp
+            api.cpp
+            application.cpp
+            impacted.cpp
+            plugin.cpp
+            ${HEADERS}
+            )
+else()
+    add_library(golos_app STATIC
+            database_api.cpp
+            api.cpp
+            application.cpp
+            impacted.cpp
+            plugin.cpp
+            ${HEADERS}
+            )
+endif()
 
 target_link_libraries(golos_app golos_chain golos_protocol golos_tags golos_follow golos_mf_plugins fc graphene_net graphene_time graphene_utilities)
 target_include_directories(golos_app

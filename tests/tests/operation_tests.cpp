@@ -3923,7 +3923,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
       uint64_t nonce2 = nonce;
       idump( (nonce2) );
 #else
-            uint64_t nonce2 = 91;
+            uint64_t nonce2 = 36;
 #endif
 
 #ifdef CALCULATE_NONCES
@@ -3936,7 +3936,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
       uint64_t nonce3 = nonce;
       idump( (nonce3) );
 #else
-            uint64_t nonce3 = 162;
+            uint64_t nonce3 = 357;
 #endif
 
 #ifdef CALCULATE_NONCES
@@ -3949,7 +3949,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
       uint64_t nonce4 = nonce;
       idump( (nonce4) );
 #else
-            uint64_t nonce4 = 184;
+            uint64_t nonce4 = 394;
 #endif
 
             // Test with nonce that doesn't match work, should fail
@@ -4088,7 +4088,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
       uint64_t nonce6 = nonce;
       idump( (nonce6) );
 #else
-            uint64_t nonce6 = 387;
+            uint64_t nonce6 = 404;
 #endif
 
 #ifdef CALCULATE_NONCES
@@ -4101,7 +4101,7 @@ BOOST_FIXTURE_TEST_SUITE(operation_tests, clean_database_fixture)
       uint64_t nonce7 = nonce;
       idump( (nonce7) );
 #else
-            uint64_t nonce7 = 408;
+            uint64_t nonce7 = 496;
 #endif
 
             // Test with wrong previous block id

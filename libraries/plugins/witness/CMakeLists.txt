@@ -1,8 +1,14 @@
 file(GLOB HEADERS "include/steemit/witness/*.hpp")
 
-add_library(golos_witness
-        witness.cpp
-        )
+if(BUILD_SHARED_LIBRARIES)
+    add_library(golos_witness SHARED
+            witness.cpp
+            )
+else()
+    add_library(golos_witness STATIC
+            witness.cpp
+            )
+endif()
 
 target_link_libraries(golos_witness golos_chain golos_protocol golos_app graphene_time)
 target_include_directories(golos_witness

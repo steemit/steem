@@ -1127,8 +1127,6 @@ namespace steemit {
                 FC_ASSERT(max_vote_denom > 0);
 
                 if (!_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {
-                    FC_ASSERT(max_vote_denom ==
-                              200);   // TODO: Remove this assert
                     used_power = (used_power / max_vote_denom) + 1;
                 } else {
                     used_power =
@@ -1146,10 +1144,10 @@ namespace steemit {
                 }
 
                 if (_db.has_hardfork(STEEMIT_HARDFORK_0_14__259)) {
-                    FC_ASSERT(abs_rshares > 50000000 || o.weight ==
+                    FC_ASSERT(abs_rshares > 30000000 || o.weight ==
                                                         0, "Voting weight is too small, please accumulate more voting power or steem power.");
                 } else if (_db.has_hardfork(STEEMIT_HARDFORK_0_13__248)) {
-                    FC_ASSERT(abs_rshares > 50000000 || abs_rshares ==
+                    FC_ASSERT(abs_rshares > 30000000 || abs_rshares ==
                                                         1, "Voting weight is too small, please accumulate more voting power or steem power.");
                 }
 

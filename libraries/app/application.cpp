@@ -908,14 +908,14 @@ namespace steemit {
                     ("public-api", bpo::value<vector<string>>()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
                     ("enable-plugin", bpo::value<vector<string>>()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
                     ("max-block-age", bpo::value<int32_t>()->default_value(200), "Maximum age of head block when broadcasting tx via API")
-                    ("flush", bpo::value<uint32_t>()->default_value(100000), "Flush shared memory file to disk this many blocks")
-                    ("check-locks", bpo::value<bool>()->default_value(false), "Check correctness of chainbase locking");
+                    ("flush", bpo::value<uint32_t>()->default_value(100000), "Flush shared memory file to disk this many blocks");
             command_line_options.add(configuration_file_options);
             command_line_options.add_options()
                     ("replay-blockchain", "Rebuild object graph by replaying all blocks")
                     ("resync-blockchain", "Delete all blocks and re-sync with network from scratch")
                     ("force-validate", "Force validation of all transactions")
-                    ("read-only", "Node will not connect to p2p network and can only read from the chain state");
+                    ("read-only", "Node will not connect to p2p network and can only read from the chain state")
+                    ("check-locks", "Check correctness of chainbase locking");
             command_line_options.add(_cli_options);
             configuration_file_options.add(_cfg_options);
         }

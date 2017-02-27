@@ -13,7 +13,7 @@ modification, are permitted provided that the following conditions are met:
 4. The STEEMIT_INIT_PUBLIC_KEY_STR is not changed from GLS7KVuKX87DK44xmhAD92hqJeR8Acd1TBKCtVnGLC5VDpER5CtWE,
 and the software is not modified in any way that would bypass the need for the coresponding private to start
 a new blockchain.
-5. The software is not used with any forks of the Golos blockchain that are not recognized by Golos, Inc in writing.
+5. The software is not used with any forks of the Golos blockchain that are not recognized by Golos Foundation in writing.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

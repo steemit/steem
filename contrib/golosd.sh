@@ -38,7 +38,7 @@ fi
 
 if [[ ! -z "$STEEMD_MINER_NAME" ]]; then
     ARGS+=" --miner=[\"$STEEMD_MINER_NAME\",\"$STEEMD_PRIVATE_KEY\"]"
-    ARGS+=" --mining-threads=$(nproc)"
+#    ARGS+=" --mining-threads=$(nproc)"
 fi
 
 if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
