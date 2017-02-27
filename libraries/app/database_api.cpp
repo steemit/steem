@@ -1123,7 +1123,8 @@ void database_api::set_pending_payout( discussion& d )const
    u256 total_r2 = to256( props.total_reward_shares2 );
 
    if( props.total_reward_shares2 > 0 ){
-      auto vshares = steemit::chain::util::calculate_vshares( d.net_rshares.value > 0 ? d.net_rshares.value : 0  );
+      auto vshares = std::max( steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 ),
+                               steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 , my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ) ) ); // TODO: Only return new calculate_claims after HF 17
 
       //int64_t abs_net_rshares = llabs(d.net_rshares.value);
 

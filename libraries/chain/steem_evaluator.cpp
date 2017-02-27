@@ -1345,8 +1345,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
-      new_rshares = util::calculate_vshares( new_rshares );
-      old_rshares = util::calculate_vshares( old_rshares );
+      new_rshares = util::calculate_claims( new_rshares );
+      old_rshares = util::calculate_claims( old_rshares );
 
       const auto& cat = _db.get_category( comment.category );
       _db.modify( cat, [&]( category_object& c ){
@@ -1404,7 +1404,14 @@ void vote_evaluator::do_apply( const vote_operation& o )
                cv.weight = static_cast<uint64_t>( rshares3 / total2 );
             } else {// cv.weight = W(R_1) - W(R_0)
                const uint128_t two_s = 2 * util::get_content_constant_s();
-               if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+               if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+               {
+                  const auto& reward_fund = _db.get_reward_fund( comment );
+                  uint64_t old_weight = util::get_vote_weight( old_vote_rshares.value, reward_fund );
+                  uint64_t new_weight = util::get_vote_weight( comment.vote_rshares.value, reward_fund );
+                  cv.weight = new_weight - old_weight;
+               }
+               else if ( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
                {
                   uint64_t old_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( old_vote_rshares.value ) ) / ( two_s + old_vote_rshares.value ) ).to_uint64();
                   uint64_t new_weight = ( ( std::numeric_limits< uint64_t >::max() * fc::uint128_t( comment.vote_rshares.value ) ) / ( two_s + comment.vote_rshares.value ) ).to_uint64();
@@ -1529,8 +1536,8 @@ void vote_evaluator::do_apply( const vote_operation& o )
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
-      new_rshares = util::calculate_vshares( new_rshares );
-      old_rshares = util::calculate_vshares( old_rshares );
+      new_rshares = util::calculate_claims( new_rshares );
+      old_rshares = util::calculate_claims( old_rshares );
 
       _db.modify( comment, [&]( comment_object& c )
       {

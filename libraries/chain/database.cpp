@@ -70,7 +70,7 @@ using boost::container::flat_set;
 
 struct reward_fund_context
 {
-   uint128_t   recent_rshares2 = 0;
+   uint128_t   recent_claims = 0;
    asset       reward_balance = asset( 0, STEEM_SYMBOL );
    share_type  steem_awarded = 0;
 };
@@ -1639,7 +1639,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
          }
 
          if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-            adjust_rshares2( comment, util::calculate_vshares( comment.net_rshares.value ), 0 );
+            adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
       }
 
       modify( cat, [&]( category_object& c )
@@ -1731,12 +1731,12 @@ void database::process_comment_cashout()
       // Add all reward funds to the local cache and decay their recent rshares
       modify( *itr, [&]( reward_fund_object& rfo )
       {
-         rfo.recent_rshares2 -= ( rfo.recent_rshares2 * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
+         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
          rfo.last_update = head_block_time();
       });
 
       reward_fund_context rf_ctx;
-      rf_ctx.recent_rshares2 = itr->recent_rshares2;
+      rf_ctx.recent_claims = itr->recent_claims;
       rf_ctx.reward_balance = itr->reward_balance;
 
       funds.push_back( rf_ctx );
@@ -1754,8 +1754,7 @@ void database::process_comment_cashout()
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
-            funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf );
-            FC_ASSERT( funds[ rf.id._id ].recent_rshares2 < std::numeric_limits< uint64_t >::max() );
+            funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
             ++current;
          }
       }
@@ -1781,7 +1780,7 @@ void database::process_comment_cashout()
       if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
       {
          auto fund_id = get_reward_fund( *current ).id._id;
-         ctx.total_reward_shares2 = funds[ fund_id ].recent_rshares2;
+         ctx.total_reward_shares2 = funds[ fund_id ].recent_claims;
          ctx.total_reward_fund_steem = funds[ fund_id ].reward_balance;
          funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current );
       }
@@ -1800,7 +1799,7 @@ void database::process_comment_cashout()
             if( funds.size() )
             {
                const auto& rf = get_reward_fund( *current );
-               funds[ rf.id._id ].recent_rshares2 += util::calculate_vshares( current->net_rshares.value, rf );
+               funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
             }
 
             auto reward = cashout_comment_helper( ctx, comment );
@@ -1825,7 +1824,7 @@ void database::process_comment_cashout()
       {
          modify( get< reward_fund_object, by_id >( reward_fund_id_type( i ) ), [&]( reward_fund_object& rfo )
          {
-            rfo.recent_rshares2 = funds[ i ].recent_rshares2;
+            rfo.recent_claims = funds[ i ].recent_claims;
             rfo.reward_balance -= funds[ i ].steem_awarded;
          });
       }
@@ -2042,8 +2041,8 @@ void database::pay_liquidity_reward()
 
 uint16_t database::get_curation_rewards_percent( const comment_object& c ) const
 {
-   if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) && c.parent_author != STEEMIT_ROOT_POST_PARENT )
-      return 0;
+   if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+      return get_reward_fund( c ).percent_curation_rewards;
    else if( has_hardfork( STEEMIT_HARDFORK_0_8__116 ) )
       return STEEMIT_1_PERCENT * 25;
    else
@@ -3854,16 +3853,18 @@ void database::apply_hardfork( uint32_t hardfork )
          {
             rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
+            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF17;
+            rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
             rfo.percent_content_rewards = 0;
-            rfo.content_constant = util::get_content_constant_s().to_uint64();
          });
 
          create< reward_fund_object >( [&]( reward_fund_object& rfo )
          {
             rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
             rfo.last_update = head_block_time();
+            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF17;
+            rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
             rfo.percent_content_rewards = 0;
-            rfo.content_constant = util::get_content_constant_s().to_uint64();
          });
          break;
       case STEEMIT_HARDFORK_0_17:
@@ -4079,7 +4080,7 @@ void database::validate_invariants()const
       {
          if( itr->net_rshares.value > 0 )
          {
-            auto delta = util::calculate_vshares( itr->net_rshares.value );
+            auto delta = util::calculate_claims( itr->net_rshares.value );
             total_rshares2 += delta;
          }
          if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
@@ -4153,7 +4154,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, util::calculate_vshares( c.net_rshares.value ) );
+            adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
       }
 
       // Update category rshares
