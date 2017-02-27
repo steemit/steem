@@ -388,6 +388,53 @@ class wallet_api
                                             bool broadcast )const;
 
       /**
+       *  This method will genrate new owner, active, and memo keys for the new account which
+       *  will be controlable by this wallet. There is a fee associated with account creation
+       *  that is paid by the creator. The current account creation fee can be found with the
+       *  'info' wallet command.
+       *
+       *  These accounts are created with combination of STEEM and delegated SP
+       *
+       *  @param creator The account creating the new account
+       *  @param steem_fee The amount of the fee to be paid with STEEM
+       *  @param delegated_vests The amount of the fee to be paid with delegation
+       *  @param new_account_name The name of the new account
+       *  @param json_meta JSON Metadata associated with the new account
+       *  @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction create_account_delegated( string creator, asset steem_fee, asset delegated_vests, string new_account_name, string json_meta, bool broadcast );
+
+      /**
+       * This method is used by faucets to create new accounts for other users which must
+       * provide their desired keys. The resulting account may not be controllable by this
+       * wallet. There is a fee associated with account creation that is paid by the creator.
+       * The current account creation fee can be found with the 'info' wallet command.
+       *
+       * These accounts are created with combination of STEEM and delegated SP
+       *
+       * @param creator The account creating the new account
+       * @param steem_fee The amount of the fee to be paid with STEEM
+       * @param delegated_vests The amount of the fee to be paid with delegation
+       * @param newname The name of the new account
+       * @param json_meta JSON Metadata associated with the new account
+       * @param owner public owner key of the new account
+       * @param active public active key of the new account
+       * @param posting public posting key of the new account
+       * @param memo public memo key of the new account
+       * @param broadcast true if you wish to broadcast the transaction
+       */
+      annotated_signed_transaction create_account_with_keys_delegated( string creator,
+                                            asset steem_fee,
+                                            asset delegated_vests,
+                                            string newname,
+                                            string json_meta,
+                                            public_key_type owner,
+                                            public_key_type active,
+                                            public_key_type posting,
+                                            public_key_type memo,
+                                            bool broadcast )const;
+
+      /**
        * This method updates the keys of an existing account.
        *
        * @param accountname The name of the account
@@ -930,6 +977,8 @@ class wallet_api
       string decrypt_memo( string memo );
 
       annotated_signed_transaction decline_voting_rights( string account, bool decline, bool broadcast );
+
+      annotated_signed_transaction claim_reward_balance( string account, asset reward_steem, asset reward_sbd, asset reward_vests, bool broadcast );
 };
 
 struct plain_keys {
@@ -987,6 +1036,8 @@ FC_API( steemit::wallet::wallet_api,
         /// transaction api
         (create_account)
         (create_account_with_keys)
+        (create_account_delegated)
+        (create_account_with_keys_delegated)
         (update_account)
         (update_account_auth_key)
         (update_account_auth_account)
@@ -1023,6 +1074,7 @@ FC_API( steemit::wallet::wallet_api,
         (get_encrypted_memo)
         (decrypt_memo)
         (decline_voting_rights)
+        (claim_reward_balance)
 
         // private message api
         (send_private_message)

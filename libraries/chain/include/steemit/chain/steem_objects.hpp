@@ -258,6 +258,8 @@ namespace steemit { namespace chain {
             c( *this );
          }
 
+         reward_fund_object() {}
+
          reward_fund_id_type     id;
          reward_fund_name_type   name;
          asset                   reward_balance = asset( 0, STEEM_SYMBOL );
