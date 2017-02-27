@@ -21,6 +21,8 @@ namespace steemit {
         class account_object
                 : public object<account_object_type, account_object> {
         public:
+            account_object() = delete;
+
             template<typename Constructor, typename Allocator>
             account_object(Constructor &&c, allocator<Allocator> a)
                     :json_metadata(a) {
@@ -117,6 +119,8 @@ namespace steemit {
         class account_authority_object
                 : public object<account_authority_object_type, account_authority_object> {
         public:
+            account_authority_object() = delete;
+
             template<typename Constructor, typename Allocator>
             account_authority_object(Constructor &&c, allocator<Allocator> a)
                     : owner(a), active(a), posting(a) {
@@ -157,6 +161,8 @@ namespace steemit {
         class owner_authority_history_object
                 : public object<owner_authority_history_object_type, owner_authority_history_object> {
         public:
+            owner_authority_history_object() = delete;
+
             template<typename Constructor, typename Allocator>
             owner_authority_history_object(Constructor &&c, allocator<Allocator> a)
                     :previous_owner_authority(shared_authority::allocator_type(a.get_segment_manager())) {
@@ -173,6 +179,8 @@ namespace steemit {
         class account_recovery_request_object
                 : public object<account_recovery_request_object_type, account_recovery_request_object> {
         public:
+            account_recovery_request_object() = delete;
+
             template<typename Constructor, typename Allocator>
             account_recovery_request_object(Constructor &&c, allocator<Allocator> a)
                     :new_owner_authority(shared_authority::allocator_type(a.get_segment_manager())) {

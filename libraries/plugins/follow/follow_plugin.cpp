@@ -1,13 +1,25 @@
 #include <steemit/follow/follow_api.hpp>
+#include <steemit/follow/follow_objects.hpp>
 #include <steemit/follow/follow_operations.hpp>
 
 #include <steemit/app/impacted.hpp>
 
+#include <steemit/protocol/config.hpp>
+
+#include <steemit/chain/database.hpp>
 #include <steemit/chain/index.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/operation_notification.hpp>
+#include <steemit/chain/account_object.hpp>
+#include <steemit/chain/comment_object.hpp>
+
+#include <graphene/schema/schema.hpp>
+#include <graphene/schema/schema_impl.hpp>
 
 #include <fc/smart_ref_impl.hpp>
+#include <fc/thread/thread.hpp>
+
+#include <memory>
 
 namespace steemit {
     namespace follow {
@@ -353,6 +365,7 @@ namespace steemit {
                 add_plugin_index<blog_index>(db);
                 add_plugin_index<reputation_index>(db);
                 add_plugin_index<follow_count_index>(db);
+                add_plugin_index<blog_author_stats_index>(db);
 
                 if (options.count("follow-max-feed-size")) {
                     uint32_t feed_size = options["follow-max-feed-size"].as<uint32_t>();

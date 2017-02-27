@@ -6,9 +6,9 @@
 
 namespace steemit {
     namespace follow {
-
         using namespace std;
         using namespace steemit::chain;
+        using chainbase::shared_vector;
 
 #ifndef FOLLOW_SPACE_ID
 #define FOLLOW_SPACE_ID 8
@@ -19,7 +19,8 @@ namespace steemit {
             feed_object_type = (FOLLOW_SPACE_ID << 8) + 1,
             reputation_object_type = (FOLLOW_SPACE_ID << 8) + 2,
             blog_object_type = (FOLLOW_SPACE_ID << 8) + 3,
-            follow_count_object_type = (FOLLOW_SPACE_ID << 8) + 4
+            follow_count_object_type = (FOLLOW_SPACE_ID << 8) + 4,
+            blog_author_stats_object_type = (FOLLOW_SPACE_ID << 8) + 5
         };
 
         enum follow_type {
@@ -47,20 +48,20 @@ namespace steemit {
 
         typedef oid<follow_object> follow_id_type;
 
-
         class feed_object : public object<feed_object_type, feed_object> {
         public:
-            template<typename Constructor, typename Allocator>
-            feed_object(Constructor &&c, allocator<Allocator> a) {
-                c(*this);
-            }
+            feed_object() = delete;
 
-            feed_object() {
+            template<typename Constructor, typename Allocator>
+            feed_object(Constructor &&c, allocator<Allocator> a)
+                    :reblogged_by(a.get_segment_manager()) {
+                c(*this);
             }
 
             id_type id;
 
             account_name_type account;
+            shared_vector<account_name_type> reblogged_by;
             account_name_type first_reblogged_by;
             time_point_sec first_reblogged_on;
             comment_id_type comment;
@@ -90,6 +91,30 @@ namespace steemit {
         };
 
         typedef oid<blog_object> blog_id_type;
+
+/**
+ *  This index is maintained to get an idea of which authors are resteemed by a particular blogger and
+ *  how frequnetly. It is designed to give an overview of the type of people a blogger sponsors as well
+ *  as to enable generation of filter set for a blog list.
+ *
+ *  Give me the top authors promoted by this blog
+ *  Give me all blog posts by [authors] that were resteemed by this blog
+ */
+        class blog_author_stats_object
+                : public object<blog_author_stats_object_type, blog_author_stats_object> {
+        public:
+            template<typename Constructor, typename Allocator>
+            blog_author_stats_object(Constructor &&c, allocator<Allocator> a) {
+                c(*this);
+            }
+
+            id_type id;
+            account_name_type blogger;
+            account_name_type guest;
+            uint32_t count = 0;
+        };
+
+        typedef oid<blog_author_stats_object> blog_author_stats_id_type;
 
 
         class reputation_object
@@ -158,7 +183,26 @@ namespace steemit {
                         >
                 >,
                 allocator<follow_object>
-        > follow_index;
+        >
+                follow_index;
+
+        struct by_blogger_guest_count;
+        typedef chainbase::shared_multi_index_container<
+                blog_author_stats_object,
+                indexed_by<
+                        ordered_unique<tag<by_id>, member<blog_author_stats_object, blog_author_stats_id_type, &blog_author_stats_object::id>>,
+                        ordered_unique<tag<by_blogger_guest_count>,
+                                composite_key<blog_author_stats_object,
+                                        member<blog_author_stats_object, account_name_type, &blog_author_stats_object::blogger>,
+                                        member<blog_author_stats_object, account_name_type, &blog_author_stats_object::guest>,
+                                        member<blog_author_stats_object, uint32_t, &blog_author_stats_object::count>
+                                >,
+                                composite_key_compare<std::less<account_name_type>, std::less<account_name_type>,
+                                        greater<uint32_t>>
+                        >
+                >
+        >
+                blog_author_stats_index;
 
         struct by_feed;
         struct by_old_feed;
@@ -199,7 +243,8 @@ namespace steemit {
                         >
                 >,
                 allocator<feed_object>
-        > feed_index;
+        >
+                feed_index;
 
         struct by_blog;
         struct by_old_blog;
@@ -231,7 +276,8 @@ namespace steemit {
                         >
                 >,
                 allocator<blog_object>
-        > blog_index;
+        >
+                blog_index;
 
         struct by_reputation;
 
@@ -249,7 +295,8 @@ namespace steemit {
                         ordered_unique<tag<by_account>, member<reputation_object, account_name_type, &reputation_object::account>>
                 >,
                 allocator<reputation_object>
-        > reputation_index;
+        >
+                reputation_index;
 
 
         struct by_followers;
@@ -276,7 +323,8 @@ namespace steemit {
                         >
                 >,
                 allocator<follow_count_object>
-        > follow_count_index;
+        >
+                follow_count_index;
 
     }
 } // steemit::follow
@@ -286,7 +334,7 @@ FC_REFLECT_ENUM(steemit::follow::follow_type, (undefined)(blog)(ignore))
 FC_REFLECT(steemit::follow::follow_object, (id)(follower)(following)(what))
 CHAINBASE_SET_INDEX_TYPE(steemit::follow::follow_object, steemit::follow::follow_index)
 
-FC_REFLECT(steemit::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(comment)(reblogs)(account_feed_id))
+FC_REFLECT(steemit::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id))
 CHAINBASE_SET_INDEX_TYPE(steemit::follow::feed_object, steemit::follow::feed_index)
 
 FC_REFLECT(steemit::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id))
@@ -297,3 +345,6 @@ CHAINBASE_SET_INDEX_TYPE(steemit::follow::reputation_object, steemit::follow::re
 
 FC_REFLECT(steemit::follow::follow_count_object, (id)(account)(follower_count)(following_count))
 CHAINBASE_SET_INDEX_TYPE(steemit::follow::follow_count_object, steemit::follow::follow_count_index)
+
+FC_REFLECT(steemit::follow::blog_author_stats_object, (id)(blogger)(guest)(count))
+CHAINBASE_SET_INDEX_TYPE(steemit::follow::blog_author_stats_object, steemit::follow::blog_author_stats_index);

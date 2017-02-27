@@ -45,7 +45,8 @@ namespace steemit {
         enum {
             tag_object_type = (TAG_SPACE_ID << 8),
             tag_stats_object_type = (TAG_SPACE_ID << 8) + 1,
-            peer_stats_object_type = (TAG_SPACE_ID << 8) + 2
+            peer_stats_object_type = (TAG_SPACE_ID << 8) + 2,
+            author_tag_stats_object_type = (TAG_SPACE_ID << 8) + 3
         };
 
         namespace detail { class tags_plugin_impl; }
@@ -380,6 +381,76 @@ namespace steemit {
                 allocator<peer_stats_object>
         > peer_stats_index;
 
+/**
+ *  This purpose of this object is to maintain stats about which tags an author uses, how frequnetly, and
+ *  how many total earnings of all posts by author in tag.  It also allows us to answer the question of which
+ *  authors earn the most in each tag category.  This helps users to discover the best bloggers to follow for
+ *  particular tags.
+ */
+        class author_tag_stats_object
+                : public object<author_tag_stats_object_type, author_tag_stats_object> {
+        public:
+            template<typename Constructor, typename Allocator>
+            author_tag_stats_object(Constructor &&c, allocator<Allocator>) {
+                c(*this);
+            }
+
+            id_type id;
+            account_id_type author;
+            tag_name_type tag;
+            asset total_rewards = asset(0, SBD_SYMBOL);
+            uint32_t total_posts = 0;
+        };
+
+        typedef oid<author_tag_stats_object> author_tag_stats_id_type;
+
+        struct by_author_tag_posts;
+        struct by_author_posts_tag;
+        struct by_author_tag_rewards;
+        struct by_tag_rewards_author;
+        using std::less;
+        using std::greater;
+
+        typedef chainbase::shared_multi_index_container<
+                author_tag_stats_object,
+                indexed_by<
+                        ordered_unique<tag<by_id>,
+                                member<author_tag_stats_object, author_tag_stats_id_type, &author_tag_stats_object::id>
+                        >,
+                        ordered_unique<tag<by_author_posts_tag>,
+                                composite_key<author_tag_stats_object,
+                                        member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>,
+                                        member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts>,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>
+                                >,
+                                composite_key_compare<less<account_id_type>, greater<uint32_t>, less<tag_name_type>>
+                        >,
+                        ordered_unique<tag<by_author_tag_posts>,
+                                composite_key<author_tag_stats_object,
+                                        member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>,
+                                        member<author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts>
+                                >,
+                                composite_key_compare<less<account_id_type>, less<tag_name_type>, greater<uint32_t>>
+                        >,
+                        ordered_unique<tag<by_author_tag_rewards>,
+                                composite_key<author_tag_stats_object,
+                                        member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>,
+                                        member<author_tag_stats_object, asset, &author_tag_stats_object::total_rewards>
+                                >,
+                                composite_key_compare<less<account_id_type>, less<tag_name_type>, greater<asset>>
+                        >,
+                        ordered_unique<tag<by_tag_rewards_author>,
+                                composite_key<author_tag_stats_object,
+                                        member<author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag>,
+                                        member<author_tag_stats_object, asset, &author_tag_stats_object::total_rewards>,
+                                        member<author_tag_stats_object, account_id_type, &author_tag_stats_object::author>
+                                >,
+                                composite_key_compare<less<tag_name_type>, greater<asset>, less<account_id_type>>
+                        >
+                >
+        > author_tag_stats_index;
 
 /**
  * Used to parse the metadata from the comment json_meta field.
@@ -456,3 +527,6 @@ FC_REFLECT(steemit::tags::peer_stats_object,
 CHAINBASE_SET_INDEX_TYPE(steemit::tags::peer_stats_object, steemit::tags::peer_stats_index)
 
 FC_REFLECT(steemit::tags::comment_metadata, (tags));
+
+FC_REFLECT(steemit::tags::author_tag_stats_object, (id)(author)(tag)(total_posts)(total_rewards))
+CHAINBASE_SET_INDEX_TYPE(steemit::tags::author_tag_stats_object, steemit::tags::author_tag_stats_index)

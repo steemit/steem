@@ -42,8 +42,10 @@ namespace steemit {
             };
 
             vector<follow_api_obj> follow_api_impl::get_followers(string following, string start_follower, follow_type type, uint16_t limit) const {
-                FC_ASSERT(limit <= 100);
+                FC_ASSERT(limit <= 1000);
                 vector<follow_api_obj> result;
+                result.reserve(limit);
+
                 const auto &idx = app.chain_database()->get_index<follow_index>().indices().get<by_following_follower>();
                 auto itr = idx.lower_bound(std::make_tuple(following, start_follower));
                 while (itr != idx.end() && limit &&
@@ -120,7 +122,11 @@ namespace steemit {
                     entry.permlink = to_string(comment.permlink);
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
-                        entry.reblog_by = itr->first_reblogged_by;
+                        entry.reblog_by.reserve(itr->reblogged_by.size());
+                        for (const auto &a : itr->reblogged_by) {
+                            entry.reblog_by.push_back(a);
+                        }
+                        //entry.reblog_by = itr->first_reblogged_by;
                         entry.reblog_on = itr->first_reblogged_on;
                     }
                     results.push_back(entry);
@@ -153,7 +159,11 @@ namespace steemit {
                     entry.comment = comment;
                     entry.entry_id = itr->account_feed_id;
                     if (itr->first_reblogged_by != account_name_type()) {
-                        entry.reblog_by = itr->first_reblogged_by;
+                        //entry.reblog_by = itr->first_reblogged_by;
+                        entry.reblog_by.reserve(itr->reblogged_by.size());
+                        for (const auto &a : itr->reblogged_by) {
+                            entry.reblog_by.push_back(a);
+                        }
                         entry.reblog_on = itr->first_reblogged_on;
                     }
                     results.push_back(entry);
@@ -310,6 +320,37 @@ namespace steemit {
         vector<account_reputation> follow_api::get_account_reputations(string lower_bound_name, uint32_t limit) const {
             return my->app.chain_database()->with_read_lock([&]() {
                 return my->get_account_reputations(lower_bound_name, limit);
+            });
+        }
+
+        vector<account_name_type> follow_api::get_reblogged_by(const string &author, const string &permlink) const {
+            auto &db = *my->app.chain_database();
+            return db.with_read_lock([&]() {
+                vector<account_name_type> result;
+                const auto &post = db.get_comment(author, permlink);
+                const auto &blog_idx = db.get_index<blog_index, by_comment>();
+                auto itr = blog_idx.lower_bound(post.id);
+                while (itr != blog_idx.end() && itr->comment == post.id &&
+                       result.size() < 2000) {
+                    result.push_back(itr->account);
+                    ++itr;
+                }
+                return result;
+            });
+        }
+
+        vector<pair<account_name_type, uint32_t>> follow_api::get_blog_authors(const account_name_type &blog) const {
+            auto &db = *my->app.chain_database();
+            return db.with_read_lock([&]() {
+                vector <pair<account_name_type, uint32_t>> result;
+                const auto &stats_idx = db.get_index<blog_author_stats_index, by_blogger_guest_count>();
+                auto itr = stats_idx.lower_bound(boost::make_tuple(blog));
+                while (itr != stats_idx.end() && itr->blogger == blog &&
+                       result.size() < 2000) {
+                    result.push_back(std::make_pair(itr->guest, itr->count));
+                    ++itr;
+                }
+                return result;
             });
         }
 

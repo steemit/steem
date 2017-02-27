@@ -232,6 +232,10 @@ namespace steemit {
                         bool read_only = _options->count("read-only");
                         register_builtin_apis();
 
+                        if (_options->count("check-locks")) {
+                            _chain_db->set_require_locking(true);
+                        }
+
                         if (_options->count("shared-file-dir")) {
                             _shared_dir = fc::path(_options->at("shared-file-dir").as<string>());
                         } else {
@@ -543,16 +547,16 @@ namespace steemit {
                              num <= _chain_db->head_block_num() &&
                              result.size() < limit;
                              ++num) {
-                                 if (num > 0) {
-                                     result.push_back(_chain_db->get_block_id_for_num(num));
-                                 }
+                            if (num > 0) {
+                                result.push_back(_chain_db->get_block_id_for_num(num));
+                            }
                         }
 
                         if (!result.empty() &&
                             block_header::num_from_id(result.back()) <
                             _chain_db->head_block_num()) {
-                                remaining_item_count = _chain_db->head_block_num() -
-                                                       block_header::num_from_id(result.back());
+                            remaining_item_count = _chain_db->head_block_num() -
+                                                   block_header::num_from_id(result.back());
                         }
 
                         return result;
@@ -690,9 +694,9 @@ namespace steemit {
 
                                     if (last_non_fork_block ==
                                         block_id_type()) { // if the fork goes all the way back to genesis (does graphene's fork db allow this?)
-                                            non_fork_high_block_num = 0;
+                                        non_fork_high_block_num = 0;
                                     } else {
-                                            non_fork_high_block_num = block_header::num_from_id(last_non_fork_block);
+                                        non_fork_high_block_num = block_header::num_from_id(last_non_fork_block);
                                     }
 
                                     high_block_num = non_fork_high_block_num +
@@ -904,7 +908,8 @@ namespace steemit {
                     ("public-api", bpo::value<vector<string>>()->composing()->default_value(default_apis, str_default_apis), "Set an API to be publicly available, may be specified multiple times")
                     ("enable-plugin", bpo::value<vector<string>>()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
                     ("max-block-age", bpo::value<int32_t>()->default_value(200), "Maximum age of head block when broadcasting tx via API")
-                    ("flush", bpo::value<uint32_t>()->default_value(100000), "Flush shared memory file to disk this many blocks");
+                    ("flush", bpo::value<uint32_t>()->default_value(100000), "Flush shared memory file to disk this many blocks")
+                    ("check-locks", bpo::value<bool>()->default_value(false), "Check correctness of chainbase locking");
             command_line_options.add(configuration_file_options);
             command_line_options.add_options()
                     ("replay-blockchain", "Rebuild object graph by replaying all blocks")

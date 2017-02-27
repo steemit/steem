@@ -16,6 +16,8 @@ namespace steemit {
         class operation_object
                 : public object<operation_object_type, operation_object> {
         public:
+            operation_object() = delete;
+
             template<typename Constructor, typename Allocator>
             operation_object(Constructor &&c, allocator <Allocator> a)
                     :serialized_op(a.get_segment_manager()) {

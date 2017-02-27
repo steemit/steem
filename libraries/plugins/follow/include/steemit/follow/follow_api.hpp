@@ -17,14 +17,14 @@ namespace steemit {
         struct feed_entry {
             string author;
             string permlink;
-            string reblog_by;
+            vector<account_name_type> reblog_by;
             time_point_sec reblog_on;
             uint32_t entry_id = 0;
         };
 
         struct comment_feed_entry {
             comment_api_obj comment;
-            string reblog_by;
+            vector<account_name_type> reblog_by;
             time_point_sec reblog_on;
             uint32_t entry_id = 0;
         };
@@ -96,6 +96,16 @@ namespace steemit {
 
             vector<account_reputation> get_account_reputations(string lower_bound_name, uint32_t limit = 1000) const;
 
+            /**
+             * Gets list of accounts that have reblogged a particular post
+             */
+            vector<account_name_type> get_reblogged_by(const string &author, const string &permlink) const;
+
+            /**
+             * Gets a list of authors that have had their content reblogged on a given blog account
+             */
+            vector<pair<account_name_type, uint32_t>> get_blog_authors(const account_name_type &blog_account) const;
+
         private:
             std::shared_ptr<detail::follow_api_impl> my;
         };
@@ -120,4 +130,6 @@ FC_API(steemit::follow::follow_api,
                 (get_blog_entries)
                 (get_blog)
                 (get_account_reputations)
+                (get_reblogged_by)
+                (get_blog_authors)
 )

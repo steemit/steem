@@ -600,15 +600,14 @@ namespace steemit {
 
             bool result;
             detail::with_skip_flags(*this, skip, [&]() {
-                detail::without_pending_transactions(*this, std::move(_pending_tx),
-                        [&]() {
-                            try {
-                                with_write_lock([&]() {
-                                    result = _push_block(new_block);
-                                });
-                            }
-                            FC_CAPTURE_AND_RETHROW((new_block))
-                        });
+                with_write_lock([&]() {
+                    detail::without_pending_transactions(*this, std::move(_pending_tx), [&]() {
+                        try {
+                            result = _push_block(new_block);
+                        }
+                        FC_CAPTURE_AND_RETHROW((new_block))
+                    });
+                });
             });
 
             //fc::time_point end_time = fc::time_point::now();
@@ -2315,7 +2314,8 @@ namespace steemit {
                 auto pay = std::max(percent, STEEMIT_MIN_PRODUCER_REWARD);
 
                 /// pay witness in vesting shares
-                if (props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK ||
+                if (props.head_block_number >=
+                    STEEMIT_START_MINER_VOTING_BLOCK ||
                     (witness_account.vesting_shares.amount.value == 0)) {
                     // const auto& witness_obj = get_witness( props.current_witness );
                     create_vesting(witness_account, pay);
@@ -2330,7 +2330,8 @@ namespace steemit {
                 auto pay = std::max(percent, STEEMIT_MIN_PRODUCER_REWARD_PRE_HF_16);
 
                 /// pay witness in vesting shares
-                if (props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK ||
+                if (props.head_block_number >=
+                    STEEMIT_START_MINER_VOTING_BLOCK ||
                     (witness_account.vesting_shares.amount.value == 0)) {
                     // const auto& witness_obj = get_witness( props.current_witness );
                     create_vesting(witness_account, pay);
@@ -2371,8 +2372,9 @@ namespace steemit {
 
         void database::pay_liquidity_reward() {
 #ifdef STEEMIT_BUILD_TESTNET
-            if( !liquidity_rewards_enabled )
-      return;
+            if (!liquidity_rewards_enabled) {
+                return;
+            }
 #endif
 
             if ((head_block_num() % STEEMIT_LIQUIDITY_REWARD_BLOCKS) == 0) {
@@ -2922,9 +2924,11 @@ namespace steemit {
 
 
         void database::validate_transaction(const signed_transaction &trx) {
-            auto session = start_undo_session(true);
-            _apply_transaction(trx);
-            session.undo();
+            database::with_write_lock([&]() {
+                auto session = start_undo_session(true);
+                _apply_transaction(trx);
+                session.undo();
+            });
         }
 
         void database::notify_changed_objects() {
@@ -3016,12 +3020,12 @@ namespace steemit {
                             x += now % span;
                         }
                         _next_flush_block = x;
-                        ilog("Next flush scheduled at block ${b}", ("b", x));
+//                        ilog("Next flush scheduled at block ${b}", ("b", x));
                     }
 
                     if (_next_flush_block == block_num) {
                         _next_flush_block = 0;
-                        ilog("Flushing database shared memory at block ${b}", ("b", block_num));
+//                        ilog("Flushing database shared memory at block ${b}", ("b", block_num));
                         chainbase::database::flush();
                     }
                 }
@@ -3233,8 +3237,9 @@ namespace steemit {
                             fho.current_median_history = copy[copy.size() / 2];
 
 #ifdef STEEMIT_BUILD_TESTNET
-                            if( skip_price_feed_limit_check )
-               return;
+                            if (skip_price_feed_limit_check) {
+                                return;
+                            }
 #endif
                             if (has_hardfork(STEEMIT_HARDFORK_0_14__230)) {
                                 const auto &gpo = get_dynamic_global_properties();
@@ -4137,17 +4142,17 @@ namespace steemit {
                 case STEEMIT_HARDFORK_0_1:
                     perform_vesting_share_split(10000);
 #ifdef STEEMIT_BUILD_TESTNET
-                {
-            custom_operation test_op;
-            string op_msg = "Testnet: Hardfork applied";
-            test_op.data = vector< char >( op_msg.begin(), op_msg.end() );
-            test_op.required_auths.insert( STEEMIT_INIT_MINER_NAME );
-            operation op = test_op;   // we need the operation object to live to the end of this scope
-            operation_notification note( op );
-            notify_pre_apply_operation( note );
-            notify_post_apply_operation( note );
-         }
-         break;
+                    {
+                        custom_operation test_op;
+                        string op_msg = "Testnet: Hardfork applied";
+                        test_op.data = vector<char>(op_msg.begin(), op_msg.end());
+                        test_op.required_auths.insert(STEEMIT_INIT_MINER_NAME);
+                        operation op = test_op;   // we need the operation object to live to the end of this scope
+                        operation_notification note(op);
+                        notify_pre_apply_operation(note);
+                        notify_post_apply_operation(note);
+                    }
+                    break;
 #endif
                     break;
                 case STEEMIT_HARDFORK_0_2:
@@ -4470,10 +4475,9 @@ namespace steemit {
                 if (itr->parent_author != STEEMIT_ROOT_POST_PARENT) {
 // Low memory nodes only need immediate child count, full nodes track total children
 #ifdef IS_LOW_MEM
-                    modify( get_comment( itr->parent_author, itr->parent_permlink ), [&]( comment_object& c )
-         {
-            c.children++;
-         });
+                    modify(get_comment(itr->parent_author, itr->parent_permlink), [&](comment_object &c) {
+                        c.children++;
+                    });
 #else
                     const comment_object *parent = &get_comment(itr->parent_author, itr->parent_permlink);
                     while (parent) {
@@ -4547,6 +4551,5 @@ namespace steemit {
                 }
             }
         }
-
     }
 } //steemit::chain

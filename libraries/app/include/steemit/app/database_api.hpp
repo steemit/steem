@@ -15,7 +15,6 @@
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
-
 #include <fc/network/ip.hpp>
 
 #include <boost/container/flat_set.hpp>
@@ -75,6 +74,7 @@ namespace steemit {
 /**
  *  Defines the arguments to a query as a struct so it can be easily extended
  */
+
         struct discussion_query {
             void validate() const {
                 FC_ASSERT(filter_tags.find(tag) == filter_tags.end());
@@ -84,6 +84,9 @@ namespace steemit {
             string tag;
             uint32_t limit = 0;
             set<string> filter_tags;
+            set<string> select_authors; ///< list of authors to include, posts not by this author are filtered
+            set<string> select_tags; ///< list of tags to include, posts without these tags are filtered
+            uint32_t truncate_body = 0; ///< the number of bytes of the post body to return, 0 for all
             optional<string> start_author;
             optional<string> start_permlink;
             optional<string> parent_author;
@@ -356,6 +359,9 @@ namespace steemit {
             vector<discussion> get_content_replies(string parent, string parent_permlink) const;
 
             ///@{ tags API
+            /** This API will return the top 1000 tags used by an author sorted by most frequently used */
+            vector<pair<string, uint32_t>> get_tags_used_by_author(const string &author) const;
+
             vector<discussion> get_discussions_by_trending(const discussion_query &query) const;
 
             vector<discussion> get_discussions_by_trending30(const discussion_query &query) const;
@@ -440,7 +446,7 @@ namespace steemit {
 
             void set_url(discussion &d) const;
 
-            discussion get_discussion(comment_id_type) const;
+            discussion get_discussion(comment_id_type, uint32_t truncate_body = 0) const;
 
             static bool filter_default(const comment_api_obj &c) {
                 return false;
@@ -455,14 +461,14 @@ namespace steemit {
             }
 
             template<typename Index, typename StartItr>
-            vector<discussion> get_discussions(const discussion_query &q,
+            vector<discussion> get_discussions(const discussion_query &query,
                     const string &tag,
                     comment_id_type parent,
-                    const Index &idx, StartItr itr,
+                    const Index &tidx, StartItr tidx_itr,
+                    uint32_t truncate_body = 0,
                     const std::function<bool(const comment_api_obj &)> &filter = &database_api::filter_default,
                     const std::function<bool(const comment_api_obj &)> &exit = &database_api::exit_default,
-                    const std::function<bool(const tags::tag_object &)> &tag_exit = &database_api::tag_exit_default
-            ) const;
+                    const std::function<bool(const tags::tag_object &)> &tag_exit = &database_api::tag_exit_default) const;
 
             comment_id_type get_parent(const discussion_query &q) const;
 
@@ -480,7 +486,7 @@ FC_REFLECT(steemit::app::scheduled_hardfork, (hf_version)(live_time));
 FC_REFLECT(steemit::app::liquidity_balance, (account)(weight));
 FC_REFLECT(steemit::app::withdraw_route, (from_account)(to_account)(percent)(auto_vest));
 
-FC_REFLECT(steemit::app::discussion_query, (tag)(filter_tags)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit));
+FC_REFLECT(steemit::app::discussion_query, (tag)(filter_tags)(select_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit));
 
 FC_REFLECT_ENUM(steemit::app::withdraw_route_type, (incoming)(outgoing)(all));
 
@@ -493,6 +499,7 @@ FC_API(steemit::app::database_api,
 
                 // tags
                 (get_trending_tags)
+                (get_tags_used_by_author)
                 (get_discussions_by_trending)
                 (get_discussions_by_trending30)
                 (get_discussions_by_created)
