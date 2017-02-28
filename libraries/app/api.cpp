@@ -210,7 +210,13 @@ namespace steemit { namespace app {
 
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+            _app.connect_to_write_node();
+            FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           (*_app._remote_net_api)->broadcast_transaction( trx );
        }
        else
@@ -225,7 +231,13 @@ namespace steemit { namespace app {
     {
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+         // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+             _app.connect_to_write_node();
+             FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           return (*_app._remote_net_api)->broadcast_transaction_synchronous( trx );
        }
        else
@@ -242,7 +254,13 @@ namespace steemit { namespace app {
     {
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+             _app.connect_to_write_node();
+             FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           (*_app._remote_net_api)->broadcast_block( b );
        }
        else
@@ -256,7 +274,13 @@ namespace steemit { namespace app {
     {
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+             _app.connect_to_write_node();
+             FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           (*_app._remote_net_api)->broadcast_transaction_with_callback( cb, trx );
        }
        else

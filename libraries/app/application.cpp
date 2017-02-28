@@ -336,11 +336,7 @@ namespace detail {
             {
                try
                {
-                  auto ws_ptr = _self->_client.connect( _options->at( "read-forward-rpc" ).as< string >() );
-                  auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
-                  auto login = apic->get_remote_api< login_api >( 1 );
-                  FC_ASSERT( login->login( "", "" ) );
-                  _self->_remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
+                  _self->_remote_endpoint = _options->at( "read-forward-rpc" ).as< string >();
                }
                catch( fc::exception& e )
                {
@@ -1034,6 +1030,19 @@ fc::api_ptr application::create_api_by_name( const api_context& ctx )
 void application::get_max_block_age( int32_t& result )
 {
    my->get_max_block_age( result );
+}
+
+void application::connect_to_write_node()
+{
+   if( _remote_endpoint )
+   {
+      _remote_net_api.reset();
+      auto ws_ptr = _client.connect( *_remote_endpoint );
+      auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
+      auto login = apic->get_remote_api< login_api >( 1 );
+      FC_ASSERT( login->login( "", "" ) );
+      _remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
+   }
 }
 
 void application::shutdown_plugins()
