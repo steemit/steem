@@ -197,6 +197,7 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 # external_plugins needs to be compiled first because libraries/app depends on STEEMIT_EXTERNAL_PLUGINS being fully populated
+add_subdirectory( doc/src )
 add_subdirectory( external_plugins )
 add_subdirectory( libraries )
 add_subdirectory( programs )
