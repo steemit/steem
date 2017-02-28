@@ -48,7 +48,7 @@ that uses ca. 14GB of memory and growing:
 # Seed Nodes
 
 A list of some seed nodes to get you started can be found in
-[doc/seednodes.txt](doc/seednodes.txt).
+[doc/seednodes](doc/seednodes).
 
 This same file is baked into the docker images and can be overridden by
 setting `STEEMD_SEED_NODES` in the container environment at `docker run`
