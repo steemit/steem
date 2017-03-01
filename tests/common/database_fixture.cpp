@@ -1,7 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <graphene/time/time.hpp>
 #include <graphene/utilities/tempdir.hpp>
 
 #include <steemit/chain/steem_objects.hpp>
@@ -140,7 +139,6 @@ live_database_fixture::live_database_fixture()
       ahplugin->plugin_initialize( boost::program_options::variables_map() );
 
       db.open( _chain_dir, _chain_dir );
-      graphene::time::now();
 
       validate_database();
       generate_block();
@@ -329,7 +327,10 @@ void database_fixture::fund(
             if( amount.symbol == STEEM_SYMBOL )
                a.balance += amount;
             else if( amount.symbol == SBD_SYMBOL )
+            {
                a.sbd_balance += amount;
+               a.sbd_seconds_last_update = db.head_block_time();
+            }
          });
 
          db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )

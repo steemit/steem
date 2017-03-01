@@ -30,10 +30,10 @@
 #include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/database_exceptions.hpp>
 
+#include <steemit/time/time.hpp>
+
 #include <graphene/net/core_messages.hpp>
 #include <graphene/net/exceptions.hpp>
-
-#include <graphene/time/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -317,7 +317,15 @@ namespace detail {
                _force_validate = true;
             }
 
-            graphene::time::now();
+            if( _options->at("enable-ntp").as<bool>() )
+            {
+               ilog( "Enable NTP" );
+               steemit::time::set_ntp_enabled(true);
+            }
+            else
+            {
+               ilog( "Launching with NTP disabled" );
+            }
          }
          else
          {
@@ -328,11 +336,7 @@ namespace detail {
             {
                try
                {
-                  auto ws_ptr = _self->_client.connect( _options->at( "read-forward-rpc" ).as< string >() );
-                  auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
-                  auto login = apic->get_remote_api< login_api >( 1 );
-                  FC_ASSERT( login->login( "", "" ) );
-                  _self->_remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
+                  _self->_remote_endpoint = _options->at( "read-forward-rpc" ).as< string >();
                }
                catch( fc::exception& e )
                {
@@ -471,7 +475,7 @@ namespace detail {
                   ("n", blk_msg.block.block_num()) );
             }
 
-            time_point_sec now = graphene::time::now();
+            time_point_sec now = steemit::time::now();
 
             uint64_t max_accept_time = now.sec_since_epoch();
             max_accept_time += allow_future_time;
@@ -819,10 +823,10 @@ namespace detail {
          return fc::time_point_sec::min();
       } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
-      /** returns graphene::time::now() */
+      /** returns steemit::time::now() */
       virtual fc::time_point_sec get_blockchain_now() override
       {
-         return graphene::time::now();
+         return steemit::time::now();
       }
 
       virtual item_hash_t get_head_block_id() const override
@@ -857,6 +861,7 @@ namespace detail {
          }
          if( _chain_db )
             _chain_db->close();
+         steemit::time::set_ntp_enabled(false);
       }
 
       application* _self;
@@ -939,6 +944,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
          ("flush", bpo::value< uint32_t >()->default_value(100000), "Flush shared memory file to disk this many blocks")
+         ("enable-ntp", bpo::value< bool >()->default_value(false), "Enable built-in NTP client")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
@@ -1024,6 +1030,19 @@ fc::api_ptr application::create_api_by_name( const api_context& ctx )
 void application::get_max_block_age( int32_t& result )
 {
    my->get_max_block_age( result );
+}
+
+void application::connect_to_write_node()
+{
+   if( _remote_endpoint )
+   {
+      _remote_net_api.reset();
+      auto ws_ptr = _client.connect( *_remote_endpoint );
+      auto apic = std::make_shared< fc::rpc::websocket_api_connection >( *ws_ptr );
+      auto login = apic->get_remote_api< login_api >( 1 );
+      FC_ASSERT( login->login( "", "" ) );
+      _remote_net_api = login->get_api_by_name( "network_broadcast_api" )->as< network_broadcast_api >();
+   }
 }
 
 void application::shutdown_plugins()

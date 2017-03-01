@@ -50,6 +50,9 @@ typedef chain::decline_voting_rights_request_object    decline_voting_rights_req
 typedef chain::witness_vote_object                     witness_vote_api_obj;
 typedef chain::witness_schedule_object                 witness_schedule_api_obj;
 typedef chain::account_bandwidth_object                account_bandwidth_api_obj;
+typedef chain::vesting_delegation_object               vesting_delegation_api_obj;
+typedef chain::vesting_delegation_expiration_object    vesting_delegation_expiration_api_obj;
+typedef chain::reward_fund_object                      reward_fund_api_obj;
 
 struct comment_api_obj
 {
@@ -89,7 +92,12 @@ struct comment_api_obj
       allow_replies( o.allow_replies ),
       allow_votes( o.allow_votes ),
       allow_curation_rewards( o.allow_curation_rewards )
-   {}
+   {
+      for( auto& route : o.beneficiaries )
+      {
+         beneficiaries.push_back( route );
+      }
+   }
 
    comment_api_obj(){}
 
@@ -140,6 +148,7 @@ struct comment_api_obj
    bool              allow_replies;
    bool              allow_votes;
    bool              allow_curation_rewards;
+   vector< beneficiary_route_type > beneficiaries;
 };
 
 struct category_api_obj
@@ -218,19 +227,25 @@ struct account_api_obj
       savings_sbd_seconds_last_update( a.savings_sbd_seconds_last_update ),
       savings_sbd_last_interest_payment( a.savings_sbd_last_interest_payment ),
       savings_withdraw_requests( a.savings_withdraw_requests ),
+      reward_sbd_balance( a.reward_sbd_balance ),
+      reward_steem_balance( a.reward_steem_balance ),
+      reward_vesting_balance( a.reward_vesting_balance ),
+      reward_vesting_steem( a.reward_vesting_steem ),
       curation_rewards( a.curation_rewards ),
       posting_rewards( a.posting_rewards ),
       vesting_shares( a.vesting_shares ),
+      delegated_vesting_shares( a.delegated_vesting_shares ),
+      received_vesting_shares( a.received_vesting_shares ),
       vesting_withdraw_rate( a.vesting_withdraw_rate ),
       next_vesting_withdrawal( a.next_vesting_withdrawal ),
       withdrawn( a.withdrawn ),
       to_withdraw( a.to_withdraw ),
       withdraw_routes( a.withdraw_routes ),
-      proxied_vsf_votes( a.proxied_vsf_votes.size() ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post )
    {
       size_t n = a.proxied_vsf_votes.size();
+      proxied_vsf_votes.reserve( n );
       for( size_t i=0; i<n; i++ )
          proxied_vsf_votes.push_back( a.proxied_vsf_votes[i] );
 
@@ -323,10 +338,17 @@ struct account_api_obj
 
    uint8_t           savings_withdraw_requests;
 
+   asset             reward_sbd_balance;
+   asset             reward_steem_balance;
+   asset             reward_vesting_balance;
+   asset             reward_vesting_steem;
+
    share_type        curation_rewards;
    share_type        posting_rewards;
 
    asset             vesting_shares;
+   asset             delegated_vesting_shares;
+   asset             received_vesting_shares;
    asset             vesting_withdraw_rate;
    time_point_sec    next_vesting_withdrawal;
    share_type        withdrawn;
@@ -489,6 +511,7 @@ FC_REFLECT( steemit::app::comment_api_obj,
              (children_abs_rshares)(cashout_time)(max_cashout_time)
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
+             (beneficiaries)
           )
 
 FC_REFLECT( steemit::app::category_api_obj,
@@ -504,7 +527,8 @@ FC_REFLECT( steemit::app::account_api_obj,
              (savings_balance)
              (sbd_balance)(sbd_seconds)(sbd_seconds_last_update)(sbd_last_interest_payment)
              (savings_sbd_balance)(savings_sbd_seconds)(savings_sbd_seconds_last_update)(savings_sbd_last_interest_payment)(savings_withdraw_requests)
-             (vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
+             (reward_sbd_balance)(reward_steem_balance)(reward_vesting_balance)(reward_vesting_steem)
+             (vesting_shares)(delegated_vesting_shares)(received_vesting_shares)(vesting_withdraw_rate)(next_vesting_withdrawal)(withdrawn)(to_withdraw)(withdraw_routes)
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)

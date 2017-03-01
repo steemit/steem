@@ -15,6 +15,8 @@ namespace steemit { namespace chain {
    using steemit::protocol::price;
    using steemit::protocol::asset_symbol_type;
 
+   typedef fc::fixed_string<> reward_fund_name_type;
+
    /**
     *  This object is used to track pending requests to convert sbd to steem
     */
@@ -247,6 +249,27 @@ namespace steemit { namespace chain {
          time_point_sec    effective_date;
    };
 
+   class reward_fund_object : public object< reward_fund_object_type, reward_fund_object >
+   {
+      public:
+         template< typename Constructor, typename Allocator >
+         reward_fund_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
+
+         reward_fund_object() {}
+
+         reward_fund_id_type     id;
+         reward_fund_name_type   name;
+         asset                   reward_balance = asset( 0, STEEM_SYMBOL );
+         fc::uint128_t           recent_claims = 0;
+         time_point_sec          last_update;
+         uint64_t                content_constant = 0;
+         uint16_t                percent_curation_rewards = 0;
+         uint16_t                percent_content_rewards = 0;
+   };
+
    struct by_price;
    struct by_expiration;
    struct by_account;
@@ -441,6 +464,16 @@ namespace steemit { namespace chain {
       allocator< decline_voting_rights_request_object >
    > decline_voting_rights_request_index;
 
+   struct by_name;
+   typedef multi_index_container<
+      reward_fund_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< reward_fund_object, reward_fund_id_type, &reward_fund_object::id > >,
+         ordered_unique< tag< by_name >, member< reward_fund_object, reward_fund_name_type, &reward_fund_object::name > >
+      >,
+      allocator< reward_fund_object >
+   > reward_fund_index;
+
 } } // steemit::chain
 
 #include <steemit/chain/comment_object.hpp>
@@ -481,3 +514,15 @@ CHAINBASE_SET_INDEX_TYPE( steemit::chain::escrow_object, steemit::chain::escrow_
 FC_REFLECT( steemit::chain::decline_voting_rights_request_object,
              (id)(account)(effective_date) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::decline_voting_rights_request_object, steemit::chain::decline_voting_rights_request_index )
+
+FC_REFLECT( steemit::chain::reward_fund_object,
+            (id)
+            (name)
+            (reward_balance)
+            (recent_claims)
+            (last_update)
+            (content_constant)
+            (percent_curation_rewards)
+            (percent_content_rewards)
+         )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::reward_fund_object, steemit::chain::reward_fund_index )

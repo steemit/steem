@@ -33,8 +33,8 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
+#include <steemit/time/time.hpp>
 
-#include <graphene/time/time.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 
 #include <fc/crypto/hex.hpp>
@@ -143,7 +143,7 @@ namespace steemit { namespace app {
           if( max_block_age < 0 )
              return false;
 
-          fc::time_point_sec now = graphene::time::now();
+          fc::time_point_sec now = steemit::time::now();
           std::shared_ptr< database > db = _app.chain_database();
           const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
 
@@ -210,7 +210,13 @@ namespace steemit { namespace app {
 
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+            _app.connect_to_write_node();
+            FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           (*_app._remote_net_api)->broadcast_transaction( trx );
        }
        else
@@ -225,7 +231,13 @@ namespace steemit { namespace app {
     {
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+         // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+             _app.connect_to_write_node();
+             FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           return (*_app._remote_net_api)->broadcast_transaction_synchronous( trx );
        }
        else
@@ -242,7 +254,13 @@ namespace steemit { namespace app {
     {
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+             _app.connect_to_write_node();
+             FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           (*_app._remote_net_api)->broadcast_block( b );
        }
        else
@@ -256,7 +274,13 @@ namespace steemit { namespace app {
     {
        if( _app._read_only )
        {
-          FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or non connected." );
+          // If we are not connected, attempt to connect once and then fail
+          if( !_app._remote_net_api )
+          {
+             _app.connect_to_write_node();
+             FC_ASSERT( _app._remote_net_api, "Write node RPC not configured properly or not currently connected." );
+          }
+
           (*_app._remote_net_api)->broadcast_transaction_with_callback( cb, trx );
        }
        else

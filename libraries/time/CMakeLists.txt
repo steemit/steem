@@ -1,18 +1,18 @@
-file(GLOB HEADERS "include/graphene/time/*.hpp")
+file(GLOB HEADERS "include/steemit/time/*.hpp")
 
-add_library( graphene_time
+add_library( steemit_time
              time.cpp
            )
 
-target_link_libraries( graphene_time fc )
-target_include_directories( graphene_time
+target_link_libraries( steemit_time fc )
+target_include_directories( steemit_time
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 install( TARGETS
-   graphene_time
+   steemit_time
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/graphene/time" )
+install( FILES ${HEADERS} DESTINATION "include/steemit/time" )
