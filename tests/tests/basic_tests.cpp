@@ -25,6 +25,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/incremental_merkle_hash.hpp>
 #include <steemit/protocol/protocol.hpp>
 
 #include <steemit/protocol/steem_operations.hpp>
@@ -322,6 +323,202 @@ BOOST_AUTO_TEST_CASE( merkle_root )
 
    block.transactions.push_back( tx[9] );
    BOOST_CHECK( block.calculate_merkle_root() == c(dO) );
+}
+
+BOOST_AUTO_TEST_CASE( incremental_merkle )
+{
+   vector< incremental_merkle_hash::hash_type > leaf;
+   const uint32_t num_leaf = 10;
+   incremental_merkle_hash im;
+
+   for( uint32_t i=0; i<num_leaf; i++ )
+   {
+      leaf.push_back( incremental_merkle_hash::hash_type::hash( leaf ) );
+   }
+
+   auto d = []( const digest_type& left, const digest_type& right ) -> digest_type
+   {   return incremental_merkle_hash::hash_pair( left, right );   };
+
+   try {
+
+   BOOST_CHECK( im.compute_root_hash() == incremental_merkle_hash::empty_tree_hash() );
+
+   im.add_node_hash( leaf[0] );
+   BOOST_CHECK( im.compute_root_hash() == leaf[0] );
+
+   digest_type dA, dB, dC, dD, dE, dI, dJ, dK, dM, dN, dO;
+
+   /****************
+    *              *
+    *   A=d(0,1)   *
+    *      / \     *
+    *     0   1    *
+    *              *
+    ****************/
+
+   dA = d(leaf[0], leaf[1]);
+
+   im.add_node_hash( leaf[1] );
+   BOOST_CHECK( im.compute_root_hash() == dA );
+
+   /*************************
+    *                       *
+    *         I=d(A,B)      *
+    *        /        \     *
+    *   A=d(0,1)      B=2   *
+    *      / \        /     *
+    *     0   1      2      *
+    *                       *
+    *************************/
+
+   dB = leaf[2];
+   dI = d(dA, dB);
+
+   im.add_node_hash( leaf[2] );
+   BOOST_CHECK( im.compute_root_hash() == dI );
+
+   /***************************
+    *                         *
+    *       I=d(A,B)          *
+    *        /    \           *
+    *   A=d(0,1)   B=d(2,3)   *
+    *      / \    /   \       *
+    *     0   1  2     3      *
+    *                         *
+    ***************************
+    */
+
+   dB = d(leaf[2], leaf[3]);
+   dI = d(dA, dB);
+
+   im.add_node_hash( leaf[3] );
+   BOOST_CHECK( im.compute_root_hash() == dI );
+
+   /***************************************
+    *                                     *
+    *                  __M=d(I,J)__       *
+    *                 /            \      *
+    *         I=d(A,B)              J=C   *
+    *        /        \            /      *
+    *   A=d(0,1)   B=d(2,3)      C=4      *
+    *      / \        / \        /        *
+    *     0   1      2   3      4         *
+    *                                     *
+    ***************************************/
+
+   dC = leaf[4];
+   dJ = dC;
+   dM = d(dI, dJ);
+
+   im.add_node_hash( leaf[4] );
+   BOOST_CHECK( im.compute_root_hash() == dM );
+
+   /**************************************
+    *                                    *
+    *                 __M=d(I,J)__       *
+    *                /            \      *
+    *        I=d(A,B)              J=C   *
+    *       /        \            /      *
+    *  A=d(0,1)   B=d(2,3)   C=d(4,5)    *
+    *     / \        / \        / \      *
+    *    0   1      2   3      4   5     *
+    *                                    *
+    **************************************/
+
+   dC = d(leaf[4], leaf[5]);
+   dJ = dC;
+   dM = d(dI, dJ);
+
+   im.add_node_hash( leaf[5] );
+   BOOST_CHECK( im.compute_root_hash() == dM );
+
+   /***********************************************
+    *                                             *
+    *                  __M=d(I,J)__               *
+    *                 /            \              *
+    *         I=d(A,B)              J=d(C,D)      *
+    *        /        \            /        \     *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)      D=6   *
+    *      / \        / \        / \        /     *
+    *     0   1      2   3      4   5      6      *
+    *                                             *
+    ***********************************************/
+
+   dD = leaf[6];
+   dJ = d(dC, dD);
+   dM = d(dI, dJ);
+
+   im.add_node_hash( leaf[6] );
+   BOOST_CHECK( im.compute_root_hash() == dM );
+
+   /*************************************************
+    *                                               *
+    *                  __M=d(I,J)__                 *
+    *                 /            \                *
+    *         I=d(A,B)              J=d(C,D)        *
+    *        /        \            /        \       *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)   *
+    *      / \        / \        / \        / \     *
+    *     0   1      2   3      4   5      6   7    *
+    *                                               *
+    *************************************************/
+
+   dD = d(leaf[6], leaf[7]);
+   dJ = d(dC, dD);
+   dM = d(dI, dJ);
+
+   im.add_node_hash( leaf[7] );
+   BOOST_CHECK( im.compute_root_hash() == dM );
+
+   /************************************************************************
+    *                                                                      *
+    *                             _____________O=d(M,N)______________      *
+    *                            /                                   \     *
+    *                  __M=d(I,J)__                                  N=K   *
+    *                 /            \                              /        *
+    *         I=d(A,B)              J=d(C,D)                 K=E           *
+    *        /        \            /        \            /                 *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)      E=8                 *
+    *      / \        / \        / \        / \        /                   *
+    *     0   1      2   3      4   5      6   7      8                    *
+    *                                                                      *
+    ************************************************************************/
+
+   dE = leaf[8];
+   dK = dE;
+   dN = dK;
+   dO = d(dM, dN);
+
+   im.add_node_hash( leaf[8] );
+   BOOST_CHECK( im.compute_root_hash() == dO );
+
+   /************************************************************************
+    *                                                                      *
+    *                             _____________O=d(M,N)______________      *
+    *                            /                                   \     *
+    *                  __M=d(I,J)__                                  N=K   *
+    *                 /            \                              /        *
+    *         I=d(A,B)              J=d(C,D)                 K=E           *
+    *        /        \            /        \            /                 *
+    *   A=d(0,1)   B=d(2,3)   C=d(4,5)   D=d(6,7)   E=d(8,9)               *
+    *      / \        / \        / \        / \        / \                 *
+    *     0   1      2   3      4   5      6   7      8   9                *
+    *                                                                      *
+    ************************************************************************/
+
+   dE = d(leaf[8], leaf[9]);
+   dK = dE;
+   dN = dK;
+   dO = d(dM, dN);
+
+   im.add_node_hash( leaf[9] );
+   BOOST_CHECK( im.compute_root_hash() == dO );
+   }
+   catch( const fc::exception& e )
+   {
+      wlog( "Caught exception: ${e}", ("e", e.to_detail_string()) );
+      BOOST_CHECK( false );
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

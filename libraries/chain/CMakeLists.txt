@@ -27,6 +27,7 @@ add_library( steemit_chain
              steem_objects.cpp
              shared_authority.cpp
              block_log.cpp
+             incremental_merkle_hash.cpp
 
              util/reward.cpp
 
