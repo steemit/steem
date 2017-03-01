@@ -1117,10 +1117,10 @@ void database_api::set_pending_payout( discussion& d )const
 
    const auto& props = my->_db.get_dynamic_global_properties();
    const auto& hist  = my->_db.get_feed_history();
-   asset pot = props.total_reward_fund_steem;
+   asset pot = std::max( props.total_reward_fund_steem, my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ).reward_balance );
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
 
-   u256 total_r2 = to256( props.total_reward_shares2 );
+   u256 total_r2 = to256( std::max( props.total_reward_shares2, my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ).recent_claims ) );
 
    if( props.total_reward_shares2 > 0 ){
       auto vshares = std::max( steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 ),
@@ -1129,18 +1129,10 @@ void database_api::set_pending_payout( discussion& d )const
       //int64_t abs_net_rshares = llabs(d.net_rshares.value);
 
       u256 r2 = to256(vshares); //to256(abs_net_rshares);
-      /*
-      r2 *= r2;
-      */
       r2 *= pot.amount.value;
       r2 /= total_r2;
 
-      u256 tpp = to256(d.children_rshares2);
-      tpp *= pot.amount.value;
-      tpp /= total_r2;
-
       d.pending_payout_value = asset( static_cast<uint64_t>(r2), pot.symbol );
-      d.total_pending_payout_value = asset( static_cast<uint64_t>(tpp), pot.symbol );
 
       if( my->_follow_api )
       {
