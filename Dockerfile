@@ -77,6 +77,7 @@ RUN \
 RUN \
     cd /usr/local/src/steem && \
     git submodule update --init --recursive && \
+    cp python_scripts/tests/test_sync.py /usr/local/test_sync.py && \
     mkdir build && \
     cd build && \
     cmake \

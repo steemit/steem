@@ -2,11 +2,12 @@
 export HOME="/var/lib/steemd"
 
 STEEMD="/usr/local/steemd-full/bin/steemd"
-
+TEST_SYNC="/usr/local/test_sync.py"
 chown -R steemd:steemd $HOME
 
 # seed nodes come from doc/seednodes.txt which is
 # installed by docker into /etc/steemd/seednodes.txt
+SEED_NODES_FILE="/etc/steemd/seednodes.txt"
 SEED_NODES="$(cat /etc/steemd/seednodes.txt | awk -F' ' '{print $1}')"
 
 ARGS=""
@@ -31,8 +32,22 @@ fi
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
 
 chown steemd:steemd $HOME/config.ini
+chown steemd:steemd $TEST_SYNC
 
 cd $HOME
+
+# start a watchdog and detect if steemd syncs successfully
+# with the main chain of steem.
+if [[ "$RUN_SYNC_TEST" ]]; then
+  if [[ $(pip3 freeze | grep -F steem) == "" ]]; then
+    apt-get update
+    apt-get install -y libssl-dev python3-dev build-essential
+    pip3 install steem
+  fi
+  chmod +x $TEST_SYNC
+  exec chpst -usteemd \
+      python3 $TEST_SYNC --steemd $STEEMD --config-file $HOME/config.ini --seed-nodes $SEED_NODES_FILE --log-file $HOME/log.txt
+fi
 
 # get blockchain state from an S3 bucket
 # if this url is not provieded then we might as well exit
