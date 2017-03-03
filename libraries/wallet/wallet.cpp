@@ -351,11 +351,11 @@ namespace steemit {
                     }
 
                     fc::mutable_variant_object result;
-                    result["blockchain_name"]        = BLOCKCHAIN_NAME;
-                    result["chain_id"]                 = STEEMIT_CHAIN_ID;
+                    result["blockchain_name"] = BLOCKCHAIN_NAME;
+                    result["chain_id"] = STEEMIT_CHAIN_ID;
 //                    result["blockchain_description"] = BTS_BLOCKCHAIN_DESCRIPTION;
                     result["blockchain_version"] = STEEMIT_BLOCKCHAIN_VERSION;
-                    result["address_prefix"]           = STEEMIT_ADDRESS_PREFIX;
+                    result["address_prefix"] = STEEMIT_ADDRESS_PREFIX;
                     result["client_version"] = client_version;
                     result["steem_revision"] = graphene::utilities::git_revision_sha;
                     result["steem_revision_age"] = fc::get_approximate_relative_time_string(fc::time_point_sec(graphene::utilities::git_revision_unix_timestamp));
@@ -389,6 +389,22 @@ namespace steemit {
                     }
 
                     return result;
+                }
+
+                string wallet_api::get_account_count() const {
+                    auto accounts_amount = my->_remote_db->get_account_count();
+                    std::ostringstream ss;
+                    ss << account_count;
+                    return ss.str();
+                }
+
+                string wallet_api::get_steem_per_mvests() const {
+                    auto dynamic_props = my->_remote_db->get_dynamic_global_properties();
+                    auto price = (dynamic_props.total_vesting_fund_steem /
+                                  dynamic_props.total_vesting_shares);
+                    std::stringstream ss;
+                    ss << price.to_real() * 1000000;
+                    return ss.str();
                 }
 
                 account_api_obj get_account(string account_name) const {

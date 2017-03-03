@@ -189,6 +189,16 @@ namespace steemit {
              */
             dynamic_global_property_api_obj get_dynamic_global_properties() const;
 
+            /**
+            *  Returns the amount of accounts registered in blockchain
+            */
+            string get_account_count() const;
+
+            /**
+            *  Gets the steem price per mvests
+            */
+            string get_steem_per_mvests() const;
+
             /** Returns information about the given account.
              *
              * @param account_name the name of the account to provide information about
@@ -970,6 +980,8 @@ FC_API(steemit::wallet::wallet_api,
                 (list_accounts)
                 (list_witnesses)
                 (get_witness)
+                (get_steem_per_mvests)
+                (get_account_count)
                 (get_account)
                 (get_block)
                 (get_ops_in_block)
