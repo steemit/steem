@@ -1239,25 +1239,23 @@ namespace steemit {
                     break;
                 }
 
-                if (query.filter_tags.find(tidx_itr->tag) == query.filter_tags.end()) {
-                    try {
-                        result.push_back(get_discussion(tidx_itr->comment, truncate_body));
-                        result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL);
+                try {
+                    result.push_back(get_discussion(tidx_itr->comment, truncate_body));
+                    result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL);
 
-                        if (filter(result.back())) {
-                            result.pop_back();
-                            ++filter_count;
-                        } else if (exit(result.back()) || tag_exit(*tidx_itr)) {
-                            result.pop_back();
-                            break;
-                        } else {
-                            --count;
-                        }
+                    if (filter(result.back())) {
+                        result.pop_back();
+                        ++filter_count;
+                    } else if (exit(result.back()) || tag_exit(*tidx_itr)) {
+                        result.pop_back();
+                        break;
+                    } else {
+                        --count;
                     }
-                    catch (const fc::exception &e) {
-                        ++exc_count;
-                        edump((e.to_detail_string()));
-                    }
+                }
+                catch (const fc::exception &e) {
+                    ++exc_count;
+                    edump((e.to_detail_string()));
                 }
 
                 ++tidx_itr;
@@ -1295,6 +1293,10 @@ namespace steemit {
                         }
                     }
 
+                    if (query.filter_tags.find(c.category) != query.filter_tags.end()) {
+                        return true;
+                    }
+
                     return c.children_rshares2 <= 0 || c.mode != first_payout;
                 });
             });
@@ -1318,6 +1320,10 @@ namespace steemit {
                                 return true;
                             }
                         }
+                    }
+
+                    if (query.filter_tags.find(c.category) != query.filter_tags.end()) {
+                        return true;
                     }
 
                     return c.children_rshares2 <= 0;
@@ -1347,7 +1353,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0 || c.mode != second_payout;
+                    return c.children_rshares2 <= 0 || c.mode != second_payout || query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
@@ -1372,7 +1378,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
@@ -1397,7 +1403,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
@@ -1425,7 +1431,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0;
+                    return c.children_rshares2 <= 0 || query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
@@ -1457,7 +1463,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
@@ -1482,7 +1488,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
@@ -1508,7 +1514,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.net_rshares <= 0;
+                    return c.net_rshares <= 0 || query.filter_tags.find(c.category) != query.filter_tags.end();
                 });
             });
         }
