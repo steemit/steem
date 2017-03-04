@@ -1317,7 +1317,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0 || || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
+                    return c.children_rshares2 <= 0 || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 }, exit_default, [](const tags::tag_object &t) {
                     return t.promoted_balance == 0;
                 });
@@ -1369,7 +1369,7 @@ namespace steemit {
                         }
                     }
 
-                    return query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();;
+                    return query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
