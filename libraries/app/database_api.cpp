@@ -1238,6 +1238,12 @@ namespace steemit {
                 if (tidx_itr->tag != tag || tidx_itr->parent != parent) {
                     break;
                 }
+
+                if (query.filter_tags.find(tidx_itr->tag) !=
+                    query.filter_tags.end()) {
+                    continue;
+                }
+
                 try {
                     result.push_back(get_discussion(tidx_itr->comment, truncate_body));
                     result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL);
@@ -1281,15 +1287,15 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
                     return c.children_rshares2 <= 0 || c.mode != first_payout;
                 });
@@ -1306,15 +1312,15 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
                     return c.children_rshares2 <= 0;
                 }, exit_default, [](const tags::tag_object &t) {
@@ -1333,15 +1339,15 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
                     return c.children_rshares2 <= 0 || c.mode != second_payout;
                 });
@@ -1358,17 +1364,17 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
-                return false;
+                    return false;
                 });
             });
         }
@@ -1383,17 +1389,17 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-               if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
-                return false;
+                    return false;
                 });
             });
         }
@@ -1411,15 +1417,15 @@ namespace steemit {
                         fc::time_point::now() - fc::minutes(60)));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
                     return c.children_rshares2 <= 0;
                 });
@@ -1443,17 +1449,17 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
-                return false;
+                    return false;
                 });
             });
         }
@@ -1468,17 +1474,17 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
-                return false;
+                    return false;
                 });
             });
         }
@@ -1494,15 +1500,15 @@ namespace steemit {
                 auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
                 return get_discussions(query, tag, parent, tidx, tidx_itr, query.truncate_body, [&](const comment_api_obj &c) {
-                if (query.select_metadata_tags.size()) {
-                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    if (query.select_metadata_tags.size()) {
+                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                    for (const set<string>::value_type &iterator : query.select_metadata_tags) {
-                        if (meta.tags.find(iterator) == meta.tags.end()) {
-                            return true;
+                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                            if (meta.tags.find(iterator) == meta.tags.end()) {
+                                return true;
+                            }
                         }
                     }
-                }
 
                     return c.net_rshares <= 0;
                 });

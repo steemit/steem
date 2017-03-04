@@ -79,11 +79,15 @@ namespace steemit {
             void validate() const {
                 FC_ASSERT(filter_tags.find(tag) == filter_tags.end());
                 FC_ASSERT(limit <= 100);
+
+                for (const set<string>::value_type &iterator : filter_tags) {
+                    FC_ASSERT(select_tags.find(iterator) == select_tags.end());
+                }
             }
 
             string tag;
             uint32_t limit = 0;
-            set<string> filter_tags;
+            set<string> filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
             set<string> select_authors; ///< list of authors to include, posts not by this author are filtered
             set<string> select_tags; ///< list of tags to include, posts without these tags are filtered
             set<string> select_metadata_tags; ///< list of json_metadata stored tags to include, posts without these tags are filtered
