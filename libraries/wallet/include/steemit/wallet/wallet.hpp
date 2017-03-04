@@ -163,9 +163,19 @@ namespace steemit {
             vector<withdraw_route> get_withdraw_routes(string account, withdraw_route_type type = all) const;
 
             /**
+            *  Returns the amount of accounts registered in blockchain
+            */
+            string get_account_count() const;
+
+            /**
+            *  Gets the steem price per mvests
+            */
+            string get_steem_per_mvests() const;
+
+            /**
              *  Gets the account information for all accounts for which this wallet has a private key
              */
-            vector<account_api_obj> list_my_accounts();
+            vector<account_api_obj> list_my_accounts() const;
 
             /** Lists all accounts registered in the blockchain.
              * This returns a list of all account names and their account ids, sorted by account name.
@@ -188,16 +198,6 @@ namespace steemit {
              * @returns the dynamic global properties
              */
             dynamic_global_property_api_obj get_dynamic_global_properties() const;
-
-            /**
-            *  Returns the amount of accounts registered in blockchain
-            */
-            string get_account_count() const;
-
-            /**
-            *  Gets the steem price per mvests
-            */
-            string get_steem_per_mvests() const;
 
             /** Returns information about the given account.
              *

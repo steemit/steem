@@ -391,22 +391,6 @@ namespace steemit {
                     return result;
                 }
 
-                string wallet_api::get_account_count() const {
-                    auto accounts_amount = my->_remote_db->get_account_count();
-                    std::ostringstream ss;
-                    ss << account_count;
-                    return ss.str();
-                }
-
-                string wallet_api::get_steem_per_mvests() const {
-                    auto dynamic_props = my->_remote_db->get_dynamic_global_properties();
-                    auto price = (dynamic_props.total_vesting_fund_steem /
-                                  dynamic_props.total_vesting_shares);
-                    std::stringstream ss;
-                    ss << price.to_real() * 1000000;
-                    return ss.str();
-                }
-
                 account_api_obj get_account(string account_name) const {
                     auto accounts = _remote_db->get_accounts({account_name});
                     FC_ASSERT(!accounts.empty(), "Unknown account");
@@ -1069,7 +1053,18 @@ namespace steemit {
             return my->_remote_db->get_ops_in_block(block_num, only_virtual);
         }
 
-        vector<account_api_obj> wallet_api::list_my_accounts() {
+        string wallet_api::get_account_count() const {
+            return std::to_string(my->_remote_db->get_account_count());
+        }
+
+        string wallet_api::get_steem_per_mvests() const {
+            auto dynamic_props = my->_remote_db->get_dynamic_global_properties();
+            auto price = (dynamic_props.total_vesting_fund_steem /
+                          dynamic_props.total_vesting_shares);
+            return std::to_string(price.to_real() * 1000000);
+        }
+
+        vector<account_api_obj> wallet_api::list_my_accounts() const {
             FC_ASSERT(!is_locked(), "Wallet must be unlocked to list accounts");
             vector<account_api_obj> result;
 
