@@ -1239,11 +1239,6 @@ namespace steemit {
                     break;
                 }
 
-                if (query.filter_tags.find(tidx_itr->tag) !=
-                    query.filter_tags.end()) {
-                    continue;
-                }
-
                 try {
                     result.push_back(get_discussion(tidx_itr->comment, truncate_body));
                     result.back().promoted = asset(tidx_itr->promoted_balance, SBD_SYMBOL);
@@ -1297,7 +1292,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0 || c.mode != first_payout;
+                    return c.children_rshares2 <= 0 || c.mode != first_payout || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
@@ -1322,7 +1317,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0;
+                    return c.children_rshares2 <= 0 || || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 }, exit_default, [](const tags::tag_object &t) {
                     return t.promoted_balance == 0;
                 });
@@ -1349,7 +1344,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0 || c.mode != second_payout;
+                    return c.children_rshares2 <= 0 || c.mode != second_payout || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
@@ -1374,7 +1369,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();;
                 });
             });
         }
@@ -1399,7 +1394,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();;
                 });
             });
         }
@@ -1427,7 +1422,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.children_rshares2 <= 0;
+                    return c.children_rshares2 <= 0 || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
@@ -1459,7 +1454,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
@@ -1484,7 +1479,7 @@ namespace steemit {
                         }
                     }
 
-                    return false;
+                    return query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
@@ -1510,7 +1505,7 @@ namespace steemit {
                         }
                     }
 
-                    return c.net_rshares <= 0;
+                    return c.net_rshares <= 0 || query.filter_tags.find(tidx_itr->tag) != query.filter_tags.end();
                 });
             });
         }
