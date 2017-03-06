@@ -324,5 +324,24 @@ BOOST_AUTO_TEST_CASE( hardfork_version_test )
    FC_LOG_AND_RETHROW();
 }
 
+BOOST_AUTO_TEST_CASE( flat_map_test )
+{
+   try
+   {
+      flat_map< string, string, std::less<string> > accounts;
+      accounts[ "alice" ] = "bob";
+      accounts[ "steemit" ] = "steemit3";
+      BOOST_REQUIRE( accounts.lower_bound( "steemit" ) != accounts.end() );
+      idump( (*(accounts.lower_bound( "steemit" ))) );
+      BOOST_REQUIRE( accounts.lower_bound( "jake" ) != accounts.end() );
+      idump( (*(accounts.lower_bound( "jake" ))) );
+      BOOST_REQUIRE( accounts.lower_bound( "april" ) != accounts.end() );
+      idump( (*(accounts.lower_bound( "april" ))) );
+      BOOST_REQUIRE( accounts.lower_bound( "a" ) != accounts.end() );
+      idump( (*(accounts.lower_bound( "a" ))) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
