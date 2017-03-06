@@ -148,18 +148,17 @@ struct operation_visitor {
        const auto& stats = get_stats( current.tag );
        remove_stats( current, stats );
 
-       if( comment.mode != archived ) {
+       if( comment.cashout_time != fc::time_point_sec::maximum() ) {
           _db.modify( current, [&]( tag_object& obj ) {
              obj.active            = comment.active;
-             obj.cashout           = comment.cashout_time;
+             obj.cashout           = _db.calculate_discussion_payout_time( comment );
              obj.children          = comment.children;
              obj.net_rshares       = comment.net_rshares.value;
              obj.net_votes         = comment.net_votes;
              obj.children_rshares2 = comment.children_rshares2;
              obj.hot               = hot;
              obj.trending          = trending;
-             obj.mode              = comment.mode;
-             if( obj.mode != first_payout )
+             if( obj.cashout == fc::time_point_sec() )
                obj.promoted_balance = 0;
          });
          add_stats( current, stats );
@@ -188,7 +187,6 @@ struct operation_visitor {
           obj.net_rshares       = comment.net_rshares.value;
           obj.children_rshares2 = comment.children_rshares2;
           obj.author            = author;
-          obj.mode              = comment.mode;
           obj.hot               = hot;
           obj.trending          = trending;
       });
@@ -345,7 +343,7 @@ struct operation_visitor {
                auto citr = comment_idx.lower_bound( c->id );
                while( citr != comment_idx.end() && citr->comment == c->id ) {
                   _db.modify( *citr, [&]( tag_object& t ) {
-                      if( t.mode == first_payout )
+                      if( t.cashout != fc::time_point_sec::maximum() )
                           t.promoted_balance += op.amount.amount;
                   });
                   ++citr;
