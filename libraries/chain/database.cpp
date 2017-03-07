@@ -1777,12 +1777,9 @@ void database::process_comment_cashout()
     */
    while( current != cidx.end() && current->cashout_time <= head_block_time() )
    {
-      uint32_t fund_id;
-      if( funds.size() )
-         fund_id = current->parent_author == STEEMIT_ROOT_POST_PARENT ? 0 : 1;
-
       if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
       {
+         auto fund_id = get_reward_fund( *current ).id._id;
          ctx.total_reward_shares2 = funds[ fund_id ].recent_claims;
          ctx.total_reward_fund_steem = funds[ fund_id ].reward_balance;
          funds[ fund_id ].steem_awarded += cashout_comment_helper( ctx, *current );
@@ -1801,7 +1798,8 @@ void database::process_comment_cashout()
             // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
             if( funds.size() )
             {
-               funds[ fund_id ].recent_claims += util::calculate_claims( current->net_rshares.value, get_reward_fund( *current ) );
+               const auto& rf = get_reward_fund( *current );
+               funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
             }
 
             auto reward = cashout_comment_helper( ctx, comment );
@@ -3870,8 +3868,8 @@ void database::apply_hardfork( uint32_t hardfork )
 
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
-            assert( post_rf.id._id == 0 );
-            assert( comment_rf.id._id == 1 );
+            FC_ASSERT( post_rf.id._id == 0 );
+            FC_ASSERT( comment_rf.id._id == 1 );
          }
          break;
       case STEEMIT_HARDFORK_0_17:
