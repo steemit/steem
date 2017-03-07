@@ -1604,9 +1604,10 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                auto benefactor_tokens = ( author_tokens * b.weight ) / STEEMIT_100_PERCENT;
                auto vest_created = create_vesting( get_account( b.account ), benefactor_tokens, has_hardfork( STEEMIT_HARDFORK_0_17__659 ) );
                push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), vest_created ) );
-               author_tokens -= benefactor_tokens;
                total_beneficiary += benefactor_tokens;
             }
+
+            author_tokens -= total_beneficiary;
 
             auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
             auto vesting_steem = author_tokens - sbd_steem;
