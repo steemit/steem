@@ -93,7 +93,6 @@ class tag_object : public object< tag_object_type, tag_object >
        *  be reviewed.
        */
       fc::uint128_t     children_rshares2;
-      comment_mode      mode;
 
       account_id_type   author;
       comment_id_type   parent;
@@ -214,16 +213,6 @@ typedef multi_index_container<
                member< tag_object, tag_id_type, &tag_object::id >
             >,
             composite_key_compare< std::less<tag_name_type>, std::less<comment_id_type>, std::greater< double >, std::less< tag_id_type > >
-      >,
-      ordered_unique< tag< by_mode_parent_children_rshares2 >,
-            composite_key< tag_object,
-               member< tag_object, tag_name_type, &tag_object::tag >,
-               member< tag_object, comment_mode, &tag_object::mode >,
-               member< tag_object, comment_id_type, &tag_object::parent >,
-               member< tag_object, fc::uint128_t, &tag_object::children_rshares2 >,
-               member< tag_object, tag_id_type, &tag_object::id >
-            >,
-            composite_key_compare< std::less<tag_name_type>, std::less< comment_mode >, std::less<comment_id_type>, std::greater< fc::uint128_t >, std::less< tag_id_type > >
       >,
       ordered_unique< tag< by_cashout >,
             composite_key< tag_object,
@@ -515,7 +504,7 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 FC_API( steemit::tags::tag_api, (get_tags) );
 
 FC_REFLECT( steemit::tags::tag_object,
-   (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(trending)(promoted_balance)(children)(children_rshares2)(mode)(author)(parent)(comment) )
+   (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(trending)(promoted_balance)(children)(children_rshares2)(author)(parent)(comment) )
 CHAINBASE_SET_INDEX_TYPE( steemit::tags::tag_object, steemit::tags::tag_index )
 
 FC_REFLECT( steemit::tags::tag_stats_object,

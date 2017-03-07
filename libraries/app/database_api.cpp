@@ -1441,24 +1441,6 @@ vector<discussion> database_api::get_discussions_by_trending( const discussion_q
    });
 }
 
-vector<discussion> database_api::get_discussions_by_trending30( const discussion_query& query )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
-         return vector< discussion >();
-
-      query.validate();
-      auto tag = fc::to_lower( query.tag );
-      auto parent = get_parent( query );
-
-      const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
-      auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, second_payout, parent, fc::uint128_t::max_value() )  );
-
-      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0 || c.mode != second_payout; } );
-   });
-}
-
 vector<discussion> database_api::get_discussions_by_created( const discussion_query& query )const
 {
    return my->_db.with_read_lock( [&]()
@@ -2179,23 +2161,6 @@ state database_api::get_state( string path )const
          for( const auto& d : trending_disc ) {
             auto key = d.author +"/" + d.permlink;
             didx.trending.push_back( key );
-            if( d.author.size() ) accounts.insert(d.author);
-            _state.content[key] = std::move(d);
-         }
-      }
-      else if( part[0] == "trending30" )
-      {
-         discussion_query q;
-         q.tag = tag;
-         q.limit = 20;
-         q.truncate_body = 1024;
-         auto trending_disc = get_discussions_by_trending30( q );
-
-         auto& didx = _state.discussion_idx[tag];
-         for( const auto& d : trending_disc )
-         {
-            auto key = d.author + "/" + d.permlink;
-            didx.trending30.push_back( key );
             if( d.author.size() ) accounts.insert(d.author);
             _state.content[key] = std::move(d);
          }
