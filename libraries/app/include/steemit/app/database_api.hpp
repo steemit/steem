@@ -83,6 +83,10 @@ namespace steemit {
                 for (const set<string>::value_type &iterator : filter_tags) {
                     FC_ASSERT(select_tags.find(iterator) == select_tags.end());
                 }
+
+                for (const set<string>:value_type &iterator : filter_metadata_tags) {
+                    FC_ASSERT(select_metadata_tags.find(iterator) == select_metadata_tags.end());
+                }
             }
 
             string tag;
@@ -91,6 +95,7 @@ namespace steemit {
             set<string> select_authors; ///< list of authors to include, posts not by this author are filtered
             set<string> select_tags; ///< list of tags to include, posts without these tags are filtered
             set<string> select_metadata_tags; ///< list of json_metadata stored tags to include, posts without these tags are filtered
+            set<string> filter_metadata_tags; ///< list of json_metadata stored tags to filter, posts with these tags are filtered
             uint32_t truncate_body = 0; ///< the number of bytes of the post body to return, 0 for all
             optional<string> start_author;
             optional<string> start_permlink;
