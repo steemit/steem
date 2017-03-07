@@ -265,7 +265,7 @@ namespace steemit { namespace chain {
          asset                   reward_balance = asset( 0, STEEM_SYMBOL );
          fc::uint128_t           recent_claims = 0;
          time_point_sec          last_update;
-         uint64_t                content_constant = 0;
+         uint128_t               content_constant = 0;
          uint16_t                percent_curation_rewards = 0;
          uint16_t                percent_content_rewards = 0;
    };
