@@ -1755,8 +1755,9 @@ void database::process_comment_cashout()
          {
             const auto& rf = get_reward_fund( *current );
             funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
-            ++current;
          }
+
+         ++current;
       }
 
       current = cidx.begin();
