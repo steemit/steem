@@ -163,9 +163,6 @@
 #define STEEMIT_RECENT_RSHARES_DECAY_RATE       (fc::days(30))
 #define STEEMIT_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))
 // note, if redefining these constants make sure calculate_claims doesn't overflow
-#define STEEMIT_CONTENT_CONSTANT_S_HF17         (uint64_t(1900000000000ll))
-#define STEEMIT_CONTENT_CONSTANT_BETA_HF17      1
-#define STEEMIT_CONTENT_CONSTANT_MU_HF17        4
 
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)

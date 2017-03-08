@@ -1735,6 +1735,9 @@ void database::process_comment_cashout()
       rf_ctx.recent_claims = itr->recent_claims;
       rf_ctx.reward_balance = itr->reward_balance;
 
+      // The index is by ID, so the ID should be the current size of the vector (0, 1, 2, etc...)
+      assert( funds.size() == itr->id._id );
+
       funds.push_back( rf_ctx );
    }
 
@@ -3838,29 +3841,36 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEMIT_HARDFORK_0_15:
          break;
       case STEEMIT_HARDFORK_0_16:
-         modify( get_feed_history(), [&]( feed_history_object& fho )
          {
-            while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
-               fho.price_history.pop_front();
-         });
+            modify( get_feed_history(), [&]( feed_history_object& fho )
+            {
+               while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+                  fho.price_history.pop_front();
+            });
 
-         create< reward_fund_object >( [&]( reward_fund_object& rfo )
-         {
-            rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
-            rfo.last_update = head_block_time();
-            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_S_HF17;
-            rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-            rfo.percent_content_rewards = 0;
-         });
+            auto post_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+            });
 
-         create< reward_fund_object >( [&]( reward_fund_object& rfo )
-         {
-            rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
-            rfo.last_update = head_block_time();
-            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_S_HF17;
-            rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-            rfo.percent_content_rewards = 0;
-         });
+            auto comment_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+            });
+
+            // As a shortcut in payout processing, we use the id as an array index.
+            // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
+            FC_ASSERT( post_rf.id._id == 0 );
+            FC_ASSERT( comment_rf.id._id == 1 );
+         }
          break;
       case STEEMIT_HARDFORK_0_17:
          {
