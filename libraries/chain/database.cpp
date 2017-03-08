@@ -1793,7 +1793,7 @@ void database::process_comment_cashout()
             // This extra logic is for when the funds are created in HF 16. We are using this data to preload
             // recent rshares 2 to prevent any downtime in payouts at HF 17. After HF 17, we can capture
             // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
-            if( funds.size() )
+            if( funds.size() && comment.net_rshares > 0 )
             {
                const auto& rf = get_reward_fund( comment );
                funds[ rf.id._id ].recent_claims += util::calculate_claims( comment.net_rshares.value, rf );
