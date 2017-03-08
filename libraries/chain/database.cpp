@@ -437,7 +437,7 @@ const hardfork_property_object& database::get_hardfork_property_object()const
 
 const time_point_sec database::calculate_discussion_payout_time( const comment_object& comment )const
 {
-   if( comment.parent_author == STEEMIT_ROOT_POST_PARENT )
+   if( has_hardfork( STEEMIT_HARDFORK_0_17__769 ) || comment.parent_author == STEEMIT_ROOT_POST_PARENT )
       return comment.cashout_time;
    else
       return get< comment_object >( comment.root_comment ).cashout_time;
@@ -1604,9 +1604,10 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                auto benefactor_tokens = ( author_tokens * b.weight ) / STEEMIT_100_PERCENT;
                auto vest_created = create_vesting( get_account( b.account ), benefactor_tokens, has_hardfork( STEEMIT_HARDFORK_0_17__659 ) );
                push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), vest_created ) );
-               author_tokens -= benefactor_tokens;
                total_beneficiary += benefactor_tokens;
             }
+
+            author_tokens -= total_beneficiary;
 
             auto sbd_steem     = ( author_tokens * comment.percent_steem_dollars ) / ( 2 * STEEMIT_100_PERCENT ) ;
             auto vesting_steem = author_tokens - sbd_steem;
@@ -1674,11 +1675,6 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                c.cashout_time = fc::time_point_sec::maximum();
          }
 
-         if( calculate_discussion_payout_time( c ) == fc::time_point_sec::maximum() )
-            c.mode = archived;
-         else
-            c.mode = second_payout;
-
          c.last_payout = head_block_time();
       } );
 
@@ -1739,6 +1735,9 @@ void database::process_comment_cashout()
       rf_ctx.recent_claims = itr->recent_claims;
       rf_ctx.reward_balance = itr->reward_balance;
 
+      // The index is by ID, so the ID should be the current size of the vector (0, 1, 2, etc...)
+      assert( funds.size() == itr->id._id );
+
       funds.push_back( rf_ctx );
    }
 
@@ -1755,8 +1754,9 @@ void database::process_comment_cashout()
          {
             const auto& rf = get_reward_fund( *current );
             funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
-            ++current;
          }
+
+         ++current;
       }
 
       current = cidx.begin();
@@ -1796,10 +1796,10 @@ void database::process_comment_cashout()
             // This extra logic is for when the funds are created in HF 16. We are using this data to preload
             // recent rshares 2 to prevent any downtime in payouts at HF 17. After HF 17, we can capture
             // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
-            if( funds.size() )
+            if( funds.size() && comment.net_rshares > 0 )
             {
-               const auto& rf = get_reward_fund( *current );
-               funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
+               const auto& rf = get_reward_fund( comment );
+               funds[ rf.id._id ].recent_claims += util::calculate_claims( comment.net_rshares.value, rf );
             }
 
             auto reward = cashout_comment_helper( ctx, comment );
@@ -3802,7 +3802,6 @@ void database::apply_hardfork( uint32_t hardfork )
                      modify( *itr, [&]( comment_object & c )
                      {
                         c.cashout_time = head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17;
-                        c.mode = first_payout;
                      });
                   }
                   // Has been paid out, needs to be on second cashout window
@@ -3811,7 +3810,6 @@ void database::apply_hardfork( uint32_t hardfork )
                      modify( *itr, [&]( comment_object& c )
                      {
                         c.cashout_time = c.last_payout + STEEMIT_SECOND_CASHOUT_WINDOW;
-                        c.mode = second_payout;
                      });
                   }
                }
@@ -3843,29 +3841,36 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEMIT_HARDFORK_0_15:
          break;
       case STEEMIT_HARDFORK_0_16:
-         modify( get_feed_history(), [&]( feed_history_object& fho )
          {
-            while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
-               fho.price_history.pop_front();
-         });
+            modify( get_feed_history(), [&]( feed_history_object& fho )
+            {
+               while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
+                  fho.price_history.pop_front();
+            });
 
-         create< reward_fund_object >( [&]( reward_fund_object& rfo )
-         {
-            rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
-            rfo.last_update = head_block_time();
-            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_S_HF17;
-            rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-            rfo.percent_content_rewards = 0;
-         });
+            auto post_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+            });
 
-         create< reward_fund_object >( [&]( reward_fund_object& rfo )
-         {
-            rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
-            rfo.last_update = head_block_time();
-            rfo.content_constant = STEEMIT_CONTENT_CONSTANT_S_HF17;
-            rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-            rfo.percent_content_rewards = 0;
-         });
+            auto comment_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+            });
+
+            // As a shortcut in payout processing, we use the id as an array index.
+            // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
+            FC_ASSERT( post_rf.id._id == 0 );
+            FC_ASSERT( comment_rf.id._id == 1 );
+         }
          break;
       case STEEMIT_HARDFORK_0_17:
          {

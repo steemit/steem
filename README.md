@@ -5,7 +5,7 @@ algorithm.
 
   - Currency symbol STEEM
   - 1.000 STEEM block reward at launch
-  - Approximately 100% APR long term inflation rate
+  - 10% APR inflation narrowing to 1% APR over 20 years.
 
 # Public Announcement & Discussion
 
@@ -84,3 +84,18 @@ compile-time options, and specific commands for Linux (Ubuntu LTS) or macOS X.
 
 See [doc/testing.md](doc/testing.md) for test build targets and info
 on how to use lcov to check code test coverage.
+
+# System Requirements
+
+Minimum 8 GB RAM (16 GB Recommended).
+32 GB disk for full node or 12 GB for a consensus node. SSD is preferred.
+Any CPU with decent single core performance.
+
+On Linux use the following Virtual Memory configuration for the initial sync and subsequent replays. It is not needed for normal operation.
+
+```
+echo    75 | sudo tee /proc/sys/vm/dirty_background_ratio
+echo  1000 | sudo tee /proc/sys/vm/dirty_expire_centisec
+echo    80 | sudo tee /proc/sys/vm/dirty_ratio
+echo 30000 | sudo tee /proc/sys/vm/dirty_writeback_centisec
+```

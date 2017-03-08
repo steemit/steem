@@ -6478,7 +6478,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
    try
    {
       BOOST_TEST_MESSAGE( "Test Comment Beneficiaries" );
-      ACTORS( (alice)(bob)(sam) )
+      ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
 
       set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
@@ -6520,7 +6520,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       BOOST_TEST_MESSAGE( "--- Test specifying a non-existent benefactor" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "dave" ), STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "doug" ), STEEMIT_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       tx.clear();
@@ -6537,6 +6537,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       b.beneficiaries.clear();
       b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), 25 * STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), 50 * STEEMIT_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
 
@@ -6557,7 +6558,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       BOOST_TEST_MESSAGE( "--- Test setting when there are already beneficiaries" );
       b.beneficiaries.clear();
-      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), 25 * STEEMIT_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "dave" ), 25 * STEEMIT_1_PERCENT ) );
       op.extensions.clear();
       op.extensions.insert( b );
       tx.sign( alice_private_key, db.get_chain_id() );
@@ -6586,8 +6587,9 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 
       BOOST_REQUIRE( db.get_account( "bob" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
-      BOOST_REQUIRE( db.get_account( "bob" ).reward_vesting_steem.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
-      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) / 3 == db.get_account( "bob" ).reward_vesting_steem.amount );
+      BOOST_REQUIRE( db.get_account( "bob" ).reward_vesting_steem.amount + db.get_account( "sam" ).reward_vesting_steem.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) == db.get_account( "bob" ).reward_vesting_steem.amount );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db.get_account( "sam" ).reward_vesting_steem.amount );
    }
    FC_LOG_AND_RETHROW()
 }
