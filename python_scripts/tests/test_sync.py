@@ -83,7 +83,7 @@ class WatchDog(object):
         duplicates = 0
         last_local_block_number = 0
         second_to_last = 0
-        localRpc = SteemNodeRPC("ws://localhost:8090", "", "", num_retries=3)
+        localRpc = SteemNodeRPC("ws://localhost:8090", "", "", num_retries=10)
         print("WATCHDOG: Connection Established")
         remoteRpc = SteemNodeRPC(
             "wss://steemd.steemit.com", "", "", num_retries=3)
@@ -140,7 +140,7 @@ class WatchDog(object):
         steemd_args.append("--enable-plugin=witness")
         with open(self._seed_file, "r") as f:
             for line in f:
-                steemd_args.append(" --seed-node=" + line.split(' ', 1)[0])
+                steemd_args.append("--seed-node=" + line.split(' ', 1)[0])
         steemdaemon = subprocess.Popen(
             steemd_args,
             cwd=self._temp_data_dir.name,
