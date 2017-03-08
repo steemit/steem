@@ -1795,8 +1795,8 @@ void database::process_comment_cashout()
             // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
             if( funds.size() )
             {
-               const auto& rf = get_reward_fund( *current );
-               funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
+               const auto& rf = get_reward_fund( comment );
+               funds[ rf.id._id ].recent_claims += util::calculate_claims( comment.net_rshares.value, rf );
             }
 
             auto reward = cashout_comment_helper( ctx, comment );
