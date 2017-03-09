@@ -199,7 +199,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
                ( "creator.balance", creator.balance )
                ( "required", o.fee ) );
 
-   FC_ASSERT( creator.vesting_shares - creator.delegated_vesting_shares >= o.delegation, "Insufficient vesting shares to delegate to new account.",
+   FC_ASSERT( creator.vesting_shares - creator.delegated_vesting_shares - asset( creator.to_withdraw - creator.withdrawn, VESTS_SYMBOL ) >= o.delegation, "Insufficient vesting shares to delegate to new account.",
                ( "creator.vesting_shares", creator.vesting_shares )
                ( "creator.delegated_vesting_shares", creator.delegated_vesting_shares )( "required", o.delegation ) );
 
@@ -249,7 +249,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 
       acc.recovery_account = o.creator;
 
-      acc.received_vesting_shares += o.delegation;
+      acc.received_vesting_shares = o.delegation;
 
       #ifndef IS_LOW_MEM
          from_string( acc.json_metadata, o.json_metadata );
