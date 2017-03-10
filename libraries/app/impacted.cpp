@@ -54,9 +54,10 @@ struct get_impacted_account_visitor
       _impacted.insert( op.creator );
    }
 
-   void operator()( const account_update_operation& op )
+   void operator()( const account_create_with_delegation_operation& op )
    {
-      _impacted.insert( op.account );
+      _impacted.insert( op.new_account_name );
+      _impacted.insert( op.creator );
    }
 
    void operator()( const comment_operation& op )
@@ -66,9 +67,10 @@ struct get_impacted_account_visitor
          _impacted.insert( op.parent_author );
    }
 
-   void operator()( const delete_comment_operation& op )
+   void operator()( const challenge_authority_operation& op )
    {
-      _impacted.insert( op.author );
+      _impacted.insert( op.challenger );
+      _impacted.insert( op.challenged );
    }
 
    void operator()( const vote_operation& op )
@@ -118,14 +120,10 @@ struct get_impacted_account_visitor
       }
    }
 
-   void operator()( const withdraw_vesting_operation& op )
+   void operator()( const set_withdraw_vesting_route_operation& op )
    {
-      _impacted.insert( op.account );
-   }
-
-   void operator()( const witness_update_operation& op )
-   {
-      _impacted.insert( op.owner );
+      _impacted.insert( op.from_account );
+      _impacted.insert( op.to_account );
    }
 
    void operator()( const account_witness_vote_operation& op )
@@ -145,25 +143,33 @@ struct get_impacted_account_visitor
       _impacted.insert( op.publisher );
    }
 
-   void operator()( const limit_order_create_operation& op )
-   {
-      _impacted.insert( op.owner );
-   }
-
    void operator()( const fill_order_operation& op )
    {
       _impacted.insert( op.current_owner );
       _impacted.insert( op.open_owner );
    }
 
-   void operator()( const limit_order_cancel_operation& op )
-   {
-      _impacted.insert( op.owner );
-   }
-
    void operator()( const pow_operation& op )
    {
       _impacted.insert( op.worker_account );
+   }
+
+   struct pow2_impacted_visitor
+   {
+      pow2_impacted_visitor(){}
+
+      typedef const account_name_type& result_type;
+
+      template< typename WorkType >
+      result_type operator()( const WorkType& work )const
+      {
+         return work.input.worker_account;
+      }
+   };
+
+   void operator()( const pow2_operation& op )
+   {
+      _impacted.insert( op.work.visit( pow2_impacted_visitor() ) );
    }
 
    void operator()( const fill_vesting_withdraw_operation& op )
@@ -177,15 +183,10 @@ struct get_impacted_account_visitor
       _impacted.insert( op.owner );
    }
 
-   void operator()( const custom_operation& op )
-   {
-      for( auto s: op.required_auths )
-         _impacted.insert( s );
-   }
-
    void operator()( const request_account_recovery_operation& op )
    {
       _impacted.insert( op.account_to_recover );
+      _impacted.insert( op.recovery_account );
    }
 
    void operator()( const recover_account_operation& op )
@@ -238,18 +239,6 @@ struct get_impacted_account_visitor
       _impacted.insert( op.to );
    }
 
-   void operator()( const cancel_transfer_from_savings_operation& op )
-   {
-      _impacted.insert( op.from );
-   }
-
-   void operator()( const decline_voting_rights_operation& op )
-   {
-      _impacted.insert( op.account );
-   }
-
-   void operator()( const claim_reward_balance_operation& op ) {}
-
    void operator()( const delegate_vesting_shares_operation& op )
    {
       _impacted.insert( op.delegator );
@@ -266,8 +255,6 @@ struct get_impacted_account_visitor
       _impacted.insert( op.benefactor );
       _impacted.insert( op.author );
    }
-
-   //void operator()( const operation& op ){}
 };
 
 void operation_get_impacted_accounts( const operation& op, flat_set<account_name_type>& result )
