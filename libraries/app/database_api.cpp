@@ -1144,7 +1144,11 @@ namespace steemit {
                 vector<pair<string, uint32_t>> result;
                 while (itr != tidx.end() && itr->author == acnt->id &&
                        result.size() < 1000) {
-                    result.push_back(std::make_pair(itr->tag, itr->total_posts));
+                    if (!fc::is_utf8(itr->tag)) {
+                        result.push_back(std::make_pair(fc::prune_invalid_utf8(itr->tag), itr->total_posts));
+                    } else {
+                        result.push_back(std::make_pair(itr->tag, itr->total_posts));
+                    }
                     ++itr;
                 }
                 return result;
@@ -1171,7 +1175,13 @@ namespace steemit {
                 }
 
                 while (itr != ridx.end() && result.size() < limit) {
-                    result.push_back(tag_api_obj(*itr));
+                    tag_api_obj push_object = tag_api_obj(*itr);
+
+                    if (!fc::is_utf8(push_object.name)) {
+                        push_object.name = fc::prune_invalid_utf8(push_object.name);
+                    }
+
+                    result.push_back(push_object);
                     ++itr;
                 }
                 return result;
@@ -1187,8 +1197,20 @@ namespace steemit {
             if (truncate_body) {
                 d.body = d.body.substr(0, truncate_body);
 
+                if (!fc::is_utf8(d.title)) {
+                    d.title = fc::prune_invalid_utf8(d.title);
+                }
+
                 if (!fc::is_utf8(d.body)) {
                     d.body = fc::prune_invalid_utf8(d.body);
+                }
+
+                if (!fc::is_utf8(d.category)) {
+                    d.category = fc::prune_invalid_utf8(d.category);
+                }
+
+                if (!fc::is_utf8(d.json_metadata)) {
+                    d.json_metadata = fc::prune_invalid_utf8(d.json_metadata);
                 }
             }
             return d;

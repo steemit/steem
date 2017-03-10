@@ -84,7 +84,7 @@ namespace steemit {
                     FC_ASSERT(select_tags.find(iterator) == select_tags.end());
                 }
 
-                for (const set<string>:value_type &iterator : filter_metadata_tags) {
+                for (const set<string>::value_type &iterator : filter_metadata_tags) {
                     FC_ASSERT(select_metadata_tags.find(iterator) == select_metadata_tags.end());
                 }
             }

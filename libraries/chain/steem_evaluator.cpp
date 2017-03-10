@@ -1727,9 +1727,9 @@ namespace steemit {
             const auto &fhistory = _db.get_feed_history();
             FC_ASSERT(!fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed.");
 
-            auto golos_conversion_delay = STEEMIT_CONVERSION_DELAY_PRE_HF_16;
+            auto steem_conversion_delay = STEEMIT_CONVERSION_DELAY_PRE_HF_16;
             if (_db.has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
-                golos_conversion_delay = STEEMIT_CONVERSION_DELAY;
+                steem_conversion_delay = STEEMIT_CONVERSION_DELAY;
             }
 
             _db.create<convert_request_object>([&](convert_request_object &obj) {
@@ -1737,7 +1737,7 @@ namespace steemit {
                 obj.requestid = o.requestid;
                 obj.amount = o.amount;
                 obj.conversion_date =
-                        _db.head_block_time() + golos_conversion_delay;
+                        _db.head_block_time() + steem_conversion_delay;
             });
 
         }
