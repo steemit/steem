@@ -505,6 +505,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
       else
          FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
+
+   if( ( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_17__926 ) ) && o.json_metadata.size() ) // TODO: Remove is_producing after HF 17
+      FC_ASSERT( fc::is_utf8( o.json_metadata ), "JSON Metadata must be UTF-8" );
+
    auto now = _db.head_block_time();
 
    if ( itr == by_permlink_idx.end() )
@@ -621,7 +625,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
             {
                from_string( com.body, o.body );
             }
-            from_string( com.json_metadata, o.json_metadata );
+            if( fc::is_utf8( o.json_metadata ) )
+               from_string( com.json_metadata, o.json_metadata );
+            else
+               wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
          #endif
       });
 
@@ -695,7 +702,13 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          #ifndef IS_LOW_MEM
            if( o.title.size() )         from_string( com.title, o.title );
-           if( o.json_metadata.size() ) from_string( com.json_metadata, o.json_metadata );
+           if( o.json_metadata.size() )
+           {
+              if( fc::is_utf8( o.json_metadata ) )
+                 from_string( com.json_metadata, o.json_metadata );
+              else
+                 wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
+           }
 
            if( o.body.size() ) {
               try {
