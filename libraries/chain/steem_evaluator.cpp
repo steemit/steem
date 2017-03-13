@@ -199,7 +199,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
                ( "creator.balance", creator.balance )
                ( "required", o.fee ) );
 
-   FC_ASSERT( creator.vesting_shares - creator.delegated_vesting_shares >= o.delegation, "Insufficient vesting shares to delegate to new account.",
+   FC_ASSERT( creator.vesting_shares - creator.delegated_vesting_shares - asset( creator.to_withdraw - creator.withdrawn, VESTS_SYMBOL ) >= o.delegation, "Insufficient vesting shares to delegate to new account.",
                ( "creator.vesting_shares", creator.vesting_shares )
                ( "creator.delegated_vesting_shares", creator.delegated_vesting_shares )( "required", o.delegation ) );
 
@@ -249,7 +249,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 
       acc.recovery_account = o.creator;
 
-      acc.received_vesting_shares += o.delegation;
+      acc.received_vesting_shares = o.delegation;
 
       #ifndef IS_LOW_MEM
          from_string( acc.json_metadata, o.json_metadata );
@@ -505,6 +505,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
       else
          FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
+
+   if( ( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_17__926 ) ) && o.json_metadata.size() ) // TODO: Remove is_producing after HF 17
+      FC_ASSERT( fc::is_utf8( o.json_metadata ), "JSON Metadata must be UTF-8" );
+
    auto now = _db.head_block_time();
 
    if ( itr == by_permlink_idx.end() )
@@ -621,7 +625,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
             {
                from_string( com.body, o.body );
             }
-            from_string( com.json_metadata, o.json_metadata );
+            if( fc::is_utf8( o.json_metadata ) )
+               from_string( com.json_metadata, o.json_metadata );
+            else
+               wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
          #endif
       });
 
@@ -695,7 +702,13 @@ void comment_evaluator::do_apply( const comment_operation& o )
 
          #ifndef IS_LOW_MEM
            if( o.title.size() )         from_string( com.title, o.title );
-           if( o.json_metadata.size() ) from_string( com.json_metadata, o.json_metadata );
+           if( o.json_metadata.size() )
+           {
+              if( fc::is_utf8( o.json_metadata ) )
+                 from_string( com.json_metadata, o.json_metadata );
+              else
+                 wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
+           }
 
            if( o.body.size() ) {
               try {
@@ -2271,10 +2284,10 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    // Else if the delegation is increasing
    else if( op.vesting_shares >= delegation->vesting_shares )
    {
-      FC_ASSERT( op.vesting_shares - delegation->vesting_shares >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
-      FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
-
       auto delta = op.vesting_shares - delegation->vesting_shares;
+
+      FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
+      FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
 
       _db.modify( delegator, [&]( account_object& a )
       {
@@ -2294,9 +2307,10 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    // Else the delegation is decreasing
    else /* delegation->vesting_shares > op.vesting_shares */
    {
-      FC_ASSERT( delegation->vesting_shares - op.vesting_shares >= min_delegation || op.vesting_shares.amount == 0, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
-
       auto delta = delegation->vesting_shares - op.vesting_shares;
+
+      FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
+      FC_ASSERT( op.vesting_shares >= min_delegation || op.vesting_shares.amount == 0, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
 
       _db.create< vesting_delegation_expiration_object >( [&]( vesting_delegation_expiration_object& obj )
       {

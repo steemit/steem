@@ -248,8 +248,6 @@ struct get_impacted_account_visitor
       _impacted.insert( op.account );
    }
 
-   void operator()( const claim_reward_balance_operation& op ) {}
-
    void operator()( const delegate_vesting_shares_operation& op )
    {
       _impacted.insert( op.delegator );
