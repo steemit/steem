@@ -1321,6 +1321,37 @@ void database::clear_null_account_balance()
       total_steem += converted_steem;
    }
 
+   if( null_account.reward_steem_balance.amount > 0 )
+   {
+      total_steem += null_account.reward_steem_balance;
+      adjust_reward_balance( null_account, -null_account.reward_steem_balance );
+   }
+
+   if( null_account.reward_sbd_balance.amount > 0 )
+   {
+      total_sbd += null_account.reward_sbd_balance;
+      adjust_reward_balance( null_account, -null_account.reward_sbd_balance );
+   }
+
+   if( null_account.reward_vesting_balance.amount > 0 )
+   {
+      const auto& gpo = get_dynamic_global_properties();
+
+      total_steem += null_account.reward_vesting_steem;
+
+      modify( gpo, [&]( dynamic_global_property_object& g )
+      {
+         g.pending_rewarded_vesting_shares -= null_account.reward_vesting_balance;
+         g.pending_rewarded_vesting_steem -= null_account.reward_vesting_steem;
+      });
+
+      modify( null_account, [&]( account_object& a )
+      {
+         a.reward_vesting_steem.amount = 0;
+         a.reward_vesting_balance.amount = 0;
+      });
+   }
+
    if( total_steem.amount > 0 )
       adjust_supply( -total_steem );
 
