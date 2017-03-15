@@ -3,7 +3,7 @@ FROM phusion/baseimage:0.9.19
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
 ENV LANG=en_US.UTF-8
-ENV VERSION=0.17.0rc2
+ENV VERSION=0.17.0
 
 RUN \
     apt-get update && \
