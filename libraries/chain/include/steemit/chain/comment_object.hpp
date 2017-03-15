@@ -3,13 +3,15 @@
 #include <steemit/protocol/authority.hpp>
 #include <steemit/protocol/steem_operations.hpp>
 
-#include <steemit/chain//steem_object_types.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
 
 
 namespace steemit { namespace chain {
+
+   using protocol::beneficiary_route_type;
 
    struct strcmp_less
    {
@@ -93,13 +95,6 @@ namespace steemit { namespace chain {
       allocator< category_object >
    > category_index;
 
-   enum comment_mode
-   {
-      first_payout,
-      second_payout,
-      archived
-   };
-
    class comment_object : public object < comment_object_type, comment_object >
    {
       comment_object() = delete;
@@ -107,7 +102,7 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a )
+            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a ), beneficiaries( a )
          {
             c( *this );
          }
@@ -128,7 +123,7 @@ namespace steemit { namespace chain {
          time_point_sec    active; ///< the last time this post was "touched" by voting or reply
          time_point_sec    last_payout;
 
-         uint8_t           depth = 0; ///< used to track max nested depth
+         uint16_t          depth = 0; ///< used to track max nested depth
          uint32_t          children = 0; ///< used to track the total number of children, grandchildren, etc...
 
          /**
@@ -154,6 +149,7 @@ namespace steemit { namespace chain {
          /** tracks the total payout this comment has received over time, measured in SBD */
          asset             total_payout_value = asset(0, SBD_SYMBOL);
          asset             curator_payout_value = asset(0, SBD_SYMBOL);
+         asset             beneficiary_payout_value = asset( 0, SBD_SYMBOL );
 
          share_type        author_rewards = 0;
 
@@ -161,13 +157,13 @@ namespace steemit { namespace chain {
 
          id_type           root_comment;
 
-         comment_mode      mode = first_payout;
-
          asset             max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
          uint16_t          percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
          bool              allow_replies = true;      /// allows a post to disable replies.
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;
+
+         bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > beneficiaries;
    };
 
 
@@ -312,8 +308,6 @@ namespace steemit { namespace chain {
 
 } } // steemit::chain
 
-FC_REFLECT_ENUM( steemit::chain::comment_mode, (first_payout)(second_payout)(archived) )
-
 FC_REFLECT( steemit::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
@@ -321,8 +315,9 @@ FC_REFLECT( steemit::chain::comment_object,
              (depth)(children)(children_rshares2)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)(mode)
+             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
+             (beneficiaries)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
 

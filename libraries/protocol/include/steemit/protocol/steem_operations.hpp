@@ -24,6 +24,25 @@ namespace steemit { namespace protocol {
    };
 
 
+   struct account_create_with_delegation_operation : public base_operation
+   {
+      asset             fee;
+      asset             delegation;
+      account_name_type creator;
+      account_name_type new_account_name;
+      authority         owner;
+      authority         active;
+      authority         posting;
+      public_key_type   memo_key;
+      string            json_metadata;
+
+      extensions_type   extensions;
+
+      void validate()const;
+      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(creator); }
+   };
+
+
    struct account_update_operation : public base_operation
    {
       account_name_type             account;
@@ -59,6 +78,30 @@ namespace steemit { namespace protocol {
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
    };
 
+   struct beneficiary_route_type
+   {
+      beneficiary_route_type() {}
+      beneficiary_route_type( const account_name_type& a, const uint16_t& w ) : account( a ), weight( w ){}
+
+      account_name_type account;
+      uint16_t          weight;
+
+      // For use by std::sort such that the route is sorted first by name (ascending)
+      bool operator < ( const beneficiary_route_type& o )const { return string_less()( account, o.account ); }
+   };
+
+   struct comment_payout_beneficiaries
+   {
+      vector< beneficiary_route_type > beneficiaries;
+
+      void validate()const;
+   };
+
+   typedef static_variant<
+            comment_payout_beneficiaries
+           > comment_options_extension;
+
+   typedef flat_set< comment_options_extension > comment_options_extensions_type;
 
    /**
     *  Authors of posts may not want all of the benefits that come from creating a post. This
@@ -77,7 +120,7 @@ namespace steemit { namespace protocol {
       uint16_t          percent_steem_dollars  = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
       bool              allow_votes            = true;      /// allows a post to receive votes;
       bool              allow_curation_rewards = true; /// allows voters to recieve curation rewards. Rewards return to reward fund.
-      extensions_type   extensions;
+      comment_options_extensions_type extensions;
 
       void validate()const;
       void get_required_posting_authorities( flat_set<account_name_type>& a )const{ a.insert(author); }
@@ -855,6 +898,36 @@ namespace steemit { namespace protocol {
       void get_required_owner_authorities( flat_set<account_name_type>& a )const{ a.insert( account ); }
       void validate() const;
    };
+
+   struct claim_reward_balance_operation : public base_operation
+   {
+      account_name_type account;
+      asset             reward_steem;
+      asset             reward_sbd;
+      asset             reward_vests;
+
+      void get_required_posting_authorities( flat_set< account_name_type >& a )const{ a.insert( account ); }
+      void validate() const;
+   };
+
+   /**
+    * Delegate vesting shares from one account to the other. The vesting shares are still owned
+    * by the original account, but content voting rights and bandwidth allocation are transferred
+    * to the receiving account. This sets the delegation to `vesting_shares`, increasing it or
+    * decreasing it as needed. (i.e. a delegation of 0 removes the delegation)
+    *
+    * When a delegation is removed the shares are placed in limbo for a week to prevent a satoshi
+    * of VESTS from voting on the same content twice.
+    */
+   struct delegate_vesting_shares_operation : public base_operation
+   {
+      account_name_type delegator;        ///< The account delegating vesting shares
+      account_name_type delegatee;        ///< The account receiving vesting shares
+      asset             vesting_shares;   ///< The amount of vesting shares delegated
+
+      void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( delegator ); }
+      void validate() const;
+   };
 } } // steemit::protocol
 
 
@@ -889,6 +962,18 @@ FC_REFLECT( steemit::protocol::account_create_operation,
             (memo_key)
             (json_metadata) )
 
+FC_REFLECT( steemit::protocol::account_create_with_delegation_operation,
+            (fee)
+            (delegation)
+            (creator)
+            (new_account_name)
+            (owner)
+            (active)
+            (posting)
+            (memo_key)
+            (json_metadata)
+            (extensions) )
+
 FC_REFLECT( steemit::protocol::account_update_operation,
             (account)
             (owner)
@@ -914,6 +999,10 @@ FC_REFLECT( steemit::protocol::limit_order_create2_operation, (owner)(orderid)(a
 FC_REFLECT( steemit::protocol::limit_order_cancel_operation, (owner)(orderid) )
 
 FC_REFLECT( steemit::protocol::delete_comment_operation, (author)(permlink) );
+
+FC_REFLECT( steemit::protocol::beneficiary_route_type, (account)(weight) )
+FC_REFLECT( steemit::protocol::comment_payout_beneficiaries, (beneficiaries) )
+FC_REFLECT_TYPENAME( steemit::protocol::comment_options_extension )
 FC_REFLECT( steemit::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
 FC_REFLECT( steemit::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );
@@ -926,3 +1015,5 @@ FC_REFLECT( steemit::protocol::request_account_recovery_operation, (recovery_acc
 FC_REFLECT( steemit::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steemit::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
 FC_REFLECT( steemit::protocol::decline_voting_rights_operation, (account)(decline) );
+FC_REFLECT( steemit::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
+FC_REFLECT( steemit::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );

@@ -121,7 +121,10 @@ namespace steemit { namespace app {
 
          void get_max_block_age( int32_t& result );
 
+         void connect_to_write_node();
+
          bool _read_only = true;
+         fc::optional< string > _remote_endpoint;
          fc::optional< fc::api< network_broadcast_api > > _remote_net_api;
          fc::optional< fc::api< login_api > > _remote_login;
          fc::http::websocket_connection_ptr _ws_ptr;

@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 16, 3) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 17, 0) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -23,6 +23,7 @@
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1451606400))
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 #define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEMIT_CASHOUT_WINDOW_SECONDS)
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (STEEMIT_CASHOUT_WINDOW_SECONDS)
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
@@ -48,11 +49,12 @@
 
 #define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
 #define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)  /// 1 day
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*12)  /// 12 hours
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)    /// 1 day
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (60*60*12)    /// 12 hours
+#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  /// 7 days
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
-#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2) /// 2 hours
+#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2)     /// 2 hours
 
 #define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE  100000
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE           1
@@ -73,10 +75,17 @@
 #define STEEMIT_INIT_MINER_NAME                 "initminer"
 #define STEEMIT_NUM_INIT_MINERS                 1
 #define STEEMIT_INIT_TIME                       (fc::time_point_sec());
-#define STEEMIT_MAX_VOTED_WITNESSES             19
-#define STEEMIT_MAX_MINER_WITNESSES             1
-#define STEEMIT_MAX_RUNNER_WITNESSES            1
-#define STEEMIT_MAX_WITNESSES                   (STEEMIT_MAX_VOTED_WITNESSES+STEEMIT_MAX_MINER_WITNESSES+STEEMIT_MAX_RUNNER_WITNESSES) /// 21 is more than enough
+
+#define STEEMIT_MAX_WITNESSES                   21
+
+#define STEEMIT_MAX_VOTED_WITNESSES_HF0         19
+#define STEEMIT_MAX_MINER_WITNESSES_HF0         1
+#define STEEMIT_MAX_RUNNER_WITNESSES_HF0        1
+
+#define STEEMIT_MAX_VOTED_WITNESSES_HF17        20
+#define STEEMIT_MAX_MINER_WITNESSES_HF17        0
+#define STEEMIT_MAX_RUNNER_WITNESSES_HF17       1
+
 #define STEEMIT_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 20 dpos witnesses (19 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define STEEMIT_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define STEEMIT_MAX_MEMO_SIZE                   2048
@@ -92,6 +101,7 @@
 #define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
+#define STEEMIT_VOTE_DUST_THRESHOLD             (50000000)
 
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
@@ -119,10 +129,15 @@
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
-#define STEEMIT_MAX_COMMENT_DEPTH               6
+#define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      6
+#define STEEMIT_MAX_COMMENT_DEPTH               0xffff // 64k
+#define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 
 #define STEEMIT_MAX_RESERVE_RATIO   (20000)
 
+#define STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER 30
+#define STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO    5
+#define STEEMIT_CREATE_ACCOUNT_DELEGATION_TIME     fc::days(30)
 
 #define STEEMIT_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )
 #define STEEMIT_EQUIHASH_N                      140
@@ -143,7 +158,11 @@
 #define STEEMIT_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
 #define STEEMIT_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
 
-
+#define STEEMIT_POST_REWARD_FUND_NAME           ("post")
+#define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
+#define STEEMIT_RECENT_RSHARES_DECAY_RATE       (fc::days(30))
+#define STEEMIT_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))
+// note, if redefining these constants make sure calculate_claims doesn't overflow
 
 // 5ccc e802 de5f
 // int(expm1( log1p( 1 ) / BLOCKS_PER_YEAR ) * 2**STEEMIT_APR_PERCENT_SHIFT_PER_BLOCK / 100000 + 0.5)
@@ -228,6 +247,9 @@
 #define GRAPHENE_CURRENT_DB_VERSION             "GPH2.4"
 
 #define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
+
+#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
+#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
 /**
  *  Reserved Account IDs with special meaning

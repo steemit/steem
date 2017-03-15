@@ -189,6 +189,7 @@ class database_api
       witness_schedule_api_obj         get_witness_schedule()const;
       hardfork_version                 get_hardfork_version()const;
       scheduled_hardfork               get_next_scheduled_hardfork()const;
+      reward_fund_api_obj              get_reward_fund( string name )const;
 
       //////////
       // Keys //
@@ -241,6 +242,9 @@ class database_api
 
       vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
       vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
+
+      vector< vesting_delegation_api_obj > get_vesting_delegations( string account, string from, uint32_t limit = 100 )const;
+      vector< vesting_delegation_expiration_api_obj > get_expiring_vesting_delegations( string account, time_point_sec from, uint32_t limit = 100 )const;
 
       ///////////////
       // Witnesses //
@@ -346,12 +350,11 @@ class database_api
       ///@{ tags API
       /** This API will return the top 1000 tags used by an author sorted by most frequently used */
       vector<pair<string,uint32_t>> get_tags_used_by_author( const string& author )const;
+      vector<discussion> get_discussions_by_payout(const discussion_query& query )const;
       vector<discussion> get_discussions_by_trending( const discussion_query& query )const;
-      vector<discussion> get_discussions_by_trending30( const discussion_query& query )const;
       vector<discussion> get_discussions_by_created( const discussion_query& query )const;
       vector<discussion> get_discussions_by_active( const discussion_query& query )const;
       vector<discussion> get_discussions_by_cashout( const discussion_query& query )const;
-      vector<discussion> get_discussions_by_payout( const discussion_query& query )const;
       vector<discussion> get_discussions_by_votes( const discussion_query& query )const;
       vector<discussion> get_discussions_by_children( const discussion_query& query )const;
       vector<discussion> get_discussions_by_hot( const discussion_query& query )const;
@@ -431,7 +434,8 @@ class database_api
                                           uint32_t truncate_body = 0,
                                           const std::function< bool( const comment_api_obj& ) >& filter = &database_api::filter_default,
                                           const std::function< bool( const comment_api_obj& ) >& exit   = &database_api::exit_default,
-                                          const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default
+                                          const std::function< bool( const tags::tag_object& ) >& tag_exit = &database_api::tag_exit_default,
+                                          bool ignore_parent = false
                                           )const;
       comment_id_type get_parent( const discussion_query& q )const;
 
@@ -463,7 +467,6 @@ FC_API(steemit::app::database_api,
    (get_trending_tags)
    (get_tags_used_by_author)
    (get_discussions_by_trending)
-   (get_discussions_by_trending30)
    (get_discussions_by_created)
    (get_discussions_by_active)
    (get_discussions_by_cashout)
@@ -495,6 +498,7 @@ FC_API(steemit::app::database_api,
    (get_witness_schedule)
    (get_hardfork_version)
    (get_next_scheduled_hardfork)
+   (get_reward_fund)
 
    // Keys
    (get_key_references)
@@ -514,6 +518,8 @@ FC_API(steemit::app::database_api,
    (get_account_bandwidth)
    (get_savings_withdraw_from)
    (get_savings_withdraw_to)
+   (get_vesting_delegations)
+   (get_expiring_vesting_delegations)
 
    // Market
    (get_order_book)

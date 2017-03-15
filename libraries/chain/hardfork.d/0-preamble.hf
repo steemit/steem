@@ -48,4 +48,4 @@ FC_REFLECT( steemit::chain::hardfork_property_object,
    (next_hardfork)(next_hardfork_time) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::hardfork_property_object, steemit::chain::hardfork_property_index )
 
-#define STEEMIT_NUM_HARDFORKS 16
+#define STEEMIT_NUM_HARDFORKS 17
