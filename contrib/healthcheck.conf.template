@@ -1,5 +1,5 @@
   server {
-    listen 8090;
+    listen 0.0.0.0:8090;
 
     location /health {
       fastcgi_pass unix:/var/run/fcgiwrap.socket;
