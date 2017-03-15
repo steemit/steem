@@ -1216,7 +1216,6 @@ namespace steemit {
             return d;
         }
 
-
         template<typename Index, typename StartItr>
         vector<discussion> database_api::get_discussions(const discussion_query &query,
                 const string &tag,
@@ -1311,26 +1310,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1362,26 +1361,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1415,26 +1414,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1462,26 +1461,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1509,26 +1508,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1559,26 +1558,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1613,26 +1612,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1660,26 +1659,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1708,26 +1707,26 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        if (query.select_tags.find(c.category) == query.select_tags.end()) {
+                    if (query.select_categories.size()) {
+                        if (query.select_categories.find(c.category) == query.select_categories.end()) {
                             return true;
                         }
                     }
 
-                    if (query.select_metadata_tags.size()) {
+                    if (query.select_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.select_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.select_tags) {
                             if (meta.tags.find(iterator) == meta.tags.end()) {
                                 return true;
                             }
                         }
                     }
 
-                    if (query.filter_metadata_tags.size()) {
+                    if (query.filter_tags.size()) {
                         tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const set<string>::value_type &iterator : query.filter_metadata_tags) {
+                        for (const set<string>::value_type &iterator : query.filter_tags) {
                             if (meta.tags.find(iterator) != meta.tags.end()) {
                                 return true;
                             }
@@ -1771,14 +1770,14 @@ namespace steemit {
                         break;
                     }
                     try {
-                        if (query.select_tags.size()) {
+                        if (query.select_categories.size()) {
                             auto tag_itr = tag_idx.lower_bound(feed_itr->comment);
 
                             bool found = false;
                             while (tag_itr != tag_idx.end() &&
                                    tag_itr->comment == feed_itr->comment) {
-                                if (query.select_tags.find(tag_itr->tag) !=
-                                    query.select_tags.end()) {
+                                if (query.select_categories.find(tag_itr->tag) !=
+                                    query.select_categories.end()) {
                                     found = true;
                                     break;
                                 }
@@ -1847,14 +1846,14 @@ namespace steemit {
                             continue;
                         }
 
-                        if (query.select_tags.size()) {
+                        if (query.select_categories.size()) {
                             auto tag_itr = tag_idx.lower_bound(blog_itr->comment);
 
                             bool found = false;
                             while (tag_itr != tag_idx.end() &&
                                    tag_itr->comment == blog_itr->comment) {
-                                if (query.select_tags.find(tag_itr->tag) !=
-                                    query.select_tags.end()) {
+                                if (query.select_categories.find(tag_itr->tag) !=
+                                    query.select_categories.end()) {
                                     found = true;
                                     break;
                                 }
