@@ -81,7 +81,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
     PROCESSES=$((CORES * 4))
     for (( i=2; i<=$PROCESSES; i++ ))
       do
-        echo server localhost:$PORT_NUM\; >> /etc/nginx/healthcheck.conf
+        echo server 127.0.0.1:$PORT_NUM\; >> /etc/nginx/healthcheck.conf
         ((PORT_NUM++))
     done
     echo } >> /etc/nginx/healthcheck.conf
@@ -113,7 +113,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
     runsv /etc/service/steemd
 else
     cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-    echo server localhost:8091\; >> /etc/nginx/healthcheck.conf
+    echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
     echo } >> /etc/nginx/healthcheck.conf
     rm /etc/nginx/sites-enabled/default
     cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
