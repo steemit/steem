@@ -239,7 +239,12 @@ set<public_key_type> signed_transaction::get_required_signatures(
       s.check_authority( get_owner( owner ) );
    }
    for( auto& active : required_active )
-      s.check_authority( active  );
+   {
+      if( !s.check_authority( active  ) )
+      {
+         s.check_authority( get_owner( active ) );
+      }
+   }
 
    wlog( "before remove_unused_signatues(): ${psigs}", ("psigs", s.provided_signatures) );
    s.remove_unused_signatures();
