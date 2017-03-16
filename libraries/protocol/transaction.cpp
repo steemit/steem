@@ -234,13 +234,24 @@ set<public_key_type> signed_transaction::get_required_signatures(
    for( auto& active : required_active )
       s.check_authority( active  );
 
+   wlog( "before remove_unused_signatues(): ${psigs}", ("psigs", s.provided_signatures) );
    s.remove_unused_signatures();
+   wlog( " after remove_unused_signatues(): ${psigs}", ("psigs", s.provided_signatures) );
 
    set<public_key_type> result;
 
    for( auto& provided_sig : s.provided_signatures )
+   {
       if( available_keys.find( provided_sig.first ) != available_keys.end() )
+      {
+         wlog( "have key for ${sig}, adding", ("sig", provided_sig.first) );
          result.insert( provided_sig.first );
+      }
+      else
+      {
+         wlog( "don't have key for ${sig}, skipping", ("sig", provided_sig.first) );
+      }
+   }
 
    return result;
 }
@@ -255,6 +266,8 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
    ) const
 {
    set< public_key_type > s = get_required_signatures( chain_id, available_keys, get_active, get_owner, get_posting, max_recursion );
+   wlog( "get_required_signatures() = ${s}", ("s", s) );
+
    flat_set< public_key_type > result( s.begin(), s.end() );
 
    for( const public_key_type& k : s )
@@ -263,6 +276,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       try
       {
          steemit::protocol::verify_authority( operations, result, get_active, get_owner, get_posting, max_recursion );
+         wlog( "removed signature of key ${k} since it is unnecessary", ("k", k) );
          continue;  // element stays erased if verify_authority is ok
       }
       catch( const tx_missing_owner_auth& e ) {}
@@ -270,6 +284,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       catch( const tx_missing_posting_auth& e ) {}
       catch( const tx_missing_other_auth& e ) {}
       result.insert( k );
+      wlog( "kept signature of key ${k} since it is necessary", ("k", k) );
    }
    return set<public_key_type>( result.begin(), result.end() );
 }
