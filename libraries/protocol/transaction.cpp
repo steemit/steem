@@ -201,6 +201,9 @@ set<public_key_type> signed_transaction::get_required_signatures(
    flat_set< account_name_type > required_posting;
    vector< authority > other;
    get_required_authorities( required_active, required_owner, required_posting, other );
+   wlog( "get_required_authorities  active: ${a}", ("a", required_active) );
+   wlog( "get_required_authorities   owner: ${o}", ("o", required_owner) );
+   wlog( "get_required_authorities posting: ${p}", ("p", required_posting) );
 
    /** posting authority cannot be mixed with active authority in same transaction */
    if( required_posting.size() ) {
@@ -230,7 +233,11 @@ set<public_key_type> signed_transaction::get_required_signatures(
    for( const auto& auth : other )
       s.check_authority( auth );
    for( auto& owner : required_owner )
+   {
+      wlog( "owner: ${o}", ("o", owner) );
+      wlog( "get_owner(owner): ${go}", ("go", get_owner(owner)) );
       s.check_authority( get_owner( owner ) );
+   }
    for( auto& active : required_active )
       s.check_authority( active  );
 
