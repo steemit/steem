@@ -13,7 +13,7 @@ modification, are permitted provided that the following conditions are met:
 4. The STEEMIT_INIT_PUBLIC_KEY_STR is not changed from STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX,
 and the software is not modified in any way that would bypass the need for the corresponding private to start
 a new blockchain.
-5. The software is not used with any forks of the Steem blockchain that are not recognized by Steemit, Inc in writing.
+5. The license allows anyone to fork the repository and make alternate releases and derived works. The witnesses are allowed to adopt those releases without permission from Steemit, Inc. The only restriction is that the code may only be used to run the official Steem blockchain, produced by the witnesses, who are voted in by the stakeholders. It may not be used to create or run forks of the blockchain that run in parallel with, or in replacement of the official Steem blockchain, unless officialy recognized and permitted by Steemit, Inc. in writing.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
