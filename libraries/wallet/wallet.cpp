@@ -609,6 +609,8 @@ public:
             continue;
          const account_api_obj& acct = it->second;
          vector<public_key_type> v_approving_keys = acct.active.get_keys();
+         auto owner_keys = acct.owner.get_keys();
+         v_approving_keys.insert( v_approving_keys.end(), owner_keys.begin(), owner_keys.end() );
          wdump((v_approving_keys));
          for( const public_key_type& approving_key : v_approving_keys )
          {
@@ -624,6 +626,10 @@ public:
             continue;
          const account_api_obj& acct = it->second;
          vector<public_key_type> v_approving_keys = acct.posting.get_keys();
+         auto active_keys = acct.owner.get_keys();
+         v_approving_keys.insert( v_approving_keys.end(), active_keys.begin(), active_keys.end() );
+         auto owner_keys = acct.owner.get_keys();
+         v_approving_keys.insert( v_approving_keys.end(), owner_keys.begin(), owner_keys.end() );
          wdump((v_approving_keys));
          for( const public_key_type& approving_key : v_approving_keys )
          {
