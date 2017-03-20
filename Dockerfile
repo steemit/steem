@@ -3,9 +3,12 @@ FROM phusion/baseimage:0.9.19
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
 ENV LANG=en_US.UTF-8
-ENV VERSION=0.17.0
+ENV VERSION=0.17rc1
 
 RUN \
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf && \
+    echo "APT::Cache-Limit \"16777216\";" >> /etc/apt/apt.conf && \
+    echo "APT::Cache-Start \"50331648\";" >> /etc/apt/apt.conf && \
     apt-get update && \
     apt-get install -y \
         autoconf \
@@ -40,6 +43,7 @@ ADD . /usr/local/src/steem
 
 RUN \
     cd /usr/local/src/steem && \
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
@@ -54,11 +58,12 @@ RUN \
     cd /usr/local/src/steem && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
-    programs/build_helpers/get_config_check.sh && \
+    #TODO: programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
 RUN \
     cd /usr/local/src/steem && \
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
@@ -79,6 +84,7 @@ RUN \
 
 RUN \
     cd /usr/local/src/steem && \
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf && \
     git submodule update --init --recursive && \
     mkdir build && \
     cd build && \
@@ -109,6 +115,7 @@ RUN \
     rm -rf /usr/local/src/steem
 
 RUN \
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf && \
     apt-get remove -y \
         automake \
         autotools-dev \
@@ -206,3 +213,4 @@ RUN chmod +x /usr/local/bin/healthcheck.sh
 ADD contrib/steemdentrypoint.sh /usr/local/bin/steemdentrypoint.sh
 RUN chmod +x /usr/local/bin/steemdentrypoint.sh
 CMD /usr/local/bin/steemdentrypoint.sh
+
