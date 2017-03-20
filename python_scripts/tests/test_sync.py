@@ -70,15 +70,6 @@ class WatchDog(object):
             + "enable-plugin = witness " + " ".join(self.plugins) + "\n" \
             + "public-api = database_api login_api " + " ".join(self.apis) + "\n"
 
-    def panic(self, stl, lbn):
-        print(
-            "\nWATCHDOG: Error syncing between block #" +
-            str(stl) +
-            " and #" +
-            str(lbn))
-        steemd.kill()
-        sys.exit(1)
-
     def watchForHangDuringSync(self, steemd):
         duplicates = 0
         last_local_block_number = 0
@@ -94,19 +85,17 @@ class WatchDog(object):
             if (last_local_block_number == local_block_number) or (
                     local_block_number == 0):
                 duplicates += 1
-                if duplicates > 10:
-                    # We have been on the same block for 100 seconds.
+                if duplicates > 50:
+                    # We have been on the same block for 500 seconds.
                     print(
-                     "\nWATCHDOG: Error syncing between block #" +
-                     str(second_to_last) +
-                     " and #" +
+                     "\nWATCHDOG: Error syncing on block #" +
                      str(last_local_block_number))
                     steemd.kill()
+                    input()
                     sys.exit(1)
                     return
             else:
                 duplicates = 0
-                second_to_last = last_local_block_number
                 last_irreversible_block_num = remoteProps[
                     'last_irreversible_block_num']
                 last_local_block_number = local_block_number
@@ -114,13 +103,18 @@ class WatchDog(object):
                     if(localRpc.get_block(last_irreversible_block_num)['witness_signature'] == remoteRpc.get_block(last_irreversible_block_num)['witness_signature']):
                         print("\nWATCHDOG: Successfully synced")
                         steemd.kill()
+                        input()
                         sys.exit(0)
                     else:
                         print("\nWATCHDOG: Fatal error... client forked")
                         steemd.kill()
+                        input()
                         sys.exit(2)
                         return  # We are all the way synced
-                # print(local_block_number) #DEBUG
+                if((local_block_number-second_to_last)>10000):
+                    print("WATCHDOG: (" + str(100 * float(last_local_block_number)/float(last_irreversible_block_num))[:4] + "%) Syncing block #" + str(local_block_number)) #DEBUG
+                    second_to_last=last_local_block_number
+
             sleep(10)
         return
 

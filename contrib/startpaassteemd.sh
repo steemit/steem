@@ -2,6 +2,7 @@
 export HOME="/var/lib/steemd"
 
 STEEMD="/usr/local/steemd-full/bin/steemd"
+STEEMD_LOWMEM="/usr/local/steemd-default/bin/steemd"
 TEST_SYNC="/usr/local/test_sync.py"
 chown -R steemd:steemd $HOME
 
@@ -30,6 +31,7 @@ fi
 
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+CONFIG_LOWMEM="/etc/steemd/config.ini"
 
 chown steemd:steemd $HOME/config.ini
 chown steemd:steemd $TEST_SYNC
@@ -46,7 +48,7 @@ if [[ "$RUN_SYNC_TEST" ]]; then
   fi
   chmod +x $TEST_SYNC
   exec chpst -usteemd \
-      python3 $TEST_SYNC --steemd $STEEMD --config-file $HOME/config.ini --seed-nodes $SEED_NODES_FILE --log-file $HOME/log.txt
+      python3 $TEST_SYNC --steemd $STEEMD_LOWMEM --config-file $CONFIG_LOWMEM --seed-nodes $SEED_NODES_FILE --log-file $HOME/log.txt
 fi
 
 # get blockchain state from an S3 bucket
