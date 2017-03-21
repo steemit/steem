@@ -175,6 +175,10 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
 
+         // We can optimize certain operations by knowing if we are reindexing and what the head block will end up being
+         _is_reindexing = true;
+         _reindex_head_num = 0;
+
          while( itr.first.block_num() != last_block_num )
          {
             auto cur_block_num = itr.first.block_num();
@@ -187,6 +191,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
          apply_block( itr.first, skip_flags );
          set_revision( head_block_num() );
+
+         _is_reindexing = false;
       });
 
       if( _block_log.head()->block_num() )
@@ -458,58 +464,6 @@ void database::pay_fee( const account_object& account, asset fee )
    adjust_balance( account, -fee );
    adjust_supply( -fee );
 }
-
-void database::old_update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
-{ try {
-   const auto& props = get_dynamic_global_properties();
-   if( props.total_vesting_shares.amount > 0 )
-   {
-      FC_ASSERT( a.vesting_shares.amount > 0, "Only accounts with a postive vesting balance may transact." );
-
-      auto band = find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( a.name, type ) );
-
-      if( band == nullptr )
-      {
-         band = &create< account_bandwidth_object >( [&](account_bandwidth_object& b )
-         {
-            b.account = a.name;
-            b.type = type;
-         });
-      }
-
-      modify( *band, [&]( account_bandwidth_object& b )
-      {
-         b.lifetime_bandwidth += trx_size * STEEMIT_BANDWIDTH_PRECISION;
-
-         auto now = head_block_time();
-         auto delta_time = (now - b.last_bandwidth_update).to_seconds();
-         uint64_t N = trx_size * STEEMIT_BANDWIDTH_PRECISION;
-         if( delta_time >= STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
-            b.average_bandwidth = N;
-         else
-         {
-            auto old_weight = b.average_bandwidth * ( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time );
-            auto new_weight = delta_time * N;
-            b.average_bandwidth = ( old_weight + new_weight ) / STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS;
-         }
-
-         b.last_bandwidth_update = now;
-      });
-
-      fc::uint128 account_vshares( a.vesting_shares.amount.value );
-      fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
-
-      fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
-      fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
-
-      FC_ASSERT( ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares ),
-               "Account exceeded maximum allowed bandwidth per vesting share.",
-               ("account_vshares", account_vshares)
-               ("account_average_bandwidth", account_average_bandwidth)
-               ("max_virtual_bandwidth", max_virtual_bandwidth)
-               ("total_vesting_shares", total_vshares) );
-   }
-} FC_CAPTURE_AND_RETHROW() }
 
 bool database::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
 {
@@ -981,6 +935,11 @@ void database::notify_applied_block( const signed_block& block )
 void database::notify_on_pending_transaction( const signed_transaction& tx )
 {
    STEEMIT_TRY_NOTIFY( on_pending_transaction, tx )
+}
+
+void database::notify_on_pre_apply_transaction( const signed_transaction& tx )
+{
+   STEEMIT_TRY_NOTIFY( on_pre_apply_transaction, tx )
 }
 
 void database::notify_on_applied_transaction( const signed_transaction& tx )
@@ -2918,25 +2877,21 @@ void database::_apply_transaction(const signed_transaction& trx)
 
    auto trx_size = fc::raw::pack_size(trx);
 
+/*
    for( const auto& auth : required ) {
       const auto& acnt = get_account(auth);
-
-      if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
-         old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
 
       update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
 
       for( const auto& op : trx.operations ) {
          if( is_market_operation( op ) )
          {
-            if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
-               old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
-
             update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
             break;
          }
       }
    }
+*/
 
 
 
@@ -2957,7 +2912,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       FC_ASSERT( trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
                  ("trx.expiration",trx.expiration)("now",now)("max_til_exp",STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
-      if( is_producing() || has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
+      if( has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
          FC_ASSERT( now < trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
       FC_ASSERT( now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
    }

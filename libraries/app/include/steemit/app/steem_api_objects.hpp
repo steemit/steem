@@ -252,21 +252,6 @@ struct account_api_obj
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
 
-      auto old_forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_forum ) );
-      if( old_forum != nullptr )
-      {
-         average_bandwidth = old_forum->average_bandwidth;
-         lifetime_bandwidth = old_forum->lifetime_bandwidth;
-         last_bandwidth_update = old_forum->last_bandwidth_update;
-      }
-
-      auto old_market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_market ) );
-      if( old_market != nullptr )
-      {
-         average_market_bandwidth = old_market->average_bandwidth;
-         last_market_bandwidth_update = old_market->last_bandwidth_update;
-      }
-
       auto post = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::post ) );
       if( post != nullptr )
       {

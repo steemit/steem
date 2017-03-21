@@ -52,20 +52,16 @@ namespace block_production_condition
    };
 }
 
+namespace detail
+{
+   class witness_plugin_impl;
+}
+
 class witness_plugin : public steemit::app::plugin
 {
 public:
-   witness_plugin( application* app ) : plugin( app ) {}
-   ~witness_plugin() {
-      try {
-         if( _block_production_task.valid() )
-            _block_production_task.cancel_and_wait(__FUNCTION__);
-      } catch(fc::canceled_exception&) {
-         //Expected exception. Move along.
-      } catch(fc::exception& e) {
-         edump((e.to_detail_string()));
-      }
-   }
+   witness_plugin( application* app );
+   virtual ~witness_plugin();
 
    std::string plugin_name()const override;
 
@@ -98,6 +94,9 @@ private:
    std::map<public_key_type, fc::ecc::private_key> _private_keys;
    std::set<string>                                _witnesses;
    fc::future<void>                                _block_production_task;
+
+   friend class detail::witness_plugin_impl;
+   std::unique_ptr< detail::witness_plugin_impl > _my;
 };
 
 } } //steemit::witness_plugin

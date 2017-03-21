@@ -38,11 +38,15 @@
 
 #include <iostream>
 
-using namespace steemit::witness_plugin;
+namespace steemit { namespace witness_plugin {
+
+namespace bpo = boost::program_options;
+
 using std::string;
 using std::vector;
 
-namespace bpo = boost::program_options;
+using protocol::signed_transaction;
+using chain::account_object;
 
 void new_chain_banner( const steemit::chain::database& db )
 {
@@ -56,6 +60,123 @@ void new_chain_banner( const steemit::chain::database& db )
       "********************************\n"
       "\n";
    return;
+}
+
+namespace detail
+{
+   using namespace steemit::chain;
+
+   class witness_plugin_impl
+   {
+      public:
+         witness_plugin_impl( witness_plugin& plugin )
+            : _self( plugin ){}
+
+         void pre_transaction( const signed_transaction& trx );
+         void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
+
+         witness_plugin&   _self;
+   };
+
+   void witness_plugin_impl::pre_transaction( const signed_transaction& trx )
+   {
+      const auto& _db = _self.database();
+      flat_set< account_name_type > required; vector<authority> other;
+      trx.get_required_authorities( required, required, required, other );
+
+      auto trx_size = fc::raw::pack_size(trx);
+
+      for( const auto& auth : required )
+      {
+         const auto& acnt = _db.get_account( auth );
+
+         update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
+
+         for( const auto& op : trx.operations )
+         {
+            if( is_market_operation( op ) )
+            {
+               update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
+               break;
+            }
+         }
+      }
+   }
+
+   void witness_plugin_impl::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
+   {
+      database& _db = _self.database();
+      const auto& props = _db.get_dynamic_global_properties();
+      bool has_bandwidth = true;
+
+      if( props.total_vesting_shares.amount > 0 )
+      {
+         auto band = _db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( a.name, type ) );
+
+         if( band == nullptr )
+         {
+            band = &_db.create< account_bandwidth_object >( [&]( account_bandwidth_object& b )
+            {
+               b.account = a.name;
+               b.type = type;
+            });
+         }
+
+         share_type new_bandwidth;
+         share_type trx_bandwidth = trx_size * STEEMIT_BANDWIDTH_PRECISION;
+         auto delta_time = ( _db.head_block_time() - band->last_bandwidth_update ).to_seconds();
+
+         if( delta_time > STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
+            new_bandwidth = 0;
+         else
+            new_bandwidth = ( ( ( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time ) * fc::uint128( band->average_bandwidth.value ) )
+               / STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ).to_uint64();
+
+         new_bandwidth += trx_bandwidth;
+
+         _db.modify( *band, [&]( account_bandwidth_object& b )
+         {
+            b.average_bandwidth = new_bandwidth;
+            b.lifetime_bandwidth += trx_bandwidth;
+            b.last_bandwidth_update = _db.head_block_time();
+         });
+
+         fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
+         fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
+         fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
+         fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
+
+         has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
+
+         if( _db.is_producing() )
+            STEEMIT_ASSERT( has_bandwidth, chain::plugin_exception,
+               "Account exceeded maximum allowed bandwidth per vesting share.",
+               ("account_vshares", account_vshares)
+               ("account_average_bandwidth", account_average_bandwidth)
+               ("max_virtual_bandwidth", max_virtual_bandwidth)
+               ("total_vesting_shares", total_vshares) );
+      }
+   }
+}
+
+witness_plugin::witness_plugin( application* app )
+   : plugin( app ), _my( new detail::witness_plugin_impl( *this ) ) {}
+
+witness_plugin::~witness_plugin()
+{
+   try
+   {
+      if( _block_production_task.valid() )
+         _block_production_task.cancel_and_wait(__FUNCTION__);
+   }
+   catch(fc::canceled_exception&)
+   {
+      //Expected exception. Move along.
+   }
+   catch(fc::exception& e)
+   {
+      edump((e.to_detail_string()));
+   }
 }
 
 void witness_plugin::plugin_set_program_options(
@@ -99,6 +220,8 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
          _private_keys[private_key->get_public_key()] = *private_key;
       }
    }
+
+   database().on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ _my->pre_transaction( tx ); } );
 
    ilog("witness plugin:  plugin_initialize() end");
 } FC_LOG_AND_RETHROW() }
@@ -312,5 +435,7 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
 
    return block_production_condition::exception_producing_block;
 }
+
+} } // steemit::witness_plugin
 
 STEEMIT_DEFINE_PLUGIN( witness, steemit::witness_plugin::witness_plugin )

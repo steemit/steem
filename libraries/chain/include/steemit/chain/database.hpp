@@ -50,6 +50,9 @@ namespace steemit { namespace chain {
 
          bool _log_hardforks = true;
 
+         bool _is_reindexing = false;
+         uint32_t _reindex_head_num = 0;
+
          enum validation_steps
          {
             skip_nothing                = 0,
@@ -152,7 +155,6 @@ namespace steemit { namespace chain {
           *  Deducts fee from the account and the share supply
           */
          void pay_fee( const account_object& a, asset fee );
-         void old_update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
          /**
           * Update an account's bandwidth and returns if the account had the requisite bandwidth for the trx
@@ -202,6 +204,7 @@ namespace steemit { namespace chain {
          inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
          void notify_applied_block( const signed_block& block );
          void notify_on_pending_transaction( const signed_transaction& tx );
+         void notify_on_pre_apply_transaction( const signed_transaction& tx );
          void notify_on_applied_transaction( const signed_transaction& tx );
 
          /**
@@ -225,6 +228,12 @@ namespace steemit { namespace chain {
           * block state.
           */
          fc::signal<void(const signed_transaction&)>     on_pending_transaction;
+
+         /**
+          * This signla is emitted any time a new transaction is about to be applied
+          * to the chain state.
+          */
+         fc::signal<void(const signed_transaction&)>     on_pre_apply_transaction;
 
          /**
           * This signal is emitted any time a new transaction has been applied to the

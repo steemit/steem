@@ -2143,7 +2143,7 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
 void reset_account_evaluator::do_apply( const reset_account_operation& op )
 {
    FC_ASSERT( false, "Reset Account Operation is currently disabled." );
-
+/*
    const auto& acnt = _db.get_account( op.account_to_reset );
    auto band = _db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( op.account_to_reset, bandwidth_type::old_forum ) );
    if( band != nullptr )
@@ -2151,12 +2151,13 @@ void reset_account_evaluator::do_apply( const reset_account_operation& op )
    FC_ASSERT( acnt.reset_account == op.reset_account, "Reset account does not match reset account on account." );
 
    _db.update_owner_authority( acnt, op.new_owner_authority );
+*/
 }
 
 void set_reset_account_evaluator::do_apply( const set_reset_account_operation& op )
 {
    FC_ASSERT( false, "Set Reset Account Operation is currently disabled." );
-
+/*
    const auto& acnt = _db.get_account( op.account );
    _db.get_account( op.reset_account );
 
@@ -2167,6 +2168,7 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
    {
        a.reset_account = op.reset_account;
    });
+*/
 }
 
 void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operation& op )

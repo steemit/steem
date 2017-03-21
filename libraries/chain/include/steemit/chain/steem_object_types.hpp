@@ -136,9 +136,7 @@ enum bandwidth_type
 {
    post,    ///< Rate limiting posting reward eligibility over time
    forum,   ///< Rate limiting for all forum related actins
-   market,  ///< Rate limiting for all other actions
-   old_forum,   ///< Rate limiting for all forum related actions (deprecated)
-   old_market   ///< Rate limiting for all other actions (deprecated)
+   market   ///< Rate limiting for all other actions
 };
 
 } } //steemit::chain
@@ -250,4 +248,4 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )
 FC_REFLECT_TYPENAME( steemit::chain::buffer_type )
 
-FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market)(old_forum)(old_market) )
+FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market) )
