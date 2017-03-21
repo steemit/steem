@@ -43,7 +43,7 @@ S3_DOWNLOAD_BUCKET=steemit-$NODE_ENV-blockchainstate
 echo steemd: beginning download and decompress of s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
 if [[ ! "$SYNC_TO_S3" ]]; then
   mkdir -p /mnt/ramdisk
-  mount -t ramfs -o size=34816m ramfs /mnt/ramdisk
+  mount -t ramfs -o size=43008m ramfs /mnt/ramdisk
   s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   ln -s blockchain/block_log /mnt/ramdisk/blockchain/block_log
   ln -s blockchain/block_log.index /mnt/ramdisk/blockchain/block_log.index
