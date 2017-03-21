@@ -54,7 +54,6 @@ RUN \
     cd /usr/local/src/steem && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
-    programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
 RUN \
