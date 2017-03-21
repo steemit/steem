@@ -404,6 +404,7 @@ namespace steemit { namespace chain {
          const std::string& get_json_schema() const;
 
          void set_flush_interval( uint32_t flush_blocks );
+         void show_free_memory( bool force );
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;

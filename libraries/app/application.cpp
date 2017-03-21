@@ -340,6 +340,7 @@ namespace detail {
                }
             }
          }
+         _chain_db->show_free_memory( true );
 
          if( _options->count("api-user") )
          {
