@@ -1117,16 +1117,28 @@ void database_api::set_pending_payout( discussion& d )const
 
    const auto& props = my->_db.get_dynamic_global_properties();
    const auto& hist  = my->_db.get_feed_history();
-   asset pot = std::max( props.total_reward_fund_steem, my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ).reward_balance );
+
+   asset pot;
+   if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+      pot = my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ).reward_balance;
+   else
+      pot = props.total_reward_fund_steem;
+
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
 
-   u256 total_r2 = to256( std::max( props.total_reward_shares2, my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ).recent_claims ) );
+   u256 total_r2 = 0;
+   if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+      total_r2 = to256( my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ).recent_claims );
+   else
+      total_r2 = to256( props.total_reward_shares2 );
 
-   if( props.total_reward_shares2 > 0 ){
-      auto vshares = std::max( steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 ),
-                               steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 , my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ) ) ); // TODO: Only return new calculate_claims after HF 17
-
-      //int64_t abs_net_rshares = llabs(d.net_rshares.value);
+   if( props.total_reward_shares2 > 0 )
+   {
+      uint128_t vshares;
+      if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+         vshares = steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 , my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ) );
+      else
+         vshares = steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 );
 
       u256 r2 = to256(vshares); //to256(abs_net_rshares);
       r2 *= pot.amount.value;
@@ -1405,6 +1417,36 @@ vector<discussion> database_api::get_discussions_by_payout( const discussion_que
 
       const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_net_rshares>();
       auto tidx_itr = tidx.lower_bound( tag );
+
+      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
+   });
+}
+
+vector<discussion> database_api::get_post_discussions_by_payout( const discussion_query& query )const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      query.validate();
+      auto tag = fc::to_lower( query.tag );
+      auto parent = comment_id_type();
+
+      const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_reward_fund_net_rshares>();
+      auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, true ) );
+
+      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
+   });
+}
+
+vector<discussion> database_api::get_comment_discussions_by_payout( const discussion_query& query )const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      query.validate();
+      auto tag = fc::to_lower( query.tag );
+      auto parent = comment_id_type(1);
+
+      const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_reward_fund_net_rshares>();
+      auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, false ) );
 
       return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
    });
@@ -2133,22 +2175,6 @@ state database_api::get_state( string path )const
          }
          _state.pow_queue = get_miner_queue();
       }
-      else if( part[0] == "payout"  )
-      {
-         discussion_query q;
-         q.tag = tag;
-         q.limit = 20;
-         q.truncate_body = 1024;
-         auto trending_disc = get_discussions_by_payout( q );
-
-         auto& didx = _state.discussion_idx[tag];
-         for( const auto& d : trending_disc ) {
-            auto key = d.author +"/" + d.permlink;
-            didx.payout.push_back( key );
-            if( d.author.size() ) accounts.insert(d.author);
-            _state.content[key] = std::move(d);
-         }
-      }
       else if( part[0] == "trending"  )
       {
          discussion_query q;
@@ -2161,6 +2187,38 @@ state database_api::get_state( string path )const
          for( const auto& d : trending_disc ) {
             auto key = d.author +"/" + d.permlink;
             didx.trending.push_back( key );
+            if( d.author.size() ) accounts.insert(d.author);
+            _state.content[key] = std::move(d);
+         }
+      }
+      else if( part[0] == "payout"  )
+      {
+         discussion_query q;
+         q.tag = tag;
+         q.limit = 20;
+         q.truncate_body = 1024;
+         auto trending_disc = get_post_discussions_by_payout( q );
+
+         auto& didx = _state.discussion_idx[tag];
+         for( const auto& d : trending_disc ) {
+            auto key = d.author +"/" + d.permlink;
+            didx.payout.push_back( key );
+            if( d.author.size() ) accounts.insert(d.author);
+            _state.content[key] = std::move(d);
+         }
+      }
+      else if( part[0] == "payout_comments"  )
+      {
+         discussion_query q;
+         q.tag = tag;
+         q.limit = 20;
+         q.truncate_body = 1024;
+         auto trending_disc = get_comment_discussions_by_payout( q );
+
+         auto& didx = _state.discussion_idx[tag];
+         for( const auto& d : trending_disc ) {
+            auto key = d.author +"/" + d.permlink;
+            didx.payout.push_back( key );
             if( d.author.size() ) accounts.insert(d.author);
             _state.content[key] = std::move(d);
          }
