@@ -3,6 +3,7 @@ FROM phusion/baseimage:0.9.19
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
 ENV LANG=en_US.UTF-8
+ENV VERSION=0.16.4
 
 RUN \
     apt-get update && \
@@ -25,6 +26,11 @@ RUN \
         python3 \
         python3-dev \
         python3-pip \
+        nginx \
+        fcgiwrap \
+        s3cmd \
+        awscli \
+        jq \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
@@ -48,6 +54,7 @@ RUN \
     cd /usr/local/src/steem && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
+    programs/build_helpers/get_config_check.sh && \
     rm -rf /usr/local/src/steem/build
 
 RUN \
@@ -66,7 +73,7 @@ RUN \
     make -j$(nproc) chain_test && \
     ./tests/chain_test && \
     mkdir -p /var/cobertura && \
-    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*"  --output="/var/cobertura/coverage.xml" && \
+    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*" --gcov-exclude=".*app*" --gcov-exclude=".*net*" --gcov-exclude=".*plugins*" --gcov-exclude=".*schema*" --gcov-exclude=".*time*" --gcov-exclude=".*utilities*" --gcov-exclude=".*wallet*" --gcov-exclude=".*programs*" --output="/var/cobertura/coverage.xml" && \
     cd /usr/local/src/steem && \
     rm -rf /usr/local/src/steem/build
 
@@ -167,12 +174,35 @@ EXPOSE 8090
 # p2p service:
 EXPOSE 2001
 
-RUN mkdir -p /etc/service/steemd
-ADD contrib/steemd.run /etc/service/steemd/run
-RUN chmod +x /etc/service/steemd/run
-
 # add seednodes from documentation to image
 ADD doc/seednodes.txt /etc/steemd/seednodes.txt
 
 # the following adds lots of logging info to stdout
 ADD contrib/config-for-docker.ini /etc/steemd/config.ini
+ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
+
+# add normal startup script that starts via sv
+ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
+RUN chmod +x /usr/local/bin/steem-sv-run.sh
+
+# add nginx templates
+ADD contrib/steemd.nginx.conf /etc/nginx/steemd.nginx.conf
+ADD contrib/healthcheck.conf.template /etc/nginx/healthcheck.conf.template
+
+# add PaaS startup script and service script
+ADD contrib/startpaassteemd.sh /usr/local/bin/startpaassteemd.sh
+ADD contrib/paas-sv-run.sh /usr/local/bin/paas-sv-run.sh
+ADD contrib/sync-sv-run.sh /usr/local/bin/sync-sv-run.sh
+ADD contrib/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/startpaassteemd.sh
+RUN chmod +x /usr/local/bin/paas-sv-run.sh
+RUN chmod +x /usr/local/bin/sync-sv-run.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# new entrypoint for all instances
+# this enables exitting of the container when the writer node dies
+# for PaaS mode (elasticbeanstalk, etc)
+# AWS EB Docker requires a non-daemonized entrypoint
+ADD contrib/steemdentrypoint.sh /usr/local/bin/steemdentrypoint.sh
+RUN chmod +x /usr/local/bin/steemdentrypoint.sh
+CMD /usr/local/bin/steemdentrypoint.sh
