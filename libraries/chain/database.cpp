@@ -3235,7 +3235,15 @@ void database::update_last_irreversible_block()
                block_ptr = &( blocks[0]->data );
             else
             {
+               vector< std::pair< account_name_type, fc::time_point_sec > > witness_time_pairs;
+               for( const auto& b : blocks )
+               {
+                  witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
+               }
+
                ilog( "Encountered a block num collision due to a fork. Walking the current fork to determine the correct block. block_num:${n}", ("n", log_head_num + 1) ); // TODO: Delete when we know this code works as intended
+               ilog( "Colliding blocks produced by witnesses at times: ${w}", ("w", witness_time_pairs) );
+
                auto next = _fork_db.head();
                while( next.get() != nullptr && next->num > log_head_num + 1 )
                   next = next->prev.lock();
