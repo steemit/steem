@@ -489,11 +489,14 @@ namespace detail {
                // leave that peer connected so that they can get sync blocks from us
                bool result = _chain_db->push_block(blk_msg.block, (_is_block_producer | _force_validate) ? database::skip_nothing : database::skip_transaction_signatures);
 
-               if( !sync_mode && blk_msg.block.transactions.size() )
+               if( !sync_mode )
                {
-                  ilog( "Got ${t} transactions from network on block ${b}",
+                  fc::microseconds latency = fc::time_point::now() - blk_msg.block.timestamp;
+                  ilog( "Got ${t} transactions on block ${b} by ${w} -- latency: ${l} ms",
                      ("t", blk_msg.block.transactions.size())
-                     ("b", blk_msg.block.block_num()) );
+                     ("b", blk_msg.block.block_num())
+                     ("w", blk_msg.block.witness)
+                     ("l", latency.count() / 1000) );
                }
 
                return result;
