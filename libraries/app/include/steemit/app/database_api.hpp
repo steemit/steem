@@ -29,7 +29,6 @@ namespace steemit {
 
         using namespace steemit::chain;
         using namespace steemit::protocol;
-        using namespace std;
 
         struct order {
             price order_price;
@@ -40,8 +39,8 @@ namespace steemit {
         };
 
         struct order_book {
-            vector<order> asks;
-            vector<order> bids;
+            std::vector<order> asks;
+            std::vector<order> bids;
         };
 
         struct api_context;
@@ -52,13 +51,13 @@ namespace steemit {
         };
 
         struct liquidity_balance {
-            string account;
+            std::string account;
             fc::uint128_t weight;
         };
 
         struct withdraw_route {
-            string from_account;
-            string to_account;
+            std::string from_account;
+            std::string to_account;
             uint16_t percent;
             bool auto_vest;
         };
@@ -77,30 +76,29 @@ namespace steemit {
 
         struct discussion_query {
             void validate() const {
-                FC_ASSERT(filter_categories.find(tag) == filter_categories.end());
                 FC_ASSERT(limit <= 100);
 
-                for (const set<string>::value_type &iterator : filter_categories) {
-                    FC_ASSERT(select_categories.find(iterator) == select_categories.end());
+                for (const std::set<std::string>::value_type &iterator : filter_categories) {
+                    FC_ASSERT(select_categories.find(iterator) ==
+                              select_categories.end());
                 }
 
-                for (const set<string>::value_type &iterator : filter_tags) {
+                for (const std::set<std::string>::value_type &iterator : filter_tags) {
                     FC_ASSERT(select_tags.find(iterator) == select_tags.end());
                 }
             }
 
-            string tag;
             uint32_t limit = 0;
-            set<string> filter_categories; ///< list of tags to exclude, posts with these tags are filtered;
-            set<string> select_authors; ///< list of authors to include, posts not by this author are filtered
-            set<string> select_categories; ///< list of tags to include, posts without these tags are filtered
-            set<string> select_tags; ///< list of json_metadata stored tags to include, posts without these tags are filtered
-            set<string> filter_tags; ///< list of json_metadata stored tags to filter, posts with these tags are filtered
+            std::set<std::string> select_authors; ///< list of authors to include, posts without these tags are filtered
+            std::set<std::string> select_categories; ///< list of tags to include, posts without these tags are filtered
+            std::set<std::string> filter_categories; ///< list of tags to exclude, posts with these tags are filtered;
+            std::set<std::string> select_tags; ///< list of json_metadata stored tags to include, posts without these tags are filtered
+            std::set<std::string> filter_tags; ///< list of json_metadata stored tags to filter, posts with these tags are filtered
             uint32_t truncate_body = 0; ///< the number of bytes of the post body to return, 0 for all
-            optional<string> start_author;
-            optional<string> start_permlink;
-            optional<string> parent_author;
-            optional<string> parent_permlink;
+            optional<std::string> start_author;
+            optional<std::string> start_permlink;
+            optional<std::string> parent_author;
+            optional<std::string> parent_permlink;
         };
 
 /**
@@ -133,25 +131,25 @@ namespace steemit {
              */
             void cancel_all_subscriptions();
 
-            vector<tag_api_obj> get_trending_tags(string after_tag, uint32_t limit) const;
+            std::vector<tag_api_obj> get_trending_tags(std::string after_tag, uint32_t limit) const;
 
             /**
              *  This API is a short-cut for returning all of the state required for a particular URL
              *  with a single query.
              */
-            state get_state(string path) const;
+            state get_state(std::string path) const;
 
-            vector<category_api_obj> get_trending_categories(string after, uint32_t limit) const;
+            std::vector<category_api_obj> get_trending_categories(std::string after, uint32_t limit) const;
 
-            vector<category_api_obj> get_best_categories(string after, uint32_t limit) const;
+            std::vector<category_api_obj> get_best_categories(std::string after, uint32_t limit) const;
 
-            vector<category_api_obj> get_active_categories(string after, uint32_t limit) const;
+            std::vector<category_api_obj> get_active_categories(std::string after, uint32_t limit) const;
 
-            vector<category_api_obj> get_recent_categories(string after, uint32_t limit) const;
+            std::vector<category_api_obj> get_recent_categories(std::string after, uint32_t limit) const;
 
-            vector<account_name_type> get_active_witnesses() const;
+            std::vector<account_name_type> get_active_witnesses() const;
 
-            vector<account_name_type> get_miner_queue() const;
+            std::vector<account_name_type> get_miner_queue() const;
 
             /////////////////////////////
             // Blocks and transactions //
@@ -177,7 +175,7 @@ namespace steemit {
              *  @param only_virtual Whether to only include virtual operations in returned results (default: true)
              *  @return sequence of operations included/generated within the block
              */
-            vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual = true) const;
+            std::vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual = true) const;
 
             /////////////
             // Globals //
@@ -214,18 +212,18 @@ namespace steemit {
             // Keys //
             //////////
 
-            vector<set<string>> get_key_references(vector<public_key_type> key) const;
+            std::vector<std::set<std::string>> get_key_references(std::vector<public_key_type> key) const;
 
             //////////////
             // Accounts //
             //////////////
 
-            vector<extended_account> get_accounts(vector<string> names) const;
+            std::vector<extended_account> get_accounts(std::vector<std::string> names) const;
 
             /**
              *  @return all accounts that referr to the key or account id in their owner or active authorities.
              */
-            vector<account_id_type> get_account_references(account_id_type account_id) const;
+            std::vector<account_id_type> get_account_references(account_id_type account_id) const;
 
             /**
              * @brief Get a list of accounts by name
@@ -234,7 +232,7 @@ namespace steemit {
              *
              * This function has semantics identical to @ref get_objects
              */
-            vector<optional<account_api_obj>> lookup_account_names(const vector<string> &account_names) const;
+            std::vector<optional<account_api_obj>> lookup_account_names(const std::vector<std::string> &account_names) const;
 
             /**
              * @brief Get names and IDs for registered accounts
@@ -242,26 +240,26 @@ namespace steemit {
              * @param limit Maximum number of results to return -- must not exceed 1000
              * @return Map of account names to corresponding IDs
              */
-            set<string> lookup_accounts(const string &lower_bound_name, uint32_t limit) const;
+            std::set<std::string> lookup_accounts(const std::string &lower_bound_name, uint32_t limit) const;
 
             /**
              * @brief Get the total number of accounts registered with the blockchain
              */
             uint64_t get_account_count() const;
 
-            vector<owner_authority_history_api_obj> get_owner_history(string account) const;
+            std::vector<owner_authority_history_api_obj> get_owner_history(std::string account) const;
 
-            optional<account_recovery_request_api_obj> get_recovery_request(string account) const;
+            optional<account_recovery_request_api_obj> get_recovery_request(std::string account) const;
 
-            optional<escrow_api_obj> get_escrow(string from, uint32_t escrow_id) const;
+            optional<escrow_api_obj> get_escrow(std::string from, uint32_t escrow_id) const;
 
-            vector<withdraw_route> get_withdraw_routes(string account, withdraw_route_type type = outgoing) const;
+            std::vector<withdraw_route> get_withdraw_routes(std::string account, withdraw_route_type type = outgoing) const;
 
-            optional<account_bandwidth_api_obj> get_account_bandwidth(string account, bandwidth_type type) const;
+            optional<account_bandwidth_api_obj> get_account_bandwidth(std::string account, bandwidth_type type) const;
 
-            vector<savings_withdraw_api_obj> get_savings_withdraw_from(string account) const;
+            std::vector<savings_withdraw_api_obj> get_savings_withdraw_from(std::string account) const;
 
-            vector<savings_withdraw_api_obj> get_savings_withdraw_to(string account) const;
+            std::vector<savings_withdraw_api_obj> get_savings_withdraw_to(std::string account) const;
 
             ///////////////
             // Witnesses //
@@ -274,23 +272,23 @@ namespace steemit {
              *
              * This function has semantics identical to @ref get_objects
              */
-            vector<optional<witness_api_obj>> get_witnesses(const vector<witness_id_type> &witness_ids) const;
+            std::vector<optional<witness_api_obj>> get_witnesses(const std::vector<witness_id_type> &witness_ids) const;
 
-            vector<convert_request_api_obj> get_conversion_requests(const string &account_name) const;
+            std::vector<convert_request_api_obj> get_conversion_requests(const std::string &account_name) const;
 
             /**
              * @brief Get the witness owned by a given account
              * @param account The name of the account whose witness should be retrieved
              * @return The witness object, or null if the account does not have a witness
              */
-            fc::optional<witness_api_obj> get_witness_by_account(string account_name) const;
+            fc::optional<witness_api_obj> get_witness_by_account(std::string account_name) const;
 
             /**
              *  This method is used to fetch witnesses with pagination.
              *
              *  @return an array of `count` witnesses sorted by total votes after witness `from` with at most `limit' results.
              */
-            vector<witness_api_obj> get_witnesses_by_vote(string from, uint32_t limit) const;
+            std::vector<witness_api_obj> get_witnesses_by_vote(std::string from, uint32_t limit) const;
 
             /**
              * @brief Get names and IDs for registered witnesses
@@ -298,7 +296,7 @@ namespace steemit {
              * @param limit Maximum number of results to return -- must not exceed 1000
              * @return Map of witness names to corresponding IDs
              */
-            set<account_name_type> lookup_witness_accounts(const string &lower_bound_name, uint32_t limit) const;
+            std::set<account_name_type> lookup_witness_accounts(const std::string &lower_bound_name, uint32_t limit) const;
 
             /**
              * @brief Get the total number of witnesses registered with the blockchain
@@ -315,14 +313,14 @@ namespace steemit {
              */
             order_book get_order_book(uint32_t limit = 1000) const;
 
-            vector<extended_limit_order> get_open_orders(string owner) const;
+            std::vector<extended_limit_order> get_open_orders(std::string owner) const;
 
             /**
              * @breif Gets the current liquidity reward queue.
              * @param start_account The account to start the list from, or "" to get the head of the queue
              * @param limit Maxmimum number of accounts to return -- Must not exceed 1000
              */
-            vector<liquidity_balance> get_liquidity_queue(string start_account, uint32_t limit = 1000) const;
+            std::vector<liquidity_balance> get_liquidity_queue(std::string start_account, uint32_t limit = 1000) const;
 
             ////////////////////////////
             // Authority / validation //
@@ -334,17 +332,17 @@ namespace steemit {
             annotated_signed_transaction get_transaction(transaction_id_type trx_id) const;
 
             /**
-             *  This API will take a partially signed transaction and a set of public keys that the owner has the ability to sign for
-             *  and return the minimal subset of public keys that should add signatures to the transaction.
+             *  This API will take a partially signed transaction and a std::set of public keys that the owner has the ability to sign for
+             *  and return the minimal substd::set of public keys that should add signatures to the transaction.
              */
-            set<public_key_type> get_required_signatures(const signed_transaction &trx, const flat_set<public_key_type> &available_keys) const;
+            std::set<public_key_type> get_required_signatures(const signed_transaction &trx, const flat_set<public_key_type> &available_keys) const;
 
             /**
-             *  This method will return the set of all public keys that could possibly sign for a given transaction.  This call can
-             *  be used by wallets to filter their set of public keys to just the relevant subset prior to calling @ref get_required_signatures
-             *  to get the minimum subset.
+             *  This method will return the std::set of all public keys that could possibly sign for a given transaction.  This call can
+             *  be used by wallets to filter their std::set of public keys to just the relevant substd::set prior to calling @ref get_required_signatures
+             *  to get the minimum substd::set.
              */
-            set<public_key_type> get_potential_signatures(const signed_transaction &trx) const;
+            std::set<public_key_type> get_potential_signatures(const signed_transaction &trx) const;
 
             /**
              * @return true of the @ref trx has all of the required signatures, otherwise throws an exception
@@ -354,49 +352,49 @@ namespace steemit {
             /*
              * @return true if the signers have enough authority to authorize an account
              */
-            bool verify_account_authority(const string &name_or_id, const flat_set<public_key_type> &signers) const;
+            bool verify_account_authority(const std::string &name_or_id, const flat_set<public_key_type> &signers) const;
 
             /**
              *  if permlink is "" then it will return all votes for author
              */
-            vector<vote_state> get_active_votes(string author, string permlink) const;
+            std::vector<vote_state> get_active_votes(std::string author, std::string permlink) const;
 
-            vector<account_vote> get_account_votes(string voter) const;
+            std::vector<account_vote> get_account_votes(std::string voter) const;
 
 
-            discussion get_content(string author, string permlink) const;
+            discussion get_content(std::string author, std::string permlink) const;
 
-            vector<discussion> get_content_replies(string parent, string parent_permlink) const;
+            std::vector<discussion> get_content_replies(std::string parent, std::string parent_permlink) const;
 
             ///@{ tags API
             /** This API will return the top 1000 tags used by an author sorted by most frequently used */
-            vector<pair<string, uint32_t>> get_tags_used_by_author(const string &author) const;
+            std::vector<pair<std::string, uint32_t>> get_tags_used_by_author(const std::string &author) const;
 
-            vector<discussion> get_discussions_by_trending(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_trending(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_trending30(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_trending30(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_created(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_created(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_active(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_active(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_cashout(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_cashout(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_payout(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_payout(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_votes(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_votes(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_children(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_children(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_hot(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_hot(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_feed(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_feed(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_blog(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_blog(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_comments(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_comments(const discussion_query &query) const;
 
-            vector<discussion> get_discussions_by_promoted(const discussion_query &query) const;
+            std::vector<discussion> get_discussions_by_promoted(const discussion_query &query) const;
 
             ///@}
 
@@ -426,7 +424,7 @@ namespace steemit {
              *  Return the active discussions with the highest cumulative pending payouts without respect to category, total
              *  pending payout means the pending payout of all children as well.
              */
-            vector<discussion> get_replies_by_last_update(account_name_type start_author, string start_permlink, uint32_t limit) const;
+            std::vector<discussion> get_replies_by_last_update(account_name_type start_author, std::string start_permlink, uint32_t limit) const;
 
 
             /**
@@ -435,7 +433,7 @@ namespace steemit {
              *  If start_permlink is empty then only before_date will be considered. If both are specified the eariler to the two metrics will be used. This
              *  should allow easy pagination.
              */
-            vector<discussion> get_discussions_by_author_before_date(string author, string start_permlink, time_point_sec before_date, uint32_t limit) const;
+            std::vector<discussion> get_discussions_by_author_before_date(std::string author, std::string start_permlink, time_point_sec before_date, uint32_t limit) const;
 
             /**
              *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
@@ -444,7 +442,7 @@ namespace steemit {
              *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
              *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
              */
-            map<uint32_t, applied_operation> get_account_history(string account, uint64_t from, uint32_t limit) const;
+            std::map<uint32_t, applied_operation> get_account_history(std::string account, uint64_t from, uint32_t limit) const;
 
             ////////////////////////////
             // Handlers - not exposed //
@@ -470,19 +468,18 @@ namespace steemit {
                 return false;
             }
 
-            template<typename Index, typename StartItr>
-            vector<discussion> get_discussions(const discussion_query &query,
-                    const string &tag,
+            template<typename Compare, typename Index, typename StartItr>
+            std::map<tags::tag_object, discussion, Compare> get_discussions(const discussion_query &query,
+                    const std::string &tag,
                     comment_id_type parent,
                     const Index &tidx, StartItr tidx_itr,
-                    uint32_t truncate_body = 0,
                     const std::function<bool(const comment_api_obj &)> &filter = &database_api::filter_default,
                     const std::function<bool(const comment_api_obj &)> &exit = &database_api::exit_default,
                     const std::function<bool(const tags::tag_object &)> &tag_exit = &database_api::tag_exit_default) const;
 
             comment_id_type get_parent(const discussion_query &q) const;
 
-            void recursively_fetch_content(state &_state, discussion &root, set<string> &referenced_accounts) const;
+            void recursively_fetch_content(state &_state, discussion &root, std::set<std::string> &referenced_accounts) const;
 
             std::shared_ptr<database_api_impl> my;
         };
@@ -496,7 +493,7 @@ FC_REFLECT(steemit::app::scheduled_hardfork, (hf_version)(live_time));
 FC_REFLECT(steemit::app::liquidity_balance, (account)(weight));
 FC_REFLECT(steemit::app::withdraw_route, (from_account)(to_account)(percent)(auto_vest));
 
-FC_REFLECT(steemit::app::discussion_query, (tag)(filter_categories)(select_categories)(select_tags)(filter_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit));
+FC_REFLECT(steemit::app::discussion_query, (filter_categories)(select_categories)(select_tags)(filter_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit));
 
 FC_REFLECT_ENUM(steemit::app::withdraw_route_type, (incoming)(outgoing)(all));
 
@@ -596,4 +593,3 @@ FC_API(steemit::app::database_api,
                 (get_active_witnesses)
                 (get_miner_queue)
 )
-
