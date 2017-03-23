@@ -2218,7 +2218,7 @@ state database_api::get_state( string path )const
          auto& didx = _state.discussion_idx[tag];
          for( const auto& d : trending_disc ) {
             auto key = d.author +"/" + d.permlink;
-            didx.payout.push_back( key );
+            didx.payout_comments.push_back( key );
             if( d.author.size() ) accounts.insert(d.author);
             _state.content[key] = std::move(d);
          }
