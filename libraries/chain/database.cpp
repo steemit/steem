@@ -445,7 +445,7 @@ const time_point_sec database::calculate_discussion_payout_time( const comment_o
 
 const reward_fund_object& database::get_reward_fund( const comment_object& c ) const
 {
-   return get< reward_fund_object, by_name >( c.parent_author == STEEMIT_ROOT_POST_PARENT ? STEEMIT_POST_REWARD_FUND_NAME : STEEMIT_COMMENT_REWARD_FUND_NAME );
+   return get< reward_fund_object, by_name >( c.parent_author == STEEMIT_ROOT_POST_PARENT ? STEEMIT_POST_REWARD_FUND_NAME : STEEMIT_POST_REWARD_FUND_NAME );
 }
 
 void database::pay_fee( const account_object& account, asset fee )
@@ -3929,14 +3929,14 @@ void database::apply_hardfork( uint32_t hardfork )
 
             modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 62;
+               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 100;
                rfo.reward_balance = asset( ( reward_steem.amount.value * rfo.percent_content_rewards ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
                reward_steem -= rfo.reward_balance;
             });
 
             modify( get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 38;
+               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 0;
                rfo.reward_balance = reward_steem;
             });
 
