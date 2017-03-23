@@ -1290,7 +1290,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       if( rshares > 0 && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
       {
          if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
-            FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
+            FC_ASSERT( _db.head_block_time() < comment.cashout_time - fc::days(1), "Cannot increase reward of post within the last day before payout." );
          else
             FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
       }
@@ -1478,7 +1478,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      if( itr->rshares < rshares && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
+      if( itr->rshares < rshares && _db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
+         FC_ASSERT( _db.head_block_time() < comment.cashout_time - fc::days(1), "Cannot increase payout within last day before payout." );
+      else if( itr->rshares < rshares && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
          FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase payout within last minute before payout." );
 
       _db.modify( voter, [&]( account_object& a ){
