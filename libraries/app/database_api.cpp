@@ -1269,7 +1269,7 @@ namespace steemit {
                         FC_ASSERT(result.find(*tidx_itr) ==
                                   result.end(), "Duplicate discussion insert attempt performed");
 
-                        result.insert(std::make_tuple<tags::tag_object, discussion>(tags::tag_object(*tidx_itr), discussion(insert_discussion)));
+                        result[*tidx_itr] = insert_discussion;
                         --count;
                     }
                 }
