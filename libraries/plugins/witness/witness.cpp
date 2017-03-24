@@ -73,9 +73,73 @@ namespace detail
             : _self( plugin ){}
 
          void pre_transaction( const signed_transaction& trx );
+         void pre_operation( const operation_notification& note );
+
          void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
          witness_plugin&   _self;
+   };
+
+   struct comment_options_extension_visitor
+   {
+      comment_options_extension_visitor( const comment_object& c, const database& db ) : _c( c ), _db( db ) {}
+
+      typedef void result_type;
+
+      const comment_object& _c;
+      const database& _db;
+
+      void operator()( const comment_payout_beneficiaries& cpb )const
+      {
+         STEEMIT_ASSERT( cpb.beneficiaries.size() <= 8,
+            chain::plugin_exception,
+            "Cannot specify more than 8 beneficiaries." );
+      }
+   };
+
+   struct operation_visitor
+   {
+      operation_visitor( const chain::database& db ) : _db( db ) {}
+
+      const chain::database& _db;
+
+      typedef void result_type;
+
+      template< typename T >
+      void operator()( const T& )const {}
+
+      void operator()( const comment_options_operation& o )const
+      {
+         const auto& comment = _db.get_comment( o.author, o.permlink );
+
+         comment_options_extension_visitor v( comment, _db );
+
+         for( auto& e : o.extensions )
+         {
+            e.visit( v );
+         }
+      }
+
+      void operator()( const comment_operation& o )const
+      {
+         if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
+         {
+            const auto& parent = _db.get_comment( o.parent_author, o.parent_permlink );
+
+            STEEMIT_ASSERT( parent.depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH,
+               chain::plugin_exception,
+               "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent.depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
+         }
+
+         auto itr = _db.find< comment_object, by_permlink >( boost::make_tuple( o.author, o.permlink ) );
+
+         if( itr != nullptr )
+         {
+            STEEMIT_ASSERT( itr->cashout_time != fc::time_point_sec::maximum(),
+               chain::plugin_exception,
+               "The comment is archived" );
+         }
+      }
    };
 
    void witness_plugin_impl::pre_transaction( const signed_transaction& trx )
@@ -100,6 +164,15 @@ namespace detail
                break;
             }
          }
+      }
+   }
+
+   void witness_plugin_impl::pre_operation( const operation_notification& note )
+   {
+      const auto& _db = _self.database();
+      if( _db.is_producing() )
+      {
+         note.op.visit( operation_visitor( _db ) );
       }
    }
 

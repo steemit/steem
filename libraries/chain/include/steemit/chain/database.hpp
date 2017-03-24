@@ -7,6 +7,7 @@
 #include <steemit/chain/node_property_object.hpp>
 #include <steemit/chain/fork_database.hpp>
 #include <steemit/chain/block_log.hpp>
+#include <steemit/chain/operation_notification.hpp>
 
 #include <steemit/protocol/protocol.hpp>
 
@@ -28,7 +29,6 @@ namespace steemit { namespace chain {
 
    class database_impl;
    class custom_operation_interpreter;
-   struct operation_notification;
 
    namespace util {
       struct comment_reward_context;
@@ -155,11 +155,6 @@ namespace steemit { namespace chain {
           *  Deducts fee from the account and the share supply
           */
          void pay_fee( const account_object& a, asset fee );
-
-         /**
-          * Update an account's bandwidth and returns if the account had the requisite bandwidth for the trx
-          */
-         bool update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
          void max_bandwidth_per_share()const;
 

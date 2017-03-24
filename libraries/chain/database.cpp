@@ -465,62 +465,6 @@ void database::pay_fee( const account_object& account, asset fee )
    adjust_supply( -fee );
 }
 
-bool database::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
-{
-   const auto& props = get_dynamic_global_properties();
-   bool has_bandwidth = true;
-
-   if( props.total_vesting_shares.amount > 0 )
-   {
-      auto band = find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( a.name, type ) );
-
-      if( band == nullptr )
-      {
-         band = &create< account_bandwidth_object >( [&]( account_bandwidth_object& b )
-         {
-            b.account = a.name;
-            b.type = type;
-         });
-      }
-
-      share_type new_bandwidth;
-      share_type trx_bandwidth = trx_size * STEEMIT_BANDWIDTH_PRECISION;
-      auto delta_time = ( head_block_time() - band->last_bandwidth_update ).to_seconds();
-
-      if( delta_time > STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
-         new_bandwidth = 0;
-      else
-         new_bandwidth = ( ( ( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time ) * fc::uint128( band->average_bandwidth.value ) )
-            / STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ).to_uint64();
-
-      new_bandwidth += trx_bandwidth;
-
-      modify( *band, [&]( account_bandwidth_object& b )
-      {
-         b.average_bandwidth = new_bandwidth;
-         b.lifetime_bandwidth += trx_bandwidth;
-         b.last_bandwidth_update = head_block_time();
-      });
-
-      fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
-      fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
-      fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
-      fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
-
-      has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
-
-      if( is_producing() )
-         FC_ASSERT( has_bandwidth,
-            "Account exceeded maximum allowed bandwidth per vesting share.",
-            ("account_vshares", account_vshares)
-            ("account_average_bandwidth", account_average_bandwidth)
-            ("max_virtual_bandwidth", max_virtual_bandwidth)
-            ("total_vesting_shares", total_vshares) );
-   }
-
-   return has_bandwidth;
-}
-
 uint32_t database::witness_participation_rate()const
 {
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
@@ -2872,28 +2816,6 @@ void database::_apply_transaction(const signed_transaction& trx)
             throw e;
       }
    }
-   flat_set<account_name_type> required; vector<authority> other;
-   trx.get_required_authorities( required, required, required, other );
-
-   auto trx_size = fc::raw::pack_size(trx);
-
-/*
-   for( const auto& auth : required ) {
-      const auto& acnt = get_account(auth);
-
-      update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
-
-      for( const auto& op : trx.operations ) {
-         if( is_market_operation( op ) )
-         {
-            update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
-            break;
-         }
-      }
-   }
-*/
-
-
 
    //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
    //expired, and TaPoS makes no sense as no blocks exist.

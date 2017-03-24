@@ -132,7 +132,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("p", o.fee) );
    }
 
-   if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) )
+   if( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) )
    {
       for( auto& a : o.owner.account_auths )
       {
@@ -281,7 +281,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 {
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT, "Cannot update temp account." );
 
-   if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) && o.posting ) // TODO: Add HF 15
+   if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) && o.posting )
       o.posting->validate();
 
    const auto& account = _db.get_account( o.account );
@@ -294,7 +294,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
          FC_ASSERT( _db.head_block_time() - account_auth.last_owner_update > STEEMIT_OWNER_UPDATE_LIMIT, "Owner authority can only be updated once an hour." );
 #endif
 
-      if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) ) // TODO: Add HF 15
+      if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
       {
          for( auto a: o.owner->account_auths )
          {
@@ -306,7 +306,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       _db.update_owner_authority( account, *o.owner );
    }
 
-   if( o.active && ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) ) // TODO: Add HF 15
+   if( o.active && ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
    {
       for( auto a: o.active->account_auths )
       {
@@ -314,7 +314,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       }
    }
 
-   if( o.posting && ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) ) // TODO: Add HF 15
+   if( o.posting && ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
    {
       for( auto a: o.posting->account_auths )
       {
@@ -423,9 +423,6 @@ struct comment_options_extension_visitor
 
    void operator()( const comment_payout_beneficiaries& cpb ) const
    {
-      if( _db.is_producing() )
-         FC_ASSERT( cpb.beneficiaries.size() <= 8, "Cannot specify more than 8 beneficiaries." );
-
       FC_ASSERT( _c.beneficiaries.size() == 0, "Comment already has beneficiaries specified." );
       FC_ASSERT( _c.abs_rshares == 0, "Comment must not have been voted on before specifying beneficiaries." );
 
@@ -475,7 +472,7 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
 
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
-   if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )
+   if( _db.has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "Cannot update comment because nothing appears to be changing." );
 
    const auto& by_permlink_idx = _db.get_index< comment_index >().indices().get< by_permlink >();
@@ -494,13 +491,11 @@ void comment_evaluator::do_apply( const comment_operation& o )
       parent = &_db.get_comment( o.parent_author, o.parent_permlink );
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__767 ) )
          FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17) );
-      else if( _db.is_producing() )
-         FC_ASSERT( parent->depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
       else
          FC_ASSERT( parent->depth < STEEMIT_MAX_COMMENT_DEPTH, "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_MAX_COMMENT_DEPTH) );
    }
 
-   if( ( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_17__926 ) ) && o.json_metadata.size() ) // TODO: Remove is_producing after HF 17
+   if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_17__926 ) ) && o.json_metadata.size() )
       FC_ASSERT( fc::is_utf8( o.json_metadata ), "JSON Metadata must be UTF-8" );
 
    auto now = _db.head_block_time();
@@ -663,16 +658,7 @@ void comment_evaluator::do_apply( const comment_operation& o )
    {
       const auto& comment = *itr;
 
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__772 ) )
-      {
-         // This will be moved to the witness plugin in a later release
-         if( _db.is_producing() )
-         {
-            // For now, use the same editting rules, but implement it as a soft fork.
-            FC_ASSERT( comment.cashout_time != fc::time_point_sec::maximum(), "The comment is archived." );
-         }
-      }
-      else if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
+      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__772 ) && _db.has_hardfork( STEEMIT_HARDFORK_0_14__306 ) )
          FC_ASSERT( _db.calculate_discussion_payout_time( comment ) != fc::time_point_sec::maximum(), "The comment is archived." );
       else if( _db.has_hardfork( STEEMIT_HARDFORK_0_10 ) )
          FC_ASSERT( comment.last_payout == fc::time_point_sec::min(), "Can only edit during the first 24 hours." );
@@ -959,7 +945,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 
    if( o.vesting_shares.amount == 0 )
    {
-      if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_5__57 ) )
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_5__57 ) )
          FC_ASSERT( account.vesting_withdraw_rate.amount  != 0, "This operation would not change the vesting withdraw rate." );
 
       _db.modify( account, [&]( account_object& a ) {
@@ -982,7 +968,7 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          if( new_vesting_withdraw_rate.amount == 0 )
             new_vesting_withdraw_rate.amount = 1;
 
-         if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_5__57 ) )
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_5__57 ) )
             FC_ASSERT( account.vesting_withdraw_rate  != new_vesting_withdraw_rate, "This operation would not change the vesting withdraw rate." );
 
          a.vesting_withdraw_rate = new_vesting_withdraw_rate;
@@ -1254,7 +1240,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    // Lazily delete vote
    if( itr != comment_vote_idx.end() && itr->num_changes == -1 )
    {
-      if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) )
          FC_ASSERT( false, "Cannot vote again on a comment after payout." );
 
       _db.remove( *itr );
@@ -1452,7 +1438,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    {
       FC_ASSERT( itr->num_changes < STEEMIT_MAX_VOTE_CHANGES, "Voter has used the maximum number of vote changes on this comment." );
 
-      if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_6__112 ) )
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_6__112 ) )
          FC_ASSERT( itr->vote_percent != o.weight, "You have already voted in a similar way." );
 
       /// this is the rshares voting for or against the post
@@ -1612,7 +1598,7 @@ void pow_apply( database& db, Operation o )
 {
    const auto& dgp = db.get_dynamic_global_properties();
 
-   if( db.is_producing() || db.has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )
+   if( db.has_hardfork( STEEMIT_HARDFORK_0_5__59 ) )
    {
       const auto& witness_by_work = db.get_index<witness_index>().indices().get<by_work>();
       auto work_itr = witness_by_work.find( o.work.work );
@@ -1961,7 +1947,7 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
       FC_ASSERT( o.new_owner_authority.weight_threshold, "Cannot recover using an open authority." );
 
       // Check accounts in the new authority exist
-      if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) )
+      if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
       {
          for( auto& a : o.new_owner_authority.account_auths )
          {
@@ -1985,7 +1971,7 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
       FC_ASSERT( !o.new_owner_authority.is_impossible(), "Cannot recover using an impossible authority." );
 
       // Check accounts in the new authority exist
-      if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) )
+      if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
       {
          for( auto& a : o.new_owner_authority.account_auths )
          {
