@@ -30,7 +30,8 @@
 #include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/database_exceptions.hpp>
 
-#include <steemit/time/time.hpp>
+//#include <steemit/time/time.hpp>
+#include <fc/time.hpp>
 
 #include <graphene/net/core_messages.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -466,7 +467,7 @@ namespace detail {
                   ("n", blk_msg.block.block_num()) );
             }
 
-            time_point_sec now = steemit::time::now();
+            time_point_sec now = fc::time_point::now();
 
             uint64_t max_accept_time = now.sec_since_epoch();
             max_accept_time += allow_future_time;
@@ -817,10 +818,10 @@ namespace detail {
          return fc::time_point_sec::min();
       } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
-      /** returns steemit::time::now() */
+      /** returns fc::time_point::now(); */
       virtual fc::time_point_sec get_blockchain_now() override
       {
-         return steemit::time::now();
+         return fc::time_point::now();
       }
 
       virtual item_hash_t get_head_block_id() const override

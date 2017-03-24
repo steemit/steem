@@ -29,7 +29,8 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/hardfork.hpp>
 
-#include <steemit/time/time.hpp>
+//#include <steemit/time/time.hpp>
+#include <fc/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -220,7 +221,7 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
 block_production_condition::block_production_condition_enum witness_plugin::maybe_produce_block( fc::mutable_variant_object& capture )
 {
    chain::database& db = database();
-   fc::time_point now_fine = steemit::time::now();
+   fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
    // If the next block production opportunity is in the present or future, we're synced.
