@@ -33,7 +33,6 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
-//#include <steemit/time/time.hpp>
 #include <fc/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>

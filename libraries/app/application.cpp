@@ -30,7 +30,6 @@
 #include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/database_exceptions.hpp>
 
-//#include <steemit/time/time.hpp>
 #include <fc/time.hpp>
 
 #include <graphene/net/core_messages.hpp>
