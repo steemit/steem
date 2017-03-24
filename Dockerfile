@@ -58,7 +58,7 @@ RUN \
     cmake \
         -DCMAKE_BUILD_TYPE=Debug \
         -DENABLE_COVERAGE_TESTING=ON \
-        -DBUILD_GOLOS_TESTNET=ON \
+        -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         .. && \
@@ -77,9 +77,9 @@ RUN \
     cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/golosd-default \
         -DCMAKE_BUILD_TYPE=Release \
-        -DLOW_MEMORY_NODE=ON \
-        -DCLEAR_VOTES=ON \
-        -DBUILD_GOLOS_TESTNET=OFF \
+        -DLOW_MEMORY_NODE=TRUE \
+        -DCLEAR_VOTES=TRUE \
+        -DBUILD_GOLOS_TESTNET=FALSE \
         .. \
     && \
     make -j$(nproc) && \
@@ -91,9 +91,9 @@ RUN \
     cmake \
         -DCMAKE_INSTALL_PREFIX=/usr/local/golosd-full \
         -DCMAKE_BUILD_TYPE=Release \
-        -DLOW_MEMORY_NODE=OFF \
-        -DCLEAR_VOTES=OFF \
-        -DBUILD_GOLOS_TESTNET=OFF \
+        -DLOW_MEMORY_NODE=FALSE \
+        -DCLEAR_VOTES=FALSE \
+        -DBUILD_GOLOS_TESTNET=FALSE \
         .. \
     && \
     make -j$(nproc) && \
@@ -158,6 +158,8 @@ RUN mkdir /var/cache/golosd && \
 
 ENV HOME /var/lib/golosd
 RUN chown golosd:golosd -R /var/lib/golosd
+
+ADD programs/golosd/snapshot5392323.json /var/lib/golosd
 
 VOLUME ["/var/lib/golosd"]
 

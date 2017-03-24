@@ -1,4 +1,6 @@
 *.a
+*.so
+*.dylib
 *.sw*
 
 *.cmake
@@ -20,7 +22,7 @@ libraries/wallet/doxygen
 
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
-programs/golosd/steemd
+programs/golosd/golosd
 programs/golosd/test
 programs/delayed_node
 programs/build_helpers/cat-parts
@@ -35,12 +37,14 @@ tests/plugin_test
 tests/intense_test
 tests/performance_test
 
-doxygen
-
 wallet.json
 witness_node_data_dir
 
 *.wallet
+
+documentation/doxygen/html
+documentation/doxygen/xml
+documentation/doxygen/latex
 
 *.pyc
 *.pyo

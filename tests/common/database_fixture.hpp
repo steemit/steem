@@ -156,12 +156,14 @@ namespace steemit {
 
             optional<fc::temp_directory> data_dir;
             bool skip_key_index_test = false;
+
             uint32_t anon_acct_count;
 
             database_fixture() : app(), db(*app.chain_database()) {
             }
 
-            ~database_fixture() {
+            virtual ~database_fixture() {
+
             }
 
             static fc::ecc::private_key generate_private_key(string seed);
@@ -244,7 +246,7 @@ namespace steemit {
         struct clean_database_fixture : public database_fixture {
             clean_database_fixture();
 
-            ~clean_database_fixture();
+            ~clean_database_fixture() override;
 
             void resize_shared_mem(uint64_t size);
         };
@@ -252,7 +254,7 @@ namespace steemit {
         struct live_database_fixture : public database_fixture {
             live_database_fixture();
 
-            ~live_database_fixture();
+            ~live_database_fixture() override;
 
             fc::path _chain_dir;
         };
