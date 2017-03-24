@@ -2654,14 +2654,19 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
+   show_free_memory( false );
+
+} FC_CAPTURE_AND_RETHROW( (next_block) ) }
+
+void database::show_free_memory( bool force )
+{
    uint32_t free_gb = uint32_t(get_free_memory() / (1024*1024*1024));
-   if( (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
+   if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
    {
       ilog( "Free memory is now ${n}G", ("n", free_gb) );
       _last_free_gb_printed = free_gb;
    }
-
-} FC_CAPTURE_AND_RETHROW( (next_block) ) }
+}
 
 void database::_apply_block( const signed_block& next_block )
 { try {
@@ -3230,7 +3235,15 @@ void database::update_last_irreversible_block()
                block_ptr = &( blocks[0]->data );
             else
             {
+               vector< std::pair< account_name_type, fc::time_point_sec > > witness_time_pairs;
+               for( const auto& b : blocks )
+               {
+                  witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
+               }
+
                ilog( "Encountered a block num collision due to a fork. Walking the current fork to determine the correct block. block_num:${n}", ("n", log_head_num + 1) ); // TODO: Delete when we know this code works as intended
+               ilog( "Colliding blocks produced by witnesses at times: ${w}", ("w", witness_time_pairs) );
+
                auto next = _fork_db.head();
                while( next.get() != nullptr && next->num > log_head_num + 1 )
                   next = next->prev.lock();
