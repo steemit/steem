@@ -18,7 +18,7 @@ serialization_tests  // Tests related of serialization
 If you have not done so, install lcov `brew install lcov`
 
 ```
-cmake -D BUILD_STEEM_TESTNET=ON -D ENABLE_COVERAGE_TESTING=true -D CMAKE_BUILD_TYPE=Debug .
+cmake -D BUILD_GOLOS_TESTNET=ON -D ENABLE_COVERAGE_TESTING=true -D CMAKE_BUILD_TYPE=Debug .
 make
 lcov --capture --initial --directory . --output-file base.info --no-external
 tests/chain_test

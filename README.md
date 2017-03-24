@@ -48,7 +48,7 @@ that uses ca. 14GB of memory and growing:
 # Seed Nodes
 
 A list of some seed nodes to get you started can be found in
-[doc/seednodes](doc/seednodes).
+[doc/seednodes](documentation/seednodes).
 
 This same file is baked into the docker images and can be overridden by
 setting `STEEMD_SEED_NODES` in the container environment at `docker run`
@@ -67,10 +67,10 @@ else or your proof of work might not be accepted by the blockchain.
 
 # Building
 
-See [doc/building.md](doc/building.md) for detailed build instructions, including
+See [doc/building.md](documentation/building.md) for detailed build instructions, including
 compile-time options, and specific commands for Linux (Ubuntu LTS) or macOS X.
 
 # Testing
 
-See [doc/testing.md](doc/testing.md) for test build targets and info
+See [doc/testing.md](documentation/testing.md) for test build targets and info
 on how to use lcov to check code test coverage.

@@ -8,27 +8,27 @@ Specifies whether to build with or without optimization and without or with
 the symbol table for debugging. Unless you are specifically debugging or
 running tests, it is recommended to build as release.
 
-### LOW_MEMORY_NODE=[OFF/ON]
+### LOW_MEMORY_NODE=[FALSE/TRUE]
 
-Builds steemd to be a consensus-only low memory node. Data and fields not
+Builds golosd to be a consensus-only low memory node. Data and fields not
 needed for consensus are not stored in the object database.  This option is
 recommended for witnesses and seed-nodes.
 
-### CLEAR_VOTES=[ON/OFF]
+### CLEAR_VOTES=[TRUE/FALSE]
 
 Clears old votes from memory that are no longer required for consensus.
 
-### BUILD_STEEM_TESTNET=[OFF/ON]
+### BUILD_GOLOS_TESTNET=[FALSE/TRUE]
 
-Builds steem for use in a private testnet. Also required for building unit tests.
+Builds golos for use in a private testnet. Also required for building unit tests.
 
 ## Building under Docker
 
 We ship a Dockerfile.  This builds both common node type binaries.
 
-    git clone https://github.com/steemit/steem
-    cd steem
-    docker build -t steemit/steem .
+    git clone https://github.com/goloschain/golos
+    cd golos
+    docker build -t goloschain/golos .
 
 ## Building on Ubuntu 16.04
 
@@ -70,13 +70,13 @@ will build out of the box without further effort:
         libreadline-dev \
         perl
 
-    git clone https://github.com/steemit/steem
-    cd steem
+    git clone https://github.com/goloschain/golos
+    cd golos
     git submodule update --init --recursive
     mkdir build
     cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
-    make -j$(nproc) steemd
+    make -j$(nproc) golosd
     make -j$(nproc) cli_wallet
     # optional
     make install  # defaults to /usr/local
@@ -133,14 +133,14 @@ Here is how to build and install Boost 1.57 into your user's home directory
     ./bootstrap.sh "--prefix=$BOOST_ROOT"
     ./b2 install
 
-Then the instructions are the same as for steem:
+Then the instructions are the same as for golos:
 
-    git clone https://github.com/steemit/steem
-    cd steem
+    git clone https://github.com/golosit/golos
+    cd golos
     git submodule update --init --recursive
     mkdir build && cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
-    make -j$(nproc) steemd
+    make -j$(nproc) golosd
     make -j$(nproc) cli_wallet
 
 ## Building on macOS X
@@ -162,7 +162,7 @@ Install Homebrew by following the instructions here: http://brew.sh/
    brew update
    brew tap homebrew/versions
 
-### Install steem dependencies:
+### Install golos dependencies:
 
     brew install \
         autoconf \
@@ -175,7 +175,7 @@ Install Homebrew by following the instructions here: http://brew.sh/
         python3
 
 Note: brew recently updated to boost 1.61.0, which is not yet supported by
-steem. Until then, this will allow you to install boost 1.60.0.
+golos. Until then, this will allow you to install boost 1.60.0.
 
 *Optional.* To use TCMalloc in LevelDB:
 
@@ -183,8 +183,8 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
 ### Clone the Repository
 
-    git clone https://github.com/steemit/steem.git
-    cd steem
+    git clone https://github.com/golosit/golos.git
+    cd golos
 
 ### Compile
 
@@ -197,15 +197,15 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
 Also, some useful build targets for `make` are:
 
-    steemd
+    golosd
     chain_test
     cli_wallet
 
 e.g.:
 
-    make -j$(sysctl -n hw.logicalcpu) steemd
+    make -j$(sysctl -n hw.logicalcpu) golosd
 
-This will only build `steemd`.
+This will only build `golosd`.
 
 ## Building on Other Platforms
 

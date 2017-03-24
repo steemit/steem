@@ -58,7 +58,7 @@ RUN \
     cmake \
         -DCMAKE_BUILD_TYPE=Debug \
         -DENABLE_COVERAGE_TESTING=ON \
-        -DBUILD_GOLOS_TESTNET=ON \
+        -DBUILD_GOLOS_TESTNET=TRUE \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         .. && \
@@ -161,7 +161,7 @@ RUN chown golosd:golosd -R /var/lib/golosd
 
 ADD programs/golosd/snapshot5392323.json /var/lib/golosd
 
-VOLUME ["goloschain_data":"/var/lib/golosd"]
+VOLUME ["/var/lib/golosd"]
 
 # rpc service:
 EXPOSE 8090
