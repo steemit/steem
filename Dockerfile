@@ -32,23 +32,42 @@ RUN \
 
 ADD . /usr/local/src/golos
 
-RUN \
-    cd /usr/local/src/golos && \
-    git submodule update --init --recursive && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_GOLOS_TESTNET=ON \
-        -DLOW_MEMORY_NODE=OFF \
-        -DCLEAR_VOTES=ON \
-        .. && \
-    make -j$(nproc) chain_test && \
-    ./tests/chain_test && \
-    cd /usr/local/src/golos && \
-    doxygen && \
-    programs/build_helpers/check_reflect.py && \
-    rm -rf /usr/local/src/golos/build
+#RUN \
+#    cd /usr/local/src/golos && \
+#    git submodule update --init --recursive && \
+#    mkdir build && \
+#    cd build && \
+#    cmake \
+#        -DCMAKE_BUILD_TYPE=Release \
+#        -DBUILD_GOLOS_TESTNET=TRUE \
+#        -DLOW_MEMORY_NODE=FALSE \
+#        -DCLEAR_VOTES=TRUE \
+#        .. && \
+#    make -j$(nproc) chain_test && \
+#    ./tests/chain_test && \
+#    cd /usr/local/src/golos && \
+#    doxygen && \
+#    programs/build_helpers/check_reflect.py && \
+#    rm -rf /usr/local/src/golos/build
+
+#RUN \
+#    cd /usr/local/src/golos && \
+#    git submodule update --init --recursive && \
+#    mkdir build && \
+#    cd build && \
+#    cmake \
+#        -DCMAKE_BUILD_TYPE=Debug \
+#        -DENABLE_COVERAGE_TESTING=TRUE \
+#        -DBUILD_GOLOS_TESTNET=TRUE \
+#        -DLOW_MEMORY_NODE=FALSE \
+#        -DCLEAR_VOTES=TRUE \
+#        .. && \
+#    make -j$(nproc) chain_test && \
+#    ./tests/chain_test && \
+#    mkdir -p /var/cobertura && \
+#    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*"  --output="/var/cobertura/coverage.xml" && \
+#    cd /usr/local/src/golos && \
+#    rm -rf /usr/local/src/golos/build
 
 RUN \
     cd /usr/local/src/golos && \
@@ -56,44 +75,12 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
-        -DCMAKE_BUILD_TYPE=Debug \
-        -DENABLE_COVERAGE_TESTING=ON \
-        -DBUILD_GOLOS_TESTNET=TRUE \
-        -DLOW_MEMORY_NODE=OFF \
-        -DCLEAR_VOTES=ON \
-        .. && \
-    make -j$(nproc) chain_test && \
-    ./tests/chain_test && \
-    mkdir -p /var/cobertura && \
-    gcovr --object-directory="../" --root=../ --xml-pretty --gcov-exclude=".*tests.*" --gcov-exclude=".*fc.*"  --output="/var/cobertura/coverage.xml" && \
-    cd /usr/local/src/golos && \
-    rm -rf /usr/local/src/golos/build
-
-RUN \
-    cd /usr/local/src/golos && \
-    git submodule update --init --recursive && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/golosd-default \
         -DCMAKE_BUILD_TYPE=Release \
-        -DLOW_MEMORY_NODE=TRUE \
-        -DCLEAR_VOTES=TRUE \
         -DBUILD_GOLOS_TESTNET=FALSE \
-        .. \
-    && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    rm -rfv build && \
-    mkdir build && \
-    cd build && \
-    cmake \
-        -DCMAKE_INSTALL_PREFIX=/usr/local/golosd-full \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBRARIES=FALSE \
         -DLOW_MEMORY_NODE=FALSE \
+        -DCHAINBASE_CHECK_LOCKING=FALSE \
         -DCLEAR_VOTES=FALSE \
-        -DBUILD_GOLOS_TESTNET=FALSE \
         .. \
     && \
     make -j$(nproc) && \
@@ -173,7 +160,7 @@ ADD contrib/golosd.run /etc/service/golosd/run
 RUN chmod +x /etc/service/golosd/run
 
 # add seednodes from documentation to image
-ADD doc/seednodes /etc/golosd/seednodes
+ADD documentation/seednodes /etc/golosd/seednodes
 
 # the following adds lots of logging info to stdout
-ADD contrib/config-for-docker.ini /etc/golosd/config.ini
+ADD contrib/config.ini /etc/golosd/config.ini
