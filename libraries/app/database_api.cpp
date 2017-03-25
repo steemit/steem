@@ -1356,8 +1356,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
@@ -1368,9 +1366,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1436,8 +1434,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
@@ -1450,9 +1446,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1517,8 +1513,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
@@ -1529,9 +1523,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1594,8 +1588,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
@@ -1606,9 +1598,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1671,8 +1663,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
@@ -1683,9 +1673,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1751,8 +1741,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
                             fc::time_point::now() - fc::minutes(60)));
@@ -1764,9 +1752,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1837,8 +1825,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
@@ -1849,9 +1835,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1915,8 +1901,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
@@ -1927,9 +1911,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
@@ -1995,8 +1979,6 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
@@ -2007,9 +1989,9 @@ namespace steemit {
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
                     }
-
-                    return return_result;
                 }
+
+                return return_result;
             });
         }
 
