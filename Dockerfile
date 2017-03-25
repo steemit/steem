@@ -156,11 +156,11 @@ EXPOSE 8090
 EXPOSE 2001
 
 RUN mkdir -p /etc/service/golosd
-ADD contrib/golosd.run /etc/service/golosd/run
+ADD contribution/golosd.sh /etc/service/golosd/run
 RUN chmod +x /etc/service/golosd/run
 
 # add seednodes from documentation to image
 ADD documentation/seednodes /etc/golosd/seednodes
 
 # the following adds lots of logging info to stdout
-ADD contrib/config.ini /etc/golosd/config.ini
+ADD contribution/config.ini /etc/golosd/config.ini
