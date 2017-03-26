@@ -1241,18 +1241,9 @@ namespace steemit {
             }
 
             uint32_t count = query.limit;
-            uint64_t itr_count = 0;
             uint64_t filter_count = 0;
             uint64_t exc_count = 0;
-            uint64_t max_itr_count = 10 * query.limit;
             while (count > 0 && tidx_itr != tidx.end()) {
-                ++itr_count;
-                if (itr_count > max_itr_count) {
-                    wlog("Maximum iteration count exceeded serving query: ${q}", ("q", query));
-                    wlog("count=${count}   itr_count=${itr_count}   filter_count=${filter_count}   exc_count=${exc_count}",
-                            ("count", count)("itr_count", itr_count)("filter_count", filter_count)("exc_count", exc_count));
-                    break;
-                }
                 if (tidx_itr->tag != tag || tidx_itr->parent != parent) {
                     break;
                 }
