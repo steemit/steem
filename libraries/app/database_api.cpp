@@ -1317,12 +1317,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
-
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1332,22 +1331,14 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1382,11 +1373,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> map_result;
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1399,23 +1390,16 @@ namespace steemit {
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_promoted>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> map_result = get_discussions<tags::by_parent_promoted>(query, tag, parent, tidx, tidx_itr, filter_function, exit_default, [&](const tags::tag_object &t) {
+                    map_result = get_discussions<tags::by_parent_promoted>(query, tag, parent, tidx, tidx_itr, filter_function, exit_default, [&](const tags::tag_object &t) {
                         return t.promoted_balance == 0;
                     });
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_promoted>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_parent_promoted>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1451,11 +1435,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1474,13 +1458,11 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1514,11 +1496,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_created>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_parent_created> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_created> map_result;
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1528,22 +1510,14 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_created>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_created> map_result = get_discussions<tags::by_parent_created>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_parent_created>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_created>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_parent_created>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1577,11 +1551,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_active>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_parent_active> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_active> map_result;
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1591,22 +1565,14 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_active>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_active> map_result = get_discussions<tags::by_parent_active>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_parent_active>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_active>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_parent_active>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1641,12 +1607,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_cashout>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result;
-
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1657,23 +1622,15 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_cashout>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
                             fc::time_point::now() - fc::minutes(60)));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result = get_discussions<tags::by_cashout>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_cashout>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_cashout>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_cashout>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1714,12 +1671,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes> map_result;
-
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1729,22 +1685,14 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes> map_result = get_discussions<tags::by_parent_net_votes>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_parent_net_votes>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1778,12 +1726,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_children>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_parent_children> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_children> map_result;
-
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1793,22 +1740,14 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_children>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_children> map_result = get_discussions<tags::by_parent_children>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_parent_children>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_children>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_parent_children>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
@@ -1844,12 +1783,11 @@ namespace steemit {
 
                 const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
 
+                std::multimap<tags::tag_object, discussion, tags::by_parent_hot> map_result;
                 std::vector<discussion> return_result;
                 std::string tag;
 
                 if (query.select_tags.size()) {
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_hot> map_result;
-
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
@@ -1859,22 +1797,14 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_hot>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
-                    std::multimap<tags::tag_object, discussion, tags::by_parent_hot> map_result = get_discussions<tags::by_parent_hot>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    map_result = get_discussions<tags::by_parent_hot>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
 
-                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_hot>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
-                    }
+                for (const std::multimap<tags::tag_object, discussion, tags::by_parent_hot>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
                 }
 
                 return return_result;
