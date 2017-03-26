@@ -78,22 +78,16 @@ namespace steemit {
             void validate() const {
                 FC_ASSERT(limit <= 100);
 
-                for (const std::set<std::string>::value_type &iterator : filter_categories) {
-                    FC_ASSERT(select_categories.find(iterator) ==
-                              select_categories.end());
-                }
-
                 for (const std::set<std::string>::value_type &iterator : filter_tags) {
-                    FC_ASSERT(select_tags.find(iterator) == select_tags.end());
+                    FC_ASSERT(select_tags.find(iterator) ==
+                              select_tags.end());
                 }
             }
 
             uint32_t limit = 0;
-            std::set<std::string> select_authors; ///< list of authors to include, posts without these tags are filtered
-            std::set<std::string> select_categories; ///< list of tags to include, posts without these tags are filtered
-            std::set<std::string> filter_categories; ///< list of tags to exclude, posts with these tags are filtered;
-            std::set<std::string> select_tags; ///< list of json_metadata stored tags to include, posts without these tags are filtered
-            std::set<std::string> filter_tags; ///< list of json_metadata stored tags to filter, posts with these tags are filtered
+            std::set<std::string> select_authors; ///< list of authors to select
+            std::set<std::string> select_tags; ///< list of tags to include, posts without these tags are filtered
+            std::set<std::string> filter_tags; ///< list of tags to exclude, posts with these tags are filtered;
             uint32_t truncate_body = 0; ///< the number of bytes of the post body to return, 0 for all
             optional<std::string> start_author;
             optional<std::string> start_permlink;
@@ -469,7 +463,7 @@ namespace steemit {
             }
 
             template<typename Compare, typename Index, typename StartItr>
-            std::map<tags::tag_object, discussion, Compare> get_discussions(const discussion_query &query,
+            std::multimap<tags::tag_object, discussion, Compare> get_discussions(const discussion_query &query,
                     const std::string &tag,
                     comment_id_type parent,
                     const Index &tidx, StartItr tidx_itr,
@@ -493,7 +487,7 @@ FC_REFLECT(steemit::app::scheduled_hardfork, (hf_version)(live_time));
 FC_REFLECT(steemit::app::liquidity_balance, (account)(weight));
 FC_REFLECT(steemit::app::withdraw_route, (from_account)(to_account)(percent)(auto_vest));
 
-FC_REFLECT(steemit::app::discussion_query, (filter_categories)(select_categories)(select_tags)(filter_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit));
+FC_REFLECT(steemit::app::discussion_query, (select_tags)(filter_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit));
 
 FC_REFLECT_ENUM(steemit::app::withdraw_route_type, (incoming)(outgoing)(all));
 

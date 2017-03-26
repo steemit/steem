@@ -1214,7 +1214,7 @@ namespace steemit {
         }
 
         template<typename Compare, typename Index, typename StartItr>
-        std::map<tags::tag_object, discussion, Compare> database_api::get_discussions(const discussion_query &query,
+        std::multimap<tags::tag_object, discussion, Compare> database_api::get_discussions(const discussion_query &query,
                 const std::string &tag,
                 comment_id_type parent,
                 const Index &tidx, StartItr tidx_itr,
@@ -1223,7 +1223,7 @@ namespace steemit {
                 const std::function<bool(const tags::tag_object &)> &tag_exit) const {
 //   idump((query));
 
-            std::map<tags::tag_object, discussion, Compare> result;
+            std::multimap<tags::tag_object, discussion, Compare> result;
 
             const auto &cidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
             comment_id_type start;
@@ -1266,14 +1266,10 @@ namespace steemit {
                     } else if (exit(insert_discussion) || tag_exit(*tidx_itr)) {
                         break;
                     } else {
-                        FC_ASSERT(result.find(*tidx_itr) ==
-                                  result.end(), "Duplicate discussion insert attempt performed");
-
-                        result[*tidx_itr] = insert_discussion;
+                        result.insert({*tidx_itr, insert_discussion});
                         --count;
                     }
-                }
-                catch (const fc::exception &e) {
+                } catch (const fc::exception &e) {
                     ++exc_count;
                     edump((e.to_detail_string()));
                 }
@@ -1298,8 +1294,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
-
                 std::function<bool(const comment_api_obj &)> filter_function = [&](const comment_api_obj &c) -> bool {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1308,50 +1302,38 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) ==
-                                meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) !=
-                                meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
                     return c.children_rshares2 <= 0 || c.mode != first_payout ||
-                           query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                           query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
 
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
-                        std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1359,9 +1341,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, first_payout, parent, fc::uint128_t::max_value()));
 
-                    std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1377,8 +1359,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) -> bool {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1387,49 +1367,39 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
                     return c.children_rshares2 <= 0 ||
-                           query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                           query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_promoted>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_parent_promoted> map_result;
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> map_result;
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
-                        std::map<tags::tag_object, discussion, tags::by_parent_promoted> result = get_discussions<tags::by_parent_promoted>(query, tag, parent, tidx, tidx_itr, filter_function, exit_default, [&](const tags::tag_object &t) {
+                        std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> result = get_discussions<tags::by_parent_promoted>(query, tag, parent, tidx, tidx_itr, filter_function, exit_default, [&](const tags::tag_object &t) {
                             return t.promoted_balance == 0;
                         });
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_promoted>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_promoted>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1437,11 +1407,11 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
-                    std::map<tags::tag_object, discussion, tags::by_parent_promoted> map_result = get_discussions<tags::by_parent_promoted>(query, tag, parent, tidx, tidx_itr, filter_function, exit_default, [&](const tags::tag_object &t) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_promoted> map_result = get_discussions<tags::by_parent_promoted>(query, tag, parent, tidx, tidx_itr, filter_function, exit_default, [&](const tags::tag_object &t) {
                         return t.promoted_balance == 0;
                     });
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_promoted>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_promoted>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1457,8 +1427,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1467,48 +1435,38 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
                     return c.children_rshares2 <= 0 ||
                            c.mode != second_payout ||
-                           query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                           query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_mode_parent_children_rshares2>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result;
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
-                        std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1516,9 +1474,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
 
-                    std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> map_result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1534,8 +1492,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_created>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1544,46 +1500,36 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    return query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                    return query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_created>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_parent_created> map_result;
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_created> map_result;
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                        std::map<tags::tag_object, discussion, tags::by_parent_created> result = get_discussions<tags::by_parent_created>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_parent_created> result = get_discussions<tags::by_parent_created>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_created>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_created>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1591,9 +1537,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                    std::map<tags::tag_object, discussion, tags::by_parent_created> map_result = get_discussions<tags::by_parent_created>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_created> map_result = get_discussions<tags::by_parent_created>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_created>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_created>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1609,8 +1555,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_active>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1619,46 +1563,36 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    return query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                    return query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_active>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_parent_active> map_result;
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_active> map_result;
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                        std::map<tags::tag_object, discussion, tags::by_parent_active> result = get_discussions<tags::by_parent_active>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_parent_active> result = get_discussions<tags::by_parent_active>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_active>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_active>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1666,9 +1600,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, fc::time_point_sec::maximum()));
 
-                    std::map<tags::tag_object, discussion, tags::by_parent_active> map_result = get_discussions<tags::by_parent_active>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_active> map_result = get_discussions<tags::by_parent_active>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_active>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_active>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1684,8 +1618,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_cashout>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1694,49 +1626,39 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
                     return c.children_rshares2 <= 0 ||
-                           query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                           query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_cashout>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_cashout> map_result;
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result;
 
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
                                 fc::time_point::now() - fc::minutes(60)));
 
-                        std::map<tags::tag_object, discussion, tags::by_cashout> result = get_discussions<tags::by_cashout>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_cashout> result = get_discussions<tags::by_cashout>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_cashout>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_cashout>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1745,9 +1667,9 @@ namespace steemit {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag,
                             fc::time_point::now() - fc::minutes(60)));
 
-                    std::map<tags::tag_object, discussion, tags::by_cashout> map_result = get_discussions<tags::by_cashout>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_cashout> map_result = get_discussions<tags::by_cashout>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_cashout>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_cashout>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1770,8 +1692,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1780,47 +1700,37 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    return query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                    return query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_net_votes>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_parent_net_votes> map_result;
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes> map_result;
 
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                        std::map<tags::tag_object, discussion, tags::by_parent_net_votes> result = get_discussions<tags::by_parent_net_votes>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes> result = get_discussions<tags::by_parent_net_votes>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_net_votes>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1828,9 +1738,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                    std::map<tags::tag_object, discussion, tags::by_parent_net_votes> map_result = get_discussions<tags::by_parent_net_votes>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes> map_result = get_discussions<tags::by_parent_net_votes>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_net_votes>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_net_votes>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1846,8 +1756,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_children>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1856,47 +1764,37 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    return query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                    return query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_children>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_parent_children> map_result;
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_children> map_result;
 
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                        std::map<tags::tag_object, discussion, tags::by_parent_children> result = get_discussions<tags::by_parent_children>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_parent_children> result = get_discussions<tags::by_parent_children>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_children>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_children>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1904,9 +1802,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
 
-                    std::map<tags::tag_object, discussion, tags::by_parent_children> map_result = get_discussions<tags::by_parent_children>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_children> map_result = get_discussions<tags::by_parent_children>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_children>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_children>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1923,8 +1821,6 @@ namespace steemit {
                 query.validate();
                 auto parent = get_parent(query);
 
-                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
-
                 std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) {
                     if (query.select_authors.size()) {
                         if (query.select_authors.find(c.author) ==
@@ -1933,48 +1829,38 @@ namespace steemit {
                         }
                     }
 
-                    if (query.select_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
 
-                        for (const std::set<std::string>::value_type &iterator : query.select_tags) {
-                            if (meta.tags.find(iterator) == meta.tags.end()) {
-                                return true;
-                            }
-                        }
-                    }
-
-                    if (query.filter_tags.size()) {
-                        tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
-
-                        for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
-                            if (meta.tags.find(iterator) != meta.tags.end()) {
-                                return true;
-                            }
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
                         }
                     }
 
                     return c.net_rshares <= 0 ||
-                           query.filter_categories.find(c.category) !=
-                           query.filter_categories.end();
+                           query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
                 };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_parent_hot>();
 
                 std::vector<discussion> return_result;
                 std::string tag;
 
-                if (query.select_categories.size()) {
-                    std::map<tags::tag_object, discussion, tags::by_parent_hot> map_result;
+                if (query.select_tags.size()) {
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_hot> map_result;
 
-                    for (const std::set<std::string>::value_type &iterator : query.select_categories) {
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
                         auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
-                        std::map<tags::tag_object, discussion, tags::by_parent_hot> result = get_discussions<tags::by_parent_hot>(query, tag, parent, tidx, tidx_itr, filter_function);
+                        std::multimap<tags::tag_object, discussion, tags::by_parent_hot> result = get_discussions<tags::by_parent_hot>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_hot>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_hot>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -1982,9 +1868,9 @@ namespace steemit {
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<double>::max()));
 
-                    std::map<tags::tag_object, discussion, tags::by_parent_hot> map_result = get_discussions<tags::by_parent_hot>(query, tag, parent, tidx, tidx_itr, filter_function);
+                    std::multimap<tags::tag_object, discussion, tags::by_parent_hot> map_result = get_discussions<tags::by_parent_hot>(query, tag, parent, tidx, tidx_itr, filter_function);
 
-                    for (std::map<tags::tag_object, discussion, tags::by_parent_hot>::const_iterator iterator = map_result.cbegin();
+                    for (std::multimap<tags::tag_object, discussion, tags::by_parent_hot>::const_iterator iterator = map_result.cbegin();
                          std::distance(map_result.cbegin(), iterator) !=
                          query.limit; ++iterator) {
                         return_result.push_back(iterator->second);
@@ -2030,14 +1916,14 @@ namespace steemit {
                             break;
                         }
                         try {
-                            if (query.select_categories.size()) {
+                            if (query.select_tags.size()) {
                                 auto tag_itr = tag_idx.lower_bound(feed_itr->comment);
 
                                 bool found = false;
                                 while (tag_itr != tag_idx.end() &&
                                        tag_itr->comment == feed_itr->comment) {
-                                    if (query.select_categories.find(tag_itr->tag) !=
-                                        query.select_categories.end()) {
+                                    if (query.select_tags.find(tag_itr->tag) !=
+                                        query.select_tags.end()) {
                                         found = true;
                                         break;
                                     }
@@ -2104,14 +1990,14 @@ namespace steemit {
                             break;
                         }
                         try {
-                            if (query.select_categories.size()) {
+                            if (query.select_tags.size()) {
                                 auto tag_itr = tag_idx.lower_bound(blog_itr->comment);
 
                                 bool found = false;
                                 while (tag_itr != tag_idx.end() &&
                                        tag_itr->comment == blog_itr->comment) {
-                                    if (query.select_categories.find(tag_itr->tag) !=
-                                        query.select_categories.end()) {
+                                    if (query.select_tags.find(tag_itr->tag) !=
+                                        query.select_tags.end()) {
                                         found = true;
                                         break;
                                     }
@@ -2556,7 +2442,7 @@ namespace steemit {
                         _state.pow_queue = get_miner_queue();
                     } else if (part[0] == "trending") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
                         auto trending_disc = get_discussions_by_trending(q);
@@ -2572,7 +2458,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "trending30") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2589,7 +2475,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "promoted") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2606,7 +2492,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "responses") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2623,7 +2509,7 @@ namespace steemit {
                         }
                     } else if (!part[0].size() || part[0] == "hot") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2640,7 +2526,7 @@ namespace steemit {
                         }
                     } else if (!part[0].size() || part[0] == "promoted") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2657,7 +2543,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "votes") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2674,7 +2560,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "cashout") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2691,7 +2577,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "active") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2708,7 +2594,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "created") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
@@ -2725,7 +2611,7 @@ namespace steemit {
                         }
                     } else if (part[0] == "recent") {
                         discussion_query q;
-                        q.select_categories.insert(tag);
+                        q.select_tags.insert(tag);
                         q.limit = 20;
                         q.truncate_body = 1024;
 
