@@ -1287,12 +1287,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      if( rshares > 0 && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
+      if( rshares > 0 )
       {
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__769 ) )
-            FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
-         else
-            FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase reward of post within the last minute before payout." );
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__900 ) )
+            FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17, "Cannot increase payout within last twelve hours before payout." );
+         else if( _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
+            FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT_HF7, "Cannot increase payout within last minute before payout." );
       }
 
       //used_power /= (50*7); /// a 100% vote means use .28% of voting power which should force users to spread their votes around over 50+ posts day for a week
@@ -1478,8 +1478,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// this is the rshares voting for or against the post
       int64_t rshares        = o.weight < 0 ? -abs_rshares : abs_rshares;
 
-      if( itr->rshares < rshares && _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
-         FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT, "Cannot increase payout within last minute before payout." );
+      if( itr->rshares < rshares )
+      {
+         if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__900 ) )
+            FC_ASSERT( _db.head_block_time() < comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17, "Cannot increase payout within last twelve hours before payout." );
+         else if( _db.has_hardfork( STEEMIT_HARDFORK_0_7 ) )
+            FC_ASSERT( _db.head_block_time() < _db.calculate_discussion_payout_time( comment ) - STEEMIT_UPVOTE_LOCKOUT_HF7, "Cannot increase payout within last minute before payout." );
+      }
 
       _db.modify( voter, [&]( account_object& a ){
          a.voting_power = current_power - used_power;

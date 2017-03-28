@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 17, 1) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 18, 0) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -27,6 +27,8 @@
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
+#define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
+#define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
 
 
 #define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE 0
@@ -55,6 +57,8 @@
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
 #define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2)     /// 2 hours
+#define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
+#define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::hours(12))
 
 #define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE  100000
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE           1
@@ -98,7 +102,6 @@
 #define STEEMIT_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
 #define STEEMIT_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEMIT_MAX_VOTE_CHANGES                5
-#define STEEMIT_UPVOTE_LOCKOUT                  (fc::minutes(1))
 #define STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEMIT_MIN_VOTE_INTERVAL_SEC           3
 #define STEEMIT_VOTE_DUST_THRESHOLD             (50000000)
