@@ -947,7 +947,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          BOOST_TEST_MESSAGE( "--- Test failure when increasing rshares within lockout period" );
 
-         generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT ).sec_since_epoch() + STEEMIT_BLOCK_INTERVAL ), true );
+         generate_blocks( fc::time_point_sec( ( new_bob_comment.cashout_time - STEEMIT_UPVOTE_LOCKOUT_HF17 ).sec_since_epoch() + STEEMIT_BLOCK_INTERVAL ), true );
 
          op.weight = STEEMIT_100_PERCENT;
          tx.operations.clear();
@@ -6491,8 +6491,8 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       BOOST_REQUIRE( db.get_account( "bob" ).reward_steem_balance == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).reward_sbd_balance == ASSET( "0.000 TBD" ) );
       BOOST_REQUIRE( db.get_account( "bob" ).reward_vesting_steem.amount + db.get_account( "sam" ).reward_vesting_steem.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
-      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) == db.get_account( "bob" ).reward_vesting_steem.amount );
-      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db.get_account( "sam" ).reward_vesting_steem.amount );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) == db.get_account( "bob" ).reward_vesting_steem.amount + 2 );
+      BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db.get_account( "sam" ).reward_vesting_steem.amount + 3 );
    }
    FC_LOG_AND_RETHROW()
 }
