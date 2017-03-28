@@ -445,7 +445,7 @@ const time_point_sec database::calculate_discussion_payout_time( const comment_o
 
 const reward_fund_object& database::get_reward_fund( const comment_object& c ) const
 {
-   return get< reward_fund_object, by_name >( c.parent_author == STEEMIT_ROOT_POST_PARENT ? STEEMIT_POST_REWARD_FUND_NAME : STEEMIT_COMMENT_REWARD_FUND_NAME );
+   return get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
 }
 
 void database::pay_fee( const account_object& account, asset fee )
@@ -3696,6 +3696,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_17 == 17, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_17 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_17_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_17 ] = STEEMIT_HARDFORK_0_17_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_18 == 18, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_18 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_18_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_18 ] = STEEMIT_HARDFORK_0_18_VERSION;
 
 
    const auto& hardforks = get_hardfork_property_object();
@@ -3901,19 +3904,9 @@ void database::apply_hardfork( uint32_t hardfork )
                rfo.percent_content_rewards = 0;
             });
 
-            auto comment_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
-            {
-               rfo.name = STEEMIT_COMMENT_REWARD_FUND_NAME;
-               rfo.last_update = head_block_time();
-               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
-               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-               rfo.percent_content_rewards = 0;
-            });
-
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
-            FC_ASSERT( comment_rf.id._id == 1 );
          }
          break;
       case STEEMIT_HARDFORK_0_17:
@@ -3937,15 +3930,8 @@ void database::apply_hardfork( uint32_t hardfork )
 
             modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
             {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 62;
-               rfo.reward_balance = asset( ( reward_steem.amount.value * rfo.percent_content_rewards ) / STEEMIT_100_PERCENT, STEEM_SYMBOL );
-               reward_steem -= rfo.reward_balance;
-            });
-
-            modify( get< reward_fund_object, by_name >( STEEMIT_COMMENT_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
-            {
-               rfo.percent_content_rewards = STEEMIT_1_PERCENT * 38;
-               rfo.reward_balance = reward_steem;
+               rfo.percent_content_rewards = STEEMIT_100_PERCENT;
+               rfo.reward_balance = gpo.total_reward_fund_steem;
             });
 
             modify( gpo, [&]( dynamic_global_property_object& g )
@@ -4001,6 +3987,8 @@ void database::apply_hardfork( uint32_t hardfork )
                });
             }
          }
+         break;
+      case STEEMIT_HARDFORK_0_18:
          break;
       default:
          break;
