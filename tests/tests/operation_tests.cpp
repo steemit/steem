@@ -39,50 +39,27 @@ BOOST_AUTO_TEST_CASE( account_create_authorities )
    {
       BOOST_TEST_MESSAGE( "Testing: account_create_authorities" );
 
-      signed_transaction tx;
-      ACTORS( (alice) );
-
-      private_key_type priv_key = generate_private_key( "temp_key" );
-
       account_create_operation op;
-      op.fee = asset( 10, STEEM_SYMBOL );
+      op.creator = "alice";
       op.new_account_name = "bob";
-      op.creator = STEEMIT_INIT_MINER_NAME;
-      op.owner = authority( 1, priv_key.get_public_key(), 1 );
-      op.active = authority( 2, priv_key.get_public_key(), 2 );
-      op.memo_key = priv_key.get_public_key();
-      op.json_metadata = "{\"foo\":\"bar\"}";
 
-      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      tx.operations.push_back( op );
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
 
-      BOOST_TEST_MESSAGE( "--- Test failure when no signatures" );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
+      BOOST_TEST_MESSAGE( "--- Testing owner authority" );
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
 
-      BOOST_TEST_MESSAGE( "--- Test success with witness signature" );
-      tx.sign( init_account_priv_key, db.get_chain_id() );
-      db.push_transaction( tx, 0 );
+      BOOST_TEST_MESSAGE( "--- Testing active authority" );
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
 
-      BOOST_TEST_MESSAGE( "--- Test failure when duplicate signatures" );
-      tx.operations.clear();
-      tx.signatures.clear();
-      op.new_account_name = "sam";
-      tx.operations.push_back( op );
-      tx.sign( init_account_priv_key, db.get_chain_id() );
-      tx.sign( init_account_priv_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_duplicate_sig );
-
-      BOOST_TEST_MESSAGE( "--- Test failure when signed by an additional signature not in the creator's authority" );
-      tx.signatures.clear();
-      tx.sign( init_account_priv_key, db.get_chain_id() );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_irrelevant_sig );
-
-      BOOST_TEST_MESSAGE( "--- Test failure when signed by a signature not in the creator's authority" );
-      tx.signatures.clear();
-      tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), tx_missing_active_auth );
-      validate_database();
+      BOOST_TEST_MESSAGE( "--- Testing posting authority" );
+      expected.clear();
+      auths.clear();
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -92,6 +69,8 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
    try
    {
       BOOST_TEST_MESSAGE( "Testing: account_create_apply" );
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
 
       signed_transaction tx;
       private_key_type priv_key = generate_private_key( "alice" );
@@ -116,6 +95,8 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
       tx.validate();
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+      /* Temporarily commented out while op is disabled
       db.push_transaction( tx, 0 );
 
       const account_object& acct = db.get_account( "alice" );
@@ -133,14 +114,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE( acct.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
       BOOST_REQUIRE( acct.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       BOOST_REQUIRE( acct.id._id == acct_auth.id._id );
-
-      /* This is being moved out of consensus...
-      #ifndef IS_LOW_MEM
-         BOOST_REQUIRE( acct.json_metadata == op.json_metadata );
-      #else
-         BOOST_REQUIRE( acct.json_metadata == "" );
-      #endif
-      */
 
       /// because init_witness has created vesting shares and blocks have been produced, 100 STEEM is worth less than 100 vesting shares due to rounding
       BOOST_REQUIRE( acct.vesting_shares.amount.value == ( op.fee * ( vest_shares / vests ) ).amount.value );
@@ -173,9 +146,29 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.new_account_name = "bob";
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
-
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
+
+      idump( (db.get_account( STEEMIT_INIT_MINER_NAME ).balance) );
+
+      BOOST_TEST_MESSAGE( "--- Test failure covering witness fee" );
+      generate_block();
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
+         {
+            wso.median_props.account_creation_fee = ASSET( "1.000 TESTS" );
+         });
+      });
+      generate_block();
+
+      tx.clear();
+      op.fee = ASSET( "1.000 TESTS" );
+      tx.operations.push_back( op );
+      tx.sign( init_account_priv_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception ) );
+      validate_database();
+      */
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3219,8 +3212,9 @@ BOOST_AUTO_TEST_CASE( account_recovery )
 
       BOOST_TEST_MESSAGE( "Creating account bob with alice" );
 
-      account_create_operation acc_create;
+      account_create_with_delegation_operation acc_create;
       acc_create.fee = ASSET( "10.000 TESTS" );
+      acc_create.delegation = ASSET( "0.000000 VESTS" );
       acc_create.creator = "alice";
       acc_create.new_account_name = "bob";
       acc_create.owner = authority( 1, generate_private_key( "bob_owner" ).get_public_key(), 1 );
@@ -5773,7 +5767,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_authorities )
 {
    try
    {
-     BOOST_TEST_MESSAGE( "Testing: account_create_authorities" );
+     BOOST_TEST_MESSAGE( "Testing: account_create_with_delegation_authorities" );
 
      signed_transaction tx;
      ACTORS( (alice) );
