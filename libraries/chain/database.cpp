@@ -1922,7 +1922,9 @@ void database::process_funds()
          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+      auto vest_created = create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+      push_virtual_operation( witness_block_reward_operation( cwit.owner, vest_created ) );
+      ilog( "Just pushed witness_block_reward_operation for witness: ${w}", ("w", cwit.owner) );
    }
    else
    {
