@@ -298,7 +298,6 @@ public:
       result["median_sbd_price"] = _remote_db->get_current_median_history_price();
       result["account_creation_fee"] = _remote_db->get_chain_properties().account_creation_fee;
       result["post_reward_fund"] = fc::variant(_remote_db->get_reward_fund( STEEMIT_POST_REWARD_FUND_NAME )).get_object();
-      result["comment_reward_fund"] = fc::variant(_remote_db->get_reward_fund( STEEMIT_COMMENT_REWARD_FUND_NAME )).get_object();
       return result;
    }
 
