@@ -119,6 +119,8 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ) )
    {
+      if( _db.is_producing() )
+         FC_ASSERT( false, "account_create_operation is temporarily disabled. Please use account_create_with_delegation_operation instead" );
       const witness_schedule_object& wso = _db.get_witness_schedule_object();
       FC_ASSERT( o.fee >= wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ), "Insufficient Fee: ${f} required, ${p} provided.",
                  ("f", wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ) )
