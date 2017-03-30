@@ -1924,7 +1924,6 @@ void database::process_funds()
 
       auto vest_created = create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
       push_virtual_operation( witness_block_reward_operation( cwit.owner, vest_created ) );
-      ilog( "Just pushed witness_block_reward_operation for witness: ${w}", ("w", cwit.owner) );
    }
    else
    {
@@ -2009,7 +2008,8 @@ asset database::get_producer_reward()
    /// pay witness in vesting shares
    if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
       // const auto& witness_obj = get_witness( props.current_witness );
-      create_vesting( witness_account, pay );
+      auto vest_created = create_vesting( witness_account, pay );
+      push_virtual_operation( witness_block_reward_operation( witness_account.name, vest_created ) );
    }
    else
    {
