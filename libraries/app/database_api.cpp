@@ -1132,7 +1132,7 @@ void database_api::set_pending_payout( discussion& d )const
    else
       total_r2 = to256( props.total_reward_shares2 );
 
-   if( props.total_reward_shares2 > 0 )
+   if( total_r2 > 0 )
    {
       uint128_t vshares;
       if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
