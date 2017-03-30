@@ -1157,25 +1157,31 @@ dl.section dd {
 #projectlogo
 {
 	text-align: center;
-	vertical-align: bottom;
+	vertical-align: top;
 	border-collapse: separate;
 }
 
 #projectlogo img
 {
 	border: 0px none;
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
 }
 
 #projectalign
 {
-        vertical-align: middle;
+        vertical-align: top;
 }
 
 #projectname
 {
-	font: 250% Tahoma, Arial,sans-serif;
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+    font-size: 1.1rem;
+    line-height: 1.5rem;
 	margin: 0px;
-	padding: 2px 0px;
+	padding: .7rem 1rem;
+    color: #164584;
 }
 
 #projectbrief
@@ -1194,7 +1200,7 @@ dl.section dd {
 
 #titlearea
 {
-	padding: 0px;
+	padding: 10px;
 	margin: 0px;
 	width: 100%;
 	border-bottom: 1px solid #5373B4;
