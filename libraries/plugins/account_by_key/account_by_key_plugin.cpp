@@ -137,7 +137,7 @@ namespace steemit {
                 }
 
                 void operator()(const hardfork_operation &op) const {
-                    if (op.hardfork_id == STEEMIT_HARDFORK_0_9) {
+                    if (op.hardfork_id == STEEMIT_HARDFORK_0_16) {
                         auto &db = _plugin.database();
 
                         for (const std::string &acc : hardfork16::get_compromised_accounts()) {
