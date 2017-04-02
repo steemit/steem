@@ -16,10 +16,23 @@ p.reference, p.definition {
 /* @group Navigation Bar */
 
 .sm:after {
-    font: 400 100% Helvetica Neue, Helvetica, Arial, sans-serif;
+    content: "\0a00";
+    display: block;
+    font: 400 50% sans-serif;
+    clear: both;
+    visibility: hidden;
+}
+
+.sm:before {
+    content: "\0a00";
+    display: block;
+    font: 400 50% sans-serif;
+    clear: both;
+    visibility: hidden;
 }
 
 .sm-dox {
+    padding: 0;
     line-height: 1.6rem;
     font: 400 100% Helvetica Neue, Helvetica, Arial, sans-serif;
     background-image: none;
