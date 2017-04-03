@@ -1664,14 +1664,14 @@ namespace steemit {
                     for (const std::set<std::string>::value_type &iterator : query.select_tags) {
                         tag = fc::to_lower(iterator);
 
-                        auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
+                        auto tidx_itr = tidx.lower_bound(tag);
 
                         std::multimap<tags::tag_object, discussion, tags::by_net_rshares> result = get_discussions<tags::by_net_rshares>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
                 } else {
-                    auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
+                    auto tidx_itr = tidx.lower_bound(tag);
 
                     map_result = get_discussions<tags::by_net_rshares>(query, tag, parent, tidx, tidx_itr, filter_function);
                 }
