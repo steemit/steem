@@ -364,8 +364,6 @@ namespace steemit {
 
             std::vector<discussion> get_content_replies(std::string parent, std::string parent_permlink) const;
 
-            ///@{ tags API
-
             /**
              * Used to retrieve top 1000 tags list used by an author sorted by most frequently used
              * @param author select tags of this author
@@ -460,29 +458,6 @@ namespace steemit {
              * @return vector of discussions sorted by promoted balance amount
              **/
             std::vector<discussion> get_discussions_by_promoted(const discussion_query &query) const;
-
-            ///@}
-
-            /**
-             *  For each of these filters:
-             *     Get root content...
-             *     Get any content...
-             *     Get root content in category..
-             *     Get any content in category...
-             *
-             *  Return discussions
-             *     Total Discussion Pending Payout
-             *     Last Discussion Update (or reply)... think
-             *     Top Discussions by Total Payout
-             *
-             *  Return content (comments)
-             *     Pending Payout Amount
-             *     Pending Payout Time
-             *     Creation Date
-             *
-             */
-            ///@{
-
 
 
             /**
