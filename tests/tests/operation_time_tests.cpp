@@ -2663,7 +2663,7 @@ BOOST_AUTO_TEST_CASE( sbd_stability )
 {
    try
    {
-      resize_shared_mem( 1024 * 1024 * 256 ); // Due to number of blocks in the test, it requires a large file. (32 MB)
+      resize_shared_mem( 1024 * 1024 * 512 ); // Due to number of blocks in the test, it requires a large file. (64 MB)
 
       // Using the debug node plugin to manually set account balances to create required market conditions for this test
       auto db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
