@@ -1922,7 +1922,9 @@ void database::process_funds()
          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+      const auto& producer_reward = create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+      push_virtual_operation( producer_reward_operation( cwit.owner, producer_reward ) );
+
    }
    else
    {
@@ -2007,7 +2009,8 @@ asset database::get_producer_reward()
    /// pay witness in vesting shares
    if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
       // const auto& witness_obj = get_witness( props.current_witness );
-      create_vesting( witness_account, pay );
+      const auto& producer_reward = create_vesting( witness_account, pay );
+      push_virtual_operation( producer_reward_operation( witness_account.name, producer_reward ) );
    }
    else
    {

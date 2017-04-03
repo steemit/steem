@@ -2069,8 +2069,8 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       generate_blocks( db.head_block_time() + fc::seconds( STEEMIT_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10.to_seconds() / 2 ), true );
 
-      ops = get_last_operations( 1 );
-      fill_order_op = ops[0].get< fill_order_operation >();
+      ops = get_last_operations( 3 );
+      fill_order_op = ops[2].get< fill_order_operation >();
 
       BOOST_REQUIRE( fill_order_op.open_owner == "alice" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 6 );
