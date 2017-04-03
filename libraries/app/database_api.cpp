@@ -1190,7 +1190,7 @@ namespace steemit {
             set_url(d);
             set_pending_payout(d);
             d.active_votes = get_active_votes(d.author, d.permlink);
-            d.body_length = d.body.size();
+            d.body_length = static_cast<uint32_t>(d.body.size());
             if (truncate_body) {
                 d.body = d.body.substr(0, truncate_body);
 
@@ -1630,8 +1630,57 @@ namespace steemit {
 
         std::vector<discussion> database_api::get_discussions_by_payout(const discussion_query &query) const {
             return my->_db.with_read_lock([&]() {
-                std::vector<discussion> result;
-                return result;
+                query.validate();
+                auto parent = get_parent(query);
+
+                std::function<bool(const comment_api_obj &c)> filter_function = [&](const comment_api_obj &c) -> bool {
+                    if (query.select_authors.size()) {
+                        if (query.select_authors.find(c.author) ==
+                            query.select_authors.end()) {
+                            return true;
+                        }
+                    }
+
+                    tags::comment_metadata meta = fc::json::from_string(c.json_metadata).as<tags::comment_metadata>();
+
+                    for (const std::set<std::string>::value_type &iterator : query.filter_tags) {
+                        if (meta.tags.find(iterator) != meta.tags.end()) {
+                            return true;
+                        }
+                    }
+
+                    return c.net_rshares <= 0 ||
+                           query.filter_tags.find(c.category) !=
+                           query.filter_tags.end();
+                };
+
+                const auto &tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_net_rshares>();
+
+                std::multimap<tags::tag_object, discussion, tags::by_net_rshares> map_result;
+                std::vector<discussion> return_result;
+                std::string tag;
+
+                if (query.select_tags.size()) {
+                    for (const std::set<std::string>::value_type &iterator : query.select_tags) {
+                        tag = fc::to_lower(iterator);
+
+                        auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
+
+                        std::multimap<tags::tag_object, discussion, tags::by_net_rshares> result = get_discussions<tags::by_net_rshares>(query, tag, parent, tidx, tidx_itr, filter_function);
+
+                        map_result.insert(result.cbegin(), result.cend());
+                    }
+                } else {
+                    auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, std::numeric_limits<int32_t>::max()));
+
+                    map_result = get_discussions<tags::by_net_rshares>(query, tag, parent, tidx, tidx_itr, filter_function);
+                }
+
+                for (const std::multimap<tags::tag_object, discussion, tags::by_net_rshares>::value_type &iterator : map_result) {
+                    return_result.push_back(iterator.second);
+                }
+
+                return return_result;
             });
         }
 

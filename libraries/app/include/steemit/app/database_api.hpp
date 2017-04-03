@@ -71,12 +71,13 @@ namespace steemit {
         class database_api_impl;
 
 /**
- * @struct discussion_query
+ * @class discussion_query
  * @brief The discussion_query structure implements the RPC API param set.
  *  Defines the arguments to a query as a struct so it can be easily extended
  */
 
-        struct discussion_query {
+        class discussion_query {
+        public:
             void validate() const {
                 FC_ASSERT(limit <= 100);
 
@@ -364,33 +365,100 @@ namespace steemit {
             std::vector<discussion> get_content_replies(std::string parent, std::string parent_permlink) const;
 
             ///@{ tags API
-            /** This API will return the top 1000 tags used by an author sorted by most frequently used */
+
+            /**
+             * Used to retrieve top 1000 tags list used by an author sorted by most frequently used
+             * @param author select tags of this author
+             * @return vector of top 1000 tags used by an author sorted by most frequently used
+             **/
             std::vector<pair<std::string, uint32_t>> get_tags_used_by_author(const std::string &author) const;
 
+            /**
+             * Used to retrieve the list of first payout discussions sorted by rshares^2 amount
+             * @param query @ref discussion_query
+             * @return vector of first payout mode discussions sorted by rshares^2 amount
+             **/
             std::vector<discussion> get_discussions_by_trending(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of second payout discussions sorted by rshares^2 amount
+             * @param query @ref discussion_query
+             * @return vector of second payout mode discussions sorted by rshares^2 amount
+             **/
             std::vector<discussion> get_discussions_by_trending30(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by created time
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by created time
+             **/
             std::vector<discussion> get_discussions_by_created(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by last activity time
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by last activity time
+             **/
             std::vector<discussion> get_discussions_by_active(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by cashout time
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by last cashout time
+             **/
             std::vector<discussion> get_discussions_by_cashout(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by net rshares amount
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by net rshares amount
+             **/
             std::vector<discussion> get_discussions_by_payout(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by direct votes amount
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by direct votes amount
+             **/
             std::vector<discussion> get_discussions_by_votes(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by children posts amount
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by children posts amount
+             **/
             std::vector<discussion> get_discussions_by_children(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by hot amount
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by hot amount
+             **/
             std::vector<discussion> get_discussions_by_hot(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions from the feed of a specific author
+             * @param query @ref discussion_query
+             * @attention @ref discussion_query#select_authors must be set and must contain the @ref discussion_query#start_author param if the last one is not null
+             * @return vector of discussions from the feed of authors in @ref discussion_query#select_authors
+             **/
             std::vector<discussion> get_discussions_by_feed(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions from the blog of a specific author
+             * @param query @ref discussion_query
+             * @attention @ref discussion_query#select_authors must be set and must contain the @ref discussion_query#start_author param if the last one is not null
+             * @return vector of discussions from the blog of authors in @ref discussion_query#select_authors
+             **/
             std::vector<discussion> get_discussions_by_blog(const discussion_query &query) const;
 
             std::vector<discussion> get_discussions_by_comments(const discussion_query &query) const;
 
+            /**
+             * Used to retrieve the list of discussions sorted by promoted balance amount
+             * @param query @ref discussion_query
+             * @return vector of discussions sorted by promoted balance amount
+             **/
             std::vector<discussion> get_discussions_by_promoted(const discussion_query &query) const;
 
             ///@}
