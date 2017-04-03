@@ -68,6 +68,13 @@ p.reference, p.definition {
     color: #333;
 }
 
+.sm-dox a.highlighted {
+    line-height: 1.6rem;
+    font: 400 100% Helvetica Neue, Helvetica, Arial, sans-serif;
+    background-image: none;
+    color: #333;
+}
+
 /* @end */
 
 /* @group Heading Levels */
