@@ -189,7 +189,7 @@ a {
 }
 
 .contents a:visited {
-    color: #4665A2;
+    color: #1a5099;
 }
 
 a:hover {
@@ -1032,21 +1032,19 @@ table.fieldtable {
     top: 0px;
     left: 10px;
     height: 36px;
-    background-image: url('tab_b.png');
+    background-image: none;
     z-index: 101;
     overflow: hidden;
     font-size: 13px;
 }
 
 .navpath ul {
-    font-size: 11px;
-    background-image: url('tab_b.png');
-    background-repeat: repeat-x;
-    background-position: 0 -5px;
-    height: 30px;
-    line-height: 30px;
+    font: 400 100% Helvetica Neue, Helvetica, Arial, sans-serif;
+    background-image: none;
+    height: 40px;
+    line-height: 40px;
     color: #8AA0CC;
-    border: solid 1px #C2CDE4;
+    border: solid 1px #e6e6e6;
     overflow: hidden;
     margin: 0px;
     padding: 0px;
@@ -1057,21 +1055,23 @@ table.fieldtable {
     float: left;
     padding-left: 10px;
     padding-right: 15px;
-    background-image: url('bc_s.png');
-    background-repeat: no-repeat;
-    background-position: right;
+    background-image: none;
     color: #364D7C;
 }
 
+.navpath li.navelem {
+    background-image: url('bc_s.png');
+}
+
 .navpath li.navelem a {
-    height: 32px;
+    font: 400 100% Helvetica Neue, Helvetica, Arial, sans-serif;
+    height: 40px;
+    line-height: 40px;
     display: block;
     text-decoration: none;
     outline: none;
     color: #283A5D;
-    font-family: 'Lucida Grande', Geneva, Helvetica, Arial, sans-serif;
     text-shadow: 0px 1px 1px rgba(255, 255, 255, 0.9);
-    text-decoration: none;
 }
 
 .navpath li.navelem a:hover {
