@@ -1,0 +1,14 @@
+sudo: required
+
+language: cpp
+
+services:
+  - docker
+
+before_install:
+  - git clone https://github.com/GolosChain/golos.git
+  - cd golos
+  - docker build -t goloschain/golos .
+
+script:
+  - docker images
