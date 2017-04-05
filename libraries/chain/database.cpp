@@ -1359,43 +1359,6 @@ void database::clear_null_account_balance()
       adjust_supply( -total_sbd );
 }
 
-void update_children_rshares2( database& db, const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 )
-{
-   // Iteratively updates the children_rshares2 of this comment and all of its ancestors
-
-   const comment_object* current_comment = &c;
-   while( true )
-   {
-      db.modify( *current_comment, [&]( comment_object& comment )
-      {
-         comment.children_rshares2 -= old_rshares2;
-         comment.children_rshares2 += new_rshares2;
-      } );
-
-      if( current_comment->depth == 0 )
-         break;
-
-      current_comment = &db.get_comment( current_comment->parent_author, current_comment->parent_permlink );
-   }
-}
-
-/**
- * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
- * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
- * and dgpo.total_reward_shares2 is the total number of rshares2 outstanding.
- */
-void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
-{
-   update_children_rshares2( *this, c, old_rshares2, new_rshares2 );
-
-   const auto& dgpo = get_dynamic_global_properties();
-   modify( dgpo, [&]( dynamic_global_property_object& p )
-   {
-      p.total_reward_shares2 -= old_rshares2;
-      p.total_reward_shares2 += new_rshares2;
-   } );
-}
-
 void database::update_owner_authority( const account_object& account, const authority& owner_authority )
 {
    if( head_block_num() >= STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM )
@@ -1669,9 +1632,6 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                c.total_payouts += to_sbd( asset( claimed_reward, STEEM_SYMBOL ) );
             });
          }
-
-         if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-            adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
       }
 
       modify( cat, [&]( category_object& c )
@@ -3974,7 +3934,6 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *itr, [&]( comment_object& c )
                {
                   c.cashout_time = std::max( c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time );
-                  c.children_rshares2 = 0;
                });
             }
 
@@ -3983,7 +3942,6 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *itr, [&]( comment_object& c )
                {
                   c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
-                  c.children_rshares2 = 0;
                });
             }
          }
@@ -4108,9 +4066,6 @@ void database::validate_invariants()const
             FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
       }
 
-      fc::uint128_t total_rshares2;
-      fc::uint128_t total_children_rshares2;
-
       const auto& comment_idx = get_index< comment_index >().indices();
 
       for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
@@ -4118,10 +4073,7 @@ void database::validate_invariants()const
          if( itr->net_rshares.value > 0 )
          {
             auto delta = util::calculate_claims( itr->net_rshares.value );
-            total_rshares2 += delta;
          }
-         if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
-            total_children_rshares2 += itr->children_rshares2;
       }
 
       const auto& reward_idx = get_index< reward_fund_index, by_id >();
@@ -4184,14 +4136,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             c.net_rshares       *= magnitude;
             c.abs_rshares       *= magnitude;
             c.vote_rshares      *= magnitude;
-            c.children_rshares2  = 0;
          } );
-      }
-
-      for( const auto& c : comments )
-      {
-         if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
       }
 
       // Update category rshares

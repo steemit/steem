@@ -72,7 +72,6 @@ struct comment_api_obj
       last_payout( o.last_payout ),
       depth( o.depth ),
       children( o.children ),
-      children_rshares2( o.children_rshares2 ),
       net_rshares( o.net_rshares ),
       abs_rshares( o.abs_rshares ),
       vote_rshares( o.vote_rshares ),
@@ -117,8 +116,6 @@ struct comment_api_obj
 
    uint8_t           depth = 0;
    uint32_t          children = 0;
-
-   uint128_t         children_rshares2;
 
    share_type        net_rshares;
    share_type        abs_rshares;
@@ -173,20 +170,20 @@ struct tag_api_obj
 {
    tag_api_obj( const tags::tag_stats_object& o ) :
       name( o.tag ),
-      total_children_rshares2(o.total_children_rshares2),
       total_payouts(o.total_payout),
       net_votes(o.net_votes),
       top_posts(o.top_posts),
-      comments(o.comments) {}
+      comments(o.comments),
+      trending(o.total_trending) {}
 
    tag_api_obj() {}
 
    string               name;
-   fc::uint128_t        total_children_rshares2;
    asset                total_payouts;
    int32_t              net_votes = 0;
    uint32_t             top_posts = 0;
    uint32_t             comments = 0;
+   uint64_t             trending = 0;
 };
 
 struct account_api_obj
@@ -503,7 +500,7 @@ FC_REFLECT( steemit::app::comment_api_obj,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
-             (depth)(children)(children_rshares2)
+             (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)
@@ -567,11 +564,11 @@ FC_REFLECT( steemit::app::feed_history_api_obj,
 
 FC_REFLECT( steemit::app::tag_api_obj,
             (name)
-            (total_children_rshares2)
             (total_payouts)
             (net_votes)
             (top_posts)
             (comments)
+            (trending)
           )
 
 FC_REFLECT( steemit::app::witness_api_obj,

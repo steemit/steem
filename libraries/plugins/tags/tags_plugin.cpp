@@ -57,22 +57,22 @@ struct operation_visitor {
    void remove_stats( const tag_object& tag, const tag_stats_object& stats )const {
       _db.modify( stats, [&]( tag_stats_object& s ) {
            if( tag.parent == comment_id_type() ) {
-              s.total_children_rshares2 -= tag.children_rshares2;
               s.top_posts--;
            } else {
               s.comments--;
            }
+           s.total_trending -= std::round(tag.trending);
            s.net_votes   -= tag.net_votes;
       });
    }
    void add_stats( const tag_object& tag, const tag_stats_object& stats )const {
       _db.modify( stats, [&]( tag_stats_object& s ) {
            if( tag.parent == comment_id_type() ) {
-              s.total_children_rshares2 += tag.children_rshares2;
               s.top_posts++;
            } else {
               s.comments++;
            }
+           s.total_trending += std::round(tag.trending);
            s.net_votes   += tag.net_votes;
       });
    }
@@ -155,7 +155,6 @@ struct operation_visitor {
              obj.children          = comment.children;
              obj.net_rshares       = comment.net_rshares.value;
              obj.net_votes         = comment.net_votes;
-             obj.children_rshares2 = comment.children_rshares2;
              obj.hot               = hot;
              obj.trending          = trending;
              if( obj.cashout == fc::time_point_sec() )
@@ -185,7 +184,6 @@ struct operation_visitor {
           obj.net_votes         = comment.net_votes;
           obj.children          = comment.children;
           obj.net_rshares       = comment.net_rshares.value;
-          obj.children_rshares2 = comment.children_rshares2;
           obj.author            = author;
           obj.hot               = hot;
           obj.trending          = trending;

@@ -1357,12 +1357,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          }
       });
 
-      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-
-      /// calculate rshares2 value
-      new_rshares = util::calculate_claims( new_rshares );
-      old_rshares = util::calculate_claims( old_rshares );
-
       const auto& cat = _db.get_category( comment.category );
       _db.modify( cat, [&]( category_object& c ){
          c.abs_rshares += abs_rshares;
@@ -1466,9 +1460,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.total_vote_weight += max_vote_weight;
          });
       }
-
-      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
-         _db.adjust_rshares2( comment, old_rshares, new_rshares );
    }
    else
    {
@@ -1553,12 +1544,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          }
       });
 
-      fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
-
-      /// calculate rshares2 value
-      new_rshares = util::calculate_claims( new_rshares );
-      old_rshares = util::calculate_claims( old_rshares );
-
       _db.modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
@@ -1572,9 +1557,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.weight = 0;
          cv.num_changes += 1;
       });
-
-      if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
-         _db.adjust_rshares2( comment, old_rshares, new_rshares );
    }
 
 } FC_CAPTURE_AND_RETHROW( (o)) }
