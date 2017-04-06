@@ -49,7 +49,6 @@ typedef chain::withdraw_vesting_route_object           withdraw_vesting_route_ap
 typedef chain::decline_voting_rights_request_object    decline_voting_rights_request_api_obj;
 typedef chain::witness_vote_object                     witness_vote_api_obj;
 typedef chain::witness_schedule_object                 witness_schedule_api_obj;
-typedef chain::account_bandwidth_object                account_bandwidth_api_obj;
 typedef chain::vesting_delegation_object               vesting_delegation_api_obj;
 typedef chain::vesting_delegation_expiration_object    vesting_delegation_expiration_api_obj;
 typedef chain::reward_fund_object                      reward_fund_api_obj;
@@ -239,7 +238,9 @@ struct account_api_obj
       to_withdraw( a.to_withdraw ),
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
-      last_post( a.last_post )
+      last_post( a.last_post ),
+      last_root_post( a.last_root_post ),
+      post_bandwidth( a.post_bandwidth )
    {
       size_t n = a.proxied_vsf_votes.size();
       proxied_vsf_votes.reserve( n );
@@ -251,25 +252,6 @@ struct account_api_obj
       active = authority( auth.active );
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
-
-      auto post = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::post ) );
-      if( post != nullptr )
-      {
-         last_root_post = post->last_bandwidth_update;
-         post_bandwidth = post->average_bandwidth;
-      }
-
-      auto forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::forum ) );
-      if( forum != nullptr )
-      {
-         new_average_bandwidth = forum->average_bandwidth;
-      }
-
-      auto market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::market ) );
-      if( market != nullptr )
-      {
-         new_average_market_bandwidth = market->average_bandwidth;
-      }
    }
 
 
@@ -350,9 +332,6 @@ struct account_api_obj
    time_point_sec    last_post;
    time_point_sec    last_root_post;
    share_type        post_bandwidth = STEEMIT_100_PERCENT;
-
-   share_type        new_average_bandwidth;
-   share_type        new_average_market_bandwidth;
 };
 
 struct owner_authority_history_api_obj
@@ -517,7 +496,6 @@ FC_REFLECT( steemit::app::account_api_obj,
              (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
              (average_market_bandwidth)(last_market_bandwidth_update)
              (last_post)(last_root_post)(post_bandwidth)
-             (new_average_bandwidth)(new_average_market_bandwidth)
           )
 
 FC_REFLECT( steemit::app::owner_authority_history_api_obj,

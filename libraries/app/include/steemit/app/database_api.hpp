@@ -238,7 +238,7 @@ class database_api
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
-      optional< account_bandwidth_api_obj > get_account_bandwidth( string account, bandwidth_type type )const;
+      //optional< account_bandwidth_api_obj > get_account_bandwidth( string account, bandwidth_type type )const;
 
       vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
       vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
@@ -519,7 +519,7 @@ FC_API(steemit::app::database_api,
    (get_recovery_request)
    (get_escrow)
    (get_withdraw_routes)
-   (get_account_bandwidth)
+   //(get_account_bandwidth)
    (get_savings_withdraw_from)
    (get_savings_withdraw_to)
    (get_vesting_delegations)

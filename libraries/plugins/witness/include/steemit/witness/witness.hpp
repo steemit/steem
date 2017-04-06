@@ -86,9 +86,7 @@ private:
    uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
    uint32_t _production_skip_flags = steemit::chain::database::skip_nothing;
 
-   uint64_t         _head_block_num       = 0;
    block_id_type    _head_block_id        = block_id_type();
-   uint64_t         _total_hashes         = 0;
    fc::time_point   _hash_start_time;
 
    std::map<public_key_type, fc::ecc::private_key> _private_keys;

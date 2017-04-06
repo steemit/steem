@@ -509,21 +509,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( _db.calculate_discussion_payout_time( *parent ) != fc::time_point_sec::maximum(), "Discussion is frozen." );
       }
 
-      auto band = _db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( o.author, bandwidth_type::post ) );
-
-      if( band == nullptr )
-      {
-         band = &_db.create< account_bandwidth_object >( [&]( account_bandwidth_object& b )
-         {
-            b.account = o.author;
-            b.type = bandwidth_type::post;
-         });
-      }
-
       if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) )
       {
          if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
-             FC_ASSERT( ( now - band->last_bandwidth_update ) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("last_root_post", band->last_bandwidth_update) );
+             FC_ASSERT( ( now - auth.last_root_post ) > STEEMIT_MIN_ROOT_COMMENT_INTERVAL, "You may only post once every 5 minutes.", ("now",now)("last_root_post", auth.last_root_post) );
          else
              FC_ASSERT( (now - auth.last_post) > STEEMIT_MIN_REPLY_INTERVAL, "You may only comment once every 20 seconds.", ("now",now)("auth.last_post",auth.last_post) );
       }
@@ -540,28 +529,22 @@ void comment_evaluator::do_apply( const comment_operation& o )
       }
 
       uint16_t reward_weight = STEEMIT_100_PERCENT;
+      uint64_t post_bandwidth = auth.post_bandwidth;
 
-      if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && !_db.has_hardfork( STEEMIT_HARDFORK_0_17__733 ) && o.parent_author == STEEMIT_ROOT_POST_PARENT )
       {
-         auto post_bandwidth = band->average_bandwidth;
-
-         if( _db.has_hardfork( STEEMIT_HARDFORK_0_12__176 ) && !_db.has_hardfork( STEEMIT_HARDFORK_0_17__733 ) )
-         {
-            auto post_delta_time = std::min( now.sec_since_epoch() - band->last_bandwidth_update.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
-            auto old_weight = ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW;
-            post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
-            reward_weight = uint16_t( std::min( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth.value * post_bandwidth.value ), uint64_t( STEEMIT_100_PERCENT ) ) );
-         }
-
-         _db.modify( *band, [&]( account_bandwidth_object& b )
-         {
-            b.last_bandwidth_update = now;
-            b.average_bandwidth = post_bandwidth;
-         });
+         uint64_t post_delta_time = std::min( _db.head_block_time().sec_since_epoch() - auth.last_root_post.sec_since_epoch(), STEEMIT_POST_AVERAGE_WINDOW );
+         uint32_t old_weight = uint32_t( ( post_bandwidth * ( STEEMIT_POST_AVERAGE_WINDOW - post_delta_time ) ) / STEEMIT_POST_AVERAGE_WINDOW );
+         post_bandwidth = ( old_weight + STEEMIT_100_PERCENT );
+         reward_weight = uint16_t( std::min( ( STEEMIT_POST_WEIGHT_CONSTANT * STEEMIT_100_PERCENT ) / ( post_bandwidth * post_bandwidth ), uint64_t( STEEMIT_100_PERCENT ) ) );
       }
 
-      db().modify( auth, [&]( account_object& a )
-      {
+      _db.modify( auth, [&]( account_object& a ) {
+         if( o.parent_author == STEEMIT_ROOT_POST_PARENT )
+         {
+            a.last_root_post = now;
+            a.post_bandwidth = uint32_t( post_bandwidth );
+         }
          a.last_post = now;
          a.post_count++;
       });

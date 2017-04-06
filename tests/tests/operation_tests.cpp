@@ -4,10 +4,13 @@
 #include <steemit/protocol/exceptions.hpp>
 
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/database_exceptions.hpp>
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <steemit/chain/util/reward.hpp>
+
+#include <steemit/witness/witness_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -5639,6 +5642,7 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 {
    try
    {
+      BOOST_TEST_MESSAGE( "Testing: account_bandwidth" );
       ACTORS( (alice)(bob) )
       generate_block();
       vest( "alice", ASSET( "10.000 TESTS" ) );
@@ -5647,6 +5651,8 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       generate_block();
       db.skip_transaction_delta_check = false;
+
+      BOOST_TEST_MESSAGE( "--- Test first tx in block" );
 
       signed_transaction tx;
       transfer_operation op;
@@ -5661,11 +5667,13 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      auto last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).last_bandwidth_update;
-      auto average_bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).average_bandwidth;
+      auto last_bandwidth_update = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).last_bandwidth_update;
+      auto average_bandwidth = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).average_bandwidth;
       BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
       BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
       auto total_bandwidth = average_bandwidth;
+
+      BOOST_TEST_MESSAGE( "--- Test second tx in block" );
 
       op.amount = ASSET( "0.100 TESTS" );
       tx.clear();
@@ -5675,8 +5683,8 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      last_bandwidth_update = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).last_bandwidth_update;
-      average_bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::market ) ).average_bandwidth;
+      last_bandwidth_update = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).last_bandwidth_update;
+      average_bandwidth = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).average_bandwidth;
       BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
       BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
    }
@@ -6412,7 +6420,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       tx.clear();
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), fc::assert_exception );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx ), chain::plugin_exception );
 
 
       BOOST_TEST_MESSAGE( "--- Test specifying a non-existent benefactor" );

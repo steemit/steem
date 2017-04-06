@@ -22,10 +22,12 @@
  * THE SOFTWARE.
  */
 #include <steemit/witness/witness.hpp>
+#include <steemit/witness/witness_objects.hpp>
 
 #include <steemit/chain/database_exceptions.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/hardfork.hpp>
 
@@ -124,11 +126,12 @@ namespace detail
       {
          if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
          {
-            const auto& parent = _db.get_comment( o.parent_author, o.parent_permlink );
+            const auto& parent = _db.find_comment( o.parent_author, o.parent_permlink );
 
-            STEEMIT_ASSERT( parent.depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH,
+            if( parent != nullptr )
+            STEEMIT_ASSERT( parent->depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH,
                chain::plugin_exception,
-               "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent.depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
+               "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
          }
 
          auto itr = _db.find< comment_object, by_permlink >( boost::make_tuple( o.author, o.permlink ) );
@@ -278,10 +281,8 @@ using std::string;
 
 void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   ilog("witness plugin:  plugin_initialize() begin");
    _options = &options;
    LOAD_VALUE_SET(options, "witness", _witnesses, string)
-   edump((_witnesses));
 
    if( options.count("private-key") )
    {
@@ -294,9 +295,12 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       }
    }
 
-   database().on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ _my->pre_transaction( tx ); } );
+   chain::database& db = database();
 
-   ilog("witness plugin:  plugin_initialize() end");
+   db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ _my->pre_transaction( tx ); } );
+   db.pre_apply_operation.connect( [&]( const operation_notification& note ){ _my->pre_operation( note ); } );
+
+   add_plugin_index< account_bandwidth_index >( db );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
@@ -307,6 +311,7 @@ void witness_plugin::plugin_startup()
    if( !_witnesses.empty() )
    {
       ilog("Launching block production for ${n} witnesses.", ("n", _witnesses.size()));
+      idump( (_witnesses) );
       app().set_block_production(true);
       if( _production_enabled )
       {

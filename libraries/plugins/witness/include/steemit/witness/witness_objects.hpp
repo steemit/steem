@@ -1,8 +1,8 @@
 #pragma once
 
-#include <steemit/witness/witness_plugin.hpp>
+#include <steemit/chain/steem_object_types.hpp>
 
-#include <steemit/chain/steem_objects_type.hpp>
+#include <boost/multi_index/composite_key.hpp>
 
 namespace steemit { namespace witness_plugin {
 
@@ -15,7 +15,7 @@ using namespace steemit::chain;
 
 enum witness_plugin_object_type
 {
-   account_bandwidth_object   = ( WITNESS_SPACE_ID << 8 )
+   account_bandwidth_object_type = ( WITNESS_SPACE_ID << 8 )
 };
 
 enum bandwidth_type
