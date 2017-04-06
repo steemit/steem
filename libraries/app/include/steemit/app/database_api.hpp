@@ -330,15 +330,15 @@ namespace steemit {
             annotated_signed_transaction get_transaction(transaction_id_type trx_id) const;
 
             /**
-             *  This API will take a partially signed transaction and a std::set of public keys that the owner has the ability to sign for
-             *  and return the minimal substd::set of public keys that should add signatures to the transaction.
+             *  This API will take a partially signed transaction and a set of public keys that the owner has the ability to sign for
+             *  and return the minimal subset of public keys that should add signatures to the transaction.
              */
             std::set<public_key_type> get_required_signatures(const signed_transaction &trx, const flat_set<public_key_type> &available_keys) const;
 
             /**
-             *  This method will return the std::set of all public keys that could possibly sign for a given transaction.  This call can
-             *  be used by wallets to filter their std::set of public keys to just the relevant substd::set prior to calling @ref get_required_signatures
-             *  to get the minimum substd::set.
+             *  This method will return the set of all public keys that could possibly sign for a given transaction.  This call can
+             *  be used by wallets to filter their set of public keys to just the relevant subset prior to calling @ref get_required_signatures
+             *  to get the minimum subset.
              */
             std::set<public_key_type> get_potential_signatures(const signed_transaction &trx) const;
 
@@ -523,7 +523,6 @@ namespace steemit {
 
             std::shared_ptr<database_api_impl> my;
         };
-
     }
 }
 
