@@ -2891,7 +2891,7 @@ namespace steemit {
                     create<account_object>([&](account_object &a) {
                         a.name = account.name;
                         a.memo_key = account.keys.memo_key;
-                        a.json_metadata = "{\"created_at\": \"GENESIS\"}";
+                        a.json_metadata = "{created_at: 'GENESIS'}";
                         a.recovery_account = STEEMIT_INIT_MINER_NAME;
                     });
 
