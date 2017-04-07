@@ -1063,6 +1063,10 @@ namespace steemit {
                 while (itr != by_permlink_idx.end() &&
                        itr->parent_author == author &&
                        to_string(itr->parent_permlink) == permlink) {
+
+                    discussion push_discussion(*itr);
+                    push_discussion.active_votes = get_active_votes(author, permlink);
+
                     result.push_back(discussion(*itr));
                     set_pending_payout(result.back());
                     ++itr;
