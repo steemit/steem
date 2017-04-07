@@ -77,14 +77,6 @@ struct get_impacted_account_visitor
       _impacted.insert( op.author );
    }
 
-   void operator()( const custom_json_operation& op )
-   {
-      for( auto s: op.required_auths )
-         _impacted.insert( s );
-      for( auto s: op.required_posting_auths )
-         _impacted.insert( s );
-   }
-
    void operator()( const vote_operation& op )
    {
       _impacted.insert( op.voter );
