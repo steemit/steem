@@ -48,6 +48,12 @@ struct get_impacted_account_visitor
       op.get_required_owner_authorities( _impacted );
    }
 
+   void operator()( const account_create_with_delegation_operation& op )
+   {
+      _impacted.insert( op.new_account_name );
+      _impacted.insert( op.creator );
+   }
+
    void operator()( const account_create_operation& op )
    {
       _impacted.insert( op.new_account_name );
@@ -69,6 +75,14 @@ struct get_impacted_account_visitor
    void operator()( const delete_comment_operation& op )
    {
       _impacted.insert( op.author );
+   }
+
+   void operator()( const custom_json_operation& op )
+   {
+      for( auto s: op.required_auths )
+         _impacted.insert( s );
+      for( auto s: op.required_posting_auths )
+         _impacted.insert( s );
    }
 
    void operator()( const vote_operation& op )
