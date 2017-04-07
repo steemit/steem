@@ -11,7 +11,6 @@
 
 #include <steemit/protocol/protocol.hpp>
 
-//#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
