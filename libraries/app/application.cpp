@@ -1093,7 +1093,9 @@ void application::initialize_plugins( const boost::program_options::variables_ma
          boost::split(names, arg, boost::is_any_of(" \t,"));
          for( const std::string& name : names )
          {
-            enable_plugin( name );
+            // When no plugins are specified, the empty string is returned. Only enable non-empty plugin names
+            if( name.size() )
+               enable_plugin( name );
          }
       }
    }
