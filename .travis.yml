@@ -6,15 +6,13 @@ services:
   - docker
 
 before_install:
-  - git clone https://github.com/GolosChain/golos.git
-  - cd golos
-  - docker build -t goloschain/golos:$TRAVIS_TAG .
+  - docker build -t goloschain/golos:"$TRAVIS_TAG" .
 
 script:
   - docker images
 
 after_success:
-  - if [ "$TRAVIS_BRANCH" == "master"]; then
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
     docker push goloschain/golos:master;
     fi
