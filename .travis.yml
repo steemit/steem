@@ -13,6 +13,9 @@ script:
   - if [ -n "${TRAVIS_TAG}" ]; then
        docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
     fi
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+       docker build -t goloschain/golos:master ;
+    fi  
   - docker images
 
 after_success:
