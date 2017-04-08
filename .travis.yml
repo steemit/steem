@@ -8,8 +8,6 @@ services:
 before_install:
   - echo "$TRAVIS_TAG"
   - echo "$TRAVIS_BRANCH"
-  - echo "${TRAVIS_BRANCH}"
-  - echo $TRAVIS_BRANCH
 
 script: 
   - if [ -n "${TRAVIS_TAG}" ]; then
@@ -22,7 +20,7 @@ after_success:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
       docker push goloschain/golos:master;
     fi
-  - if [ -n "$TRAVIS_TAG"] && [ "$TRAVIS_TAG" != ""]; then
+  - if [ -n "$TRAVIS_TAG" ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push goloschain/golos:$TRAVIS_TAG;
+      docker push goloschain/golos:"$TRAVIS_TAG";
     fi
