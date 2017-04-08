@@ -15,10 +15,13 @@ script:
     fi
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
        docker build -t goloschain/golos:master ;
-    fi  
-  - if [ "$TRAVIS_BRANCH" != "master" ]; then
-       docker build -t goloschain/golos ;
-    fi  
+    else
+       if [ -n "${TRAVIS_TAG}" ]; then
+         echo "Image already built." ;
+       else
+         docker build -t goloschain/golos ;
+       fi
+    fi
   - docker images
 
 after_success:
