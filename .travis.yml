@@ -12,15 +12,8 @@ before_install:
 script: 
   - if [ -n "${TRAVIS_TAG}" ]; then
        docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
-    fi
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
-       docker build -t goloschain/golos:master ;
     else
-       if [ -n "${TRAVIS_TAG}" ]; then
-         echo "Image already built." ;
-       else
-         docker build -t goloschain/golos ;
-       fi
+       docker build -t goloschain/golos:"$TRAVIS_BRANCH" . ;
     fi
   - docker images
 
