@@ -29,7 +29,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/hardfork.hpp>
 
-#include <steemit/time/time.hpp>
+#include <fc/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -136,9 +136,8 @@ void witness_plugin::schedule_production_loop()
 {
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms, wait for the whole second.
-   fc::time_point ntp_now = steemit::time::now();
    fc::time_point fc_now = fc::time_point::now();
-   int64_t time_to_next_second = 1000000 - (ntp_now.time_since_epoch().count() % 1000000);
+   int64_t time_to_next_second = 1000000 - (fc_now.time_since_epoch().count() % 1000000);
    if( time_to_next_second < 50000 )      // we must sleep for at least 50ms
        time_to_next_second += 1000000;
 
@@ -221,7 +220,7 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
 block_production_condition::block_production_condition_enum witness_plugin::maybe_produce_block( fc::mutable_variant_object& capture )
 {
    chain::database& db = database();
-   fc::time_point now_fine = steemit::time::now();
+   fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
    // If the next block production opportunity is in the present or future, we're synced.

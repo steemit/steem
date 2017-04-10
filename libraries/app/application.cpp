@@ -30,7 +30,7 @@
 #include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/database_exceptions.hpp>
 
-#include <steemit/time/time.hpp>
+#include <fc/time.hpp>
 
 #include <graphene/net/core_messages.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -316,16 +316,6 @@ namespace detail {
                ilog( "All transaction signatures will be validated" );
                _force_validate = true;
             }
-
-            if( _options->at("enable-ntp").as<bool>() )
-            {
-               ilog( "Enable NTP" );
-               steemit::time::set_ntp_enabled(true);
-            }
-            else
-            {
-               ilog( "Launching with NTP disabled" );
-            }
          }
          else
          {
@@ -476,7 +466,7 @@ namespace detail {
                   ("n", blk_msg.block.block_num()) );
             }
 
-            time_point_sec now = steemit::time::now();
+            time_point_sec now = fc::time_point::now();
 
             uint64_t max_accept_time = now.sec_since_epoch();
             max_accept_time += allow_future_time;
@@ -827,10 +817,10 @@ namespace detail {
          return fc::time_point_sec::min();
       } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
-      /** returns steemit::time::now() */
+      /** returns fc::time_point::now(); */
       virtual fc::time_point_sec get_blockchain_now() override
       {
-         return steemit::time::now();
+         return fc::time_point::now();
       }
 
       virtual item_hash_t get_head_block_id() const override
@@ -865,7 +855,6 @@ namespace detail {
          }
          if( _chain_db )
             _chain_db->close();
-         steemit::time::set_ntp_enabled(false);
       }
 
       application* _self;
@@ -948,7 +937,6 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
          ("flush", bpo::value< uint32_t >()->default_value(100000), "Flush shared memory file to disk this many blocks")
-         ("enable-ntp", bpo::value< bool >()->default_value(false), "Enable built-in NTP client")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
