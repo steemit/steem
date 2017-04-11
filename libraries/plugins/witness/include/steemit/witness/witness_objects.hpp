@@ -4,7 +4,7 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steemit { namespace witness_plugin {
+namespace steemit { namespace witness {
 
 using namespace std;
 using namespace steemit::chain;
@@ -15,7 +15,8 @@ using namespace steemit::chain;
 
 enum witness_plugin_object_type
 {
-   account_bandwidth_object_type = ( WITNESS_SPACE_ID << 8 )
+   account_bandwidth_object_type = ( WITNESS_SPACE_ID << 8 ),
+   content_edit_lock_object_type = ( WITNESS_SPACE_ID << 8 ) + 1
 };
 
 enum bandwidth_type
@@ -47,6 +48,24 @@ class account_bandwidth_object : public object< account_bandwidth_object_type, a
 
 typedef oid< account_bandwidth_object > account_bandwidth_id_type;
 
+class content_edit_lock_object : public object< content_edit_lock_object_type, content_edit_lock_object >
+{
+   public:
+      template< typename Constructor, typename Allocator >
+      content_edit_lock_object( Constructor&& c, allocator< Allocator > a )
+      {
+         c( *this );
+      }
+
+      content_edit_lock_object() {}
+
+      id_type           id;
+      account_name_type account;
+      time_point_sec    lock_time;
+};
+
+typedef oid< content_edit_lock_object > content_edit_lock_id_type;
+
 struct by_account_bandwidth_type;
 
 typedef multi_index_container <
@@ -64,10 +83,27 @@ typedef multi_index_container <
    allocator< account_bandwidth_object >
 > account_bandwidth_index;
 
-} } // steemit::witness_plugin
+struct by_account;
 
-FC_REFLECT_ENUM( steemit::witness_plugin::bandwidth_type, (post)(forum)(market) )
+typedef multi_index_container <
+   content_edit_lock_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< content_edit_lock_object, content_edit_lock_id_type, &content_edit_lock_object::id > >,
+      ordered_unique< tag< by_account >,
+         member< content_edit_lock_object, account_name_type, &content_edit_lock_object::account > >
+   >,
+   allocator< content_edit_lock_object >
+> content_edit_lock_index;
 
-FC_REFLECT( steemit::witness_plugin::account_bandwidth_object,
+} } // steemit::witness
+
+FC_REFLECT_ENUM( steemit::witness::bandwidth_type, (post)(forum)(market) )
+
+FC_REFLECT( steemit::witness::account_bandwidth_object,
             (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update) )
-CHAINBASE_SET_INDEX_TYPE( steemit::witness_plugin::account_bandwidth_object, steemit::witness_plugin::account_bandwidth_index )
+CHAINBASE_SET_INDEX_TYPE( steemit::witness::account_bandwidth_object, steemit::witness::account_bandwidth_index )
+
+FC_REFLECT( steemit::witness::content_edit_lock_object,
+            (id)(account)(lock_time) )
+CHAINBASE_SET_INDEX_TYPE( steemit::witness::content_edit_lock_object, steemit::witness::content_edit_lock_index )

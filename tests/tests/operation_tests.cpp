@@ -5667,8 +5667,8 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      auto last_bandwidth_update = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).last_bandwidth_update;
-      auto average_bandwidth = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).average_bandwidth;
+      auto last_bandwidth_update = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).last_bandwidth_update;
+      auto average_bandwidth = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).average_bandwidth;
       BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
       BOOST_REQUIRE( average_bandwidth == fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
       auto total_bandwidth = average_bandwidth;
@@ -5683,8 +5683,8 @@ BOOST_AUTO_TEST_CASE( account_bandwidth )
 
       db.push_transaction( tx, 0 );
 
-      last_bandwidth_update = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).last_bandwidth_update;
-      average_bandwidth = db.get< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( "alice", witness_plugin::bandwidth_type::market ) ).average_bandwidth;
+      last_bandwidth_update = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).last_bandwidth_update;
+      average_bandwidth = db.get< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( "alice", witness::bandwidth_type::market ) ).average_bandwidth;
       BOOST_REQUIRE( last_bandwidth_update == db.head_block_time() );
       BOOST_REQUIRE( average_bandwidth == total_bandwidth + fc::raw::pack_size( tx ) * 10 * STEEMIT_BANDWIDTH_PRECISION );
    }

@@ -1,7 +1,9 @@
 file(GLOB HEADERS "include/steemit/witness/*.hpp")
 
 add_library( steemit_witness
-             witness.cpp
+             witness_plugin.cpp
+             witness_evaluators.cpp
+             witness_operations.cpp
            )
 
 target_link_libraries( steemit_witness steemit_chain steemit_protocol steemit_app )

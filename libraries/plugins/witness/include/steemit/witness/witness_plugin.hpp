@@ -28,7 +28,7 @@
 
 #include <fc/thread/future.hpp>
 
-namespace steemit { namespace witness_plugin {
+namespace steemit { namespace witness {
 
 using std::string;
 using protocol::public_key_type;
@@ -97,4 +97,4 @@ private:
    std::unique_ptr< detail::witness_plugin_impl > _my;
 };
 
-} } //steemit::witness_plugin
+} } //steemit::witness
