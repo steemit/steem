@@ -267,7 +267,7 @@ struct get_impacted_account_visitor
 
    void operator()( const producer_reward_operation& op )
    {
-      _impacted.insert( op.owner );
+      _impacted.insert( op.producer );
    }
 
    //void operator()( const operation& op ){}

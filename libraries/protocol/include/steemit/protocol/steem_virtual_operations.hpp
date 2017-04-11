@@ -169,9 +169,9 @@ namespace steemit { namespace protocol {
    struct producer_reward_operation : public virtual_operation
    {
       producer_reward_operation(){}
-      producer_reward_operation( const string& o, const asset& v ) : owner( o ), vesting_shares( v ) {}
+      producer_reward_operation( const string& p, const asset& v ) : producer( p ), vesting_shares( v ) {}
 
-      account_name_type owner;
+      account_name_type producer;
       asset             vesting_shares;
 
    };
@@ -192,4 +192,4 @@ FC_REFLECT( steemit::protocol::hardfork_operation, (hardfork_id) )
 FC_REFLECT( steemit::protocol::comment_payout_update_operation, (author)(permlink) )
 FC_REFLECT( steemit::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
 FC_REFLECT( steemit::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
-FC_REFLECT( steemit::protocol::producer_reward_operation, (owner)(vesting_shares) )
+FC_REFLECT( steemit::protocol::producer_reward_operation, (producer)(vesting_shares) )
