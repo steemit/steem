@@ -108,28 +108,21 @@ Here are the required packages:
         libreadline-dev \
         perl
 
-Steem requires Boost 1.57 or later. The Boost provided in the Ubuntu 14.04
+Steem requires Boost 1.59 or later. The Boost provided in the Ubuntu 14.04
 package manager (Boost 1.55) is too old. So building Steem on Ubuntu 14.04
 requires downloading and installing a more recent version of Boost.
 
-According to [this mailing list
-post](http://boost.2283326.n4.nabble.com/1-58-1-bugfix-release-necessary-td4674686.html),
-Boost 1.58 is not compatible with gcc 4.8 (the default C++ compiler for
-Ubuntu 14.04) when compiling in C++11 mode (which Steem does). So we will
-use Boost 1.57; if you try to build with any other version, you will
-probably have a bad time.
-
-Here is how to build and install Boost 1.57 into your user's home directory
+Here is how to build and install Boost 1.59 into your user's home directory
 (make sure you install all the packages above first):
 
-    BOOST_ROOT=$HOME/opt/boost_1_57_0
-    URL='http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.tar.bz2/download'
-    wget -c "$URL" -O boost_1_57_0.tar.bz2
-    [ $( sha256sum boost_1_57_0.tar.bz2 | cut -d ' ' -f 1 ) == \
-        "910c8c022a33ccec7f088bd65d4f14b466588dda94ba2124e78b8c57db264967" ] \
+    BOOST_ROOT=$HOME/opt/boost_1_59_0
+    URL='http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.bz2/download'
+    wget -c "$URL" -O boost_1_59_0.tar.bz2
+    [ $( sha256sum boost_1_59_0.tar.bz2 | cut -d ' ' -f 1 ) == \
+        "727a932322d94287b62abb1bd2d41723eec4356a7728909e38adb65ca25241ca"] \
         || ( echo 'Corrupt download' ; exit 1 )
-    tar xjf boost_1_57_0.tar.bz2
-    cd boost_1_57_0
+    tar xjf boost_1_59_0.tar.bz2
+    cd boost_1_59_0
     ./bootstrap.sh "--prefix=$BOOST_ROOT"
     ./b2 install
 
