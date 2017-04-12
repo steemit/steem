@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export DATADIR=/media/ssd0
+
 # if the writer node dies by itself, kill runsv causing the container to exit
 STEEMD_PID=`pgrep -f p2p-endpoint`
 if [[ ! $? -eq 0 ]]; then
@@ -29,7 +31,10 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     echo steemdsync: waiting for steemd to exit cleanly
     while [ -e /proc/$STEEMD_PID ]; do sleep 0.1; done
     echo steemdsync: starting a new blockchainstate upload operation
-    cd $HOME
+    cd $DATADIR/blockchain
+    # copy block_log and index over from the root EBS volume
+    cp -r $HOME/blockchain/* .
+    cd $DATADIR
     echo steemdsync: compressing blockchainstate...
     tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 blockchain
     FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
@@ -41,7 +46,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     	exit 1
     fi
     echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
-    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
+    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 --acl public-read
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1

@@ -3,6 +3,8 @@ export HOME="/var/lib/steemd"
 
 STEEMD="/usr/local/steemd-full/bin/steemd"
 
+export DATADIR="/media/ssd0"
+
 chown -R steemd:steemd $HOME
 
 # seed nodes come from doc/seednodes.txt which is
@@ -38,28 +40,34 @@ mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
 cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
 # get blockchain state from an S3 bucket
-# if this url is not provieded then we might as well exit
 S3_DOWNLOAD_BUCKET=steemit-$NODE_ENV-blockchainstate
 echo steemd: beginning download and decompress of s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
-if [[ ! "$SYNC_TO_S3" ]]; then
-  mkdir -p /mnt/ramdisk
-  mount -t ramfs -o size=43008m ramfs /mnt/ramdisk
-  s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
-  ln -s blockchain/block_log /mnt/ramdisk/blockchain/block_log
-  ln -s blockchain/block_log.index /mnt/ramdisk/blockchain/block_log.index
-  ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
-  chown -R steemd:steemd /mnt/ramdisk/blockchain
-else
-  s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+# clean out data dir since it's semi-persistent block storage on the ec2
+rm -rf $DATADIR/*
+cd $DATADIR
+s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/shared*' -C $HOME 'blockchain/block*'
+if [[ $? -ne 0 ]]; then
+  if [[ ! "$SYNC_TO_S3"]]; then
+    echo notifyalert steemd: unable to pull blockchain state from S3 - exiting
+    exit 1
+  else
+    echo notifywarning steemdsync: shared memory file for $VERSION not found, creating a new one from scratch
+    mkdir $DATADIR/blockchain 
+  fi
+fi
+cd $HOME
+ln -s blockchain/block_log $DATADIR/blockchain/block_log
+ln -s blockchain/block_log.index $DATADIR/blockchain/block_log.index
+ARGS+=" --shared-file-dir=$DATADIR/blockchain"
+chown -R steemd:steemd $DATADIR/blockchain
+
+if [[ "$SYNC_TO_S3" ]]
   touch /tmp/issyncnode
   chown www-data:www-data /tmp/issyncnode
 fi
-if [[ $? -ne 0 ]]; then
-  echo error: unable to pull blockchain state from S3 - exitting
-  exit 1
-fi
 
-# change owner of downloaded blockchainstate to steemd user
+cd $HOME
+
 chown -R steemd:steemd /var/lib/steemd/*
 
 # start multiple read-only instances based on the number of cores
