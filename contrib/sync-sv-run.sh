@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DATADIR=/media/ssd0
+export DATADIR="/media/ssd0"
 
 # if the writer node dies by itself, kill runsv causing the container to exit
 STEEMD_PID=`pgrep -f p2p-endpoint`
