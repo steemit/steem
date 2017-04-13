@@ -968,6 +968,7 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
    }
 
    FC_ASSERT( is_virtual_operation( op ) );
+   _current_trx_id = transaction_id_type();
    operation_notification note(op);
    notify_pre_apply_operation( note );
    notify_post_apply_operation( note );
