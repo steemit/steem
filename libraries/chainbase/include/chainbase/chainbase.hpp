@@ -788,13 +788,26 @@ namespace chainbase {
          }
 
          template<typename MultiIndexType>
+         bool has_index()const
+         {
+            CHAINBASE_REQUIRE_READ_LOCK("get_index", typename MultiIndexType::value_type);
+            typedef generic_index<MultiIndexType> index_type;
+            return _index_map.size() > index_type::value_type::type_id && _index_map[index_type::value_type::type_id];
+         }
+
+         template<typename MultiIndexType>
          const generic_index<MultiIndexType>& get_index()const
          {
             CHAINBASE_REQUIRE_READ_LOCK("get_index", typename MultiIndexType::value_type);
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
-            assert( _index_map.size() > index_type::value_type::type_id );
-            assert( _index_map[index_type::value_type::type_id] );
+
+            if( !has_index< MultiIndexType >() )
+            {
+               std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+               BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
+            }
+
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
          }
 
@@ -802,8 +815,13 @@ namespace chainbase {
          void add_index_extension( std::shared_ptr< index_extension > ext )
          {
             typedef generic_index<MultiIndexType> index_type;
-            assert( _index_map.size() > index_type::value_type::type_id );
-            assert( _index_map[index_type::value_type::type_id] );
+
+            if( !has_index< MultiIndexType >() )
+            {
+               std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+               BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
+            }
+
             _index_map[index_type::value_type::type_id]->add_index_extension( ext );
          }
 
@@ -813,8 +831,13 @@ namespace chainbase {
             CHAINBASE_REQUIRE_READ_LOCK("get_index", typename MultiIndexType::value_type);
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
-            assert( _index_map.size() > index_type::value_type::type_id );
-            assert( _index_map[index_type::value_type::type_id] );
+
+            if( !has_index< MultiIndexType >() )
+            {
+               std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+               BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
+            }
+
             return index_type_ptr( _index_map[index_type::value_type::type_id]->get() )->indicies().template get<ByIndex>();
          }
 
@@ -824,8 +847,13 @@ namespace chainbase {
             CHAINBASE_REQUIRE_WRITE_LOCK("get_mutable_index", typename MultiIndexType::value_type);
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
-            assert( _index_map.size() > index_type::value_type::type_id );
-            assert( _index_map[index_type::value_type::type_id] );
+
+            if( !has_index< MultiIndexType >() )
+            {
+               std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+               BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
+            }
+
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
          }
 
