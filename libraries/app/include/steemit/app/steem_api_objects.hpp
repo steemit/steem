@@ -54,6 +54,7 @@ typedef chain::witness_schedule_object                 witness_schedule_api_obj;
 typedef chain::vesting_delegation_object               vesting_delegation_api_obj;
 typedef chain::vesting_delegation_expiration_object    vesting_delegation_expiration_api_obj;
 typedef chain::reward_fund_object                      reward_fund_api_obj;
+typedef witness_plugin::account_bandwidth_object       account_bandwidth_api_obj;
 
 struct comment_api_obj
 {
@@ -254,7 +255,7 @@ struct account_api_obj
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
 
-      try
+      if( db.has_index< witness_plugin::account_bandwidth_index >() )
       {
          auto forum_bandwidth = db.find< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( name, witness_plugin::bandwidth_type::forum ) );
 
@@ -274,7 +275,6 @@ struct account_api_obj
             last_market_bandwidth_update = market_bandwidth->last_bandwidth_update;
          }
       }
-      catch( ... ) {}
    }
 
 

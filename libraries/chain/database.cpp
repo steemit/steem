@@ -175,10 +175,6 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
 
-         // We can optimize certain operations by knowing if we are reindexing and what the head block will end up being
-         _is_reindexing = true;
-         _reindex_head_num = 0;
-
          while( itr.first.block_num() != last_block_num )
          {
             auto cur_block_num = itr.first.block_num();
@@ -191,8 +187,6 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
          apply_block( itr.first, skip_flags );
          set_revision( head_block_num() );
-
-         _is_reindexing = false;
       });
 
       if( _block_log.head()->block_num() )

@@ -632,15 +632,19 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
    });
 }
 
-/*optional< account_bandwidth_api_obj > database_api::get_account_bandwidth( string account, bandwidth_type type )const
+optional< account_bandwidth_api_obj > database_api::get_account_bandwidth( string account, witness_plugin::bandwidth_type type )const
 {
    optional< account_bandwidth_api_obj > result;
-   auto band = my->_db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( account, type ) );
-   if( band != nullptr )
-      result = *band;
+
+   if( my->_db.has_index< witness_plugin::account_bandwidth_index >() )
+   {
+      auto band = my->_db.find< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( account, type ) );
+      if( band != nullptr )
+         result = *band;
+   }
 
    return result;
-}*/
+}
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //

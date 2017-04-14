@@ -50,9 +50,6 @@ namespace steemit { namespace chain {
 
          bool _log_hardforks = true;
 
-         bool _is_reindexing = false;
-         uint32_t _reindex_head_num = 0;
-
          enum validation_steps
          {
             skip_nothing                = 0,
