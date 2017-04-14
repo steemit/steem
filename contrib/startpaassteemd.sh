@@ -47,7 +47,7 @@ rm -rf $DATADIR/*
 cd $DATADIR
 s3cmd get s3://$S3_DOWNLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/shared*' -C $HOME 'blockchain/block*'
 if [[ $? -ne 0 ]]; then
-  if [[ ! "$SYNC_TO_S3"]]; then
+  if [[ ! "$SYNC_TO_S3" ]]; then
     echo notifyalert steemd: unable to pull blockchain state from S3 - exiting
     exit 1
   else
@@ -61,7 +61,7 @@ ln -s blockchain/block_log.index $DATADIR/blockchain/block_log.index
 ARGS+=" --shared-file-dir=$DATADIR/blockchain"
 chown -R steemd:steemd $DATADIR/blockchain
 
-if [[ "$SYNC_TO_S3" ]]
+if [[ "$SYNC_TO_S3" ]]; then
   touch /tmp/issyncnode
   chown www-data:www-data /tmp/issyncnode
 fi

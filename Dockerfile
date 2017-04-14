@@ -199,9 +199,6 @@ RUN chmod +x /usr/local/bin/paas-sv-run.sh
 RUN chmod +x /usr/local/bin/sync-sv-run.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
-# make dir for a mountpoint used in paas deployment
-RUN mkdir -p /media/ssd0
-
 # new entrypoint for all instances
 # this enables exitting of the container when the writer node dies
 # for PaaS mode (elasticbeanstalk, etc)
