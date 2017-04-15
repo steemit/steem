@@ -140,7 +140,7 @@ namespace steemit {
                         lower_tags.insert(string()); /// add it to the universal tag
                     }
 
-                    meta.tags = lower_tags; /// TODO: std::move???
+                    meta.tags = std::move(lower_tags);
 
                     return meta;
                 }

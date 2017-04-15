@@ -351,11 +351,11 @@ namespace steemit {
                     }
 
                     fc::mutable_variant_object result;
-                    result["blockchain_name"]        = BLOCKCHAIN_NAME;
-                    result["chain_id"]                 = STEEMIT_CHAIN_ID;
+                    result["blockchain_name"] = BLOCKCHAIN_NAME;
+                    result["chain_id"] = STEEMIT_CHAIN_ID;
 //                    result["blockchain_description"] = BTS_BLOCKCHAIN_DESCRIPTION;
                     result["blockchain_version"] = STEEMIT_BLOCKCHAIN_VERSION;
-                    result["address_prefix"]           = STEEMIT_ADDRESS_PREFIX;
+                    result["address_prefix"] = STEEMIT_ADDRESS_PREFIX;
                     result["client_version"] = client_version;
                     result["steem_revision"] = graphene::utilities::git_revision_sha;
                     result["steem_revision_age"] = fc::get_approximate_relative_time_string(fc::time_point_sec(graphene::utilities::git_revision_unix_timestamp));
@@ -1053,7 +1053,18 @@ namespace steemit {
             return my->_remote_db->get_ops_in_block(block_num, only_virtual);
         }
 
-        vector<account_api_obj> wallet_api::list_my_accounts() {
+        string wallet_api::get_account_count() const {
+            return std::to_string(my->_remote_db->get_account_count());
+        }
+
+        string wallet_api::get_steem_per_mvests() const {
+            auto dynamic_props = my->_remote_db->get_dynamic_global_properties();
+            auto price = (dynamic_props.total_vesting_fund_steem /
+                          dynamic_props.total_vesting_shares);
+            return std::to_string(price.to_real() * 1000000);
+        }
+
+        vector<account_api_obj> wallet_api::list_my_accounts() const {
             FC_ASSERT(!is_locked(), "Wallet must be unlocked to list accounts");
             vector<account_api_obj> result;
 

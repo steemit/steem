@@ -2085,18 +2085,18 @@ namespace steemit {
                     if (c.parent_author == STEEMIT_ROOT_POST_PARENT) {
                         if (has_hardfork(STEEMIT_HARDFORK_0_12__177) &&
                             c.last_payout == fc::time_point_sec::min()) {
-                                c.cashout_time = head_block_time() +
-                                                 STEEMIT_SECOND_CASHOUT_WINDOW;
+                            c.cashout_time = head_block_time() +
+                                             STEEMIT_SECOND_CASHOUT_WINDOW;
                         } else {
-                                c.cashout_time = fc::time_point_sec::maximum();
+                            c.cashout_time = fc::time_point_sec::maximum();
                         }
                     }
 
                     if (calculate_discussion_payout_time(c) ==
                         fc::time_point_sec::maximum()) {
-                            c.mode = archived;
+                        c.mode = archived;
                     } else {
-                            c.mode = second_payout;
+                        c.mode = second_payout;
                     }
 
                     c.last_payout = head_block_time();
@@ -2891,7 +2891,7 @@ namespace steemit {
                     create<account_object>([&](account_object &a) {
                         a.name = account.name;
                         a.memo_key = account.keys.memo_key;
-                        a.json_metadata = "{\"created_at\": \"GENESIS\"}";
+                        a.json_metadata = "{created_at: 'GENESIS'}";
                         a.recovery_account = STEEMIT_INIT_MINER_NAME;
                     });
 
@@ -3220,13 +3220,13 @@ namespace steemit {
 
                     modify(get_feed_history(), [&](feed_history_object &fho) {
                         fho.price_history.push_back(median_feed);
-                        size_t golos_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
+                        size_t steem_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16;
                         if (has_hardfork(STEEMIT_HARDFORK_0_16__551)) {
-                            golos_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
+                            steem_feed_history_window = STEEMIT_FEED_HISTORY_WINDOW;
                         }
 
                         if (fho.price_history.size() >
-                            golos_feed_history_window) {
+                            steem_feed_history_window) {
                             fho.price_history.pop_front();
                         }
 
@@ -4145,17 +4145,17 @@ namespace steemit {
                 case STEEMIT_HARDFORK_0_1:
                     perform_vesting_share_split(10000);
 #ifdef STEEMIT_BUILD_TESTNET
-                    {
-                        custom_operation test_op;
-                        string op_msg = "Testnet: Hardfork applied";
-                        test_op.data = vector<char>(op_msg.begin(), op_msg.end());
-                        test_op.required_auths.insert(STEEMIT_INIT_MINER_NAME);
-                        operation op = test_op;   // we need the operation object to live to the end of this scope
-                        operation_notification note(op);
-                        notify_pre_apply_operation(note);
-                        notify_post_apply_operation(note);
-                    }
-                    break;
+                {
+                    custom_operation test_op;
+                    string op_msg = "Testnet: Hardfork applied";
+                    test_op.data = vector<char>(op_msg.begin(), op_msg.end());
+                    test_op.required_auths.insert(STEEMIT_INIT_MINER_NAME);
+                    operation op = test_op;   // we need the operation object to live to the end of this scope
+                    operation_notification note(op);
+                    notify_pre_apply_operation(note);
+                    notify_post_apply_operation(note);
+                }
+                break;
 #endif
                     break;
                 case STEEMIT_HARDFORK_0_2:

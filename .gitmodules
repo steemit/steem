@@ -1,6 +1,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/steemit/fc.git
+	url = https://github.com/GolosChain/fc.git
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
 	url = https://github.com/GolosChain/chainbase.git

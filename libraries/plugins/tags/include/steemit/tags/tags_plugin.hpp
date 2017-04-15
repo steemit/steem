@@ -100,23 +100,135 @@ namespace steemit {
 
         typedef oid<tag_object> tag_id_type;
 
+        template<typename T, typename C = std::less<T>>
+        class comparable_index {
+        public:
+            typedef T value_type;
 
-        struct by_cashout; /// all posts regardless of depth
-        struct by_net_rshares; /// all comments regardless of depth
-        struct by_parent_created;
-        struct by_parent_active;
-        struct by_parent_promoted;
-        struct by_parent_net_rshares; /// all top level posts by direct pending payout
-        struct by_parent_net_votes; /// all top level posts by direct votes
-        struct by_parent_children_rshares2; /// all top level posts by total cumulative payout (aka trending)
-        struct by_parent_children; /// all top level posts with the most discussion (replies at all levels)
-        struct by_parent_hot;
-        struct by_author_parent_created;  /// all blog posts by author with tag
-        struct by_author_comment;
-        struct by_mode_parent_children_rshares2;
+            virtual bool operator()(const T &first, const T &second) const = 0;
+        };
+
+        class by_cashout : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<tag_name_type>()(first.tag, second.tag) &&
+                       std::less<time_point_sec>()(first.cashout, second.cashout) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        }; /// all posts regardless of depth
+
+        class by_net_rshares : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::greater<int64_t>()(first.net_rshares, second.net_rshares) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        }; /// all comments regardless of depth
+
+        class by_parent_created : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<time_point_sec>()(first.created, second.created) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };
+
+        class by_parent_active : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<time_point_sec>()(first.active, second.active) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };
+
+        class by_parent_promoted : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<share_type>()(first.promoted_balance, second.promoted_balance) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };
+
+        class by_parent_net_rshares : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<int64_t>()(first.net_rshares, second.net_rshares) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        }; /// all top level posts by direct pending payout
+
+        class by_parent_net_votes : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<int32_t>()(first.net_votes, second.net_votes) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        }; /// all top level posts by direct votes
+
+        class by_parent_children_rshares2
+                : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<fc::uint128_t>()(first.children_rshares2, second.children_rshares2) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        }; /// all top level posts by total cumulative payout (aka trending)
+
+        class by_parent_children : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<int32_t>()(first.children, second.children) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        }; /// all top level posts with the most discussion (replies at all levels)
+
+        class by_parent_hot : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<double>()(first.hot, second.hot) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };
+
+        class by_author_parent_created : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<account_id_type>()(first.author, second.author) &&
+                       std::greater<time_point_sec>()(first.created, second.created) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };  /// all blog posts by author with tag
+
+        class by_author_comment : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<account_id_type>()(first.author, second.author) &&
+                       std::less<comment_id_type>()(first.comment, second.comment) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };
+
+        class by_mode_parent_children_rshares2
+                : public comparable_index<tag_object> {
+        public:
+            virtual bool operator()(const tag_object &first, const tag_object &second) const override {
+                return std::less<comment_mode>()(first.mode, second.mode) &&
+                       std::less<comment_id_type>()(first.parent, second.parent) &&
+                       std::greater<fc::uint128_t>()(first.children_rshares2, second.children_rshares2) &&
+                       std::less<tag_id_type>()(first.id, second.id);
+            }
+        };
+
         struct by_comment;
         struct by_tag;
-
 
         typedef multi_index_container<
                 tag_object,
@@ -243,7 +355,7 @@ namespace steemit {
         > tag_index;
 
 /**
- *  The purpose of this index is to quickly identify how popular various tags by maintaining variou sums over
+ *  The purpose of this index is to quickly identify how popular various tags by maintaining various sums over
  *  all posts under a particular tag
  */
         class tag_stats_object

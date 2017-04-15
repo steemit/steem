@@ -69,7 +69,7 @@ namespace steemit {
              *  STEEMIT_MIN_COMPOUNDING_INTERVAL_SECONDS has past since sbd_last_interest_payment then
              *  interest is added to sbd_balance.
              *
-             *  @defgroup sbd_data sbd Balance Data
+             *  @defgroup sbd_data SBD Balance Data
              */
             ///@{
             asset sbd_balance = asset(0, SBD_SYMBOL); /// total sbd balance

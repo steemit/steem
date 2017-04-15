@@ -30,10 +30,10 @@ dockerized container.  Both common binary types are included.
 To run a p2p node (ca. 2GB of memory is required at the moment):
 
     docker run \
-        -d -p 2001:2001 -p 8090:8090 --name golosd-default \
-        golosit/golos
+        -d -p 2001:2001 -p 8090:8090 --name golos-default \
+        goloschain/golos
 
-    docker logs -f golosd-default  # follow along
+    docker logs -f golos-default  # follow along
 
 ## Dockerized Full Node
 
@@ -42,10 +42,10 @@ that uses ca. 14GB of memory and growing:
 
     docker run \
         --env USE_WAY_TOO_MUCH_RAM=1 \
-        -d -p 2001:2001 -p 8090:8090 --name golosd-full \
-        golosit/golos
+        -d -p 2001:2001 -p 8090:8090 --name golos-full \
+        goloschain/golos
 
-    docker logs -f golosd-full
+    docker logs -f golos-full
 
 # Seed Nodes
 
