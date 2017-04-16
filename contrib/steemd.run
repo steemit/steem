@@ -1,8 +1,8 @@
 #!/bin/bash
 
-export HOME="/var/lib/steemd"
-
 STEEMD="/usr/local/steemd-default/bin/steemd"
+
+VERSION=`cat /etc/steemdversion`
 
 if [[ "$USE_WAY_TOO_MUCH_RAM" ]]; then
     STEEMD="/usr/local/steemd-full/bin/steemd"
@@ -69,6 +69,11 @@ fi
 # who knows what else it dumps into current dir
 cd $HOME
 
+if [[ "$USE_PUBLIC_SHARED_MEMORY" ]]; then
+  echo steemd: Downloading and uncompressing blockchain-$VERSION-latest.tar.bz2 - this may take awhile.
+  wget -qO- https://s3.amazonaws.com/steemit-dev-blockchainstate/blockchain-$VERSION-latest.tar.bz2 | pbzip2 -m2000dc | tar x
+fi
+
 # slow down restart loop if flapping
 sleep 1
 
@@ -105,7 +110,6 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
         $STEEMD \
           --rpc-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
-          --shared-file-dir=/mnt/ramdisk/blockchain \
           --read-forward-rpc=127.0.0.1:8091 \
           --read-only \
           2>&1 &
