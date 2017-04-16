@@ -46,7 +46,8 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     	exit 1
     fi
     echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
-    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2 --acl public-read
+    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
+    aws s3api put-object-acl --bucket $S3_UPLOAD_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read 
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1
