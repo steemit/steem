@@ -56,8 +56,8 @@ if [[ $? -ne 0 ]]; then
   fi
 fi
 cd $HOME
-ln -s blockchain/block_log $DATADIR/blockchain/block_log
-ln -s blockchain/block_log.index $DATADIR/blockchain/block_log.index
+# ln -s blockchain/block_log $DATADIR/blockchain/block_log
+# ln -s blockchain/block_log.index $DATADIR/blockchain/block_log.index
 ARGS+=" --shared-file-dir=$DATADIR/blockchain"
 chown -R steemd:steemd $DATADIR/blockchain
 
@@ -100,7 +100,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
         $STEEMD \
           --rpc-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
-          --shared-file-dir=/mnt/ramdisk/blockchain \
+          --shared-file-dir=$DATADIR \
           --read-forward-rpc=127.0.0.1:8091 \
           --read-only \
           2>&1 &
