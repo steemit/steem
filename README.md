@@ -64,17 +64,6 @@ This same file is baked into the docker images and can be overridden by
 setting `STEEMD_SEED_NODES` in the container environment at `docker run`
 time to a whitespace delimited list of seed nodes (with port).
 
-# How to Mine
-
-The mining algorithm used by Steem requires the owner to have access to the
-private key used by the account. This means it does not favor mining pools.
-
-    ./steemd --miner=["accountname","${WIFPRIVATEKEY}"] \
-        --witness="accountname" --seed-node="52.38.66.234:2001"
-
-Make sure that your accountname is unique and not already used by someone
-else or your proof of work might not be accepted by the blockchain.
-
 # Building
 
 See [doc/building.md](doc/building.md) for detailed build instructions, including
