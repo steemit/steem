@@ -55,25 +55,12 @@ that uses ca. 14GB of memory and growing:
 
     docker logs -f steemd-full
 
-## Dockerized Full Node with HTTP frontend and pre-built shared memory file
-
-To run a full node with an NGINX frontend and load a pre-built shared memory file (fast connections only):
-
-    docker run \
-        --env USE_WAY_TOO_MUCH_RAM=1 --env USE_FULL_WEB_NODE=1 \
-        --env USE_PUBLIC_SHARED_MEMORY=1 --env USE_NGINX_FRONTEND=1 \
-        -d -p 2001:2001 -p 8090:8090 --name steemd-full \
-        steemit/steem
-
-    docker logs -f steemd-full
-
 # Environment variables
 
 There are quite a few environment variables that can be set to run steemd in different ways:
 
 * `USE_WAY_TOO_MUCH_RAM` - if set to true, steemd starts a 'full node'
 * `USE_FULL_WEB_NODE` - if set to true, a default config file will be used that enables a full set of API's and associated plugins.
-* `USE_PUBLIC_SHARED_MEMORY` - if set to true, the startup scripts will pull a recent shared memory file produced by Steemit Inc. and loaded from Amazon S3. This dramatically reduces initial syncing time (must be used with the APIs/plugins used in our default full web node config file). Currently the compressed shared memory file is 14GB and growing so this setting should only be used from a fast connection.
 * `USE_NGINX_FRONTEND` - if set to true, this will enable an NGINX reverse proxy in front of steemd that proxies websocket requests to steemd. This will also enable a custom healtcheck at the path '/health' that lists how many seconds away from current blockchain time your node is. It will return a '200' if it's less than 60 seconds away from synced.
 * `USE_MULTICORE_READONLY` - if set to true, this will enable steemd in multiple reader mode to take advantage of multiple cores (if available). Read requests are handled by the read-only nodes, and write requests are forwarded back to the single 'writer' node automatically. NGINX load balances all requests to the reader nodes, 4 per available core. This setting is still considered experimental and may have trouble with some API calls until further development is completed.
 * `HOME` - set this to the path where you want steemd to store it's data files (block log, shared memory, config file, etc). By default `/var/lib/steemd` is used and exists inside the docker container. If you want to use a different mountpoint (like a ramdisk, or a different drive) then you may want to set this variables and map the volume to your docker container.
