@@ -30,6 +30,7 @@ RUN \
         s3cmd \
         awscli \
         jq \
+        wget \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \

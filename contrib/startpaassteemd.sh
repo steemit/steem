@@ -49,11 +49,19 @@ if [[ $? -ne 0 ]]; then
     echo notifyalert steemd: unable to pull blockchain state from S3 - exiting
     exit 1
   else
-    echo notifysteemdsync steemdsync: shared memory file for $VERSION not found, creating a new one from scratch
+    echo notifysteemdsync steemdsync: shared memory file for $VERSION not found, creating a new one by replaying the blockchain
+    mkdir blockchain
+    aws s3 cp s3://$S3_BUCKET/block_log-latest blockchain/block_log
+    if [[ $? -ne 0 ]]; then
+      echo notifysteemdsync steemdsync: unable to pull latest block_log from S3, will sync from scratch.
+    else
+      ARGS+=" --replay-blockchain"
+    fi
     touch /tmp/isnewsync
-    chown www-data:www-data /tmp/isnewsync
   fi
 fi
+
+cd $HOME
 
 if [[ "$SYNC_TO_S3" ]]; then
   touch /tmp/issyncnode
