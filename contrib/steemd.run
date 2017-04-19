@@ -124,7 +124,7 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
     /etc/init.d/fcgiwrap restart
     echo daemon off\; >> /etc/nginx/nginx.conf
     service nginx restart
-else if [[ "$USE_NGINX_FRONTEND" ]]; then
+elif [[ "$USE_NGINX_FRONTEND" ]]; then
     cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
     echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
     echo } >> /etc/nginx/healthcheck.conf
