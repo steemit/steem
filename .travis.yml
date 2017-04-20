@@ -13,6 +13,6 @@ before_install:
   - echo "$TRAVIS_BRANCH"
 
 script:
-  - bash deploy/deploy-docs.sh
+  - bash deploy/deploy.sh
 
 
