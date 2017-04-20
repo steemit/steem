@@ -2,7 +2,7 @@
 
 set -xe
 
-apt install -y doxygen
+apt-get install -y doxygen
 
 # blockchain
 
