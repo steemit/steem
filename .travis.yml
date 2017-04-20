@@ -7,6 +7,10 @@ addons:
   apt:
     packages:
       - doxygen
+      - doxygen-doc
+      - doxygen-latex
+      - doxygen-gui
+      - graphviz
 
 before_install:
   - echo "$TRAVIS_TAG"
