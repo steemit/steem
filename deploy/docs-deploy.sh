@@ -2,6 +2,8 @@
 
 set -xe
 
+apt install -y doxygen
+
 # blockchain
 
 git clone https://github.com/GolosChain/golos
