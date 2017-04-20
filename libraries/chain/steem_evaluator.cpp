@@ -63,7 +63,6 @@ struct strcmp_equal
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
-   database& _db = db();
    _db.get_account( o.owner ); // verify owner exists
 
    if ( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
@@ -110,7 +109,6 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
 
 void account_create_evaluator::do_apply( const account_create_operation& o )
 {
-   database& _db = db();
    const auto& creator = _db.get_account( o.creator );
 
    const auto& props = _db.get_dynamic_global_properties();
@@ -190,7 +188,6 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
 void account_create_with_delegation_evaluator::do_apply( const account_create_with_delegation_operation& o )
 {
-   database& _db = db();
    FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ), "Account creation with delegation is not enabled until hardfork 17" );
 
    const auto& creator = _db.get_account( o.creator );
@@ -282,7 +279,6 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 
 void account_update_evaluator::do_apply( const account_update_operation& o )
 {
-   database& _db = db();
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEMIT_TEMP_ACCOUNT, "Cannot update temp account." );
 
    if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) || _db.is_producing() ) && o.posting ) // TODO: Add HF 15
@@ -362,7 +358,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
  */
 void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
 {
-   database& _db = db();
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_10 ) )
    {
       const auto& auth = _db.get_account( o.author );
@@ -448,7 +443,6 @@ struct comment_options_extension_visitor
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
-   database& _db = db();
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_10 ) )
    {
       const auto& auth = _db.get_account( o.author );
@@ -481,8 +475,6 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
 
 void comment_evaluator::do_apply( const comment_operation& o )
 { try {
-   database& _db = db();
-
    if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_5__55 ) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "Cannot update comment because nothing appears to be changing." );
 
@@ -743,8 +735,6 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
 {
    try
    {
-      database& _db = db();
-
       const auto& from_account = _db.get_account(o.from);
       _db.get_account(o.to);
       _db.get_account(o.agent);
@@ -785,7 +775,7 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 {
    try
    {
-      database& _db = db();
+
       const auto& escrow = _db.get_escrow( o.from, o.escrow_id );
 
       FC_ASSERT( escrow.to == o.to, "Operation 'to' (${o}) does not match escrow 'to' (${e}).", ("o", o.to)("e", escrow.to) );
@@ -846,7 +836,6 @@ void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
 {
    try
    {
-      database& _db = db();
       _db.get_account( o.from ); // Verify from account exists
 
       const auto& e = _db.get_escrow( o.from, o.escrow_id );
@@ -868,7 +857,6 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 {
    try
    {
-      database& _db = db();
       _db.get_account(o.from); // Verify from account exists
       const auto& receiver_account = _db.get_account(o.receiver);
 
@@ -923,7 +911,6 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
-   database& _db = db();
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = _db.get_account(o.to);
 
@@ -943,8 +930,6 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
 {
-   database& _db = db();
-
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = o.to.size() ? _db.get_account(o.to) : from_account;
 
@@ -955,8 +940,6 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
 
 void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
-   database& _db = db();
-
    const auto& account = _db.get_account( o.account );
 
    FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
@@ -1014,7 +997,6 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
 {
    try
    {
-   database& _db = db();
    const auto& from_account = _db.get_account( o.from_account );
    const auto& to_account = _db.get_account( o.to_account );
    const auto& wd_idx = _db.get_index< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
@@ -1074,7 +1056,6 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
 
 void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_operation& o )
 {
-   database& _db = db();
    const auto& account = _db.get_account( o.account );
    FC_ASSERT( account.proxy != o.proxy, "Proxy must change." );
 
@@ -1122,7 +1103,6 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
 
 void account_witness_vote_evaluator::do_apply( const account_witness_vote_operation& o )
 {
-   database& _db = db();
    const auto& voter = _db.get_account( o.account );
    FC_ASSERT( voter.proxy.size() == 0, "A proxy is currently set, please clear the proxy before voting for a witness." );
 
@@ -1190,8 +1170,6 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
 
 void vote_evaluator::do_apply( const vote_operation& o )
 { try {
-   database& _db = db();
-
    const auto& comment = _db.get_comment( o.author, o.permlink );
    const auto& voter   = _db.get_account( o.voter );
 
@@ -1820,7 +1798,6 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 {
-  database& _db = db();
   const auto& witness = _db.get_witness( o.publisher );
   _db.modify( witness, [&]( witness_object& w ){
       w.sbd_exchange_rate = o.exchange_rate;
@@ -1830,7 +1807,6 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 
 void convert_evaluator::do_apply( const convert_operation& o )
 {
-  database& _db = db();
   const auto& owner = _db.get_account( o.owner );
   FC_ASSERT( _db.get_balance( owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
@@ -1855,7 +1831,6 @@ void convert_evaluator::do_apply( const convert_operation& o )
 
 void limit_order_create_evaluator::do_apply( const limit_order_create_operation& o )
 {
-   database& _db = db();
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    const auto& owner = _db.get_account( o.owner );
@@ -1881,7 +1856,6 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
 
 void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o )
 {
-   database& _db = db();
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    const auto& owner = _db.get_account( o.owner );
@@ -1907,19 +1881,16 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
 
 void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation& o )
 {
-   database& _db = db();
    _db.cancel_order( _db.get_limit_order( o.owner, o.orderid ) );
 }
 
 void report_over_production_evaluator::do_apply( const report_over_production_operation& o )
 {
-   database& _db = db();
    FC_ASSERT( !_db.has_hardfork( STEEMIT_HARDFORK_0_4 ), "report_over_production_operation is disabled." );
 }
 
 void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
 {
-   database& _db = db();
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_14__307 ) ) FC_ASSERT( false, "Challenge authority operation is currently disabled." );
    const auto& challenged = _db.get_account( o.challenged );
    const auto& challenger = _db.get_account( o.challenger );
@@ -1957,7 +1928,6 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
 
 void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
 {
-   database& _db = db();
    const auto& challenged = _db.get_account( o.challenged );
    FC_ASSERT( challenged.owner_challenged || challenged.active_challenged, "Account is not challeneged. No need to prove authority." );
 
@@ -1975,7 +1945,6 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
 {
-   database& _db = db();
    const auto& account_to_recover = _db.get_account( o.account_to_recover );
 
    if ( account_to_recover.recovery_account.length() )   // Make sure recovery matches expected recovery account
@@ -2034,7 +2003,6 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
 
 void recover_account_evaluator::do_apply( const recover_account_operation& o )
 {
-   database& _db = db();
    const auto& account = _db.get_account( o.account_to_recover );
 
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_12 ) )
@@ -2069,7 +2037,6 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
 
 void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )
 {
-   database& _db = db();
    _db.get_account( o.new_recovery_account ); // Simply validate account exists
    const auto& account_to_recover = _db.get_account( o.account_to_recover );
 
@@ -2101,7 +2068,6 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
 
 void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operation& op )
 {
-   database& _db = db();
    const auto& from = _db.get_account( op.from );
    const auto& to   = _db.get_account(op.to);
    FC_ASSERT( _db.get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
@@ -2112,7 +2078,6 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
 
 void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_operation& op )
 {
-   database& _db = db();
    const auto& from = _db.get_account( op.from );
    _db.get_account(op.to); // Verify to account exists
 
@@ -2139,7 +2104,6 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
 
 void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_from_savings_operation& op )
 {
-   database& _db = db();
    const auto& swo = _db.get_savings_withdraw( op.from, op.request_id );
    _db.adjust_savings_balance( _db.get_account( swo.from ), swo.amount );
    _db.remove( swo );
@@ -2153,7 +2117,6 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
 
 void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_operation& o )
 {
-   database& _db = db();
    FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_14__324 ) );
 
    const auto& account = _db.get_account( o.account );
@@ -2179,7 +2142,6 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
 
 void reset_account_evaluator::do_apply( const reset_account_operation& op )
 {
-   database& _db = db();
    FC_ASSERT( false, "Reset Account Operation is currently disabled." );
 
    const auto& acnt = _db.get_account( op.account_to_reset );
@@ -2193,7 +2155,6 @@ void reset_account_evaluator::do_apply( const reset_account_operation& op )
 
 void set_reset_account_evaluator::do_apply( const set_reset_account_operation& op )
 {
-   database& _db = db();
    FC_ASSERT( false, "Set Reset Account Operation is currently disabled." );
 
    const auto& acnt = _db.get_account( op.account );
@@ -2210,7 +2171,6 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
 
 void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operation& op )
 {
-   database& _db = db();
    const auto& acnt = _db.get_account( op.account );
 
    FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM." );
@@ -2250,7 +2210,6 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
-   database& _db = db();
    FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ), "delegate_vesting_shares_operation is not enabled until HF 17" ); //TODO: Delete after hardfork
 
    const auto& delegator = _db.get_account( op.delegator );
