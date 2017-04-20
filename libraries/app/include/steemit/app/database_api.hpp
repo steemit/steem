@@ -155,7 +155,7 @@ class database_api
        * @param block_num Height of the block to be returned
        * @return the referenced block, or null if no matching block was found
        */
-      optional<signed_block> get_block(uint32_t block_num)const;
+      optional<signed_block_api_obj> get_block(uint32_t block_num)const;
 
       /**
        *  @brief Get sequence of operations included/generated within a particular block

@@ -40,7 +40,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 
       // Blocks and transactions
       optional<block_header> get_block_header(uint32_t block_num)const;
-      optional<signed_block> get_block(uint32_t block_num)const;
+      optional<signed_block_api_obj> get_block(uint32_t block_num)const;
       vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual)const;
 
       // Globals
@@ -239,7 +239,7 @@ optional<block_header> database_api_impl::get_block_header(uint32_t block_num) c
    return {};
 }
 
-optional<signed_block> database_api::get_block(uint32_t block_num)const
+optional<signed_block_api_obj> database_api::get_block(uint32_t block_num)const
 {
    return my->_db.with_read_lock( [&]()
    {
@@ -247,7 +247,7 @@ optional<signed_block> database_api::get_block(uint32_t block_num)const
    });
 }
 
-optional<signed_block> database_api_impl::get_block(uint32_t block_num)const
+optional<signed_block_api_obj> database_api_impl::get_block(uint32_t block_num)const
 {
    return _db.fetch_block_by_number(block_num);
 }

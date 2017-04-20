@@ -497,6 +497,23 @@ struct witness_api_obj
    time_point_sec    hardfork_time_vote;
 };
 
+struct signed_block_api_obj : public signed_block
+{
+   signed_block_api_obj( const signed_block block ) : signed_block( block )
+   {
+      block_id = id();
+      signing_key = signee();
+      transaction_ids.reserve( transactions.size() );
+      for( const signed_transaction& tx : transactions )
+         transaction_ids.push_back( tx.id() );
+   }
+   signed_block_api_obj() {}
+
+   block_id_type                 block_id;
+   public_key_type               signing_key;
+   vector< transaction_id_type > transaction_ids;
+};
+
 } } // steemit::app
 
 FC_REFLECT( steemit::app::comment_api_obj,
@@ -586,3 +603,9 @@ FC_REFLECT( steemit::app::witness_api_obj,
              (running_version)
              (hardfork_version_vote)(hardfork_time_vote)
           )
+
+FC_REFLECT_DERIVED( steemit::app::signed_block_api_obj, (steemit::protocol::signed_block),
+                     (block_id)
+                     (signing_key)
+                     (transaction_ids)
+                  )

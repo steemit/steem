@@ -67,16 +67,6 @@ struct wallet_data
    string                    ws_password;
 };
 
-struct signed_block_with_info : public signed_block
-{
-   signed_block_with_info( const signed_block& block );
-   signed_block_with_info( const signed_block_with_info& block ) = default;
-
-   block_id_type block_id;
-   public_key_type signing_key;
-   vector< transaction_id_type > transaction_ids;
-};
-
 enum authority_type
 {
    owner,
@@ -126,7 +116,7 @@ class wallet_api
        *
        * @returns Public block data on the blockchain
        */
-      optional<signed_block_with_info>    get_block( uint32_t num );
+      optional<signed_block_api_obj>    get_block( uint32_t num );
 
       /** Returns sequence of operations included/generated in a specified block
        *
@@ -996,9 +986,6 @@ FC_REFLECT( steemit::wallet::wallet_data,
           )
 
 FC_REFLECT( steemit::wallet::brain_key_info, (brain_priv_key)(wif_priv_key) (pub_key))
-
-FC_REFLECT_DERIVED( steemit::wallet::signed_block_with_info, (steemit::chain::signed_block),
-   (block_id)(signing_key)(transaction_ids) )
 
 FC_REFLECT( steemit::wallet::plain_keys, (checksum)(keys) )
 
