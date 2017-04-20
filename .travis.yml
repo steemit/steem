@@ -2,6 +2,10 @@ sudo: required
 
 language: cpp
 
+services:
+  - docker
+
+
 addons:
   ssh_known_hosts: developers.golos.io
   apt:
@@ -21,6 +25,21 @@ before_install:
   - echo "$TRAVIS_BRANCH"
 
 script:
-  - bash deploy/deploy.sh
+  - if [ -n "${TRAVIS_TAG}" ]; then
+      docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
+    else
+      docker build -t goloschain/golos:"$TRAVIS_BRANCH" . ;
+    fi
+  - docker images
 
+after_success:
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+      docker push goloschain/golos:master;
+    fi
+  - if [ -n "$TRAVIS_TAG" ]; then
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+      docker push goloschain/golos:"$TRAVIS_TAG";
+    fi
+  - bash deploy/deploy.sh
 
