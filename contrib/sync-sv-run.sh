@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VERSION=`cat /etc/steemdversion`
+
 # if the writer node dies by itself, kill runsv causing the container to exit
 STEEMD_PID=`pgrep -f p2p-endpoint`
 if [[ ! $? -eq 0 ]]; then
@@ -33,21 +35,27 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     echo steemdsync: compressing blockchainstate...
     tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 blockchain
     FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
-    S3_UPLOAD_BUCKET=steemit-$NODE_ENV-blockchainstate
-    echo steemdsync: uploading $FILE_NAME to $S3_UPLOAD_BUCKET
-    aws s3 cp blockchain.tar.bz2 s3://$S3_UPLOAD_BUCKET/$FILE_NAME
+    echo steemdsync: uploading $FILE_NAME to $S3_BUCKET
+    aws s3 cp blockchain.tar.bz2 s3://$S3_BUCKET/$FILE_NAME
     if [[ ! $? -eq 0 ]]; then
-    	echo NOTIFYALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_UPLOAD_BUCKET
+    	echo NOTIFYALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_BUCKET
     	exit 1
     fi
     echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
-    aws s3 cp s3://$S3_UPLOAD_BUCKET/$FILE_NAME s3://$S3_UPLOAD_BUCKET/blockchain-$VERSION-latest.tar.bz2
+    aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
+    aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read 
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1
     fi
+    # upload a current block_log
+    aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
+    aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
     # kill the container starting the process over again
     echo steemdsync: stopping the container after a sync operation
+    if [[ -e /tmp/isnewsync ]]; then
+      echo notifysteemdsync: steemdsync: successfully generated and uploaded new blockchain-$VERSION-latest.tar.bz2 to s3://$S3_BUCKET
+    fi
     RUN_SV_PID=`pgrep -f /etc/service/steemd`
     kill -9 $RUN_SV_PID
   fi
