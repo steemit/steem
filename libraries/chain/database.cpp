@@ -1824,15 +1824,6 @@ void database::process_comment_cashout()
             ctx.total_reward_shares2 = gpo.total_reward_shares2;
             ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
 
-            // This extra logic is for when the funds are created in HF 16. We are using this data to preload
-            // recent rshares 2 to prevent any downtime in payouts at HF 17. After HF 17, we can capture
-            // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
-            if( funds.size() && comment.net_rshares > 0 )
-            {
-               const auto& rf = get_reward_fund( comment );
-               funds[ rf.id._id ].recent_claims += util::calculate_claims( comment.net_rshares.value, rf );
-            }
-
             auto reward = cashout_comment_helper( ctx, comment );
 
             if( reward > 0 )
@@ -3894,19 +3885,6 @@ void database::apply_hardfork( uint32_t hardfork )
                while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
                   fho.price_history.pop_front();
             });
-
-            auto post_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
-            {
-               rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
-               rfo.last_update = head_block_time();
-               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
-               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-               rfo.percent_content_rewards = 0;
-            });
-
-            // As a shortcut in payout processing, we use the id as an array index.
-            // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
-            FC_ASSERT( post_rf.id._id == 0 );
          }
          break;
       case STEEMIT_HARDFORK_0_17:
@@ -3926,13 +3904,23 @@ void database::apply_hardfork( uint32_t hardfork )
             });
 
             const auto& gpo = get_dynamic_global_properties();
-            auto reward_steem = gpo.total_reward_fund_steem;
 
-            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
+            auto post_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
             {
+               rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
                rfo.percent_content_rewards = STEEMIT_100_PERCENT;
                rfo.reward_balance = gpo.total_reward_fund_steem;
+#ifndef IS_TEST_NET
+               rfo.recent_claims = STEEMIT_HF_17_RECENT_CLAIMS;
+#endif
             });
+
+            // As a shortcut in payout processing, we use the id as an array index.
+            // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
+            FC_ASSERT( post_rf.id._id == 0 );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3955,9 +3943,9 @@ void database::apply_hardfork( uint32_t hardfork )
             const auto& comment_idx = get_index< comment_index, by_cashout_time >();
             const auto& by_root_idx = get_index< comment_index, by_root >();
             vector< const comment_object* > root_posts;
-            root_posts.reserve( 60000 );
+            root_posts.reserve( STEEMIT_HF_17_NUM_POSTS );
             vector< const comment_object* > replies;
-            replies.reserve( 100000 );
+            replies.reserve( STEEMIT_HF_17_NUM_REPLIES );
 
             for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time < fc::time_point_sec::maximum(); ++itr )
             {
