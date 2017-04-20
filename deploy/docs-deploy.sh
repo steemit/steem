@@ -37,7 +37,7 @@ rm -rf developers/.git/
 mv developers/testnet/index.html developers/testnet/testnet.html
 cp -r developers/testnet/* data/doc
 
-rm -rdf developers/testnet/
+rm -rf developers/testnet/
 cp -r developers/* data
 
 cd data
