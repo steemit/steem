@@ -43,7 +43,15 @@ cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
 # get blockchain state from an S3 bucket
 echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
-s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+if [[ ! "$USE_RAMDISK" ]]; then
+  mkdir -p /mnt/ramdisk
+  mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-43008}m ramfs /mnt/ramdisk
+  ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
+  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  chown -R steemd:steemd /mnt/ramdisk/blockchain
+else  
+  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+fi
 if [[ $? -ne 0 ]]; then
   if [[ ! "$SYNC_TO_S3" ]]; then
     echo notifyalert steemd: unable to pull blockchain state from S3 - exiting
