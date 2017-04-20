@@ -25,14 +25,14 @@ cd ../..
 
 git clone -b gh-pages --single-branch https://github.com/GolosChain/tolstoy gh-pages
 mv gh-pages/index.html gh-pages/client.html
-rm -rdf gh-pages/.git/
+rm -rf gh-pages/.git/
 rm gh-pages/{CNAME,README.md}
 cp -r gh-pages/* data/doc
 
 # testnet & doc
 
 git clone https://bitbucket.org/goloschainru/developers
-rm -rdf developers/.git/
+rm -rf developers/.git/
 
 mv developers/testnet/index.html developers/testnet/testnet.html
 cp -r developers/testnet/* data/doc
