@@ -265,6 +265,11 @@ struct get_impacted_account_visitor
       _impacted.insert( op.author );
    }
 
+   void operator()( const witness_block_reward_operation& op )
+   {
+      _impacted.insert( op.account );
+   }
+
    //void operator()( const operation& op ){}
 };
 
