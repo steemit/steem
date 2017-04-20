@@ -5,15 +5,30 @@ language: cpp
 services:
   - docker
 
+
+addons:
+  ssh_known_hosts: developers.golos.io
+  apt:
+    packages:
+      - doxygen
+      - doxygen-doc
+      - doxygen-latex
+      - doxygen-gui
+      - graphviz
+
 before_install:
+  - sudo apt-get install python-software-properties 
+  - sudo apt-add-repository -y ppa:libreoffice/libreoffice-4-2
+  - sudo apt-get update
+  - sudo apt-get install -y doxygen 
   - echo "$TRAVIS_TAG"
   - echo "$TRAVIS_BRANCH"
 
-script: 
+script:
   - if [ -n "${TRAVIS_TAG}" ]; then
-       docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
+      docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
     else
-       docker build -t goloschain/golos:"$TRAVIS_BRANCH" . ;
+      docker build -t goloschain/golos:"$TRAVIS_BRANCH" . ;
     fi
   - docker images
 
@@ -26,3 +41,5 @@ after_success:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
       docker push goloschain/golos:"$TRAVIS_TAG";
     fi
+  - bash deploy/deploy.sh
+
