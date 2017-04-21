@@ -1,12 +1,12 @@
 #!/bin/bash
 
-set -xe
+set -e
 
 if [ -n $TRAVIS_BRANCH ]; then
 
   cd deploy/
 
-  openssl aes-256-cbc -K $encrypted_87a773837d6d_key -iv $encrypted_87a773837d6d_iv -in deploy-key.enc -out deploy-key -d
+  openssl aes-256-cbc -K $encrypted_key -iv $encrypted_iv -in deploy-key.enc -out deploy-key -d
 
   rm deploy-key.enc
 
