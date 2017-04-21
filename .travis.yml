@@ -41,5 +41,5 @@ after_success:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
       docker push goloschain/golos:"$TRAVIS_TAG";
     fi
-  - bash deploy/deploy.sh
+  - bash deploy/deploy.sh $secret_test1 $secret_test2
 
