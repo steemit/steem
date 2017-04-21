@@ -370,7 +370,8 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__876 ) )
       FC_ASSERT( comment.cashout_time != fc::time_point_sec::maximum() );
 
-   if( _db.is_producing() ) {
+   // TODO: remove is_producing after HF 19. Check if we can remove conditional altogether after HF.
+   if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_19__977 ) ) {
       FC_ASSERT( comment.net_rshares <= 0, "Cannot delete a comment with net positive votes." );
    }
    if( comment.net_rshares > 0 ) return;
