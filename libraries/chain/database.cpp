@@ -3881,6 +3881,23 @@ void database::apply_hardfork( uint32_t hardfork )
                   });
                }
             }
+
+            vector< const vesting_delegation_object* > to_remove;
+            const auto& delegation_idx = get_index< vesting_delegation_index, by_id >();
+            auto delegation_itr = delegation_idx.begin();
+
+            while( delegation_itr != delegation_idx.end() )
+            {
+               if( delegation_itr->vesting_shares.amount == 0 )
+                  to_remove.push_back( &(*delegation_itr) );
+
+               ++delegation_itr;
+            }
+
+            for( const vesting_delegation_object* delegation_ptr: to_remove )
+            {
+               remove( *delegation_ptr );
+            }
          }
          break;
       default:

@@ -271,13 +271,20 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       auth.last_owner_update = fc::time_point_sec::min();
    });
 
-   _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& vdo )
+   /* TODO: Check if not creating 0 delegation objects in HF19 passes consensus
+    * If it does we can remove the apply_hardfork logic for deleting 0 delegation objects
+    */
+   if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) && o.delegation.amount > 0 )
+      || !_db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) )
    {
-      vdo.delegator = o.creator;
-      vdo.delegatee = o.new_account_name;
-      vdo.vesting_shares = o.delegation;
-      vdo.min_delegation_time = _db.head_block_time() + STEEMIT_CREATE_ACCOUNT_DELEGATION_TIME;
-   });
+      _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& vdo )
+      {
+         vdo.delegator = o.creator;
+         vdo.delegatee = o.new_account_name;
+         vdo.vesting_shares = o.delegation;
+         vdo.min_delegation_time = _db.head_block_time() + STEEMIT_CREATE_ACCOUNT_DELEGATION_TIME;
+      });
+   }
 
    if( o.fee.amount > 0 )
       _db.create_vesting( new_account, o.fee );
