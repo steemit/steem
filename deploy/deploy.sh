@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xe
+#set -xe
 
   deploy/secret_test.sh $1 $2
   
