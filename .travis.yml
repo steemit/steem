@@ -28,18 +28,18 @@ script:
   - if [ -n "${TRAVIS_TAG}" ]; then
       docker build -t goloschain/golos:"$TRAVIS_TAG" . ;
     else
-      docker build -t goloschain/golos:"$TRAVIS_BRANCH" . ;
+      docker build -t goloschain/golos:latest . ;
     fi
   - docker images
 
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push goloschain/golos:master;
+      docker push goloschain/golos:latest;
+      bash deploy/deploy.sh;
     fi
   - if [ -n "$TRAVIS_TAG" ]; then
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
       docker push goloschain/golos:"$TRAVIS_TAG";
     fi
-  - bash deploy/deploy.sh
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xe
+set -e
 
 if [ $TRAVIS_BRANCH == "master" ]; then
 
