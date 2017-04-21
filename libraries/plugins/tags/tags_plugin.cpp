@@ -61,7 +61,7 @@ struct operation_visitor {
            } else {
               s.comments--;
            }
-           s.total_trending -= std::round(tag.trending);
+           s.total_trending -= static_cast<uint32_t>(tag.trending);
            s.net_votes   -= tag.net_votes;
       });
    }
@@ -72,7 +72,7 @@ struct operation_visitor {
            } else {
               s.comments++;
            }
-           s.total_trending += std::round(tag.trending);
+           s.total_trending += static_cast<uint32_t>(tag.trending);
            s.net_votes   += tag.net_votes;
       });
    }

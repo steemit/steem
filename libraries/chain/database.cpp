@@ -1359,6 +1359,22 @@ void database::clear_null_account_balance()
       adjust_supply( -total_sbd );
 }
 
+/**
+ * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
+ * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
+ * and dgpo.total_reward_shares2 is the total number of rshares2 outstanding.
+ */
+void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
+{
+
+   const auto& dgpo = get_dynamic_global_properties();
+   modify( dgpo, [&]( dynamic_global_property_object& p )
+   {
+      p.total_reward_shares2 -= old_rshares2;
+      p.total_reward_shares2 += new_rshares2;
+   } );
+}
+
 void database::update_owner_authority( const account_object& account, const authority& owner_authority )
 {
    if( head_block_num() >= STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM )
@@ -1632,6 +1648,9 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                c.total_payouts += to_sbd( asset( claimed_reward, STEEM_SYMBOL ) );
             });
          }
+
+         if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+            adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
       }
 
       modify( cat, [&]( category_object& c )
@@ -4065,6 +4084,7 @@ void database::validate_invariants()const
          else
             FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
       }
+      fc::uint128_t total_rshares2;
 
       const auto& comment_idx = get_index< comment_index >().indices();
 
@@ -4073,6 +4093,7 @@ void database::validate_invariants()const
          if( itr->net_rshares.value > 0 )
          {
             auto delta = util::calculate_claims( itr->net_rshares.value );
+            total_rshares2 += delta;
          }
       }
 
@@ -4137,6 +4158,12 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             c.abs_rshares       *= magnitude;
             c.vote_rshares      *= magnitude;
          } );
+      }
+
+      for( const auto& c : comments )
+      {
+         if( c.net_rshares.value > 0 )
+            adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
       }
 
       // Update category rshares

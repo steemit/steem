@@ -183,7 +183,7 @@ struct tag_api_obj
    int32_t              net_votes = 0;
    uint32_t             top_posts = 0;
    uint32_t             comments = 0;
-   uint64_t             trending = 0;
+   fc::uint128          trending = 0;
 };
 
 struct account_api_obj

@@ -259,7 +259,7 @@ class tag_stats_object : public object< tag_stats_object_type, tag_stats_object 
       int32_t           net_votes = 0;
       uint32_t          top_posts = 0;
       uint32_t          comments  = 0;
-      uint64_t          total_trending = 0;
+      fc::uint128       total_trending = 0;
 };
 
 typedef oid< tag_stats_object > tag_stats_id_type;
@@ -291,10 +291,10 @@ typedef multi_index_container<
       */
       ordered_non_unique< tag< by_trending >,
          composite_key< tag_stats_object,
-            member< tag_stats_object, uint64_t , &tag_stats_object::total_trending >,
+            member< tag_stats_object, fc::uint128 , &tag_stats_object::total_trending >,
             member< tag_stats_object, tag_name_type, &tag_stats_object::tag >
          >,
-         composite_key_compare<  std::greater< uint64_t  >, std::less< tag_name_type > >
+         composite_key_compare<  std::greater< fc::uint128  >, std::less< tag_name_type > >
       >
   >,
   allocator< tag_stats_object >
