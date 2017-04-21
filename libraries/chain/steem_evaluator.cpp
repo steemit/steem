@@ -2219,8 +2219,18 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    {
       auto delta = delegation->vesting_shares - op.vesting_shares;
 
-      FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
-      FC_ASSERT( op.vesting_shares >= min_delegation || op.vesting_shares.amount == 0, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+      if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__971 ) )
+      {
+         FC_ASSERT( ( op.vesting_shares.amount == 0 )
+            || ( delta >= min_update && op.vesting_shares >= min_delegation ),
+            "Delegation must be removed or be a significant change and leave a minimum delegation. min_update: ${min_update}, min_delegation: ${min_delegation}",
+            ("min_update", min_update)("min_delegation", min_delegation) );
+      }
+      else // TODO: Check and remove after HF19
+      {
+         FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
+         FC_ASSERT( op.vesting_shares >= min_delegation || op.vesting_shares.amount == 0, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+      }
 
       _db.create< vesting_delegation_expiration_object >( [&]( vesting_delegation_expiration_object& obj )
       {
