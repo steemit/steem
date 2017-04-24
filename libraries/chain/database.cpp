@@ -1482,8 +1482,14 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       {
          fill_comment_reward_context_local_state( ctx, comment );
 
-         const share_type reward = has_hardfork( STEEMIT_HARDFORK_0_17__774 ) ?
-            util::get_rshare_reward( ctx, get_reward_fund( comment ) ) : util::get_rshare_reward( ctx );
+         if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+         {
+            const auto rf = get_reward_fund( comment );
+            ctx.reward_curve = rf.author_reward_curve;
+            ctx.content_constant = rf.content_constant;
+         }
+
+         const share_type reward = util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
          if( reward_tokens > 0 )
@@ -1639,7 +1645,7 @@ void database::process_comment_cashout()
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
-            funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
+            funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
          }
 
          ++current;
@@ -3756,6 +3762,8 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
                rfo.recent_claims = STEEMIT_HF_17_RECENT_CLAIMS;
 #endif
+               rfo.author_reward_curve = curve_id::quadratic;
+               rfo.curation_reward_curve = curve_id::quadratic_curation;
             });
 
             // As a shortcut in payout processing, we use the id as an array index.
