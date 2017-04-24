@@ -499,7 +499,7 @@ struct witness_api_obj
 
 struct signed_block_api_obj : public signed_block
 {
-   signed_block_api_obj( const signed_block block ) : signed_block( block )
+   signed_block_api_obj( const signed_block& block ) : signed_block( block )
    {
       block_id = id();
       signing_key = signee();
