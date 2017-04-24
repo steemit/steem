@@ -163,7 +163,9 @@
 
 #define STEEMIT_POST_REWARD_FUND_NAME           ("post")
 #define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
-#define STEEMIT_RECENT_RSHARES_DECAY_RATE       (fc::days(30))
+#define STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME    ("linear")
+#define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17  (fc::days(30))
+#define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19  (fc::days(15))
 #define STEEMIT_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))
 // note, if redefining these constants make sure calculate_claims doesn't overflow
 

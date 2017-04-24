@@ -1619,7 +1619,11 @@ void database::process_comment_cashout()
       // Add all reward funds to the local cache and decay their recent rshares
       modify( *itr, [&]( reward_fund_object& rfo )
       {
-         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
+         if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
+            rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19.to_seconds();
+         else
+            rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17.to_seconds();
+
          rfo.last_update = head_block_time();
       });
 
@@ -1640,12 +1644,15 @@ void database::process_comment_cashout()
    //  add all rshares about to be cashed out to the reward funds. This ensures equal satoshi per rshare payment
    if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
    {
+      const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
+
       while( current != cidx.end() && current->cashout_time <= head_block_time() )
       {
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
             funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
+            funds[ 1 ].recent_claims += util::calculate_claims( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
          }
 
          ++current;
@@ -3766,9 +3773,23 @@ void database::apply_hardfork( uint32_t hardfork )
                rfo.curation_reward_curve = curve_id::quadratic_curation;
             });
 
+            auto linear_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = 0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+               rfo.reward_balance = asset( 0, STEEM_SYMBOL );
+               rfo.recent_claims = 0;
+               rfo.author_reward_curve = curve_id::linear;
+               rfo.curation_reward_curve = curve_id::square_root;
+            });
+
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
+            FC_ASSERT( linear_rf.id._id == 1 );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3829,6 +3850,14 @@ void database::apply_hardfork( uint32_t hardfork )
             modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
             {
                gpo.vote_power_reserve_rate = 10;
+            });
+
+            const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
+            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object &rfo )
+            {
+               rfo.recent_claims = linear.recent_claims;
+               rfo.author_reward_curve = curve_id::linear;
+               rfo.curation_reward_curve = curve_id::square_root;
             });
          }
          break;
