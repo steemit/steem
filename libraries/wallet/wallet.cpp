@@ -983,7 +983,7 @@ bool wallet_api::copy_wallet_file(string destination_filename)
    return my->copy_wallet_file(destination_filename);
 }
 
-optional<signed_block_with_info> wallet_api::get_block(uint32_t num)
+optional<signed_block_api_obj> wallet_api::get_block(uint32_t num)
 {
    return my->_remote_db->get_block(num);
 }
@@ -1271,16 +1271,6 @@ pair<public_key_type,string> wallet_api::get_private_key_from_password( string a
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
    auto priv = fc::ecc::private_key::regenerate( secret );
    return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
-}
-
-signed_block_with_info::signed_block_with_info( const signed_block& block )
-   : signed_block( block )
-{
-   block_id = id();
-   signing_key = signee();
-   transaction_ids.reserve( transactions.size() );
-   for( const signed_transaction& tx : transactions )
-      transaction_ids.push_back( tx.id() );
 }
 
 feed_history_api_obj wallet_api::get_feed_history()const { return my->_remote_db->get_feed_history(); }
