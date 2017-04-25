@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
 
       while( db.head_block_time() < bob_cashout_time )
       {
-         alice_vshares -= ( alice_vshares * STEEMIT_BLOCK_INTERVAL ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
+         alice_vshares -= ( alice_vshares * STEEMIT_BLOCK_INTERVAL ) / STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19.to_seconds();
          const auto& post_rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
 
          BOOST_REQUIRE( post_rf.recent_claims == alice_vshares );
@@ -361,7 +361,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       }
 
       {
-         alice_vshares -= ( alice_vshares * STEEMIT_BLOCK_INTERVAL ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
+         alice_vshares -= ( alice_vshares * STEEMIT_BLOCK_INTERVAL ) / STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19.to_seconds();
          const auto& post_rf = db.get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME );
 
          BOOST_REQUIRE( post_rf.recent_claims == alice_vshares + bob_vshares );
