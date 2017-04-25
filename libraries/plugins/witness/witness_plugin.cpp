@@ -21,15 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <steemit/witness/witness.hpp>
+#include <steemit/witness/witness_plugin.hpp>
 #include <steemit/witness/witness_objects.hpp>
+#include <steemit/witness/witness_operations.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/database_exceptions.hpp>
+#include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/index.hpp>
 #include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/hardfork.hpp>
 
 #include <fc/time.hpp>
 
@@ -39,8 +40,9 @@
 #include <fc/thread/thread.hpp>
 
 #include <iostream>
+#include <memory>
 
-namespace steemit { namespace witness_plugin {
+namespace steemit { namespace witness {
 
 namespace bpo = boost::program_options;
 
@@ -74,13 +76,25 @@ namespace detail
          witness_plugin_impl( witness_plugin& plugin )
             : _self( plugin ){}
 
+         void plugin_initialize();
+
          void pre_transaction( const signed_transaction& trx );
          void pre_operation( const operation_notification& note );
 
          void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
-         witness_plugin&   _self;
+         witness_plugin& _self;
+         std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
    };
+
+   void witness_plugin_impl::plugin_initialize()
+   {
+      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< witness_plugin_operation > >( _self.database() );
+
+      _custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( &_self );
+
+      _self.database().set_custom_operation_interpreter( _self.plugin_name(), _custom_operation_interpreter );
+   }
 
    struct comment_options_extension_visitor
    {
@@ -136,9 +150,11 @@ namespace detail
 
          auto itr = _db.find< comment_object, by_permlink >( boost::make_tuple( o.author, o.permlink ) );
 
-         if( itr != nullptr )
+         if( itr != nullptr && itr->cashout_time == fc::time_point_sec::maximum() )
          {
-            STEEMIT_ASSERT( itr->cashout_time != fc::time_point_sec::maximum(),
+            auto edit_lock = _db.find< content_edit_lock_object, by_account >( o.author );
+
+            STEEMIT_ASSERT( edit_lock != nullptr && _db.head_block_time() < edit_lock->lock_time,
                chain::plugin_exception,
                "The comment is archived" );
          }
@@ -301,6 +317,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    db.pre_apply_operation.connect( [&]( const operation_notification& note ){ _my->pre_operation( note ); } );
 
    add_plugin_index< account_bandwidth_index >( db );
+   add_plugin_index< content_edit_lock_index >( db );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
@@ -514,6 +531,6 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
    return block_production_condition::exception_producing_block;
 }
 
-} } // steemit::witness_plugin
+} } // steemit::witness
 
-STEEMIT_DEFINE_PLUGIN( witness, steemit::witness_plugin::witness_plugin )
+STEEMIT_DEFINE_PLUGIN( witness, steemit::witness::witness_plugin )
