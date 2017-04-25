@@ -10,6 +10,8 @@
 
 #include <steemit/tags/tags_plugin.hpp>
 
+#include <steemit/witness/witness_objects.hpp>
+
 namespace steemit { namespace app {
 
 using namespace steemit::chain;
@@ -49,10 +51,10 @@ typedef chain::withdraw_vesting_route_object           withdraw_vesting_route_ap
 typedef chain::decline_voting_rights_request_object    decline_voting_rights_request_api_obj;
 typedef chain::witness_vote_object                     witness_vote_api_obj;
 typedef chain::witness_schedule_object                 witness_schedule_api_obj;
-typedef chain::account_bandwidth_object                account_bandwidth_api_obj;
 typedef chain::vesting_delegation_object               vesting_delegation_api_obj;
 typedef chain::vesting_delegation_expiration_object    vesting_delegation_expiration_api_obj;
 typedef chain::reward_fund_object                      reward_fund_api_obj;
+typedef witness_plugin::account_bandwidth_object       account_bandwidth_api_obj;
 
 struct comment_api_obj
 {
@@ -239,7 +241,8 @@ struct account_api_obj
       to_withdraw( a.to_withdraw ),
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
-      last_post( a.last_post )
+      last_post( a.last_post ),
+      last_root_post( a.last_root_post )
    {
       size_t n = a.proxied_vsf_votes.size();
       proxied_vsf_votes.reserve( n );
@@ -252,38 +255,25 @@ struct account_api_obj
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
 
-      auto old_forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_forum ) );
-      if( old_forum != nullptr )
+      if( db.has_index< witness_plugin::account_bandwidth_index >() )
       {
-         average_bandwidth = old_forum->average_bandwidth;
-         lifetime_bandwidth = old_forum->lifetime_bandwidth;
-         last_bandwidth_update = old_forum->last_bandwidth_update;
-      }
+         auto forum_bandwidth = db.find< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( name, witness_plugin::bandwidth_type::forum ) );
 
-      auto old_market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_market ) );
-      if( old_market != nullptr )
-      {
-         average_market_bandwidth = old_market->average_bandwidth;
-         last_market_bandwidth_update = old_market->last_bandwidth_update;
-      }
+         if( forum_bandwidth != nullptr )
+         {
+            average_bandwidth = forum_bandwidth->average_bandwidth;
+            lifetime_bandwidth = forum_bandwidth->lifetime_bandwidth;
+            last_bandwidth_update = forum_bandwidth->last_bandwidth_update;
+         }
 
-      auto post = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::post ) );
-      if( post != nullptr )
-      {
-         last_root_post = post->last_bandwidth_update;
-         post_bandwidth = post->average_bandwidth;
-      }
+         auto market_bandwidth = db.find< witness_plugin::account_bandwidth_object, witness_plugin::by_account_bandwidth_type >( boost::make_tuple( name, witness_plugin::bandwidth_type::market ) );
 
-      auto forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::forum ) );
-      if( forum != nullptr )
-      {
-         new_average_bandwidth = forum->average_bandwidth;
-      }
-
-      auto market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::market ) );
-      if( market != nullptr )
-      {
-         new_average_market_bandwidth = market->average_bandwidth;
+         if( market_bandwidth != nullptr )
+         {
+            average_market_bandwidth = market_bandwidth->average_bandwidth;
+            lifetime_market_bandwidth = market_bandwidth->lifetime_bandwidth;
+            last_market_bandwidth_update = market_bandwidth->last_bandwidth_update;
+         }
       }
    }
 
@@ -361,13 +351,11 @@ struct account_api_obj
    time_point_sec    last_bandwidth_update;
 
    share_type        average_market_bandwidth = 0;
+   share_type        lifetime_market_bandwidth = 0;
    time_point_sec    last_market_bandwidth_update;
+
    time_point_sec    last_post;
    time_point_sec    last_root_post;
-   share_type        post_bandwidth = STEEMIT_100_PERCENT;
-
-   share_type        new_average_bandwidth;
-   share_type        new_average_market_bandwidth;
 };
 
 struct owner_authority_history_api_obj
@@ -530,9 +518,8 @@ FC_REFLECT( steemit::app::account_api_obj,
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
              (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
-             (average_market_bandwidth)(last_market_bandwidth_update)
-             (last_post)(last_root_post)(post_bandwidth)
-             (new_average_bandwidth)(new_average_market_bandwidth)
+             (average_market_bandwidth)(lifetime_market_bandwidth)(last_market_bandwidth_update)
+             (last_post)(last_root_post)
           )
 
 FC_REFLECT( steemit::app::owner_authority_history_api_obj,
