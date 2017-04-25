@@ -544,17 +544,6 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       {
          com.net_rshares = 10;
          com.abs_rshares = 10;
-         com.children_rshares2 = steemit::chain::util::calculate_claims( 10 );
-      });
-
-      db.modify( mod_bob_comment, [&]( comment_object& com)
-      {
-         com.children_rshares2 = steemit::chain::util::calculate_claims( 10 );
-      });
-
-      db.modify( mod_alice_comment, [&]( comment_object& com)
-      {
-         com.children_rshares2 = steemit::chain::util::calculate_claims( 10 );
       });
 
       db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
@@ -833,8 +822,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          tx.sign( sam_private_key, db.get_chain_id() );
          db.push_transaction( tx, 0 );
 
-         auto old_rshares2 = db.get_comment( "alice", string( "foo" ) ).children_rshares2;
-
          op.weight = STEEMIT_100_PERCENT;
          op.voter = "alice";
          op.author = "sam";
@@ -847,7 +834,6 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto new_rshares = ( ( fc::uint128_t( db.get_account( "alice" ).vesting_shares.amount.value ) * used_power ) / STEEMIT_100_PERCENT ).to_uint64();
 
-         BOOST_REQUIRE( db.get_comment( "alice", string( "foo" ) ).children_rshares2 == db.get_comment( "sam", string( "foo" ) ).children_rshares2 + old_rshares2 );
          BOOST_REQUIRE( db.get_comment( "alice", string( "foo" ) ).cashout_time == db.get_comment( "alice", string( "foo" ) ).created + STEEMIT_CASHOUT_WINDOW_SECONDS );
 
          validate_database();

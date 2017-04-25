@@ -126,13 +126,6 @@ namespace steemit { namespace chain {
          uint16_t          depth = 0; ///< used to track max nested depth
          uint32_t          children = 0; ///< used to track the total number of children, grandchildren, etc...
 
-         /**
-          *  Used to track the total rshares^2 of all children, this is used for indexing purposes. A discussion
-          *  that has a nested comment of high value should promote the entire discussion so that the comment can
-          *  be reviewed.
-          */
-         fc::uint128_t     children_rshares2;
-
          /// index on pending_payout for "things happning now... needs moderation"
          /// TRENDING = UNCLAIMED + PENDING
          share_type        net_rshares; // reward is proportional to rshares^2, this is the sum of all votes (positive and negative)
@@ -312,7 +305,7 @@ FC_REFLECT( steemit::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
-             (depth)(children)(children_rshares2)
+             (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)

@@ -87,13 +87,6 @@ class tag_object : public object< tag_object_type, tag_object >
       double            trending    = 0;
       share_type        promoted_balance = 0;
 
-      /**
-       *  Used to track the total rshares^2 of all children, this is used for indexing purposes. A discussion
-       *  that has a nested comment of high value should promote the entire discussion so that the comment can
-       *  be reviewed.
-       */
-      fc::uint128_t     children_rshares2;
-
       account_id_type   author;
       comment_id_type   parent;
       comment_id_type   comment;
@@ -111,13 +104,11 @@ struct by_parent_active;
 struct by_parent_promoted;
 struct by_parent_net_rshares; /// all top level posts by direct pending payout
 struct by_parent_net_votes; /// all top level posts by direct votes
-struct by_parent_children_rshares2; /// all top level posts by total cumulative payout (aka payout)
 struct by_parent_trending;
 struct by_parent_children; /// all top level posts with the most discussion (replies at all levels)
 struct by_parent_hot;
 struct by_author_parent_created;  /// all blog posts by author with tag
 struct by_author_comment;
-struct by_mode_parent_children_rshares2;
 struct by_reward_fund_net_rshares;
 struct by_comment;
 struct by_tag;
@@ -199,15 +190,6 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<tag_name_type>, std::less<comment_id_type>, std::greater< double >, std::less< tag_id_type > >
       >,
-      ordered_unique< tag< by_parent_children_rshares2 >,
-            composite_key< tag_object,
-               member< tag_object, tag_name_type, &tag_object::tag >,
-               member< tag_object, comment_id_type, &tag_object::parent >,
-               member< tag_object, fc::uint128_t, &tag_object::children_rshares2 >,
-               member< tag_object, tag_id_type, &tag_object::id >
-            >,
-            composite_key_compare< std::less<tag_name_type>, std::less<comment_id_type>, std::greater< fc::uint128_t >, std::less< tag_id_type > >
-      >,
       ordered_unique< tag< by_parent_trending >,
             composite_key< tag_object,
                member< tag_object, tag_name_type, &tag_object::tag >,
@@ -273,11 +255,11 @@ class tag_stats_object : public object< tag_stats_object_type, tag_stats_object 
       id_type           id;
 
       tag_name_type     tag;
-      fc::uint128_t     total_children_rshares2;
       asset             total_payout = asset( 0, SBD_SYMBOL );
       int32_t           net_votes = 0;
       uint32_t          top_posts = 0;
       uint32_t          comments  = 0;
+      fc::uint128       total_trending = 0;
 };
 
 typedef oid< tag_stats_object > tag_stats_id_type;
@@ -309,10 +291,10 @@ typedef multi_index_container<
       */
       ordered_non_unique< tag< by_trending >,
          composite_key< tag_stats_object,
-            member< tag_stats_object, fc::uint128_t, &tag_stats_object::total_children_rshares2 >,
+            member< tag_stats_object, fc::uint128 , &tag_stats_object::total_trending >,
             member< tag_stats_object, tag_name_type, &tag_stats_object::tag >
          >,
-         composite_key_compare< std::greater< uint128_t >, std::less< tag_name_type > >
+         composite_key_compare<  std::greater< fc::uint128  >, std::less< tag_name_type > >
       >
   >,
   allocator< tag_stats_object >
@@ -516,11 +498,11 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 FC_API( steemit::tags::tag_api, (get_tags) );
 
 FC_REFLECT( steemit::tags::tag_object,
-   (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(trending)(promoted_balance)(children)(children_rshares2)(author)(parent)(comment) )
+   (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(trending)(promoted_balance)(children)(author)(parent)(comment) )
 CHAINBASE_SET_INDEX_TYPE( steemit::tags::tag_object, steemit::tags::tag_index )
 
 FC_REFLECT( steemit::tags::tag_stats_object,
-   (id)(tag)(total_children_rshares2)(total_payout)(net_votes)(top_posts)(comments) );
+   (id)(tag)(total_payout)(net_votes)(top_posts)(comments)(total_trending) );
 CHAINBASE_SET_INDEX_TYPE( steemit::tags::tag_stats_object, steemit::tags::tag_stats_index )
 
 FC_REFLECT( steemit::tags::peer_stats_object,

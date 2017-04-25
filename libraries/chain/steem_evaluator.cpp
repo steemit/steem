@@ -1415,7 +1415,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
             c.total_vote_weight += max_vote_weight;
          });
       }
-
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
          _db.adjust_rshares2( comment, old_rshares, new_rshares );
    }
@@ -1507,6 +1506,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// calculate rshares2 value
       new_rshares = util::calculate_claims( new_rshares );
       old_rshares = util::calculate_claims( old_rshares );
+
 
       _db.modify( comment, [&]( comment_object& c )
       {
