@@ -1552,7 +1552,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          }
       });
 
-
       fc::uint128_t new_rshares = std::max( comment.net_rshares.value, int64_t(0));
 
       /// calculate rshares2 value
