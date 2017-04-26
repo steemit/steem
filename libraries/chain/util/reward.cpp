@@ -16,7 +16,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
 
    //idump( (ctx) );
 
-   u256 claim = to256( calculate_claims( ctx.rshares.value, ctx.reward_curve, ctx.content_constant ) );
+   u256 claim = to256( evaluate_reward_curve( ctx.rshares.value, ctx.reward_curve, ctx.content_constant ) );
    claim = ( claim * ctx.reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * claim ) / total_claims;
@@ -34,50 +34,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx )
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint64_t get_vote_weight( uint64_t vote_rshares, const reward_fund_object& rf )
-{
-   uint64_t result = 0;
-   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
-   {
-      uint128_t two_alpha = rf.content_constant * 2;
-      result = ( uint128_t( vote_rshares, 0 ) / ( two_alpha + vote_rshares ) ).to_uint64();
-   }
-   else
-   {
-      wlog( "Unknown reward fund type ${rf}", ("rf",rf.name) );
-   }
-
-   return result;
-}
-
-uint64_t get_vote_weight( uint64_t vote_rshares, const curve_id& curve, const uint128_t& content_constant )
-{
-   uint64_t result = 0;
-
-   switch( curve )
-   {
-      case quadratic_curation:
-         {
-            uint128_t two_alpha = content_constant * 2;
-            result = ( uint128_t( vote_rshares, 0 ) / ( two_alpha + vote_rshares ) ).to_uint64();
-         }
-         break;
-      case square_root:
-         //result = rshares;
-         break;
-   }
-
-   return result;
-}
-
-uint128_t calculate_claims( const uint128_t& rshares )
-{
-   uint128_t s = get_content_constant_s();
-   uint128_t rshares_plus_s = rshares + s;
-   return rshares_plus_s * rshares_plus_s - s * s;
-}
-
-uint128_t calculate_claims( const uint128_t& rshares, const curve_id& curve, const uint128_t& content_constant )
+uint128_t evaluate_reward_curve( const uint128_t& rshares, const curve_id& curve, const uint128_t& content_constant )
 {
    uint128_t result = 0;
 
@@ -89,8 +46,16 @@ uint128_t calculate_claims( const uint128_t& rshares, const curve_id& curve, con
             result = rshares_plus_s * rshares_plus_s - content_constant * content_constant;
          }
          break;
+      case quadratic_curation:
+         {
+            uint128_t two_alpha = content_constant * 2;
+            result = uint128_t( rshares.lo, 0 ) / ( two_alpha + rshares );
+         }
+         break;
       case linear:
          result = rshares;
+         break;
+      case square_root:
          break;
    }
 

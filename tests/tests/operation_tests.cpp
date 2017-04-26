@@ -548,7 +548,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
 
       db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
       {
-         o.total_reward_shares2 = steemit::chain::util::calculate_claims( 10 );
+         o.total_reward_shares2 = steemit::chain::util::evaluate_reward_curve( 10 );
       });
 
       tx.signatures.clear();

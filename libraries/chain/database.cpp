@@ -1538,7 +1538,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
          }
 
          if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-            adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
+            adjust_rshares2( comment, util::evaluate_reward_curve( comment.net_rshares.value ), 0 );
       }
 
       modify( comment, [&]( comment_object& c )
@@ -1651,8 +1651,8 @@ void database::process_comment_cashout()
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
-            funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
-            funds[ 1 ].recent_claims += util::calculate_claims( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
+            funds[ rf.id._id ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
+            funds[ 1 ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
          }
 
          ++current;
@@ -3986,7 +3986,7 @@ void database::validate_invariants()const
       {
          if( itr->net_rshares.value > 0 )
          {
-            auto delta = util::calculate_claims( itr->net_rshares.value );
+            auto delta = util::evaluate_reward_curve( itr->net_rshares.value );
             total_rshares2 += delta;
          }
       }
@@ -4057,7 +4057,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
+            adjust_rshares2( c, 0, util::evaluate_reward_curve( c.net_rshares.value ) );
       }
 
    }

@@ -33,14 +33,12 @@ struct comment_reward_context
 
 uint64_t get_rshare_reward( const comment_reward_context& ctx );
 
-uint64_t get_vote_weight( uint64_t vote_rshares, const curve_id& curve, const uint128_t& content_constant );
-
 inline uint128_t get_content_constant_s()
 {
    return STEEMIT_CONTENT_CONSTANT_HF0; // looking good for posters
 }
 
-uint128_t calculate_claims( const uint128_t& rshares, const curve_id& curve = quadratic, const uint128_t& content_constant = STEEMIT_CONTENT_CONSTANT_HF0 );
+uint128_t evaluate_reward_curve( const uint128_t& rshares, const curve_id& curve = quadratic, const uint128_t& content_constant = STEEMIT_CONTENT_CONSTANT_HF0 );
 
 inline bool is_comment_payout_dust( const price& p, uint64_t steem_payout )
 {
