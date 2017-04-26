@@ -252,6 +252,10 @@
 #define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
 #define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
+#define STEEMIT_ACTIVE_ROLE_NAME                (role_name_type("active"))
+#define STEEMIT_OWNER_ROLE_NAME                 (role_name_type("owner"))
+#define STEEMIT_POSTING_ROLE_NAME               (role_name_type("posting"))
+
 /**
  *  Reserved Account IDs with special meaning
  */

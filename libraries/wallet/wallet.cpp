@@ -44,6 +44,7 @@
 #include <graphene/utilities/words.hpp>
 
 #include <steemit/app/api.hpp>
+#include <steemit/chain/auth_rule_adapter.hpp>
 #include <steemit/protocol/base.hpp>
 #include <steemit/follow/follow_operations.hpp>
 #include <steemit/private_message/private_message_operations.hpp>
@@ -187,6 +188,140 @@ struct op_prototype_visitor
       name2op[ name ] = Type();
    }
 };
+
+void get_auth_rules_for_account( std::vector< auth_rule >& result, const account_api_obj& account )
+{
+   const account_name_type& account_name = account.name;
+   STEEMIT_GET_AUTH_RULES_FOR_ACCOUNT_BODY;
+}
+
+class auth_rule_db_interface
+{
+   public:
+      virtual ~auth_rule_db_interface() {}
+      virtual void get_auth_rules_for_account_name( std::vector< auth_rule >& rules, const account_name_type& account ) = 0;
+      virtual void preload_rules( const std::set< authorization >& relevant_authorizations ) = 0;
+};
+
+class wallet_auth_rule_db_interface : public auth_rule_db_interface
+{
+   public:
+      wallet_auth_rule_db_interface( fc::api<database_api>& db )
+         : _remote_db( db ) {}
+
+      virtual ~wallet_auth_rule_db_interface() {}
+
+      virtual void get_auth_rules_for_account_name( std::vector< auth_rule >& rules, const account_name_type& account ) override
+      {
+         auto it = _rule_lut.find( account );
+         FC_ASSERT( it != _rule_lut.end() );
+         std::copy( it->second.begin(), it->second.end(), std::back_inserter( rules ) );
+      }
+
+      virtual void preload_rules( const std::set< authorization >& relevant_authorizations ) override
+      {
+         std::vector< std::string > names;
+         // Initialize LUT entries for new accounts
+         // - Keys added to names vector
+         // - Values default-initialized to empty vector
+         for( const authorization& auth : relevant_authorizations )
+         {
+            if( _rule_lut.find( auth.account ) == _rule_lut.end() )
+            {
+               _rule_lut.emplace( auth.account, std::vector< steemit::protocol::auth_rule >() );
+               names.push_back( auth.account );
+            }
+         }
+
+         // Query for account info in single API call
+         auto account_objs = _remote_db->get_accounts( names );
+
+         // Initialize LUT entries' values using API call result
+         for( const account_api_obj& acct : account_objs )
+         {
+            _account_lut.emplace( acct.name, acct );
+            auto it = _rule_lut.find( acct.name );
+            FC_ASSERT( it != _rule_lut.end() );
+           get_auth_rules_for_account( it->second, acct );
+        }
+      }
+
+      account_api_obj& get_account_from_lut( const account_name_type& account_name )
+      {
+         auto it = _account_lut.find( account_name );
+         FC_ASSERT( it != _account_lut.end() );
+         return it->second;
+      }
+
+      fc::api<database_api>&                                    _remote_db;
+      std::map< account_name_type, std::vector< auth_rule > >   _rule_lut;
+      std::map< account_name_type, account_api_obj >            _account_lut;
+};
+
+struct auth_rule_walk_state
+{
+   auth_rule_walk_state( const get_req_authorizations_context& ctx )
+      : auth_rules( ctx.rules.begin(), ctx.rules.end() )
+   {
+      FC_ASSERT( ctx.rules.size() > 0 );
+      relevant_authorizations.insert( ctx.rules[0].rhs );
+   }
+
+   std::set< auth_rule >         auth_rules;
+   std::set< authorization >     relevant_authorizations;
+   std::set< public_key_type >   relevant_keys;
+};
+
+void expand_auth_rules(
+   auth_rule_walk_state& state,
+   auth_rule_db_interface& db )
+{
+   db.preload_rules( state.relevant_authorizations );
+
+   boost::container::flat_set< account_name_type > accounts;
+   std::vector< auth_rule > v_new_rules;
+   for( const authorization& auth : state.relevant_authorizations )
+   {
+      if( accounts.emplace( auth.account ).second )
+         db.get_auth_rules_for_account_name( v_new_rules, auth.account );
+   }
+   std::vector< bool > rule_adopted( v_new_rules.size() );
+
+   size_t rules_adopted;
+   do
+   {
+      rules_adopted = 0;
+      for( size_t i=0,n=v_new_rules.size(); i<n; i++ )
+      {
+         // skip rule that's already been adopted
+         if( rule_adopted[i] )
+            continue;
+         // skip rule that's irrelevant (i.e. RHS isn't needed)
+         if( state.relevant_authorizations.find( v_new_rules[i].rhs ) ==
+             state.relevant_authorizations.end() )
+            continue;
+
+         rule_adopted[i] = true;
+         for( const auth_rule_auth_component& e : v_new_rules[i].lhs.component_authorizations )
+            state.relevant_authorizations.insert( e.auth );
+         for( const auth_rule_key_component& e : v_new_rules[i].lhs.component_keys )
+            state.relevant_keys.insert( e.key );
+         state.auth_rules.emplace( v_new_rules[i] );
+         ++rules_adopted;
+      }
+   } while( rules_adopted > 0 );
+
+   return;
+}
+
+void walk_auth_rules(
+   auth_rule_walk_state& state,
+   auth_rule_db_interface& db,
+   int depth )
+{
+   for( int i=0; i<depth; i++ )
+      expand_auth_rules( state, db );
+}
 
 class wallet_api_impl
 {
@@ -549,119 +684,21 @@ public:
 
    annotated_signed_transaction sign_transaction(signed_transaction tx, bool broadcast = false)
    {
-      flat_set< account_name_type >   req_active_approvals;
-      flat_set< account_name_type >   req_owner_approvals;
-      flat_set< account_name_type >   req_posting_approvals;
-      vector< authority >  other_auths;
+      get_req_authorizations_context req_authorizations;
+      tx.get_required_authorizations( req_authorizations );
+      auth_rule_walk_state walk( req_authorizations );
 
-      tx.get_required_authorities( req_active_approvals, req_owner_approvals, req_posting_approvals, other_auths );
-
-      for( const auto& auth : other_auths )
-         for( const auto& a : auth.account_auths )
-            req_active_approvals.insert(a.first);
-
-      // std::merge lets us de-duplicate account_id's that occur in both
-      //   sets, and dump them into a vector (as required by remote_db api)
-      //   at the same time
-      vector< string > v_approving_account_names;
-      std::merge(req_active_approvals.begin(), req_active_approvals.end(),
-                 req_owner_approvals.begin() , req_owner_approvals.end(),
-                 std::back_inserter( v_approving_account_names ) );
-
-      for( const auto& a : req_posting_approvals )
-         v_approving_account_names.push_back(a);
-
-      /// TODO: fetch the accounts specified via other_auths as well.
-
-      auto approving_account_objects = _remote_db->get_accounts( v_approving_account_names );
-
-      /// TODO: recursively check one layer deeper in the authority tree for keys
-
-      FC_ASSERT( approving_account_objects.size() == v_approving_account_names.size(), "", ("aco.size:", approving_account_objects.size())("acn",v_approving_account_names.size()) );
-
-      flat_map< string, account_api_obj > approving_account_lut;
-      size_t i = 0;
-      for( const optional< account_api_obj >& approving_acct : approving_account_objects )
-      {
-         if( !approving_acct.valid() )
-         {
-            wlog( "operation_get_required_auths said approval of non-existing account ${name} was needed",
-                  ("name", v_approving_account_names[i]) );
-            i++;
-            continue;
-         }
-         approving_account_lut[ approving_acct->name ] =  *approving_acct;
-         i++;
-      }
-      auto get_account_from_lut = [&]( const std::string& name ) -> const account_api_obj&
-      {
-         auto it = approving_account_lut.find( name );
-         FC_ASSERT( it != approving_account_lut.end() );
-         return it->second;
-      };
-
-      flat_set<public_key_type> approving_key_set;
-      for( account_name_type& acct_name : req_active_approvals )
-      {
-         const auto it = approving_account_lut.find( acct_name );
-         if( it == approving_account_lut.end() )
-            continue;
-         const account_api_obj& acct = it->second;
-         vector<public_key_type> v_approving_keys = acct.active.get_keys();
-         wdump((v_approving_keys));
-         for( const public_key_type& approving_key : v_approving_keys )
-         {
-            wdump((approving_key));
-            approving_key_set.insert( approving_key );
-         }
-      }
-
-      for( account_name_type& acct_name : req_posting_approvals )
-      {
-         const auto it = approving_account_lut.find( acct_name );
-         if( it == approving_account_lut.end() )
-            continue;
-         const account_api_obj& acct = it->second;
-         vector<public_key_type> v_approving_keys = acct.posting.get_keys();
-         wdump((v_approving_keys));
-         for( const public_key_type& approving_key : v_approving_keys )
-         {
-            wdump((approving_key));
-            approving_key_set.insert( approving_key );
-         }
-      }
-
-      for( const account_name_type& acct_name : req_owner_approvals )
-      {
-         const auto it = approving_account_lut.find( acct_name );
-         if( it == approving_account_lut.end() )
-            continue;
-         const account_api_obj& acct = it->second;
-         vector<public_key_type> v_approving_keys = acct.owner.get_keys();
-         for( const public_key_type& approving_key : v_approving_keys )
-         {
-            wdump((approving_key));
-            approving_key_set.insert( approving_key );
-         }
-      }
-      for( const authority& a : other_auths )
-      {
-         for( const auto& k : a.key_auths )
-         {
-            wdump((k.first));
-            approving_key_set.insert( k.first );
-         }
-      }
+      wallet_auth_rule_db_interface dbif( _remote_db );
+      walk_auth_rules( walk, dbif, 16 );
 
       auto dyn_props = _remote_db->get_dynamic_global_properties();
       tx.set_reference_block( dyn_props.head_block_id );
       tx.set_expiration( dyn_props.time + fc::seconds(_tx_expiration_seconds) );
       tx.signatures.clear();
 
-      //idump((_keys));
       flat_set< public_key_type > available_keys;
       flat_map< public_key_type, fc::ecc::private_key > available_private_keys;
-      for( const public_key_type& key : approving_key_set )
+      for( const public_key_type& key : walk.relevant_keys )
       {
          auto it = _keys.find(key);
          if( it != _keys.end() )
@@ -677,11 +714,11 @@ public:
          STEEMIT_CHAIN_ID,
          available_keys,
          [&]( const string& account_name ) -> const authority&
-         { return (get_account_from_lut( account_name ).active); },
+         { return (dbif.get_account_from_lut( account_name ).active); },
          [&]( const string& account_name ) -> const authority&
-         { return (get_account_from_lut( account_name ).owner); },
+         { return (dbif.get_account_from_lut( account_name ).owner); },
          [&]( const string& account_name ) -> const authority&
-         { return (get_account_from_lut( account_name ).posting); },
+         { return (dbif.get_account_from_lut( account_name ).posting); },
          STEEMIT_MAX_SIG_CHECK_DEPTH
          );
 
@@ -692,8 +729,10 @@ public:
          tx.sign( it->second, STEEMIT_CHAIN_ID );
       }
 
-      if( broadcast ) {
-         try {
+      if( broadcast )
+      {
+         try
+         {
             auto result = _remote_net_broadcast->broadcast_transaction_synchronous( tx );
             annotated_signed_transaction rtrx(tx);
             rtrx.block_num = result.get_object()["block_num"].as_uint64();

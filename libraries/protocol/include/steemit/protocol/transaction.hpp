@@ -7,6 +7,8 @@
 
 namespace steemit { namespace protocol {
 
+   struct get_req_authorizations_context;
+
    struct transaction
    {
       uint16_t           ref_block_num    = 0;
@@ -46,6 +48,7 @@ namespace steemit { namespace protocol {
                                      flat_set< account_name_type >& owner,
                                      flat_set< account_name_type >& posting,
                                      vector< authority >& other )const;
+      void get_required_authorizations( get_req_authorizations_context& ctx )const;
    };
 
    struct signed_transaction : public transaction

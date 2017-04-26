@@ -4,6 +4,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/witness_objects.hpp>
 #include <steemit/chain/block_summary_object.hpp>
+#include <steemit/chain/auth_rule_adapter.hpp>
 
 #include <steemit/chain/util/reward.hpp>
 
@@ -2343,6 +2344,12 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          _db.remove( *delegation );
       }
    }
+}
+
+void get_auth_rules_for_account( std::vector< auth_rule >& result, const account_authority_object& account )
+{
+   const account_name_type& account_name = account.account;
+   STEEMIT_GET_AUTH_RULES_FOR_ACCOUNT_BODY;
 }
 
 } } // steemit::chain

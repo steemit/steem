@@ -4,6 +4,7 @@
 
 #include <steemit/protocol/get_config.hpp>
 
+#include <steemit/chain/auth_rule_adapter.hpp>
 #include <steemit/chain/util/reward.hpp>
 
 #include <fc/bloom_filter.hpp>
@@ -281,7 +282,7 @@ vector<applied_operation> database_api_impl::get_ops_in_block(uint32_t block_num
 //                                                                  //
 // Globals                                                          //
 //                                                                  //
-//////////////////////////////////////////////////////////////////////=
+//////////////////////////////////////////////////////////////////////
 
 fc::variant_object database_api::get_config()const
 {
@@ -2415,6 +2416,5 @@ annotated_signed_transaction database_api::get_transaction( transaction_id_type 
       FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
    });
 }
-
 
 } } // steemit::app

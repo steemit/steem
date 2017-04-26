@@ -82,6 +82,28 @@ void transaction::get_required_authorities( flat_set< account_name_type >& activ
       operation_get_required_authorities( op, active, owner, posting, other );
 }
 
+/**
+ * The first rule added is a rule of the form
+ *
+ * ```
+ * !op_1 & !op_2 & ... & !op_n -> !tx
+ * ```
+ */
+void transaction::get_required_authorizations( get_req_authorizations_context& ctx )const
+{
+   size_t i_tx = ctx.rules.size();
+   ctx.rules.emplace_back();
+   ctx.auth_factory.get_next_auth( "!tx", ctx.rules[i_tx].rhs );
+   ctx.rules[i_tx].lhs.weight_threshold = operations.size();
+
+   for( const operation& op : operations )
+   {
+      size_t i_op = ctx.rules.size();
+      operation_get_required_authorizations( op, ctx );
+      ctx.rules[i_tx].lhs.component_authorizations.emplace_back( 1, ctx.rules[i_op].rhs );
+   }
+}
+
 void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
                        const authority_getter& get_active,
                        const authority_getter& get_owner,
