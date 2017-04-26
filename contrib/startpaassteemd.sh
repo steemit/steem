@@ -1,5 +1,8 @@
 #!/bin/bash
 
+ulimit -c unlimited
+echo /tmp/core | tee /proc/sys/kernel/core_pattern
+
 VERSION=`cat /etc/steemdversion`
 
 STEEMD="/usr/local/steemd-full/bin/steemd"
