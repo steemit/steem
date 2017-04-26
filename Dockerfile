@@ -31,6 +31,7 @@ RUN \
         awscli \
         jq \
         wget \
+        gdb \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
