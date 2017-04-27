@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ulimit -c unlimited
+
 VERSION=`cat /etc/steemdversion`
 
 STEEMD="/usr/local/steemd-full/bin/steemd"
