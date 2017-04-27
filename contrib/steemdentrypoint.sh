@@ -1,11 +1,10 @@
 #!/bin/bash
 
 echo /tmp/core | tee /proc/sys/kernel/core_pattern
-echo "*  soft  core  unlimited" >> /etc/security/limits.conf
+ulimit -c unlimited
 
 # if we're not using PaaS mode then start steemd traditionally with sv to control it
 if [[ ! "$USE_PAAS" ]]; then
-  ulimit -c unlimited
   mkdir -p /etc/service/steemd
   cp /usr/local/bin/steem-sv-run.sh /etc/service/steemd/run
   chmod +x /etc/service/steemd/run
