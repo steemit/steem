@@ -5,13 +5,11 @@ VERSION=`cat /etc/steemdversion`
 # if the writer node dies by itself, kill runsv causing the container to exit
 STEEMD_PID=`pgrep -f p2p-endpoint`
 if [[ ! $? -eq 0 ]]; then
-  echo NOTIFYALERT! steemdsync has quit unexpectedly, checking for coredump and then starting a new instance..
-  sleep 20
-  if [[ -e /tmp/core ]]; then
-    gdb --batch --quiet -ex "thread apply all bt full" -ex "quit" /usr/local/steemd-full/bin/steemd /tmp/core >> /tmp/stacktrace
-    STACKTRACE=`cat /tmp/stacktrace`
-    echo NOTIFYALERT! steemdsync stacktrace from coredump: $STACKTRACE
-  fi
+  echo NOTIFYALERT! steemdsync has quit unexpectedly, waiting for coredump and then starting a new instance..
+  while [ ! -e /tmp/core ]; do sleep 0.1; done
+  gdb --batch --quiet -ex "thread apply all bt full" -ex "quit" /usr/local/steemd-full/bin/steemd /tmp/core >> /tmp/stacktrace
+  STACKTRACE=`cat /tmp/stacktrace`
+  echo NOTIFYALERT! steemdsync stacktrace from coredump: $STACKTRACE
   RUN_SV_PID=`pgrep -f /etc/service/steemd`
   kill -9 $RUN_SV_PID
 fi
