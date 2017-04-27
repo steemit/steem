@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo /tmp/core | tee /proc/sys/kernel/core_pattern
+echo "*  soft  core  unlimited" >> /etc/security/limits.conf
 
 # if we're not using PaaS mode then start steemd traditionally with sv to control it
 if [[ ! "$USE_PAAS" ]]; then
