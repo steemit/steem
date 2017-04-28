@@ -620,18 +620,16 @@ namespace detail {
          // ilog("Request for item ${id}", ("id", id));
          if( id.item_type == graphene::net::block_message_type )
          {
-            optional<signed_block> opt_block;
-            _chain_db->with_read_lock( [&]()
+            return _chain_db->with_read_lock( [&]()
             {
                auto opt_block = _chain_db->fetch_block_by_id(id.item_hash);
                if( !opt_block )
                   elog("Couldn't find block ${id} -- corresponding ID in our chain is ${id2}",
                      ("id", id.item_hash)("id2", _chain_db->get_block_id_for_num(block_header::num_from_id(id.item_hash))));
                FC_ASSERT( opt_block.valid() );
+               // ilog("Serving up block #${num}", ("num", opt_block->block_num()));
+               return block_message(std::move(*opt_block));
             });
-
-            // ilog("Serving up block #${num}", ("num", opt_block->block_num()));
-            return block_message(std::move(*opt_block));
          }
          return _chain_db->with_read_lock( [&]()
          {
