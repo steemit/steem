@@ -16,7 +16,6 @@ fc::variant_object get_config()
    result[ "IS_TEST_NET" ] = false;
 #endif
 
-   result["GRAPHENE_CURRENT_DB_VERSION"] = GRAPHENE_CURRENT_DB_VERSION;
    result["SBD_SYMBOL"] = SBD_SYMBOL;
    result["STEEMIT_100_PERCENT"] = STEEMIT_100_PERCENT;
    result["STEEMIT_1_PERCENT"] = STEEMIT_1_PERCENT;

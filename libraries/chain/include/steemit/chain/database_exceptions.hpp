@@ -49,7 +49,6 @@
    }                                                                          \
    catch( const steemit::chain::plugin_exception& e )                         \
    {                                                                          \
-      elog( "Caught plugin exception: ${e}", ("e", e.to_detail_string() ) );  \
       throw;                                                                  \
    }                                                                          \
    catch( const fc::exception& e )                                            \

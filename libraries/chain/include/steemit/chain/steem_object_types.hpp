@@ -41,7 +41,6 @@ enum object_type
    dynamic_global_property_object_type,
    account_object_type,
    account_authority_object_type,
-   account_bandwidth_object_type,
    witness_object_type,
    transaction_object_type,
    block_summary_object_type,
@@ -73,7 +72,6 @@ enum object_type
 class dynamic_global_property_object;
 class account_object;
 class account_authority_object;
-class account_bandwidth_object;
 class witness_object;
 class transaction_object;
 class block_summary_object;
@@ -104,7 +102,6 @@ class vesting_delegation_expiration_object;
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
 typedef oid< account_object                         > account_id_type;
 typedef oid< account_authority_object               > account_authority_id_type;
-typedef oid< account_bandwidth_object               > account_bandwidth_id_type;
 typedef oid< witness_object                         > witness_id_type;
 typedef oid< transaction_object                     > transaction_object_id_type;
 typedef oid< block_summary_object                   > block_summary_id_type;
@@ -136,9 +133,7 @@ enum bandwidth_type
 {
    post,    ///< Rate limiting posting reward eligibility over time
    forum,   ///< Rate limiting for all forum related actins
-   market,  ///< Rate limiting for all other actions
-   old_forum,   ///< Rate limiting for all forum related actions (deprecated)
-   old_market   ///< Rate limiting for all other actions (deprecated)
+   market   ///< Rate limiting for all other actions
 };
 
 } } //steemit::chain
@@ -218,7 +213,6 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
                  (dynamic_global_property_object_type)
                  (account_object_type)
                  (account_authority_object_type)
-                 (account_bandwidth_object_type)
                  (witness_object_type)
                  (transaction_object_type)
                  (block_summary_object_type)
@@ -250,4 +244,4 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )
 FC_REFLECT_TYPENAME( steemit::chain::buffer_type )
 
-FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market)(old_forum)(old_market) )
+FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market) )

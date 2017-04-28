@@ -10,6 +10,7 @@
 #include <steemit/tags/tags_plugin.hpp>
 
 #include <steemit/follow/follow_plugin.hpp>
+#include <steemit/witness/witness_plugin.hpp>
 
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
@@ -155,7 +156,7 @@ class database_api
        * @param block_num Height of the block to be returned
        * @return the referenced block, or null if no matching block was found
        */
-      optional<signed_block> get_block(uint32_t block_num)const;
+      optional<signed_block_api_obj> get_block(uint32_t block_num)const;
 
       /**
        *  @brief Get sequence of operations included/generated within a particular block
@@ -238,7 +239,7 @@ class database_api
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
-      optional< account_bandwidth_api_obj > get_account_bandwidth( string account, bandwidth_type type )const;
+      optional< account_bandwidth_api_obj > get_account_bandwidth( string account, witness::bandwidth_type type )const;
 
       vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
       vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;

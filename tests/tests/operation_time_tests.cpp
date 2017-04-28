@@ -2479,8 +2479,6 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx, 0 );
 
-      auto bandwidth = db.get< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( "alice", bandwidth_type::post ) ).average_bandwidth;
-
       BOOST_REQUIRE( db.get_comment( "alice", string( "test1" ) ).reward_weight == STEEMIT_100_PERCENT );
 
       tx.operations.clear();

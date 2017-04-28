@@ -21,46 +21,58 @@ namespace steemit { namespace chain {
 
             inline void check_block_read()
             {
-               if( block_write )
+               try
                {
-                  block_stream.close();
-                  block_stream.open( block_file.generic_string().c_str(), LOG_READ );
-                  block_write = false;
+                  if( block_write )
+                  {
+                     block_stream.close();
+                     block_stream.open( block_file.generic_string().c_str(), LOG_READ );
+                     block_write = false;
+                  }
                }
+               FC_LOG_AND_RETHROW()
             }
 
             inline void check_block_write()
             {
-               if( !block_write )
+               try
                {
-                  block_stream.close();
-                  block_stream.open( block_file.generic_string().c_str(), LOG_WRITE );
-                  block_write = true;
+                  if( !block_write )
+                  {
+                     block_stream.close();
+                     block_stream.open( block_file.generic_string().c_str(), LOG_WRITE );
+                     block_write = true;
+                  }
                }
+               FC_LOG_AND_RETHROW()
             }
 
             inline void check_index_read()
             {
                try
                {
-               if( index_write )
-               {
-                  index_stream.close();
-                  index_stream.open( index_file.generic_string().c_str(), LOG_READ );
-                  index_write = false;
-               }
+                  if( index_write )
+                  {
+                     index_stream.close();
+                     index_stream.open( index_file.generic_string().c_str(), LOG_READ );
+                     index_write = false;
+                  }
                }
                FC_LOG_AND_RETHROW()
             }
 
             inline void check_index_write()
             {
-               if( !index_write )
+               try
                {
-                  index_stream.close();
-                  index_stream.open( index_file.generic_string().c_str(), LOG_WRITE );
-                  index_write = true;
+                  if( !index_write )
+                  {
+                     index_stream.close();
+                     index_stream.open( index_file.generic_string().c_str(), LOG_WRITE );
+                     index_write = true;
+                  }
                }
+               FC_LOG_AND_RETHROW()
             }
       };
    }
@@ -199,13 +211,17 @@ namespace steemit { namespace chain {
 
    std::pair< signed_block, uint64_t > block_log::read_block( uint64_t pos )const
    {
-      my->check_block_read();
+      try
+      {
+         my->check_block_read();
 
-      my->block_stream.seekg( pos );
-      std::pair<signed_block,uint64_t> result;
-      fc::raw::unpack( my->block_stream, result.first );
-      result.second = uint64_t(my->block_stream.tellg()) + 8;
-      return result;
+         my->block_stream.seekg( pos );
+         std::pair<signed_block,uint64_t> result;
+         fc::raw::unpack( my->block_stream, result.first );
+         result.second = uint64_t(my->block_stream.tellg()) + 8;
+         return result;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    optional< signed_block > block_log::read_block_by_num( uint32_t block_num )const
@@ -226,24 +242,32 @@ namespace steemit { namespace chain {
 
    uint64_t block_log::get_block_pos( uint32_t block_num ) const
    {
-      my->check_index_read();
+      try
+      {
+         my->check_index_read();
 
-      if( !( my->head.valid() && block_num <= protocol::block_header::num_from_id( my->head_id ) && block_num > 0 ) )
-         return npos;
-      my->index_stream.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
-      uint64_t pos;
-      my->index_stream.read( (char*)&pos, sizeof( pos ) );
-      return pos;
+         if( !( my->head.valid() && block_num <= protocol::block_header::num_from_id( my->head_id ) && block_num > 0 ) )
+            return npos;
+         my->index_stream.seekg( sizeof( uint64_t ) * ( block_num - 1 ) );
+         uint64_t pos;
+         my->index_stream.read( (char*)&pos, sizeof( pos ) );
+         return pos;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    signed_block block_log::read_head()const
    {
-      my->check_block_read();
+      try
+      {
+         my->check_block_read();
 
-      uint64_t pos;
-      my->block_stream.seekg( -sizeof(pos), std::ios::end );
-      my->block_stream.read( (char*)&pos, sizeof(pos) );
-      return read_block( pos ).first;
+         uint64_t pos;
+         my->block_stream.seekg( -sizeof(pos), std::ios::end );
+         my->block_stream.read( (char*)&pos, sizeof(pos) );
+         return read_block( pos ).first;
+      }
+      FC_LOG_AND_RETHROW()
    }
 
    const optional< signed_block >& block_log::head()const
@@ -253,27 +277,31 @@ namespace steemit { namespace chain {
 
    void block_log::construct_index()
    {
-      ilog( "Reconstructing Block Log Index..." );
-      my->index_stream.close();
-      fc::remove_all( my->index_file );
-      my->index_stream.open( my->index_file.generic_string().c_str(), LOG_WRITE );
-      my->index_write = true;
-
-      uint64_t pos = 0;
-      uint64_t end_pos;
-      my->check_block_read();
-
-      my->block_stream.seekg( -sizeof( uint64_t), std::ios::end );
-      my->block_stream.read( (char*)&end_pos, sizeof( end_pos ) );
-      signed_block tmp;
-
-      my->block_stream.seekg( pos );
-
-      while( pos < end_pos )
+      try
       {
-         fc::raw::unpack( my->block_stream, tmp );
-         my->block_stream.read( (char*)&pos, sizeof( pos ) );
-         my->index_stream.write( (char*)&pos, sizeof( pos ) );
+         ilog( "Reconstructing Block Log Index..." );
+         my->index_stream.close();
+         fc::remove_all( my->index_file );
+         my->index_stream.open( my->index_file.generic_string().c_str(), LOG_WRITE );
+         my->index_write = true;
+
+         uint64_t pos = 0;
+         uint64_t end_pos;
+         my->check_block_read();
+
+         my->block_stream.seekg( -sizeof( uint64_t), std::ios::end );
+         my->block_stream.read( (char*)&end_pos, sizeof( end_pos ) );
+         signed_block tmp;
+
+         my->block_stream.seekg( pos );
+
+         while( pos < end_pos )
+         {
+            fc::raw::unpack( my->block_stream, tmp );
+            my->block_stream.read( (char*)&pos, sizeof( pos ) );
+            my->index_stream.write( (char*)&pos, sizeof( pos ) );
+         }
       }
+      FC_LOG_AND_RETHROW()
    }
-} }
+} } // steemit::chain
