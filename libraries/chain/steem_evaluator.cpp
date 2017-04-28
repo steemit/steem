@@ -1294,6 +1294,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       old_rshares = util::evaluate_reward_curve( old_rshares );
 
       uint64_t max_vote_weight = 0;
+      uint64_t sqrt_max_vote_weight = 0;
 
       /** this verifies uniqueness of voter
        *
@@ -1349,6 +1350,13 @@ void vote_evaluator::do_apply( const vote_operation& o )
                   uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
                   uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
                   cv.weight = new_weight - old_weight;
+                  if( !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) )
+                  {
+                     old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve_id::square_root ).to_uint64();
+                     new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve_id::square_root ).to_uint64();
+                     cv.sqrt_weight = new_weight - old_weight;
+                     sqrt_max_vote_weight = cv.sqrt_weight;
+                  }
                }
                else if ( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
                {
@@ -1375,6 +1383,14 @@ void vote_evaluator::do_apply( const vote_operation& o )
                w *= delta_t;
                w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
                cv.weight = w.to_uint64();
+
+               if( _db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
+               {
+                  uint128_t w(sqrt_max_vote_weight);
+                  w *= delta_t;
+                  w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
+                  cv.sqrt_weight = w.to_uint64();
+               }
             }
          }
          else
@@ -1388,6 +1404,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          _db.modify( comment, [&]( comment_object& c )
          {
             c.total_vote_weight += max_vote_weight;
+            c.total_sqrt_vote_weight = sqrt_max_vote_weight;
          });
       }
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )

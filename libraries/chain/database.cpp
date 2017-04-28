@@ -3859,6 +3859,24 @@ void database::apply_hardfork( uint32_t hardfork )
                rfo.author_reward_curve = curve_id::linear;
                rfo.curation_reward_curve = curve_id::square_root;
             });
+
+            const auto& cidx = get_index< comment_index, by_cashout_time >();
+            const auto& vidx = get_index< comment_vote_index, by_comment_voter >();
+            for( auto c_itr = cidx.begin(); c_itr != cidx.end() && c_itr->cashout_time != fc::time_point_sec::maximum(); ++c_itr )
+            {
+               modify( *c_itr, [&]( comment_object& c )
+               {
+                  c.total_vote_weight = c.total_sqrt_vote_weight;
+               });
+
+               for( auto v_itr = vidx.lower_bound( c_itr->id ); v_itr != vidx.end() && v_itr->comment == c_itr->id; ++v_itr )
+               {
+                  modify( *v_itr, [&]( comment_vote_object& v )
+                  {
+                     v.weight = v.sqrt_weight;
+                  });
+               }
+            }
          }
          break;
       default:
