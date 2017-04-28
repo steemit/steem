@@ -142,6 +142,8 @@ else
             $ARGS \
             $STEEMD_EXTRA_OPTS \
             2>&1&
+    SAVED_PID=`pgrep -f p2p-endpoint`
+    echo $SAVED_PID >> /tmp/steemdpid
     mkdir -p /etc/service/steemd
     if [[ ! "$SYNC_TO_S3" ]]; then
       cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run

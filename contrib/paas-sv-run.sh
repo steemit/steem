@@ -15,8 +15,9 @@ STEEMD_PID=`pgrep -f p2p-endpoint`
 if [[ ! $? -eq 0 ]]; then
   echo NOTIFYALERT! steemd has quit unexpectedly, checking for core dump and then starting a new instance..
   sleep 30
-  if [[ -e /tmp/core.$STEEMD_PID ]]; then
-    gdb --batch --quiet -ex "thread apply all bt full" -ex "quit" /usr/local/steemd-full/bin/steemd /tmp/core.$STEEMD_PID >> /tmp/stacktrace
+  SAVED_PID=`cat /tmp/steemdpid`
+  if [[ -e /tmp/core.$SAVED_PID ]]; then
+    gdb --batch --quiet -ex "thread apply all bt full" -ex "quit" /usr/local/steemd-full/bin/steemd /tmp/core.$SAVED_PID >> /tmp/stacktrace
     STACKTRACE=`cat /tmp/stacktrace`
     echo NOTIFYALERT! steemdsync stacktrace from coredump: $STACKTRACE
   fi
