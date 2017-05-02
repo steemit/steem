@@ -866,7 +866,7 @@ namespace detail {
 
       virtual item_hash_t get_head_block_id() const override
       {
-         _chain_db->with_read_lock( [&]()
+         return _chain_db->with_read_lock( [&]()
          {
             return _chain_db->head_block_id();
          });
