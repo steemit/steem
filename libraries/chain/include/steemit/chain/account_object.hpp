@@ -257,8 +257,7 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >,
             member< account_object, account_id_type, &account_object::id > >,
          ordered_unique< tag< by_name >,
-            member< account_object, account_name_type, &account_object::name >,
-            protocol::string_less >,
+            member< account_object, account_name_type, &account_object::name > >,
          ordered_unique< tag< by_proxy >,
             composite_key< account_object,
                member< account_object, account_name_type, &account_object::proxy >,
@@ -374,7 +373,7 @@ namespace steemit { namespace chain {
                member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator >,
                member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee >
             >,
-            composite_key_compare< protocol::string_less, protocol::string_less >
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >
       >,
       allocator< vesting_delegation_object >
