@@ -242,7 +242,8 @@ namespace detail
 
          if( _db.is_producing() )
             STEEMIT_ASSERT( has_bandwidth, chain::plugin_exception,
-               "Account exceeded maximum allowed bandwidth per vesting share.",
+               "Account: ${account} bandwidth limit exeeded. Please wait to transact or power up STEEM.",
+               ("account", a.name)
                ("account_vshares", account_vshares)
                ("account_average_bandwidth", account_average_bandwidth)
                ("max_virtual_bandwidth", max_virtual_bandwidth)
