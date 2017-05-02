@@ -364,16 +364,6 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
-const category_object& database::get_category( const shared_string& name )const
-{ try {
-   return get< category_object, by_name >( name );
-} FC_CAPTURE_AND_RETHROW( (name) ) }
-
-const category_object* database::find_category( const shared_string& name )const
-{
-   return find< category_object, by_name >( name );
-}
-
 const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
 { try {
    return get< escrow_object, by_from_id >( boost::make_tuple( name, escrow_id ) );
@@ -1486,7 +1476,6 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 {
    try
    {
-      const auto& cat = get_category( comment.category );
       share_type claimed_reward = 0;
 
       if( comment.net_rshares > 0 )
@@ -1540,21 +1529,11 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                });
             #endif
 
-            modify( cat, [&]( category_object& c )
-            {
-               c.total_payouts += to_sbd( asset( claimed_reward, STEEM_SYMBOL ) );
-            });
          }
 
          if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
             adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
       }
-
-      modify( cat, [&]( category_object& c )
-      {
-         c.abs_rshares -= comment.abs_rshares;
-         c.last_update  = head_block_time();
-      } );
 
       modify( comment, [&]( comment_object& c )
       {
@@ -2215,7 +2194,6 @@ void database::initialize_indexes()
    add_core_index< liquidity_reward_balance_index          >(*this);
    add_core_index< operation_index                         >(*this);
    add_core_index< account_history_index                   >(*this);
-   add_core_index< category_index                          >(*this);
    add_core_index< hardfork_property_index                 >(*this);
    add_core_index< withdraw_vesting_route_index            >(*this);
    add_core_index< owner_authority_history_index           >(*this);
@@ -4024,19 +4002,6 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       {
          if( c.net_rshares.value > 0 )
             adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
-      }
-
-      // Update category rshares
-      const auto& cat_idx = get_index< category_index >().indices().get< by_name >();
-      auto cat_itr = cat_idx.begin();
-      while( cat_itr != cat_idx.end() )
-      {
-         modify( *cat_itr, [&]( category_object& c )
-         {
-            c.abs_rshares *= magnitude;
-         } );
-
-         ++cat_itr;
       }
 
    }

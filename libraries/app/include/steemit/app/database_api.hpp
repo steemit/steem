@@ -99,6 +99,11 @@ struct discussion_query {
 };
 
 /**
+ * Used to parse the metadata from the comment json_meta field.
+ */
+struct comment_metadata { unordered_set<string> tags; };
+
+/**
  * @brief The database_api class implements the RPC API for the chain database.
  *
  * This API exposes accessors on the database which query state tracked by a blockchain validating node. This API is
@@ -132,10 +137,6 @@ class database_api
        *  with a single query.
        */
       state get_state( string path )const;
-      vector<category_api_obj> get_trending_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_best_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_active_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_recent_categories( string after, uint32_t limit )const;
 
       vector< account_name_type > get_active_witnesses()const;
       vector< account_name_type > get_miner_queue()const;
@@ -459,6 +460,8 @@ FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(select_tags)(sele
 
 FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
 
+FC_REFLECT( steemit::app::comment_metadata, (tags) );
+
 FC_API(steemit::app::database_api,
    // Subscriptions
    (set_subscribe_callback)
@@ -489,10 +492,6 @@ FC_API(steemit::app::database_api,
    (get_block)
    (get_ops_in_block)
    (get_state)
-   (get_trending_categories)
-   (get_best_categories)
-   (get_active_categories)
-   (get_recent_categories)
 
    // Globals
    (get_config)
@@ -559,4 +558,3 @@ FC_API(steemit::app::database_api,
    (get_active_witnesses)
    (get_miner_queue)
 )
-
