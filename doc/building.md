@@ -177,6 +177,11 @@ steem. Until then, this will allow you to install boost 1.60.0.
 
     brew install google-perftools
 
+*Optional.* To use cli_wallet and override macOS's default readline installation:
+
+    brew install --force readline
+    brew link --force readline
+
 ### Clone the Repository
 
     git clone https://github.com/steemit/steem.git
