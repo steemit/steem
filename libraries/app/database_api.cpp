@@ -2126,7 +2126,6 @@ state database_api::get_state( string path )const
       }
       /// pull a complete discussion
       else if( part[1].size() && part[1][0] == '@' ) {
-         ilog("Pulling complete discussion: ${d}", ("d", part));
          auto account  = part[1].substr( 1 );
          auto slug     = part[2];
 

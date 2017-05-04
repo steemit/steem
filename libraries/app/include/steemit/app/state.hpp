@@ -65,7 +65,7 @@ namespace steemit { namespace app {
       discussion( const comment_object& o ):comment_api_obj(o){}
       discussion(){}
 
-      string url; /// /category/@rootauthor/root_permlink#author/permlink
+      string                      url; /// /category/@rootauthor/root_permlink#author/permlink
       string                      root_title;
       asset                       pending_payout_value; ///< sbd
       asset                       total_pending_payout_value; ///< sbd including replies
