@@ -180,8 +180,27 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
    for( const auto& item : impacted ) {
       auto itr = _tracked_accounts.lower_bound( item );
 
-      if( itr != _tracked_accounts.begin()
-         && ( ( itr != _tracked_accounts.end() && itr->first != item  ) || itr == _tracked_accounts.end() ) )
+      /*
+       * The map containing the ranges uses the key as the lower bound and the value as the upper bound.
+       * Because of this, if a value exists with the range (key, value], then calling lower_bound on
+       * the map will return the key of the next pair. Under normal circumstances of those ranges not
+       * intersecting, the value we are looking for will not be present in range that is returned via
+       * lower_bound.
+       *
+       * Consider the following example using ranges ["a","c"], ["g","i"]
+       * If we are looking for "bob", it should be tracked because it is in the lower bound.
+       * However, lower_bound( "bob" ) returns an iterator to ["g","i"]. So we need to decrement the iterator
+       * to get the correct range.
+       *
+       * If we are looking for "g", lower_bound( "g" ) will return ["g","i"], so we need to make sure we don't
+       * decrement.
+       *
+       * If the iterator points to the end, we should check the previous (equivalent to rbegin)
+       *
+       * And finally if the iterator is at the beginning, we should not decrement it for obvious reasons
+       */
+      if( itr != _tracked_accounts.begin() &&
+          ( ( itr != _tracked_accounts.end() && itr->first != item  ) || itr == _tracked_accounts.end() ) )
       {
          --itr;
       }
