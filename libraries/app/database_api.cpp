@@ -1170,27 +1170,25 @@ void database_api::set_pending_payout( discussion& d )const
 void database_api::set_url( discussion& d )const
 {
    const comment_api_obj root( my->_db.get< comment_object, by_id >( d.root_comment ) );
-   comment_metadata meta;
+   std::vector< std::string > tags;
    if( root.json_metadata.size() )
    {
       try
       {
-         meta = fc::json::from_string( root.json_metadata ).as< comment_metadata >();
+         tags  = fc::json::from_string( root.json_metadata )["tags"].as< std::vector< std::string > >();
+         if(tags.at(0) != ""){
+           d.url = "/" + tags.at(0) + "/@" + root.author + "/" + root.permlink;
+         }
+         else {
+           d.url = "/" + tags.at(1) + "/@" + root.author + "/" + root.permlink;
+         }
       }
       catch( const fc::exception& e )
       {
          // Do nothing on malformed json_metadata
       }
    }
-   ilog("comment_metadata: ${m} \n", ("m", meta));
-   ilog("root: ${r} \n", ("r", root));
-   if(meta.tags.size() && *meta.tags.begin() != ""){
-     d.url = "/" + *meta.tags.begin() + "/@" + root.author + "/" + root.permlink;
-   }
-   else if(*meta.tags.begin() == "" && meta.tags.size()-1){
-     d.url = "/" + *++meta.tags.begin() + "/@" + root.author + "/" + root.permlink;
-   }
-   else {
+   if(!tags.size()) {
      d.url = "/@" + root.author + "/" + root.permlink;
    }
 

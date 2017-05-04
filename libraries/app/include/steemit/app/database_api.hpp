@@ -99,11 +99,6 @@ struct discussion_query {
 };
 
 /**
- * Used to parse the metadata from the comment json_meta field.
- */
-struct comment_metadata { unordered_set<string> tags; };
-
-/**
  * @brief The database_api class implements the RPC API for the chain database.
  *
  * This API exposes accessors on the database which query state tracked by a blockchain validating node. This API is
@@ -459,8 +454,6 @@ FC_REFLECT( steemit::app::withdraw_route, (from_account)(to_account)(percent)(au
 FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(select_tags)(select_authors)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink)(limit) );
 
 FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
-
-FC_REFLECT( steemit::app::comment_metadata, (tags) );
 
 FC_API(steemit::app::database_api,
    // Subscriptions
