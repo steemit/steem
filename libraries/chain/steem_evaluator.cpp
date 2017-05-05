@@ -401,14 +401,6 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
       }
    }
 
-   /** TODO move category behavior to a plugin, this is not part of consensus */
-   const category_object* cat = _db.find_category( comment.category );
-   _db.modify( *cat, [&]( category_object& c )
-   {
-      c.discussions--;
-      c.last_update = _db.head_block_time();
-   });
-
    _db.remove( comment );
 }
 
@@ -570,7 +562,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          {
             com.parent_author = "";
             from_string( com.parent_permlink, o.parent_permlink );
-            from_string( com.category, o.parent_permlink );
             com.root_comment = com.id;
             com.cashout_time = _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) ?
                _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 :
@@ -581,7 +572,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_author = parent->author;
             com.parent_permlink = parent->permlink;
             com.depth = parent->depth + 1;
-            com.category = parent->category;
             com.root_comment = parent->root_comment;
             com.cashout_time = fc::time_point_sec::maximum();
          }
@@ -603,21 +593,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
                wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
          #endif
       });
-
-      /** TODO move category behavior to a plugin, this is not part of consensus */
-      const category_object* cat = _db.find_category( new_comment.category );
-      if( !cat ) {
-         cat = &_db.create<category_object>( [&]( category_object& c ){
-             c.name = new_comment.category;
-             c.discussions = 1;
-             c.last_update = _db.head_block_time();
-         });
-      } else {
-         _db.modify( *cat, [&]( category_object& c ){
-             c.discussions++;
-             c.last_update = _db.head_block_time();
-         });
-      }
 
       id = new_comment.id;
 
@@ -1311,12 +1286,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
       /// calculate rshares2 value
       new_rshares = util::calculate_claims( new_rshares );
       old_rshares = util::calculate_claims( old_rshares );
-
-      const auto& cat = _db.get_category( comment.category );
-      _db.modify( cat, [&]( category_object& c ){
-         c.abs_rshares += abs_rshares;
-         c.last_update = _db.head_block_time();
-      });
 
       uint64_t max_vote_weight = 0;
 

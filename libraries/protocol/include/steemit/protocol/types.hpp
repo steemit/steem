@@ -1,6 +1,6 @@
 #pragma once
 #include <steemit/protocol/config.hpp>
-#include <fc/fixed_string.hpp>
+#include <steemit/protocol/fixed_string.hpp>
 
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
@@ -66,45 +66,16 @@ namespace steemit {
 
    namespace protocol {
 
-      typedef fc::ecc::private_key                   private_key_type;
-      typedef fc::sha256                             chain_id_type;
-      typedef fc::fixed_string<>                     account_name_type;
-      //   typedef std::string                            account_name_type;
-
-      struct string_less
-      {
-         bool operator()( const std::string& a, const std::string& b )const
-         {
-            return a < b;
-         }
-
-         bool operator()( const fc::fixed_string<>& a, const fc::fixed_string<>& b )const
-         {
-            const char* ap = (const char*)&a;
-            const char* ab = (const char*)&b;
-            int count = sizeof(a) - 1;
-            while( *ap == *ab && count > 0 ) { ++ap; ++ab; --count; }
-            return *ap < *ab;
-         }
-
-         bool operator()( const fc::fixed_string<>& a, const std::string& b )const
-         {
-            return std::string( a ) < b;
-         }
-
-         bool operator()( const std::string& a, const fc::fixed_string<>& b )const
-         {
-            return a < std::string( b );
-         }
-      };
-
-      typedef fc::ripemd160                                        block_id_type;
-      typedef fc::ripemd160                                        checksum_type;
-      typedef fc::ripemd160                                        transaction_id_type;
-      typedef fc::sha256                                           digest_type;
-      typedef fc::ecc::compact_signature                           signature_type;
-      typedef safe<int64_t>                                        share_type;
-      typedef uint16_t                                             weight_type;
+      typedef fc::ecc::private_key        private_key_type;
+      typedef fc::sha256                  chain_id_type;
+      typedef fixed_string                account_name_type;
+      typedef fc::ripemd160               block_id_type;
+      typedef fc::ripemd160               checksum_type;
+      typedef fc::ripemd160               transaction_id_type;
+      typedef fc::sha256                  digest_type;
+      typedef fc::ecc::compact_signature  signature_type;
+      typedef safe<int64_t>               share_type;
+      typedef uint16_t                    weight_type;
 
 
       struct public_key_type

@@ -60,7 +60,6 @@ struct comment_api_obj
 {
    comment_api_obj( const chain::comment_object& o ):
       id( o.id ),
-      category( to_string( o.category ) ),
       parent_author( o.parent_author ),
       parent_permlink( to_string( o.parent_permlink ) ),
       author( o.author ),
@@ -102,7 +101,6 @@ struct comment_api_obj
    comment_api_obj(){}
 
    comment_id_type   id;
-   string            category;
    account_name_type parent_author;
    string            parent_permlink;
    account_name_type author;
@@ -145,27 +143,6 @@ struct comment_api_obj
    bool              allow_votes = false;
    bool              allow_curation_rewards = false;
    vector< beneficiary_route_type > beneficiaries;
-};
-
-struct category_api_obj
-{
-   category_api_obj( const chain::category_object& c ) :
-      id( c.id ),
-      name( to_string( c.name ) ),
-      abs_rshares( c.abs_rshares ),
-      total_payouts( c.total_payouts ),
-      discussions( c.discussions ),
-      last_update( c.last_update )
-   {}
-
-   category_api_obj() {}
-
-   category_id_type     id;
-   string               name;
-   share_type           abs_rshares;
-   asset                total_payouts;
-   uint32_t             discussions = 0;
-   time_point_sec       last_update;
 };
 
 struct tag_api_obj
@@ -503,7 +480,7 @@ struct signed_block_api_obj : public signed_block
 
 FC_REFLECT( steemit::app::comment_api_obj,
              (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
+             (parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
              (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
@@ -511,10 +488,6 @@ FC_REFLECT( steemit::app::comment_api_obj,
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
-          )
-
-FC_REFLECT( steemit::app::category_api_obj,
-             (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
           )
 
 FC_REFLECT( steemit::app::account_api_obj,

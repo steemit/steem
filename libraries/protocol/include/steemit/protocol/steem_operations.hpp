@@ -98,7 +98,7 @@ namespace steemit { namespace protocol {
       uint16_t          weight;
 
       // For use by std::sort such that the route is sorted first by name (ascending)
-      bool operator < ( const beneficiary_route_type& o )const { return string_less()( account, o.account ); }
+      bool operator < ( const beneficiary_route_type& o )const { return account < o.account; }
    };
 
    struct comment_payout_beneficiaries

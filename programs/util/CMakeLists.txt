@@ -78,3 +78,15 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
+
+add_executable( test_fixed_string test_fixed_string.cpp )
+target_link_libraries( test_fixed_string
+                       PRIVATE steemit_chain steemit_protocol fc ${CMAKE_DL_LIB} ${PLATFORM_SPECIFIC_LIBS} )
+
+install( TARGETS
+   test_fixed_string
+
+   RUNTIME DESTINATION bin
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+)

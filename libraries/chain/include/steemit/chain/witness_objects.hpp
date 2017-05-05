@@ -188,7 +188,7 @@ namespace steemit { namespace chain {
                member< witness_object, share_type, &witness_object::votes >,
                member< witness_object, account_name_type, &witness_object::owner >
             >,
-            composite_key_compare< std::greater< share_type >, steemit::protocol::string_less > //std::less< account_name_type > >
+            composite_key_compare< std::greater< share_type >, std::less< account_name_type > >
          >,
          ordered_unique< tag< by_schedule_time >,
             composite_key< witness_object,

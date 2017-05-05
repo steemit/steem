@@ -34,7 +34,7 @@ class account_history_plugin_impl
       void on_operation( const operation_notification& note );
 
       account_history_plugin& _self;
-      flat_map<string,string> _tracked_accounts;
+      flat_map< account_name_type, account_name_type > _tracked_accounts;
       bool                    _filter_content = false;
 };
 
@@ -45,13 +45,13 @@ account_history_plugin_impl::~account_history_plugin_impl()
 
 struct operation_visitor
 {
-   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, string i ):_db(db),_note(note),new_obj(n),item(i){};
+   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, account_name_type i ):_db(db),_note(note),new_obj(n),item(i){};
    typedef void result_type;
 
    database& _db;
    const operation_notification& _note;
    const operation_object*& new_obj;
-   string item;
+   account_name_type item;
 
    /// ignore these ops
    /*
@@ -97,7 +97,7 @@ struct operation_visitor
 
 
 struct operation_visitor_filter : operation_visitor {
-   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, string i ):operation_visitor(db,note,n,i){}
+   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i ):operation_visitor(db,note,n,i){}
 
    void operator()( const comment_operation& )const {}
    void operator()( const vote_operation& )const {}
@@ -179,6 +179,32 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
 
    for( const auto& item : impacted ) {
       auto itr = _tracked_accounts.lower_bound( item );
+
+      /*
+       * The map containing the ranges uses the key as the lower bound and the value as the upper bound.
+       * Because of this, if a value exists with the range (key, value], then calling lower_bound on
+       * the map will return the key of the next pair. Under normal circumstances of those ranges not
+       * intersecting, the value we are looking for will not be present in range that is returned via
+       * lower_bound.
+       *
+       * Consider the following example using ranges ["a","c"], ["g","i"]
+       * If we are looking for "bob", it should be tracked because it is in the lower bound.
+       * However, lower_bound( "bob" ) returns an iterator to ["g","i"]. So we need to decrement the iterator
+       * to get the correct range.
+       *
+       * If we are looking for "g", lower_bound( "g" ) will return ["g","i"], so we need to make sure we don't
+       * decrement.
+       *
+       * If the iterator points to the end, we should check the previous (equivalent to rbegin)
+       *
+       * And finally if the iterator is at the beginning, we should not decrement it for obvious reasons
+       */
+      if( itr != _tracked_accounts.begin() &&
+          ( ( itr != _tracked_accounts.end() && itr->first != item  ) || itr == _tracked_accounts.end() ) )
+      {
+         --itr;
+      }
+
       if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) ) {
          if( _filter_content )
             note.op.visit( operation_visitor_filter(db, note, new_obj, item) );
@@ -211,7 +237,7 @@ void account_history_plugin::plugin_set_program_options(
    )
 {
    cli.add_options()
-         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to]")
+         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
          ("filter-posting-ops", "Ignore posting operations, only track transfers and account updates")
          ;
    cfg.add(cli);
@@ -222,7 +248,7 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
    //ilog("Intializing account history plugin" );
    database().pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
 
-   typedef pair<string,string> pairstring;
+   typedef pair<account_name_type,account_name_type> pairstring;
    LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
    if( options.count( "filter-posting-ops" ) ) {
       my->_filter_content = true;
@@ -236,7 +262,7 @@ void account_history_plugin::plugin_startup()
    ilog( "account_history plugin: plugin_startup() end" );
 }
 
-flat_map<string,string> account_history_plugin::tracked_accounts() const
+flat_map< account_name_type, account_name_type > account_history_plugin::tracked_accounts() const
 {
    return my->_tracked_accounts;
 }

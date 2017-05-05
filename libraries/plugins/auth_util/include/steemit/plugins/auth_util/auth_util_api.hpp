@@ -1,10 +1,10 @@
 
 #pragma once
 
+#include <steemit/protocol/types.hpp>
+
 #include <fc/api.hpp>
 #include <fc/crypto/sha256.hpp>
-
-#include <steemit/protocol/types.hpp>
 
 #include <string>
 

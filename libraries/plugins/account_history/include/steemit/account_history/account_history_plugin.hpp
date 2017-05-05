@@ -76,7 +76,7 @@ class account_history_plugin : public steemit::app::plugin
       virtual void plugin_startup() override;
 
 
-      flat_map<string,string> tracked_accounts()const; /// map start_range to end_range
+      flat_map< account_name_type, account_name_type > tracked_accounts()const; /// map start_range to end_range
 
       friend class detail::account_history_plugin_impl;
       std::unique_ptr<detail::account_history_plugin_impl> my;
