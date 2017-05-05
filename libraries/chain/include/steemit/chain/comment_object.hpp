@@ -44,13 +44,14 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
-            :parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a ), beneficiaries( a )
+            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a ), beneficiaries( a )
          {
             c( *this );
          }
 
          id_type           id;
 
+         shared_string     category;
          account_name_type parent_author;
          shared_string     parent_permlink;
          account_name_type author;
@@ -243,7 +244,7 @@ namespace steemit { namespace chain {
 } } // steemit::chain
 
 FC_REFLECT( steemit::chain::comment_object,
-             (id)(author)(permlink)
+             (id)(category)(author)(permlink)
              (parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
              (depth)(children)
