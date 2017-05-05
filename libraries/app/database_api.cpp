@@ -1170,7 +1170,28 @@ void database_api::set_pending_payout( discussion& d )const
 void database_api::set_url( discussion& d )const
 {
    const comment_api_obj root( my->_db.get< comment_object, by_id >( d.root_comment ) );
-   d.url = "/" + root.category + "/@" + root.author + "/" + root.permlink;
+   std::vector< std::string > tags;
+   if( root.json_metadata.size() )
+   {
+      try
+      {
+         tags  = fc::json::from_string( root.json_metadata )["tags"].as< std::vector< std::string > >();
+         if(tags.at(0) != ""){
+           d.url = "/" + tags.at(0) + "/@" + root.author + "/" + root.permlink;
+         }
+         else {
+           d.url = "/" + tags.at(1) + "/@" + root.author + "/" + root.permlink;
+         }
+      }
+      catch( const fc::exception& e )
+      {
+         // Do nothing on malformed json_metadata
+      }
+   }
+   if(!tags.size()) {
+     d.url = "/@" + root.author + "/" + root.permlink;
+   }
+
    d.root_title = root.title;
    if( root.id != d.id )
       d.url += "#@" + d.author + "/" + d.permlink;
@@ -1749,63 +1770,6 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
    });
 }
 
-vector<category_api_obj> database_api::get_trending_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-
-      const auto& nidx = my->_db.get_index<chain::category_index>().indices().get<by_name>();
-
-      const auto& ridx = my->_db.get_index<chain::category_index>().indices().get<by_rshares>();
-      auto itr = ridx.begin();
-      if( after != "" && nidx.size() )
-      {
-         auto nitr = nidx.lower_bound( after );
-         if( nitr == nidx.end() ) itr = ridx.end();
-         else itr = ridx.iterator_to( *nitr );
-      }
-
-      while( itr != ridx.end() && result.size() < limit ) {
-         result.push_back( category_api_obj( *itr ) );
-         ++itr;
-      }
-      return result;
-   });
-}
-
-vector<category_api_obj> database_api::get_best_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-      return result;
-   });
-}
-
-vector<category_api_obj> database_api::get_active_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-      return result;
-   });
-}
-
-vector<category_api_obj> database_api::get_recent_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-      return result;
-   });
-}
-
-
 /**
  *  This call assumes root already stored as part of state, it will
  *  modify root.replies to contain links to the reply posts and then
@@ -2162,9 +2126,7 @@ state database_api::get_state( string path )const
       }
       /// pull a complete discussion
       else if( part[1].size() && part[1][0] == '@' ) {
-
          auto account  = part[1].substr( 1 );
-         auto category = part[0];
          auto slug     = part[2];
 
          auto key = account +"/" + slug;

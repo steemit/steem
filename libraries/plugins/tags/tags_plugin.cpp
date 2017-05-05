@@ -117,8 +117,6 @@ struct operation_visitor {
       }
 
       set< string > lower_tags;
-      if( c.category != "" )
-         meta.tags.insert( fc::to_lower( to_string( c.category ) ) );
 
       uint8_t tag_limit = 5;
       uint8_t count = 0;

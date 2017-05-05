@@ -132,10 +132,6 @@ class database_api
        *  with a single query.
        */
       state get_state( string path )const;
-      vector<category_api_obj> get_trending_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_best_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_active_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_recent_categories( string after, uint32_t limit )const;
 
       vector< account_name_type > get_active_witnesses()const;
       vector< account_name_type > get_miner_queue()const;
@@ -489,10 +485,6 @@ FC_API(steemit::app::database_api,
    (get_block)
    (get_ops_in_block)
    (get_state)
-   (get_trending_categories)
-   (get_best_categories)
-   (get_active_categories)
-   (get_recent_categories)
 
    // Globals
    (get_config)
@@ -559,4 +551,3 @@ FC_API(steemit::app::database_api,
    (get_active_witnesses)
    (get_miner_queue)
 )
-
