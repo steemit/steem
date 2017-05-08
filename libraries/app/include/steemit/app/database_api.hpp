@@ -419,6 +419,7 @@ class database_api
    private:
       void set_pending_payout( discussion& d )const;
       void set_url( discussion& d )const;
+      void set_category( discussion& d )const;
       discussion get_discussion( comment_id_type, uint32_t truncate_body = 0 )const;
 
       static bool filter_default( const comment_api_obj& c ) { return false; }

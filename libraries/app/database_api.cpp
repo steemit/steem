@@ -1165,6 +1165,7 @@ void database_api::set_pending_payout( discussion& d )const
       d.body = "comment pruned due to size";
 
    set_url(d);
+   set_category(d);
 }
 
 void database_api::set_url( discussion& d )const
@@ -1195,6 +1196,32 @@ void database_api::set_url( discussion& d )const
    d.root_title = root.title;
    if( root.id != d.id )
       d.url += "#@" + d.author + "/" + d.permlink;
+}
+
+void database_api::set_category( discussion& d )const
+{
+   const comment_api_obj root( my->_db.get< comment_object, by_id >( d.root_comment ) );
+   std::vector< std::string > tags;
+   if( root.json_metadata.size() )
+   {
+      try
+      {
+         tags  = fc::json::from_string( root.json_metadata )["tags"].as< std::vector< std::string > >();
+         if(tags.at(0) != ""){
+           d.category = tags.at(0);
+         }
+         else {
+           d.category = tags.at(1);
+         }
+      }
+      catch( const fc::exception& e )
+      {
+         // Do nothing on malformed json_metadata
+      }
+   }
+   if(!tags.size()) {
+     d.category = "";
+   }
 }
 
 vector<discussion> database_api::get_content_replies( string author, string permlink )const
@@ -1332,6 +1359,7 @@ discussion database_api::get_discussion( comment_id_type id, uint32_t truncate_b
 {
    discussion d = my->_db.get(id);
    set_url( d );
+   set_category( d );
    set_pending_payout( d );
    d.active_votes = get_active_votes( d.author, d.permlink );
    d.body_length = d.body.size();
