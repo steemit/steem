@@ -45,7 +45,7 @@ cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 echo steemd: beginning download and decompress of s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
 if [[ "$USE_RAMDISK" ]]; then
   mkdir -p /mnt/ramdisk
-  mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-43008}m ramfs /mnt/ramdisk
+  mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
   s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   chown -R steemd:steemd /mnt/ramdisk/blockchain
