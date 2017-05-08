@@ -41,7 +41,6 @@ enum object_type
    dynamic_global_property_object_type,
    account_object_type,
    account_authority_object_type,
-   account_bandwidth_object_type,
    witness_object_type,
    transaction_object_type,
    block_summary_object_type,
@@ -55,7 +54,6 @@ enum object_type
    liquidity_reward_balance_object_type,
    operation_object_type,
    account_history_object_type,
-   category_object_type,
    hardfork_property_object_type,
    withdraw_vesting_route_object_type,
    owner_authority_history_object_type,
@@ -73,7 +71,6 @@ enum object_type
 class dynamic_global_property_object;
 class account_object;
 class account_authority_object;
-class account_bandwidth_object;
 class witness_object;
 class transaction_object;
 class block_summary_object;
@@ -87,7 +84,6 @@ class convert_request_object;
 class liquidity_reward_balance_object;
 class operation_object;
 class account_history_object;
-class category_object;
 class hardfork_property_object;
 class withdraw_vesting_route_object;
 class owner_authority_history_object;
@@ -104,7 +100,6 @@ class vesting_delegation_expiration_object;
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
 typedef oid< account_object                         > account_id_type;
 typedef oid< account_authority_object               > account_authority_id_type;
-typedef oid< account_bandwidth_object               > account_bandwidth_id_type;
 typedef oid< witness_object                         > witness_id_type;
 typedef oid< transaction_object                     > transaction_object_id_type;
 typedef oid< block_summary_object                   > block_summary_id_type;
@@ -118,7 +113,6 @@ typedef oid< convert_request_object                 > convert_request_id_type;
 typedef oid< liquidity_reward_balance_object        > liquidity_reward_balance_id_type;
 typedef oid< operation_object                       > operation_id_type;
 typedef oid< account_history_object                 > account_history_id_type;
-typedef oid< category_object                        > category_id_type;
 typedef oid< hardfork_property_object               > hardfork_property_id_type;
 typedef oid< withdraw_vesting_route_object          > withdraw_vesting_route_id_type;
 typedef oid< owner_authority_history_object         > owner_authority_history_id_type;
@@ -136,9 +130,7 @@ enum bandwidth_type
 {
    post,    ///< Rate limiting posting reward eligibility over time
    forum,   ///< Rate limiting for all forum related actins
-   market,  ///< Rate limiting for all other actions
-   old_forum,   ///< Rate limiting for all forum related actions (deprecated)
-   old_market   ///< Rate limiting for all other actions (deprecated)
+   market   ///< Rate limiting for all other actions
 };
 
 } } //steemit::chain
@@ -218,13 +210,11 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
                  (dynamic_global_property_object_type)
                  (account_object_type)
                  (account_authority_object_type)
-                 (account_bandwidth_object_type)
                  (witness_object_type)
                  (transaction_object_type)
                  (block_summary_object_type)
                  (witness_schedule_object_type)
                  (comment_object_type)
-                 (category_object_type)
                  (comment_vote_object_type)
                  (witness_vote_object_type)
                  (limit_order_object_type)
@@ -250,4 +240,4 @@ FC_REFLECT_ENUM( steemit::chain::object_type,
 FC_REFLECT_TYPENAME( steemit::chain::shared_string )
 FC_REFLECT_TYPENAME( steemit::chain::buffer_type )
 
-FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market)(old_forum)(old_market) )
+FC_REFLECT_ENUM( steemit::chain::bandwidth_type, (post)(forum)(market) )

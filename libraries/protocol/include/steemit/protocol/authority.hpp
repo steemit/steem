@@ -46,7 +46,7 @@ namespace steemit { namespace protocol {
       void     clear();
       void     validate()const;
 
-      typedef flat_map< account_name_type, weight_type, string_less > account_authority_map;
+      typedef flat_map< account_name_type, weight_type >              account_authority_map;
       typedef flat_map< public_key_type, weight_type >                key_authority_map;
 
       uint32_t                                                        weight_threshold = 0;

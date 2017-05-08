@@ -1,6 +1,6 @@
 #include <steemit/app/application.hpp>
 
-#include <steemit/witness/witness.hpp>
+#include <steemit/witness/witness_plugin.hpp>
 #include <steemit/manifest/plugins.hpp>
 
 #include <fc/exception/exception.hpp>

@@ -21,15 +21,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <steemit/witness/witness.hpp>
+#include <steemit/witness/witness_plugin.hpp>
+#include <steemit/witness/witness_objects.hpp>
+#include <steemit/witness/witness_operations.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
 #include <steemit/chain/account_object.hpp>
 #include <steemit/chain/database.hpp>
+#include <steemit/chain/database_exceptions.hpp>
+#include <steemit/chain/generic_custom_operation_interpreter.hpp>
+#include <steemit/chain/index.hpp>
 #include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/hardfork.hpp>
 
-#include <steemit/time/time.hpp>
+#include <fc/time.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -37,12 +40,17 @@
 #include <fc/thread/thread.hpp>
 
 #include <iostream>
+#include <memory>
 
-using namespace steemit::witness_plugin;
+namespace steemit { namespace witness {
+
+namespace bpo = boost::program_options;
+
 using std::string;
 using std::vector;
 
-namespace bpo = boost::program_options;
+using protocol::signed_transaction;
+using chain::account_object;
 
 void new_chain_banner( const steemit::chain::database& db )
 {
@@ -56,6 +64,212 @@ void new_chain_banner( const steemit::chain::database& db )
       "********************************\n"
       "\n";
    return;
+}
+
+namespace detail
+{
+   using namespace steemit::chain;
+
+   class witness_plugin_impl
+   {
+      public:
+         witness_plugin_impl( witness_plugin& plugin )
+            : _self( plugin ){}
+
+         void plugin_initialize();
+
+         void pre_transaction( const signed_transaction& trx );
+         void pre_operation( const operation_notification& note );
+
+         void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
+
+         witness_plugin& _self;
+         std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
+   };
+
+   void witness_plugin_impl::plugin_initialize()
+   {
+      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< witness_plugin_operation > >( _self.database() );
+
+      _custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( &_self );
+
+      _self.database().set_custom_operation_interpreter( _self.plugin_name(), _custom_operation_interpreter );
+   }
+
+   struct comment_options_extension_visitor
+   {
+      comment_options_extension_visitor( const comment_object& c, const database& db ) : _c( c ), _db( db ) {}
+
+      typedef void result_type;
+
+      const comment_object& _c;
+      const database& _db;
+
+      void operator()( const comment_payout_beneficiaries& cpb )const
+      {
+         STEEMIT_ASSERT( cpb.beneficiaries.size() <= 8,
+            chain::plugin_exception,
+            "Cannot specify more than 8 beneficiaries." );
+      }
+   };
+
+   struct operation_visitor
+   {
+      operation_visitor( const chain::database& db ) : _db( db ) {}
+
+      const chain::database& _db;
+
+      typedef void result_type;
+
+      template< typename T >
+      void operator()( const T& )const {}
+
+      void operator()( const comment_options_operation& o )const
+      {
+         const auto& comment = _db.get_comment( o.author, o.permlink );
+
+         comment_options_extension_visitor v( comment, _db );
+
+         for( auto& e : o.extensions )
+         {
+            e.visit( v );
+         }
+      }
+
+      void operator()( const comment_operation& o )const
+      {
+         if( o.parent_author != STEEMIT_ROOT_POST_PARENT )
+         {
+            const auto& parent = _db.find_comment( o.parent_author, o.parent_permlink );
+
+            if( parent != nullptr )
+            STEEMIT_ASSERT( parent->depth < STEEMIT_SOFT_MAX_COMMENT_DEPTH,
+               chain::plugin_exception,
+               "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
+         }
+
+         auto itr = _db.find< comment_object, by_permlink >( boost::make_tuple( o.author, o.permlink ) );
+
+         if( itr != nullptr && itr->cashout_time == fc::time_point_sec::maximum() )
+         {
+            auto edit_lock = _db.find< content_edit_lock_object, by_account >( o.author );
+
+            STEEMIT_ASSERT( edit_lock != nullptr && _db.head_block_time() < edit_lock->lock_time,
+               chain::plugin_exception,
+               "The comment is archived" );
+         }
+      }
+   };
+
+   void witness_plugin_impl::pre_transaction( const signed_transaction& trx )
+   {
+      const auto& _db = _self.database();
+      flat_set< account_name_type > required; vector<authority> other;
+      trx.get_required_authorities( required, required, required, other );
+
+      auto trx_size = fc::raw::pack_size(trx);
+
+      for( const auto& auth : required )
+      {
+         const auto& acnt = _db.get_account( auth );
+
+         update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
+
+         for( const auto& op : trx.operations )
+         {
+            if( is_market_operation( op ) )
+            {
+               update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
+               break;
+            }
+         }
+      }
+   }
+
+   void witness_plugin_impl::pre_operation( const operation_notification& note )
+   {
+      const auto& _db = _self.database();
+      if( _db.is_producing() )
+      {
+         note.op.visit( operation_visitor( _db ) );
+      }
+   }
+
+   void witness_plugin_impl::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
+   {
+      database& _db = _self.database();
+      const auto& props = _db.get_dynamic_global_properties();
+      bool has_bandwidth = true;
+
+      if( props.total_vesting_shares.amount > 0 )
+      {
+         auto band = _db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( a.name, type ) );
+
+         if( band == nullptr )
+         {
+            band = &_db.create< account_bandwidth_object >( [&]( account_bandwidth_object& b )
+            {
+               b.account = a.name;
+               b.type = type;
+            });
+         }
+
+         share_type new_bandwidth;
+         share_type trx_bandwidth = trx_size * STEEMIT_BANDWIDTH_PRECISION;
+         auto delta_time = ( _db.head_block_time() - band->last_bandwidth_update ).to_seconds();
+
+         if( delta_time > STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
+            new_bandwidth = 0;
+         else
+            new_bandwidth = ( ( ( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time ) * fc::uint128( band->average_bandwidth.value ) )
+               / STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ).to_uint64();
+
+         new_bandwidth += trx_bandwidth;
+
+         _db.modify( *band, [&]( account_bandwidth_object& b )
+         {
+            b.average_bandwidth = new_bandwidth;
+            b.lifetime_bandwidth += trx_bandwidth;
+            b.last_bandwidth_update = _db.head_block_time();
+         });
+
+         fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
+         fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
+         fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
+         fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
+
+         has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
+
+         if( _db.is_producing() )
+            STEEMIT_ASSERT( has_bandwidth, chain::plugin_exception,
+               "Account: ${account} bandwidth limit exeeded. Please wait to transact or power up STEEM.",
+               ("account", a.name)
+               ("account_vshares", account_vshares)
+               ("account_average_bandwidth", account_average_bandwidth)
+               ("max_virtual_bandwidth", max_virtual_bandwidth)
+               ("total_vesting_shares", total_vshares) );
+      }
+   }
+}
+
+witness_plugin::witness_plugin( application* app )
+   : plugin( app ), _my( new detail::witness_plugin_impl( *this ) ) {}
+
+witness_plugin::~witness_plugin()
+{
+   try
+   {
+      if( _block_production_task.valid() )
+         _block_production_task.cancel_and_wait(__FUNCTION__);
+   }
+   catch(fc::canceled_exception&)
+   {
+      //Expected exception. Move along.
+   }
+   catch(fc::exception& e)
+   {
+      edump((e.to_detail_string()));
+   }
 }
 
 void witness_plugin::plugin_set_program_options(
@@ -84,10 +298,8 @@ using std::string;
 
 void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   ilog("witness plugin:  plugin_initialize() begin");
    _options = &options;
    LOAD_VALUE_SET(options, "witness", _witnesses, string)
-   edump((_witnesses));
 
    if( options.count("private-key") )
    {
@@ -100,7 +312,13 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       }
    }
 
-   ilog("witness plugin:  plugin_initialize() end");
+   chain::database& db = database();
+
+   db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ _my->pre_transaction( tx ); } );
+   db.pre_apply_operation.connect( [&]( const operation_notification& note ){ _my->pre_operation( note ); } );
+
+   add_plugin_index< account_bandwidth_index >( db );
+   add_plugin_index< content_edit_lock_index >( db );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
@@ -111,6 +329,7 @@ void witness_plugin::plugin_startup()
    if( !_witnesses.empty() )
    {
       ilog("Launching block production for ${n} witnesses.", ("n", _witnesses.size()));
+      idump( (_witnesses) );
       app().set_block_production(true);
       if( _production_enabled )
       {
@@ -136,9 +355,8 @@ void witness_plugin::schedule_production_loop()
 {
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms, wait for the whole second.
-   fc::time_point ntp_now = steemit::time::now();
    fc::time_point fc_now = fc::time_point::now();
-   int64_t time_to_next_second = 1000000 - (ntp_now.time_since_epoch().count() % 1000000);
+   int64_t time_to_next_second = 1000000 - (fc_now.time_since_epoch().count() % 1000000);
    if( time_to_next_second < 50000 )      // we must sleep for at least 50ms
        time_to_next_second += 1000000;
 
@@ -221,7 +439,7 @@ block_production_condition::block_production_condition_enum witness_plugin::bloc
 block_production_condition::block_production_condition_enum witness_plugin::maybe_produce_block( fc::mutable_variant_object& capture )
 {
    chain::database& db = database();
-   fc::time_point now_fine = steemit::time::now();
+   fc::time_point now_fine = fc::time_point::now();
    fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
    // If the next block production opportunity is in the present or future, we're synced.
@@ -314,4 +532,6 @@ block_production_condition::block_production_condition_enum witness_plugin::mayb
    return block_production_condition::exception_producing_block;
 }
 
-STEEMIT_DEFINE_PLUGIN( witness, steemit::witness_plugin::witness_plugin )
+} } // steemit::witness
+
+STEEMIT_DEFINE_PLUGIN( witness, steemit::witness::witness_plugin )

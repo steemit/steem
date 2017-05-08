@@ -30,7 +30,7 @@
 #include <steemit/chain/steem_object_types.hpp>
 #include <steemit/chain/database_exceptions.hpp>
 
-#include <steemit/time/time.hpp>
+#include <fc/time.hpp>
 
 #include <graphene/net/core_messages.hpp>
 #include <graphene/net/exceptions.hpp>
@@ -136,9 +136,14 @@ namespace detail {
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
          _p2p_network->connect_to_p2p_network();
-         idump( (_chain_db->head_block_id()) );
+         block_id_type head_block_id;
+         _chain_db->with_read_lock( [&]()
+         {
+            head_block_id = _chain_db->head_block_id();
+         });
+         idump( (head_block_id) );
          _p2p_network->sync_from(graphene::net::item_id(graphene::net::core_message_type_enum::block_message_type,
-                                              _chain_db->head_block_id()),
+                                              head_block_id),
                                  std::vector<uint32_t>());
       } FC_CAPTURE_AND_RETHROW() }
 
@@ -316,16 +321,6 @@ namespace detail {
                ilog( "All transaction signatures will be validated" );
                _force_validate = true;
             }
-
-            if( _options->at("enable-ntp").as<bool>() )
-            {
-               ilog( "Enable NTP" );
-               steemit::time::set_ntp_enabled(true);
-            }
-            else
-            {
-               ilog( "Launching with NTP disabled" );
-            }
          }
          else
          {
@@ -436,10 +431,13 @@ namespace detail {
 
          try
          {
-            if( id.item_type == graphene::net::block_message_type )
-               return _chain_db->is_known_block(id.item_hash);
-            else
-               return _chain_db->is_known_transaction(id.item_hash);
+            return _chain_db->with_read_lock( [&]()
+            {
+               if( id.item_type == graphene::net::block_message_type )
+                  return _chain_db->is_known_block(id.item_hash);
+               else
+                  return _chain_db->is_known_transaction(id.item_hash);
+            });
          }
          FC_CAPTURE_AND_RETHROW( (id) )
       }
@@ -457,18 +455,25 @@ namespace detail {
       { try {
          if( _running )
          {
+            uint32_t head_block_num;
+
+            _chain_db->with_read_lock( [&]()
+            {
+               head_block_num = _chain_db->head_block_num();
+            });
+
             if (sync_mode)
                fc_ilog(fc::logger::get("sync"),
                      "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",
                      ("block_num", blk_msg.block.block_num())
                      ("block_hash", blk_msg.block_id)
-                     ("head", _chain_db->head_block_num()));
+                     ("head", head_block_num));
             else
                fc_ilog(fc::logger::get("sync"),
                      "chain pushing block #${block_num} ${block_hash}, head is ${head}",
                      ("block_num", blk_msg.block.block_num())
                      ("block_hash", blk_msg.block_id)
-                     ("head", _chain_db->head_block_num()));
+                     ("head", head_block_num));
             if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
             {
                ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
@@ -476,7 +481,7 @@ namespace detail {
                   ("n", blk_msg.block.block_num()) );
             }
 
-            time_point_sec now = steemit::time::now();
+            time_point_sec now = fc::time_point::now();
 
             uint64_t max_accept_time = now.sec_since_epoch();
             max_accept_time += allow_future_time;
@@ -505,14 +510,14 @@ namespace detail {
                fc_elog(fc::logger::get("sync"),
                      "Error when pushing block, current head block is ${head}:\n${e}",
                      ("e", e.to_detail_string())
-                     ("head", _chain_db->head_block_num()));
+                     ("head", head_block_num));
                elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
                FC_THROW_EXCEPTION(graphene::net::unlinkable_block_exception, "Error when pushing block:\n${e}", ("e", e.to_detail_string()));
             } catch( const fc::exception& e ) {
                fc_elog(fc::logger::get("sync"),
                      "Error when pushing block, current head block is ${head}:\n${e}",
                      ("e", e.to_detail_string())
-                     ("head", _chain_db->head_block_num()));
+                     ("head", head_block_num));
                elog("Error when pushing block:\n${e}", ("e", e.to_detail_string()));
                throw;
             }
@@ -534,9 +539,12 @@ namespace detail {
 
       bool is_included_block(const block_id_type& block_id)
       {
-         uint32_t block_num = block_header::num_from_id(block_id);
-         block_id_type block_id_in_preferred_chain = _chain_db->get_block_id_for_num(block_num);
-         return block_id == block_id_in_preferred_chain;
+         return _chain_db->with_read_lock( [&]()
+         {
+            uint32_t block_num = block_header::num_from_id(block_id);
+            block_id_type block_id_in_preferred_chain = _chain_db->get_block_id_for_num(block_num);
+            return block_id == block_id_in_preferred_chain;
+         });
       }
 
       /**
@@ -552,47 +560,56 @@ namespace detail {
                                                      uint32_t& remaining_item_count,
                                                      uint32_t limit) override
       { try {
-         vector<block_id_type> result;
-         remaining_item_count = 0;
-         if( _chain_db->head_block_num() == 0 )
+         return _chain_db->with_read_lock( [&]()
+         {
+            vector<block_id_type> result;
+            remaining_item_count = 0;
+            if( _chain_db->head_block_num() == 0 )
+               return result;
+
+            result.reserve( limit );
+            block_id_type last_known_block_id;
+
+            if( blockchain_synopsis.empty()
+                || ( blockchain_synopsis.size() == 1 && blockchain_synopsis[0] == block_id_type() ) )
+            {
+               // peer has sent us an empty synopsis meaning they have no blocks.
+               // A bug in old versions would cause them to send a synopsis containing block 000000000
+               // when they had an empty blockchain, so pretend they sent the right thing here.
+               // do nothing, leave last_known_block_id set to zero
+            }
+            else
+            {
+               bool found_a_block_in_synopsis = false;
+
+               for( const item_hash_t& block_id_in_synopsis : boost::adaptors::reverse(blockchain_synopsis) )
+               {
+                  if (block_id_in_synopsis == block_id_type() ||
+                     (_chain_db->is_known_block(block_id_in_synopsis) && is_included_block(block_id_in_synopsis)))
+                  {
+                     last_known_block_id = block_id_in_synopsis;
+                     found_a_block_in_synopsis = true;
+                     break;
+                  }
+               }
+
+               if (!found_a_block_in_synopsis)
+                  FC_THROW_EXCEPTION(graphene::net::peer_is_on_an_unreachable_fork, "Unable to provide a list of blocks starting at any of the blocks in peer's synopsis");
+            }
+
+            for( uint32_t num = block_header::num_from_id(last_known_block_id);
+                 num <= _chain_db->head_block_num() && result.size() < limit;
+                 ++num )
+            {
+               if( num > 0 )
+                  result.push_back(_chain_db->get_block_id_for_num(num));
+            }
+
+            if( !result.empty() && block_header::num_from_id(result.back()) < _chain_db->head_block_num() )
+               remaining_item_count = _chain_db->head_block_num() - block_header::num_from_id(result.back());
+
             return result;
-
-         result.reserve(limit);
-         block_id_type last_known_block_id;
-
-         if (blockchain_synopsis.empty() ||
-             (blockchain_synopsis.size() == 1 && blockchain_synopsis[0] == block_id_type()))
-         {
-           // peer has sent us an empty synopsis meaning they have no blocks.
-           // A bug in old versions would cause them to send a synopsis containing block 000000000
-           // when they had an empty blockchain, so pretend they sent the right thing here.
-
-           // do nothing, leave last_known_block_id set to zero
-         }
-         else
-         {
-           bool found_a_block_in_synopsis = false;
-           for (const item_hash_t& block_id_in_synopsis : boost::adaptors::reverse(blockchain_synopsis))
-             if (block_id_in_synopsis == block_id_type() ||
-                 (_chain_db->is_known_block(block_id_in_synopsis) && is_included_block(block_id_in_synopsis)))
-             {
-               last_known_block_id = block_id_in_synopsis;
-               found_a_block_in_synopsis = true;
-               break;
-             }
-           if (!found_a_block_in_synopsis)
-             FC_THROW_EXCEPTION(graphene::net::peer_is_on_an_unreachable_fork, "Unable to provide a list of blocks starting at any of the blocks in peer's synopsis");
-         }
-         for( uint32_t num = block_header::num_from_id(last_known_block_id);
-              num <= _chain_db->head_block_num() && result.size() < limit;
-              ++num )
-            if( num > 0 )
-               result.push_back(_chain_db->get_block_id_for_num(num));
-
-         if( !result.empty() && block_header::num_from_id(result.back()) < _chain_db->head_block_num() )
-            remaining_item_count = _chain_db->head_block_num() - block_header::num_from_id(result.back());
-
-         return result;
+         });
       } FC_CAPTURE_AND_RETHROW( (blockchain_synopsis)(remaining_item_count)(limit) ) }
 
       /**
@@ -600,18 +617,24 @@ namespace detail {
        */
       virtual message get_item(const item_id& id) override
       { try {
-        // ilog("Request for item ${id}", ("id", id));
+         // ilog("Request for item ${id}", ("id", id));
          if( id.item_type == graphene::net::block_message_type )
          {
-            auto opt_block = _chain_db->fetch_block_by_id(id.item_hash);
-            if( !opt_block )
-               elog("Couldn't find block ${id} -- corresponding ID in our chain is ${id2}",
-                    ("id", id.item_hash)("id2", _chain_db->get_block_id_for_num(block_header::num_from_id(id.item_hash))));
-            FC_ASSERT( opt_block.valid() );
-            // ilog("Serving up block #${num}", ("num", opt_block->block_num()));
-            return block_message(std::move(*opt_block));
+            return _chain_db->with_read_lock( [&]()
+            {
+               auto opt_block = _chain_db->fetch_block_by_id(id.item_hash);
+               if( !opt_block )
+                  elog("Couldn't find block ${id} -- corresponding ID in our chain is ${id2}",
+                     ("id", id.item_hash)("id2", _chain_db->get_block_id_for_num(block_header::num_from_id(id.item_hash))));
+               FC_ASSERT( opt_block.valid() );
+               // ilog("Serving up block #${num}", ("num", opt_block->block_num()));
+               return block_message(std::move(*opt_block));
+            });
          }
-         return trx_message( _chain_db->get_recent_transaction( id.item_hash ) );
+         return _chain_db->with_read_lock( [&]()
+         {
+            return trx_message( _chain_db->get_recent_transaction( id.item_hash ) );
+         });
       } FC_CAPTURE_AND_RETHROW( (id) ) }
 
       /**
@@ -675,120 +698,125 @@ namespace detail {
       virtual std::vector<item_hash_t> get_blockchain_synopsis(const item_hash_t& reference_point,
                                                                uint32_t number_of_blocks_after_reference_point) override
       { try {
-          std::vector<item_hash_t> synopsis;
-          synopsis.reserve(30);
-          uint32_t high_block_num;
-          uint32_t non_fork_high_block_num;
-          uint32_t low_block_num = _chain_db->last_non_undoable_block_num();
-          std::vector<block_id_type> fork_history;
+         std::vector<item_hash_t> synopsis;
+         _chain_db->with_read_lock( [&]()
+         {
+            synopsis.reserve(30);
+            uint32_t high_block_num;
+            uint32_t non_fork_high_block_num;
+            uint32_t low_block_num = _chain_db->last_non_undoable_block_num();
+            std::vector<block_id_type> fork_history;
 
-          if (reference_point != item_hash_t())
-          {
-            // the node is asking for a summary of the block chain up to a specified
-            // block, which may or may not be on a fork
-            // for now, assume it's not on a fork
-            if (is_included_block(reference_point))
+            if (reference_point != item_hash_t())
             {
-              // reference_point is a block we know about and is on the main chain
-              uint32_t reference_point_block_num = block_header::num_from_id(reference_point);
-              assert(reference_point_block_num > 0);
-              high_block_num = reference_point_block_num;
-              non_fork_high_block_num = high_block_num;
+               // the node is asking for a summary of the block chain up to a specified
+               // block, which may or may not be on a fork
+               // for now, assume it's not on a fork
+               if (is_included_block(reference_point))
+               {
+                  // reference_point is a block we know about and is on the main chain
+                  uint32_t reference_point_block_num = block_header::num_from_id(reference_point);
+                  assert(reference_point_block_num > 0);
+                  high_block_num = reference_point_block_num;
+                  non_fork_high_block_num = high_block_num;
 
-              if (reference_point_block_num < low_block_num)
-              {
-                // we're on the same fork (at least as far as reference_point) but we've passed
-                // reference point and could no longer undo that far if we diverged after that
-                // block.  This should probably only happen due to a race condition where
-                // the network thread calls this function, and then immediately pushes a bunch of blocks,
-                // then the main thread finally processes this function.
-                // with the current framework, there's not much we can do to tell the network
-                // thread what our current head block is, so we'll just pretend that
-                // our head is actually the reference point.
-                // this *may* enable us to fetch blocks that we're unable to push, but that should
-                // be a rare case (and correctly handled)
-                low_block_num = reference_point_block_num;
-              }
+                  if (reference_point_block_num < low_block_num)
+                  {
+                     // we're on the same fork (at least as far as reference_point) but we've passed
+                     // reference point and could no longer undo that far if we diverged after that
+                     // block.  This should probably only happen due to a race condition where
+                     // the network thread calls this function, and then immediately pushes a bunch of blocks,
+                     // then the main thread finally processes this function.
+                     // with the current framework, there's not much we can do to tell the network
+                     // thread what our current head block is, so we'll just pretend that
+                     // our head is actually the reference point.
+                     // this *may* enable us to fetch blocks that we're unable to push, but that should
+                     // be a rare case (and correctly handled)
+                     low_block_num = reference_point_block_num;
+                  }
+               }
+               else
+               {
+                  // block is a block we know about, but it is on a fork
+                  try
+                  {
+                     fork_history = _chain_db->get_block_ids_on_fork(reference_point);
+                     // returns a vector where the last element is the common ancestor with the preferred chain,
+                     // and the first element is the reference point you passed in
+                     assert(fork_history.size() >= 2);
+
+                     if( fork_history.front() != reference_point )
+                     {
+                        edump( (fork_history)(reference_point) );
+                        assert(fork_history.front() == reference_point);
+                     }
+                     block_id_type last_non_fork_block = fork_history.back();
+                     fork_history.pop_back();  // remove the common ancestor
+                     boost::reverse(fork_history);
+
+                     if (last_non_fork_block == block_id_type()) // if the fork goes all the way back to genesis (does graphene's fork db allow this?)
+                        non_fork_high_block_num = 0;
+                     else
+                        non_fork_high_block_num = block_header::num_from_id(last_non_fork_block);
+
+                     high_block_num = non_fork_high_block_num + fork_history.size();
+                     assert(high_block_num == block_header::num_from_id(fork_history.back()));
+                  }
+                  catch (const fc::exception& e)
+                  {
+                     // unable to get fork history for some reason.  maybe not linked?
+                     // we can't return a synopsis of its chain
+                     elog("Unable to construct a blockchain synopsis for reference hash ${hash}: ${exception}", ("hash", reference_point)("exception", e));
+                     throw;
+                  }
+                  if (non_fork_high_block_num < low_block_num)
+                  {
+                     wlog("Unable to generate a usable synopsis because the peer we're generating it for forked too long ago "
+                        "(our chains diverge after block #${non_fork_high_block_num} but only undoable to block #${low_block_num})",
+                        ("low_block_num", low_block_num)
+                        ("non_fork_high_block_num", non_fork_high_block_num));
+                     FC_THROW_EXCEPTION(graphene::net::block_older_than_undo_history, "Peer is are on a fork I'm unable to switch to");
+                  }
+               }
             }
             else
             {
-              // block is a block we know about, but it is on a fork
-              try
-              {
-                fork_history = _chain_db->get_block_ids_on_fork(reference_point);
-                // returns a vector where the last element is the common ancestor with the preferred chain,
-                // and the first element is the reference point you passed in
-                assert(fork_history.size() >= 2);
-
-                if( fork_history.front() != reference_point )
-                {
-                   edump( (fork_history)(reference_point) );
-                   assert(fork_history.front() == reference_point);
-                }
-                block_id_type last_non_fork_block = fork_history.back();
-                fork_history.pop_back();  // remove the common ancestor
-                boost::reverse(fork_history);
-
-                if (last_non_fork_block == block_id_type()) // if the fork goes all the way back to genesis (does graphene's fork db allow this?)
-                  non_fork_high_block_num = 0;
-                else
-                  non_fork_high_block_num = block_header::num_from_id(last_non_fork_block);
-
-                high_block_num = non_fork_high_block_num + fork_history.size();
-                assert(high_block_num == block_header::num_from_id(fork_history.back()));
-              }
-              catch (const fc::exception& e)
-              {
-                // unable to get fork history for some reason.  maybe not linked?
-                // we can't return a synopsis of its chain
-                elog("Unable to construct a blockchain synopsis for reference hash ${hash}: ${exception}", ("hash", reference_point)("exception", e));
-                throw;
-              }
-              if (non_fork_high_block_num < low_block_num)
-              {
-                wlog("Unable to generate a usable synopsis because the peer we're generating it for forked too long ago "
-                     "(our chains diverge after block #${non_fork_high_block_num} but only undoable to block #${low_block_num})",
-                     ("low_block_num", low_block_num)
-                     ("non_fork_high_block_num", non_fork_high_block_num));
-                FC_THROW_EXCEPTION(graphene::net::block_older_than_undo_history, "Peer is are on a fork I'm unable to switch to");
-              }
+               // no reference point specified, summarize the whole block chain
+               high_block_num = _chain_db->head_block_num();
+               non_fork_high_block_num = high_block_num;
+               if (high_block_num == 0)
+                  return; // we have no blocks
             }
-          }
-          else
-          {
-            // no reference point specified, summarize the whole block chain
-            high_block_num = _chain_db->head_block_num();
-            non_fork_high_block_num = high_block_num;
-            if (high_block_num == 0)
-              return synopsis; // we have no blocks
-          }
 
-          if( low_block_num == 0)
-             low_block_num = 1;
+            if( low_block_num == 0)
+               low_block_num = 1;
 
-          // at this point:
-          // low_block_num is the block before the first block we can undo,
-          // non_fork_high_block_num is the block before the fork (if the peer is on a fork, or otherwise it is the same as high_block_num)
-          // high_block_num is the block number of the reference block, or the end of the chain if no reference provided
+            // at this point:
+            // low_block_num is the block before the first block we can undo,
+            // non_fork_high_block_num is the block before the fork (if the peer is on a fork, or otherwise it is the same as high_block_num)
+            // high_block_num is the block number of the reference block, or the end of the chain if no reference provided
 
-          // true_high_block_num is the ending block number after the network code appends any item ids it
-          // knows about that we don't
-          uint32_t true_high_block_num = high_block_num + number_of_blocks_after_reference_point;
-          do
-          {
-            // for each block in the synopsis, figure out where to pull the block id from.
-            // if it's <= non_fork_high_block_num, we grab it from the main blockchain;
-            // if it's not, we pull it from the fork history
-            if (low_block_num <= non_fork_high_block_num)
-              synopsis.push_back(_chain_db->get_block_id_for_num(low_block_num));
-            else
-              synopsis.push_back(fork_history[low_block_num - non_fork_high_block_num - 1]);
-            low_block_num += (true_high_block_num - low_block_num + 2) / 2;
-          }
-          while (low_block_num <= high_block_num);
+            // true_high_block_num is the ending block number after the network code appends any item ids it
+            // knows about that we don't
+            uint32_t true_high_block_num = high_block_num + number_of_blocks_after_reference_point;
+            do
+            {
+               // for each block in the synopsis, figure out where to pull the block id from.
+               // if it's <= non_fork_high_block_num, we grab it from the main blockchain;
+               // if it's not, we pull it from the fork history
+               if( low_block_num <= non_fork_high_block_num )
+                  synopsis.push_back(_chain_db->get_block_id_for_num(low_block_num));
+               else
+                  synopsis.push_back(fork_history[low_block_num - non_fork_high_block_num - 1]);
+               low_block_num += (true_high_block_num - low_block_num + 2) / 2;
+            }
+            while( low_block_num <= high_block_num );
 
-          //idump((synopsis));
-          return synopsis;
+            //idump((synopsis));
+            return;
+         });
+
+         return synopsis;
       } FC_CAPTURE_AND_RETHROW() }
 
       /**
@@ -822,20 +850,26 @@ namespace detail {
        */
       virtual fc::time_point_sec get_block_time(const item_hash_t& block_id) override
       { try {
-         auto opt_block = _chain_db->fetch_block_by_id( block_id );
-         if( opt_block.valid() ) return opt_block->timestamp;
-         return fc::time_point_sec::min();
+         return _chain_db->with_read_lock( [&]()
+         {
+            auto opt_block = _chain_db->fetch_block_by_id( block_id );
+            if( opt_block.valid() ) return opt_block->timestamp;
+            return fc::time_point_sec::min();
+         });
       } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
-      /** returns steemit::time::now() */
+      /** returns fc::time_point::now(); */
       virtual fc::time_point_sec get_blockchain_now() override
       {
-         return steemit::time::now();
+         return fc::time_point::now();
       }
 
       virtual item_hash_t get_head_block_id() const override
       {
-         return _chain_db->head_block_id();
+         return _chain_db->with_read_lock( [&]()
+         {
+            return _chain_db->head_block_id();
+         });
       }
 
       virtual uint32_t estimate_last_known_fork_from_git_revision_timestamp(uint32_t unix_timestamp) const override
@@ -865,7 +899,6 @@ namespace detail {
          }
          if( _chain_db )
             _chain_db->close();
-         steemit::time::set_ntp_enabled(false);
       }
 
       application* _self;
@@ -948,7 +981,6 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
          ("flush", bpo::value< uint32_t >()->default_value(100000), "Flush shared memory file to disk this many blocks")
-         ("enable-ntp", bpo::value< bool >()->default_value(false), "Enable built-in NTP client")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
@@ -1093,7 +1125,9 @@ void application::initialize_plugins( const boost::program_options::variables_ma
          boost::split(names, arg, boost::is_any_of(" \t,"));
          for( const std::string& name : names )
          {
-            enable_plugin( name );
+            // When no plugins are specified, the empty string is returned. Only enable non-empty plugin names
+            if( name.size() )
+               enable_plugin( name );
          }
       }
    }

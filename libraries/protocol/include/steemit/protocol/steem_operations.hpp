@@ -8,6 +8,17 @@
 
 namespace steemit { namespace protocol {
 
+   inline void validate_account_name( const string& name )
+   {
+      FC_ASSERT( is_valid_account_name( name ), "Account name ${n} is invalid", ("n", name) );
+   }
+
+   inline void validate_permlink( const string& permlink )
+   {
+      FC_ASSERT( permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "permlink is too long" );
+      FC_ASSERT( fc::is_utf8( permlink ), "permlink not formatted in UTF8" );
+   }
+
    struct account_create_operation : public base_operation
    {
       asset             fee;
@@ -87,7 +98,7 @@ namespace steemit { namespace protocol {
       uint16_t          weight;
 
       // For use by std::sort such that the route is sorted first by name (ascending)
-      bool operator < ( const beneficiary_route_type& o )const { return string_less()( account, o.account ); }
+      bool operator < ( const beneficiary_route_type& o )const { return account < o.account; }
    };
 
    struct comment_payout_beneficiaries

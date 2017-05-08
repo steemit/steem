@@ -10,6 +10,8 @@
 
 #include <steemit/tags/tags_plugin.hpp>
 
+#include <steemit/witness/witness_objects.hpp>
+
 namespace steemit { namespace app {
 
 using namespace steemit::chain;
@@ -49,16 +51,15 @@ typedef chain::withdraw_vesting_route_object           withdraw_vesting_route_ap
 typedef chain::decline_voting_rights_request_object    decline_voting_rights_request_api_obj;
 typedef chain::witness_vote_object                     witness_vote_api_obj;
 typedef chain::witness_schedule_object                 witness_schedule_api_obj;
-typedef chain::account_bandwidth_object                account_bandwidth_api_obj;
 typedef chain::vesting_delegation_object               vesting_delegation_api_obj;
 typedef chain::vesting_delegation_expiration_object    vesting_delegation_expiration_api_obj;
 typedef chain::reward_fund_object                      reward_fund_api_obj;
+typedef witness::account_bandwidth_object       account_bandwidth_api_obj;
 
 struct comment_api_obj
 {
    comment_api_obj( const chain::comment_object& o ):
       id( o.id ),
-      category( to_string( o.category ) ),
       parent_author( o.parent_author ),
       parent_permlink( to_string( o.parent_permlink ) ),
       author( o.author ),
@@ -72,7 +73,6 @@ struct comment_api_obj
       last_payout( o.last_payout ),
       depth( o.depth ),
       children( o.children ),
-      children_rshares2( o.children_rshares2 ),
       net_rshares( o.net_rshares ),
       abs_rshares( o.abs_rshares ),
       vote_rshares( o.vote_rshares ),
@@ -101,7 +101,6 @@ struct comment_api_obj
    comment_api_obj(){}
 
    comment_id_type   id;
-   string            category;
    account_name_type parent_author;
    string            parent_permlink;
    account_name_type author;
@@ -117,8 +116,6 @@ struct comment_api_obj
 
    uint8_t           depth = 0;
    uint32_t          children = 0;
-
-   uint128_t         children_rshares2;
 
    share_type        net_rshares;
    share_type        abs_rshares;
@@ -148,45 +145,24 @@ struct comment_api_obj
    vector< beneficiary_route_type > beneficiaries;
 };
 
-struct category_api_obj
-{
-   category_api_obj( const chain::category_object& c ) :
-      id( c.id ),
-      name( to_string( c.name ) ),
-      abs_rshares( c.abs_rshares ),
-      total_payouts( c.total_payouts ),
-      discussions( c.discussions ),
-      last_update( c.last_update )
-   {}
-
-   category_api_obj() {}
-
-   category_id_type     id;
-   string               name;
-   share_type           abs_rshares;
-   asset                total_payouts;
-   uint32_t             discussions = 0;
-   time_point_sec       last_update;
-};
-
 struct tag_api_obj
 {
    tag_api_obj( const tags::tag_stats_object& o ) :
       name( o.tag ),
-      total_children_rshares2(o.total_children_rshares2),
       total_payouts(o.total_payout),
       net_votes(o.net_votes),
       top_posts(o.top_posts),
-      comments(o.comments) {}
+      comments(o.comments),
+      trending(o.total_trending) {}
 
    tag_api_obj() {}
 
    string               name;
-   fc::uint128_t        total_children_rshares2;
    asset                total_payouts;
    int32_t              net_votes = 0;
    uint32_t             top_posts = 0;
    uint32_t             comments = 0;
+   fc::uint128          trending = 0;
 };
 
 struct account_api_obj
@@ -239,7 +215,8 @@ struct account_api_obj
       to_withdraw( a.to_withdraw ),
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
-      last_post( a.last_post )
+      last_post( a.last_post ),
+      last_root_post( a.last_root_post )
    {
       size_t n = a.proxied_vsf_votes.size();
       proxied_vsf_votes.reserve( n );
@@ -252,38 +229,25 @@ struct account_api_obj
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
 
-      auto old_forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_forum ) );
-      if( old_forum != nullptr )
+      if( db.has_index< witness::account_bandwidth_index >() )
       {
-         average_bandwidth = old_forum->average_bandwidth;
-         lifetime_bandwidth = old_forum->lifetime_bandwidth;
-         last_bandwidth_update = old_forum->last_bandwidth_update;
-      }
+         auto forum_bandwidth = db.find< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( name, witness::bandwidth_type::forum ) );
 
-      auto old_market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::old_market ) );
-      if( old_market != nullptr )
-      {
-         average_market_bandwidth = old_market->average_bandwidth;
-         last_market_bandwidth_update = old_market->last_bandwidth_update;
-      }
+         if( forum_bandwidth != nullptr )
+         {
+            average_bandwidth = forum_bandwidth->average_bandwidth;
+            lifetime_bandwidth = forum_bandwidth->lifetime_bandwidth;
+            last_bandwidth_update = forum_bandwidth->last_bandwidth_update;
+         }
 
-      auto post = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::post ) );
-      if( post != nullptr )
-      {
-         last_root_post = post->last_bandwidth_update;
-         post_bandwidth = post->average_bandwidth;
-      }
+         auto market_bandwidth = db.find< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( name, witness::bandwidth_type::market ) );
 
-      auto forum = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::forum ) );
-      if( forum != nullptr )
-      {
-         new_average_bandwidth = forum->average_bandwidth;
-      }
-
-      auto market = db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( name, bandwidth_type::market ) );
-      if( market != nullptr )
-      {
-         new_average_market_bandwidth = market->average_bandwidth;
+         if( market_bandwidth != nullptr )
+         {
+            average_market_bandwidth = market_bandwidth->average_bandwidth;
+            lifetime_market_bandwidth = market_bandwidth->lifetime_bandwidth;
+            last_market_bandwidth_update = market_bandwidth->last_bandwidth_update;
+         }
       }
    }
 
@@ -361,13 +325,11 @@ struct account_api_obj
    time_point_sec    last_bandwidth_update;
 
    share_type        average_market_bandwidth = 0;
+   share_type        lifetime_market_bandwidth = 0;
    time_point_sec    last_market_bandwidth_update;
+
    time_point_sec    last_post;
    time_point_sec    last_root_post;
-   share_type        post_bandwidth = STEEMIT_100_PERCENT;
-
-   share_type        new_average_bandwidth;
-   share_type        new_average_market_bandwidth;
 };
 
 struct owner_authority_history_api_obj
@@ -497,22 +459,35 @@ struct witness_api_obj
    time_point_sec    hardfork_time_vote;
 };
 
+struct signed_block_api_obj : public signed_block
+{
+   signed_block_api_obj( const signed_block& block ) : signed_block( block )
+   {
+      block_id = id();
+      signing_key = signee();
+      transaction_ids.reserve( transactions.size() );
+      for( const signed_transaction& tx : transactions )
+         transaction_ids.push_back( tx.id() );
+   }
+   signed_block_api_obj() {}
+
+   block_id_type                 block_id;
+   public_key_type               signing_key;
+   vector< transaction_id_type > transaction_ids;
+};
+
 } } // steemit::app
 
 FC_REFLECT( steemit::app::comment_api_obj,
              (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
+             (parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
-             (depth)(children)(children_rshares2)
+             (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
              (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
-          )
-
-FC_REFLECT( steemit::app::category_api_obj,
-             (id)(name)(abs_rshares)(total_payouts)(discussions)(last_update)
           )
 
 FC_REFLECT( steemit::app::account_api_obj,
@@ -530,9 +505,8 @@ FC_REFLECT( steemit::app::account_api_obj,
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
              (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)
-             (average_market_bandwidth)(last_market_bandwidth_update)
-             (last_post)(last_root_post)(post_bandwidth)
-             (new_average_bandwidth)(new_average_market_bandwidth)
+             (average_market_bandwidth)(lifetime_market_bandwidth)(last_market_bandwidth_update)
+             (last_post)(last_root_post)
           )
 
 FC_REFLECT( steemit::app::owner_authority_history_api_obj,
@@ -567,11 +541,11 @@ FC_REFLECT( steemit::app::feed_history_api_obj,
 
 FC_REFLECT( steemit::app::tag_api_obj,
             (name)
-            (total_children_rshares2)
             (total_payouts)
             (net_votes)
             (top_posts)
             (comments)
+            (trending)
           )
 
 FC_REFLECT( steemit::app::witness_api_obj,
@@ -586,3 +560,9 @@ FC_REFLECT( steemit::app::witness_api_obj,
              (running_version)
              (hardfork_version_vote)(hardfork_time_vote)
           )
+
+FC_REFLECT_DERIVED( steemit::app::signed_block_api_obj, (steemit::protocol::signed_block),
+                     (block_id)
+                     (signing_key)
+                     (transaction_ids)
+                  )

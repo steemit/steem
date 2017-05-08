@@ -81,17 +81,17 @@ namespace steemit { namespace chain {
       void     clear();
       void     validate()const;
 
-      typedef bip::allocator< shared_authority, bip::managed_mapped_file::segment_manager >                             allocator_type;
+      typedef bip::allocator< shared_authority, bip::managed_mapped_file::segment_manager >                                allocator_type;
 
-      typedef bip::allocator< std::pair< account_name_type, weight_type >, bip::managed_mapped_file::segment_manager >  account_pair_allocator_type;
-      typedef bip::allocator< std::pair< public_key_type, weight_type >, bip::managed_mapped_file::segment_manager >    key_pair_allocator_type;
+      typedef bip::allocator< std::pair< account_name_type, weight_type >, bip::managed_mapped_file::segment_manager >     account_pair_allocator_type;
+      typedef bip::allocator< std::pair< public_key_type, weight_type >, bip::managed_mapped_file::segment_manager >       key_pair_allocator_type;
 
-      typedef bip::flat_map< account_name_type, weight_type, protocol::string_less, account_pair_allocator_type >       account_authority_map;
-      typedef bip::flat_map< public_key_type, weight_type, std::less< public_key_type >, key_pair_allocator_type >      key_authority_map;
+      typedef bip::flat_map< account_name_type, weight_type, std::less< account_name_type >, account_pair_allocator_type > account_authority_map;
+      typedef bip::flat_map< public_key_type, weight_type, std::less< public_key_type >, key_pair_allocator_type >         key_authority_map;
 
-      uint32_t                                                                                                          weight_threshold = 0;
-      account_authority_map                                                                                             account_auths;
-      key_authority_map                                                                                                 key_auths;
+      uint32_t                                                                                                             weight_threshold = 0;
+      account_authority_map                                                                                                account_auths;
+      key_authority_map                                                                                                    key_auths;
    };
 
    bool operator == ( const shared_authority& a, const shared_authority& b );
