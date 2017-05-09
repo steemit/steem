@@ -562,7 +562,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
          {
             com.parent_author = "";
             from_string( com.parent_permlink, o.parent_permlink );
-            from_string( com.category, o.parent_permlink );
             com.root_comment = com.id;
             com.cashout_time = _db.has_hardfork( STEEMIT_HARDFORK_0_12__177 ) ?
                _db.head_block_time() + STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 :
@@ -573,7 +572,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
             com.parent_author = parent->author;
             com.parent_permlink = parent->permlink;
             com.depth = parent->depth + 1;
-            com.category = parent->category;
             com.root_comment = parent->root_comment;
             com.cashout_time = fc::time_point_sec::maximum();
          }
