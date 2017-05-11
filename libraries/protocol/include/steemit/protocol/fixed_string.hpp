@@ -3,6 +3,8 @@
 #include <fc/uint128.hpp>
 #include <fc/io/raw_fwd.hpp>
 
+#include <boost/endian/conversion.hpp>
+
 // These overloads need to be defined before the implementation in fixed_string
 namespace fc
 {
