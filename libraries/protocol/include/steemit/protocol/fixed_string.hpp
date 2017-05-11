@@ -3,28 +3,75 @@
 #include <fc/uint128.hpp>
 #include <fc/io/raw_fwd.hpp>
 
+// These overloads need to be defined before the implementation in fixed_string
+namespace fc
+{
+   uint128 endian_reverse( const uint128& u );
+}
+
+namespace std
+{
+   // The template below does not work crossing namespaces from std to fc
+   pair< fc::uint128_t, uint64_t > endian_reverse( const pair< fc::uint128_t, uint64_t > p );
+
+   pair< fc::uint128_t, fc::uint128_t > endian_reverse( const pair< fc::uint128_t, fc::uint128_t > p );
+
+   template< typename T, typename V >
+   pair< T, V > endian_reverse( const pair< T, V > p )
+   {
+      return std::make_pair( boost::endian::endian_reverse( p.first ), boost::endian::endian_reverse( p.second ) );
+   }
+}
+
 namespace steemit { namespace protocol {
 
 /**
- * This class is an in-place memory allocation of a 16 character string.
+ * This class is an in-place memory allocation of a fixed length character string.
  *
- * The string will serialize the same way as std::string for variant and raw formats,
- * but will be in memory as a 128-bit integer so that we can exploit efficient
- * integer comparisons for sorting.
+ * The string will serialize the same way as std::string for variant and raw formats.
  */
+template< typename S = uint64_t, typename T = uint64_t >
 class fixed_string
 {
    public:
-      typedef fc::uint128_t Storage;
+      typedef std::pair< S, T > Storage;
 
       fixed_string(){}
       fixed_string( const fixed_string& c ) : data( c.data ){}
       fixed_string( const char* str ) : fixed_string( std::string( str ) ) {}
-      fixed_string( const std::string& str );
+      fixed_string( const std::string& str )
+      {
+         Storage d;
+         if( str.size() <= sizeof(d) )
+            memcpy( (char*)&d, str.c_str(), str.size() );
+         else
+            memcpy( (char*)&d, str.c_str(), sizeof(d) );
 
-      operator std::string()const;
+         data = boost::endian::big_to_native( d );
+      }
 
-      uint32_t size()const;
+      operator std::string()const
+      {
+         Storage d = boost::endian::native_to_big( data );
+         size_t s;
+
+         if( *(((const char*)&d) + sizeof(d) - 1) )
+            s = sizeof(d);
+         else
+            s = strnlen( (const char*)&d, sizeof(d) );
+
+         const char* self = (const char*)&d;
+
+         return std::string( self, self + s );
+      }
+
+      uint32_t size()const
+      {
+         Storage d = boost::endian::native_to_big( data );
+         if( *(((const char*)&d) + sizeof(d) - 1) )
+            return sizeof(d);
+         return strnlen( (const char*)&d, sizeof(d) );
+      }
 
       uint32_t length()const { return size(); }
 
@@ -58,18 +105,23 @@ class fixed_string
       Storage data;
 };
 
+// These storage types work with memory layout and should be used instead of a custom template.
+typedef fixed_string<>                                fixed_string_16;
+typedef fixed_string< fc::uint128_t, uint64_t >       fixed_string_24;
+typedef fixed_string< fc::uint128_t, fc::uint128_t >  fixed_string_32;
+
 } } // steemit::protocol
 
 namespace fc { namespace raw {
 
-   template< typename Stream >
-   inline void pack( Stream& s, const steemit::protocol::fixed_string& u )
+   template< typename Stream, typename S, typename T >
+   inline void pack( Stream& s, const steemit::protocol::fixed_string< S, T >& u )
    {
       pack( s, std::string( u ) );
    }
 
-   template< typename Stream >
-   inline void unpack( Stream& s, steemit::protocol::fixed_string& u )
+   template< typename Stream, typename S, typename T >
+   inline void unpack( Stream& s, steemit::protocol::fixed_string< S, T >& u )
    {
       std::string str;
       unpack( s, str );
@@ -77,7 +129,9 @@ namespace fc { namespace raw {
    }
 
 } // raw
+   template< typename S, typename T >
+   void to_variant(   const steemit::protocol::fixed_string< S, T>& s, variant& v ) { v = std::string( s ); }
 
-   void to_variant(   const steemit::protocol::fixed_string& s, variant& v );
-   void from_variant( const variant& v, steemit::protocol::fixed_string& s );
+   template< typename S, typename T >
+   void from_variant( const variant& v, steemit::protocol::fixed_string< S, T >& s ) { s = v.as_string(); }
 } // fc

@@ -35,7 +35,7 @@ using chainbase::allocator;
 
 #define TAGS_PLUGIN_NAME "tags"
 
-typedef protocol::fixed_string tag_name_type;
+typedef protocol::fixed_string_32 tag_name_type;
 
 // Plugins need to define object type IDs such that they do not conflict
 // globally. If each plugin uses the upper 8 bits as a space identifier,

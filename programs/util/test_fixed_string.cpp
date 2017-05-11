@@ -31,7 +31,7 @@ void check( const std::string& s, const std::string& t,
    }
 }
 
-void check_variant( const std::string& s, const steemit::protocol::fixed_string& fs )
+void check_variant( const std::string& s, const steemit::protocol::fixed_string_16& fs )
 {
    fc::variant vs, vfs;
    fc::to_variant( s, vs );
@@ -45,7 +45,7 @@ void check_variant( const std::string& s, const steemit::protocol::fixed_string&
    }
 
    std::string s2;
-   steemit::protocol::fixed_string fs2;
+   steemit::protocol::fixed_string_16 fs2;
    fc::from_variant( vs, s2 );
    fc::from_variant( vfs, fs2 );
    if( s2 != s )
@@ -61,7 +61,7 @@ void check_variant( const std::string& s, const steemit::protocol::fixed_string&
    }
 }
 
-void check_pack( const std::string& s, const steemit::protocol::fixed_string& fs )
+void check_pack( const std::string& s, const steemit::protocol::fixed_string_16& fs )
 {
    std::stringstream ss, sfs;
    fc::raw::pack( ss, s );
@@ -74,7 +74,7 @@ void check_pack( const std::string& s, const steemit::protocol::fixed_string& fs
    }
 
    ss.seekg(0);
-   steemit::protocol::fixed_string unpacked;
+   steemit::protocol::fixed_string_16 unpacked;
    fc::raw::unpack( ss, unpacked );
    if( unpacked != fs )
    {
@@ -86,7 +86,7 @@ void check_pack( const std::string& s, const steemit::protocol::fixed_string& fs
 int main( int argc, char** argv, char** envp )
 {
    std::vector< std::string > all_strings;
-   std::vector< steemit::protocol::fixed_string > all_fixed_strings;
+   std::vector< steemit::protocol::fixed_string_16 > all_fixed_string_16s;
    std::vector< std::vector< uint32_t > > sim_index;
 
    std::cout << "setting up LUT's" << std::endl;
@@ -133,7 +133,7 @@ int main( int argc, char** argv, char** envp )
    for( size_t i=0; i<all_strings.size(); i++ )
    {
       const std::string& s = all_strings[i];
-      steemit::protocol::fixed_string fs(s);
+      steemit::protocol::fixed_string_16 fs(s);
       std::string sfs = fs;
       if( s != fs )
       {
@@ -152,7 +152,7 @@ int main( int argc, char** argv, char** envp )
       for( const uint32_t& j : sim_index[i] )
       {
          const std::string& t = all_strings[j];
-         steemit::protocol::fixed_string ft(t);
+         steemit::protocol::fixed_string_16 ft(t);
          check( s, t, (s< t) == (fs< ft) );
          check( s, t, (s<=t) == (fs<=ft) );
          check( s, t, (s> t) == (fs> ft) );
@@ -162,7 +162,7 @@ int main( int argc, char** argv, char** envp )
       }
    }
 
-   std::cout << "test_fixed_string found " << errors << " errors" << std::endl;
+   std::cout << "test_fixed_string_16 found " << errors << " errors" << std::endl;
 
    int result = (errors == 0) ? 0 : 1;
    return result;
