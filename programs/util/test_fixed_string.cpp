@@ -31,8 +31,8 @@ void check( const std::string& s, const std::string& t,
    }
 }
 
-template< typename S, typename T >
-void check_variant( const std::string& s, const steemit::protocol::fixed_string< S, T >& fs )
+template< typename Storage >
+void check_variant( const std::string& s, const steemit::protocol::fixed_string< Storage >& fs )
 {
    fc::variant vs, vfs;
    fc::to_variant( s, vs );
@@ -46,7 +46,7 @@ void check_variant( const std::string& s, const steemit::protocol::fixed_string<
    }
 
    std::string s2;
-   steemit::protocol::fixed_string< S, T > fs2;
+   steemit::protocol::fixed_string< Storage > fs2;
    fc::from_variant( vs, s2 );
    fc::from_variant( vfs, fs2 );
    if( s2 != s )
@@ -62,8 +62,8 @@ void check_variant( const std::string& s, const steemit::protocol::fixed_string<
    }
 }
 
-template< typename S, typename T >
-void check_pack( const std::string& s, const steemit::protocol::fixed_string< S, T >& fs )
+template< typename Storage >
+void check_pack( const std::string& s, const steemit::protocol::fixed_string< Storage >& fs )
 {
    std::stringstream ss, sfs;
    fc::raw::pack( ss, s );
@@ -76,7 +76,7 @@ void check_pack( const std::string& s, const steemit::protocol::fixed_string< S,
    }
 
    ss.seekg(0);
-   steemit::protocol::fixed_string< S, T > unpacked;
+   steemit::protocol::fixed_string< Storage > unpacked;
    fc::raw::unpack( ss, unpacked );
    if( unpacked != fs )
    {
