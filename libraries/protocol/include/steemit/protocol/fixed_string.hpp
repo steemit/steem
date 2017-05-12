@@ -31,8 +31,8 @@ namespace fc
       friend bool operator != ( const erpair& a, const erpair& b )
       { return std::tie( a.first, a.second ) != std::tie( b.first, b.second ); }
 
-      A first;
-      B second;
+      A first{};
+      B second{};
    };
 
    template< typename A, typename B >
