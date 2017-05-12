@@ -8,20 +8,49 @@
 // These overloads need to be defined before the implementation in fixed_string
 namespace fc
 {
-   uint128 endian_reverse( const uint128& u );
-}
+   /**
+    * Endian-reversible pair class.
+    */
 
-namespace std
-{
-   // The template below does not work crossing namespaces from std to fc
-   pair< fc::uint128_t, uint64_t > endian_reverse( const pair< fc::uint128_t, uint64_t > p );
-
-   pair< fc::uint128_t, fc::uint128_t > endian_reverse( const pair< fc::uint128_t, fc::uint128_t > p );
-
-   template< typename T, typename V >
-   pair< T, V > endian_reverse( const pair< T, V > p )
+   template< typename A, typename B >
+   struct erpair
    {
-      return std::make_pair( boost::endian::endian_reverse( p.first ), boost::endian::endian_reverse( p.second ) );
+      erpair() {}
+      erpair(const A& a, const B& b)
+         : first(a), second(b) {}
+      friend bool operator <  ( const erpair& a, const erpair& b )
+      { return std::tie( a.first, a.second ) <  std::tie( b.first, b.second ); }
+      friend bool operator <= ( const erpair& a, const erpair& b )
+      { return std::tie( a.first, a.second ) <= std::tie( b.first, b.second ); }
+      friend bool operator >  ( const erpair& a, const erpair& b )
+      { return std::tie( a.first, a.second ) >  std::tie( b.first, b.second ); }
+      friend bool operator >= ( const erpair& a, const erpair& b )
+      { return std::tie( a.first, a.second ) >= std::tie( b.first, b.second ); }
+      friend bool operator == ( const erpair& a, const erpair& b )
+      { return std::tie( a.first, a.second ) == std::tie( b.first, b.second ); }
+      friend bool operator != ( const erpair& a, const erpair& b )
+      { return std::tie( a.first, a.second ) != std::tie( b.first, b.second ); }
+
+      A first;
+      B second;
+   };
+
+   template< typename A, typename B >
+   erpair<A, B> make_erpair( const A& a, const B& b )
+   {  return erpair<A, B>(a, b); }
+
+   template< typename T >
+   T endian_reverse( const T& x )
+   {  return boost::endian::endian_reverse(x);  }
+
+   template<>
+   inline uint128 endian_reverse( const uint128& u )
+   {  return uint128( boost::endian::endian_reverse( u.hi ), boost::endian::endian_reverse( u.lo ) );  }
+
+   template<typename A, typename B>
+   erpair< A, B > endian_reverse( const erpair< A, B >& p )
+   {
+      return make_erpair( endian_reverse( p.first ), endian_reverse( p.second ) );
    }
 }
 
@@ -36,7 +65,7 @@ template< typename S = uint64_t, typename T = uint64_t >
 class fixed_string
 {
    public:
-      typedef std::pair< S, T > Storage;
+      typedef fc::erpair< S, T > Storage;
 
       fixed_string(){}
       fixed_string( const fixed_string& c ) : data( c.data ){}
