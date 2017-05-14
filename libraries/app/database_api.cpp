@@ -1170,7 +1170,28 @@ void database_api::set_pending_payout( discussion& d )const
 void database_api::set_url( discussion& d )const
 {
    const comment_api_obj root( my->_db.get< comment_object, by_id >( d.root_comment ) );
-   d.url = "/" + root.category + "/@" + root.author + "/" + root.permlink;
+   std::vector< std::string > tags;
+   if( root.json_metadata.size() )
+   {
+      try
+      {
+         tags  = fc::json::from_string( root.json_metadata )["tags"].as< std::vector< std::string > >();
+         if(tags.at(0) != ""){
+           d.url = "/" + tags.at(0) + "/@" + root.author + "/" + root.permlink;
+         }
+         else {
+           d.url = "/" + tags.at(1) + "/@" + root.author + "/" + root.permlink;
+         }
+      }
+      catch( const fc::exception& e )
+      {
+         // Do nothing on malformed json_metadata
+      }
+   }
+   if(!tags.size()) {
+     d.url = "/@" + root.author + "/" + root.permlink;
+   }
+
    d.root_title = root.title;
    if( root.id != d.id )
       d.url += "#@" + d.author + "/" + d.permlink;

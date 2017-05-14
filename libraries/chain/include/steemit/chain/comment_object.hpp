@@ -244,8 +244,8 @@ namespace steemit { namespace chain {
 } } // steemit::chain
 
 FC_REFLECT( steemit::chain::comment_object,
-             (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
+             (id)(category)(author)(permlink)
+             (parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
              (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)

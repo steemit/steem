@@ -60,7 +60,6 @@ struct comment_api_obj
 {
    comment_api_obj( const chain::comment_object& o ):
       id( o.id ),
-      category( to_string( o.category ) ),
       parent_author( o.parent_author ),
       parent_permlink( to_string( o.parent_permlink ) ),
       author( o.author ),
@@ -102,7 +101,6 @@ struct comment_api_obj
    comment_api_obj(){}
 
    comment_id_type   id;
-   string            category;
    account_name_type parent_author;
    string            parent_permlink;
    account_name_type author;
@@ -482,7 +480,7 @@ struct signed_block_api_obj : public signed_block
 
 FC_REFLECT( steemit::app::comment_api_obj,
              (id)(author)(permlink)
-             (category)(parent_author)(parent_permlink)
+             (parent_author)(parent_permlink)
              (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
              (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
