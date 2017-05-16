@@ -50,8 +50,9 @@ RUN \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         .. && \
-    make -j$(nproc) chain_test && \
+    make -j$(nproc) chain_test test_fixed_string && \
     ./tests/chain_test && \
+    ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
