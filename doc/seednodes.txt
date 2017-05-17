@@ -7,7 +7,7 @@ steemwitness.matthewniemerg.com:2001 # complexring
 seed.jesta.us:2001             # jesta
 seed.liondani.com:2016         # liondani
 anyx.co:2001                   # anyx
-#####seed.xeldal.com:12150          # xeldal
+seed.xeldal.com:12150          # xeldal
 seed.steemnodes.com:2001       # wackou
 #####steem.clawmap.com:2001         # steempty
 gtg.steem.house:2001           # gtg
@@ -15,7 +15,7 @@ gtg.steem.house:2001           # gtg
 5.9.18.213:2001                # pfunk
 lafonasteem.com:2001           # lafona
 seed.rossco99.com:2001         # rossco99
-212.47.249.84:40696            # ihashfury
+steem-seed.altcap.io:40696     # ihashfury
 seed.steemfeeder.com:2001      # au1nethyb1
 #####52.175.211.168:2001            # aizensou
 seed.roelandp.nl:2001          # roelandp
@@ -34,3 +34,4 @@ seed.bitcoiner.me:2001         # bitcoiner
 #####138.197.17.188:2001            # chitty
 88.99.33.113:2001              # cervantes
 seed.bhuz.info:2001            # bhuz
+78.46.95.157:2001              # pcste
