@@ -367,6 +367,9 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
    const auto& comment = _db.get_comment( o.author, o.permlink );
    FC_ASSERT( comment.children == 0, "Cannot delete a comment with replies." );
 
+   if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__876 ) )
+      FC_ASSERT( comment.cashout_time != fc::time_point_sec::maximum() );
+
    if( _db.is_producing() ) {
       FC_ASSERT( comment.net_rshares <= 0, "Cannot delete a comment with net positive votes." );
    }

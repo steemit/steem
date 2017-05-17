@@ -601,6 +601,111 @@ BOOST_AUTO_TEST_CASE( comment_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( comment_delete_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: comment_delete_apply" );
+      ACTORS( (alice) )
+      generate_block();
+
+      vest( "alice", ASSET( "1000.000 TESTS" ) );
+
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      signed_transaction tx;
+      comment_operation comment;
+      vote_operation vote;
+
+      comment.author = "alice";
+      comment.permlink = "test1";
+      comment.title = "test";
+      comment.body = "foo bar";
+      comment.parent_permlink = "test";
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test1";
+      vote.weight = STEEMIT_100_PERCENT;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Test failue deleting a comment with positive rshares" );
+
+      delete_comment_operation op;
+      op.author = "alice";
+      op.permlink = "test1";
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test success deleting a comment with negative rshares" );
+
+      generate_block();
+      vote.weight = -1 * STEEMIT_100_PERCENT;
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      auto test_comment = db.find< comment_object, by_permlink >( boost::make_tuple( "alice", string( "test1" ) ) );
+      BOOST_REQUIRE( test_comment == nullptr );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure deleting a comment past cashout" );
+      generate_blocks( STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEMIT_BLOCK_INTERVAL );
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( STEEMIT_CASHOUT_WINDOW_SECONDS / STEEMIT_BLOCK_INTERVAL );
+      BOOST_REQUIRE( db.get_comment( "alice", string( "test1" ) ).cashout_time == fc::time_point_sec::maximum() );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure deleting a comment with a reply" );
+
+      comment.permlink = "test2";
+      comment.parent_author = "alice";
+      comment.parent_permlink = "test1";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEMIT_BLOCK_INTERVAL );
+      comment.permlink = "test3";
+      comment.parent_permlink = "test2";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      op.permlink = "test2";
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( vote_validate )
 {
    try
