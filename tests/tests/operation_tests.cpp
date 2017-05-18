@@ -6398,6 +6398,72 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
+{
+   // This is a regression test specifically for issue #971
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Issue 971 Vesting Removal" );
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      vest( "alice", ASSET( "1000.000 TESTS" ) );
+
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& w )
+         {
+            w.median_props.account_creation_fee = ASSET( "1.000 TESTS" );
+         });
+      });
+
+      generate_block();
+
+      signed_transaction tx;
+      delegate_vesting_shares_operation op;
+      op.vesting_shares = ASSET( "10000000.000000 VESTS");
+      op.delegator = "alice";
+      op.delegatee = "bob";
+
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_block();
+      const account_object& alice_acc = db.get_account( "alice" );
+      const account_object& bob_acc = db.get_account( "bob" );
+
+      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "10000000.000000 VESTS"));
+
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& w )
+         {
+            w.median_props.account_creation_fee = ASSET( "100.000 TESTS" );
+         });
+      });
+
+      generate_block();
+
+      op.vesting_shares = ASSET( "0.000000 VESTS" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_block();
+
+      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "0.000000 VESTS"));
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
 {
    try
