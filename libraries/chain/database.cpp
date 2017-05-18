@@ -1619,11 +1619,15 @@ void database::process_comment_cashout()
       // Add all reward funds to the local cache and decay their recent rshares
       modify( *itr, [&]( reward_fund_object& rfo )
       {
-         if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
-            rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19.to_seconds();
-         else
-            rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17.to_seconds();
+         fc::microseconds decay_rate;
 
+         // TODO: Remove temp fund after HF 19
+         if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
+            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19;
+         else
+            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17;
+
+         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / decay_rate.to_seconds();
          rfo.last_update = head_block_time();
       });
 
@@ -1652,7 +1656,7 @@ void database::process_comment_cashout()
          {
             const auto& rf = get_reward_fund( *current );
             funds[ rf.id._id ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
-            funds[ 1 ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
+            funds[ STEEMIT_TEMP_LINEAR_REWARD_FUND_ID ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
          }
 
          ++current;
