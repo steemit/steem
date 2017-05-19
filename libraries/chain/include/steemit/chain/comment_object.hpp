@@ -180,7 +180,7 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       comment_object,
       indexed_by<
-         /// CONSENSUS INDICIES - used by evaluators
+         /// CONSENSUS INDICES - used by evaluators
          ordered_unique< tag< by_id >, member< comment_object, comment_id_type, &comment_object::id > >,
          ordered_unique< tag< by_cashout_time >,
             composite_key< comment_object,

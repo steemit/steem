@@ -14,7 +14,6 @@ using namespace steemit::chain;
 
 typedef change_recovery_account_request_object api_change_recovery_account_request_object;
 typedef block_summary_object                   api_block_summary_object;
-typedef comment_vote_object                    api_comment_vote_object;
 typedef dynamic_global_property_object         api_dynamic_global_property_object;
 typedef convert_request_object                 api_convert_request_object;
 typedef escrow_object                          api_escrow_object;
@@ -30,7 +29,7 @@ typedef reward_fund_object                     api_reward_fund_object;
 
 struct api_comment_object
 {
-   api_comment_object( const chain::comment_object& o ):
+   api_comment_object( const chain::comment_object& o, const chain::database& db ):
       id( o.id ),
       category( to_string( o.category ) ),
       parent_author( o.parent_author ),
@@ -58,7 +57,6 @@ struct api_comment_object
       curator_payout_value( o.curator_payout_value ),
       author_rewards( o.author_rewards ),
       net_votes( o.net_votes ),
-      root_comment( o.root_comment ),
       max_accepted_payout( o.max_accepted_payout ),
       percent_steem_dollars( o.percent_steem_dollars ),
       allow_replies( o.allow_replies ),
@@ -68,6 +66,14 @@ struct api_comment_object
       for( auto& route : o.beneficiaries )
       {
          beneficiaries.push_back( route );
+      }
+
+      const auto root = db.find( o.root_comment );
+
+      if( root != nullptr )
+      {
+         root_author = root->author;
+         root_permlink = to_string( root->permlink );
       }
    }
 
@@ -109,7 +115,8 @@ struct api_comment_object
 
    int32_t           net_votes = 0;
 
-   comment_id_type   root_comment;
+   account_name_type root_author;
+   string            root_permlink;
 
    asset             max_accepted_payout;
    uint16_t          percent_steem_dollars = 0;
@@ -117,6 +124,36 @@ struct api_comment_object
    bool              allow_votes = false;
    bool              allow_curation_rewards = false;
    vector< beneficiary_route_type > beneficiaries;
+};
+
+struct api_comment_vote_object
+{
+   api_comment_vote_object( const chain::comment_vote_object& cv, const chain::database& db ) :
+      id( cv.id ),
+      weight( cv.weight ),
+      sqrt_weight( cv.sqrt_weight ),
+      rshares( cv.rshares),
+      vote_percent( cv.vote_percent ),
+      last_update( cv.last_update ),
+      num_changes( cv.num_changes )
+   {
+      voter = db.get( cv.voter ).name;
+      auto comment = db.get( cv.comment );
+      author = comment.author;
+      permlink = to_string( comment.permlink );
+   }
+
+   comment_vote_id_type id;
+
+   account_name_type    voter;
+   account_name_type    author;
+   string               permlink;
+   uint64_t             weight = 0;
+   uint64_t             sqrt_weight = 0;
+   int64_t              rshares = 0;
+   int16_t              vote_percent = 0;
+   time_point_sec       last_update;
+   int8_t               num_changes = 0;
 };
 
 struct api_account_object
@@ -177,7 +214,7 @@ struct api_account_object
       for( size_t i=0; i<n; i++ )
          proxied_vsf_votes.push_back( a.proxied_vsf_votes[i] );
 
-      const auto& auth = db.get< account_authority_object, by_account >( name );
+      const auto& auth = db.get< account_authority_object, chain::by_account >( name );
       owner = authority( auth.owner );
       active = authority( auth.active );
       posting = authority( auth.posting );
@@ -427,10 +464,18 @@ struct api_hardfork_property_object
    fc::time_point_sec            next_hardfork_time;
 };
 
-struct applied_operation
+struct api_operation_object
 {
-   applied_operation();
-   applied_operation( const steemit::chain::operation_object& op_obj );
+   api_operation_object() {}
+   api_operation_object( const steemit::chain::operation_object& op_obj ) :
+      trx_id( op_obj.trx_id ),
+      block( op_obj.block ),
+      trx_in_block( op_obj.trx_in_block ),
+      virtual_op( op_obj.virtual_op ),
+      timestamp( op_obj.timestamp )
+   {
+      op = fc::raw::unpack< operation >( op_obj.serialized_op );
+   }
 
    steemit::protocol::transaction_id_type trx_id;
    uint32_t                               block = 0;
@@ -465,9 +510,14 @@ FC_REFLECT( steemit::db_api::api_comment_object,
              (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)(root_comment)
+             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(author_rewards)(net_votes)
+             (root_author)(root_permlink)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
+          )
+
+FC_REFLECT( steemit::db_api::api_comment_vote_object,
+             (id)(voter)(author)(permlink)(weight)(sqrt_weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
 
 FC_REFLECT( steemit::db_api::api_account_object,
@@ -545,7 +595,7 @@ FC_REFLECT( steemit::db_api::api_hardfork_property_object,
             (next_hardfork_time)
           )
 
-FC_REFLECT( steemit::db_api::applied_operation,
+FC_REFLECT( steemit::db_api::api_operation_object,
    (trx_id)
    (block)
    (trx_in_block)

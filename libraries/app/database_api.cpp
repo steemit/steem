@@ -400,9 +400,9 @@ vector< extended_account > database_api_impl::get_accounts( vector< string > nam
             results.back().reputation = _follow_api->get_account_reputations( itr->name, 1 )[0].reputation;
          }
 
-         auto vitr = vidx.lower_bound( boost::make_tuple( itr->id, witness_id_type() ) );
-         while( vitr != vidx.end() && vitr->account == itr->id ) {
-            results.back().witness_votes.insert(_db.get(vitr->witness).owner);
+         auto vitr = vidx.lower_bound( boost::make_tuple( itr->name, account_name_type() ) );
+         while( vitr != vidx.end() && vitr->account == itr->name ) {
+            results.back().witness_votes.insert(_db.get< witness_object, by_name >(vitr->witness).owner);
             ++vitr;
          }
       }
@@ -565,13 +565,13 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
       if( type == outgoing || type == all )
       {
          const auto& by_route = my->_db.get_index< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
-         auto route = by_route.lower_bound( acc.id );
+         auto route = by_route.lower_bound( acc.name );
 
-         while( route != by_route.end() && route->from_account == acc.id )
+         while( route != by_route.end() && route->from_account == acc.name )
          {
             withdraw_route r;
             r.from_account = account;
-            r.to_account = my->_db.get( route->to_account ).name;
+            r.to_account = route->to_account;
             r.percent = route->percent;
             r.auto_vest = route->auto_vest;
 
@@ -584,12 +584,12 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
       if( type == incoming || type == all )
       {
          const auto& by_dest = my->_db.get_index< withdraw_vesting_route_index >().indices().get< by_destination >();
-         auto route = by_dest.lower_bound( acc.id );
+         auto route = by_dest.lower_bound( acc.name );
 
-         while( route != by_dest.end() && route->to_account == acc.id )
+         while( route != by_dest.end() && route->to_account == acc.name )
          {
             withdraw_route r;
-            r.from_account = my->_db.get( route->from_account ).name;
+            r.from_account = route->from_account;
             r.to_account = account;
             r.percent = route->percent;
             r.auto_vest = route->auto_vest;

@@ -225,8 +225,8 @@ namespace steemit { namespace chain {
 
          id_type  id;
 
-         account_id_type   from_account;
-         account_id_type   to_account;
+         account_name_type from_account;
+         account_name_type to_account;
          uint16_t          percent = 0;
          bool              auto_vest = false;
    };
@@ -245,7 +245,7 @@ namespace steemit { namespace chain {
 
          id_type           id;
 
-         account_id_type   account;
+         account_name_type account;
          time_point_sec    effective_date;
    };
 
@@ -362,14 +362,14 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >, member< withdraw_vesting_route_object, withdraw_vesting_route_id_type, &withdraw_vesting_route_object::id > >,
          ordered_unique< tag< by_withdraw_route >,
             composite_key< withdraw_vesting_route_object,
-               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::from_account >,
-               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::to_account >
+               member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::from_account >,
+               member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::to_account >
             >,
-            composite_key_compare< std::less< account_id_type >, std::less< account_id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >,
          ordered_unique< tag< by_destination >,
             composite_key< withdraw_vesting_route_object,
-               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::to_account >,
+               member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::to_account >,
                member< withdraw_vesting_route_object, withdraw_vesting_route_id_type, &withdraw_vesting_route_object::id >
             >
          >
@@ -439,14 +439,14 @@ namespace steemit { namespace chain {
       indexed_by<
          ordered_unique< tag< by_id >, member< decline_voting_rights_request_object, decline_voting_rights_request_id_type, &decline_voting_rights_request_object::id > >,
          ordered_unique< tag< by_account >,
-            member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+            member< decline_voting_rights_request_object, account_name_type, &decline_voting_rights_request_object::account >
          >,
          ordered_unique< tag< by_effective_date >,
             composite_key< decline_voting_rights_request_object,
                member< decline_voting_rights_request_object, time_point_sec, &decline_voting_rights_request_object::effective_date >,
-               member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+               member< decline_voting_rights_request_object, account_name_type, &decline_voting_rights_request_object::account >
             >,
-            composite_key_compare< std::less< time_point_sec >, std::less< account_id_type > >
+            composite_key_compare< std::less< time_point_sec >, std::less< account_name_type > >
          >
       >,
       allocator< decline_voting_rights_request_object >

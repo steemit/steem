@@ -5,6 +5,8 @@
 #include <steemit/db_api/db_api_params.hpp>
 #include <steemit/db_api/db_api_objects.hpp>
 
+#define DB_API_SINGLE_QUERY_LIMIT 1000
+
 namespace steemit { namespace db_api {
 
 class db_api_impl;
@@ -40,7 +42,7 @@ class db_api
        *  @param only_virtual Whether to only include virtual operations in returned results (default: true)
        *  @return sequence of operations included/generated within the block
        */
-      vector< applied_operation > get_ops_in_block( const get_ops_in_block_params& p );
+      vector< api_operation_object > get_ops_in_block( const get_ops_in_block_params& p );
 
       /////////////
       // Globals //
@@ -60,7 +62,7 @@ class db_api
 
       api_hardfork_property_object get_hardfork_properties();
 
-      vector< api_reward_fund_object > get_reward_funds( const get_reward_funds_params& p );
+      vector< api_reward_fund_object > get_reward_funds();
 
       price get_current_price_feed();
 
@@ -76,14 +78,22 @@ class db_api
 
       vector< api_witness_vote_object > list_witness_votes( const list_witness_votes_params& p );
 
-      vector< api_witness_object > get_active_witnesses();
+      vector< account_name_type > get_active_witnesses();
 
 
       //////////////
       // Accounts //
       //////////////
 
+      /**
+       * @brief List accounts ordered by specified key
+       *
+       */
       vector< api_account_object > list_accounts( const list_accounts_params& p );
+
+      /**
+       * @brief Find accounts by primary key (account name)
+       */
       vector< api_account_object > find_accounts( const find_accounts_params& p );
 
       vector< api_owner_authority_history_object > list_owner_histories( const list_owner_histories_params& p );
