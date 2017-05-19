@@ -98,8 +98,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
       tx.validate();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
-      /* Temporarily commented out while op is disabled
       db.push_transaction( tx, 0 );
 
       const account_object& acct = db.get_account( "alice" );
@@ -152,15 +150,13 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
-      idump( (db.get_account( STEEMIT_INIT_MINER_NAME ).balance) );
-
       BOOST_TEST_MESSAGE( "--- Test failure covering witness fee" );
       generate_block();
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
-            wso.median_props.account_creation_fee = ASSET( "1.000 TESTS" );
+            wso.median_props.account_creation_fee = ASSET( "10.000 TESTS" );
          });
       });
       generate_block();
@@ -169,9 +165,8 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.fee = ASSET( "1.000 TESTS" );
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception ) );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
-      */
    }
    FC_LOG_AND_RETHROW()
 }
