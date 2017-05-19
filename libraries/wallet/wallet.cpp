@@ -1290,6 +1290,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
                                       bool broadcast )const
 { try {
    FC_ASSERT( !is_locked() );
+   asset account_creation_fee = my->_remote_db->get_chain_properties().account_creation_fee;
    account_create_operation op;
    op.creator = creator;
    op.new_account_name = new_account_name;
@@ -1298,7 +1299,7 @@ annotated_signed_transaction wallet_api::create_account_with_keys( string creato
    op.posting = authority( 1, posting, 1 );
    op.memo_key = memo;
    op.json_metadata = json_meta;
-   op.fee = my->_remote_db->get_chain_properties().account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
+   op.fee = asset( account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL );
 
    signed_transaction tx;
    tx.operations.push_back(op);

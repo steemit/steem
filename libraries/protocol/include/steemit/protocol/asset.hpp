@@ -83,8 +83,9 @@ namespace steemit { namespace protocol {
 
    struct price
    {
-      price(const asset& base = asset(), const asset& quote = asset())
+      price(const asset& base, const asset& quote)
          : base(base),quote(quote){}
+      price() {}
 
       asset base;
       asset quote;
