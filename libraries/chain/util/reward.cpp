@@ -4,38 +4,38 @@
 
 namespace steemit { namespace chain { namespace util {
 
-uint64_t get_rshare_reward( const comment_reward_context& ctx )
+uint8_t find_msb( const uint128_t& u )
 {
-   try
-   {
-   FC_ASSERT( ctx.rshares > 0 );
-   FC_ASSERT( ctx.total_reward_shares2 > 0 );
-
-   u256 rs(ctx.rshares.value);
-   u256 rf(ctx.total_reward_fund_steem.amount.value);
-   u256 total_rshares2 = to256( ctx.total_reward_shares2 );
-
-   //idump( (ctx) );
-
-   u256 rs2 = to256( calculate_claims( ctx.rshares.value ) );
-   rs2 = ( rs2 * ctx.reward_weight ) / STEEMIT_100_PERCENT;
-
-   u256 payout_u256 = ( rf * rs2 ) / total_rshares2;
-   FC_ASSERT( payout_u256 <= u256( uint64_t( std::numeric_limits<int64_t>::max() ) ) );
-   uint64_t payout = static_cast< uint64_t >( payout_u256 );
-
-   if( is_comment_payout_dust( ctx.current_steem_price, payout ) )
-      payout = 0;
-
-   asset max_steem = to_steem( ctx.current_steem_price, ctx.max_sbd );
-
-   payout = std::min( payout, uint64_t( max_steem.amount.value ) );
-
-   return payout;
-   } FC_CAPTURE_AND_RETHROW( (ctx) )
+   uint64_t x;
+   uint8_t places;
+   x      = (u.lo ? u.lo : 1);
+   places = (u.hi ?   64 : 0);
+   x      = (u.hi ? u.hi : x);
+   return uint8_t( boost::multiprecision::detail::find_msb(x) + places );
 }
 
-uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund_object& rf_object )
+uint64_t approx_sqrt( const uint128_t& x )
+{
+   if( (x.lo == 0) && (x.hi == 0) )
+      return 0;
+
+   uint8_t msb_x = find_msb(x);
+   uint8_t msb_z = msb_x >> 1;
+
+   uint128_t msb_x_bit = uint128_t(1) << msb_x;
+   uint64_t  msb_z_bit = uint64_t (1) << msb_z;
+
+   uint128_t mantissa_mask = msb_x_bit - 1;
+   uint128_t mantissa_x = x & mantissa_mask;
+   uint64_t mantissa_z_hi = (msb_x & 1) ? msb_z_bit : 0;
+   uint64_t mantissa_z_lo = (mantissa_x >> (msb_x - msb_z)).lo;
+   uint64_t mantissa_z = (mantissa_z_hi | mantissa_z_lo) >> 1;
+   uint64_t result = msb_z_bit | mantissa_z;
+
+   return result;
+}
+
+uint64_t get_rshare_reward( const comment_reward_context& ctx )
 {
    try
    {
@@ -47,7 +47,7 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
 
    //idump( (ctx) );
 
-   u256 claim = to256( calculate_claims( ctx.rshares.value, rf_object ) );
+   u256 claim = to256( evaluate_reward_curve( ctx.rshares.value, ctx.reward_curve, ctx.content_constant ) );
    claim = ( claim * ctx.reward_weight ) / STEEMIT_100_PERCENT;
 
    u256 payout_u256 = ( rf * claim ) / total_claims;
@@ -65,44 +65,32 @@ uint64_t get_rshare_reward( const comment_reward_context& ctx, const reward_fund
    } FC_CAPTURE_AND_RETHROW( (ctx) )
 }
 
-uint64_t get_vote_weight( uint64_t vote_rshares, const reward_fund_object& rf )
-{
-   uint64_t result = 0;
-   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
-   {
-      uint128_t two_alpha = rf.content_constant * 2;
-      result = ( uint128_t( vote_rshares, 0 ) / ( two_alpha + vote_rshares ) ).to_uint64();
-   }
-   else
-   {
-      wlog( "Unknown reward fund type ${rf}", ("rf",rf.name) );
-   }
-
-   return result;
-}
-
-uint128_t calculate_claims( const uint128_t& rshares )
-{
-   uint128_t s = get_content_constant_s();
-   uint128_t rshares_plus_s = rshares + s;
-   return rshares_plus_s * rshares_plus_s - s * s;
-}
-
-uint128_t calculate_claims( const uint128_t& rshares, const reward_fund_object& rf )
+uint128_t evaluate_reward_curve( const uint128_t& rshares, const curve_id& curve, const uint128_t& content_constant )
 {
    uint128_t result = 0;
-   if( rf.name == STEEMIT_POST_REWARD_FUND_NAME || rf.name == STEEMIT_COMMENT_REWARD_FUND_NAME )
+
+   switch( curve )
    {
-      uint128_t s = rf.content_constant;
-      uint128_t rshares_plus_s = rshares + s;
-      result = rshares_plus_s * rshares_plus_s - s * s;
-   }
-   else
-   {
-      wlog( "Unknown reward fund type ${rf}", ("rf",rf.name) );
+      case quadratic:
+         {
+            uint128_t rshares_plus_s = rshares + content_constant;
+            result = rshares_plus_s * rshares_plus_s - content_constant * content_constant;
+         }
+         break;
+      case quadratic_curation:
+         {
+            uint128_t two_alpha = content_constant * 2;
+            result = uint128_t( rshares.lo, 0 ) / ( two_alpha + rshares );
+         }
+         break;
+      case linear:
+         result = approx_sqrt( rshares );
+         break;
+      case square_root:
+         break;
    }
 
    return result;
 }
 
-} } }
+} } } // steemit::chain::util

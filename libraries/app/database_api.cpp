@@ -1140,9 +1140,12 @@ void database_api::set_pending_payout( discussion& d )const
    {
       uint128_t vshares;
       if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-         vshares = steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 , my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ) );
+      {
+         const auto& rf = my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) );
+         vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
+      }
       else
-         vshares = steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 );
+         vshares = steemit::chain::util::evaluate_reward_curve( d.net_rshares.value > 0 ? d.net_rshares.value : 0 );
 
       u256 r2 = to256(vshares); //to256(abs_net_rshares);
       r2 *= pot.amount.value;
