@@ -3817,6 +3817,12 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEMIT_HARDFORK_0_18:
          break;
       case STEEMIT_HARDFORK_0_19:
+         {
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.vote_power_reserve_rate = 10;
+            });
+         }
          break;
       default:
          break;

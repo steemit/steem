@@ -1175,7 +1175,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
 
    // used_power = (current_power * abs_weight / STEEMIT_100_PERCENT) * (reserve / max_vote_denom)
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = dgpo.vote_regeneration_per_day * STEEMIT_VOTE_REGENERATION_SECONDS / (60*60*24);
+   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEMIT_VOTE_REGENERATION_SECONDS / (60*60*24);
    FC_ASSERT( max_vote_denom > 0 );
 
    if( !_db.has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
