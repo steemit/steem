@@ -10,6 +10,7 @@
 #include <steemit/tags/tags_plugin.hpp>
 
 #include <steemit/follow/follow_plugin.hpp>
+#include <steemit/witness/witness_plugin.hpp>
 
 #include <fc/api.hpp>
 #include <fc/optional.hpp>
@@ -131,10 +132,6 @@ class database_api
        *  with a single query.
        */
       state get_state( string path )const;
-      vector<category_api_obj> get_trending_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_best_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_active_categories( string after, uint32_t limit )const;
-      vector<category_api_obj> get_recent_categories( string after, uint32_t limit )const;
 
       vector< account_name_type > get_active_witnesses()const;
       vector< account_name_type > get_miner_queue()const;
@@ -155,7 +152,7 @@ class database_api
        * @param block_num Height of the block to be returned
        * @return the referenced block, or null if no matching block was found
        */
-      optional<signed_block> get_block(uint32_t block_num)const;
+      optional<signed_block_api_obj> get_block(uint32_t block_num)const;
 
       /**
        *  @brief Get sequence of operations included/generated within a particular block
@@ -238,7 +235,7 @@ class database_api
 
       vector< withdraw_route > get_withdraw_routes( string account, withdraw_route_type type = outgoing )const;
 
-      optional< account_bandwidth_api_obj > get_account_bandwidth( string account, bandwidth_type type )const;
+      optional< account_bandwidth_api_obj > get_account_bandwidth( string account, witness::bandwidth_type type )const;
 
       vector< savings_withdraw_api_obj > get_savings_withdraw_from( string account )const;
       vector< savings_withdraw_api_obj > get_savings_withdraw_to( string account )const;
@@ -488,10 +485,6 @@ FC_API(steemit::app::database_api,
    (get_block)
    (get_ops_in_block)
    (get_state)
-   (get_trending_categories)
-   (get_best_categories)
-   (get_active_categories)
-   (get_recent_categories)
 
    // Globals
    (get_config)
@@ -558,4 +551,3 @@ FC_API(steemit::app::database_api,
    (get_active_witnesses)
    (get_miner_queue)
 )
-

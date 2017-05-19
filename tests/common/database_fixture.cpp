@@ -6,6 +6,7 @@
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/account_history/account_history_plugin.hpp>
+#include <steemit/witness/witness_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -40,15 +41,17 @@ clean_database_fixture::clean_database_fixture()
    }
    auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
    db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
+   auto wit_plugin = app.register_plugin< steemit::witness::witness_plugin >();
    init_account_pub_key = init_account_priv_key.get_public_key();
 
    boost::program_options::variables_map options;
 
-   open_database();
-
    db_plugin->logging = false;
    ahplugin->plugin_initialize( options );
    db_plugin->plugin_initialize( options );
+   wit_plugin->plugin_initialize( options );
+
+   open_database();
 
    generate_block();
    db.set_hardfork( STEEMIT_NUM_HARDFORKS );

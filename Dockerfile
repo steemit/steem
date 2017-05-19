@@ -3,7 +3,6 @@ FROM phusion/baseimage:0.9.19
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
 ENV LANG=en_US.UTF-8
-ENV VERSION=0.18.1
 
 RUN \
     apt-get update && \
@@ -31,6 +30,8 @@ RUN \
         s3cmd \
         awscli \
         jq \
+        wget \
+        gdb \
     && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
@@ -49,8 +50,9 @@ RUN \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
         .. && \
-    make -j$(nproc) chain_test && \
+    make -j$(nproc) chain_test test_fixed_string && \
     ./tests/chain_test && \
+    ./programs/util/test_fixed_string && \
     cd /usr/local/src/steem && \
     doxygen && \
     programs/build_helpers/check_reflect.py && \
@@ -93,6 +95,13 @@ RUN \
     make -j$(nproc) && \
     make install && \
     cd .. && \
+    ( /usr/local/steemd-default/bin/steemd --version \
+      | grep -o '[0-9]*\.[0-9]*\.[0-9]*' \
+      && echo '_' \
+      && git rev-parse --short HEAD ) \
+      | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' \
+      > /etc/steemdversion && \
+    cat /etc/steemdversion && \
     rm -rfv build && \
     mkdir build && \
     cd build && \

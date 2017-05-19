@@ -1,6 +1,4 @@
 
-#include <fc/container/flat.hpp>
-
 #include <steemit/app/api_context.hpp>
 #include <steemit/app/application.hpp>
 
@@ -12,6 +10,8 @@
 
 #include <steemit/plugins/auth_util/auth_util_api.hpp>
 #include <steemit/plugins/auth_util/auth_util_plugin.hpp>
+
+#include <fc/container/flat.hpp>
 
 namespace steemit { namespace plugin { namespace auth_util {
 

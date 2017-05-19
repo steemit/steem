@@ -5,20 +5,6 @@
 
 namespace steemit { namespace protocol {
 
-   /// TODO: after the hardfork, we can rename this method validate_permlink because it is strictily less restrictive than before
-   ///  Issue #56 contains the justificiation for allowing any UTF-8 string to serve as a permlink, content will be grouped by tags
-   ///  going forward.
-   inline void validate_permlink( const string& permlink )
-   {
-      FC_ASSERT( permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "permlink is too long" );
-      FC_ASSERT( fc::is_utf8( permlink ), "permlink not formatted in UTF8" );
-   }
-
-   inline void validate_account_name( const string& name )
-   {
-      FC_ASSERT( is_valid_account_name( name ), "Account name ${n} is invalid", ("n", name) );
-   }
-
    bool inline is_asset_type( asset asset, asset_symbol_type symbol )
    {
       return asset.symbol == symbol;
@@ -115,8 +101,6 @@ namespace steemit { namespace protocol {
 
       FC_ASSERT( beneficiaries.size(), "Must specify at least one beneficiary" );
       FC_ASSERT( beneficiaries.size() < 128, "Cannot specify more than 127 beneficiaries." ); // Require size serializtion fits in one byte.
-
-      string_less str_cmp;
 
       validate_account_name( beneficiaries[0].account );
       FC_ASSERT( beneficiaries[0].weight <= STEEMIT_100_PERCENT, "Cannot allocate more than 100% of rewards to one account" );

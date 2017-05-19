@@ -364,16 +364,6 @@ const comment_object* database::find_comment( const account_name_type& author, c
    return find< comment_object, by_permlink >( boost::make_tuple( author, permlink ) );
 }
 
-const category_object& database::get_category( const shared_string& name )const
-{ try {
-   return get< category_object, by_name >( name );
-} FC_CAPTURE_AND_RETHROW( (name) ) }
-
-const category_object* database::find_category( const shared_string& name )const
-{
-   return find< category_object, by_name >( name );
-}
-
 const escrow_object& database::get_escrow( const account_name_type& name, uint32_t escrow_id )const
 { try {
    return get< escrow_object, by_from_id >( boost::make_tuple( name, escrow_id ) );
@@ -457,114 +447,6 @@ void database::pay_fee( const account_object& account, asset fee )
    FC_ASSERT( account.balance >= fee );
    adjust_balance( account, -fee );
    adjust_supply( -fee );
-}
-
-void database::old_update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
-{ try {
-   const auto& props = get_dynamic_global_properties();
-   if( props.total_vesting_shares.amount > 0 )
-   {
-      FC_ASSERT( a.vesting_shares.amount > 0, "Only accounts with a postive vesting balance may transact." );
-
-      auto band = find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( a.name, type ) );
-
-      if( band == nullptr )
-      {
-         band = &create< account_bandwidth_object >( [&](account_bandwidth_object& b )
-         {
-            b.account = a.name;
-            b.type = type;
-         });
-      }
-
-      modify( *band, [&]( account_bandwidth_object& b )
-      {
-         b.lifetime_bandwidth += trx_size * STEEMIT_BANDWIDTH_PRECISION;
-
-         auto now = head_block_time();
-         auto delta_time = (now - b.last_bandwidth_update).to_seconds();
-         uint64_t N = trx_size * STEEMIT_BANDWIDTH_PRECISION;
-         if( delta_time >= STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
-            b.average_bandwidth = N;
-         else
-         {
-            auto old_weight = b.average_bandwidth * ( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time );
-            auto new_weight = delta_time * N;
-            b.average_bandwidth = ( old_weight + new_weight ) / STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS;
-         }
-
-         b.last_bandwidth_update = now;
-      });
-
-      fc::uint128 account_vshares( a.vesting_shares.amount.value );
-      fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
-
-      fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
-      fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
-
-      FC_ASSERT( ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares ),
-               "Account exceeded maximum allowed bandwidth per vesting share.",
-               ("account_vshares", account_vshares)
-               ("account_average_bandwidth", account_average_bandwidth)
-               ("max_virtual_bandwidth", max_virtual_bandwidth)
-               ("total_vesting_shares", total_vshares) );
-   }
-} FC_CAPTURE_AND_RETHROW() }
-
-bool database::update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type )
-{
-   const auto& props = get_dynamic_global_properties();
-   bool has_bandwidth = true;
-
-   if( props.total_vesting_shares.amount > 0 )
-   {
-      auto band = find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( a.name, type ) );
-
-      if( band == nullptr )
-      {
-         band = &create< account_bandwidth_object >( [&]( account_bandwidth_object& b )
-         {
-            b.account = a.name;
-            b.type = type;
-         });
-      }
-
-      share_type new_bandwidth;
-      share_type trx_bandwidth = trx_size * STEEMIT_BANDWIDTH_PRECISION;
-      auto delta_time = ( head_block_time() - band->last_bandwidth_update ).to_seconds();
-
-      if( delta_time > STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
-         new_bandwidth = 0;
-      else
-         new_bandwidth = ( ( ( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS - delta_time ) * fc::uint128( band->average_bandwidth.value ) )
-            / STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ).to_uint64();
-
-      new_bandwidth += trx_bandwidth;
-
-      modify( *band, [&]( account_bandwidth_object& b )
-      {
-         b.average_bandwidth = new_bandwidth;
-         b.lifetime_bandwidth += trx_bandwidth;
-         b.last_bandwidth_update = head_block_time();
-      });
-
-      fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
-      fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
-      fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
-      fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
-
-      has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
-
-      if( is_producing() )
-         FC_ASSERT( has_bandwidth,
-            "Account exceeded maximum allowed bandwidth per vesting share.",
-            ("account_vshares", account_vshares)
-            ("account_average_bandwidth", account_average_bandwidth)
-            ("max_virtual_bandwidth", max_virtual_bandwidth)
-            ("total_vesting_shares", total_vshares) );
-   }
-
-   return has_bandwidth;
 }
 
 uint32_t database::witness_participation_rate()const
@@ -983,6 +865,11 @@ void database::notify_on_pending_transaction( const signed_transaction& tx )
    STEEMIT_TRY_NOTIFY( on_pending_transaction, tx )
 }
 
+void database::notify_on_pre_apply_transaction( const signed_transaction& tx )
+{
+   STEEMIT_TRY_NOTIFY( on_pre_apply_transaction, tx )
+}
+
 void database::notify_on_applied_transaction( const signed_transaction& tx )
 {
    STEEMIT_TRY_NOTIFY( on_applied_transaction, tx )
@@ -1359,26 +1246,6 @@ void database::clear_null_account_balance()
       adjust_supply( -total_sbd );
 }
 
-void update_children_rshares2( database& db, const comment_object& c, const fc::uint128_t& old_rshares2, const fc::uint128_t& new_rshares2 )
-{
-   // Iteratively updates the children_rshares2 of this comment and all of its ancestors
-
-   const comment_object* current_comment = &c;
-   while( true )
-   {
-      db.modify( *current_comment, [&]( comment_object& comment )
-      {
-         comment.children_rshares2 -= old_rshares2;
-         comment.children_rshares2 += new_rshares2;
-      } );
-
-      if( current_comment->depth == 0 )
-         break;
-
-      current_comment = &db.get_comment( current_comment->parent_author, current_comment->parent_permlink );
-   }
-}
-
 /**
  * This method updates total_reward_shares2 on DGPO, and children_rshares2 on comments, when a comment's rshares2 changes
  * from old_rshares2 to new_rshares2.  Maintaining invariants that children_rshares2 is the sum of all descendants' rshares2,
@@ -1386,7 +1253,6 @@ void update_children_rshares2( database& db, const comment_object& c, const fc::
  */
 void database::adjust_rshares2( const comment_object& c, fc::uint128_t old_rshares2, fc::uint128_t new_rshares2 )
 {
-   update_children_rshares2( *this, c, old_rshares2, new_rshares2 );
 
    const auto& dgpo = get_dynamic_global_properties();
    modify( dgpo, [&]( dynamic_global_property_object& p )
@@ -1610,7 +1476,6 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
 {
    try
    {
-      const auto& cat = get_category( comment.category );
       share_type claimed_reward = 0;
 
       if( comment.net_rshares > 0 )
@@ -1664,21 +1529,11 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
                });
             #endif
 
-            modify( cat, [&]( category_object& c )
-            {
-               c.total_payouts += to_sbd( asset( claimed_reward, STEEM_SYMBOL ) );
-            });
          }
 
          if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
             adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
       }
-
-      modify( cat, [&]( category_object& c )
-      {
-         c.abs_rshares -= comment.abs_rshares;
-         c.last_update  = head_block_time();
-      } );
 
       modify( comment, [&]( comment_object& c )
       {
@@ -1823,15 +1678,6 @@ void database::process_comment_cashout()
             const auto& comment = *itr; ++itr;
             ctx.total_reward_shares2 = gpo.total_reward_shares2;
             ctx.total_reward_fund_steem = gpo.total_reward_fund_steem;
-
-            // This extra logic is for when the funds are created in HF 16. We are using this data to preload
-            // recent rshares 2 to prevent any downtime in payouts at HF 17. After HF 17, we can capture
-            // the value of recent rshare 2 and set it at the hardfork instead of computing it every reindex
-            if( funds.size() && comment.net_rshares > 0 )
-            {
-               const auto& rf = get_reward_fund( comment );
-               funds[ rf.id._id ].recent_claims += util::calculate_claims( comment.net_rshares.value, rf );
-            }
 
             auto reward = cashout_comment_helper( ctx, comment );
 
@@ -2338,7 +2184,6 @@ void database::initialize_indexes()
    add_core_index< dynamic_global_property_index           >(*this);
    add_core_index< account_index                           >(*this);
    add_core_index< account_authority_index                 >(*this);
-   add_core_index< account_bandwidth_index                 >(*this);
    add_core_index< witness_index                           >(*this);
    add_core_index< transaction_index                       >(*this);
    add_core_index< block_summary_index                     >(*this);
@@ -2352,7 +2197,6 @@ void database::initialize_indexes()
    add_core_index< liquidity_reward_balance_index          >(*this);
    add_core_index< operation_index                         >(*this);
    add_core_index< account_history_index                   >(*this);
-   add_core_index< category_index                          >(*this);
    add_core_index< hardfork_property_index                 >(*this);
    add_core_index< withdraw_vesting_route_index            >(*this);
    add_core_index< owner_authority_history_index           >(*this);
@@ -2837,7 +2681,15 @@ try {
    for( int i = 0; i < wso.num_scheduled_witnesses; i++ )
    {
       const auto& wit = get_witness( wso.current_shuffled_witnesses[i] );
-      if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE &&
+      if( has_hardfork( STEEMIT_HARDFORK_0_19__822 ) )
+      {
+         if( now < wit.last_sbd_exchange_update + STEEMIT_MAX_FEED_AGE_SECONDS
+            && !wit.sbd_exchange_rate.is_null() )
+         {
+            feeds.push_back( wit.sbd_exchange_rate );
+         }
+      }
+      else if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE_SECONDS &&
           !wit.sbd_exchange_rate.is_null() )
       {
          feeds.push_back( wit.sbd_exchange_rate );
@@ -2925,32 +2777,6 @@ void database::_apply_transaction(const signed_transaction& trx)
             throw e;
       }
    }
-   flat_set<account_name_type> required; vector<authority> other;
-   trx.get_required_authorities( required, required, required, other );
-
-   auto trx_size = fc::raw::pack_size(trx);
-
-   for( const auto& auth : required ) {
-      const auto& acnt = get_account(auth);
-
-      if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
-         old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_forum );
-
-      update_account_bandwidth( acnt, trx_size, bandwidth_type::forum );
-
-      for( const auto& op : trx.operations ) {
-         if( is_market_operation( op ) )
-         {
-            if( !has_hardfork( STEEMIT_HARDFORK_0_17__766 ) )
-               old_update_account_bandwidth( acnt, trx_size, bandwidth_type::old_market );
-
-            update_account_bandwidth( acnt, trx_size * 10, bandwidth_type::market );
-            break;
-         }
-      }
-   }
-
-
 
    //Skip all manner of expiration and TaPoS checking if we're on block 1; It's impossible that the transaction is
    //expired, and TaPoS makes no sense as no blocks exist.
@@ -2969,7 +2795,7 @@ void database::_apply_transaction(const signed_transaction& trx)
 
       FC_ASSERT( trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
                  ("trx.expiration",trx.expiration)("now",now)("max_til_exp",STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
-      if( is_producing() || has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
+      if( has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
          FC_ASSERT( now < trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
       FC_ASSERT( now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
    }
@@ -2983,6 +2809,8 @@ void database::_apply_transaction(const signed_transaction& trx)
          fc::raw::pack( transaction.packed_trx, trx );
       });
    }
+
+   notify_on_pre_apply_transaction( trx );
 
    //Finally process the operations
    _current_op_in_trx = 0;
@@ -3702,6 +3530,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_18 == 18, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_18 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_18_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_18 ] = STEEMIT_HARDFORK_0_18_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_19 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_19_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_19 ] = STEEMIT_HARDFORK_0_19_VERSION;
 
 
    const auto& hardforks = get_hardfork_property_object();
@@ -3897,19 +3728,6 @@ void database::apply_hardfork( uint32_t hardfork )
                while( fho.price_history.size() > STEEMIT_FEED_HISTORY_WINDOW )
                   fho.price_history.pop_front();
             });
-
-            auto post_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
-            {
-               rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
-               rfo.last_update = head_block_time();
-               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
-               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-               rfo.percent_content_rewards = 0;
-            });
-
-            // As a shortcut in payout processing, we use the id as an array index.
-            // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
-            FC_ASSERT( post_rf.id._id == 0 );
          }
          break;
       case STEEMIT_HARDFORK_0_17:
@@ -3929,13 +3747,23 @@ void database::apply_hardfork( uint32_t hardfork )
             });
 
             const auto& gpo = get_dynamic_global_properties();
-            auto reward_steem = gpo.total_reward_fund_steem;
 
-            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object& rfo)
+            auto post_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
             {
+               rfo.name = STEEMIT_POST_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = STEEMIT_CONTENT_CONSTANT_HF0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
                rfo.percent_content_rewards = STEEMIT_100_PERCENT;
                rfo.reward_balance = gpo.total_reward_fund_steem;
+#ifndef IS_TEST_NET
+               rfo.recent_claims = STEEMIT_HF_17_RECENT_CLAIMS;
+#endif
             });
+
+            // As a shortcut in payout processing, we use the id as an array index.
+            // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
+            FC_ASSERT( post_rf.id._id == 0 );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3958,9 +3786,9 @@ void database::apply_hardfork( uint32_t hardfork )
             const auto& comment_idx = get_index< comment_index, by_cashout_time >();
             const auto& by_root_idx = get_index< comment_index, by_root >();
             vector< const comment_object* > root_posts;
-            root_posts.reserve( 60000 );
+            root_posts.reserve( STEEMIT_HF_17_NUM_POSTS );
             vector< const comment_object* > replies;
-            replies.reserve( 100000 );
+            replies.reserve( STEEMIT_HF_17_NUM_REPLIES );
 
             for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time < fc::time_point_sec::maximum(); ++itr )
             {
@@ -3977,7 +3805,6 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *itr, [&]( comment_object& c )
                {
                   c.cashout_time = std::max( c.created + STEEMIT_CASHOUT_WINDOW_SECONDS, c.cashout_time );
-                  c.children_rshares2 = 0;
                });
             }
 
@@ -3986,12 +3813,13 @@ void database::apply_hardfork( uint32_t hardfork )
                modify( *itr, [&]( comment_object& c )
                {
                   c.cashout_time = std::max( calculate_discussion_payout_time( c ), c.created + STEEMIT_CASHOUT_WINDOW_SECONDS );
-                  c.children_rshares2 = 0;
                });
             }
          }
          break;
       case STEEMIT_HARDFORK_0_18:
+         break;
+      case STEEMIT_HARDFORK_0_19:
          break;
       default:
          break;
@@ -4110,9 +3938,7 @@ void database::validate_invariants()const
          else
             FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
       }
-
       fc::uint128_t total_rshares2;
-      fc::uint128_t total_children_rshares2;
 
       const auto& comment_idx = get_index< comment_index >().indices();
 
@@ -4123,8 +3949,6 @@ void database::validate_invariants()const
             auto delta = util::calculate_claims( itr->net_rshares.value );
             total_rshares2 += delta;
          }
-         if( itr->parent_author == STEEMIT_ROOT_POST_PARENT )
-            total_children_rshares2 += itr->children_rshares2;
       }
 
       const auto& reward_idx = get_index< reward_fund_index, by_id >();
@@ -4187,7 +4011,6 @@ void database::perform_vesting_share_split( uint32_t magnitude )
             c.net_rshares       *= magnitude;
             c.abs_rshares       *= magnitude;
             c.vote_rshares      *= magnitude;
-            c.children_rshares2  = 0;
          } );
       }
 
@@ -4195,19 +4018,6 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       {
          if( c.net_rshares.value > 0 )
             adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
-      }
-
-      // Update category rshares
-      const auto& cat_idx = get_index< category_index >().indices().get< by_name >();
-      auto cat_itr = cat_idx.begin();
-      while( cat_itr != cat_idx.end() )
-      {
-         modify( *cat_itr, [&]( category_object& c )
-         {
-            c.abs_rshares *= magnitude;
-         } );
-
-         ++cat_itr;
       }
 
    }

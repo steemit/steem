@@ -40,7 +40,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 
       // Blocks and transactions
       optional<block_header> get_block_header(uint32_t block_num)const;
-      optional<signed_block> get_block(uint32_t block_num)const;
+      optional<signed_block_api_obj> get_block(uint32_t block_num)const;
       vector<applied_operation> get_ops_in_block(uint32_t block_num, bool only_virtual)const;
 
       // Globals
@@ -239,7 +239,7 @@ optional<block_header> database_api_impl::get_block_header(uint32_t block_num) c
    return {};
 }
 
-optional<signed_block> database_api::get_block(uint32_t block_num)const
+optional<signed_block_api_obj> database_api::get_block(uint32_t block_num)const
 {
    return my->_db.with_read_lock( [&]()
    {
@@ -247,7 +247,7 @@ optional<signed_block> database_api::get_block(uint32_t block_num)const
    });
 }
 
-optional<signed_block> database_api_impl::get_block(uint32_t block_num)const
+optional<signed_block_api_obj> database_api_impl::get_block(uint32_t block_num)const
 {
    return _db.fetch_block_by_number(block_num);
 }
@@ -632,12 +632,16 @@ vector< withdraw_route > database_api::get_withdraw_routes( string account, with
    });
 }
 
-optional< account_bandwidth_api_obj > database_api::get_account_bandwidth( string account, bandwidth_type type )const
+optional< account_bandwidth_api_obj > database_api::get_account_bandwidth( string account, witness::bandwidth_type type )const
 {
    optional< account_bandwidth_api_obj > result;
-   auto band = my->_db.find< account_bandwidth_object, by_account_bandwidth_type >( boost::make_tuple( account, type ) );
-   if( band != nullptr )
-      result = *band;
+
+   if( my->_db.has_index< witness::account_bandwidth_index >() )
+   {
+      auto band = my->_db.find< witness::account_bandwidth_object, witness::by_account_bandwidth_type >( boost::make_tuple( account, type ) );
+      if( band != nullptr )
+         result = *band;
+   }
 
    return result;
 }
@@ -1526,7 +1530,7 @@ vector<discussion> database_api::get_discussions_by_cashout( const discussion_qu
       const auto& tidx = my->_db.get_index<tags::tag_index>().indices().get<tags::by_cashout>();
       auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, fc::time_point::now() - fc::minutes(60) ) );
 
-      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.children_rshares2 <= 0; } );
+      return get_discussions( query, tag, parent, tidx, tidx_itr, query.truncate_body, []( const comment_api_obj& c ){ return c.net_rshares < 0; });
    });
 }
 
@@ -1744,63 +1748,6 @@ vector<discussion> database_api::get_discussions_by_comments( const discussion_q
       return result;
    });
 }
-
-vector<category_api_obj> database_api::get_trending_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-
-      const auto& nidx = my->_db.get_index<chain::category_index>().indices().get<by_name>();
-
-      const auto& ridx = my->_db.get_index<chain::category_index>().indices().get<by_rshares>();
-      auto itr = ridx.begin();
-      if( after != "" && nidx.size() )
-      {
-         auto nitr = nidx.lower_bound( after );
-         if( nitr == nidx.end() ) itr = ridx.end();
-         else itr = ridx.iterator_to( *nitr );
-      }
-
-      while( itr != ridx.end() && result.size() < limit ) {
-         result.push_back( category_api_obj( *itr ) );
-         ++itr;
-      }
-      return result;
-   });
-}
-
-vector<category_api_obj> database_api::get_best_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-      return result;
-   });
-}
-
-vector<category_api_obj> database_api::get_active_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-      return result;
-   });
-}
-
-vector<category_api_obj> database_api::get_recent_categories( string after, uint32_t limit )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      limit = std::min( limit, uint32_t(100) );
-      vector<category_api_obj> result; result.reserve( limit );
-      return result;
-   });
-}
-
 
 /**
  *  This call assumes root already stored as part of state, it will
@@ -2159,9 +2106,7 @@ state database_api::get_state( string path )const
       }
       /// pull a complete discussion
       else if( part[1].size() && part[1][0] == '@' ) {
-
          auto account  = part[1].substr( 1 );
-         auto category = part[0];
          auto slug     = part[2];
 
          auto key = account +"/" + slug;

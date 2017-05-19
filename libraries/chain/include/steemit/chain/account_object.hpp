@@ -108,6 +108,8 @@ namespace steemit { namespace chain {
          uint16_t          witnesses_voted_for = 0;
 
          time_point_sec    last_post;
+         time_point_sec    last_root_post = fc::time_point_sec::min();
+         uint32_t          post_bandwidth = 0;
 
          /// This function should be used only when the account votes for a witness directly
          share_type        witness_vote_weight()const {
@@ -145,26 +147,6 @@ namespace steemit { namespace chain {
          shared_authority  posting; ///< used for voting and posting
 
          time_point_sec    last_owner_update;
-   };
-
-   class account_bandwidth_object : public object< account_bandwidth_object_type, account_bandwidth_object >
-   {
-      public:
-         template< typename Constructor, typename Allocator >
-         account_bandwidth_object( Constructor&& c, allocator< Allocator > a )
-         {
-            c( *this );
-         }
-
-         account_bandwidth_object() {}
-
-         id_type           id;
-
-         account_name_type account;
-         bandwidth_type    type;
-         share_type        average_bandwidth;
-         share_type        lifetime_bandwidth;
-         time_point_sec    last_bandwidth_update;
    };
 
    class vesting_delegation_object : public object< vesting_delegation_object_type, vesting_delegation_object >
@@ -275,8 +257,7 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >,
             member< account_object, account_id_type, &account_object::id > >,
          ordered_unique< tag< by_name >,
-            member< account_object, account_name_type, &account_object::name >,
-            protocol::string_less >,
+            member< account_object, account_name_type, &account_object::name > >,
          ordered_unique< tag< by_proxy >,
             composite_key< account_object,
                member< account_object, account_name_type, &account_object::proxy >,
@@ -380,24 +361,6 @@ namespace steemit { namespace chain {
       allocator< account_authority_object >
    > account_authority_index;
 
-
-   struct by_account_bandwidth_type;
-
-   typedef multi_index_container <
-      account_bandwidth_object,
-      indexed_by <
-         ordered_unique< tag< by_id >,
-            member< account_bandwidth_object, account_bandwidth_id_type, &account_bandwidth_object::id > >,
-         ordered_unique< tag< by_account_bandwidth_type >,
-            composite_key< account_bandwidth_object,
-               member< account_bandwidth_object, account_name_type, &account_bandwidth_object::account >,
-               member< account_bandwidth_object, bandwidth_type, &account_bandwidth_object::type >
-            >
-         >
-      >,
-      allocator< account_bandwidth_object >
-   > account_bandwidth_index;
-
    struct by_delegation;
 
    typedef multi_index_container <
@@ -410,7 +373,7 @@ namespace steemit { namespace chain {
                member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator >,
                member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegatee >
             >,
-            composite_key_compare< protocol::string_less, protocol::string_less >
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >
       >,
       allocator< vesting_delegation_object >
@@ -509,7 +472,7 @@ FC_REFLECT( steemit::chain::account_object,
              (curation_rewards)
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
-             (last_post)
+             (last_post)(last_root_post)(post_bandwidth)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_object, steemit::chain::account_index )
 
@@ -517,10 +480,6 @@ FC_REFLECT( steemit::chain::account_authority_object,
              (id)(account)(owner)(active)(posting)(last_owner_update)
 )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_authority_object, steemit::chain::account_authority_index )
-
-FC_REFLECT( steemit::chain::account_bandwidth_object,
-            (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update) )
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::account_bandwidth_object, steemit::chain::account_bandwidth_index )
 
 FC_REFLECT( steemit::chain::vesting_delegation_object,
             (id)(delegator)(delegatee)(vesting_shares)(min_delegation_time) )

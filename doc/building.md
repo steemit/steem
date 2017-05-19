@@ -83,6 +83,8 @@ will build out of the box without further effort:
 
 ## Building on Ubuntu 14.04
 
+(It is strongly advised to use Ubuntu 16.04 LTS instead)
+
 Here are the required packages:
 
     # Required packages
@@ -94,42 +96,36 @@ Here are the required packages:
         libssl-dev \
         libtool \
         make \
-        pkg-config
-
-    # Packages required to build Boost
-    sudo apt-get install -y \
-        libbz2-dev \
-        python-dev
-
-    # Optional packages (not required, but will make a nicer experience)
-    sudo apt-get install -y
+        pkg-config \
         doxygen \
         libncurses5-dev \
         libreadline-dev \
+        libbz2-dev \
+        python-dev \
         perl
 
-Steem requires Boost 1.57 or later. The Boost provided in the Ubuntu 14.04
-package manager (Boost 1.55) is too old. So building Steem on Ubuntu 14.04
-requires downloading and installing a more recent version of Boost.
+The Boost provided in the Ubuntu 14.04 package manager (Boost 1.55) is too old.
+Steem requires Boost 1.58 (as in Ubuntu 16.04) and works with versions up to 1.60 (including).
+So building Steem on Ubuntu 14.04 requires downloading and installing a more recent
+version of Boost.
 
 According to [this mailing list
 post](http://boost.2283326.n4.nabble.com/1-58-1-bugfix-release-necessary-td4674686.html),
 Boost 1.58 is not compatible with gcc 4.8 (the default C++ compiler for
-Ubuntu 14.04) when compiling in C++11 mode (which Steem does). So we will
-use Boost 1.57; if you try to build with any other version, you will
-probably have a bad time.
+Ubuntu 14.04) when compiling in C++11 mode (which Steem does).
+So we will use Boost 1.60.
 
-Here is how to build and install Boost 1.57 into your user's home directory
+Here is how to build and install Boost 1.60 into your user's home directory
 (make sure you install all the packages above first):
 
-    BOOST_ROOT=$HOME/opt/boost_1_57_0
-    URL='http://sourceforge.net/projects/boost/files/boost/1.57.0/boost_1_57_0.tar.bz2/download'
-    wget -c "$URL" -O boost_1_57_0.tar.bz2
-    [ $( sha256sum boost_1_57_0.tar.bz2 | cut -d ' ' -f 1 ) == \
-        "910c8c022a33ccec7f088bd65d4f14b466588dda94ba2124e78b8c57db264967" ] \
+    export BOOST_ROOT=$HOME/opt/boost_1_60_0
+    URL='http://sourceforge.net/projects/boost/files/boost/1.60.0/boost_1_60_0.tar.bz2/download'
+    wget -c "$URL" -O boost_1_60_0.tar.bz2
+    [ $( sha256sum boost_1_60_0.tar.bz2 | cut -d ' ' -f 1 ) == \
+        "686affff989ac2488f79a97b9479efb9f2abae035b5ed4d8226de6857933fd3b" ] \
         || ( echo 'Corrupt download' ; exit 1 )
-    tar xjf boost_1_57_0.tar.bz2
-    cd boost_1_57_0
+    tar xjf boost_1_60_0.tar.bz2
+    cd boost_1_60_0
     ./bootstrap.sh "--prefix=$BOOST_ROOT"
     ./b2 install
 
@@ -180,6 +176,11 @@ steem. Until then, this will allow you to install boost 1.60.0.
 *Optional.* To use TCMalloc in LevelDB:
 
     brew install google-perftools
+
+*Optional.* To use cli_wallet and override macOS's default readline installation:
+
+    brew install --force readline
+    brew link --force readline
 
 ### Clone the Repository
 
