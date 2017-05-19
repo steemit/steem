@@ -1482,8 +1482,14 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       {
          fill_comment_reward_context_local_state( ctx, comment );
 
-         const share_type reward = has_hardfork( STEEMIT_HARDFORK_0_17__774 ) ?
-            util::get_rshare_reward( ctx, get_reward_fund( comment ) ) : util::get_rshare_reward( ctx );
+         if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+         {
+            const auto rf = get_reward_fund( comment );
+            ctx.reward_curve = rf.author_reward_curve;
+            ctx.content_constant = rf.content_constant;
+         }
+
+         const share_type reward = util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
          if( reward_tokens > 0 )
@@ -1532,7 +1538,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
          }
 
          if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-            adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
+            adjust_rshares2( comment, util::evaluate_reward_curve( comment.net_rshares.value ), 0 );
       }
 
       modify( comment, [&]( comment_object& c )
@@ -1613,7 +1619,15 @@ void database::process_comment_cashout()
       // Add all reward funds to the local cache and decay their recent rshares
       modify( *itr, [&]( reward_fund_object& rfo )
       {
-         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
+         fc::microseconds decay_rate;
+
+         // TODO: Remove temp fund after HF 19
+         if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
+            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19;
+         else
+            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17;
+
+         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / decay_rate.to_seconds();
          rfo.last_update = head_block_time();
       });
 
@@ -1634,12 +1648,15 @@ void database::process_comment_cashout()
    //  add all rshares about to be cashed out to the reward funds. This ensures equal satoshi per rshare payment
    if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
    {
+      const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
+
       while( current != cidx.end() && current->cashout_time <= head_block_time() )
       {
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
-            funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
+            funds[ rf.id._id ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
+            funds[ STEEMIT_TEMP_LINEAR_REWARD_FUND_ID ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
          }
 
          ++current;
@@ -2678,7 +2695,15 @@ try {
    for( int i = 0; i < wso.num_scheduled_witnesses; i++ )
    {
       const auto& wit = get_witness( wso.current_shuffled_witnesses[i] );
-      if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE &&
+      if( has_hardfork( STEEMIT_HARDFORK_0_19__822 ) )
+      {
+         if( now < wit.last_sbd_exchange_update + STEEMIT_MAX_FEED_AGE_SECONDS
+            && !wit.sbd_exchange_rate.is_null() )
+         {
+            feeds.push_back( wit.sbd_exchange_rate );
+         }
+      }
+      else if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE_SECONDS &&
           !wit.sbd_exchange_rate.is_null() )
       {
          feeds.push_back( wit.sbd_exchange_rate );
@@ -3519,6 +3544,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_18 == 18, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_18 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_18_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_18 ] = STEEMIT_HARDFORK_0_18_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_19 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_19_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_19 ] = STEEMIT_HARDFORK_0_19_VERSION;
 
 
    const auto& hardforks = get_hardfork_property_object();
@@ -3745,11 +3773,27 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
                rfo.recent_claims = STEEMIT_HF_17_RECENT_CLAIMS;
 #endif
+               rfo.author_reward_curve = curve_id::quadratic;
+               rfo.curation_reward_curve = curve_id::quadratic_curation;
+            });
+
+            auto linear_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = 0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+               rfo.reward_balance = asset( 0, STEEM_SYMBOL );
+               rfo.recent_claims = 0;
+               rfo.author_reward_curve = curve_id::linear;
+               rfo.curation_reward_curve = curve_id::square_root;
             });
 
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
+            FC_ASSERT( linear_rf.id._id == 1 );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3804,6 +3848,57 @@ void database::apply_hardfork( uint32_t hardfork )
          }
          break;
       case STEEMIT_HARDFORK_0_18:
+         break;
+      case STEEMIT_HARDFORK_0_19:
+         {
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.vote_power_reserve_rate = 10;
+            });
+
+            const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
+            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object &rfo )
+            {
+               rfo.recent_claims = linear.recent_claims;
+               rfo.author_reward_curve = curve_id::linear;
+               rfo.curation_reward_curve = curve_id::square_root;
+            });
+
+            const auto& cidx = get_index< comment_index, by_cashout_time >();
+            const auto& vidx = get_index< comment_vote_index, by_comment_voter >();
+            for( auto c_itr = cidx.begin(); c_itr != cidx.end() && c_itr->cashout_time != fc::time_point_sec::maximum(); ++c_itr )
+            {
+               modify( *c_itr, [&]( comment_object& c )
+               {
+                  c.total_vote_weight = c.total_sqrt_vote_weight;
+               });
+
+               for( auto v_itr = vidx.lower_bound( c_itr->id ); v_itr != vidx.end() && v_itr->comment == c_itr->id; ++v_itr )
+               {
+                  modify( *v_itr, [&]( comment_vote_object& v )
+                  {
+                     v.weight = v.sqrt_weight;
+                  });
+               }
+            }
+
+            vector< const vesting_delegation_object* > to_remove;
+            const auto& delegation_idx = get_index< vesting_delegation_index, by_id >();
+            auto delegation_itr = delegation_idx.begin();
+
+            while( delegation_itr != delegation_idx.end() )
+            {
+               if( delegation_itr->vesting_shares.amount == 0 )
+                  to_remove.push_back( &(*delegation_itr) );
+
+               ++delegation_itr;
+            }
+
+            for( const vesting_delegation_object* delegation_ptr: to_remove )
+            {
+               remove( *delegation_ptr );
+            }
+         }
          break;
       default:
          break;
@@ -3930,7 +4025,7 @@ void database::validate_invariants()const
       {
          if( itr->net_rshares.value > 0 )
          {
-            auto delta = util::calculate_claims( itr->net_rshares.value );
+            auto delta = util::evaluate_reward_curve( itr->net_rshares.value );
             total_rshares2 += delta;
          }
       }
@@ -4001,7 +4096,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
+            adjust_rshares2( c, 0, util::evaluate_reward_curve( c.net_rshares.value ) );
       }
 
    }

@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 18, 5) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 0) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -163,7 +163,10 @@
 
 #define STEEMIT_POST_REWARD_FUND_NAME           ("post")
 #define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
-#define STEEMIT_RECENT_RSHARES_DECAY_RATE       (fc::days(30))
+#define STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME    ("linear")
+#define STEEMIT_TEMP_LINEAR_REWARD_FUND_ID      (1)
+#define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17  (fc::days(30))
+#define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19  (fc::days(15))
 #define STEEMIT_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))
 // note, if redefining these constants make sure calculate_claims doesn't overflow
 
@@ -229,7 +232,7 @@
 #define STEEMIT_FEED_INTERVAL_BLOCKS            (STEEMIT_BLOCKS_PER_HOUR)
 #define STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
 #define STEEMIT_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
-#define STEEMIT_MAX_FEED_AGE                    (fc::days(7))
+#define STEEMIT_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
 #define STEEMIT_MIN_FEEDS                       (STEEMIT_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
