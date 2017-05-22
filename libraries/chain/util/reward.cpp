@@ -84,9 +84,10 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const curve_id& curve
          }
          break;
       case linear:
-         result = approx_sqrt( rshares );
+         result = rshares;
          break;
       case square_root:
+         result = approx_sqrt( rshares );
          break;
    }
 
