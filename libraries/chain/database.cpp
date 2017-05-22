@@ -123,6 +123,7 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
             undo_all();
             FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
                ("rev", revision())("head_block", head_block_num()) );
+            validate_invariants();
          });
 
          if( head_block_num() )
