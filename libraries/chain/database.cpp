@@ -123,6 +123,7 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
             undo_all();
             FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
                ("rev", revision())("head_block", head_block_num()) );
+            validate_invariants();
          });
 
          if( head_block_num() )
@@ -3945,7 +3946,7 @@ void database::validate_invariants()const
       /// verify no witness has too many votes
       const auto& witness_idx = get_index< witness_index >().indices();
       for( auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr )
-         FC_ASSERT( itr->votes < gpo.total_vesting_shares.amount, "", ("itr",*itr) );
+         FC_ASSERT( itr->votes <= gpo.total_vesting_shares.amount, "", ("itr",*itr) );
 
       for( auto itr = account_idx.begin(); itr != account_idx.end(); ++itr )
       {
