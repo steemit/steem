@@ -378,10 +378,7 @@ namespace steemit { namespace chain {
    > withdraw_vesting_route_index;
 
    struct by_from_id;
-   struct by_to;
-   struct by_agent;
    struct by_ratification_deadline;
-   struct by_sbd_balance;
    typedef multi_index_container<
       escrow_object,
       indexed_by<
@@ -392,18 +389,6 @@ namespace steemit { namespace chain {
                member< escrow_object, uint32_t, &escrow_object::escrow_id >
             >
          >,
-         ordered_unique< tag< by_to >,
-            composite_key< escrow_object,
-               member< escrow_object, account_name_type,  &escrow_object::to >,
-               member< escrow_object, escrow_id_type, &escrow_object::id >
-            >
-         >,
-         ordered_unique< tag< by_agent >,
-            composite_key< escrow_object,
-               member< escrow_object, account_name_type,  &escrow_object::agent >,
-               member< escrow_object, escrow_id_type, &escrow_object::id >
-            >
-         >,
          ordered_unique< tag< by_ratification_deadline >,
             composite_key< escrow_object,
                const_mem_fun< escrow_object, bool, &escrow_object::is_approved >,
@@ -411,13 +396,6 @@ namespace steemit { namespace chain {
                member< escrow_object, escrow_id_type, &escrow_object::id >
             >,
             composite_key_compare< std::less< bool >, std::less< time_point_sec >, std::less< escrow_id_type > >
-         >,
-         ordered_unique< tag< by_sbd_balance >,
-            composite_key< escrow_object,
-               member< escrow_object, asset, &escrow_object::sbd_balance >,
-               member< escrow_object, escrow_id_type, &escrow_object::id >
-            >,
-            composite_key_compare< std::greater< asset >, std::less< escrow_id_type > >
          >
       >,
       allocator< escrow_object >
@@ -436,18 +414,18 @@ namespace steemit { namespace chain {
                member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
             >
          >,
-         ordered_unique< tag< by_to_complete >,
-            composite_key< savings_withdraw_object,
-               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::to >,
-               member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
-               member< savings_withdraw_object, savings_withdraw_id_type, &savings_withdraw_object::id >
-            >
-         >,
          ordered_unique< tag< by_complete_from_rid >,
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
                member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::from >,
                member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
+            >
+         >,
+         ordered_unique< tag< by_to_complete >,
+            composite_key< savings_withdraw_object,
+               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::to >,
+               member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
+               member< savings_withdraw_object, savings_withdraw_id_type, &savings_withdraw_object::id >
             >
          >
       >,

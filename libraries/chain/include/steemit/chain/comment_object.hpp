@@ -171,15 +171,7 @@ namespace steemit { namespace chain {
    struct by_permlink; /// author, perm
    struct by_root;
    struct by_parent;
-   struct by_active; /// parent_auth, active
-   struct by_pending_payout;
-   struct by_total_pending_payout;
    struct by_last_update; /// parent_auth, last_update
-   struct by_created; /// parent_auth, last_update
-   struct by_payout; /// parent_auth, last_update
-   struct by_blog;
-   struct by_votes;
-   struct by_responses;
    struct by_author_last_update;
 
    /**
@@ -188,7 +180,7 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       comment_object,
       indexed_by<
-         /// CONSENUSS INDICIES - used by evaluators
+         /// CONSENSUS INDICIES - used by evaluators
          ordered_unique< tag< by_id >, member< comment_object, comment_id_type, &comment_object::id > >,
          ordered_unique< tag< by_cashout_time >,
             composite_key< comment_object,
