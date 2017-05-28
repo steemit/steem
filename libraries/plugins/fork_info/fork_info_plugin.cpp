@@ -35,11 +35,7 @@
 #include <fc/api.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-
-namespace steemit { namespace fork_info {
-namespace bpo = boost::program_options;
-
-
+namespace steemit { namespace plugin { namespace fork_info {
 
 namespace detail {
    using namespace steemit::protocol;
@@ -59,22 +55,19 @@ namespace detail {
    void fork_info_plugin_impl::on_block( const signed_block& b )
    {
       auto& db = _self.database();
-
-      if( b.block_num() > 21 )
+      _last_blocks.push_front(b);
+      if( _last_blocks.size() == 21)
       {
-         _last_blocks.push_front(b);
-         if(fc::optional<signed_block> block = *db.fetch_block_by_number(_last_blocks.at(22).block_num())){
-            *block.witness_signature != _last_blocks.at(22).witness_signature
-            idump(("Orphaned Block ")(_last_blocks.at(22)));
+         fc::optional<signed_block> result = db.fetch_block_by_number(_last_blocks.at(20).block_num());
+         if( result.valid() ){
+            signed_block block = *result;
+            if(block.witness_signature != _last_blocks.at(20).witness_signature && block.id() != _last_blocks.at(20).id()){
+               idump(("Orphaned Block: ")(_last_blocks.at(20)));
+            }
          }
          _last_blocks.pop_back();
 
       }
-      else
-      {
-         _last_blocks.push_front(b);
-      }
-
    }
 }
 
@@ -85,24 +78,15 @@ fork_info_plugin::fork_info_plugin( application* app )
 fork_info_plugin::~fork_info_plugin()
 {}
 
-void fork_info_plugin::plugin_set_program_options(bpo::options_description& cli, bpo::options_description& cfg)
-{}
-
 void fork_info_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    try
    {
-      ilog( "fork_info_plugin: plugin_initialize() begin" );
       chain::database& db = database();
-
-      db.applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
-
-      ilog( "fork_info_plugin: plugin_initialize() end" );
+      db.applied_block.connect([this](const chain::signed_block& b){ _my->on_block( b ); });
    } FC_CAPTURE_AND_RETHROW()
 }
 
 void fork_info_plugin::plugin_startup()
 {}
-}
-
-STEEMIT_DEFINE_PLUGIN( fork_info, steemit::fork_info::fork_info_plugin )
+} } }

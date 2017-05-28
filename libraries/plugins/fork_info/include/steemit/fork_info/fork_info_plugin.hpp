@@ -26,11 +26,10 @@
 #include <steemit/app/plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
-namespace steemit { namespace fork_info {
+
+namespace steemit { namespace plugin { namespace fork_info {
 namespace detail { struct fork_info_plugin_impl; }
-
-using app::application;
-
+using steemit::app::application;
 class fork_info_plugin : public steemit::app::plugin
 {
    public:
@@ -43,7 +42,9 @@ class fork_info_plugin : public steemit::app::plugin
       virtual void plugin_startup() override;
 
    private:
-      std::unique_ptr<detail::fork_info_plugin_impl> _my;
+      std::unique_ptr<steemit::plugin::fork_info::detail::fork_info_plugin_impl> _my;
 };
 
-} } //steemit::account_history
+} } } //steemit::plugin::fork_info_info
+
+STEEMIT_DEFINE_PLUGIN( fork_info, steemit::plugin::fork_info::fork_info_plugin )
