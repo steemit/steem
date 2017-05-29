@@ -79,6 +79,7 @@ namespace steemit { namespace protocol {
 
       if( json_metadata.size() > 0 )
       {
+         FC_ASSERT( fc::is_utf8(json_metadata), "JSON Metadata not formatted in UTF8" );
          FC_ASSERT( fc::json::is_valid(json_metadata), "JSON Metadata not valid JSON" );
       }
    }
