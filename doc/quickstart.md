@@ -2,31 +2,33 @@ Quickstart
 ----------
 
 ### Get current steemd
-#### Docker
-Preferred way is to use docker.
-#### Building
-If you can't or don't want to use Docker and you want to build `steemd` and `cli_wallet` yourself follow [build instructions](building.md). 
-Those was made for `Ubuntu 16.04 LTS` and `macOS`.
-If you have troubles building, please use Docker.
-
+Use docker:
+```
+docker run \
+    -d -p 2001:2001 -p 8090:8090 --name steemd-default \
+    steemit/steem
+```
 #### Low memory node?
-Unless you run full api node, use
-`LOW_MEMORY_NODE=ON`
-Suitable for:
+Above runs low memory node, which is suitable for:
 - seed nodes
 - witness nodes
 - exchanges, etc.
-For full api node use `LOW_MEMORY_NODE=OFF`
+For full api node use:
 
+```
+docker run \
+    --env USE_WAY_TOO_MUCH_RAM=1 --env USE_FULL_WEB_NODE=1 \
+    -d -p 2001:2001 -p 8090:8090 --name steemd-full \
+    steemit/steem
+```
 ### Configure for your use case
 #### Full API node
-Do not use low memory node for this case:
-`LOW_MEMORY_NODE=OFF`
-Use `contrib/fullnode.config.ini` as a base for your `config.ini` file.
+You need to use `USE_WAY_TOO_MUCH_RAM=1` and `USE_FULL_WEB_NODE=1` as stated above.
+You can Use `contrib/fullnode.config.ini` as a base for your `config.ini` file.
 
 #### Exchanges
-Use low memory node:
-`LOW_MEMORY_NODE=ON`
+Use low memory node.
+
 Also make sure that your `config.ini` contains:
 ```
 enable-plugin = account_history
