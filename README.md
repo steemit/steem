@@ -55,6 +55,23 @@ that uses ca. 14GB of memory and growing:
 
     docker logs -f steemd-full
 
+## CLI Wallet
+
+To set up a cli wallet:
+
+    docker run \
+        -d --name steemd-wallet steemit/steem
+        
+    docker exec -ti steemd-wallet /bin/bash
+    
+    sv stop /etc/service/steemd
+    
+    /usr/local/steemd-default/bin/cli_wallet --server-rpc-endpoint=wss://steemd.steemit.com
+    
+Future invocations of your wallet can be simply be made with:
+
+    docker exec -ti steemd-wallet /usr/local/steemd-default/bin/cli-wallet --server-rpc-endpoint=wss://steemd.steemit.com
+
 # Environment variables
 
 There are quite a few environment variables that can be set to run steemd in different ways:
