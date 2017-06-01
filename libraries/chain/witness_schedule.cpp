@@ -259,7 +259,6 @@ void update_witness_schedule4( database& db )
 
    db.modify( wso, [&]( witness_schedule_object& _wso )
    {
-      // active witnesses has exactly STEEMIT_MAX_WITNESSES elements, asserted above
       for( size_t i = 0; i < active_witnesses.size(); i++ )
       {
          _wso.current_shuffled_witnesses[i] = active_witnesses[i];
