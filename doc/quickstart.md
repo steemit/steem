@@ -40,6 +40,9 @@ Do not add other APIs or plugins unless you know what you are doing.
 ### Resources usage
 
 Please make sure that you have enough resources available.
+Check `shared-file-size =` in your `config.ini` to reflect your needs.
+Set it to at least 20% more than current size.
+
 Provided values are expected to grow significantly over time.
 
 Blockchain data takes over **12GB** of storage space.
