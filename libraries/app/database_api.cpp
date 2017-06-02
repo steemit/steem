@@ -1145,7 +1145,7 @@ void database_api::set_pending_payout( discussion& d )const
          vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
       }
       else
-         vshares = steemit::chain::util::evaluate_reward_curve( d.net_rshares.value > 0 ? d.net_rshares.value : 0 );
+         vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value ) : 0;
 
       u256 r2 = to256(vshares); //to256(abs_net_rshares);
       r2 *= pot.amount.value;

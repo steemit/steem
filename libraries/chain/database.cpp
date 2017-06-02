@@ -1151,7 +1151,8 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork
+   #warning( "TODO: Remove this check after HF 19" )
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) )
       modify( a, [&](account_object& acc )
       {
          acc.witnesses_voted_for = 0;
@@ -1622,7 +1623,7 @@ void database::process_comment_cashout()
       {
          fc::microseconds decay_rate;
 
-         // TODO: Remove temp fund after HF 19
+         #warning( "TODO: Remove temp reward fund after HF 19" )
          if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
             decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19;
          else
@@ -3087,7 +3088,7 @@ void database::update_last_irreversible_block()
                   witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
                }
 
-               ilog( "Encountered a block num collision due to a fork. Walking the current fork to determine the correct block. block_num:${n}", ("n", log_head_num + 1) ); // TODO: Delete when we know this code works as intended
+               ilog( "Encountered a block num collision due to a fork. Walking the current fork to determine the correct block. block_num:${n}", ("n", log_head_num + 1) );
                ilog( "Colliding blocks produced by witnesses at times: ${w}", ("w", witness_time_pairs) );
 
                auto next = _fork_db.head();
@@ -3748,8 +3749,8 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEMIT_HARDFORK_0_17:
          {
             static_assert(
-             STEEMIT_MAX_VOTED_WITNESSES_HF0 + STEEMIT_MAX_MINER_WITNESSES_HF0 + STEEMIT_MAX_RUNNER_WITNESSES_HF0 == STEEMIT_MAX_WITNESSES,
-             "HF0 witness counts must add up to STEEMIT_MAX_WITNESSES" );
+               STEEMIT_MAX_VOTED_WITNESSES_HF0 + STEEMIT_MAX_MINER_WITNESSES_HF0 + STEEMIT_MAX_RUNNER_WITNESSES_HF0 == STEEMIT_MAX_WITNESSES,
+               "HF0 witness counts must add up to STEEMIT_MAX_WITNESSES" );
             static_assert(
                STEEMIT_MAX_VOTED_WITNESSES_HF17 + STEEMIT_MAX_MINER_WITNESSES_HF17 + STEEMIT_MAX_RUNNER_WITNESSES_HF17 == STEEMIT_MAX_WITNESSES,
                "HF17 witness counts must add up to STEEMIT_MAX_WITNESSES" );
@@ -3794,7 +3795,7 @@ void database::apply_hardfork( uint32_t hardfork )
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
-            FC_ASSERT( linear_rf.id._id == 1 );
+            FC_ASSERT( linear_rf.id._id == STEEMIT_TEMP_LINEAR_REWARD_FUND_ID );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3860,14 +3861,21 @@ void database::apply_hardfork( uint32_t hardfork )
             const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
             modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object &rfo )
             {
+               #warning( "TODO: Replace with constant after HF 19" )
                rfo.recent_claims = linear.recent_claims;
                rfo.author_reward_curve = curve_id::linear;
                rfo.curation_reward_curve = curve_id::square_root;
             });
 
+            #warning( "TODO: Remove weight conversion after HF 19" )
             const auto& cidx = get_index< comment_index, by_cashout_time >();
             const auto& vidx = get_index< comment_vote_index, by_comment_voter >();
-            for( auto c_itr = cidx.begin(); c_itr != cidx.end() && c_itr->cashout_time != fc::time_point_sec::maximum(); ++c_itr )
+
+            /*
+             * Iterator through all comments that have not yet been paid, setting their total vote weight to the sqrt weight
+             * and update their votes as well.
+             */
+            for( auto c_itr = cidx.begin(); c_itr != cidx.end() && c_itr->cashout_time < fc::time_point_sec::maximum(); ++c_itr )
             {
                modify( *c_itr, [&]( comment_object& c )
                {
@@ -3883,6 +3891,8 @@ void database::apply_hardfork( uint32_t hardfork )
                }
             }
 
+            #warning( "TODO: Remove if 0 delegation opjects are not created in pre HF19 consensus" )
+            /* Remove all 0 delegation objects */
             vector< const vesting_delegation_object* > to_remove;
             const auto& delegation_idx = get_index< vesting_delegation_index, by_id >();
             auto delegation_itr = delegation_idx.begin();

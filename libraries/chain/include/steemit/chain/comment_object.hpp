@@ -78,6 +78,7 @@ namespace steemit { namespace chain {
          time_point_sec    cashout_time; /// 24 hours from the weighted average of vote time
          time_point_sec    max_cashout_time;
          uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
+         #warning( "Remove total_sqrt_vote_weight after HF 19" )
          uint64_t          total_sqrt_vote_weight = 0; /// Temporary total weight of votes for post hf19 curation reward curve
 
          uint16_t          reward_weight = 0;
@@ -121,6 +122,7 @@ namespace steemit { namespace chain {
          account_id_type   voter;
          comment_id_type   comment;
          uint64_t          weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
+         #warning( "Remove sqrt_weight after HF 19. It is a temporary field" )
          uint64_t          sqrt_weight = 0; ///< Temporary vote weight for post hf19 curation curve
          int64_t           rshares = 0; ///< The number of rshares this vote is responsible for
          int16_t           vote_percent = 0; ///< The percent weight of the vote
