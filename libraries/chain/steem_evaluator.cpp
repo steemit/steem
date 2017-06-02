@@ -124,6 +124,7 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
    }
    else if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ) )
    {
+      #warning( "TODO: Remove after HF19. Entire conditional might be able to be removed." )
       if( _db.is_producing() )
          FC_ASSERT( false, "account_create_operation is temporarily disabled. Please use account_create_with_delegation_operation instead" );
       const witness_schedule_object& wso = _db.get_witness_schedule_object();
@@ -271,9 +272,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       auth.last_owner_update = fc::time_point_sec::min();
    });
 
-   /* TODO: Check if not creating 0 delegation objects in HF19 passes consensus
-    * If it does we can remove the apply_hardfork logic for deleting 0 delegation objects
-    */
+   #warning( "TODO: Check if not creating 0 delegation objects in HF19 passes consensus. Expectation is it should work." )
    if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) && o.delegation.amount > 0 )
       || !_db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) )
    {
@@ -384,7 +383,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__876 ) )
       FC_ASSERT( comment.cashout_time != fc::time_point_sec::maximum() );
 
-   // TODO: remove is_producing after HF 19. Check if we can remove conditional altogether after HF.
+   #warning( "TODO: Remove is_producing check after HF19. Conditional may be removed entirely after HF." )
    if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_19__977 ) ) {
       FC_ASSERT( comment.net_rshares <= 0, "Cannot delete a comment with net positive votes." );
    }
@@ -460,8 +459,6 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    if( !o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout )
       FC_ASSERT( comment.abs_rshares == 0, "One of the included comment options requires the comment to have no rshares allocated to it." );
 
-   if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__773) ) // TODO: Remove after hardfork 17
-      FC_ASSERT( o.extensions.size() == 0, "Operation extensions for the comment_options_operation are not currently supported." );
    FC_ASSERT( comment.allow_curation_rewards >= o.allow_curation_rewards, "Curation rewards cannot be re-enabled." );
    FC_ASSERT( comment.allow_votes >= o.allow_votes, "Voting cannot be re-enabled." );
    FC_ASSERT( comment.max_accepted_payout >= o.max_accepted_payout, "A comment cannot accept a greater payout." );
@@ -1364,7 +1361,15 @@ void vote_evaluator::do_apply( const vote_operation& o )
                   uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
                   uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
                   cv.weight = new_weight - old_weight;
+                  #warning( "TODO: After HF19 caclulate which comment was the first to be paid on sqrt curation and activate the logic based on time" )
+
+#ifndef IS_TEST_NET
+/*
+ * Disabling this check so we can test the precalculation logic.
+ * It is not needed on live because the precalculation is only needed pre HF19
+ */
                   if( !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) )
+#endif
                   {
                      old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve_id::square_root ).to_uint64();
                      new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve_id::square_root ).to_uint64();
@@ -1397,8 +1402,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
                w *= delta_t;
                w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
                cv.weight = w.to_uint64();
-
+#ifndef IS_TEST_NET
                if( _db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
+#endif
                {
                   uint128_t w(sqrt_max_vote_weight);
                   w *= delta_t;
@@ -1418,7 +1424,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          _db.modify( comment, [&]( comment_object& c )
          {
             c.total_vote_weight += max_vote_weight;
-            c.total_sqrt_vote_weight = sqrt_max_vote_weight;
+            c.total_sqrt_vote_weight += sqrt_max_vote_weight;
          });
       }
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
@@ -1517,6 +1523,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       _db.modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
+         c.total_sqrt_vote_weight -= itr->sqrt_weight;
       });
 
       _db.modify( *itr, [&]( comment_vote_object& cv )
@@ -1525,6 +1532,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = _db.head_block_time();
          cv.weight = 0;
+         cv.sqrt_weight = 0;
          cv.num_changes += 1;
       });
 
@@ -2189,8 +2197,6 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
-   FC_ASSERT( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ), "delegate_vesting_shares_operation is not enabled until HF 17" ); //TODO: Delete after hardfork
-
    const auto& delegator = _db.get_account( op.delegator );
    const auto& delegatee = _db.get_account( op.delegatee );
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
@@ -2231,7 +2237,7 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    {
       auto delta = op.vesting_shares - delegation->vesting_shares;
 
-      FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
+      FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a difference. min_update: ${min}", ("min", min_update) );
       FC_ASSERT( available_shares >= op.vesting_shares - delegation->vesting_shares, "Account does not have enough vesting shares to delegate." );
 
       _db.modify( delegator, [&]( account_object& a )
@@ -2256,15 +2262,24 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
 
       if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__971 ) )
       {
-         FC_ASSERT( ( op.vesting_shares.amount == 0 )
-            || ( delta >= min_update && op.vesting_shares >= min_delegation ),
-            "Delegation must be removed or be a significant change and leave a minimum delegation. min_update: ${min_update}, min_delegation: ${min_delegation}",
-            ("min_update", min_update)("min_delegation", min_delegation) );
+         if( op.vesting_shares.amount > 0 )
+         {
+            FC_ASSERT( delta >= min_update, "Steem Power decrease is not enough of a difference. min_update: ${min}", ("min", min_update) );
+            FC_ASSERT( op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+         }
+         else
+         {
+            FC_ASSERT( delegation->vesting_shares.amount > 0, "Delegation would set vesting_shares to zero, but it is already zero");
+         }
       }
-      else // TODO: Check and remove after HF19
+      #warning( "TODO: Check and remove conditional after HF19" )
+      else
       {
-         FC_ASSERT( delta >= min_update, "Steem Power increase is not enough of a different. min_update: ${min}", ("min", min_update) );
-         FC_ASSERT( op.vesting_shares >= min_delegation || op.vesting_shares.amount == 0, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+         FC_ASSERT( delta >= min_update, "Steem Power decrease is not enough of a difference. min_update: ${min}", ("min", min_update) );
+         if( op.vesting_shares.amount > 0 )
+         {
+            FC_ASSERT( op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
+         }
       }
 
       _db.create< vesting_delegation_expiration_object >( [&]( vesting_delegation_expiration_object& obj )
