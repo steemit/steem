@@ -1362,7 +1362,14 @@ void vote_evaluator::do_apply( const vote_operation& o )
                   uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
                   cv.weight = new_weight - old_weight;
                   #warning( "TODO: After HF19 caclulate which comment was the first to be paid on sqrt curation and activate the logic based on time" )
+
+#ifndef IS_TEST_NET
+/*
+ * Disabling this check so we can test the precalculation logic.
+ * It is not needed on live because the precalculation is only needed pre HF19
+ */
                   if( !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) )
+#endif
                   {
                      old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve_id::square_root ).to_uint64();
                      new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve_id::square_root ).to_uint64();
@@ -1395,8 +1402,9 @@ void vote_evaluator::do_apply( const vote_operation& o )
                w *= delta_t;
                w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
                cv.weight = w.to_uint64();
-
+#ifndef IS_TEST_NET
                if( _db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
+#endif
                {
                   uint128_t w(sqrt_max_vote_weight);
                   w *= delta_t;
@@ -1416,7 +1424,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          _db.modify( comment, [&]( comment_object& c )
          {
             c.total_vote_weight += max_vote_weight;
-            c.total_sqrt_vote_weight = sqrt_max_vote_weight;
+            c.total_sqrt_vote_weight += sqrt_max_vote_weight;
          });
       }
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
@@ -1515,6 +1523,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       _db.modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
+         c.total_sqrt_vote_weight -= itr->sqrt_weight;
       });
 
       _db.modify( *itr, [&]( comment_vote_object& cv )
@@ -1523,6 +1532,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = _db.head_block_time();
          cv.weight = 0;
+         cv.sqrt_weight = 0;
          cv.num_changes += 1;
       });
 
