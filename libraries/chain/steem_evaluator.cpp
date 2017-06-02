@@ -2261,6 +2261,10 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
             FC_ASSERT( delta >= min_update, "Steem Power decrease is not enough of a difference. min_update: ${min}", ("min", min_update) );
             FC_ASSERT( op.vesting_shares >= min_delegation, "Delegation must be removed or leave minimum delegation amount of ${v}", ("v", min_delegation) );
          }
+         else
+         {
+            FC_ASSERT( delegation->vesting_shares.amount > 0, "Delegation would set vesting_shares to zero, but it is already zero");
+         }
       }
       else // TODO: Check and remove after HF19
       {
