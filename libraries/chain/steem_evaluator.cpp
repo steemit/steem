@@ -1416,7 +1416,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          _db.modify( comment, [&]( comment_object& c )
          {
             c.total_vote_weight += max_vote_weight;
-            c.total_sqrt_vote_weight = sqrt_max_vote_weight;
+            c.total_sqrt_vote_weight += sqrt_max_vote_weight;
          });
       }
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
@@ -1515,6 +1515,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
       _db.modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
+         c.total_sqrt_vote_weight -= itr->sqrt_weight;
       });
 
       _db.modify( *itr, [&]( comment_vote_object& cv )
@@ -1523,6 +1524,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = _db.head_block_time();
          cv.weight = 0;
+         cv.sqrt_weight = 0;
          cv.num_changes += 1;
       });
 
