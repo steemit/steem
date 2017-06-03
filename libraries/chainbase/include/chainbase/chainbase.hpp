@@ -802,11 +802,13 @@ namespace chainbase {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
 
+#ifdef DEBUG
             if( !has_index< MultiIndexType >() )
             {
                std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
                BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
             }
+#endif
 
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
          }
@@ -816,11 +818,13 @@ namespace chainbase {
          {
             typedef generic_index<MultiIndexType> index_type;
 
+#ifdef DEBUG
             if( !has_index< MultiIndexType >() )
             {
                std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
                BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
             }
+#endif
 
             _index_map[index_type::value_type::type_id]->add_index_extension( ext );
          }
@@ -832,11 +836,13 @@ namespace chainbase {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
 
+#ifdef DEBUG
             if( !has_index< MultiIndexType >() )
             {
                std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
                BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
             }
+#endif
 
             return index_type_ptr( _index_map[index_type::value_type::type_id]->get() )->indicies().template get<ByIndex>();
          }
@@ -848,11 +854,13 @@ namespace chainbase {
             typedef generic_index<MultiIndexType> index_type;
             typedef index_type*                   index_type_ptr;
 
+#ifdef DEBUG
             if( !has_index< MultiIndexType >() )
             {
                std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
                BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in database" ) );
             }
+#endif
 
             return *index_type_ptr( _index_map[index_type::value_type::type_id]->get() );
          }
