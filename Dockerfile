@@ -24,6 +24,7 @@ RUN \
         pkg-config \
         python3 \
         python3-dev \
+        python3-jinja2 \
         python3-pip \
         nginx \
         fcgiwrap \
