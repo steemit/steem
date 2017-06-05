@@ -27,3 +27,4 @@ seed.bitcoiner.me:2001         # bitcoiner
 88.99.33.113:2001              # cervantes
 seed.bhuz.info:2001            # bhuz
 78.46.95.157:2001              # pcste
+45.76.13.167:2001              # chitty 
