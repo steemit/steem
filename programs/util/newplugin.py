@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
 templates = {
+"plugin.json" :
+"""{
+   "plugin_name": "{{plugin_name}}",
+   "plugin_project": "{{plugin_provider}}_{{plugin_name}}"
+}
+""",
+
 "CMakeLists.txt" :
 """file(GLOB HEADERS "include/{plugin_provider}/plugins/{plugin_name}/*.hpp")
 
