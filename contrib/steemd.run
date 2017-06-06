@@ -45,6 +45,10 @@ if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
     ARGS+=" --private-key=$STEEMD_PRIVATE_KEY"
 fi
 
+if [[ ! -z "$TRACK_ACCOUNT" ]]; then
+    ARGS+=" --track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
+fi
+
 NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
 STEEMD_FEED_START_TIMESTAMP=`date --date=@$STEEMD_FEED_START_TIME +%Y-%m-%d:%H:%M:%S`
