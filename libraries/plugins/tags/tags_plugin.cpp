@@ -234,45 +234,72 @@ struct operation_visitor {
    }
 
    /** finds tags that have been added or removed or updated */
-   void update_tags( const comment_object& c )const {
+   void update_tags( const comment_object& c, bool parse_tags = false )const
+   {
       try {
 
       auto hot = calculate_hot( c.net_rshares, c.created );
       auto trending = calculate_trending( c.net_rshares, c.created );
-      auto meta = filter_tags( c );
+
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
-      auto citr = comment_idx.lower_bound( c.id );
 
-      map< string, const tag_object* > existing_tags;
-      vector< const tag_object* > remove_queue;
-      while( citr != comment_idx.end() && citr->comment == c.id ) {
-         const tag_object* tag = &*citr;
-         ++citr;
-         if( meta.tags.find( tag->tag ) == meta.tags.end()  ) {
-            remove_queue.push_back(tag);
-         } else {
-            existing_tags[tag->tag] = tag;
+      if( parse_tags )
+      {
+         auto meta = filter_tags( c );
+         auto citr = comment_idx.lower_bound( c.id );
+
+         map< string, const tag_object* > existing_tags;
+         vector< const tag_object* > remove_queue;
+
+         while( citr != comment_idx.end() && citr->comment == c.id )
+         {
+            const tag_object* tag = &*citr;
+            ++citr;
+
+            if( meta.tags.find( tag->tag ) == meta.tags.end()  )
+            {
+               remove_queue.push_back(tag);
+            }
+            else
+            {
+               existing_tags[tag->tag] = tag;
+            }
+         }
+
+         for( const auto& tag : meta.tags )
+         {
+            auto existing = existing_tags.find(tag);
+
+            if( existing == existing_tags.end() )
+            {
+               create_tag( tag, c, hot, trending );
+            }
+            else
+            {
+               update_tag( *existing->second, c, hot, trending );
+            }
+         }
+
+         for( const auto& item : remove_queue )
+            remove_tag(*item);
+      }
+      else
+      {
+         auto citr = comment_idx.lower_bound( c.id );
+
+         while( citr != comment_idx.end() && citr->comment == c.id )
+         {
+            update_tag( *citr, c, hot, trending );
+            ++citr;
          }
       }
-
-      for( const auto& tag : meta.tags ) {
-         auto existing = existing_tags.find(tag);
-         if( existing == existing_tags.end() ) {
-            create_tag( tag, c, hot, trending );
-         } else {
-            update_tag( *existing->second, c, hot, trending );
-         }
-      }
-
-      for( const auto& item : remove_queue )
-         remove_tag(*item);
 
       if( c.parent_author.size() )
       {
          update_tags( _db.get_comment( c.parent_author, c.parent_permlink ) );
       }
-     } FC_CAPTURE_LOG_AND_RETHROW( (c) )
-   }
+   } FC_CAPTURE_LOG_AND_RETHROW( (c) )
+}
 
    const peer_stats_object& get_or_create_peer_stats( account_id_type voter, account_id_type peer )const {
       const auto& peeridx = _db.get_index<peer_stats_index>().indices().get<by_voter_peer>();
@@ -321,7 +348,7 @@ struct operation_visitor {
    }
 
    void operator()( const comment_operation& op )const {
-      update_tags( _db.get_comment( op.author, op.permlink ) );
+      update_tags( _db.get_comment( op.author, op.permlink ), true );
    }
 
    void operator()( const transfer_operation& op )const {
