@@ -165,54 +165,57 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
       auto itr = idx.find( o.account );
 
-      while( itr != idx.end() && itr->following == o.account )
+      if( db.head_block_time() >= _plugin->start_feeds )
       {
-
-         if( itr->what & ( 1 << blog ) )
+         while( itr != idx.end() && itr->following == o.account )
          {
-            uint32_t next_id = 0;
-            auto last_feed = feed_idx.lower_bound( itr->follower );
 
-            if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
+            if( itr->what & ( 1 << blog ) )
             {
-               next_id = last_feed->account_feed_id + 1;
-            }
+               uint32_t next_id = 0;
+               auto last_feed = feed_idx.lower_bound( itr->follower );
 
-            auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
-
-            if( feed_itr == comment_idx.end() )
-            {
-               db.create< feed_object >( [&]( feed_object& f )
+               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
                {
-                  f.account = itr->follower;
-                  f.reblogged_by.push_back( o.account );
-                  f.first_reblogged_by = o.account;
-                  f.first_reblogged_on = db.head_block_time();
-                  f.comment = c.id;
-                  f.reblogs = 1;
-                  f.account_feed_id = next_id;
-               });
-            }
-            else
-            {
-               db.modify( *feed_itr, [&]( feed_object& f )
+                  next_id = last_feed->account_feed_id + 1;
+               }
+
+               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+
+               if( feed_itr == comment_idx.end() )
                {
-                  f.reblogged_by.push_back( o.account );
-                  f.reblogs++;
-               });
+                  db.create< feed_object >( [&]( feed_object& f )
+                  {
+                     f.account = itr->follower;
+                     f.reblogged_by.push_back( o.account );
+                     f.first_reblogged_by = o.account;
+                     f.first_reblogged_on = db.head_block_time();
+                     f.comment = c.id;
+                     f.reblogs = 1;
+                     f.account_feed_id = next_id;
+                  });
+               }
+               else
+               {
+                  db.modify( *feed_itr, [&]( feed_object& f )
+                  {
+                     f.reblogged_by.push_back( o.account );
+                     f.reblogs++;
+                  });
+               }
+
+               const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
+               auto old_feed = old_feed_idx.lower_bound( itr->follower );
+
+               while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
+               {
+                  db.remove( *old_feed );
+                  old_feed = old_feed_idx.lower_bound( itr->follower );
+               };
             }
 
-            const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
-            auto old_feed = old_feed_idx.lower_bound( itr->follower );
-
-            while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
-            {
-               db.remove( *old_feed );
-               old_feed = old_feed_idx.lower_bound( itr->follower );
-            };
+            ++itr;
          }
-
-         ++itr;
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
