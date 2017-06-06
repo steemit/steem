@@ -1,27 +1,3 @@
-/*
- * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
- *
- * The MIT License
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #include <steemit/fork_info/fork_info_plugin.hpp>
 
 #include <steemit/protocol/types.hpp>
@@ -50,24 +26,43 @@ namespace detail {
          void on_block( const signed_block& b );
 
          fork_info_plugin&       _self;
-         std::deque<signed_block> _last_blocks;
+         std::map<int,std::vector<signed_block>> _last_blocks;
+         std::map<int,std::vector<signed_block>>::iterator it;
    };
+
    void fork_info_plugin_impl::on_block( const signed_block& b )
    {
       auto& db = _self.database();
-      _last_blocks.push_front(b);
-      if( _last_blocks.size() == 21)
-      {
-         fc::optional<signed_block> result = db.fetch_block_by_number(_last_blocks.at(20).block_num());
-         if( result.valid() ){
+      it = _last_blocks.find(b.block_num());
+      if (it == _last_blocks.end()){
+         std::vector<signed_block> blockv (1, b);
+         _last_blocks.insert( std::pair<int,std::vector<signed_block>>(b.block_num(), blockv) );
+         blockv.clear();
+         if( _last_blocks.size() == 22)
+         {
+            it = _last_blocks.find(b.block_num()-21);
+            blockv = it->second;
+            fc::optional<signed_block> result = db.fetch_block_by_number(blockv.at(0).block_num());
             signed_block block = *result;
-            if(block.witness_signature != _last_blocks.at(20).witness_signature && block.id() != _last_blocks.at(20).id()){
-               idump(("Orphaned Block: ")(_last_blocks.at(20)));
-            }
-         }
-         _last_blocks.pop_back();
+            if( result.valid() ){
+               std::vector<signature_type> _printed_blocks;
+               for(unsigned int i=0; i < blockv.size(); i++){
+                  if(block.witness_signature != blockv.at(i).witness_signature){
+                     if(find(_printed_blocks.begin(), _printed_blocks.end(), blockv.at(i).witness_signature) == _printed_blocks.end()){
+                        idump(("Orphaned Block: ")(blockv.at(i))(blockv.at(i).block_num()));
+                        _printed_blocks.push_back(blockv.at(i).witness_signature);
 
+                     }
+                  }
+               }
+            }
+            _last_blocks.erase(it);
+         }
       }
+      else {
+         it->second.push_back(b);
+      }
+
    }
 }
 
