@@ -49,7 +49,7 @@ execute_process(
    python3 -m steem_manifest.build
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
-   -o ${CMAKE_CURRENT_BINARY_DIR}/gen
+   -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
    --print-dependencies
    OUTPUT_VARIABLE MANIFEST_DEPS
    RESULT_VARIABLE RETURN_VALUE
@@ -65,7 +65,7 @@ execute_process(
    python3 -m steem_manifest.build
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
-   -o ${CMAKE_CURRENT_BINARY_DIR}/gen
+   -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
    --print-outputs
    OUTPUT_VARIABLE MANIFEST_OUTPUTS
    RESULT_VARIABLE RETURN_VALUE
@@ -81,7 +81,7 @@ add_custom_command(
    python3 -m steem_manifest.build
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
-   -o ${CMAKE_CURRENT_BINARY_DIR}/gen
+   -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
    OUTPUT ${MANIFEST_OUTPUTS}
    DEPENDS ${MANIFEST_DEPS} ${CMAKE_CURRENT_SOURCE_DIR}/steem_manifest/build.py
 )
@@ -104,7 +104,7 @@ execute_process(
    python3 -m steem_manifest.build
    -j ${CMAKE_CURRENT_BINARY_DIR}/template_context
    -t ${CMAKE_CURRENT_SOURCE_DIR}/templates
-   -o ${CMAKE_CURRENT_BINARY_DIR}/gen
+   -o ${CMAKE_CURRENT_BINARY_DIR}/gensrc
 )
 
-add_subdirectory( ${CMAKE_CURRENT_BINARY_DIR}/gen/plugins )
+add_subdirectory( ${CMAKE_CURRENT_BINARY_DIR}/gensrc/plugins ${CMAKE_CURRENT_BINARY_DIR}/genbuild )
