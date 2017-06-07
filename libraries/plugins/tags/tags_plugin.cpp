@@ -409,7 +409,7 @@ struct operation_visitor {
 
       auto meta = filter_tags( c );
 
-      for( auto tag : meta.tags )
+      for( const string& tag : meta.tags )
       {
          _db.modify( get_stats( tag ), [&]( tag_stats_object& ts )
          {
