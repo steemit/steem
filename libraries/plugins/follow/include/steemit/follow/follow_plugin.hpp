@@ -28,6 +28,7 @@ class follow_plugin : public steemit::app::plugin
       friend class detail::follow_plugin_impl;
       std::unique_ptr<detail::follow_plugin_impl> my;
       uint32_t max_feed_size = 500;
+      fc::time_point_sec start_feeds;
 };
 
 } } //steemit::follow

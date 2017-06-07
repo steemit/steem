@@ -2348,6 +2348,9 @@ state database_api::get_state( string path )const
 
 annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const
 {
+#ifdef SKIP_BY_TX_ID
+   return annotated_signed_transaction();
+#else
    return my->_db.with_read_lock( [&](){
       const auto& idx = my->_db.get_index<operation_index>().indices().get<by_transaction_id>();
       auto itr = idx.lower_bound( id );
@@ -2362,6 +2365,7 @@ annotated_signed_transaction database_api::get_transaction( transaction_id_type 
       }
       FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
    });
+#endif
 }
 
 

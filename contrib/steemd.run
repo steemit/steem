@@ -45,6 +45,12 @@ if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
     ARGS+=" --private-key=$STEEMD_PRIVATE_KEY"
 fi
 
+NOW=`date +%s`
+STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
+STEEMD_FEED_START_TIMESTAMP=`date --date=@$STEEMD_FEED_START_TIME +%Y-%m-%d:%H:%M:%S`
+
+ARGS+=" --follow-start-feeds=\"$STEEMD_FEED_START_TIMESTAMP\""
+
 # overwrite local config with image one
 if [[ "$USE_FULL_WEB_NODE" ]]; then
   cp /etc/steemd/fullnode.config.ini $HOME/config.ini

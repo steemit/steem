@@ -194,39 +194,42 @@ struct post_operation_visitor
 
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
-         while( itr != idx.end() && itr->following == op.author )
+         if( db.head_block_time() >= _plugin.start_feeds )
          {
-            if( itr->what & ( 1 << blog ) )
+            while( itr != idx.end() && itr->following == op.author )
             {
-               uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( itr->follower );
-
-               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
+               if( itr->what & ( 1 << blog ) )
                {
-                  next_id = last_feed->account_feed_id + 1;
-               }
+                  uint32_t next_id = 0;
+                  auto last_feed = feed_idx.lower_bound( itr->follower );
 
-               if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
-               {
-                  db.create< feed_object >( [&]( feed_object& f )
+                  if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
                   {
-                     f.account = itr->follower;
-                     f.comment = c.id;
-                     f.account_feed_id = next_id;
-                  });
+                     next_id = last_feed->account_feed_id + 1;
+                  }
 
-                  const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
-                  auto old_feed = old_feed_idx.lower_bound( itr->follower );
-
-                  while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
-                     db.remove( *old_feed );
-                     old_feed = old_feed_idx.lower_bound( itr->follower );
+                     db.create< feed_object >( [&]( feed_object& f )
+                     {
+                        f.account = itr->follower;
+                        f.comment = c.id;
+                        f.account_feed_id = next_id;
+                     });
+
+                     const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
+                     auto old_feed = old_feed_idx.lower_bound( itr->follower );
+
+                     while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin.max_feed_size )
+                     {
+                        db.remove( *old_feed );
+                        old_feed = old_feed_idx.lower_bound( itr->follower );
+                     }
                   }
                }
-            }
 
-            ++itr;
+               ++itr;
+            }
          }
 
          const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
@@ -345,6 +348,7 @@ void follow_plugin::plugin_set_program_options(
 {
    cli.add_options()
       ("follow-max-feed-size", boost::program_options::value< uint32_t >()->default_value( 500 ), "Set the maximum size of cached feed for an account" )
+      ("follow-start-feeds", boost::program_options::value< uint32_t >()->default_value( 0 ), "Block time (in epoch seconds) when to start calculating feeds" )
       ;
    cfg.add( cli );
 }
@@ -370,6 +374,11 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       {
          uint32_t feed_size = options[ "follow-max-feed-size" ].as< uint32_t >();
          max_feed_size = feed_size;
+      }
+
+      if( options.count( "follow-start-feeds" ) )
+      {
+         start_feeds = fc::time_point_sec( options[ "follow-start-feeds" ].as< uint32_t >() );
       }
    }
    FC_CAPTURE_AND_RETHROW()

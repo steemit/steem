@@ -31,6 +31,12 @@ if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     done
 fi
 
+NOW=`date +%s`
+STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
+STEEMD_FEED_START_TIMESTAMP=`date --date=@$STEEMD_FEED_START_TIME +%Y-%m-%d:%H:%M:%S`
+
+ARGS+=" --follow-start-feeds=\"$STEEMD_FEED_START_TIMESTAMP\""
+
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
 
@@ -49,7 +55,7 @@ if [[ "$USE_RAMDISK" ]]; then
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
   s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   chown -R steemd:steemd /mnt/ramdisk/blockchain
-else  
+else
   s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
 fi
 if [[ $? -ne 0 ]]; then
