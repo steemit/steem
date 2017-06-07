@@ -116,11 +116,14 @@ struct operation_visitor {
          }
       }
 
+      // We need to write the transformed tags into a temporary
+      // local container because we can't modify meta.tags concurrently
+      // as we iterate over it.
       set< string > lower_tags;
 
       uint8_t tag_limit = 5;
       uint8_t count = 0;
-      for( const auto& tag : meta.tags )
+      for( const string& tag : meta.tags )
       {
          ++count;
          if( count > tag_limit || lower_tags.size() > tag_limit )
@@ -407,7 +410,7 @@ struct operation_visitor {
       const auto& c = _db.get_comment( op.author, op.permlink );
       update_tags( c );
 
-      auto meta = filter_tags( c );
+      comment_metadata meta = filter_tags( c );
 
       for( const string& tag : meta.tags )
       {
