@@ -37,6 +37,12 @@ track-account-range = ["yourexchangeid", "yourexchangeid"]
 ```
 Do not add other APIs or plugins unless you know what you are doing.
 
+This configuration exists in Docker with the following command
+
+```
+docker run -d --env TRACK_ACCOUNT="yourexchangeid" steemit/steem
+```
+
 ### Resources usage
 
 Please make sure that you have enough resources available.
