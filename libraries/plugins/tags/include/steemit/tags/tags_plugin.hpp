@@ -118,7 +118,13 @@ typedef multi_index_container<
    tag_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< tag_object, tag_id_type, &tag_object::id > >,
-      ordered_non_unique< tag< by_comment >, member< tag_object, comment_id_type, &tag_object::comment > >,
+      ordered_unique< tag< by_comment >,
+         composite_key< tag_object,
+            member< tag_object, comment_id_type, &tag_object::comment >,
+            member< tag_object, tag_id_type, &tag_object::id >
+         >,
+         composite_key_compare< std::less< comment_id_type >, std::less< tag_id_type > >
+      >,
       ordered_unique< tag< by_author_comment >,
             composite_key< tag_object,
                member< tag_object, account_id_type, &tag_object::author >,
