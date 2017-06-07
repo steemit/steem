@@ -27,4 +27,5 @@ seed.bitcoiner.me:2001         # bitcoiner
 88.99.33.113:2001              # cervantes
 seed.bhuz.info:2001            # bhuz
 78.46.95.157:2001              # pcste
+seed.steemviz.com:2001         # ausbitbank
 45.76.13.167:2001              # chitty 
