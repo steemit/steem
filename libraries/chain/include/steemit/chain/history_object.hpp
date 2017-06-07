@@ -49,13 +49,16 @@ namespace steemit { namespace chain {
                member< operation_object, uint64_t, &operation_object::virtual_op>,
                member< operation_object, operation_id_type, &operation_object::id>
             >
-         >,
+         >
+#ifndef SKIP_BY_TX_ID
+         ,
          ordered_unique< tag< by_transaction_id >,
             composite_key< operation_object,
                member< operation_object, transaction_id_type, &operation_object::trx_id>,
                member< operation_object, operation_id_type, &operation_object::id>
             >
          >
+#endif
       >,
       allocator< operation_object >
    > operation_index;

@@ -22,6 +22,12 @@ Clears old votes from memory that are no longer required for consensus.
 
 Builds steem for use in a private testnet. Also required for building unit tests.
 
+### SKIP_BY_TX_ID=[OFF/ON]
+
+The account history plugin does not allow querying of operations by transaction id.
+This requires around 65% of CPU time when reindexing so disabling the index is a
+huge gain if you do not need this functionality.
+
 ## Building under Docker
 
 We ship a Dockerfile.  This builds both common node type binaries.
