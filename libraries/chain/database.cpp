@@ -500,6 +500,22 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    return result;
 }
 
+void database::_maybe_warn_multiple_production( const database& db, uint32_t height )const
+{
+   auto blocks = _fork_db.fetch_block_by_number( height );
+   if( blocks.size() > 1 )
+   {
+      vector< std::pair< account_name_type, fc::time_point_sec > > witness_time_pairs;
+      for( const auto& b : blocks )
+      {
+         witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
+      }
+
+      ilog( "Encountered block num collision at block ${n} due to a fork, witnesses are:", ("n", height)("w", witness_time_pairs) );
+   }
+   return;
+}
+
 bool database::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
@@ -508,6 +524,8 @@ bool database::_push_block(const signed_block& new_block)
    if( !(skip&skip_fork_db) )
    {
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
+      _maybe_warn_multiple_production( *this, new_head->num );
+
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
