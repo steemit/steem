@@ -86,6 +86,8 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       std::shared_ptr< steemit::follow::follow_api > _follow_api;
 
       boost::signals2::scoped_connection       _block_applied_connection;
+
+      bool _disable_get_block = false;
 };
 
 applied_operation::applied_operation() {}
@@ -202,6 +204,8 @@ database_api_impl::database_api_impl( const steemit::app::api_context& ctx )
 {
    wlog("creating database api ${x}", ("x",int64_t(this)) );
 
+   _disable_get_block = ctx.app._disable_get_block;
+
    try
    {
       ctx.app.get_plugin< follow::follow_plugin >( FOLLOW_PLUGIN_NAME );
@@ -225,6 +229,8 @@ void database_api::on_api_startup() {}
 
 optional<block_header> database_api::get_block_header(uint32_t block_num)const
 {
+   FC_ASSERT( !my->_disable_get_block, "get_block_header is disabled on this node." );
+
    return my->_db.with_read_lock( [&]()
    {
       return my->get_block_header( block_num );
@@ -241,6 +247,8 @@ optional<block_header> database_api_impl::get_block_header(uint32_t block_num) c
 
 optional<signed_block_api_obj> database_api::get_block(uint32_t block_num)const
 {
+   FC_ASSERT( !my->_disable_get_block, "get_block is disabled on this node." );
+
    return my->_db.with_read_lock( [&]()
    {
       return my->get_block( block_num );
