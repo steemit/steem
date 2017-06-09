@@ -246,21 +246,45 @@ bool database::is_known_transaction( const transaction_id_type& id )const
    return trx_idx.find( id ) != trx_idx.end();
 } FC_CAPTURE_AND_RETHROW() }
 
-block_id_type database::get_block_id_for_num( uint32_t block_num )const
+block_id_type database::find_block_id_for_num( uint32_t block_num )const
 {
    try
    {
+      if( block_num == 0 )
+         return block_id_type();
+
+      // Reversible blocks are *usually* in the TAPOS buffer.  Since this
+      // is the fastest check, we do it first.
+      block_summary_id_type bsid = block_num & 0xFFFF;
+      const block_summary_object* bs = find< block_summary_object, by_id >( bsid );
+      if( bs != nullptr )
+      {
+         if( protocol::block_header::num_from_id(bs->block_id) == block_num )
+            return bs->block_id;
+      }
+
+      // Next we query the block log.   Irreversible blocks are here.
       auto b = _block_log.read_block_by_num( block_num );
       if( b.valid() )
          return b->id();
 
-      auto results = _fork_db.fetch_block_by_number( block_num );
-      FC_ASSERT( results.size() == 1 );
-         return results[0]->data.id();
+      // Finally we query the fork DB.
+      shared_ptr< fork_item > fitem = _fork_db.fetch_block_on_main_branch_by_number( block_num );
+      if( fitem )
+         return fitem->id;
 
+      return block_id_type();
    }
    FC_CAPTURE_AND_RETHROW( (block_num) )
 }
+
+block_id_type database::get_block_id_for_num( uint32_t block_num )const
+{
+   block_id_type bid = find_block_id_for_num( block_num );
+   FC_ASSERT( bid != block_id_type() );
+   return bid;
+}
+
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
 { try {
