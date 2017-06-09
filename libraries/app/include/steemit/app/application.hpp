@@ -124,6 +124,7 @@ namespace steemit { namespace app {
          void connect_to_write_node();
 
          bool _read_only = true;
+         bool _disable_get_block = false;
          fc::optional< string > _remote_endpoint;
          fc::optional< fc::api< network_broadcast_api > > _remote_net_api;
          fc::optional< fc::api< login_api > > _remote_login;

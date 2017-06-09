@@ -265,6 +265,9 @@ namespace detail {
          else
             _shared_dir = _data_dir / "blockchain";
 
+         if( _options->count( "disable_get_block" ) )
+            _self->_disable_get_block = true;
+
          if( !read_only )
          {
             _self->_read_only = false;
@@ -989,6 +992,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("force-validate", "Force validation of all transactions")
          ("read-only", "Node will not connect to p2p network and can only read from the chain state" )
          ("check-locks", "Check correctness of chainbase locking")
+         ("disable-get-block", "Disable get_block API call" )
          ;
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);

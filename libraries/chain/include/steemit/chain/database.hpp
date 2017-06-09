@@ -106,6 +106,7 @@ namespace steemit { namespace chain {
          bool                       is_known_transaction( const transaction_id_type& id )const;
          fc::sha256                 get_pow_target()const;
          uint32_t                   get_pow_summary_target()const;
+         block_id_type              find_block_id_for_num( uint32_t block_num )const;
          block_id_type              get_block_id_for_num( uint32_t block_num )const;
          optional<signed_block>     fetch_block_by_id( const block_id_type& id )const;
          optional<signed_block>     fetch_block_by_number( uint32_t num )const;
@@ -164,6 +165,7 @@ namespace steemit { namespace chain {
 
          bool push_block( const signed_block& b, uint32_t skip = skip_nothing );
          void push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         void _maybe_warn_multiple_production( uint32_t height )const;
          bool _push_block( const signed_block& b );
          void _push_transaction( const signed_transaction& trx );
 

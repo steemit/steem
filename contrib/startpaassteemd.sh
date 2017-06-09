@@ -33,9 +33,10 @@ fi
 
 NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
-STEEMD_FEED_START_TIMESTAMP=`date --date=@$STEEMD_FEED_START_TIME +%Y-%m-%d:%H:%M:%S`
 
-ARGS+=" --follow-start-feeds=\"$STEEMD_FEED_START_TIMESTAMP\""
+ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
+
+ARGS+=" --disable-get-block"
 
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
