@@ -2,10 +2,10 @@
 
 templates = {
 "plugin.json" :
-"""{
-   "plugin_name": "{{plugin_name}}",
-   "plugin_project": "{{plugin_provider}}_{{plugin_name}}"
-}
+"""{{
+   "plugin_name": "{plugin_name}",
+   "plugin_project": "{plugin_provider}_{plugin_name}"
+}}
 """,
 
 "CMakeLists.txt" :
