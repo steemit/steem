@@ -125,6 +125,8 @@ namespace steemit {
 
             uint32_t get_pow_summary_target() const;
 
+                     block_id_type              get_block_id_for_num( uint32_t block_num )const;
+
             block_id_type find_block_id_for_num(uint32_t block_num) const;
 
             optional<signed_block> fetch_block_by_id(const block_id_type &id) const;
