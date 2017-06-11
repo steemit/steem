@@ -240,20 +240,44 @@ namespace steemit {
             } FC_CAPTURE_AND_RETHROW()
         }
 
-        block_id_type database::get_block_id_for_num(uint32_t block_num) const {
+        block_id_type database::find_block_id_for_num( uint32_t block_num )const {
             try {
+                  if( block_num == 0 )
+         return block_id_type();
+
+      // Reversible blocks are *usually* in the TAPOS buffer.  Since this
+      // is the fastest check, we do it first.
+      block_summary_id_type bsid = block_num & 0xFFFF;
+      const block_summary_object* bs = find< block_summary_object, by_id >( bsid );
+      if( bs != nullptr )
+      {
+         if( protocol::block_header::num_from_id(bs->block_id) == block_num )
+            return bs->block_id;
+      }
+
+      // Next we query the block log.   Irreversible blocks are here.
+
                 auto b = _block_log.read_block_by_num(block_num);
                 if (b.valid()) {
                     return b->id();
                 }
 
-                auto results = _fork_db.fetch_block_by_number(block_num);
-                FC_ASSERT(results.size() == 1);
-                return results[0]->data.id();
+                      // Finally we query the fork DB.
+      shared_ptr< fork_item > fitem = _fork_db.fetch_block_on_main_branch_by_number( block_num );
+      if( fitem )
+         return fitem->id;
 
+      return block_id_type();
             }
             FC_CAPTURE_AND_RETHROW((block_num))
         }
+
+        block_id_type database::get_block_id_for_num( uint32_t block_num )const
+{
+   block_id_type bid = find_block_id_for_num( block_num );
+   FC_ASSERT( bid != block_id_type() );
+   return bid;
+}
 
         optional<signed_block> database::fetch_block_by_id(const block_id_type &id) const {
             try {
@@ -620,6 +644,22 @@ namespace steemit {
             return result;
         }
 
+        void database::_maybe_warn_multiple_production( uint32_t height )const
+{
+   auto blocks = _fork_db.fetch_block_by_number( height );
+   if( blocks.size() > 1 )
+   {
+      vector< std::pair< account_name_type, fc::time_point_sec > > witness_time_pairs;
+      for( const auto& b : blocks )
+      {
+         witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
+      }
+
+      ilog( "Encountered block num collision at block ${n} due to a fork, witnesses are:", ("n", height)("w", witness_time_pairs) );
+   }
+   return;
+}
+
         bool database::_push_block(const signed_block &new_block) {
             try {
                 uint32_t skip = get_node_properties().skip_flags;
@@ -627,6 +667,7 @@ namespace steemit {
 
                 if (!(skip & skip_fork_db)) {
                     shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
+                                _maybe_warn_multiple_production( new_head->num );
                     //If the head block from the longest chain does not build off of the current head, we need to switch forks.
                     if (new_head->data.previous != head_block_id()) {
                         //If the newly pushed block is the same height as head, we get head back in new_head
