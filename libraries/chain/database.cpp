@@ -3629,29 +3629,10 @@ namespace steemit {
 
                     if (log_head_num < dpo.last_irreversible_block_num) {
                         while (log_head_num < dpo.last_irreversible_block_num) {
-                            signed_block *block_ptr;
-                            auto blocks = _fork_db.fetch_block_by_number(
+                            std::shared_ptr<fork_item> block = _fork_db.fetch_block_on_main_branch_by_number(
                                     log_head_num + 1);
-
-                            if (blocks.size() == 1) {
-                                block_ptr = &(blocks[0]->data);
-                            } else {
-                                ilog("Encountered a block num collision due to a fork. Walking the current fork to determine the correct block. block_num:${n}", ("n",
-                                        log_head_num +
-                                        1)); // TODO: Delete when we know this code works as intended
-                                auto next = _fork_db.head();
-                                while (next.get() != nullptr &&
-                                       next->num > log_head_num + 1) {
-                                    next = next->prev.lock();
-                                }
-
-                                FC_ASSERT(next.get() !=
-                                          nullptr, "Current fork in the fork database does not contain the last_irreversible_block");
-
-                                block_ptr = &(next->data);
-                            }
-
-                            _block_log.append(*block_ptr);
+                            FC_ASSERT(block, "Current fork in the fork database does not contain the last_irreversible_block");
+                            _block_log.append(block->data);
                             log_head_num++;
                         }
 
