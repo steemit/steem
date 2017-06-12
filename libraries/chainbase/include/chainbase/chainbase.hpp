@@ -936,8 +936,7 @@ namespace chainbase {
             }
             else
             {
-
-               if( !lock.timed_lock( boost::posix_time::microsec_clock::local_time() + boost::posix_time::microseconds( wait_micro ) ) )
+               if( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                   BOOST_THROW_EXCEPTION( std::runtime_error( "unable to acquire lock" ) );
             }
 
@@ -962,7 +961,7 @@ namespace chainbase {
             }
             else
             {
-               while( !lock.timed_lock( boost::posix_time::microsec_clock::local_time() + boost::posix_time::microseconds( wait_micro ) ) )
+               while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
                   _rw_manager->next_lock();
                   std::cerr << "Lock timeout, moving to lock " << _rw_manager->current_lock_num() << std::endl;
