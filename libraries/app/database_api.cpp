@@ -1384,7 +1384,6 @@ namespace steemit {
 
                         map_result.insert(result.cbegin(), result.cend());
                     }
-
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, parent, share_type(STEEMIT_MAX_SHARE_SUPPLY)));
 
@@ -1443,12 +1442,6 @@ namespace steemit {
                         std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2> result = get_discussions<tags::by_mode_parent_children_rshares2>(query, tag, parent, tidx, tidx_itr, filter_function);
 
                         map_result.insert(result.cbegin(), result.cend());
-                    }
-
-                    for (std::multimap<tags::tag_object, discussion, tags::by_mode_parent_children_rshares2>::const_iterator iterator = map_result.cbegin();
-                         std::distance(map_result.cbegin(), iterator) !=
-                         query.limit; ++iterator) {
-                        return_result.push_back(iterator->second);
                     }
                 } else {
                     auto tidx_itr = tidx.lower_bound(boost::make_tuple(tag, second_payout, parent, fc::uint128_t::max_value()));
