@@ -38,9 +38,13 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     echo steemdsync: waiting for steemd to exit cleanly
     while [ -e /proc/$STEEMD_PID ]; do sleep 0.1; done
     echo steemdsync: starting a new blockchainstate upload operation
-    cd $HOME
+    cd ${COMPRESSPATH:-$HOME}
     echo steemdsync: compressing blockchainstate...
-    tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 blockchain
+    tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 -C $HOME blockchain
+    if [[ ! $? -eq 0 ]]; then
+      echo NOTIFYALERT! steemdsync was unable to compress shared memory file, check the logs.
+      exit 1
+    fi
     FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
     echo steemdsync: uploading $FILE_NAME to $S3_BUCKET
     aws s3 cp blockchain.tar.bz2 s3://$S3_BUCKET/$FILE_NAME
@@ -56,6 +60,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     	exit 1
     fi
     # upload a current block_log
+    cd $HOME
     aws s3 cp blockchain/block_log s3://$S3_BUCKET/block_log-intransit
     aws s3 cp s3://$S3_BUCKET/block_log-intransit s3://$S3_BUCKET/block_log-latest
     # kill the container starting the process over again

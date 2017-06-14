@@ -265,6 +265,9 @@ namespace detail {
          else
             _shared_dir = _data_dir / "blockchain";
 
+         if( _options->count( "disable_get_block" ) )
+            _self->_disable_get_block = true;
+
          if( !read_only )
          {
             _self->_read_only = false;
@@ -970,7 +973,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("shared-file-dir", bpo::value<string>(), "Location of the shared memory file. Defaults to data_dir/blockchain")
-         ("shared-file-size", bpo::value<string>()->default_value("32G"), "Size of the shared memory file. Default: 32G")
+         ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G")
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("read-forward-rpc", bpo::value<string>(), "Endpoint to forward write API calls to for a read node" )
@@ -989,6 +992,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("force-validate", "Force validation of all transactions")
          ("read-only", "Node will not connect to p2p network and can only read from the chain state" )
          ("check-locks", "Check correctness of chainbase locking")
+         ("disable-get-block", "Disable get_block API call" )
          ;
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);

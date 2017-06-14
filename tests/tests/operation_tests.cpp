@@ -98,8 +98,6 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
       tx.validate();
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
-      /* Temporarily commented out while op is disabled
       db.push_transaction( tx, 0 );
 
       const account_object& acct = db.get_account( "alice" );
@@ -152,15 +150,13 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
-      idump( (db.get_account( STEEMIT_INIT_MINER_NAME ).balance) );
-
       BOOST_TEST_MESSAGE( "--- Test failure covering witness fee" );
       generate_block();
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& wso )
          {
-            wso.median_props.account_creation_fee = ASSET( "1.000 TESTS" );
+            wso.median_props.account_creation_fee = ASSET( "10.000 TESTS" );
          });
       });
       generate_block();
@@ -169,9 +165,8 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       op.fee = ASSET( "1.000 TESTS" );
       tx.operations.push_back( op );
       tx.sign( init_account_priv_key, db.get_chain_id() );
-      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception ) );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::exception );
       validate_database();
-      */
    }
    FC_LOG_AND_RETHROW()
 }
@@ -548,7 +543,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
 
       db.modify( db.get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
       {
-         o.total_reward_shares2 = steemit::chain::util::calculate_claims( 10 );
+         o.total_reward_shares2 = steemit::chain::util::evaluate_reward_curve( 10 );
       });
 
       tx.signatures.clear();
@@ -597,6 +592,111 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       generate_block();
       db.push_transaction( tx, 0 );
       validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( comment_delete_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: comment_delete_apply" );
+      ACTORS( (alice) )
+      generate_block();
+
+      vest( "alice", ASSET( "1000.000 TESTS" ) );
+
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      signed_transaction tx;
+      comment_operation comment;
+      vote_operation vote;
+
+      comment.author = "alice";
+      comment.permlink = "test1";
+      comment.title = "test";
+      comment.body = "foo bar";
+      comment.parent_permlink = "test";
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test1";
+      vote.weight = STEEMIT_100_PERCENT;
+      tx.operations.push_back( comment );
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Test failue deleting a comment with positive rshares" );
+
+      delete_comment_operation op;
+      op.author = "alice";
+      op.permlink = "test1";
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test success deleting a comment with negative rshares" );
+
+      generate_block();
+      vote.weight = -1 * STEEMIT_100_PERCENT;
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      auto test_comment = db.find< comment_object, by_permlink >( boost::make_tuple( "alice", string( "test1" ) ) );
+      BOOST_REQUIRE( test_comment == nullptr );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure deleting a comment past cashout" );
+      generate_blocks( STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEMIT_BLOCK_INTERVAL );
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( STEEMIT_CASHOUT_WINDOW_SECONDS / STEEMIT_BLOCK_INTERVAL );
+      BOOST_REQUIRE( db.get_comment( "alice", string( "test1" ) ).cashout_time == fc::time_point_sec::maximum() );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Test failure deleting a comment with a reply" );
+
+      comment.permlink = "test2";
+      comment.parent_author = "alice";
+      comment.parent_permlink = "test1";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( STEEMIT_MIN_ROOT_COMMENT_INTERVAL.to_seconds() / STEEMIT_BLOCK_INTERVAL );
+      comment.permlink = "test3";
+      comment.parent_permlink = "test2";
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      op.permlink = "test2";
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -700,7 +800,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
 
          auto& alice_comment = db.get_comment( "alice", string( "foo" ) );
          auto itr = vote_idx.find( std::make_tuple( alice_comment.id, alice.id ) );
-         int64_t max_vote_denom = ( db.get_dynamic_global_properties().vote_regeneration_per_day * STEEMIT_VOTE_REGENERATION_SECONDS ) / (60*60*24);
+         int64_t max_vote_denom = ( db.get_dynamic_global_properties().vote_power_reserve_rate * STEEMIT_VOTE_REGENERATION_SECONDS ) / (60*60*24);
 
          BOOST_REQUIRE( alice.voting_power == old_voting_power - ( ( old_voting_power + max_vote_denom - 1 ) / max_vote_denom ) );
          BOOST_REQUIRE( alice.last_vote_time == db.head_block_time() );
@@ -6293,6 +6393,72 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
+{
+   // This is a regression test specifically for issue #971
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Issue 971 Vesting Removal" );
+      ACTORS( (alice)(bob) )
+      generate_block();
+
+      vest( "alice", ASSET( "1000.000 TESTS" ) );
+
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& w )
+         {
+            w.median_props.account_creation_fee = ASSET( "1.000 TESTS" );
+         });
+      });
+
+      generate_block();
+
+      signed_transaction tx;
+      delegate_vesting_shares_operation op;
+      op.vesting_shares = ASSET( "10000000.000000 VESTS");
+      op.delegator = "alice";
+      op.delegatee = "bob";
+
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_block();
+      const account_object& alice_acc = db.get_account( "alice" );
+      const account_object& bob_acc = db.get_account( "bob" );
+
+      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "10000000.000000 VESTS"));
+
+      generate_block();
+
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_witness_schedule_object(), [&]( witness_schedule_object& w )
+         {
+            w.median_props.account_creation_fee = ASSET( "100.000 TESTS" );
+         });
+      });
+
+      generate_block();
+
+      op.vesting_shares = ASSET( "0.000000 VESTS" );
+
+      tx.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+      generate_block();
+
+      BOOST_REQUIRE( alice_acc.delegated_vesting_shares == ASSET( "10000000.000000 VESTS"));
+      BOOST_REQUIRE( bob_acc.received_vesting_shares == ASSET( "0.000000 VESTS"));
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
 {
    try
@@ -6481,6 +6647,98 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       BOOST_REQUIRE( db.get_account( "bob" ).reward_vesting_steem.amount + db.get_account( "sam" ).reward_vesting_steem.amount == db.get_comment( "alice", string( "test" ) ).beneficiary_payout_value.amount );
       BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) == db.get_account( "bob" ).reward_vesting_steem.amount + 2 );
       BOOST_REQUIRE( ( db.get_account( "alice" ).reward_sbd_balance.amount + db.get_account( "alice" ).reward_vesting_steem.amount ) * 2 == db.get_account( "sam" ).reward_vesting_steem.amount + 3 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+#warning( "TODO: This test is not needed after HF19" )
+BOOST_AUTO_TEST_CASE( vote_weight_test )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Beneficiaries" );
+      ACTORS( (alice)(bob)(sam)(dave) )
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      comment_operation comment;
+      vote_operation vote;
+      signed_transaction tx;
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar";
+
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      generate_blocks( 10 );
+
+      BOOST_TEST_MESSAGE( "--- Testing initial vote" );
+
+      vote.voter = "alice";
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.weight = STEEMIT_100_PERCENT;
+
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      {
+         const auto& alice = db.get_account( "alice" );
+         const auto& alice_comment = db.get_comment( comment.author, comment.permlink );
+         const auto& alice_vote = db.get< comment_vote_object, by_comment_voter >( boost::make_tuple( alice_comment.id, alice.id ) );
+
+         BOOST_REQUIRE( alice_vote.weight == alice_vote.sqrt_weight );
+         BOOST_REQUIRE( alice_comment.total_vote_weight == alice_comment.total_sqrt_vote_weight );
+      }
+
+      generate_blocks( 10 );
+
+      BOOST_TEST_MESSAGE( "--- Testing second vote" );
+
+      vote.voter = "bob";
+
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      {
+         const auto& bob = db.get_account( "bob" );
+         const auto& alice_comment = db.get_comment( comment.author, comment.permlink );
+         const auto& bob_vote = db.get< comment_vote_object, by_comment_voter >( boost::make_tuple( alice_comment.id, bob.id ) );
+
+         BOOST_REQUIRE( bob_vote.weight == bob_vote.sqrt_weight );
+         BOOST_REQUIRE( alice_comment.total_vote_weight == alice_comment.total_sqrt_vote_weight );
+      }
+
+      generate_blocks( 10 );
+
+      BOOST_TEST_MESSAGE( "--- Testing removing a vote" );
+
+      vote.weight = 0;
+
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.sign( bob_private_key, db.get_chain_id() );
+      db.push_transaction( tx, 0 );
+
+      {
+         const auto& bob = db.get_account( "bob" );
+         const auto& alice_comment = db.get_comment( comment.author, comment.permlink );
+         const auto& bob_vote = db.get< comment_vote_object, by_comment_voter >( boost::make_tuple( alice_comment.id, bob.id ) );
+
+         BOOST_REQUIRE( bob_vote.weight == bob_vote.sqrt_weight );
+         BOOST_REQUIRE( alice_comment.total_vote_weight == alice_comment.total_sqrt_vote_weight );
+      }
    }
    FC_LOG_AND_RETHROW()
 }

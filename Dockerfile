@@ -49,6 +49,7 @@ RUN \
         -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
+        -DSKIP_BY_TX_ID=ON \
         .. && \
     make -j$(nproc) chain_test test_fixed_string && \
     ./tests/chain_test && \
@@ -70,6 +71,7 @@ RUN \
         -DBUILD_STEEM_TESTNET=ON \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=ON \
+        -DSKIP_BY_TX_ID=ON \
         -DCHAINBASE_CHECK_LOCKING=OFF \
         .. && \
     make -j$(nproc) chain_test && \
@@ -89,6 +91,7 @@ RUN \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
         -DCLEAR_VOTES=ON \
+        -DSKIP_BY_TX_ID=ON \
         -DBUILD_STEEM_TESTNET=OFF \
         .. \
     && \
@@ -110,6 +113,7 @@ RUN \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=OFF \
         -DCLEAR_VOTES=OFF \
+        -DSKIP_BY_TX_ID=ON \
         -DBUILD_STEEM_TESTNET=OFF \
         .. \
     && \

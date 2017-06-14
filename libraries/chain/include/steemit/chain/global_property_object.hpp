@@ -141,7 +141,7 @@ namespace steemit { namespace chain {
           * "wasting" voting power through spillover; any user voting faster than this rate will have
           * their votes reduced.
           */
-         uint32_t vote_regeneration_per_day = 40;
+         uint32_t vote_power_reserve_rate = 40;
    };
 
    typedef multi_index_container<
@@ -184,6 +184,6 @@ FC_REFLECT( steemit::chain::dynamic_global_property_object,
              (last_irreversible_block_num)
              (max_virtual_bandwidth)
              (current_reserve_ratio)
-             (vote_regeneration_per_day)
+             (vote_power_reserve_rate)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, steemit::chain::dynamic_global_property_index )

@@ -123,6 +123,7 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
             undo_all();
             FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
                ("rev", revision())("head_block", head_block_num()) );
+            validate_invariants();
          });
 
          if( head_block_num() )
@@ -245,21 +246,45 @@ bool database::is_known_transaction( const transaction_id_type& id )const
    return trx_idx.find( id ) != trx_idx.end();
 } FC_CAPTURE_AND_RETHROW() }
 
-block_id_type database::get_block_id_for_num( uint32_t block_num )const
+block_id_type database::find_block_id_for_num( uint32_t block_num )const
 {
    try
    {
+      if( block_num == 0 )
+         return block_id_type();
+
+      // Reversible blocks are *usually* in the TAPOS buffer.  Since this
+      // is the fastest check, we do it first.
+      block_summary_id_type bsid = block_num & 0xFFFF;
+      const block_summary_object* bs = find< block_summary_object, by_id >( bsid );
+      if( bs != nullptr )
+      {
+         if( protocol::block_header::num_from_id(bs->block_id) == block_num )
+            return bs->block_id;
+      }
+
+      // Next we query the block log.   Irreversible blocks are here.
       auto b = _block_log.read_block_by_num( block_num );
       if( b.valid() )
          return b->id();
 
-      auto results = _fork_db.fetch_block_by_number( block_num );
-      FC_ASSERT( results.size() == 1 );
-         return results[0]->data.id();
+      // Finally we query the fork DB.
+      shared_ptr< fork_item > fitem = _fork_db.fetch_block_on_main_branch_by_number( block_num );
+      if( fitem )
+         return fitem->id;
 
+      return block_id_type();
    }
    FC_CAPTURE_AND_RETHROW( (block_num) )
 }
+
+block_id_type database::get_block_id_for_num( uint32_t block_num )const
+{
+   block_id_type bid = find_block_id_for_num( block_num );
+   FC_ASSERT( bid != block_id_type() );
+   return bid;
+}
+
 
 optional<signed_block> database::fetch_block_by_id( const block_id_type& id )const
 { try {
@@ -499,6 +524,22 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    return result;
 }
 
+void database::_maybe_warn_multiple_production( uint32_t height )const
+{
+   auto blocks = _fork_db.fetch_block_by_number( height );
+   if( blocks.size() > 1 )
+   {
+      vector< std::pair< account_name_type, fc::time_point_sec > > witness_time_pairs;
+      for( const auto& b : blocks )
+      {
+         witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
+      }
+
+      ilog( "Encountered block num collision at block ${n} due to a fork, witnesses are:", ("n", height)("w", witness_time_pairs) );
+   }
+   return;
+}
+
 bool database::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = get_node_properties().skip_flags;
@@ -507,6 +548,8 @@ bool database::_push_block(const signed_block& new_block)
    if( !(skip&skip_fork_db) )
    {
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
+      _maybe_warn_multiple_production( new_head->num );
+
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if( new_head->data.previous != head_block_id() )
       {
@@ -1150,7 +1193,8 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) ) // TODO: this check can be removed after hard fork
+   #warning( "TODO: Remove this check after HF 19" )
+   if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) )
       modify( a, [&](account_object& acc )
       {
          acc.witnesses_voted_for = 0;
@@ -1482,8 +1526,14 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
       {
          fill_comment_reward_context_local_state( ctx, comment );
 
-         const share_type reward = has_hardfork( STEEMIT_HARDFORK_0_17__774 ) ?
-            util::get_rshare_reward( ctx, get_reward_fund( comment ) ) : util::get_rshare_reward( ctx );
+         if( has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+         {
+            const auto rf = get_reward_fund( comment );
+            ctx.reward_curve = rf.author_reward_curve;
+            ctx.content_constant = rf.content_constant;
+         }
+
+         const share_type reward = util::get_rshare_reward( ctx );
          uint128_t reward_tokens = uint128_t( reward.value );
 
          if( reward_tokens > 0 )
@@ -1532,7 +1582,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
          }
 
          if( !has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-            adjust_rshares2( comment, util::calculate_claims( comment.net_rshares.value ), 0 );
+            adjust_rshares2( comment, util::evaluate_reward_curve( comment.net_rshares.value ), 0 );
       }
 
       modify( comment, [&]( comment_object& c )
@@ -1613,7 +1663,15 @@ void database::process_comment_cashout()
       // Add all reward funds to the local cache and decay their recent rshares
       modify( *itr, [&]( reward_fund_object& rfo )
       {
-         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / STEEMIT_RECENT_RSHARES_DECAY_RATE.to_seconds();
+         fc::microseconds decay_rate;
+
+         #warning( "TODO: Remove temp reward fund after HF 19" )
+         if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
+            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19;
+         else
+            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17;
+
+         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / decay_rate.to_seconds();
          rfo.last_update = head_block_time();
       });
 
@@ -1634,12 +1692,15 @@ void database::process_comment_cashout()
    //  add all rshares about to be cashed out to the reward funds. This ensures equal satoshi per rshare payment
    if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
    {
+      const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
+
       while( current != cidx.end() && current->cashout_time <= head_block_time() )
       {
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
-            funds[ rf.id._id ].recent_claims += util::calculate_claims( current->net_rshares.value, rf );
+            funds[ rf.id._id ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
+            funds[ STEEMIT_TEMP_LINEAR_REWARD_FUND_ID ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
          }
 
          ++current;
@@ -2678,7 +2739,15 @@ try {
    for( int i = 0; i < wso.num_scheduled_witnesses; i++ )
    {
       const auto& wit = get_witness( wso.current_shuffled_witnesses[i] );
-      if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE &&
+      if( has_hardfork( STEEMIT_HARDFORK_0_19__822 ) )
+      {
+         if( now < wit.last_sbd_exchange_update + STEEMIT_MAX_FEED_AGE_SECONDS
+            && !wit.sbd_exchange_rate.is_null() )
+         {
+            feeds.push_back( wit.sbd_exchange_rate );
+         }
+      }
+      else if( wit.last_sbd_exchange_update < now + STEEMIT_MAX_FEED_AGE_SECONDS &&
           !wit.sbd_exchange_rate.is_null() )
       {
          feeds.push_back( wit.sbd_exchange_rate );
@@ -3048,32 +3117,9 @@ void database::update_last_irreversible_block()
       {
          while( log_head_num < dpo.last_irreversible_block_num )
          {
-            signed_block* block_ptr;
-            auto blocks = _fork_db.fetch_block_by_number( log_head_num + 1 );
-
-            if( blocks.size() == 1 )
-               block_ptr = &( blocks[0]->data );
-            else
-            {
-               vector< std::pair< account_name_type, fc::time_point_sec > > witness_time_pairs;
-               for( const auto& b : blocks )
-               {
-                  witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
-               }
-
-               ilog( "Encountered a block num collision due to a fork. Walking the current fork to determine the correct block. block_num:${n}", ("n", log_head_num + 1) ); // TODO: Delete when we know this code works as intended
-               ilog( "Colliding blocks produced by witnesses at times: ${w}", ("w", witness_time_pairs) );
-
-               auto next = _fork_db.head();
-               while( next.get() != nullptr && next->num > log_head_num + 1 )
-                  next = next->prev.lock();
-
-               FC_ASSERT( next.get() != nullptr, "Current fork in the fork database does not contain the last_irreversible_block" );
-
-               block_ptr = &( next->data );
-            }
-
-            _block_log.append( *block_ptr );
+            shared_ptr< fork_item > block = _fork_db.fetch_block_on_main_branch_by_number( log_head_num+1 );
+            FC_ASSERT( block, "Current fork in the fork database does not contain the last_irreversible_block" );
+            _block_log.append( block->data );
             log_head_num++;
          }
 
@@ -3519,6 +3565,9 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_18 == 18, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_18 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_18_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_18 ] = STEEMIT_HARDFORK_0_18_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_19 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_19_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_19 ] = STEEMIT_HARDFORK_0_19_VERSION;
 
 
    const auto& hardforks = get_hardfork_property_object();
@@ -3719,8 +3768,8 @@ void database::apply_hardfork( uint32_t hardfork )
       case STEEMIT_HARDFORK_0_17:
          {
             static_assert(
-             STEEMIT_MAX_VOTED_WITNESSES_HF0 + STEEMIT_MAX_MINER_WITNESSES_HF0 + STEEMIT_MAX_RUNNER_WITNESSES_HF0 == STEEMIT_MAX_WITNESSES,
-             "HF0 witness counts must add up to STEEMIT_MAX_WITNESSES" );
+               STEEMIT_MAX_VOTED_WITNESSES_HF0 + STEEMIT_MAX_MINER_WITNESSES_HF0 + STEEMIT_MAX_RUNNER_WITNESSES_HF0 == STEEMIT_MAX_WITNESSES,
+               "HF0 witness counts must add up to STEEMIT_MAX_WITNESSES" );
             static_assert(
                STEEMIT_MAX_VOTED_WITNESSES_HF17 + STEEMIT_MAX_MINER_WITNESSES_HF17 + STEEMIT_MAX_RUNNER_WITNESSES_HF17 == STEEMIT_MAX_WITNESSES,
                "HF17 witness counts must add up to STEEMIT_MAX_WITNESSES" );
@@ -3745,11 +3794,27 @@ void database::apply_hardfork( uint32_t hardfork )
 #ifndef IS_TEST_NET
                rfo.recent_claims = STEEMIT_HF_17_RECENT_CLAIMS;
 #endif
+               rfo.author_reward_curve = curve_id::quadratic;
+               rfo.curation_reward_curve = curve_id::quadratic_curation;
+            });
+
+            auto linear_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
+            {
+               rfo.name = STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME;
+               rfo.last_update = head_block_time();
+               rfo.content_constant = 0;
+               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
+               rfo.percent_content_rewards = 0;
+               rfo.reward_balance = asset( 0, STEEM_SYMBOL );
+               rfo.recent_claims = 0;
+               rfo.author_reward_curve = curve_id::linear;
+               rfo.curation_reward_curve = curve_id::square_root;
             });
 
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
+            FC_ASSERT( linear_rf.id._id == STEEMIT_TEMP_LINEAR_REWARD_FUND_ID );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3805,6 +3870,66 @@ void database::apply_hardfork( uint32_t hardfork )
          break;
       case STEEMIT_HARDFORK_0_18:
          break;
+      case STEEMIT_HARDFORK_0_19:
+         {
+            modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& gpo )
+            {
+               gpo.vote_power_reserve_rate = 10;
+            });
+
+            const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
+            modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object &rfo )
+            {
+               #warning( "TODO: Replace with constant after HF 19" )
+               rfo.recent_claims = linear.recent_claims;
+               rfo.author_reward_curve = curve_id::linear;
+               rfo.curation_reward_curve = curve_id::square_root;
+            });
+
+            #warning( "TODO: Remove weight conversion after HF 19" )
+            const auto& cidx = get_index< comment_index, by_cashout_time >();
+            const auto& vidx = get_index< comment_vote_index, by_comment_voter >();
+
+            /*
+             * Iterator through all comments that have not yet been paid, setting their total vote weight to the sqrt weight
+             * and update their votes as well.
+             */
+            for( auto c_itr = cidx.begin(); c_itr != cidx.end() && c_itr->cashout_time < fc::time_point_sec::maximum(); ++c_itr )
+            {
+               modify( *c_itr, [&]( comment_object& c )
+               {
+                  c.total_vote_weight = c.total_sqrt_vote_weight;
+               });
+
+               for( auto v_itr = vidx.lower_bound( c_itr->id ); v_itr != vidx.end() && v_itr->comment == c_itr->id; ++v_itr )
+               {
+                  modify( *v_itr, [&]( comment_vote_object& v )
+                  {
+                     v.weight = v.sqrt_weight;
+                  });
+               }
+            }
+
+            #warning( "TODO: Remove if 0 delegation opjects are not created in pre HF19 consensus" )
+            /* Remove all 0 delegation objects */
+            vector< const vesting_delegation_object* > to_remove;
+            const auto& delegation_idx = get_index< vesting_delegation_index, by_id >();
+            auto delegation_itr = delegation_idx.begin();
+
+            while( delegation_itr != delegation_idx.end() )
+            {
+               if( delegation_itr->vesting_shares.amount == 0 )
+                  to_remove.push_back( &(*delegation_itr) );
+
+               ++delegation_itr;
+            }
+
+            for( const vesting_delegation_object* delegation_ptr: to_remove )
+            {
+               remove( *delegation_ptr );
+            }
+         }
+         break;
       default:
          break;
    }
@@ -3850,7 +3975,7 @@ void database::validate_invariants()const
       /// verify no witness has too many votes
       const auto& witness_idx = get_index< witness_index >().indices();
       for( auto itr = witness_idx.begin(); itr != witness_idx.end(); ++itr )
-         FC_ASSERT( itr->votes < gpo.total_vesting_shares.amount, "", ("itr",*itr) );
+         FC_ASSERT( itr->votes <= gpo.total_vesting_shares.amount, "", ("itr",*itr) );
 
       for( auto itr = account_idx.begin(); itr != account_idx.end(); ++itr )
       {
@@ -3930,7 +4055,7 @@ void database::validate_invariants()const
       {
          if( itr->net_rshares.value > 0 )
          {
-            auto delta = util::calculate_claims( itr->net_rshares.value );
+            auto delta = util::evaluate_reward_curve( itr->net_rshares.value );
             total_rshares2 += delta;
          }
       }
@@ -4001,7 +4126,7 @@ void database::perform_vesting_share_split( uint32_t magnitude )
       for( const auto& c : comments )
       {
          if( c.net_rshares.value > 0 )
-            adjust_rshares2( c, 0, util::calculate_claims( c.net_rshares.value ) );
+            adjust_rshares2( c, 0, util::evaluate_reward_curve( c.net_rshares.value ) );
       }
 
    }

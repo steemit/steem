@@ -249,6 +249,14 @@ namespace steemit { namespace chain {
          time_point_sec    effective_date;
    };
 
+   enum curve_id
+   {
+      quadratic,
+      quadratic_curation,
+      linear,
+      square_root
+   };
+
    class reward_fund_object : public object< reward_fund_object_type, reward_fund_object >
    {
       public:
@@ -268,6 +276,8 @@ namespace steemit { namespace chain {
          uint128_t               content_constant = 0;
          uint16_t                percent_curation_rewards = 0;
          uint16_t                percent_content_rewards = 0;
+         curve_id                author_reward_curve;
+         curve_id                curation_reward_curve;
    };
 
    struct by_price;
@@ -479,6 +489,8 @@ namespace steemit { namespace chain {
 #include <steemit/chain/comment_object.hpp>
 #include <steemit/chain/account_object.hpp>
 
+FC_REFLECT_ENUM( steemit::chain::curve_id,
+                  (quadratic)(quadratic_curation)(linear)(square_root))
 
 FC_REFLECT( steemit::chain::limit_order_object,
              (id)(created)(expiration)(seller)(orderid)(for_sale)(sell_price) )
@@ -524,5 +536,7 @@ FC_REFLECT( steemit::chain::reward_fund_object,
             (content_constant)
             (percent_curation_rewards)
             (percent_content_rewards)
+            (author_reward_curve)
+            (curation_reward_curve)
          )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::reward_fund_object, steemit::chain::reward_fund_index )

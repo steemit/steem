@@ -86,6 +86,8 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       std::shared_ptr< steemit::follow::follow_api > _follow_api;
 
       boost::signals2::scoped_connection       _block_applied_connection;
+
+      bool _disable_get_block = false;
 };
 
 applied_operation::applied_operation() {}
@@ -202,6 +204,8 @@ database_api_impl::database_api_impl( const steemit::app::api_context& ctx )
 {
    wlog("creating database api ${x}", ("x",int64_t(this)) );
 
+   _disable_get_block = ctx.app._disable_get_block;
+
    try
    {
       ctx.app.get_plugin< follow::follow_plugin >( FOLLOW_PLUGIN_NAME );
@@ -225,6 +229,8 @@ void database_api::on_api_startup() {}
 
 optional<block_header> database_api::get_block_header(uint32_t block_num)const
 {
+   FC_ASSERT( !my->_disable_get_block, "get_block_header is disabled on this node." );
+
    return my->_db.with_read_lock( [&]()
    {
       return my->get_block_header( block_num );
@@ -241,6 +247,8 @@ optional<block_header> database_api_impl::get_block_header(uint32_t block_num) c
 
 optional<signed_block_api_obj> database_api::get_block(uint32_t block_num)const
 {
+   FC_ASSERT( !my->_disable_get_block, "get_block is disabled on this node." );
+
    return my->_db.with_read_lock( [&]()
    {
       return my->get_block( block_num );
@@ -1140,9 +1148,12 @@ void database_api::set_pending_payout( discussion& d )const
    {
       uint128_t vshares;
       if( my->_db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-         vshares = steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 , my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) ) );
+      {
+         const auto& rf = my->_db.get_reward_fund( my->_db.get_comment( d.author, d.permlink ) );
+         vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
+      }
       else
-         vshares = steemit::chain::util::calculate_claims( d.net_rshares.value > 0 ? d.net_rshares.value : 0 );
+         vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value ) : 0;
 
       u256 r2 = to256(vshares); //to256(abs_net_rshares);
       r2 *= pot.amount.value;
@@ -2345,6 +2356,9 @@ state database_api::get_state( string path )const
 
 annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const
 {
+#ifdef SKIP_BY_TX_ID
+   return annotated_signed_transaction();
+#else
    return my->_db.with_read_lock( [&](){
       const auto& idx = my->_db.get_index<operation_index>().indices().get<by_transaction_id>();
       auto itr = idx.lower_bound( id );
@@ -2359,6 +2373,7 @@ annotated_signed_transaction database_api::get_transaction( transaction_id_type 
       }
       FC_ASSERT( false, "Unknown Transaction ${t}", ("t",id));
    });
+#endif
 }
 
 
