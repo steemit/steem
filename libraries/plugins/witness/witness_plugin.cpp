@@ -159,6 +159,62 @@ namespace detail
                "The comment is archived" );
          }
       }
+
+      void operator()( const transfer_operation& o )const
+      {
+         if( o.memo.length() == 0 ) return;
+
+         try
+         {
+            vector< public_key_type > keys;
+            
+            // Check if memo is private key in authorities
+            keys.push_back( fc::ecc::extended_private_key::from_base58( o.memo ).get_public_key() );
+
+            // Get possible keys if memo was an account password
+            string owner_seed = o.from + "owner" + o.memo;
+            auto owner_secret = fc::sha256::hash( owner_seed.c_str(), owner_seed.size() );
+            keys.push_back( fc::ecc::private_key::regenerate( owner_secret ).get_public_key() );
+
+            string active_seed = o.from + "active" + o.memo;
+            auto active_secret = fc::sha256::hash( active_seed.c_str(), active_seed.size() );
+            keys.push_back( fc::ecc::private_key::regenerate( active_secret ).get_public_key() );
+
+            string posting_seed = o.from + "posting" + o.memo;
+            auto posting_secret = fc::sha256::hash( posting_seed.c_str(), posting_seed.size() );
+            keys.push_back( fc::ecc::private_key::regenerate( posting_secret ).get_public_key() );
+
+            const auto& auth = _db.get< account_authority_object, chain::by_account >( o.from );
+
+            // Check keys against public keys in authorites
+            for( auto& key_weight_pair : auth.owner.key_auths )
+            {
+               for( auto& key : keys )
+                  STEEMIT_ASSERT( key_weight_pair.first != key, chain::plugin_exception,
+                        "Detected private owner key in memo field. You should change your owner keys." );
+            }
+
+            for( auto& key_weight_pair : auth.owner.key_auths )
+            {
+               for( auto& key : keys )
+                  STEEMIT_ASSERT( key_weight_pair.first != key, chain::plugin_exception,
+                        "Detected private active key in memo field. You should change your owner keys." );
+            }
+
+            for( auto& key_weight_pair : auth.owner.key_auths )
+            {
+               for( auto& key : keys )
+                  STEEMIT_ASSERT( key_weight_pair.first != key, chain::plugin_exception,
+                        "Detected private posting key in memo field. You should change your owner keys." );
+            }
+
+            const auto& memo_key = _db.get< account_object, by_name >( o.from ).memo_key;
+            for( auto& key : keys )
+                  STEEMIT_ASSERT( memo_key != key, chain::plugin_exception,
+                        "Detected private posting key in memo field. You should change your owner keys." );
+         }
+         catch( fc::parse_error_exception& ) {} /* Fine, don't need to do anything */
+      }
    };
 
    void witness_plugin_impl::pre_transaction( const signed_transaction& trx )
