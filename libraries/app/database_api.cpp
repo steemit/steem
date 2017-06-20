@@ -33,10 +33,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       ~database_api_impl();
 
       // Subscriptions
-      void set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter );
-      void set_pending_transaction_callback( std::function<void(const variant&)> cb );
       void set_block_applied_callback( std::function<void(const variant& block_id)> cb );
-      void cancel_all_subscriptions();
 
       // Blocks and transactions
       optional<block_header> get_block_header(uint32_t block_num)const;
@@ -77,9 +74,6 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       // signal handlers
       void on_applied_block( const chain::signed_block& b );
 
-      mutable fc::bloom_filter                _subscribe_filter;
-      std::function<void(const fc::variant&)> _subscribe_callback;
-      std::function<void(const fc::variant&)> _pending_trx_callback;
       std::function<void(const fc::variant&)> _block_applied_callback;
 
       steemit::chain::database&                _db;
@@ -114,41 +108,6 @@ void find_accounts( set<string>& accounts, const discussion& d ) {
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-void database_api::set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter )
-{
-   my->_db.with_read_lock( [&]()
-   {
-      my->set_subscribe_callback( cb, clear_filter );
-   });
-}
-
-void database_api_impl::set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter )
-{
-   _subscribe_callback = cb;
-   if( clear_filter || !cb )
-   {
-      static fc::bloom_parameters param;
-      param.projected_element_count    = 10000;
-      param.false_positive_probability = 1.0/10000;
-      param.maximum_size = 1024*8*8*2;
-      param.compute_optimal_parameters();
-      _subscribe_filter = fc::bloom_filter(param);
-   }
-}
-
-void database_api::set_pending_transaction_callback( std::function<void(const variant&)> cb )
-{
-   my->_db.with_read_lock( [&]()
-   {
-      my->set_pending_transaction_callback( cb );
-   });
-}
-
-void database_api_impl::set_pending_transaction_callback( std::function<void(const variant&)> cb )
-{
-   _pending_trx_callback = cb;
-}
-
 void database_api::set_block_applied_callback( std::function<void(const variant& block_id)> cb )
 {
    my->_db.with_read_lock( [&]()
@@ -173,19 +132,6 @@ void database_api_impl::set_block_applied_callback( std::function<void(const var
 {
    _block_applied_callback = cb;
    _block_applied_connection = connect_signal( _db.applied_block, *this, &database_api_impl::on_applied_block );
-}
-
-void database_api::cancel_all_subscriptions()
-{
-   my->_db.with_read_lock( [&]()
-   {
-      my->cancel_all_subscriptions();
-   });
-}
-
-void database_api_impl::cancel_all_subscriptions()
-{
-   set_subscribe_callback( std::function<void(const fc::variant&)>(), true);
 }
 
 //////////////////////////////////////////////////////////////////////
