@@ -122,16 +122,6 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
                  ("f", wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ) )
                  ("p", o.fee) );
    }
-   else if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__818 ) )
-   {
-      #warning( "TODO: Remove after HF19. Entire conditional might be able to be removed." )
-      if( _db.is_producing() )
-         FC_ASSERT( false, "account_create_operation is temporarily disabled. Please use account_create_with_delegation_operation instead" );
-      const witness_schedule_object& wso = _db.get_witness_schedule_object();
-      FC_ASSERT( o.fee >= wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ), "Insufficient Fee: ${f} required, ${p} provided.",
-                 ("f", wso.median_props.account_creation_fee * asset( STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, STEEM_SYMBOL ) )
-                 ("p", o.fee) );
-   }
    else if( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
    {
       const witness_schedule_object& wso = _db.get_witness_schedule_object();
@@ -272,9 +262,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       auth.last_owner_update = fc::time_point_sec::min();
    });
 
-   #warning( "TODO: Check if not creating 0 delegation objects in HF19 passes consensus. Expectation is it should work." )
-   if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) && o.delegation.amount > 0 )
-      || !_db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) )
+   if( o.delegation.amount > 0 )
    {
       _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& vdo )
       {
@@ -383,10 +371,9 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__876 ) )
       FC_ASSERT( comment.cashout_time != fc::time_point_sec::maximum() );
 
-   #warning( "TODO: Remove is_producing check after HF19. Conditional may be removed entirely after HF." )
-   if( _db.is_producing() || _db.has_hardfork( STEEMIT_HARDFORK_0_19__977 ) ) {
+   if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__977 ) )
       FC_ASSERT( comment.net_rshares <= 0, "Cannot delete a comment with net positive votes." );
-   }
+   
    if( comment.net_rshares > 0 ) return;
 
    const auto& vote_idx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
@@ -1305,7 +1292,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
       old_rshares = util::evaluate_reward_curve( old_rshares );
 
       uint64_t max_vote_weight = 0;
-      uint64_t sqrt_max_vote_weight = 0;
 
       /** this verifies uniqueness of voter
        *
@@ -1358,24 +1344,11 @@ void vote_evaluator::do_apply( const vote_operation& o )
                if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
                {
                   const auto& reward_fund = _db.get_reward_fund( comment );
-                  uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
-                  uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, reward_fund.curation_reward_curve, reward_fund.content_constant ).to_uint64();
+                  auto curve = !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) && comment.created > STEEMIT_HF_19_SQRT_PRE_CALC 
+                                 ? curve_id::square_root : reward_fund.curation_reward_curve;
+                  uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
+                  uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
                   cv.weight = new_weight - old_weight;
-                  #warning( "TODO: After HF19 caclulate which comment was the first to be paid on sqrt curation and activate the logic based on time" )
-
-#ifndef IS_TEST_NET
-/*
- * Disabling this check so we can test the precalculation logic.
- * It is not needed on live because the precalculation is only needed pre HF19
- */
-                  if( !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) )
-#endif
-                  {
-                     old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve_id::square_root ).to_uint64();
-                     new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve_id::square_root ).to_uint64();
-                     cv.sqrt_weight = new_weight - old_weight;
-                     sqrt_max_vote_weight = cv.sqrt_weight;
-                  }
                }
                else if ( _db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
                {
@@ -1402,15 +1375,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
                w *= delta_t;
                w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
                cv.weight = w.to_uint64();
-#ifndef IS_TEST_NET
-               if( _db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
-#endif
-               {
-                  uint128_t w(sqrt_max_vote_weight);
-                  w *= delta_t;
-                  w /= STEEMIT_REVERSE_AUCTION_WINDOW_SECONDS;
-                  cv.sqrt_weight = w.to_uint64();
-               }
             }
          }
          else
@@ -1424,7 +1388,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          _db.modify( comment, [&]( comment_object& c )
          {
             c.total_vote_weight += max_vote_weight;
-            c.total_sqrt_vote_weight += sqrt_max_vote_weight;
          });
       }
       if( !_db.has_hardfork( STEEMIT_HARDFORK_0_17__774) )
@@ -1523,7 +1486,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
       _db.modify( comment, [&]( comment_object& c )
       {
          c.total_vote_weight -= itr->weight;
-         c.total_sqrt_vote_weight -= itr->sqrt_weight;
       });
 
       _db.modify( *itr, [&]( comment_vote_object& cv )
@@ -1532,7 +1494,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
          cv.vote_percent = o.weight;
          cv.last_update = _db.head_block_time();
          cv.weight = 0;
-         cv.sqrt_weight = 0;
          cv.num_changes += 1;
       });
 
@@ -2160,9 +2121,12 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
 {
    const auto& acnt = _db.get_account( op.account );
 
-   FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM." );
-   FC_ASSERT( op.reward_sbd <= acnt.reward_sbd_balance, "Cannot claim that much SBD." );
-   FC_ASSERT( op.reward_vests <= acnt.reward_vesting_balance, "Cannot claim that much VESTS." );
+   FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}",
+      ("c", op.reward_steem)("a", acnt.reward_steem_balance) );
+   FC_ASSERT( op.reward_sbd <= acnt.reward_sbd_balance, "Cannot claim that much SBD. Claim: ${c} Actual: ${a}",
+      ("c", op.reward_sbd)("a", acnt.reward_sbd_balance) );
+   FC_ASSERT( op.reward_vests <= acnt.reward_vesting_balance, "Cannot claim that much VESTS. Claim: ${c} Actual: ${a}",
+      ("c", op.reward_vests)("a", acnt.reward_vesting_balance) );
 
    asset reward_vesting_steem_to_move = asset( 0, STEEM_SYMBOL );
    if( op.reward_vests == acnt.reward_vesting_balance )
@@ -2272,7 +2236,6 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
             FC_ASSERT( delegation->vesting_shares.amount > 0, "Delegation would set vesting_shares to zero, but it is already zero");
          }
       }
-      #warning( "TODO: Check and remove conditional after HF19" )
       else
       {
          FC_ASSERT( delta >= min_update, "Steem Power decrease is not enough of a difference. min_update: ${min}", ("min", min_update) );

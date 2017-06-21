@@ -78,8 +78,6 @@ namespace steemit { namespace chain {
          time_point_sec    cashout_time; /// 24 hours from the weighted average of vote time
          time_point_sec    max_cashout_time;
          uint64_t          total_vote_weight = 0; /// the total weight of voting rewards, used to calculate pro-rata share of curation payouts
-         #warning( "Remove total_sqrt_vote_weight after HF 19" )
-         uint64_t          total_sqrt_vote_weight = 0; /// Temporary total weight of votes for post hf19 curation reward curve
 
          uint16_t          reward_weight = 0;
 
@@ -122,8 +120,6 @@ namespace steemit { namespace chain {
          account_id_type   voter;
          comment_id_type   comment;
          uint64_t          weight = 0; ///< defines the score this vote receives, used by vote payout calc. 0 if a negative vote or changed votes.
-         #warning( "Remove sqrt_weight after HF 19. It is a temporary field" )
-         uint64_t          sqrt_weight = 0; ///< Temporary vote weight for post hf19 curation curve
          int64_t           rshares = 0; ///< The number of rshares this vote is responsible for
          int16_t           vote_percent = 0; ///< The percent weight of the vote
          time_point_sec    last_update; ///< The time of the last update of the vote
@@ -254,13 +250,13 @@ FC_REFLECT( steemit::chain::comment_object,
              (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
-             (total_vote_weight)(total_sqrt_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
+             (total_vote_weight)(reward_weight)(total_payout_value)(curator_payout_value)(beneficiary_payout_value)(author_rewards)(net_votes)(root_comment)
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
 
 FC_REFLECT( steemit::chain::comment_vote_object,
-             (id)(voter)(comment)(weight)(sqrt_weight)(rshares)(vote_percent)(last_update)(num_changes)
+             (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_vote_object, steemit::chain::comment_vote_index )
