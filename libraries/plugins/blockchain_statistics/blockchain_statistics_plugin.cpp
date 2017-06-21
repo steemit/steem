@@ -247,29 +247,6 @@ struct operation_process
 void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
 {
    auto& db = _self.database();
-
-   if( b.block_num() == 1 )
-   {
-      db.create< bucket_object >( [&]( bucket_object& bo )
-      {
-         bo.open = b.timestamp;
-         bo.seconds = 0;
-         bo.blocks = 1;
-      });
-   }
-   else
-   {
-      db.modify( db.get( bucket_id_type() ), [&]( bucket_object& bo )
-      {
-         bo.blocks++;
-      });
-   }
-
-   _current_buckets.clear();
-   _current_buckets.insert( bucket_id_type() );
-
-   const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
-
    uint32_t trx_size = 0;
    uint32_t num_trx =b.transactions.size();
 
@@ -278,6 +255,31 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
       trx_size += fc::raw::pack_size( trx );
    }
 
+   if( b.block_num() == 1 )
+   {
+      db.create< bucket_object >( [&]( bucket_object& bo )
+      {
+         bo.open = b.timestamp;
+         bo.seconds = 0;
+         bo.blocks = 1;
+         bo.transactions = num_trx;
+         bo.bandwidth = trx_size;
+      });
+   }
+   else
+   {
+      db.modify( db.get( bucket_id_type() ), [&]( bucket_object& bo )
+      {
+         bo.blocks++;
+         bo.transactions += num_trx;
+         bo.bandwidth += trx_size;
+      });
+   }
+
+   _current_buckets.clear();
+   _current_buckets.insert( bucket_id_type() );
+
+   const auto& bucket_idx = db.get_index< bucket_index >().indices().get< by_bucket >();
 
    for( auto bucket : _tracked_buckets )
    {
@@ -292,6 +294,8 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
                bo.open = open;
                bo.seconds = bucket;
                bo.blocks = 1;
+               bo.transactions = num_trx;
+               bo.bandwidth = trx_size;
             }).id );
 
          if( _maximum_history_per_bucket_size > 0 )
@@ -318,16 +322,12 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
          db.modify( *itr, [&]( bucket_object& bo )
          {
             bo.blocks++;
+            bo.transactions += num_trx;
+            bo.bandwidth += trx_size;
          });
 
          _current_buckets.insert( itr->id );
       }
-
-      db.modify( *itr, [&]( bucket_object& bo )
-      {
-         bo.transactions += num_trx;
-         bo.bandwidth += trx_size;
-      });
    }
 }
 
@@ -357,7 +357,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
          auto& account = db.get_account( op.account );
          const auto& bucket = db.get(bucket_id);
 
-         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS;
+         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS;  //TODO: Fix to account for vesting period changes
          if( op.vesting_shares.amount > 0 && new_vesting_withdrawal_rate == 0 )
             new_vesting_withdrawal_rate = 1;
 
