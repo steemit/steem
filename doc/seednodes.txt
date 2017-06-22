@@ -29,3 +29,4 @@ seed.bhuz.info:2001            # bhuz
 78.46.95.157:2001              # pcste
 seed.steemviz.com:2001         # ausbitbank
 45.76.13.167:2001              # chitty 
+steem-seed.lukestokes.info:2001 # lukestokes
