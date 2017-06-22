@@ -957,6 +957,11 @@ class wallet_api
       void encrypt_keys();
 
       /**
+       * Checks memos against private keys on account and imported in wallet
+       */
+      void check_memo( const string& memo, const account_api_obj& account )const;
+
+      /**
        *  Returns the encrypted memo if memo starts with '#' otherwise returns memo
        */
       string get_encrypted_memo( string from, string to, string memo );

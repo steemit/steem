@@ -164,7 +164,7 @@ namespace detail
       const auto& memo_key = account.memo_key;
       for( auto& key : keys )
          STEEMIT_ASSERT( memo_key != key, chain::plugin_exception,
-            "Detected private posting key in memo field. You should change your memo key." );
+            "Detected private memo key in memo field. You should change your memo key." );
    }
 
    struct operation_visitor
