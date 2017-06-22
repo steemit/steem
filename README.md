@@ -72,6 +72,8 @@ Future invocations of your wallet can be simply be made with:
 
     docker exec -ti steemd-wallet /usr/local/steemd-default/bin/cli-wallet --server-rpc-endpoint=wss://steemd.steemit.com
 
+**WARNING:** If you want to keep your wallet file, you must copy it out of the container before you delete the container.
+
 # Environment variables
 
 There are quite a few environment variables that can be set to run steemd in different ways:
