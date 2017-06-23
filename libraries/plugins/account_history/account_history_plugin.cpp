@@ -35,7 +35,9 @@ class account_history_plugin_impl
 
       account_history_plugin& _self;
       flat_map< account_name_type, account_name_type > _tracked_accounts;
-      bool                    _filter_content = false;
+      bool                                             _filter_content = false;
+      bool                                             _blacklist = false;
+      flat_set< string >                               _list;
 };
 
 account_history_plugin_impl::~account_history_plugin_impl()
@@ -52,11 +54,6 @@ struct operation_visitor
    const operation_notification& _note;
    const operation_object*& new_obj;
    account_name_type item;
-
-   /// ignore these ops
-   /*
-   */
-
 
    template<typename Op>
    void operator()( Op&& )const
@@ -94,80 +91,16 @@ struct operation_visitor
    }
 };
 
-
-
-struct operation_visitor_filter : operation_visitor {
-   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i ):operation_visitor(db,note,n,i){}
-
-   void operator()( const comment_operation& )const {}
-   void operator()( const vote_operation& )const {}
-   void operator()( const delete_comment_operation& )const{}
-   void operator()( const custom_json_operation& )const {}
-   void operator()( const custom_operation& )const {}
-   void operator()( const curation_reward_operation& )const {}
-   void operator()( const fill_order_operation& )const {}
-   void operator()( const limit_order_create_operation& )const {}
-   void operator()( const limit_order_cancel_operation& )const {}
-   void operator()( const pow_operation& )const {}
-
-   void operator()( const transfer_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const transfer_to_vesting_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const account_create_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const account_update_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const transfer_to_savings_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const transfer_from_savings_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const cancel_transfer_from_savings_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_transfer_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_dispute_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_release_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_approve_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   template<typename Op>
-   void operator()( Op&& op )const{ }
-};
+#define check_list(checked_operation)                                   \
+   if(_list.find(#checked_operation) != _list.end())                    \
+   {                                                                    \
+      if(!_blacklist)                                                   \
+         note.op.visit( operation_visitor(db, note, new_obj, item) );   \
+   } else {                                                             \
+      if(_blacklist)                                                    \
+         note.op.visit( operation_visitor(db, note, new_obj, item) );   \
+   }                                                                    \
+   break;
 
 void account_history_plugin_impl::on_operation( const operation_notification& note )
 {
@@ -206,14 +139,77 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
       }
 
       if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) ) {
-         if( _filter_content )
-            note.op.visit( operation_visitor_filter(db, note, new_obj, item) );
-         else
+         if(_filter_content)
+         {
+            switch( note.op.which() ) {
+               case operation::tag<transfer_to_vesting_operation>::value:
+                  check_list(transfer_to_vesting_operation)
+               case operation::tag<withdraw_vesting_operation>::value:
+                  check_list(withdraw_vesting_operation)
+               case operation::tag<interest_operation>::value:
+                  check_list(interest_operation)
+               case operation::tag<transfer_operation>::value:
+                  check_list(transfer_operation)
+               case operation::tag<liquidity_reward_operation>::value:
+                  check_list(liquidity_reward_operation)
+               case operation::tag<author_reward_operation>::value:
+                  check_list(author_reward_operation)
+               case operation::tag<curation_reward_operation>::value:
+                  check_list(curation_reward_operation)
+               case operation::tag<comment_benefactor_reward_operation>::value:
+                  check_list(comment_benefactor_reward_operation)
+               case operation::tag<transfer_to_savings_operation>::value:
+                  check_list(transfer_to_savings_operation)
+               case operation::tag<transfer_from_savings_operation>::value:
+                  check_list(transfer_from_savings_operation)
+               case operation::tag<cancel_transfer_from_savings_operation>::value:
+                  check_list(cancel_transfer_from_savings_operation)
+               case operation::tag<escrow_transfer_operation>::value:
+                  check_list(escrow_transfer_operation)
+               case operation::tag<escrow_approve_operation>::value:
+                  check_list(escrow_approve_operation)
+               case operation::tag<escrow_dispute_operation>::value:
+                  check_list(escrow_dispute_operation)
+               case operation::tag<escrow_release_operation>::value:
+                  check_list(escrow_release_operation)
+               case operation::tag<fill_convert_request_operation>::value:
+                  check_list(fill_convert_request_operation)
+               case operation::tag<fill_order_operation>::value:
+                  check_list(fill_order_operation)
+               case operation::tag<claim_reward_balance_operation>::value:
+                  check_list(claim_reward_balance_operation)
+               case operation::tag<comment_operation>::value:
+                  check_list(comment_operation)
+               case operation::tag<limit_order_create_operation>::value:
+                  check_list(limit_order_create_operation)
+               case operation::tag<limit_order_cancel_operation>::value:
+                  check_list(limit_order_cancel_operation)
+               case operation::tag<vote_operation>::value:
+                  check_list(vote_operation)
+               case operation::tag<account_witness_vote_operation>::value:
+                  check_list(account_witness_vote_operation)
+               case operation::tag<account_witness_proxy_operation>::value:
+                  check_list(account_witness_proxy_operation)
+               case operation::tag<account_create_operation>::value:
+                  check_list(account_create_operation)
+               case operation::tag<account_update_operation>::value:
+                  check_list(account_update_operation)
+               case operation::tag<witness_update_operation>::value:
+                  check_list(witness_update_operation)
+               case operation::tag<pow_operation>::value:
+                  check_list(pow_operation)
+               case operation::tag<custom_operation>::value:
+                  check_list(custom_operation)
+               default:
+                  break;
+            }
+         } else {
             note.op.visit( operation_visitor(db, note, new_obj, item) );
+         }
       }
    }
 }
-
+#undef check_list
 } // end namespace detail
 
 account_history_plugin::account_history_plugin( application* app )
@@ -238,7 +234,8 @@ void account_history_plugin::plugin_set_program_options(
 {
    cli.add_options()
          ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
-         ("filter-posting-ops", "Ignore posting operations, only track transfers and account updates")
+         ("history-whitelist-ops", boost::program_options::value<string>(), "Defines a list of operations which will be explicitly logged.")
+         ("history-blacklist-ops", boost::program_options::value<string>(), "Defines a list of operations which will be explicitly ignored.")
          ;
    cfg.add(cli);
 }
@@ -250,8 +247,16 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 
    typedef pair<account_name_type,account_name_type> pairstring;
    LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
-   if( options.count( "filter-posting-ops" ) ) {
+   if( options.count( "history-whitelist-ops" ) ) {
       my->_filter_content = true;
+      my->_blacklist = false;
+      const std::string& listed_ops = options[ "history-whitelist-ops" ].as< string >();
+      my->_list = fc::json::from_string( listed_ops ).as< flat_set< string > >();
+   } else if( options.count( "history-blacklist-ops" ) ) {
+      my->_filter_content = true;
+      my->_blacklist = true;
+      const std::string& listed_ops = options[ "history-blacklist-ops" ].as< string >();
+      my->_list = fc::json::from_string( listed_ops ).as< flat_set< string > >();
    }
 }
 
