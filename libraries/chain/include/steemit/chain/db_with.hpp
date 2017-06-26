@@ -75,11 +75,27 @@ struct pending_transactions_restorer
                _db._push_transaction( tx );
             }
          }
+         catch( const transaction_expiration_exception& e )
+         {
+            dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
+               ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
+            dlog( "The invalid transaction caused exception ${e}", ("e", e.to_detail_string()) );
+            dlog( "${t}", ("t", tx) );
+         }
+         catch( const transaction_tapos_exception& e )
+         {
+            dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
+               ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
+            dlog( "The invalid transaction caused exception ${e}", ("e", e.to_detail_string()) );
+            dlog( "${t}", ("t", tx) );
+         }
          catch( const fc::exception& e )
          {
 
-            //wlog( "Pending transaction became invalid after switching to block ${b}  ${t}", ("b", _db.head_block_id())("t",_db.head_block_time()) );
-            //wlog( "The invalid pending transaction caused exception ${e}", ("e", e.to_detail_string() ) );
+            dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
+               ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
+            dlog( "The invalid pending transaction caused exception ${e}", ("e", e.to_detail_string() ) );
+            dlog( "${t}", ("t", tx) );
 
          }
       }
