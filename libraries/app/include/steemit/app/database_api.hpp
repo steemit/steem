@@ -184,6 +184,11 @@ namespace steemit {
             fc::variant_object get_config() const;
 
             /**
+             * @brief Retrieve database unused memory amount
+             */
+            size_t get_free_memory() const;
+
+            /**
              * @brief Return a JSON description of object representations
              * @return JSON description of object representations in a string
              */
@@ -572,6 +577,7 @@ FC_API(steemit::app::database_api,
 
                 // Globals
                 (get_config)
+                (get_free_memory)
                 (get_dynamic_global_properties)
                 (get_chain_properties)
                 (get_feed_history)
