@@ -3370,8 +3370,9 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                   acnt.sbd_balance += interest_paid;
                   acnt.sbd_seconds = 0;
                   acnt.sbd_last_interest_payment = head_block_time();
-
-                  push_virtual_operation( interest_operation( a.name, interest_paid ) );
+                  
+                  if(interest > 0)
+                     push_virtual_operation( interest_operation( a.name, interest_paid ) );
 
                   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {
@@ -3415,7 +3416,8 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
                   acnt.savings_sbd_seconds = 0;
                   acnt.savings_sbd_last_interest_payment = head_block_time();
 
-                  push_virtual_operation( interest_operation( a.name, interest_paid ) );
+                  if(interest > 0)
+                     push_virtual_operation( interest_operation( a.name, interest_paid ) );
 
                   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {
