@@ -262,7 +262,7 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
       auth.last_owner_update = fc::time_point_sec::min();
    });
 
-   if( o.delegation.amount > 0 )
+   if( o.delegation.amount > 0 || !_db.has_hardfork( STEEMIT_HARDFORK_0_19__997 ) )
    {
       _db.create< vesting_delegation_object >( [&]( vesting_delegation_object& vdo )
       {
@@ -373,7 +373,7 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
 
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_19__977 ) )
       FC_ASSERT( comment.net_rshares <= 0, "Cannot delete a comment with net positive votes." );
-   
+
    if( comment.net_rshares > 0 ) return;
 
    const auto& vote_idx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
@@ -1344,7 +1344,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
                if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
                {
                   const auto& reward_fund = _db.get_reward_fund( comment );
-                  auto curve = !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) && comment.created > STEEMIT_HF_19_SQRT_PRE_CALC 
+                  auto curve = !_db.has_hardfork( STEEMIT_HARDFORK_0_19__1052 ) && comment.created > STEEMIT_HF_19_SQRT_PRE_CALC
                                  ? curve_id::square_root : reward_fund.curation_reward_curve;
                   uint64_t old_weight = util::evaluate_reward_curve( old_vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
                   uint64_t new_weight = util::evaluate_reward_curve( comment.vote_rshares.value, curve, reward_fund.content_constant ).to_uint64();
