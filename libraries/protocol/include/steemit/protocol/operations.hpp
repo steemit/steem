@@ -76,7 +76,8 @@ namespace steemit { namespace protocol {
             hardfork_operation,
             comment_payout_update_operation,
             return_vesting_delegation_operation,
-            comment_benefactor_reward_operation
+            comment_benefactor_reward_operation,
+            producer_reward_operation
          > operation;
 
    /*void operation_get_required_authorities( const operation& op,

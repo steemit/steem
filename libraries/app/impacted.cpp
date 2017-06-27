@@ -265,6 +265,13 @@ struct get_impacted_account_visitor
       _impacted.insert( op.benefactor );
       _impacted.insert( op.author );
    }
+
+   void operator()( const producer_reward_operation& op )
+   {
+      _impacted.insert( op.producer );
+   }
+
+   //void operator()( const operation& op ){}
 };
 
 void operation_get_impacted_accounts( const operation& op, flat_set<account_name_type>& result )
