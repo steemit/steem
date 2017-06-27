@@ -2357,7 +2357,7 @@ state database_api::get_state( string path )const
 annotated_signed_transaction database_api::get_transaction( transaction_id_type id )const
 {
 #ifdef SKIP_BY_TX_ID
-   return annotated_signed_transaction();
+   FC_ASSERT( false, "This node's operator has disabled operation indexing by transaction_id" );
 #else
    return my->_db.with_read_lock( [&](){
       const auto& idx = my->_db.get_index<operation_index>().indices().get<by_transaction_id>();
