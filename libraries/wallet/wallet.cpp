@@ -1763,6 +1763,62 @@ annotated_signed_transaction wallet_api::vote_for_witness(string voting_account,
    return my->sign_transaction( tx, broadcast );
 } FC_CAPTURE_AND_RETHROW( (voting_account)(witness_to_vote_for)(approve)(broadcast) ) }
 
+void wallet_api::check_memo( const string& memo, const account_api_obj& account )const
+{
+   vector< public_key_type > keys;
+      
+   try
+   {
+      // Check if memo is a private key
+      keys.push_back( fc::ecc::extended_private_key::from_base58( memo ).get_public_key() );
+   }
+   catch( fc::parse_error_exception& ) {}
+   catch( fc::assert_exception& ) {}
+
+   // Get possible keys if memo was an account password
+   string owner_seed = account.name + "owner" + memo;
+   auto owner_secret = fc::sha256::hash( owner_seed.c_str(), owner_seed.size() );
+   keys.push_back( fc::ecc::private_key::regenerate( owner_secret ).get_public_key() );
+
+   string active_seed = account.name + "active" + memo;
+   auto active_secret = fc::sha256::hash( active_seed.c_str(), active_seed.size() );
+   keys.push_back( fc::ecc::private_key::regenerate( active_secret ).get_public_key() );
+
+   string posting_seed = account.name + "posting" + memo;
+   auto posting_secret = fc::sha256::hash( posting_seed.c_str(), posting_seed.size() );
+   keys.push_back( fc::ecc::private_key::regenerate( posting_secret ).get_public_key() );
+
+   // Check keys against public keys in authorites
+   for( auto& key_weight_pair : account.owner.key_auths )
+   {
+      for( auto& key : keys )
+         FC_ASSERT( key_weight_pair.first != key, "Detected private owner key in memo field. Cancelling transaction." );
+   }
+
+   for( auto& key_weight_pair : account.active.key_auths )
+   {
+      for( auto& key : keys )
+         FC_ASSERT( key_weight_pair.first != key, "Detected private active key in memo field. Cancelling transaction." );
+   }
+
+   for( auto& key_weight_pair : account.posting.key_auths )
+   {
+      for( auto& key : keys )
+         FC_ASSERT( key_weight_pair.first != key, "Detected private posting key in memo field. Cancelling transaction." );
+   }
+
+   const auto& memo_key = account.memo_key;
+   for( auto& key : keys )
+      FC_ASSERT( memo_key != key, "Detected private memo key in memo field. Cancelling transaction." );
+
+   // Check against imported keys
+   for( auto& key_pair : my->_keys )
+   {
+      for( auto& key : keys )
+         FC_ASSERT( key != key_pair.first, "Detected imported private key in memo field. Cancelling trasanction." );
+   }
+}
+
 string wallet_api::get_encrypted_memo( string from, string to, string memo ) {
 
     if( memo.size() > 0 && memo[0] == '#' ) {
@@ -1794,6 +1850,7 @@ string wallet_api::get_encrypted_memo( string from, string to, string memo ) {
 annotated_signed_transaction wallet_api::transfer(string from, string to, asset amount, string memo, bool broadcast )
 { try {
    FC_ASSERT( !is_locked() );
+    check_memo( memo, get_account( from ) );
     transfer_operation op;
     op.from = from;
     op.to = to;
@@ -1926,6 +1983,7 @@ annotated_signed_transaction wallet_api::escrow_release(
 annotated_signed_transaction wallet_api::transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast  )
 {
    FC_ASSERT( !is_locked() );
+   check_memo( memo, get_account( from ) );
    transfer_to_savings_operation op;
    op.from = from;
    op.to   = to;
@@ -1945,6 +2003,7 @@ annotated_signed_transaction wallet_api::transfer_to_savings( string from, strin
 annotated_signed_transaction wallet_api::transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast  )
 {
    FC_ASSERT( !is_locked() );
+   check_memo( memo, get_account( from ) );
    transfer_from_savings_operation op;
    op.from = from;
    op.request_id = request_id;

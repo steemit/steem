@@ -70,6 +70,7 @@ namespace detail
 {
    using namespace steemit::chain;
 
+
    class witness_plugin_impl
    {
       public:
@@ -112,6 +113,59 @@ namespace detail
             "Cannot specify more than 8 beneficiaries." );
       }
    };
+
+   void check_memo( const string& memo, const account_object& account, const account_authority_object& auth )
+   {
+      vector< public_key_type > keys;
+      
+      try
+      {
+         // Check if memo is a private key
+         keys.push_back( fc::ecc::extended_private_key::from_base58( memo ).get_public_key() );
+      }
+      catch( fc::parse_error_exception& ) {}
+      catch( fc::assert_exception& ) {}
+
+      // Get possible keys if memo was an account password
+      string owner_seed = account.name + "owner" + memo;
+      auto owner_secret = fc::sha256::hash( owner_seed.c_str(), owner_seed.size() );
+      keys.push_back( fc::ecc::private_key::regenerate( owner_secret ).get_public_key() );
+
+      string active_seed = account.name + "active" + memo;
+      auto active_secret = fc::sha256::hash( active_seed.c_str(), active_seed.size() );
+      keys.push_back( fc::ecc::private_key::regenerate( active_secret ).get_public_key() );
+
+      string posting_seed = account.name + "posting" + memo;
+      auto posting_secret = fc::sha256::hash( posting_seed.c_str(), posting_seed.size() );
+      keys.push_back( fc::ecc::private_key::regenerate( posting_secret ).get_public_key() );
+
+      // Check keys against public keys in authorites
+      for( auto& key_weight_pair : auth.owner.key_auths )
+      {
+         for( auto& key : keys )
+            STEEMIT_ASSERT( key_weight_pair.first != key, chain::plugin_exception,
+               "Detected private owner key in memo field. You should change your owner keys." );
+      }
+
+      for( auto& key_weight_pair : auth.active.key_auths )
+      {
+         for( auto& key : keys )
+            STEEMIT_ASSERT( key_weight_pair.first != key, chain::plugin_exception,
+               "Detected private active key in memo field. You should change your active keys." );
+      }
+
+      for( auto& key_weight_pair : auth.posting.key_auths )
+      {
+         for( auto& key : keys )
+            STEEMIT_ASSERT( key_weight_pair.first != key, chain::plugin_exception,
+               "Detected private posting key in memo field. You should change your posting keys." );
+      }
+
+      const auto& memo_key = account.memo_key;
+      for( auto& key : keys )
+         STEEMIT_ASSERT( memo_key != key, chain::plugin_exception,
+            "Detected private memo key in memo field. You should change your memo key." );
+   }
 
    struct operation_visitor
    {
@@ -158,6 +212,30 @@ namespace detail
                chain::plugin_exception,
                "The comment is archived" );
          }
+      }
+
+      void operator()( const transfer_operation& o )const
+      {
+         if( o.memo.length() > 0 ) 
+            check_memo( o.memo,
+                        _db.get< account_object, chain::by_name >( o.from ),
+                        _db.get< account_authority_object, chain::by_account >( o.from ) );
+      }
+
+      void operator()( const transfer_to_savings_operation& o )const
+      {
+         if( o.memo.length() > 0 ) 
+            check_memo( o.memo,
+                        _db.get< account_object, chain::by_name >( o.from ),
+                        _db.get< account_authority_object, chain::by_account >( o.from ) );
+      }
+
+      void operator()( const transfer_from_savings_operation& o )const
+      {
+         if( o.memo.length() > 0 ) 
+            check_memo( o.memo,
+                        _db.get< account_object, chain::by_name >( o.from ),
+                        _db.get< account_authority_object, chain::by_account >( o.from ) );
       }
    };
 
