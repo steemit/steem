@@ -2565,11 +2565,19 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::show_free_memory( bool force )
 {
-   uint32_t free_gb = uint32_t(get_free_memory() / (1024*1024*1024));
+   uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
    if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
    {
       ilog( "Free memory is now ${n}G", ("n", free_gb) );
       _last_free_gb_printed = free_gb;
+   }
+
+   if( free_gb == 0 )
+   {
+      uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+
+      if( free_mb <= 100 && head_block_num() % 10 == 0 )
+         elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
    }
 }
 
