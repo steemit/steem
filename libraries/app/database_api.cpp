@@ -278,7 +278,7 @@ namespace steemit {
             });
         }
 
-        size_t database::get_free_memory() const {
+        size_t database_api::get_free_memory() const {
             return my->_db.get_free_memory();
         }
 
