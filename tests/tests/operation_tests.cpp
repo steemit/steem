@@ -668,6 +668,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
 
       tx.clear();
       tx.operations.push_back( op );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       STEEMIT_REQUIRE_THROW( db.push_transaction( tx, 0 ), fc::assert_exception );
 
