@@ -278,6 +278,10 @@ namespace steemit {
             });
         }
 
+        size_t database::get_free_memory() const {
+            return my->_db.get_free_memory();
+        }
+
         fc::variant_object database_api_impl::get_config() const {
             return steemit::protocol::get_config();
         }
