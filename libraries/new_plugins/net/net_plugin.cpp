@@ -1,7 +1,7 @@
 #include <steemit/protocol/types.hpp>
 
-#include <steemit/net_plugin/net_plugin.hpp>
-#include <steemit/net_plugin/protocol.hpp>
+#include <steemit/plugins/net/net_plugin.hpp>
+#include <steemit/plugins/net/protocol.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/raw.hpp>
@@ -10,17 +10,20 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
-namespace steemit { namespace net_plugin {
-   using std::vector;
-   using boost::asio::ip::tcp;
-   using fc::time_point;
-   using fc::time_point_sec;
-   using steemit::chain::transaction_id_type;
-   namespace bip = boost::interprocess;
+namespace steemit { namespace plugins { namespace net {
 
-   using socket_ptr = std::shared_ptr<tcp::socket>;
+using std::vector;
+using boost::asio::ip::tcp;
+using fc::time_point;
+using fc::time_point_sec;
+using steemit::protocol::transaction_id_type;
+using steemit::protocol::block_id_type;
+namespace bip = boost::interprocess;
 
-struct node_transaction_state {
+using socket_ptr = std::shared_ptr<tcp::socket>;
+
+struct node_transaction_state
+{
    transaction_id_type id;
    fc::time_point      received;
    fc::time_point_sec  expires;
@@ -29,7 +32,6 @@ struct node_transaction_state {
    bool                validated = false; /// whether or not our node has validated it
 };
 
-
 /**
  *  Index by id
  *  Index by is_known, block_num, validated_time, this is the order we will broadcast
@@ -37,7 +39,8 @@ struct node_transaction_state {
  *  Index by is_noticed, validated_time
  *
  */
-struct transaction_state {
+struct transaction_state
+{
    transaction_id_type id;
    bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
    bool                is_noticed_to_peer = false; ///< have we sent peer noitce we know it (true if we reeive from this peer)
@@ -56,7 +59,8 @@ typedef multi_index_container<
 /**
  *
  */
-struct block_state {
+struct block_state
+{
    block_id_type id;
    bool          is_known;
    bool          is_noticed_to_peer;
@@ -367,4 +371,4 @@ try {
    ilog( "exit shutdown" );
 } FC_CAPTURE_AND_RETHROW() }
 
-} } // steemit::net_plugin
+} } } // steemit::net_plugin

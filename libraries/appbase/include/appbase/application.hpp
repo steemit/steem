@@ -4,11 +4,13 @@
 #include <boost/core/demangle.hpp>
 #include <boost/asio.hpp>
 
+#include <iostream>
+
 namespace appbase {
    namespace bpo = boost::program_options;
    namespace bfs = boost::filesystem;
 
-   class application 
+   class application
    {
       public:
          ~application();
@@ -40,6 +42,7 @@ namespace appbase {
                return *existing;
 
             auto plug = new Plugin();
+            std::cout<< plug->name() << std::endl;
             //ilog( "registering plugin '${name}'", ("name",plug->name()) );
             plugins[plug->name()] = plug;
             plug->register_dependencies();

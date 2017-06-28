@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/chain_plugin/*.hpp")
+file(GLOB HEADERS "include/steemit/plugin/chain_plugin/*.hpp")
 add_library( chain_api_plugin
              chain_api_plugin.cpp
              ${HEADERS} )
