@@ -2,59 +2,61 @@
 #include <steemit/protocol/block.hpp>
 #include <steemit/protocol/types.hpp>
 
-namespace steemit { namespace net_plugin {
-   using namespace chain;
-   using namespace fc;
+namespace steemit { namespace plugins { namespace net {
 
-   struct handshake_message {
-      int16_t         network_version = 0;
-      fc::sha256      chain_id; ///< used to identify chain
-      fc::sha256      node_id; ///< used to identify peers and prevent self-connect
-      uint64_t        last_irreversible_block_num = 0;
-      block_id_type   last_irreversible_block_id;
-      string          os;
-      string          agent;
-   };
+using namespace steemit::protocol;
+using namespace steemit::chain;
+using namespace fc;
 
-   struct notice_message {
-      vector<transaction_id_type> known_trx;
-      vector<block_id_type>       known_blocks;
-   };
+struct handshake_message {
+   int16_t         network_version = 0;
+   fc::sha256      chain_id; ///< used to identify chain
+   fc::sha256      node_id; ///< used to identify peers and prevent self-connect
+   uint64_t        last_irreversible_block_num = 0;
+   block_id_type   last_irreversible_block_id;
+   string          os;
+   string          agent;
+};
 
-   struct block_summary_message {
-      signed_block                block;
-      vector<transaction_id_type> trx_ids;
-   };
+struct notice_message {
+   vector<transaction_id_type> known_trx;
+   vector<block_id_type>       known_blocks;
+};
 
-   struct sync_request_message {
-      uint64_t start_block;
-      uint64_t end_block;
-   };
+struct block_summary_message {
+   signed_block                block;
+   vector<transaction_id_type> trx_ids;
+};
 
-   struct peer_message {
-      vector<fc::ip::endpoint> peers;
-   };
+struct sync_request_message {
+   uint64_t start_block;
+   uint64_t end_block;
+};
 
-   using net_message = static_variant<handshake_message,
-                                      peer_message,
-                                      notice_message,
-                                      sync_request_message,
-                                      block_summary_message,
-                                      signed_transaction,
-                                      signed_block>;
+struct peer_message {
+   vector<fc::ip::endpoint> peers;
+};
 
-} } // namespace steemit::net_plugin
+using net_message = static_variant<handshake_message,
+                                    peer_message,
+                                    notice_message,
+                                    sync_request_message,
+                                    block_summary_message,
+                                    signed_transaction,
+                                    signed_block>;
+
+} } } // namespace steemit::plugins::net
 
 
-FC_REFLECT( steemit::net_plugin::handshake_message,
+FC_REFLECT( steemit::plugins::net::handshake_message,
             (network_version)(chain_id)(node_id)
             (last_irreversible_block_num)(last_irreversible_block_num)
             (os)(agent) )
 
-FC_REFLECT( steemit::net_plugin::block_summary_message, (block)(trx_ids) )
-FC_REFLECT( steemit::net_plugin::notice_message, (known_trx)(known_blocks) )
-FC_REFLECT( steemit::net_plugin::sync_request_message, (start_block)(end_block) )
-FC_REFLECT( steemit::net_plugin::peer_message, (peers) )
+FC_REFLECT( steemit::plugins::net::block_summary_message, (block)(trx_ids) )
+FC_REFLECT( steemit::plugins::net::notice_message, (known_trx)(known_blocks) )
+FC_REFLECT( steemit::plugins::net::sync_request_message, (start_block)(end_block) )
+FC_REFLECT( steemit::plugins::net::peer_message, (peers) )
 
 /**
  *

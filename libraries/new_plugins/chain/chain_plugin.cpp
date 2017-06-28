@@ -1,14 +1,14 @@
 #include <steemit/chain/database_exceptions.hpp>
 
-#include <steemit/chain_plugin/chain_plugin.hpp>
+#include <steemit/plugins/chain/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace steemit { namespace chain_plugin {
+namespace steemit { namespace plugins { namespace chain {
 
 using namespace steemit;
 using fc::flat_map;
-using chain::block_id_type;
+using steemit::chain::block_id_type;
 
 class chain_plugin_impl {
    public:
@@ -31,7 +31,7 @@ chain_plugin::chain_plugin()
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }
-const chain::database& chain_plugin::db() const { return my->db; }
+const steemit::chain::database& chain_plugin::db() const { return my->db; }
 
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
@@ -117,7 +117,7 @@ void chain_plugin::plugin_startup()
             {
                my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
             }
-            catch( chain::block_log_exception& )
+            catch( steemit::chain::block_log_exception& )
             {
                wlog( "Error opening block log. Having to resync from network..." );
                my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
@@ -138,7 +138,8 @@ void chain_plugin::plugin_shutdown() {
    ilog("database closed successfully");
 }
 
-bool chain_plugin::accept_block(const chain::signed_block& block, bool currently_syncing) {
+bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool currently_syncing )
+{
    if (currently_syncing && block.block_num() % 10000 == 0) {
       ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
            ("t", block.timestamp)
@@ -148,21 +149,25 @@ bool chain_plugin::accept_block(const chain::signed_block& block, bool currently
    return db().push_block(block);
 }
 
-void chain_plugin::accept_transaction(const chain::signed_transaction& trx) {
+void chain_plugin::accept_transaction( const steemit::chain::signed_transaction& trx )
+{
    db().push_transaction(trx);
 }
 
-bool chain_plugin::block_is_on_preferred_chain(const chain::block_id_type& block_id) {
+bool chain_plugin::block_is_on_preferred_chain(const steemit::chain::block_id_type& block_id )
+{
    // If it's not known, it's not preferred.
-   if (!db().is_known_block(block_id)) return false;
+   if( !db().is_known_block(block_id) ) return false;
+
    // Extract the block number from block_id, and fetch that block number's ID from the database.
    // If the database's block ID matches block_id, then block_id is on the preferred chain. Otherwise, it's on a fork.
-   return db().get_block_id_for_num(chain::block_header::num_from_id(block_id)) == block_id;
+   return db().get_block_id_for_num( steemit::chain::block_header::num_from_id( block_id ) ) == block_id;
 }
 
 namespace chain_apis {
 
-read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+read_only::get_info_results read_only::get_info( const read_only::get_info_params& ) const
+{
    return {
       db.head_block_num(),
       db.head_block_id(),
@@ -173,32 +178,35 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
+read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const
+{
    read_only::get_block_results block;
 
    try
    {
-      block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<chain::block_id_type>());
+      block = db.fetch_block_by_id( fc::json::from_string( params.block_num_or_id ).as< steemit::chain::block_id_type >() );
    }
-   catch (fc::bad_cast_exception) {/* do nothing */}
+   catch( fc::bad_cast_exception& ) {/* do nothing */}
 
    try
    {
-      block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
+      block = db.fetch_block_by_number( fc::to_uint64( params.block_num_or_id ) );
    }
-   catch (fc::bad_cast_exception) {/* do nothing */}
+   catch( fc::bad_cast_exception& ) {/* do nothing */}
 
    return block;
 }
 
-read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
-   db.push_block(params);
+read_write::push_block_results read_write::push_block( const read_write::push_block_params& params )
+{
+   db.push_block( params );
    return read_write::push_block_results();
 }
 
-read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   db.push_transaction(params);
+read_write::push_transaction_results read_write::push_transaction( const read_write::push_transaction_params& params )
+{
+   db.push_transaction( params );
    return read_write::push_transaction_results();
 }
 
-} } }// namespace steemit::chain_plugin::chain_apis
+} } } } // namespace steemit::plugis::chain::chain_apis
