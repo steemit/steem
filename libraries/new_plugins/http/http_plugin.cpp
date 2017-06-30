@@ -95,7 +95,7 @@ class http_plugin_impl
       asio::io_service           api_ios;
       asio::io_service::work     api_work;
 
-      map< string, url_handler > url_handlers;
+      //map< string, url_handler > url_handlers;
       optional< tcp::endpoint >  listen_endpoint;
 
       websocket_server_type      server;
@@ -124,9 +124,6 @@ void http_plugin::plugin_startup()
 {
    if(_my->listen_endpoint)
    {
-      /*_my->
-      */
-
       _my->http_thread = std::make_shared<std::thread>([&]()
       {
          ilog("start processing http thread");
@@ -146,9 +143,8 @@ void http_plugin::plugin_startup()
                {
                   auto body = con->get_request_body();
                   auto resource = con->get_uri()->get_resource();
-                  idump( (body) );
 
-                  con->set_body( body );
+                  con->set_body( appbase::app().get_plugin< plugins::api_register::api_register_plugin >().call_api( body ) );
                   con->set_status( websocketpp::http::status_code::ok );
                   con->send_http_response();
                });
@@ -202,9 +198,9 @@ void http_plugin::plugin_shutdown() {
    }
 }
 
-void http_plugin::add_handler(const string& url, const url_handler& handler) {
+/*void http_plugin::add_handler(const string& url, const url_handler& handler) {
    _my->http_ios.post([=](){
       _my->url_handlers.insert(std::make_pair(url,handler));
    });
-}
+}*/
 } } } // steemit::plugins::http

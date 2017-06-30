@@ -1,6 +1,8 @@
 #pragma once
 #include <appbase/application.hpp>
 
+#include <steemit/plugins/api_register/api_register_plugin.hpp>
+
 #include <boost/thread.hpp>
 #include <boost/container/vector.hpp>
 
@@ -16,7 +18,7 @@ using namespace appbase;
   *
   * Arguments: response_code, response_body
   */
-using url_response_callback = std::function< void(int, string) >;
+//using url_response_callback = std::function< void(int, string) >;
 
 /**
   * @brief Callback type for a URL handler
@@ -28,7 +30,7 @@ using url_response_callback = std::function< void(int, string) >;
   *
   * Arguments: url, request_body, response_callback
   */
-using url_handler = std::function< void(string, string, url_response_callback) >;
+//using url_handler = std::function< void(string, string, url_response_callback) >;
 
 /**
   * @brief An API, containing URLs and handlers
@@ -37,7 +39,7 @@ using url_handler = std::function< void(string, string, url_response_callback) >
   * a handler. The URL is the path on the web server that triggers the
   * call, and the handler is the function which implements the API call
   */
-using api_description = std::map<string, url_handler>;
+//using api_description = std::map<string, url_handler>;
 
 /**
   * This plugin starts an HTTP server and dispatches queries to
@@ -59,18 +61,18 @@ class http_plugin : public appbase::plugin< http_plugin >
       http_plugin();
       virtual ~http_plugin();
 
-      APPBASE_PLUGIN_REQUIRES()
+      APPBASE_PLUGIN_REQUIRES( (plugins::api_register::api_register_plugin) );
       virtual void set_program_options(options_description&, options_description& cfg) override;
 
       void plugin_initialize(const variables_map& options);
       void plugin_startup();
       void plugin_shutdown();
 
-      void add_handler(const string& url, const url_handler&);
+      /*void add_handler(const string& url, const url_handler&);
       void add_api(const api_description& api) {
          for (const auto& call : api)
             add_handler(call.first, call.second);
-      }
+      }*/
 
    private:
       std::unique_ptr< class http_plugin_impl > _my;
