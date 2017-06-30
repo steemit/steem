@@ -115,15 +115,7 @@ class database_api
       // Subscriptions //
       ///////////////////
 
-      void set_subscribe_callback( std::function<void(const variant&)> cb, bool clear_filter );
-      void set_pending_transaction_callback( std::function<void(const variant&)> cb );
       void set_block_applied_callback( std::function<void(const variant& block_header)> cb );
-      /**
-       * @brief Stop receiving any notifications
-       *
-       * This unsubscribes from all subscribed markets and objects.
-       */
-      void cancel_all_subscriptions();
 
       vector<tag_api_obj> get_trending_tags( string after_tag, uint32_t limit )const;
 
@@ -457,10 +449,7 @@ FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
 
 FC_API(steemit::app::database_api,
    // Subscriptions
-   (set_subscribe_callback)
-   (set_pending_transaction_callback)
    (set_block_applied_callback)
-   (cancel_all_subscriptions)
 
    // tags
    (get_trending_tags)
