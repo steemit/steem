@@ -12,9 +12,19 @@
 
 #define API_REGISTER_PLUGIN_NAME "api_register"
 
+#define API_MEMBER( handle )                                \
+{ std::string( #handle ),                                   \
+   [this]( fc::variant args ) -> fc::variant                \
+   {                                                        \
+      return this->handle( args.as< handle ## _args >() );  \
+   }                                                        \
+}
+
 namespace steemit { namespace plugins { namespace api_register {
 
 using namespace appbase;
+
+struct api_void_args {};
 
 namespace detail
 {
@@ -28,7 +38,7 @@ namespace detail
     *
     * Arguments: url, request_body, response_callback
     */
-   using api_call = std::function< fc::variant(string) >;
+   using api_call = std::function< fc::variant(fc::variant) >;
 
    /**
     * @brief An API, containing URLs and handlers
@@ -38,6 +48,32 @@ namespace detail
     * call, and the handler is the function which implements the API call
     */
    using api_description = std::map<string, api_call>;
+
+   struct json_rpc_request
+   {
+      std::string                      jsonrpc;
+      std::string                      method;
+      std::string                      params;
+      fc::optional< std::string >      id;
+   };
+
+   struct json_rpc_error
+   {
+      json_rpc_error( int32_t c, std::string m, fc::optional< std::string > d = fc::optional< std::string >() )
+         : code( c ), message( m ), data( d ) {}
+
+      int32_t                          code;
+      std::string                      message;
+      fc::optional< std::string >      data;
+   };
+
+   struct json_rpc_response
+   {
+      std::string                      jsonrpc = "2.0";
+      fc::optional< std::string >      result;
+      fc::optional< json_rpc_error >   error;
+      fc::variant                      id;
+   };
 }
 
 class api_register_plugin : public appbase::plugin< api_register_plugin >
@@ -66,18 +102,11 @@ class api_register_plugin : public appbase::plugin< api_register_plugin >
 
 } } } // steemit::plugins::api_register
 
-#define API_MEMBER( handle )                                                        \
-{ std::string( #handle ),                                      \
-   [this]( string body ) -> fc::variant                                             \
-   { \
-      try \
-      {                                                            \
-      if( body.empty() ) body = "{}";                                               \
-      return this->handle( fc::json::from_string( body ).as< handle ## _args >() ); \
-      } \
-      FC_LOG_AND_RETHROW() \
-   }                                                                                \
-}
+FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_request, (jsonrpc)(method)(params)(id) )
+FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_error, (code)(message)(data) )
+FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+
+FC_REFLECT( steemit::plugins::api_register::api_void_args, )
 
 /*
 #define PLUGIN_INITIALIZE_API( handles... )                                                     \
