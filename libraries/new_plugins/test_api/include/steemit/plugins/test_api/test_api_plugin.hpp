@@ -28,8 +28,8 @@ class test_api_plugin : public appbase::plugin< test_api_plugin >
       void plugin_startup();
       void plugin_shutdown();
 
-      string test_api_a( test_api_a_args args ) { return "A"; }
-      string test_api_b( test_api_b_args args ) { return "B"; }
+      string test_api_a( const test_api_a_args& args ) { return "A"; }
+      string test_api_b( const test_api_b_args& args ) { return "B"; }
 };
 
 } } } // steemit::plugins::api_register

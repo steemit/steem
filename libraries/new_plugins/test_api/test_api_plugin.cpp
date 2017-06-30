@@ -12,8 +12,8 @@ void test_api_plugin::plugin_initialize( const variables_map& options )
    appbase::app().get_plugin< plugins::api_register::api_register_plugin >().add_api(
       name(),
       {
-         API_MEMBER( test_api_a ),
-         API_MEMBER( test_api_b )
+         API_METHOD( test_api_a ),
+         API_METHOD( test_api_b )
       });
 }
 

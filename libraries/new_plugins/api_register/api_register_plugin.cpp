@@ -14,7 +14,6 @@
 
 namespace steemit { namespace plugins { namespace api_register {
 
-using detail::json_rpc_request;
 using detail::json_rpc_error;
 using detail::json_rpc_response;
 
@@ -130,31 +129,16 @@ string api_register_plugin::call_api( string& message )
          response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "jsonrpc value is not \"2.0\"" );
       }
    }
-   catch( fc::exception& e )
+   catch( fc::parse_error_exception& e )
    {
-      response.error = json_rpc_error( JSON_RPC_PARSE_ERROR, e.to_string(), e.to_detail_string() );
+      response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+   }
+   catch( fc::bad_cast_exception& e )
+   {
+      response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
    }
 
    return fc::json::to_string( response );
-   /*
-
-   if( request.size() == 3 )
-   {
-      auto api_itr = _registered_apis.find( request[0] );
-      if( api_itr == _registered_apis.end() ) return "";
-
-      auto call_itr = api_itr->second.find( request[1] );
-      if( call_itr == api_itr->second.end() ) return "";
-
-      return fc::json::to_string( call_itr->second( request[2] ) );
-   }
-   else
-   {
-      return "";
-   }
-   }
-   FC_LOG_AND_RETHROW()
-   */
 }
 
 } } } // steemit::plugins::api_register

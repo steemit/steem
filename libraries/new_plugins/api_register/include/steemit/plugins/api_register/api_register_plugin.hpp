@@ -10,11 +10,37 @@
 #include <boost/config.hpp>
 #include <boost/any.hpp>
 
+/**
+ * This plugin holds bindings for all APIs and their methods
+ * and can dispatch JSONRPC requests to the appropriate API.
+ *
+ * For a plugin to use the API Register, it needs to specify
+ * the register as a dependency. Then, during initializtion,
+ * register itself using add_api.
+ *
+ * Ex.
+ * appbase::app().get_plugin< api_register_plugin >().add_api(
+ *    name(),
+ *    {
+ *       API_METHOD( method_1 ),
+ *       API_METHOD( method_2 ),
+ *       API_METHOD( method_3 )
+ *    });
+ *
+ * All method should take a single struct as an argument called
+ * method_1_args, method_2_args, method_3_args, etc. and should
+ * return a single struct as a return type. API calls should
+ * accept arguments either as const references, or by value.
+ *
+ * For methods that do not require arguments, use api_void_args
+ * as the argument type.
+ */
+
 #define API_REGISTER_PLUGIN_NAME "api_register"
 
-#define API_MEMBER( handle )                                \
+#define API_METHOD( handle )                                \
 { std::string( #handle ),                                   \
-   [this]( fc::variant args ) -> fc::variant                \
+   [this]( const fc::variant& args ) -> fc::variant         \
    {                                                        \
       return this->handle( args.as< handle ## _args >() );  \
    }                                                        \
@@ -24,38 +50,29 @@ namespace steemit { namespace plugins { namespace api_register {
 
 using namespace appbase;
 
+/**
+ * Void argument type for API calls
+ */
 struct api_void_args {};
 
 namespace detail
 {
    /**
-    * @brief Callback type for a URL handler
+    * @brief Internal type used to bind api methods
+    * to names.
     *
-    * URL handlers have this type
-    *
-    * The handler must gaurantee that url_response_callback() is called;
-    * otherwise, the connection will hang and result in a memory leak.
-    *
-    * Arguments: url, request_body, response_callback
+    * Arguments: Variant object of propert arg type
     */
-   using api_call = std::function< fc::variant(fc::variant) >;
+   using api_call = std::function< fc::variant(const fc::variant&) >;
 
    /**
-    * @brief An API, containing URLs and handlers
+    * @brief An API, containing APIs and Methods
     *
-    * An API is composed of several calls, where each call has a URL and
-    * a handler. The URL is the path on the web server that triggers the
-    * call, and the handler is the function which implements the API call
+    * An API is composed of several calls, where each call has a
+    * name defined by the API class. The api_call functions
+    * are compile time bindings of names to methods.
     */
    using api_description = std::map<string, api_call>;
-
-   struct json_rpc_request
-   {
-      std::string                      jsonrpc;
-      std::string                      method;
-      std::string                      params;
-      fc::optional< std::string >      id;
-   };
 
    struct json_rpc_error
    {
@@ -102,7 +119,6 @@ class api_register_plugin : public appbase::plugin< api_register_plugin >
 
 } } } // steemit::plugins::api_register
 
-FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_request, (jsonrpc)(method)(params)(id) )
 FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_error, (code)(message)(data) )
 FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
 
