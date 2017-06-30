@@ -43,3 +43,29 @@ void chain_api_plugin::plugin_startup()
 void chain_api_plugin::plugin_shutdown() {}
 
 } } } // steemit::plugins::chain_api
+
+/*
+CHAIN_RO_CALL(get_info)
+CALL(chain, ro_api, plugins::chain::chain_apis::read_only, get_info)
+{std::string("/v1/chain/get_info" ),
+   [this, ro_api](string, string body, plugins::http::url_response_callback cb) -> fc::variant
+   {
+      try
+      {
+         if (body.empty()) body = "{}";
+         auto result = ro_api.get_info(fc::json::from_string(body).as<plugins::chain::chain_apis::read_only::get_info_params>());
+         cb(200, fc::json::to_string(result));
+      }
+      catch (fc::eof_exception)
+      {
+         cb(400, "Invalid arguments");
+         elog("Unable to parse arguments: ${args}", ("args", body));
+      }
+      catch (fc::exception& e)
+      {
+         cb(500, e.what());
+         elog("Exception encountered while processing ${call}: ${e}", ("call", "chain.get_info" )("e", e));
+      }
+   }
+}
+*/

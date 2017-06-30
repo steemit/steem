@@ -16,7 +16,7 @@ using std::cout;
 
 class application_impl {
    public:
-      application_impl():_app_options( "Application Options" ){
+      application_impl():_app_options("Application Options"){
       }
       const variables_map*    _options = nullptr;
       options_description     _app_options;
@@ -26,11 +26,15 @@ class application_impl {
 };
 
 application::application()
-:my( new application_impl() ){
+:my(new application_impl()){
    io_serv = std::make_shared<boost::asio::io_service>();
 }
 
-application::~application() {
+application::~application() { }
+
+void application::startup() {
+   for (auto plugin : initialized_plugins)
+      plugin->startup();
 }
 
 application& application::instance() {
@@ -42,15 +46,15 @@ application& app() { return application::instance(); }
 
 void application::set_program_options()
 {
-   for( auto plug : plugins ) {
-      boost::program_options::options_description plugin_cli_opts( "Command Line Options for " + plug.second->name() );
-      boost::program_options::options_description plugin_cfg_opts( "Config Options for " + plug.second->name() );
-      plug.second->set_program_options( plugin_cli_opts, plugin_cfg_opts );
-      if( plugin_cfg_opts.options().size() ) {
+   for(auto& plug : plugins) {
+      boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->name());
+      boost::program_options::options_description plugin_cfg_opts("Config Options for " + plug.second->name());
+      plug.second->set_program_options(plugin_cli_opts, plugin_cfg_opts);
+      if(plugin_cfg_opts.options().size()) {
          my->_app_options.add(plugin_cfg_opts);
          my->_cfg_options.add(plugin_cfg_opts);
       }
-      if( plugin_cli_opts.options().size() ) 
+      if(plugin_cli_opts.options().size())
          my->_app_options.add(plugin_cli_opts);
    }
 
@@ -70,9 +74,7 @@ void application::set_program_options()
    my->_app_options.add(app_cli_opts);
 }
 
-
-bool application::initialize( int argc, char** argv ) 
-{
+bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins) {
    set_program_options();
 
    bpo::variables_map options;
@@ -117,26 +119,23 @@ bool application::initialize( int argc, char** argv )
             get_plugin(name).initialize(options);
       }
    }
+   for (auto plugin : autostart_plugins)
+      if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
+         plugin->initialize(options);
 
    bpo::notify(options);
 
    return true;
 }
 
-void application::startup()
-{
-   for(auto plug : initialized_plugins)
-      plug->startup();
-}
-
 void application::shutdown() {
    for(auto ritr = running_plugins.rbegin();
-        ritr != running_plugins.rend(); ++ritr) {
+       ritr != running_plugins.rend(); ++ritr) {
       (*ritr)->shutdown();
    }
    for(auto ritr = running_plugins.rbegin();
-        ritr != running_plugins.rend(); ++ritr) {
-      delete *ritr;
+       ritr != running_plugins.rend(); ++ritr) {
+      plugins.erase((*ritr)->name());
    }
    running_plugins.clear();
    initialized_plugins.clear();
@@ -200,7 +199,7 @@ abstract_plugin* application::find_plugin(const string& name)const
    if(itr == plugins.end()) {
       return nullptr;
    }
-   return itr->second;
+   return itr->second.get();
 }
 
 abstract_plugin& application::get_plugin(const string& name)const {
