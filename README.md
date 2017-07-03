@@ -1,4 +1,4 @@
-# Introducing Steem (beta)
+# Introducing Steem
 
 Steem is an experimental Delegated Proof of Stake blockchain with an unproven consensus
 algorithm.
