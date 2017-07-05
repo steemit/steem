@@ -3,6 +3,7 @@
 #include <steemit/plugins/chain/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/string.hpp>
 
 namespace steemit { namespace plugins { namespace chain {
 
@@ -25,8 +26,7 @@ class chain_plugin_impl {
 
 
 chain_plugin::chain_plugin()
-:my( new chain_plugin_impl() ) {
-}
+   : appbase::plugin< chain_plugin >( CHAIN_PLUGIN_NAME ), my( new chain_plugin_impl() ) {}
 
 chain_plugin::~chain_plugin(){}
 
@@ -36,14 +36,12 @@ const steemit::chain::database& chain_plugin::db() const { return my->db; }
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("readonly", bpo::value<bool>()->default_value(false), "open the database in read only mode")
          ("shared-file-dir", bpo::value<bfs::path>()->default_value("blockchain"),
             "the location of the chain shared memory files (absolute path or relative to application data dir)")
-         ("shared-file-size", bpo::value<uint64_t>()->default_value(8*1024),
-            "Minimum size MB of database shared memory file")
+         ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("flush-state-interval", bpo::value<uint32_t>()->default_value(0),
-          "flush shared memory changes to disk every N blocks")
+            "flush shared memory changes to disk every N blocks")
          ;
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -57,15 +55,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
    my->shared_memory_dir = app().data_dir() / "blockchain";
 
-   if(options.count("shared-file-dir")) {
+   if( options.count("shared-file-dir") )
+   {
       auto sfd = options.at("shared-file-dir").as<bfs::path>();
       if(sfd.is_relative())
          my->shared_memory_dir = app().data_dir() / sfd;
       else
          my->shared_memory_dir = sfd;
    }
-   my->shared_memory_size = options.at("shared-file-size").as<uint64_t>() * 1024 * 1024;
-   my->readonly = options.at("readonly").as<bool>();
+
+   my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
+   ilog( "shared_file_size is ${n} bytes", ("n", my->shared_memory_size) );
+
    my->replay   = options.at("replay-blockchain").as<bool>();
    my->reset    = options.at("resync-blockchain").as<bool>();
    my->flush_interval = options.at("flush-state-interval").as<uint32_t>();
@@ -84,55 +85,46 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 {
-   if(!my->readonly)
+   if(my->reset)
    {
-      ilog("starting chain in read/write mode");
+      wlog("resync requested: deleting block log and shared memory");
+      my->db.wipe( app().data_dir() / "blockchain", my->shared_memory_dir, true );
+   }
 
-      if(my->reset)
-      {
-         wlog("resync requested: deleting block log and shared memory");
-         my->db.wipe( app().data_dir() / "blockchain", my->shared_memory_dir, true );
-      }
+   my->db.set_flush_interval(my->flush_interval);
+   my->db.add_checkpoints(my->loaded_checkpoints);
 
-      my->db.set_flush_interval(my->flush_interval);
-      my->db.add_checkpoints(my->loaded_checkpoints);
-
-      if(my->replay)
-      {
-         ilog("Replaying blockchain on user request.");
-         my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
-      }
-      else
-      {
-         try
-         {
-            ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
-         }
-         catch( const fc::exception& e )
-         {
-            wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
-
-            try
-            {
-               my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
-            }
-            catch( steemit::chain::block_log_exception& )
-            {
-               wlog( "Error opening block log. Having to resync from network..." );
-               my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
-            }
-         }
-      }
+   if(my->replay)
+   {
+      ilog("Replaying blockchain on user request.");
+      my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
    }
    else
    {
-      ilog("Starting chain in read mode.");
-      my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size, chainbase::database::read_only );
+      try
+      {
+         ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
+         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
+      }
+      catch( const fc::exception& e )
+      {
+         wlog("Error opening database, attempting to replay blockchain. Error: ${e}", ("e", e));
+
+         try
+         {
+            my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
+         }
+         catch( steemit::chain::block_log_exception& )
+         {
+            wlog( "Error opening block log. Having to resync from network..." );
+            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
+         }
+      }
    }
 }
 
-void chain_plugin::plugin_shutdown() {
+void chain_plugin::plugin_shutdown()
+{
    ilog("closing chain database");
    my->db.close();
    ilog("database closed successfully");
@@ -164,49 +156,4 @@ bool chain_plugin::block_is_on_preferred_chain(const steemit::chain::block_id_ty
    return db().get_block_id_for_num( steemit::chain::block_header::num_from_id( block_id ) ) == block_id;
 }
 
-namespace chain_apis {
-
-read_only::get_info_results read_only::get_info( const read_only::get_info_params& ) const
-{
-   return {
-      db.head_block_num(),
-      db.head_block_id(),
-      db.head_block_time(),
-      db.get_dynamic_global_properties().current_witness,
-      db.get_dynamic_global_properties().recent_slots_filled,
-      db.get_dynamic_global_properties().participation_count / 128.0
-   };
-}
-
-read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const
-{
-   read_only::get_block_results block;
-
-   try
-   {
-      block = db.fetch_block_by_id( fc::json::from_string( params.block_num_or_id ).as< steemit::chain::block_id_type >() );
-   }
-   catch( fc::bad_cast_exception& ) {/* do nothing */}
-
-   try
-   {
-      block = db.fetch_block_by_number( fc::to_uint64( params.block_num_or_id ) );
-   }
-   catch( fc::bad_cast_exception& ) {/* do nothing */}
-
-   return block;
-}
-
-read_write::push_block_results read_write::push_block( const read_write::push_block_params& params )
-{
-   db.push_block( params );
-   return read_write::push_block_results();
-}
-
-read_write::push_transaction_results read_write::push_transaction( const read_write::push_transaction_params& params )
-{
-   db.push_transaction( params );
-   return read_write::push_transaction_results();
-}
-
-} } } } // namespace steemit::plugis::chain::chain_apis
+} } } // namespace steemit::plugis::chain::chain_apis
