@@ -31,6 +31,7 @@
 
 #include <fc/network/ip.hpp>
 #include <fc/network/resolve.hpp>
+#include <fc/thread/thread.hpp>
 
 #include <boost/range/algorithm/reverse.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -123,6 +124,8 @@ public:
 
    plugins::chain::chain_plugin& chain;
    uint32_t allow_future_time = 5;
+
+   fc::thread p2p_thread;
 };
 
 p2p_plugin::p2p_plugin()
@@ -190,42 +193,46 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
 
 void p2p_plugin::plugin_startup()
 {
-   auto& chain = app().get_plugin<plugins::chain::chain_plugin>();
    my->node.reset(new graphene::net::node(my->user_agent));
    my->node->load_configuration(app().data_dir() / "p2p");
    my->node->set_node_delegate( &(*my) );
 
-   if( my->endpoint )
+   my->p2p_thread.async( [this]
    {
-      ilog("Configuring P2P to listen at ${ep}", ("ep", my->endpoint));
-      my->node->listen_on_endpoint(*my->endpoint, true);
-   }
+      if( my->endpoint )
+      {
+         ilog("Configuring P2P to listen at ${ep}", ("ep", my->endpoint));
+         my->node->listen_on_endpoint(*my->endpoint, true);
+      }
 
-   for( const auto& seed : my->seeds )
-   {
-      ilog("P2P adding seed node ${s}", ("s", seed));
-      my->node->add_node(seed);
-      my->node->connect_to_endpoint(seed);
-   }
+      for( const auto& seed : my->seeds )
+      {
+         ilog("P2P adding seed node ${s}", ("s", seed));
+         my->node->add_node(seed);
+         my->node->connect_to_endpoint(seed);
+      }
 
-   if( my->max_connections )
-   {
-      ilog( "Setting p2p max connections to ${n}", ("n", my->max_connections) );
-      fc::variant_object node_param = fc::variant_object(
-         "maximum_number_of_connections",
-         fc::variant( my->max_connections ) );
-      my->node->set_advanced_node_parameters( node_param );
-   }
+      if( my->max_connections )
+      {
+         ilog( "Setting p2p max connections to ${n}", ("n", my->max_connections) );
+         fc::variant_object node_param = fc::variant_object(
+            "maximum_number_of_connections",
+            fc::variant( my->max_connections ) );
+         my->node->set_advanced_node_parameters( node_param );
+      }
 
-   my->node->listen_to_p2p_network();
-   my->node->connect_to_p2p_network();
-   my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, chain.db().head_block_id()), std::vector<uint32_t>());
-   ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
+      my->node->listen_to_p2p_network();
+      my->node->connect_to_p2p_network();
+      my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, my->chain.db().head_block_id()), std::vector<uint32_t>());
+      ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
+   }).wait();
+   idump( (my->p2p_thread.is_running()) );
 }
 
 void p2p_plugin::plugin_shutdown() {
    ilog("Shutting down P2P Plugin");
    my->node->close();
+   my->p2p_thread.quit();
    my->node.reset();
 }
 
@@ -237,7 +244,6 @@ void p2p_plugin::broadcast_block(const steemit::chain::signed_block& block) {
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
 bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 {
-   ilog("");
    try
    {
       if( id.item_type == graphene::net::block_message_type )
@@ -250,7 +256,6 @@ bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 
 bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& )
 {
-   ilog("");
    uint32_t head_block_num;
 
    head_block_num = chain.db().head_block_num();
@@ -320,7 +325,6 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
 
 void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_msg )
 {
-   ilog("");
    try
    {
       chain.db().push_transaction( trx_msg.trx );
@@ -329,14 +333,12 @@ void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_
 
 void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_process )
 {
-   ilog("");
    // not a transaction, not a block
    FC_THROW( "Invalid Message Type" );
 }
 
 std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_block_ids( const std::vector< graphene::net::item_hash_t >& blockchain_synopsis, uint32_t& remaining_item_count, uint32_t limit )
 {
-   ilog("");
    vector<block_id_type> result;
    remaining_item_count = 0;
    if( chain.db().head_block_num() == 0 )
@@ -388,7 +390,6 @@ std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_block_ids( const 
 
 graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& id )
 {
-   ilog("");
    if( id.item_type == graphene::net::block_message_type )
    {
       return chain.db().with_read_lock( [&]()
@@ -413,7 +414,6 @@ steemit::chain::chain_id_type p2p_plugin_impl::get_chain_id() const
 
 std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_blockchain_synopsis( const graphene::net::item_hash_t& reference_point, uint32_t number_of_blocks_after_reference_point )
 {
-   ilog("");
    try {
    std::vector<item_hash_t> synopsis;
    chain.db().with_read_lock( [&]()
@@ -538,26 +538,22 @@ std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_blockchain_synops
 
 void p2p_plugin_impl::sync_status( uint32_t item_type, uint32_t item_count )
 {
-   ilog("");
    // any status reports to GUI go here
 }
 
 void p2p_plugin_impl::connection_count_changed( uint32_t c )
 {
-   ilog("");
    // any status reports to GUI go here
 }
 
 uint32_t p2p_plugin_impl::get_block_number( const graphene::net::item_hash_t& block_id )
 {
-   ilog("");
    try {
    return block_header::num_from_id(block_id);
 } FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
 fc::time_point_sec p2p_plugin_impl::get_block_time( const graphene::net::item_hash_t& block_id )
 {
-   ilog("");
    try
    {
       return chain.db().with_read_lock( [&]()
@@ -571,7 +567,6 @@ fc::time_point_sec p2p_plugin_impl::get_block_time( const graphene::net::item_ha
 
 graphene::net::item_hash_t p2p_plugin_impl::get_head_block_id() const
 {
-   ilog("");
    return chain.db().with_read_lock( [&]()
    {
       return chain.db().head_block_id();
@@ -580,25 +575,21 @@ graphene::net::item_hash_t p2p_plugin_impl::get_head_block_id() const
 
 uint32_t p2p_plugin_impl::estimate_last_known_fork_from_git_revision_timestamp(uint32_t) const
 {
-   ilog("");
    return 0; // there are no forks in graphene
 }
 
 void p2p_plugin_impl::error_encountered( const string& message, const fc::oexception& error )
 {
-   ilog("");
    // notify GUI or something cool
 }
 
 fc::time_point_sec p2p_plugin_impl::get_blockchain_now()
 {
-   ilog("");
    return fc::time_point::now();
 }
 
 bool p2p_plugin_impl::is_included_block(const block_id_type& block_id)
 {
-   ilog("");
    return chain.db().with_read_lock( [&]()
    {
       uint32_t block_num = block_header::num_from_id(block_id);
