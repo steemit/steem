@@ -193,12 +193,12 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
 
 void p2p_plugin::plugin_startup()
 {
-   my->node.reset(new graphene::net::node(my->user_agent));
-   my->node->load_configuration(app().data_dir() / "p2p");
-   my->node->set_node_delegate( &(*my) );
-
    my->p2p_thread.async( [this]
    {
+      my->node.reset(new graphene::net::node(my->user_agent));
+      my->node->load_configuration(app().data_dir() / "p2p");
+      my->node->set_node_delegate( &(*my) );
+
       if( my->endpoint )
       {
          ilog("Configuring P2P to listen at ${ep}", ("ep", my->endpoint));
