@@ -23,16 +23,18 @@
  */
 #pragma once
 
-#include <steemit/chain_plugin/chain_plugin.hpp>
+#include <steemit/plugins/chain/chain_plugin.hpp>
 
 #include <appbase/application.hpp>
 
-namespace steemit { namespace p2p_plugin {
+#define P2P_PLUGIN_NAME "p2p"
+
+namespace steemit { namespace plugins { namespace p2p {
 namespace bpo = boost::program_options;
 
 class p2p_plugin : public appbase::plugin<p2p_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin::chain_plugin))
+   APPBASE_PLUGIN_REQUIRES((plugins::chain::chain_plugin))
 
    p2p_plugin();
    virtual ~p2p_plugin();
@@ -44,10 +46,10 @@ public:
    virtual void plugin_startup();
    virtual void plugin_shutdown();
 
-   void broadcast_block(const chain::signed_block& block);
+   void broadcast_block(const steemit::chain::signed_block& block);
 
 private:
    std::unique_ptr<class p2p_plugin_impl> my;
 };
 
-} } // steemit::p2p_plugin
+} } } // steemit::plugins::p2p
