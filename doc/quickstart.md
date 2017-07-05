@@ -61,7 +61,7 @@ Shared memory file for exchange node users over **16GB**
 (tracked history for single account)
 
 #### Seed node
-Shared memory file for seed node uses over **5,5GB**
+Shared memory file for seed node uses over **5.5GB**
 
 #### Other use cases
 Shared memory file size varies, depends on your specific configuration but it is expected to be somewhere between "seed node" and "full node" usage.
