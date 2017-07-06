@@ -25,6 +25,8 @@
 
 namespace bpo = boost::program_options;
 using steemit::protocol::version;
+using std::string;
+using std::vector;
 
 fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& );
 
@@ -58,6 +60,8 @@ int main( int argc, char** argv )
       std::vector< std::string > default_console_appender( {"stderr","std_err"} );
       std::string str_default_console_appender = boost::algorithm::join( default_console_appender, " " );
 
+      idump( (default_console_appender) );
+
       std::vector< std::string > default_file_appender( {"p2p","logs/p2p/p2p.log"} );
       std::string str_default_file_appender = boost::algorithm::join( default_file_appender, " " );
 
@@ -65,11 +69,11 @@ int main( int argc, char** argv )
       std::string str_default_logger = boost::algorithm::join( default_logger, " " );
 
       options.add_options()
-         ("log_console_appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_console_appender, str_default_console_appender ),
+         ("log-console-appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_console_appender, str_default_console_appender ),
             "Console appender definitions as [\"name\",\"stream\"]" )
-         ("log_file_appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_file_appender, str_default_file_appender ),
+         ("log-file-appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_file_appender, str_default_file_appender ),
             "File appender definitions as [\"name\",\"file\"]" )
-         ("log_logger", bpo::value< std::vector< std::string > >()->composing()->default_value( default_logger, str_default_logger ),
+         ("log-logger", bpo::value< std::vector< std::string > >()->composing()->default_value( default_logger, str_default_logger ),
             "Logger definition as [\"name\",\"level\",\"appender\"]" )
          ;
 
@@ -85,7 +89,7 @@ int main( int argc, char** argv )
 
       try
       {
-         fc::optional< fc::logging_config > logging_config = load_logging_config( appbase::app().get_cfg_args() );
+         fc::optional< fc::logging_config > logging_config = load_logging_config( appbase::app().get_args() );
          if( logging_config )
             fc::configure_logging( *logging_config );
       }
@@ -114,16 +118,33 @@ int main( int argc, char** argv )
    return 0;
 }
 
+vector< string > tokenize_config_args( const vector< string >& args )
+{
+   vector< string > result;
+
+   for( auto& a : args )
+   {
+      vector< string > tokens;
+      boost::split( tokens, a, boost::is_any_of( " \t" ) );
+      for( const auto& t : tokens )
+         if( t.size() )
+            result.push_back( t );
+   }
+
+   return result;
+}
+
 fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& args )
 {
    try
    {
+      ilog("");
       fc::logging_config logging_config;
       bool found_logging_config = false;
 
-      if( args.count( "log_console_appender" ) )
+      if( args.count( "log-console-appender" ) )
       {
-         std::vector< std::string > console_appender_args = args[ "log_console_appender" ].as< std::vector< std::string > >();
+         std::vector< string > console_appender_args = tokenize_config_args( args["log-console-appender"].as< vector< string > >() );
          uint32_t root = 0;
 
          while( console_appender_args.size() - root >= 2 )
@@ -151,9 +172,9 @@ fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& 
          }
       }
 
-      if( args.count( "log_file_appender" ) )
+      if( args.count( "log-file-appender" ) )
       {
-         std::vector< std::string > file_appender_args = args[ "log_file_appender" ].as< std::vector< std::string > >();
+         std::vector< string > file_appender_args = tokenize_config_args( args["log-file-appender"].as< vector< string > >() );
          uint32_t root = 0;
 
          while( file_appender_args.size() - root >= 2 )
@@ -178,9 +199,9 @@ fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& 
          }
       }
 
-      if( args.count( "log_logger" ) )
+      if( args.count( "log-logger" ) )
       {
-         std::vector< std::string > logger_args = args[ "log_logger" ].as< std::vector< std::string > >();
+         std::vector< string > logger_args = tokenize_config_args( args[ "log-logger" ].as< std::vector< std::string > >() );
          uint32_t root = 0;
 
          while( logger_args.size() - root >= 3 )
