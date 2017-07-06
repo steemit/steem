@@ -15,14 +15,18 @@
 
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/program_options.hpp>
 
 #include <iostream>
 #include <csignal>
+#include <vector>
 
+namespace bpo = boost::program_options;
 using steemit::protocol::version;
 
-fc::optional<fc::logging_config> load_logging_config_from_ini_file();
+fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& );
 
 int main( int argc, char** argv )
 {
@@ -35,7 +39,7 @@ int main( int argc, char** argv )
       auto initminer_private_key = graphene::utilities::key_to_wif( STEEMIT_INIT_PRIVATE_KEY );
       std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
       std::cerr << "initminer private key: " << initminer_private_key << "\n";
-      std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
+      std::cerr << "chain id: " << std::string( STEEMIT_CHAIN_ID ) << "\n";
       std::cerr << "blockchain version: " << fc::string( STEEMIT_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #else
@@ -43,23 +47,33 @@ int main( int argc, char** argv )
       std::cerr << "            STARTING STEEM NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
       std::cerr << "initminer public key: " << STEEMIT_INIT_PUBLIC_KEY_STR << "\n";
-      std::cerr << "chain id: " << std::string(STEEMIT_CHAIN_ID) << "\n";
+      std::cerr << "chain id: " << std::string( STEEMIT_CHAIN_ID ) << "\n";
       std::cerr << "blockchain version: " << fc::string( STEEMIT_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #endif
 
-      try
-      {
-         /*
-         fc::optional<fc::logging_config> logging_config = load_logging_config_from_ini_file();
-         if (logging_config)
-            fc::configure_logging(*logging_config);
-         //*/
-      }
-      catch (const fc::exception&)
-      {
-         wlog("Error parsing logging config from config");
-      }
+      // Setup logging config
+      bpo::options_description options;
+
+      std::vector< std::string > default_console_appender( {"stderr","std_err"} );
+      std::string str_default_console_appender = boost::algorithm::join( default_console_appender, " " );
+
+      std::vector< std::string > default_file_appender( {"p2p","logs/p2p/p2p.log"} );
+      std::string str_default_file_appender = boost::algorithm::join( default_file_appender, " " );
+
+      std::vector< std::string > default_logger( {"default","warn","stderr","p2p","warn","p2p"} );
+      std::string str_default_logger = boost::algorithm::join( default_logger, " " );
+
+      options.add_options()
+         ("log_console_appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_console_appender, str_default_console_appender ),
+            "Console appender definitions as [\"name\",\"stream\"]" )
+         ("log_file_appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_file_appender, str_default_file_appender ),
+            "File appender definitions as [\"name\",\"file\"]" )
+         ("log_logger", bpo::value< std::vector< std::string > >()->composing()->default_value( default_logger, str_default_logger ),
+            "Logger definition as [\"name\",\"level\",\"appender\"]" )
+         ;
+
+      appbase::app().add_program_options( bpo::options_description(), options );
 
       appbase::app().register_plugin< steemit::plugins::http::http_plugin >();
       appbase::app().register_plugin< steemit::plugins::api_register::api_register_plugin >();
@@ -68,6 +82,18 @@ int main( int argc, char** argv )
       appbase::app().register_plugin< steemit::plugins::p2p::p2p_plugin >();
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
+
+      try
+      {
+         fc::optional< fc::logging_config > logging_config = load_logging_config( appbase::app().get_cfg_args() );
+         if( logging_config )
+            fc::configure_logging( *logging_config );
+      }
+      catch( const fc::exception& )
+      {
+         wlog( "Error parsing logging config" );
+      }
+
       appbase::app().startup();
       appbase::app().exec();
    }
@@ -88,72 +114,95 @@ int main( int argc, char** argv )
    return 0;
 }
 
-fc::optional<fc::logging_config> load_logging_config_from_ini_file()
+fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& args )
 {
    try
    {
       fc::logging_config logging_config;
       bool found_logging_config = false;
 
-      //boost::property_tree::ptree config_ini_tree;
-      //boost::property_tree::ini_parser::read_ini(config_ini_filename.preferred_string().c_str(), config_ini_tree);
-         //if (boost::starts_with(section_name, console_appender_section_prefix))
-         {
-            //std::string console_appender_name = section_name.substr(console_appender_section_prefix.length());
-            //std::string stream_name = section_tree.get<std::string>("stream");
+      if( args.count( "log_console_appender" ) )
+      {
+         std::vector< std::string > console_appender_args = args[ "log_console_appender" ].as< std::vector< std::string > >();
+         uint32_t root = 0;
 
-            std::string console_appender_name = "stderr";
-            std::string stream_name = "std_error";
+         while( console_appender_args.size() - root >= 2 )
+         {
+            std::string console_appender_name = console_appender_args[ root ];
+            std::string stream_name = console_appender_args[ root + 1 ];
 
             // construct a default console appender config here
             // stdout/stderr will be taken from ini file, everything else hard-coded here
             fc::console_appender::config console_appender_config;
             console_appender_config.level_colors.emplace_back(
-               fc::console_appender::level_color(fc::log_level::debug,
-                                                 fc::console_appender::color::green));
+               fc::console_appender::level_color( fc::log_level::debug,
+                                                  fc::console_appender::color::green));
             console_appender_config.level_colors.emplace_back(
-               fc::console_appender::level_color(fc::log_level::warn,
-                                                 fc::console_appender::color::brown));
+               fc::console_appender::level_color( fc::log_level::warn,
+                                                  fc::console_appender::color::brown));
             console_appender_config.level_colors.emplace_back(
-               fc::console_appender::level_color(fc::log_level::error,
-                                                 fc::console_appender::color::cyan));
-            console_appender_config.stream = fc::variant(stream_name).as<fc::console_appender::stream::type>();
-            logging_config.appenders.push_back(fc::appender_config(console_appender_name, "console", fc::variant(console_appender_config)));
+               fc::console_appender::level_color( fc::log_level::error,
+                                                  fc::console_appender::color::red));
+            console_appender_config.stream = fc::variant( stream_name ).as< fc::console_appender::stream::type >();
+            logging_config.appenders.push_back(
+               fc::appender_config( console_appender_name, "console", fc::variant( console_appender_config ) ) );
             found_logging_config = true;
+            root += 2;
          }
+      }
 
-         //else if (boost::starts_with(section_name, logger_section_prefix))
+      if( args.count( "log_file_appender" ) )
+      {
+         std::vector< std::string > file_appender_args = args[ "log_file_appender" ].as< std::vector< std::string > >();
+         uint32_t root = 0;
+
+         while( file_appender_args.size() - root >= 2 )
          {
-            //std::string logger_name = section_name.substr(logger_section_prefix.length());
-            //std::string level_string = section_tree.get<std::string>("level");
-            //std::string appenders_string = section_tree.get<std::string>("appenders");
-            std::string logger_name = "default";
-            std::string level_string = "debug";
-            std::string appenders_string = "stderr";
-            fc::logger_config logger_config(logger_name);
-            logger_config.level = fc::variant(level_string).as<fc::log_level>();
-            boost::split(logger_config.appenders, appenders_string,
-                         boost::is_any_of(" ,"),
-                         boost::token_compress_on);
-            logging_config.loggers.push_back(logger_config);
+            std::string file_appender_name = file_appender_args[ root ];
+            fc::path file_name = file_appender_args[ root + 1 ];
+            if( file_name.is_relative() )
+               file_name = fc::absolute( appbase::app().data_dir() ) / file_name;
+
+            // construct a default file appender config here
+            // filename will be taken from ini file, everything else hard-coded here
+            fc::file_appender::config file_appender_config;
+            file_appender_config.filename = file_name;
+            file_appender_config.flush = true;
+            file_appender_config.rotate = true;
+            file_appender_config.rotation_interval = fc::hours(1);
+            file_appender_config.rotation_limit = fc::days(1);
+            logging_config.appenders.push_back(
+               fc::appender_config( file_appender_name, "file", fc::variant( file_appender_config ) ) );
             found_logging_config = true;
+            root += 2;
          }
+      }
+
+      if( args.count( "log_logger" ) )
+      {
+         std::vector< std::string > logger_args = args[ "log_logger" ].as< std::vector< std::string > >();
+         uint32_t root = 0;
+
+         while( logger_args.size() - root >= 3 )
          {
-            std::string logger_name = "p2p";
-            std::string level_string = "debug";
-            std::string appenders_string = "stderr";
-            fc::logger_config logger_config(logger_name);
-            logger_config.level = fc::variant(level_string).as<fc::log_level>();
-            boost::split(logger_config.appenders, appenders_string,
-                         boost::is_any_of(" ,"),
-                         boost::token_compress_on);
-            logging_config.loggers.push_back(logger_config);
+            std::string logger_name = logger_args[ root ];
+            std::string level_string = logger_args[ root + 1 ];
+            std::string appenders_string = logger_args[ root + 2 ];
+            fc::logger_config logger_config( logger_name );
+            logger_config.level = fc::variant( level_string ).as< fc::log_level >();
+            boost::split( logger_config.appenders, appenders_string,
+                          boost::is_any_of(" ,"),
+                          boost::token_compress_on );
+            logging_config.loggers.push_back( logger_config );
             found_logging_config = true;
+            root += 3;
          }
-      if (found_logging_config)
+      }
+
+      if( found_logging_config )
          return logging_config;
       else
-         return fc::optional<fc::logging_config>();
+         return fc::optional< fc::logging_config >();
    }
    FC_RETHROW_EXCEPTIONS(warn, "")
 }
