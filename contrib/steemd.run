@@ -26,7 +26,7 @@ fi
 
 # if user did pass in desired seed nodes, use
 # the ones the user specified:
-if [[ ! -z "$STEEMD_SEED_NODES" ]]; then 
+if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $STEEMD_SEED_NODES ; do
         ARGS+=" --seed-node=$NODE"
     done
@@ -47,9 +47,9 @@ fi
 
 if [[ ! -z "$TRACK_ACCOUNT" ]]; then
     if [[ ! "$USE_WAY_TOO_MUCH_RAM" ]]; then
-        ARGS+=" --enable-plugin=witness account_history"
+        ARGS+=" --enable-plugin=account_history "
     fi
-    ARGS+="  --track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
+    ARGS+="  --track-account-range=\"[\\\"$TRACK_ACCOUNT\\\",\\\"$TRACK_ACCOUNT\\\"]\":
 fi
 
 NOW=`date +%s`
