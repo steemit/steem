@@ -70,11 +70,11 @@ int main( int argc, char** argv )
 
       options.add_options()
          ("log-console-appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_console_appender, str_default_console_appender ),
-            "Console appender definitions as [\"name\",\"stream\"]" )
+            "Console appender definitions: as name stream" )
          ("log-file-appender", bpo::value< std::vector< std::string > >()->composing()->default_value( default_file_appender, str_default_file_appender ),
-            "File appender definitions as [\"name\",\"file\"]" )
+            "File appender definitions: as name file" )
          ("log-logger", bpo::value< std::vector< std::string > >()->composing()->default_value( default_logger, str_default_logger ),
-            "Logger definition as [\"name\",\"level\",\"appender\"]" )
+            "Logger definition as: name level appender" )
          ;
 
       appbase::app().add_program_options( bpo::options_description(), options );
