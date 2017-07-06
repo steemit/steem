@@ -21,8 +21,7 @@ class application_impl {
       const variables_map*    _options = nullptr;
       options_description     _app_options;
       options_description     _cfg_options;
-      variables_map           _cli_args;
-      variables_map           _cfg_args;
+      variables_map           _args;
 
       bfs::path               _data_dir;
 };
@@ -76,28 +75,29 @@ void application::set_program_options()
    my->_app_options.add(app_cli_opts);
 }
 
-bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins) {
+bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins)
+{
    set_program_options();
 
-   bpo::store( bpo::parse_command_line( argc, argv, my->_app_options ), my->_cli_args );
+   bpo::store( bpo::parse_command_line( argc, argv, my->_app_options ), my->_args );
 
-   if( my->_cli_args.count( "help" ) ) {
+   if( my->_args.count( "help" ) ) {
       cout << my->_app_options << "\n";
       return false;
    }
 
    bfs::path data_dir = "data-dir";
-   if( my->_cli_args.count("data-dir") )
+   if( my->_args.count("data-dir") )
    {
-      data_dir = my->_cli_args["data-dir"].as<bfs::path>();
+      data_dir = my->_args["data-dir"].as<bfs::path>();
       if( data_dir.is_relative() )
          data_dir = bfs::current_path() / data_dir;
    }
    my->_data_dir = data_dir;
 
    bfs::path config_file_name = data_dir / "config.ini";
-   if( my->_cli_args.count( "config" ) ) {
-      auto config_file_name = my->_cli_args["config"].as<bfs::path>();
+   if( my->_args.count( "config" ) ) {
+      auto config_file_name = my->_args["config"].as<bfs::path>();
       if( config_file_name.is_relative() )
          config_file_name = data_dir / config_file_name;
    }
@@ -107,24 +107,24 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
    }
 
    bpo::store(bpo::parse_config_file< char >( config_file_name.make_preferred().string().c_str(),
-                                              my->_cfg_options, true ), my->_cfg_args );
+                                              my->_cfg_options, true ), my->_args );
 
-   if(my->_cfg_args.count("plugin") > 0)
+   if(my->_args.count("plugin") > 0)
    {
-      auto plugins = my->_cfg_args.at("plugin").as<std::vector<std::string>>();
+      auto plugins = my->_args.at("plugin").as<std::vector<std::string>>();
       for(auto& arg : plugins)
       {
          vector<string> names;
          boost::split(names, arg, boost::is_any_of(" \t,"));
          for(const std::string& name : names)
-            get_plugin(name).initialize(my->_cfg_args);
+            get_plugin(name).initialize(my->_args);
       }
    }
    for (auto plugin : autostart_plugins)
       if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
-         plugin->initialize(my->_cfg_args);
+         plugin->initialize(my->_args);
 
-   bpo::notify(my->_cfg_args);
+   bpo::notify(my->_args);
 
    return true;
 }
@@ -222,14 +222,9 @@ void application::add_program_options( const options_description& cli, const opt
    my->_cfg_options.add( cfg );
 }
 
-const variables_map& application::get_cli_args() const
+const variables_map& application::get_args() const
 {
-   return my->_cli_args;
-}
-
-const variables_map& application::get_cfg_args() const
-{
-   return my->_cfg_args;
+   return my->_args;
 }
 
 } /// namespace appbase

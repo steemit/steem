@@ -67,8 +67,7 @@ namespace appbase {
          bfs::path data_dir()const;
 
          void add_program_options( const bpo::options_description& cli, const bpo::options_description& cfg );
-         const bpo::variables_map& get_cli_args() const;
-         const bpo::variables_map& get_cfg_args() const;
+         const bpo::variables_map& get_args() const;
 
 
          boost::asio::io_service& get_io_service() { return *io_serv; }
