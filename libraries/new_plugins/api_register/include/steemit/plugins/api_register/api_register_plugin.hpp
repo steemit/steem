@@ -29,8 +29,7 @@
  *
  * All method should take a single struct as an argument called
  * method_1_args, method_2_args, method_3_args, etc. and should
- * return a single struct as a return type. API calls should
- * accept arguments either as const references, or by value.
+ * return a single struct as a return type.
  *
  * For methods that do not require arguments, use api_void_args
  * as the argument type.
@@ -38,12 +37,12 @@
 
 #define API_REGISTER_PLUGIN_NAME "api_register"
 
-#define API_METHOD( handle )                                \
-{ std::string( #handle ),                                   \
-   [this]( const fc::variant& args ) -> fc::variant         \
-   {                                                        \
-      return this->handle( args.as< handle ## _args >() );  \
-   }                                                        \
+#define API_METHOD( handle )                                                        \
+{ std::string( #handle ),                                                           \
+   [this]( const fc::variant& args ) -> std::string                                 \
+   {                                                                                \
+      return fc::json::to_string( this->handle( args.as< handle ## _args >() ) );   \
+   }                                                                                \
 }
 
 namespace steemit { namespace plugins { namespace api_register {
@@ -63,7 +62,7 @@ namespace detail
     *
     * Arguments: Variant object of propert arg type
     */
-   using api_call = std::function< fc::variant(const fc::variant&) >;
+   using api_call = std::function< std::string(const fc::variant&) >;
 
    /**
     * @brief An API, containing APIs and Methods

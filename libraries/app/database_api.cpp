@@ -30,6 +30,7 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 {
    public:
       database_api_impl( const steemit::app::api_context& ctx  );
+      database_api_impl( steemit::chain::database& db, bool disable_get_block );
       ~database_api_impl();
 
       // Subscriptions
@@ -143,6 +144,9 @@ void database_api_impl::set_block_applied_callback( std::function<void(const var
 database_api::database_api( const steemit::app::api_context& ctx )
    : my( new database_api_impl( ctx ) ) {}
 
+database_api::database_api( steemit::chain::database& db, bool disable_get_block )
+   : my( new database_api_impl( db, disable_get_block ) ) {}
+
 database_api::~database_api() {}
 
 database_api_impl::database_api_impl( const steemit::app::api_context& ctx )
@@ -158,6 +162,20 @@ database_api_impl::database_api_impl( const steemit::app::api_context& ctx )
       _follow_api = std::make_shared< steemit::follow::follow_api >( ctx );
    }
    catch( fc::assert_exception ) { ilog("Follow Plugin not loaded"); }
+}
+
+database_api_impl::database_api_impl( steemit::chain::database& db, bool disable_get_block )
+   : _db( db ), _disable_get_block( disable_get_block )
+{
+   wlog("creating database api ${x}", ("x",int64_t(this)) );
+
+   /*try
+   {
+      ctx.app.get_plugin< follow::follow_plugin >( FOLLOW_PLUGIN_NAME );
+      _follow_api = std::make_shared< steemit::follow::follow_api >( ctx );
+   }
+   catch( fc::assert_exception ) { ilog("Follow Plugin not loaded"); }
+   */
 }
 
 database_api_impl::~database_api_impl()
