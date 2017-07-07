@@ -110,7 +110,7 @@ string api_register_plugin::call_api( string& message )
 
                try
                {
-                  response.result = fc::json::to_string( (*call)( params ) );
+                  response.result = (*call)( params );
                }
                catch( fc::exception& e )
                {

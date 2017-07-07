@@ -109,6 +109,7 @@ class database_api
 {
    public:
       database_api(const steemit::app::api_context& ctx);
+      database_api( steemit::chain::database& db, bool disable_get_block );
       ~database_api();
 
       ///////////////////
