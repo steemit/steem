@@ -1,30 +1,30 @@
-#include <steemit/plugins/api_register/api_register_plugin.hpp>
+#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 
 #include <boost/algorithm/string.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
 
-#define JSON_RPC_PARSE_ERROR (-32700)
-#define JSON_RPC_INVALID_REQUEST (-32600)
-#define JSON_RPC_METHOD_NOT_FOUND (-32601)
-#define JSON_RPC_INVALID_PARAMS (-32602)
-#define JSON_RPC_INTERNAL_ERROR (-32603)
-#define JSON_RPC_SERVER_ERROR (-32000)
+#define JSON_RPC_PARSE_ERROR        (-32700)
+#define JSON_RPC_INVALID_REQUEST    (-32600)
+#define JSON_RPC_METHOD_NOT_FOUND   (-32601)
+#define JSON_RPC_INVALID_PARAMS     (-32602)
+#define JSON_RPC_INTERNAL_ERROR     (-32603)
+#define JSON_RPC_SERVER_ERROR       (-32000)
 
-namespace steemit { namespace plugins { namespace api_register {
+namespace steemit { namespace plugins { namespace json_rpc {
 
 using detail::json_rpc_error;
 using detail::json_rpc_response;
 
-api_register_plugin::api_register_plugin() : appbase::plugin< api_register_plugin >( API_REGISTER_PLUGIN_NAME ) {}
-api_register_plugin::~api_register_plugin() {}
+json_rpc_plugin::json_rpc_plugin() : appbase::plugin< json_rpc_plugin >( JSON_RPC_PLUGIN_NAME ) {}
+json_rpc_plugin::~json_rpc_plugin() {}
 
-void api_register_plugin::plugin_initialize( const variables_map& options ) {}
-void api_register_plugin::plugin_startup() {}
-void api_register_plugin::plugin_shutdown() {}
+void json_rpc_plugin::plugin_initialize( const variables_map& options ) {}
+void json_rpc_plugin::plugin_startup() {}
+void json_rpc_plugin::plugin_shutdown() {}
 
-string api_register_plugin::call_api( const string& message )
+string json_rpc_plugin::call( const string& message )
 {
    wdump( (message) );
    json_rpc_response response;
@@ -141,4 +141,4 @@ string api_register_plugin::call_api( const string& message )
    return fc::json::to_string( response );
 }
 
-} } } // steemit::plugins::api_register
+} } } // steemit::plugins::json_rpc

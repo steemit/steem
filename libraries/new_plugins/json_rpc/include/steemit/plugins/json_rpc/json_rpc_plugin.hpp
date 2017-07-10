@@ -19,7 +19,7 @@
  * register itself using add_api.
  *
  * Ex.
- * appbase::app().get_plugin< api_register_plugin >().add_api(
+ * appbase::app().get_plugin< json_rpc_plugin >().add_api(
  *    name(),
  *    {
  *       API_METHOD( method_1 ),
@@ -35,7 +35,7 @@
  * as the argument type.
  */
 
-#define API_REGISTER_PLUGIN_NAME "api_register"
+#define JSON_RPC_PLUGIN_NAME "json_rpc"
 
 #define API_METHOD( handle )                                                        \
 { std::string( #handle ),                                                           \
@@ -45,7 +45,7 @@
    }                                                                                \
 }
 
-namespace steemit { namespace plugins { namespace api_register {
+namespace steemit { namespace plugins { namespace json_rpc {
 
 using namespace appbase;
 
@@ -92,11 +92,11 @@ namespace detail
    };
 }
 
-class api_register_plugin : public appbase::plugin< api_register_plugin >
+class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
 {
    public:
-      api_register_plugin();
-      virtual ~api_register_plugin();
+      json_rpc_plugin();
+      virtual ~json_rpc_plugin();
 
       APPBASE_PLUGIN_REQUIRES();
       virtual void set_program_options( options_description&, options_description& ) override {}
@@ -110,24 +110,15 @@ class api_register_plugin : public appbase::plugin< api_register_plugin >
          _registered_apis[ api_name ] = api;
       }
 
-      string call_api( const string& body );
+      string call( const string& body );
 
    private:
       map< string, detail::api_description > _registered_apis;
 };
 
-} } } // steemit::plugins::api_register
+} } } // steemit::plugins::json_rpc
 
-FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_error, (code)(message)(data) )
-FC_REFLECT( steemit::plugins::api_register::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
+FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
 
-FC_REFLECT( steemit::plugins::api_register::api_void_args, )
-
-/*
-#define PLUGIN_INITIALIZE_API( handles... )                                                     \
-   appbase::app().get_plugin< steemit::plugins::api_register::api_register_plugin >().add_api(  \
-      this,                                                                                     \
-      {                                                                                         \
-         BOOST_PP_SEQ_FOR_EACH( PLUGIN_INITIALIZE_API_MEMBER, _, handles ),                                                   \
-      }
-*/
+FC_REFLECT( steemit::plugins::json_rpc::api_void_args, )
