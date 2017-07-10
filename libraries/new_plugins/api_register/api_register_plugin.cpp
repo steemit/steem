@@ -24,7 +24,7 @@ void api_register_plugin::plugin_initialize( const variables_map& options ) {}
 void api_register_plugin::plugin_startup() {}
 void api_register_plugin::plugin_shutdown() {}
 
-string api_register_plugin::call_api( string& message )
+string api_register_plugin::call_api( const string& message )
 {
    wdump( (message) );
    json_rpc_response response;

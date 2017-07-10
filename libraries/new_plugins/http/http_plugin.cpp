@@ -21,7 +21,7 @@
 #include <memory>
 #include <iostream>
 
-#define HTTP_THREAD_POOL_SIZE 64
+#define HTTP_THREAD_POOL_SIZE 256
 
 namespace steemit { namespace plugins { namespace http {
 
@@ -120,13 +120,18 @@ class http_plugin_impl
       shared_ptr< std::thread >  http_thread;
       asio::io_service           http_ios;
 
+      shared_ptr< std::thread >  ws_thread;
+      asio::io_service           ws_ios;
+
       boost::thread_group        api_thread_pool;
       asio::io_service           api_ios;
       asio::io_service::work     api_work;
 
-      optional< tcp::endpoint >  listen_endpoint;
+      optional< tcp::endpoint >  http_endpoint;
+      optional< tcp::endpoint >  ws_endpoint;
 
-      websocket_server_type      server;
+      websocket_server_type      http_server;
+      websocket_server_type      ws_server;
 
       plugins::api_register::api_register_plugin* api;
 };
@@ -137,7 +142,8 @@ http_plugin::~http_plugin(){}
 void http_plugin::set_program_options( options_description&, options_description& cfg )
 {
    cfg.add_options()
-         ("http-server-endpoint", bpo::value<string>()->default_value("127.0.0.1:8888"), "The local IP and port to listen for incoming http connections.")
+         ("http-server-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming http connections.")
+         ("ws-server-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming websocket connections.")
          ;
    //cli.add( cfg );
 }
@@ -149,31 +155,116 @@ void http_plugin::plugin_initialize( const variables_map& options )
       auto http_endpoint = options.at( "http-server-endpoint" ).as< string >();
       auto endpoints = resolve_string_to_ip_endpoints( http_endpoint );
       FC_ASSERT( endpoints.size(), "http-server-endpoint ${hostname} did not resolve", ("hostname", http_endpoint) );
-      _my->listen_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
+      _my->http_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
       ilog( "configured http to listen on ${ep}", ("ep", endpoints[0]) );
+   }
+
+   if( options.count( "ws-server-endpoint" ) )
+   {
+      auto http_endpoint = options.at( "ws-server-endpoint" ).as< string >();
+      auto endpoints = resolve_string_to_ip_endpoints( http_endpoint );
+      FC_ASSERT( endpoints.size(), "ws-server-endpoint ${hostname} did not resolve", ("hostname", http_endpoint) );
+      _my->ws_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
+      ilog( "configured ws to listen on ${ep}", ("ep", endpoints[0]) );
    }
 }
 
 void http_plugin::plugin_startup()
 {
-   if( _my->listen_endpoint )
-   {
-      _my->api = appbase::app().find_plugin< plugins::api_register::api_register_plugin >();
-      FC_ASSERT( _my->api != nullptr, "Could not find API Register Plugin" );
+   _my->api = appbase::app().find_plugin< plugins::api_register::api_register_plugin >();
+   FC_ASSERT( _my->api != nullptr, "Could not find API Register Plugin" );
 
+   if( _my->ws_endpoint )
+   {
+      _my->ws_thread = std::make_shared<std::thread>( [&]()
+      {
+         ilog( "start processing http thread" );
+         try
+         {
+            _my->ws_server.clear_access_channels( websocketpp::log::alevel::all );
+            _my->ws_server.clear_error_channels( websocketpp::log::elevel::all );
+            _my->ws_server.init_asio( &_my->ws_ios );
+            _my->ws_server.set_reuse_addr( true );
+
+            _my->ws_server.set_message_handler( [&]( connection_hdl hdl, websocket_server_type::message_ptr msg )
+            {
+               auto con = _my->ws_server.get_con_from_hdl( hdl );
+
+               _my->api_ios.post( [con, msg, this]()
+               {
+                  try
+                  {
+                     if( msg->get_opcode() == websocketpp::frame::opcode::text )
+                        con->send( _my->api->call_api( msg->get_payload() ) );
+                     else
+                        con->send( "error: string payload expected" );
+                  }
+                  catch( fc::exception& e )
+                  {
+                     con->send( "error calling API " + e.to_string() );
+                  }
+               });
+            });
+
+            if( _my->http_endpoint && _my->http_endpoint == _my->ws_endpoint )
+            {
+               _my->ws_server.set_http_handler( [&]( connection_hdl hdl )
+               {
+                  auto con = _my->ws_server.get_con_from_hdl( hdl );
+                  con->defer_http_response();
+
+                  _my->api_ios.post( [con, this]()
+                  {
+                     auto body = con->get_request_body();
+
+                     try
+                     {
+                        con->set_body( _my->api->call_api( body ) );
+                        con->set_status( websocketpp::http::status_code::ok );
+                     }
+                     catch( fc::exception& e )
+                     {
+                        edump( (e) );
+                        con->set_body( "Could not call API" );
+                        con->set_status( websocketpp::http::status_code::not_found );
+                     }
+
+                     con->send_http_response();
+                  });
+               });
+
+               ilog( "start listending for http requests" );
+            }
+
+            ilog( "start listening for ws requests" );
+            _my->ws_server.listen( *_my->ws_endpoint );
+            _my->ws_server.start_accept();
+
+            _my->ws_ios.run();
+            ilog( "ws io service exit" );
+         }
+         catch( ... )
+         {
+            elog( "error thrown from http io service" );
+         }
+      });
+   }
+
+   if( _my->http_endpoint && ( ( _my->ws_endpoint && _my->ws_endpoint != _my->http_endpoint ) || !_my->ws_endpoint ) )
+   {
       _my->http_thread = std::make_shared<std::thread>( [&]()
       {
          ilog( "start processing http thread" );
          try
          {
-            _my->server.clear_access_channels( websocketpp::log::alevel::all );
-            _my->server.clear_error_channels( websocketpp::log::elevel::all );
-            _my->server.init_asio( &_my->http_ios );
-            _my->server.set_reuse_addr( true );
+            _my->http_server.clear_access_channels( websocketpp::log::alevel::all );
+            _my->http_server.clear_error_channels( websocketpp::log::elevel::all );
+            _my->http_server.init_asio( &_my->http_ios );
+            _my->http_server.set_reuse_addr( true );
 
-            _my->server.set_http_handler( [&]( connection_hdl hdl )
+            _my->http_server.set_http_handler( [&]( connection_hdl hdl )
             {
-               auto con = _my->server.get_con_from_hdl( hdl );
+               auto con = _my->http_server.get_con_from_hdl( hdl );
                con->defer_http_response();
 
                _my->api_ios.post( [con, this]()
@@ -187,6 +278,7 @@ void http_plugin::plugin_startup()
                   }
                   catch( fc::exception& e )
                   {
+                     edump( (e) );
                      con->set_body( "Could not call API" );
                      con->set_status( websocketpp::http::status_code::not_found );
                   }
@@ -196,8 +288,8 @@ void http_plugin::plugin_startup()
             });
 
             ilog( "start listening for http requests" );
-            _my->server.listen( *_my->listen_endpoint );
-            _my->server.start_accept();
+            _my->http_server.listen( *_my->http_endpoint );
+            _my->http_server.start_accept();
 
             _my->http_ios.run();
             ilog( "http io service exit" );
@@ -213,11 +305,24 @@ void http_plugin::plugin_startup()
 
 void http_plugin::plugin_shutdown()
 {
+   if( _my->ws_server.is_listening() )
+      _my->ws_server.stop_listening();
+
+   if( _my->http_server.is_listening() )
+      _my->http_server.stop_listening();
+
+   _my->api_ios.stop();
+   _my->api_thread_pool.join_all();
+
+   if( _my->ws_thread )
+   {
+      _my->ws_ios.stop();
+      _my->ws_thread->join();
+      _my->ws_thread.reset();
+   }
+
    if( _my->http_thread )
    {
-      if( _my->server.is_listening() )
-         _my->server.stop_listening();
-
       _my->http_ios.stop();
       _my->http_thread->join();
       _my->http_thread.reset();

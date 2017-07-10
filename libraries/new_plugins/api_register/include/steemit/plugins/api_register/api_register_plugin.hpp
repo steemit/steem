@@ -110,7 +110,7 @@ class api_register_plugin : public appbase::plugin< api_register_plugin >
          _registered_apis[ api_name ] = api;
       }
 
-      string call_api( string& body );
+      string call_api( const string& body );
 
    private:
       map< string, detail::api_description > _registered_apis;
