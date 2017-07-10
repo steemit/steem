@@ -1,7 +1,7 @@
 #include <appbase/application.hpp>
-#include <steemit/plugins/http/http_plugin.hpp>
+#include <steemit/plugins/webserver/webserver_plugin.hpp>
 #include <steemit/plugins/test_api/test_api_plugin.hpp>
-#include <steemit/plugins/api_register/api_register_plugin.hpp>
+#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 #include <steemit/plugins/chain/chain_plugin.hpp>
 #include <steemit/plugins/p2p/p2p_plugin.hpp>
 #include <steemit/plugins/database_api/database_api_plugin.hpp>
@@ -80,8 +80,8 @@ int main( int argc, char** argv )
 
       appbase::app().add_program_options( bpo::options_description(), options );
 
-      appbase::app().register_plugin< steemit::plugins::http::http_plugin >();
-      appbase::app().register_plugin< steemit::plugins::api_register::api_register_plugin >();
+      appbase::app().register_plugin< steemit::plugins::webserver::webserver_plugin >();
+      appbase::app().register_plugin< steemit::plugins::json_rpc::json_rpc_plugin >();
       appbase::app().register_plugin< steemit::plugins::test_api::test_api_plugin >();
       appbase::app().register_plugin< steemit::plugins::chain::chain_plugin >();
       appbase::app().register_plugin< steemit::plugins::p2p::p2p_plugin >();

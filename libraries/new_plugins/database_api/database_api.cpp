@@ -11,7 +11,7 @@ namespace steemit { namespace plugins { namespace database_api {
 database_api::database_api( steemit::chain::database& db, bool disable_get_block )
    : _api( new steemit::app::database_api( db, disable_get_block ) )
 {
-   appbase::app().get_plugin< plugins::api_register::api_register_plugin >().add_api(
+   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
       DATABASE_API_PLUGIN_NAME,
       {
          API_METHOD( get_trending_tags ),

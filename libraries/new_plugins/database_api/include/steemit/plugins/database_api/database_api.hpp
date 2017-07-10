@@ -2,7 +2,7 @@
 #include <steemit/protocol/types.hpp>
 #include <steemit/app/database_api.hpp>
 
-#include <steemit/plugins/api_register/utility.hpp>
+#include <steemit/plugins/json_rpc/utility.hpp>
 
 #include <fc/optional.hpp>
 #include <fc/variant.hpp>
@@ -15,7 +15,7 @@ using namespace steemit::app;
 using std::vector;
 using fc::variant;
 using fc::optional;
-using steemit::plugins::api_register::void_args;
+using steemit::plugins::json_rpc::void_args;
 
 typedef vector< pair< string, uint32_t > > get_tags_used_by_author_return_type;
 typedef map< uint32_t, applied_operation > get_account_history_return_type;
