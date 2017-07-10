@@ -22,7 +22,6 @@ database_api::database_api( steemit::chain::database& db, bool disable_get_block
          API_METHOD( get_block ),
          API_METHOD( get_ops_in_block ),
          API_METHOD( get_config ),
-         API_METHOD( get_schema ),
          API_METHOD( get_dynamic_global_properties ),
          API_METHOD( get_chain_properties ),
          API_METHOD( get_current_median_history_price ),
@@ -131,11 +130,6 @@ DEFINE_API( database_api, get_ops_in_block )
 DEFINE_API( database_api, get_config )
 {
    return _api->get_config();
-}
-
-DEFINE_API( database_api, get_schema )
-{
-   return _api->get_schema();
 }
 
 DEFINE_API( database_api, get_dynamic_global_properties )

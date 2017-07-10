@@ -1,5 +1,4 @@
 #pragma once
-#include <steemit/plugins/database_api/database_api_args.hpp>
 #include <steemit/protocol/types.hpp>
 #include <steemit/app/database_api.hpp>
 
@@ -21,6 +20,7 @@ using steemit::plugins::api_register::void_args;
 typedef vector< pair< string, uint32_t > > get_tags_used_by_author_return_type;
 typedef map< uint32_t, applied_operation > get_account_history_return_type;
 
+/*               API,                                    args,                return */
 DEFINE_API_ARGS( get_trending_tags,                      vector< variant >,   vector< tag_api_obj > )
 DEFINE_API_ARGS( get_state,                              vector< variant >,   state )
 DEFINE_API_ARGS( get_active_witnesses,                   void_args,           vector< account_name_type > )
@@ -29,7 +29,6 @@ DEFINE_API_ARGS( get_block_header,                       vector< variant >,   op
 DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< signed_block_api_obj > )
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< applied_operation > )
 DEFINE_API_ARGS( get_config,                             void_args,           fc::variant_object )
-DEFINE_API_ARGS( get_schema,                             void_args,           std::string )
 DEFINE_API_ARGS( get_dynamic_global_properties,          void_args,           dynamic_global_property_api_obj )
 DEFINE_API_ARGS( get_chain_properties,                   void_args,           chain_properties )
 DEFINE_API_ARGS( get_current_median_history_price,       void_args,           price )
@@ -105,7 +104,6 @@ public:
    DECLARE_API( get_block )
    DECLARE_API( get_ops_in_block )
    DECLARE_API( get_config )
-   DECLARE_API( get_schema )
    DECLARE_API( get_dynamic_global_properties )
    DECLARE_API( get_chain_properties )
    DECLARE_API( get_current_median_history_price )
