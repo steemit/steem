@@ -34,7 +34,6 @@ using boost::asio::ip::tcp;
 using std::shared_ptr;
 using websocketpp::connection_hdl;
 
-
 namespace detail {
 
    struct asio_with_stub_log : public websocketpp::config::asio
@@ -51,10 +50,10 @@ namespace detail {
          typedef base::con_msg_manager_type con_msg_manager_type;
          typedef base::endpoint_msg_manager_type endpoint_msg_manager_type;
 
-         //typedef base::alog_type alog_type;
-         //typedef base::elog_type elog_type;
-         typedef websocketpp::log::stub elog_type;
-         typedef websocketpp::log::stub alog_type;
+         typedef base::alog_type alog_type;
+         typedef base::elog_type elog_type;
+         //typedef websocketpp::log::stub elog_type;
+         //typedef websocketpp::log::stub alog_type;
 
          typedef base::rng_type rng_type;
 
@@ -76,7 +75,7 @@ namespace detail {
    };
 }
 
-using websocket_server_type = websocketpp::server<detail::asio_with_stub_log>;
+using websocket_server_type = websocketpp::server< detail::asio_with_stub_log >;
 
 std::vector<fc::ip::endpoint> resolve_string_to_ip_endpoints( const std::string& endpoint_string )
 {
@@ -112,8 +111,7 @@ class webserver_plugin_impl
 {
    public:
       webserver_plugin_impl() :
-         api_work( this->api_ios ),
-         api( appbase::app().get_plugin< steemit::plugins::json_rpc::json_rpc_plugin >() )
+         api_work( this->api_ios )
       {
          for( uint32_t i = 0; i < WEBSERVER_THREAD_POOL_SIZE; i++ )
             api_thread_pool.create_thread( boost::bind( &asio::io_service::run, &api_ios ) );
@@ -133,51 +131,7 @@ class webserver_plugin_impl
       asio::io_service           api_ios;
       asio::io_service::work     api_work;
 
-      plugins::json_rpc::json_rpc_plugin& api;
-
-      void ws_handler( connection_hdl hdl, websocket_server_type::message_ptr msg )
-      {
-         auto con = ws_server.get_con_from_hdl( hdl );
-
-         api_ios.post( [&]()
-         {
-            try
-            {
-               if( msg->get_opcode() == websocketpp::frame::opcode::text )
-                  con->send( api.call( msg->get_payload() ) );
-               else
-                  con->send( "error: string payload expected" );
-            }
-            catch( fc::exception& e )
-            {
-               con->send( "error calling API " + e.to_string() );
-            }
-         });
-      }
-
-      void http_handler( connection_hdl hdl )
-      {
-         auto con = http_server.get_con_from_hdl( hdl );
-         con->defer_http_response();
-
-         api_ios.post( [&]()
-         {
-            auto body = con->get_request_body();
-
-            try
-            {
-               con->set_body( api.call( body ) );
-               con->set_status( websocketpp::http::status_code::ok );
-            }
-            catch( fc::exception& e )
-            {
-               con->set_body( "Could not call API" );
-               con->set_status( websocketpp::http::status_code::not_found );
-            }
-
-            con->send_http_response();
-         });
-      }
+      plugins::json_rpc::json_rpc_plugin* api;
 };
 
 webserver_plugin::webserver_plugin() : appbase::plugin< webserver_plugin >( WEBSERVER_PLUGIN_NAME ), _my( new webserver_plugin_impl() ) {}
@@ -215,6 +169,9 @@ void webserver_plugin::plugin_initialize( const variables_map& options )
 
 void webserver_plugin::plugin_startup()
 {
+   _my->api = appbase::app().find_plugin< plugins::json_rpc::json_rpc_plugin >();
+   FC_ASSERT( _my->api != nullptr, "Could not find API Register Plugin" );
+
    if( _my->ws_endpoint )
    {
       _my->ws_thread = std::make_shared<std::thread>( [&]()
@@ -227,13 +184,52 @@ void webserver_plugin::plugin_startup()
             _my->ws_server.init_asio( &_my->ws_ios );
             _my->ws_server.set_reuse_addr( true );
 
-            _my->ws_server.set_message_handler( boost::bind( &webserver_plugin_impl::ws_handler, &(*_my), boost::placeholders::_1, boost::placeholders::_2 ) );
+            _my->ws_server.set_message_handler( [&]( connection_hdl hdl, websocket_server_type::message_ptr msg )
+            {
+               auto con = _my->ws_server.get_con_from_hdl( hdl );
+
+               _my->api_ios.post( [con, msg, this]()
+               {
+                  try
+                  {
+                     if( msg->get_opcode() == websocketpp::frame::opcode::text )
+                        con->send( _my->api->call( msg->get_payload() ) );
+                     else
+                        con->send( "error: string payload expected" );
+                  }
+                  catch( fc::exception& e )
+                  {
+                     con->send( "error calling API " + e.to_string() );
+                  }
+               });
+            });
 
             if( _my->http_endpoint && _my->http_endpoint == _my->ws_endpoint )
             {
-               ilog( "start processing http thread" );
+               _my->ws_server.set_http_handler( [&]( connection_hdl hdl )
+               {
+                  auto con = _my->ws_server.get_con_from_hdl( hdl );
+                  con->defer_http_response();
 
-               _my->ws_server.set_http_handler( boost::bind( &webserver_plugin_impl::http_handler, &(*_my), boost::placeholders::_1 ) );
+                  _my->api_ios.post( [con, this]()
+                  {
+                     auto body = con->get_request_body();
+
+                     try
+                     {
+                        con->set_body( _my->api->call( body ) );
+                        con->set_status( websocketpp::http::status_code::ok );
+                     }
+                     catch( fc::exception& e )
+                     {
+                        edump( (e) );
+                        con->set_body( "Could not call API" );
+                        con->set_status( websocketpp::http::status_code::not_found );
+                     }
+
+                     con->send_http_response();
+                  });
+               });
 
                ilog( "start listending for http requests" );
             }
@@ -252,7 +248,6 @@ void webserver_plugin::plugin_startup()
       });
    }
 
-   // If http endpoint is set and not equal to ws endpoint
    if( _my->http_endpoint && ( ( _my->ws_endpoint && _my->ws_endpoint != _my->http_endpoint ) || !_my->ws_endpoint ) )
    {
       _my->http_thread = std::make_shared<std::thread>( [&]()
@@ -265,7 +260,30 @@ void webserver_plugin::plugin_startup()
             _my->http_server.init_asio( &_my->http_ios );
             _my->http_server.set_reuse_addr( true );
 
-            _my->ws_server.set_http_handler( boost::bind( &webserver_plugin_impl::http_handler, &(*_my), boost::placeholders::_1 ) );
+            _my->http_server.set_http_handler( [&]( connection_hdl hdl )
+            {
+               auto con = _my->http_server.get_con_from_hdl( hdl );
+               con->defer_http_response();
+
+               _my->api_ios.post( [con, this]()
+               {
+                  auto body = con->get_request_body();
+
+                  try
+                  {
+                     con->set_body( _my->api->call( body ) );
+                     con->set_status( websocketpp::http::status_code::ok );
+                  }
+                  catch( fc::exception& e )
+                  {
+                     edump( (e) );
+                     con->set_body( "Could not call API" );
+                     con->set_status( websocketpp::http::status_code::not_found );
+                  }
+
+                  con->send_http_response();
+               });
+            });
 
             ilog( "start listening for http requests" );
             _my->http_server.listen( *_my->http_endpoint );
@@ -279,6 +297,7 @@ void webserver_plugin::plugin_startup()
             elog( "error thrown from http io service" );
          }
       });
+
    }
 }
 

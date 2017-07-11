@@ -1,5 +1,6 @@
 #pragma once
 #include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steemit/plugins/chain/chain_plugin.hpp>
 
 #include <appbase/application.hpp>
 
@@ -14,7 +15,7 @@ using namespace appbase;
 class database_api_plugin : public appbase::plugin< database_api_plugin >
 {
 public:
-   APPBASE_PLUGIN_REQUIRES( (steemit::plugins::json_rpc::json_rpc_plugin) )
+   APPBASE_PLUGIN_REQUIRES( (steemit::plugins::json_rpc::json_rpc_plugin)(steemit::plugins::chain::chain_plugin) )
 
    database_api_plugin();
    virtual ~database_api_plugin();
