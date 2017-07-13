@@ -23,14 +23,17 @@
  */
 #pragma once
 
-#include <steemit/chain_plugin/chain_plugin.hpp>
-#include <steemit/p2p_plugin/p2p_plugin.hpp>
+#include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steemit/plugins/p2p/p2p_plugin.hpp>
 
 #include <appbase/application.hpp>
 
-namespace steemit { namespace producer {
+#define WITNESS_PLUGIN_NAME "witness"
 
-namespace block_production_condition {
+namespace steemit { namespace plugins { namespace witness {
+
+namespace block_production_condition
+{
    enum block_production_condition_enum
    {
       produced = 0,
@@ -46,13 +49,13 @@ namespace block_production_condition {
    };
 }
 
-class producer_plugin : public appbase::plugin< producer_plugin >
+class witness_plugin : public appbase::plugin< witness_plugin >
 {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin::chain_plugin)(p2p_plugin::p2p_plugin))
+   APPBASE_PLUGIN_REQUIRES((steemit::plugins::chain::chain_plugin)(steemit::plugins::p2p::p2p_plugin))
 
-   producer_plugin();
-   virtual ~producer_plugin();
+   witness_plugin();
+   virtual ~witness_plugin();
 
    virtual void set_program_options(
       boost::program_options::options_description &command_line_options,
@@ -64,7 +67,7 @@ public:
    virtual void plugin_shutdown();
 
 private:
-   std::unique_ptr<class producer_plugin_impl> my;
+   std::unique_ptr<class witness_plugin_impl> my;
 };
 
-} } // steemit::protocol
+} } } // steemit::plugins::witness

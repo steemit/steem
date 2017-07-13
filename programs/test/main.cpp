@@ -6,6 +6,7 @@
 #include <steemit/plugins/p2p/p2p_plugin.hpp>
 #include <steemit/plugins/database_api/database_api_plugin.hpp>
 #include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
+#include <steemit/plugins/witness/witness_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -86,6 +87,7 @@ int main( int argc, char** argv )
       appbase::app().register_plugin< steemit::plugins::p2p::p2p_plugin >();
       appbase::app().register_plugin< steemit::plugins::database_api::database_api_plugin >();
       appbase::app().register_plugin< steemit::plugins::network_broadcast_api::network_broadcast_api_plugin >();
+      appbase::app().register_plugin< steemit::plugins::witness::witness_plugin >();
 
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
