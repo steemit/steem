@@ -236,9 +236,16 @@ void p2p_plugin::plugin_shutdown() {
    my->node.reset();
 }
 
-void p2p_plugin::broadcast_block(const steemit::chain::signed_block& block) {
-   ilog("Broadcasting block #${n}", ("n", block.block_num()));
-   my->node->broadcast(graphene::net::block_message(block));
+void p2p_plugin::broadcast_block( const steemit::protocol::signed_block& block )
+{
+   ulog("Broadcasting block #${n}", ("n", block.block_num()));
+   my->node->broadcast( graphene::net::block_message( block ) );
+}
+
+void p2p_plugin::broadcast_transaction( const steemit::protocol::signed_transaction& tx )
+{
+   ulog("Broadcasting tx #${n}", ("id", tx.id()));
+   my->node->broadcast( graphene::net::trx_message( tx ) );
 }
 
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////

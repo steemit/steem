@@ -5,6 +5,7 @@
 #include <steemit/plugins/chain/chain_plugin.hpp>
 #include <steemit/plugins/p2p/p2p_plugin.hpp>
 #include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -61,8 +62,6 @@ int main( int argc, char** argv )
       std::vector< std::string > default_console_appender( {"stderr","std_err"} );
       std::string str_default_console_appender = boost::algorithm::join( default_console_appender, " " );
 
-      idump( (default_console_appender) );
-
       std::vector< std::string > default_file_appender( {"p2p","logs/p2p/p2p.log"} );
       std::string str_default_file_appender = boost::algorithm::join( default_file_appender, " " );
 
@@ -86,6 +85,8 @@ int main( int argc, char** argv )
       appbase::app().register_plugin< steemit::plugins::chain::chain_plugin >();
       appbase::app().register_plugin< steemit::plugins::p2p::p2p_plugin >();
       appbase::app().register_plugin< steemit::plugins::database_api::database_api_plugin >();
+      appbase::app().register_plugin< steemit::plugins::network_broadcast_api::network_broadcast_api_plugin >();
+
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
 
@@ -102,6 +103,8 @@ int main( int argc, char** argv )
 
       appbase::app().startup();
       appbase::app().exec();
+      std::cout << "exited cleanly\n";
+      return 0;
    }
    catch ( const boost::exception& e )
    {
@@ -116,8 +119,7 @@ int main( int argc, char** argv )
       std::cerr << "unknown exception\n";
    }
 
-   std::cout << "exited cleanly\n";
-   return 0;
+   return -1;
 }
 
 vector< string > tokenize_config_args( const vector< string >& args )
@@ -140,7 +142,6 @@ fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& 
 {
    try
    {
-      ilog("");
       fc::logging_config logging_config;
       bool found_logging_config = false;
 

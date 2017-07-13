@@ -6,15 +6,15 @@ typedef arg_type api_name ## _args;                         \
 typedef return_type api_name ## _return;
 
 #define DECLARE_API( api_name )                             \
-api_name ## _return api_name( const api_name ## _args& )const;     \
+api_name ## _return api_name( const api_name ## _args& );   \
 
 #define DEFINE_API( class, api_name )                                   \
-api_name ## _return class :: api_name ( const api_name ## _args& args )const  \
+api_name ## _return class :: api_name ( const api_name ## _args& args ) \
 
 namespace steemit { namespace plugins { namespace json_rpc {
 
-struct void_args {};
+struct void_type {};
 
 } } } // steemit::plugins::json_rpc
 
-FC_REFLECT( steemit::plugins::json_rpc::void_args, )
+FC_REFLECT( steemit::plugins::json_rpc::void_type, )

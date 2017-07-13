@@ -15,7 +15,7 @@ using namespace steemit::app;
 using std::vector;
 using fc::variant;
 using fc::optional;
-using steemit::plugins::json_rpc::void_args;
+using steemit::plugins::json_rpc::void_type;
 
 typedef vector< pair< string, uint32_t > > get_tags_used_by_author_return_type;
 typedef map< uint32_t, applied_operation > get_account_history_return_type;
@@ -23,26 +23,26 @@ typedef map< uint32_t, applied_operation > get_account_history_return_type;
 /*               API,                                    args,                return */
 DEFINE_API_ARGS( get_trending_tags,                      vector< variant >,   vector< tag_api_obj > )
 DEFINE_API_ARGS( get_state,                              vector< variant >,   state )
-DEFINE_API_ARGS( get_active_witnesses,                   void_args,           vector< account_name_type > )
-DEFINE_API_ARGS( get_miner_queue,                        void_args,           vector< account_name_type > )
+DEFINE_API_ARGS( get_active_witnesses,                   void_type,           vector< account_name_type > )
+DEFINE_API_ARGS( get_miner_queue,                        void_type,           vector< account_name_type > )
 DEFINE_API_ARGS( get_block_header,                       vector< variant >,   optional< block_header > )
 DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< signed_block_api_obj > )
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< applied_operation > )
-DEFINE_API_ARGS( get_config,                             void_args,           fc::variant_object )
-DEFINE_API_ARGS( get_dynamic_global_properties,          void_args,           dynamic_global_property_api_obj )
-DEFINE_API_ARGS( get_chain_properties,                   void_args,           chain_properties )
-DEFINE_API_ARGS( get_current_median_history_price,       void_args,           price )
-DEFINE_API_ARGS( get_feed_history,                       void_args,           feed_history_api_obj )
-DEFINE_API_ARGS( get_witness_schedule,                   void_args,           witness_schedule_api_obj )
-DEFINE_API_ARGS( get_hardfork_version,                   void_args,           hardfork_version )
-DEFINE_API_ARGS( get_next_scheduled_hardfork,            void_args,           scheduled_hardfork )
+DEFINE_API_ARGS( get_config,                             void_type,           fc::variant_object )
+DEFINE_API_ARGS( get_dynamic_global_properties,          void_type,           dynamic_global_property_api_obj )
+DEFINE_API_ARGS( get_chain_properties,                   void_type,           chain_properties )
+DEFINE_API_ARGS( get_current_median_history_price,       void_type,           price )
+DEFINE_API_ARGS( get_feed_history,                       void_type,           feed_history_api_obj )
+DEFINE_API_ARGS( get_witness_schedule,                   void_type,           witness_schedule_api_obj )
+DEFINE_API_ARGS( get_hardfork_version,                   void_type,           hardfork_version )
+DEFINE_API_ARGS( get_next_scheduled_hardfork,            void_type,           scheduled_hardfork )
 DEFINE_API_ARGS( get_reward_fund,                        vector< variant >,   reward_fund_api_obj )
 DEFINE_API_ARGS( get_key_references,                     vector< variant >,   vector< set< string > > )
 DEFINE_API_ARGS( get_accounts,                           vector< variant >,   vector< extended_account > )
 DEFINE_API_ARGS( get_account_references,                 vector< variant >,   vector< account_id_type > )
 DEFINE_API_ARGS( lookup_account_names,                   vector< variant >,   vector< optional< account_api_obj > > )
 DEFINE_API_ARGS( lookup_accounts,                        vector< variant >,   set< string > )
-DEFINE_API_ARGS( get_account_count,                      void_args,           uint64_t )
+DEFINE_API_ARGS( get_account_count,                      void_type,           uint64_t )
 DEFINE_API_ARGS( get_owner_history,                      vector< variant >,   vector< owner_authority_history_api_obj > )
 DEFINE_API_ARGS( get_recovery_request,                   vector< variant >,   optional< account_recovery_request_api_obj > )
 DEFINE_API_ARGS( get_escrow,                             vector< variant >,   optional< escrow_api_obj > )
@@ -60,7 +60,7 @@ DEFINE_API_ARGS( lookup_witness_accounts,                vector< variant >,   se
 DEFINE_API_ARGS( get_order_book,                         vector< variant >,   order_book )
 DEFINE_API_ARGS( get_open_orders,                        vector< variant >,   vector< extended_limit_order > )
 DEFINE_API_ARGS( get_liquidity_queue,                    vector< variant >,   vector< liquidity_balance > )
-DEFINE_API_ARGS( get_witness_count,                      void_args,           uint64_t )
+DEFINE_API_ARGS( get_witness_count,                      void_type,           uint64_t )
 DEFINE_API_ARGS( get_transaction_hex,                    vector< variant >,   string )
 DEFINE_API_ARGS( get_transaction,                        vector< variant >,   annotated_signed_transaction )
 DEFINE_API_ARGS( get_required_signatures,                vector< variant >,   set< public_key_type > )
