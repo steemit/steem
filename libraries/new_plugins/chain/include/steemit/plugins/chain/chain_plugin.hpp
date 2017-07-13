@@ -30,6 +30,43 @@ public:
 
    bool block_is_on_preferred_chain( const steemit::chain::block_id_type& block_id );
 
+   template< typename MultiIndexType >
+   bool has_index() const
+   {
+      return db().has_index< MultiIndexType >();
+   }
+
+   template< typename MultiIndexType >
+   const chainbase::generic_index< MultiIndexType >& get_index() const
+   {
+      return db().get_index< MultiIndexType >();
+   }
+
+   template< typename ObjectType, typename IndexedByType, typename CompatibleKey >
+   const ObjectType* find( CompatibleKey&& key ) const
+   {
+      return db().find< ObjectType, IndexedByType, CompatibleKey >( key );
+   }
+
+   template< typename ObjectType >
+   const ObjectType* find( chainbase::oid< ObjectType > key = chainbase::oid< ObjectType >() )
+   {
+      return db().find< ObjectType >( key );
+   }
+
+   template< typename ObjectType, typename IndexedByType, typename CompatibleKey >
+   const ObjectType& get( CompatibleKey&& key ) const
+   {
+      return db().get< ObjectType, IndexedByType, CompatibleKey >( key );
+   }
+
+   template< typename ObjectType >
+   const ObjectType& get( const chainbase::oid< ObjectType >& key = chainbase::oid< ObjectType >() )
+   {
+      return db().get< ObjectType >( key );
+   }
+
+   // Exposed for backwards compatibility. In the future, plugins should manage their own internal database
    database& db();
    const database& db() const;
 

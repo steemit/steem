@@ -46,7 +46,8 @@ public:
    virtual void plugin_startup();
    virtual void plugin_shutdown();
 
-   void broadcast_block(const steemit::chain::signed_block& block);
+   void broadcast_block( const steemit::protocol::signed_block& block );
+   void broadcast_transaction( const steemit::protocol::signed_transaction& tx );
 
 private:
    std::unique_ptr<class p2p_plugin_impl> my;

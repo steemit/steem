@@ -49,11 +49,6 @@ namespace steemit { namespace plugins { namespace json_rpc {
 
 using namespace appbase;
 
-/**
- * Void argument type for API calls
- */
-struct api_void_args {};
-
 namespace detail
 {
    /**
@@ -120,5 +115,3 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
 
 FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
 FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
-
-FC_REFLECT( steemit::plugins::json_rpc::api_void_args, )
