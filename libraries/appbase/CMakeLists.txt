@@ -15,7 +15,7 @@ LIST(APPEND BOOST_COMPONENTS thread
                              unit_test_framework
                              locale)
 
-FIND_PACKAGE(Boost 1.60 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 
 if( APPLE )
