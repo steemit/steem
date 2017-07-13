@@ -8,9 +8,9 @@
 
 namespace steemit { namespace plugins { namespace network_broadcast_api {
 
-network_broadcast_api::network_broadcast_api()
-   : _p2p( appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >() ),
-     _chain( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >() )
+network_broadcast_api::network_broadcast_api() :
+   _p2p( appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >() ),
+   _chain( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >() )
 {
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
       NETWORK_BROADCAST_API_PLUGIN_NAME,
