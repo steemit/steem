@@ -117,7 +117,7 @@ DEFINE_API( database_api, get_block_header )
 
 DEFINE_API( database_api, get_block )
 {
-   CHECK_ARG_SIZE( 2 )
+   CHECK_ARG_SIZE( 1 )
    return _api->get_block( args[0].as< uint32_t >() );
 }
 

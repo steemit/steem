@@ -39,9 +39,11 @@
 
 #define API_METHOD( handle )                                                        \
 { std::string( #handle ),                                                           \
-   [this]( const fc::variant& args ) -> std::string                                 \
+   [this]( const fc::variant& args ) -> fc::variant                                 \
    {                                                                                \
-      return fc::json::to_string( this->handle( args.as< handle ## _args >() ) );   \
+      /*fc::variant v;*/                                                                \
+      return fc::variant( this->handle( args.as< handle ## _args >() ) );            \
+      /*return v;*/                                                                     \
    }                                                                                \
 }
 
@@ -57,7 +59,7 @@ namespace detail
     *
     * Arguments: Variant object of propert arg type
     */
-   using api_call = std::function< std::string(const fc::variant&) >;
+   using api_call = std::function< fc::variant(const fc::variant&) >;
 
    /**
     * @brief An API, containing APIs and Methods
@@ -70,18 +72,18 @@ namespace detail
 
    struct json_rpc_error
    {
-      json_rpc_error( int32_t c, std::string m, fc::optional< std::string > d = fc::optional< std::string >() )
+      json_rpc_error( int32_t c, std::string m, fc::optional< fc::variant > d = fc::optional< fc::variant >() )
          : code( c ), message( m ), data( d ) {}
 
       int32_t                          code;
       std::string                      message;
-      fc::optional< std::string >      data;
+      fc::optional< fc::variant >      data;
    };
 
    struct json_rpc_response
    {
       std::string                      jsonrpc = "2.0";
-      fc::optional< std::string >      result;
+      fc::optional< fc::variant >      result;
       fc::optional< json_rpc_error >   error;
       fc::variant                      id;
    };
