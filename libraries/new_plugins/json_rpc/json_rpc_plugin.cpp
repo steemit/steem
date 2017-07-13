@@ -100,11 +100,11 @@ string json_rpc_plugin::call( const string& message )
                   }
                   catch( fc::parse_error_exception& e )
                   {
-                     response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+                     response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
                   }
                   catch( fc::bad_cast_exception& e )
                   {
-                     response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+                     response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
                   }
                }
 
@@ -114,13 +114,13 @@ string json_rpc_plugin::call( const string& message )
                }
                catch( fc::exception& e )
                {
-                  response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+                  response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
                }
 
             }
             catch( fc::assert_exception& e )
             {
-               response.error = json_rpc_error( JSON_RPC_METHOD_NOT_FOUND, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+               response.error = json_rpc_error( JSON_RPC_METHOD_NOT_FOUND, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
             }
          }
       }
@@ -131,11 +131,11 @@ string json_rpc_plugin::call( const string& message )
    }
    catch( fc::parse_error_exception& e )
    {
-      response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+      response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
    }
    catch( fc::bad_cast_exception& e )
    {
-      response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::json::to_string( *(e.dynamic_copy_exception()) ) );
+      response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
    }
 
    return fc::json::to_string( response );
