@@ -90,6 +90,8 @@ int main( int argc, char** argv )
       appbase::app().register_plugin< steemit::plugins::database_api::database_api_plugin >();
       appbase::app().register_plugin< steemit::plugins::network_broadcast_api::network_broadcast_api_plugin >();
       appbase::app().register_plugin< steemit::plugins::witness::witness_plugin >();
+      appbase::app().register_plugin< steemit::plugins::account_by_key::account_by_key_plugin >();
+      appbase::app().register_plugin< steemit::plugins::account_by_key_api::account_by_key_api_plugin >();
 
       if( !appbase::app().initialize( argc, argv ) )
          return -1;

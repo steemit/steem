@@ -239,7 +239,7 @@ account_by_key_plugin::account_by_key_plugin() :
 
 account_by_key_plugin::~account_by_key_plugin() {}
 
-void set_program_options( options_description& cli, options_description& cfg ){}
+void account_by_key_plugin::set_program_options( options_description& cli, options_description& cfg ){}
 
 void account_by_key_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
