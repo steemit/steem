@@ -7,6 +7,8 @@
 #include <steemit/plugins/database_api/database_api_plugin.hpp>
 #include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
 #include <steemit/plugins/witness/witness_plugin.hpp>
+#include <steemit/plugins/account_by_key/account_by_key_plugin.hpp>
+#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
