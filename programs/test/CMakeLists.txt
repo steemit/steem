@@ -10,4 +10,5 @@ target_link_libraries( appbase_test appbase
    witness_plugin
    account_by_key_plugin
    account_by_key_api_plugin
+   account_history_plugin
    ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
