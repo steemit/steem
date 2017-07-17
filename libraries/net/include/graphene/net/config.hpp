@@ -62,11 +62,11 @@
  * our peers and save a copy in a cache were we will find it if
  * a peer requests it.  We expire out old items out of the cache
  * after this number of blocks go by.
- * 
+ *
  * Recently lowered from 30 to match the default expiration time
  * the web wallet imposes on transactions.
  */
-#define GRAPHENE_NET_MESSAGE_CACHE_DURATION_IN_BLOCKS        5
+#define GRAPHENE_NET_MESSAGE_CACHE_DURATION_IN_BLOCKS        20
 
 /**
  * We prevent a peer from offering us a list of blocks which, if we fetched them
@@ -87,12 +87,12 @@
  * is being flooded -- typically transactions will be fetched as soon
  * as we find out about them, so only one item will be requested
  * at a time.
- * 
+ *
  * No tests have been done to find the optimal value for this
  * parameter, so consider increasing or decreasing it if performance
  * during flooding is lacking.
  */
-#define GRAPHENE_NET_MAX_ITEMS_PER_PEER_DURING_NORMAL_OPERATION  1 
+#define GRAPHENE_NET_MAX_ITEMS_PER_PEER_DURING_NORMAL_OPERATION  1
 
 /**
  * Instead of fetching all item IDs from a peer, then fetching all blocks
