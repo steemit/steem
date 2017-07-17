@@ -10,6 +10,8 @@
 #include <steemit/plugins/account_by_key/account_by_key_plugin.hpp>
 #include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
 #include <steemit/plugins/account_history/account_history_plugin.hpp>
+#include <steemit/plugins/follow/follow_plugin.hpp>
+#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -94,6 +96,8 @@ int main( int argc, char** argv )
       appbase::app().register_plugin< steemit::plugins::account_by_key::account_by_key_plugin >();
       appbase::app().register_plugin< steemit::plugins::account_by_key_api::account_by_key_api_plugin >();
       appbase::app().register_plugin< steemit::plugins::account_history::account_history_plugin >();
+      appbase::app().register_plugin< steemit::plugins::follow::follow_plugin >();
+      appbase::app().register_plugin< steemit::plugins::follow_api::follow_api_plugin >();
 
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
