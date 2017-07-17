@@ -30,6 +30,7 @@
 #include <steemit/chain/comment_object.hpp>
 #include <steemit/chain/witness_objects.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
+#include <steemit/chain/index.hpp>
 
 #include <graphene/utilities/key_conversion.hpp>
 
@@ -532,6 +533,12 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    my->_custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< witness_plugin_operation > >( my->_db );
    my->_custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( this );
    appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db().set_custom_operation_interpreter( name(), my->_custom_operation_interpreter );
+
+   my->_db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
+   my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+
+   add_plugin_index< account_bandwidth_index >( my->_db );
+   add_plugin_index< content_edit_lock_index >( my->_db );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
