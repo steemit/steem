@@ -2929,7 +2929,6 @@ void database::create_block_summary(const signed_block& next_block)
 
 void database::update_global_dynamic_data( const signed_block& b )
 { try {
-   auto block_size = fc::raw::pack_size(b);
    const dynamic_global_property_object& _dgp =
       get_dynamic_global_properties();
 
@@ -2975,41 +2974,6 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
       dgp.current_aslot += missed_blocks+1;
-      dgp.average_block_size = (99 * dgp.average_block_size + block_size)/100;
-
-      /**
-       *  About once per minute the average network use is consulted and used to
-       *  adjust the reserve ratio. Anything above 50% usage reduces the ratio by
-       *  half which should instantly bring the network from 50% to 25% use unless
-       *  the demand comes from users who have surplus capacity. In other words,
-       *  a 50% reduction in reserve ratio does not result in a 50% reduction in usage,
-       *  it will only impact users who where attempting to use more than 50% of their
-       *  capacity.
-       *
-       *  When the reserve ratio is at its max (10,000) a 50% reduction will take 3 to
-       *  4 days to return back to maximum.  When it is at its minimum it will return
-       *  back to its prior level in just a few minutes.
-       *
-       *  If the network reserve ratio falls under 100 then it is probably time to
-       *  increase the capacity of the network.
-       */
-      if( dgp.head_block_number % 20 == 0 )
-      {
-         if( ( !has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 2 ) ||
-             (  has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 4 ) )
-         {
-            dgp.current_reserve_ratio /= 2; /// exponential back up
-         }
-         else
-         { /// linear growth... not much fine grain control near full capacity
-            dgp.current_reserve_ratio++;
-         }
-
-         if( has_hardfork( STEEMIT_HARDFORK_0_2 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
-            dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
-      }
-      dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *
-                                  STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) / STEEMIT_BLOCK_INTERVAL;
    } );
 
    if( !(get_node_properties().skip_flags & skip_undo_history_check) )
@@ -3373,7 +3337,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                   acnt.sbd_balance += interest_paid;
                   acnt.sbd_seconds = 0;
                   acnt.sbd_last_interest_payment = head_block_time();
-                  
+
                   if(interest > 0)
                      push_virtual_operation( interest_operation( a.name, interest_paid ) );
 

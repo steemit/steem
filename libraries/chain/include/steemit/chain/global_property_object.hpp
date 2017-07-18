@@ -83,16 +83,6 @@ namespace steemit { namespace chain {
          uint16_t sbd_print_rate = STEEMIT_100_PERCENT;
 
          /**
-          *  Average block size is updated every block to be:
-          *
-          *     average_block_size = (99 * average_block_size + new_block_size) / 100
-          *
-          *  This property is used to update the current_reserve_ratio to maintain approximately
-          *  50% or less utilization of network capacity.
-          */
-         uint32_t     average_block_size = 0;
-
-         /**
           *  Maximum block size is decided by the set of active witnesses which change every round.
           *  Each witness posts what they think the maximum size should be as part of their witness
           *  properties, the median size is chosen to be the maximum block size for the round.
@@ -116,25 +106,6 @@ namespace steemit { namespace chain {
          uint8_t       participation_count = 0; ///< Divide by 128 to compute participation percentage
 
          uint32_t last_irreversible_block_num = 0;
-
-         /**
-          * The maximum bandwidth the blockchain can support is:
-          *
-          *    max_bandwidth = maximum_block_size * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS / STEEMIT_BLOCK_INTERVAL
-          *
-          * The maximum virtual bandwidth is:
-          *
-          *    max_bandwidth * current_reserve_ratio
-          */
-         uint64_t max_virtual_bandwidth = 0;
-
-         /**
-          *   Any time average_block_size <= 50% maximum_block_size this value grows by 1 until it
-          *   reaches STEEMIT_MAX_RESERVE_RATIO.  Any time average_block_size is greater than
-          *   50% it falls by 1%.  Upward adjustments happen once per round, downward adjustments
-          *   happen every block.
-          */
-         uint64_t current_reserve_ratio = 1;
 
          /**
           * The number of votes regenerated per day.  Any user voting slower than this rate will be
@@ -176,14 +147,11 @@ FC_REFLECT( steemit::chain::dynamic_global_property_object,
              (pending_rewarded_vesting_steem)
              (sbd_interest_rate)
              (sbd_print_rate)
-             (average_block_size)
              (maximum_block_size)
              (current_aslot)
              (recent_slots_filled)
              (participation_count)
              (last_irreversible_block_num)
-             (max_virtual_bandwidth)
-             (current_reserve_ratio)
              (vote_power_reserve_rate)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, steemit::chain::dynamic_global_property_index )

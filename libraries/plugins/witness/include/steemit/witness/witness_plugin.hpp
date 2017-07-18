@@ -28,6 +28,9 @@
 
 #include <fc/thread/future.hpp>
 
+#define RESERVE_RATIO_PRECISION (10000ll)
+#define RESERVE_RATIO_MIN_INCREMENT (5000ll)
+
 namespace steemit { namespace witness {
 
 using std::string;

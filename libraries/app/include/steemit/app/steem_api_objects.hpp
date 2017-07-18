@@ -42,7 +42,6 @@ using namespace steemit::chain;
 typedef chain::change_recovery_account_request_object  change_recovery_account_request_api_obj;
 typedef chain::block_summary_object                    block_summary_api_obj;
 typedef chain::comment_vote_object                     comment_vote_api_obj;
-typedef chain::dynamic_global_property_object          dynamic_global_property_api_obj;
 typedef chain::convert_request_object                  convert_request_api_obj;
 typedef chain::escrow_object                           escrow_api_obj;
 typedef chain::liquidity_reward_balance_object         liquidity_reward_balance_api_obj;
@@ -478,6 +477,30 @@ struct signed_block_api_obj : public signed_block
    vector< transaction_id_type > transaction_ids;
 };
 
+struct dynamic_global_property_api_obj : public dynamic_global_property_object
+{
+   dynamic_global_property_api_obj( const dynamic_global_property_object& gpo, const chain::database& db ) :
+      dynamic_global_property_object( gpo )
+   {
+      if( db.has_index< witness::reserve_ratio_index >() )
+      {
+         const auto& r = db.get( witness::reserve_ratio_id_type() );
+         current_reserve_ratio = r.current_reserve_ratio;
+         average_block_size = r.average_block_size;
+         max_virtual_bandwidth = r.max_virtual_bandwidth;
+      }
+   }
+
+   dynamic_global_property_api_obj( const dynamic_global_property_object& gpo ) :
+      dynamic_global_property_object( gpo ) {}
+
+   dynamic_global_property_api_obj() {}
+
+   uint32_t current_reserve_ratio = 1;
+   uint64_t average_block_size = 0;
+   uint64_t max_virtual_bandwidth = 0;
+};
+
 } } // steemit::app
 
 FC_REFLECT( steemit::app::comment_api_obj,
@@ -567,4 +590,10 @@ FC_REFLECT_DERIVED( steemit::app::signed_block_api_obj, (steemit::protocol::sign
                      (block_id)
                      (signing_key)
                      (transaction_ids)
+                  )
+
+FC_REFLECT_DERIVED( steemit::app::dynamic_global_property_api_obj, (steemit::chain::dynamic_global_property_object),
+                     (current_reserve_ratio)
+                     (average_block_size)
+                     (max_virtual_bandwidth)
                   )
