@@ -345,7 +345,7 @@ namespace detail
                      ("blocknum", db.head_block_num()) );
 
                   r.max_virtual_bandwidth = ( ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
-                                             * uint128_t( STEEMIT_BANDWIDTH_PRECISION ) * uint128_t( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
+                                             * uint128_t( uint64_t( STEEMIT_BANDWIDTH_PRECISION ) ) * uint128_t( uint64_t( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) ) )
                                              / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION ) );
                }
             }
