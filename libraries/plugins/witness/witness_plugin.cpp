@@ -291,15 +291,16 @@ namespace detail
          {
             r.average_block_size = 0;
             r.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
-            r.max_virtual_bandwidth =  ( uint128_t( uint64_t( STEEMIT_MAX_BLOCK_SIZE ) ) * uint128_t( uint64_t( STEEMIT_MAX_RESERVE_RATIO ) ) *
-                                       uint128_t( uint64_t( STEEMIT_BANDWIDTH_PRECISION ) ) * uint128_t( uint64_t( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) ) / STEEMIT_BLOCK_INTERVAL );
+            r.max_virtual_bandwidth = ( uint128_t( STEEMIT_MAX_BLOCK_SIZE * STEEMIT_MAX_RESERVE_RATIO )
+                                      * STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
+                                      / STEEMIT_BLOCK_INTERVAL;
          });
       }
       else
       {
          db.modify( *reserve_ratio_ptr, [&]( reserve_ratio_object& r )
          {
-            r.average_block_size = ( 99 * r.average_block_size + fc::raw::pack_size( b) ) / 100;
+            r.average_block_size = ( 99 * r.average_block_size + fc::raw::pack_size( b ) ) / 100;
 
             /**
             * About once per minute the average network use is consulted and used to
@@ -344,9 +345,9 @@ namespace detail
                      ("new", r.current_reserve_ratio)
                      ("blocknum", db.head_block_num()) );
 
-                  r.max_virtual_bandwidth = ( ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
-                                             * uint128_t( uint64_t( STEEMIT_BANDWIDTH_PRECISION ) ) * uint128_t( uint64_t( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) ) )
-                                             / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION ) );
+                  r.max_virtual_bandwidth = ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
+                                            * uint128_t( STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
+                                            / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION );
                }
             }
          });
