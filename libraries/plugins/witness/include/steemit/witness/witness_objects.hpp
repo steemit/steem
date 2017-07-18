@@ -90,7 +90,7 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
        *  This property is used to update the current_reserve_ratio to maintain approximately
        *  50% or less utilization of network capacity.
        */
-      int32_t          average_block_size = 0;
+      int32_t    average_block_size = 0;
 
       /**
        *   Any time average_block_size <= 50% maximum_block_size this value grows by 1 until it
@@ -98,7 +98,7 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
        *   50% it falls by 1%.  Upward adjustments happen once per round, downward adjustments
        *   happen every block.
        */
-      int64_t          current_reserve_ratio = 1;
+      int64_t    current_reserve_ratio = 1;
 
       /**
        * The maximum bandwidth the blockchain can support is:
@@ -109,7 +109,7 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
        *
        *    max_bandwidth * current_reserve_ratio
        */
-      uint64_t          max_virtual_bandwidth = 0;
+      uint128_t   max_virtual_bandwidth = 0;
 };
 
 typedef oid< reserve_ratio_object > reserve_ratio_id_type;

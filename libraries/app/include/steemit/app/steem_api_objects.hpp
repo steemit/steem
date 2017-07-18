@@ -496,9 +496,9 @@ struct dynamic_global_property_api_obj : public dynamic_global_property_object
 
    dynamic_global_property_api_obj() {}
 
-   uint32_t current_reserve_ratio = 1;
-   uint64_t average_block_size = 0;
-   uint64_t max_virtual_bandwidth = 0;
+   uint32_t    current_reserve_ratio = 1;
+   uint64_t    average_block_size = 0;
+   uint128_t   max_virtual_bandwidth = 0;
 };
 
 } } // steemit::app

@@ -338,14 +338,16 @@ namespace detail
                }
 
                if( old_reserve_ratio != r.current_reserve_ratio )
+               {
                   ilog( "Reserve ratio updated from ${old} to ${new}. Block: ${blocknum}",
                      ("old", old_reserve_ratio)
                      ("new", r.current_reserve_ratio)
                      ("blocknum", db.head_block_num()) );
 
-               r.max_virtual_bandwidth = ( max_block_size * r.current_reserve_ratio *
-                                         STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
-                                         / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION );
+                  r.max_virtual_bandwidth = ( ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
+                                             * uint128_t( STEEMIT_BANDWIDTH_PRECISION ) * uint128_t( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
+                                             / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION ) );
+               }
             }
          });
       }
