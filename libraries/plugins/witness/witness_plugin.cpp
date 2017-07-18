@@ -291,8 +291,8 @@ namespace detail
          {
             r.average_block_size = 0;
             r.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
-            r.max_virtual_bandwidth = ( (uint64_t) STEEMIT_MAX_BLOCK_SIZE * STEEMIT_MAX_RESERVE_RATIO *
-                                       STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) / STEEMIT_BLOCK_INTERVAL;
+            r.max_virtual_bandwidth =  ( uint128_t( uint64_t( STEEMIT_MAX_BLOCK_SIZE ) ) * uint128_t( uint64_t( STEEMIT_MAX_RESERVE_RATIO ) ) *
+                                       uint128_t( uint64_t( STEEMIT_BANDWIDTH_PRECISION ) ) * uint128_t( uint64_t( STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) ) / STEEMIT_BLOCK_INTERVAL );
          });
       }
       else
