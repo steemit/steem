@@ -28,8 +28,8 @@
 
 #include <fc/thread/future.hpp>
 
-#define RESERVE_RATIO_PRECISION (10000ll)
-#define RESERVE_RATIO_MIN_INCREMENT (5000ll)
+#define RESERVE_RATIO_PRECISION ((int64_t)10000)
+#define RESERVE_RATIO_MIN_INCREMENT ((int64_t)5000)
 
 namespace steemit { namespace witness {
 
