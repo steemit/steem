@@ -268,7 +268,7 @@ fc::optional<fc::logging_config> load_logging_config_from_ini_file(const fc::pat
          {
             std::string console_appender_name = section_name.substr(console_appender_section_prefix.length());
             std::string stream_name = section_tree.get<std::string>("stream");
-
+            idump( (console_appender_name)(stream_name) );
             // construct a default console appender config here
             // stdout/stderr will be taken from ini file, everything else hard-coded here
             fc::console_appender::config console_appender_config;
@@ -292,7 +292,7 @@ fc::optional<fc::logging_config> load_logging_config_from_ini_file(const fc::pat
             if (file_name.is_relative())
                file_name = fc::absolute(config_ini_filename).parent_path() / file_name;
 
-
+            idump( (file_appender_name)(file_name) );
             // construct a default file appender config here
             // filename will be taken from ini file, everything else hard-coded here
             fc::file_appender::config file_appender_config;
@@ -309,6 +309,7 @@ fc::optional<fc::logging_config> load_logging_config_from_ini_file(const fc::pat
             std::string logger_name = section_name.substr(logger_section_prefix.length());
             std::string level_string = section_tree.get<std::string>("level");
             std::string appenders_string = section_tree.get<std::string>("appenders");
+            idump( (logger_name)(level_string)(appenders_string) );
             fc::logger_config logger_config(logger_name);
             logger_config.level = fc::variant(level_string).as<fc::log_level>();
             boost::split(logger_config.appenders, appenders_string,

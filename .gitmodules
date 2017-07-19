@@ -1,3 +1,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/steemit/fc.git
+[submodule "libraries/vendor/cpp-netlib"]
+	path = libraries/vendor/cpp-netlib
+	url = https://github.com/cpp-netlib/cpp-netlib

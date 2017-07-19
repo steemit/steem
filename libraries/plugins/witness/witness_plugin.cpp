@@ -117,7 +117,7 @@ namespace detail
    void check_memo( const string& memo, const account_object& account, const account_authority_object& auth )
    {
       vector< public_key_type > keys;
-      
+
       try
       {
          // Check if memo is a private key
@@ -216,7 +216,7 @@ namespace detail
 
       void operator()( const transfer_operation& o )const
       {
-         if( o.memo.length() > 0 ) 
+         if( o.memo.length() > 0 )
             check_memo( o.memo,
                         _db.get< account_object, chain::by_name >( o.from ),
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
@@ -224,7 +224,7 @@ namespace detail
 
       void operator()( const transfer_to_savings_operation& o )const
       {
-         if( o.memo.length() > 0 ) 
+         if( o.memo.length() > 0 )
             check_memo( o.memo,
                         _db.get< account_object, chain::by_name >( o.from ),
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
@@ -232,7 +232,7 @@ namespace detail
 
       void operator()( const transfer_from_savings_operation& o )const
       {
-         if( o.memo.length() > 0 ) 
+         if( o.memo.length() > 0 )
             check_memo( o.memo,
                         _db.get< account_object, chain::by_name >( o.from ),
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
