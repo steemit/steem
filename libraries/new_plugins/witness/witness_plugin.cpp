@@ -42,14 +42,18 @@
 
 #include <iostream>
 
+
+#define DISTANCE_CALC_PRECISION (10000)
+
+
+namespace steemit { namespace plugins { namespace witness {
+
+using steemit::chain::plugin_exception;
 using std::string;
 using std::vector;
 
 namespace bpo = boost::program_options;
 
-namespace steemit { namespace plugins { namespace witness {
-
-using steemit::chain::plugin_exception;
 
 void new_chain_banner( const steemit::chain::database& db )
 {
@@ -87,6 +91,7 @@ public:
 
    void pre_transaction( const steemit::protocol::signed_transaction& trx );
    void pre_operation( const steemit::chain::operation_notification& note );
+   void on_block( const signed_block& b );
 
    void update_account_bandwidth( const steemit::chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
 
@@ -280,6 +285,81 @@ void witness_plugin_impl::pre_operation( const steemit::chain::operation_notific
    }
 }
 
+void witness_plugin_impl::on_block( const signed_block& b )
+{
+   int64_t max_block_size = _db.get_dynamic_global_properties().maximum_block_size;
+
+   auto reserve_ratio_ptr = _db.find( reserve_ratio_id_type() );
+
+   if( BOOST_UNLIKELY( reserve_ratio_ptr == nullptr ) )
+   {
+      _db.create< reserve_ratio_object >( [&]( reserve_ratio_object& r )
+      {
+         r.average_block_size = 0;
+         r.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
+         r.max_virtual_bandwidth = ( uint128_t( STEEMIT_MAX_BLOCK_SIZE * STEEMIT_MAX_RESERVE_RATIO )
+                                    * STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
+                                    / STEEMIT_BLOCK_INTERVAL;
+      });
+   }
+   else
+   {
+      _db.modify( *reserve_ratio_ptr, [&]( reserve_ratio_object& r )
+      {
+         r.average_block_size = ( 99 * r.average_block_size + fc::raw::pack_size( b ) ) / 100;
+
+         /**
+         * About once per minute the average network use is consulted and used to
+         * adjust the reserve ratio. Anything above 25% usage reduces the reserve
+         * ratio proportional to the distance from 25%. If usage is at 50% then
+         * the reserve ratio will half. Likewise, if it is at 12% it will increase by 50%.
+         *
+         * If the reserve ratio is consistently low, then it is probably time to increase
+         * the capcacity of the network.
+         *
+         * This algorithm is designed to react quickly to observations significantly
+         * different from past observed behavior and make small adjustments when
+         * behavior is within expected norms.
+         */
+         if( _db.head_block_num() % 20 == 0 )
+         {
+            int64_t distance = ( ( r.average_block_size - ( max_block_size / 4 ) ) * DISTANCE_CALC_PRECISION )
+               / ( max_block_size / 4 );
+            auto old_reserve_ratio = r.current_reserve_ratio;
+
+            if( distance > 0 )
+            {
+               r.current_reserve_ratio -= ( r.current_reserve_ratio * distance ) / ( distance + DISTANCE_CALC_PRECISION );
+
+               // We do not want the reserve ratio to drop below 1
+               if( r.current_reserve_ratio < RESERVE_RATIO_PRECISION )
+                  r.current_reserve_ratio = RESERVE_RATIO_PRECISION;
+            }
+            else
+            {
+               // By default, we should always slowly increase the reserve ratio.
+               r.current_reserve_ratio += std::max( RESERVE_RATIO_MIN_INCREMENT, ( r.current_reserve_ratio * distance ) / ( distance - DISTANCE_CALC_PRECISION ) );
+
+               if( r.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION )
+                  r.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
+            }
+
+            if( old_reserve_ratio != r.current_reserve_ratio )
+            {
+               ilog( "Reserve ratio updated from ${old} to ${new}. Block: ${blocknum}",
+                  ("old", old_reserve_ratio)
+                  ("new", r.current_reserve_ratio)
+                  ("blocknum", _db.head_block_num()) );
+            }
+
+            r.max_virtual_bandwidth = ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
+                                       * uint128_t( STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
+                                       / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION );
+         }
+      });
+   }
+}
+
 void witness_plugin_impl::update_account_bandwidth( const steemit::chain::account_object& a, uint32_t trx_size, const bandwidth_type type )
 {
    const auto& props = _db.get_dynamic_global_properties();
@@ -320,7 +400,7 @@ void witness_plugin_impl::update_account_bandwidth( const steemit::chain::accoun
       fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
       fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
       fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
-      fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
+      fc::uint128 max_virtual_bandwidth( _db.get( reserve_ratio_id_type() ).max_virtual_bandwidth );
 
       has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
 
@@ -536,9 +616,11 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    my->_db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
    my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->_db.applied_block.connect( [&]( const signed_block& b ){ my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< content_edit_lock_index >( my->_db );
+   add_plugin_index< reserve_ratio_index     >( my->_db );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()

@@ -30,6 +30,9 @@
 
 #define WITNESS_PLUGIN_NAME "witness"
 
+#define RESERVE_RATIO_PRECISION ((int64_t)10000)
+#define RESERVE_RATIO_MIN_INCREMENT ((int64_t)5000)
+
 namespace steemit { namespace plugins { namespace witness {
 
 namespace block_production_condition
