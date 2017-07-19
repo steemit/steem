@@ -301,7 +301,7 @@ namespace detail {
             {
                try
                {
-                  _chain_db->open(_data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );\
+                  _chain_db->open(_data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write );\
                }
                catch( fc::assert_exception& )
                {
@@ -314,7 +314,7 @@ namespace detail {
                   catch( chain::block_log_exception& )
                   {
                      wlog( "Error opening block log. Having to resync from network..." );
-                     _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_write );
+                     _chain_db->open( _data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write );
                   }
                }
             }
@@ -328,7 +328,7 @@ namespace detail {
          else
          {
             ilog( "Starting Steem node in read mode." );
-            _chain_db->open( _data_dir / "blockchain", _shared_dir, 0, _shared_file_size, chainbase::database::read_only );
+            _chain_db->open( _data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_only );
 
             if( _options->count( "read-forward-rpc" ) )
             {

@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 0) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 1) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -131,12 +131,12 @@
 #define STEEMIT_FREE_TRANSACTIONS_WITH_NEW_ACCOUNT 100
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
-#define STEEMIT_BANDWIDTH_PRECISION             1000000ll ///< 1 million
+#define STEEMIT_BANDWIDTH_PRECISION             (uint64_t(1000000)) ///< 1 million
 #define STEEMIT_MAX_COMMENT_DEPTH_PRE_HF17      6
 #define STEEMIT_MAX_COMMENT_DEPTH               0xffff // 64k
 #define STEEMIT_SOFT_MAX_COMMENT_DEPTH          0xff // 255
 
-#define STEEMIT_MAX_RESERVE_RATIO   (20000)
+#define STEEMIT_MAX_RESERVE_RATIO               (20000)
 
 #define STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER 30
 #define STEEMIT_CREATE_ACCOUNT_DELEGATION_RATIO    5
@@ -163,8 +163,6 @@
 
 #define STEEMIT_POST_REWARD_FUND_NAME           ("post")
 #define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
-#define STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME    ("linear")
-#define STEEMIT_TEMP_LINEAR_REWARD_FUND_ID      (1)
 #define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17  (fc::days(30))
 #define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19  (fc::days(15))
 #define STEEMIT_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))

@@ -535,7 +535,7 @@ void database::_maybe_warn_multiple_production( uint32_t height )const
          witness_time_pairs.push_back( std::make_pair( b->data.witness, b->data.timestamp ) );
       }
 
-      ilog( "Encountered block num collision at block ${n} due to a fork, witnesses are:", ("n", height)("w", witness_time_pairs) );
+      ilog( "Encountered block num collision at block ${n} due to a fork, witnesses are: ${w}", ("n", height)("w", witness_time_pairs) );
    }
    return;
 }
@@ -1193,7 +1193,6 @@ void database::clear_witness_votes( const account_object& a )
       remove(current);
    }
 
-   #warning( "TODO: Remove this check after HF 19" )
    if( has_hardfork( STEEMIT_HARDFORK_0_6__104 ) )
       modify( a, [&](account_object& acc )
       {
@@ -1665,8 +1664,7 @@ void database::process_comment_cashout()
       {
          fc::microseconds decay_rate;
 
-         #warning( "TODO: Remove temp reward fund after HF 19" )
-         if( rfo.name == STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME || has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
+         if( has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
             decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19;
          else
             decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17;
@@ -1692,15 +1690,12 @@ void database::process_comment_cashout()
    //  add all rshares about to be cashed out to the reward funds. This ensures equal satoshi per rshare payment
    if( has_hardfork( STEEMIT_HARDFORK_0_17__771 ) )
    {
-      const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
-
       while( current != cidx.end() && current->cashout_time <= head_block_time() )
       {
          if( current->net_rshares > 0 )
          {
             const auto& rf = get_reward_fund( *current );
             funds[ rf.id._id ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, rf.author_reward_curve, rf.content_constant );
-            funds[ STEEMIT_TEMP_LINEAR_REWARD_FUND_ID ].recent_claims += util::evaluate_reward_curve( current->net_rshares.value, linear.author_reward_curve, linear.content_constant );
          }
 
          ++current;
@@ -1829,7 +1824,9 @@ void database::process_funds()
          p.virtual_supply           += asset( new_steem, STEEM_SYMBOL );
       });
 
-      create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+      const auto& producer_reward = create_vesting( get_account( cwit.owner ), asset( witness_reward, STEEM_SYMBOL ) );
+      push_virtual_operation( producer_reward_operation( cwit.owner, producer_reward ) );
+
    }
    else
    {
@@ -1914,7 +1911,8 @@ asset database::get_producer_reward()
    /// pay witness in vesting shares
    if( props.head_block_number >= STEEMIT_START_MINER_VOTING_BLOCK || (witness_account.vesting_shares.amount.value == 0) ) {
       // const auto& witness_obj = get_witness( props.current_witness );
-      create_vesting( witness_account, pay );
+      const auto& producer_reward = create_vesting( witness_account, pay );
+      push_virtual_operation( producer_reward_operation( witness_account.name, producer_reward ) );
    }
    else
    {
@@ -2565,11 +2563,19 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
 
 void database::show_free_memory( bool force )
 {
-   uint32_t free_gb = uint32_t(get_free_memory() / (1024*1024*1024));
+   uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
    if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
    {
       ilog( "Free memory is now ${n}G", ("n", free_gb) );
       _last_free_gb_printed = free_gb;
+   }
+
+   if( free_gb == 0 )
+   {
+      uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+
+      if( free_mb <= 100 && head_block_num() % 10 == 0 )
+         elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
    }
 }
 
@@ -2844,18 +2850,18 @@ void database::_apply_transaction(const signed_transaction& trx)
       {
          const auto& tapos_block_summary = get< block_summary_object >( trx.ref_block_num );
          //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-         FC_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1],
+         STEEMIT_ASSERT( trx.ref_block_prefix == tapos_block_summary.block_id._hash[1], transaction_tapos_exception,
                     "", ("trx.ref_block_prefix", trx.ref_block_prefix)
                     ("tapos_block_summary",tapos_block_summary.block_id._hash[1]));
       }
 
       fc::time_point_sec now = head_block_time();
 
-      FC_ASSERT( trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), "",
-                 ("trx.expiration",trx.expiration)("now",now)("max_til_exp",STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
+      STEEMIT_ASSERT( trx.expiration <= now + fc::seconds(STEEMIT_MAX_TIME_UNTIL_EXPIRATION), transaction_expiration_exception,
+                  "", ("trx.expiration",trx.expiration)("now",now)("max_til_exp",STEEMIT_MAX_TIME_UNTIL_EXPIRATION));
       if( has_hardfork( STEEMIT_HARDFORK_0_9 ) ) // Simple solution to pending trx bug when now == trx.expiration
-         FC_ASSERT( now < trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
-      FC_ASSERT( now <= trx.expiration, "", ("now",now)("trx.exp",trx.expiration) );
+         STEEMIT_ASSERT( now < trx.expiration, transaction_expiration_exception, "", ("now",now)("trx.exp",trx.expiration) );
+      STEEMIT_ASSERT( now <= trx.expiration, transaction_expiration_exception, "", ("now",now)("trx.exp",trx.expiration) );
    }
 
    //Insert transaction into unique transactions database.
@@ -2923,7 +2929,6 @@ void database::create_block_summary(const signed_block& next_block)
 
 void database::update_global_dynamic_data( const signed_block& b )
 { try {
-   auto block_size = fc::raw::pack_size(b);
    const dynamic_global_property_object& _dgp =
       get_dynamic_global_properties();
 
@@ -2969,41 +2974,6 @@ void database::update_global_dynamic_data( const signed_block& b )
       dgp.head_block_id = b.id();
       dgp.time = b.timestamp;
       dgp.current_aslot += missed_blocks+1;
-      dgp.average_block_size = (99 * dgp.average_block_size + block_size)/100;
-
-      /**
-       *  About once per minute the average network use is consulted and used to
-       *  adjust the reserve ratio. Anything above 50% usage reduces the ratio by
-       *  half which should instantly bring the network from 50% to 25% use unless
-       *  the demand comes from users who have surplus capacity. In other words,
-       *  a 50% reduction in reserve ratio does not result in a 50% reduction in usage,
-       *  it will only impact users who where attempting to use more than 50% of their
-       *  capacity.
-       *
-       *  When the reserve ratio is at its max (10,000) a 50% reduction will take 3 to
-       *  4 days to return back to maximum.  When it is at its minimum it will return
-       *  back to its prior level in just a few minutes.
-       *
-       *  If the network reserve ratio falls under 100 then it is probably time to
-       *  increase the capacity of the network.
-       */
-      if( dgp.head_block_number % 20 == 0 )
-      {
-         if( ( !has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 2 ) ||
-             (  has_hardfork( STEEMIT_HARDFORK_0_12__179 ) && dgp.average_block_size > dgp.maximum_block_size / 4 ) )
-         {
-            dgp.current_reserve_ratio /= 2; /// exponential back up
-         }
-         else
-         { /// linear growth... not much fine grain control near full capacity
-            dgp.current_reserve_ratio++;
-         }
-
-         if( has_hardfork( STEEMIT_HARDFORK_0_2 ) && dgp.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO )
-            dgp.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO;
-      }
-      dgp.max_virtual_bandwidth = (dgp.maximum_block_size * dgp.current_reserve_ratio *
-                                  STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS) / STEEMIT_BLOCK_INTERVAL;
    } );
 
    if( !(get_node_properties().skip_flags & skip_undo_history_check) )
@@ -3368,7 +3338,8 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                   acnt.sbd_seconds = 0;
                   acnt.sbd_last_interest_payment = head_block_time();
 
-                  push_virtual_operation( interest_operation( a.name, interest_paid ) );
+                  if(interest > 0)
+                     push_virtual_operation( interest_operation( a.name, interest_paid ) );
 
                   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {
@@ -3412,7 +3383,8 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
                   acnt.savings_sbd_seconds = 0;
                   acnt.savings_sbd_last_interest_payment = head_block_time();
 
-                  push_virtual_operation( interest_operation( a.name, interest_paid ) );
+                  if(interest > 0)
+                     push_virtual_operation( interest_operation( a.name, interest_paid ) );
 
                   modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& props)
                   {
@@ -3798,23 +3770,9 @@ void database::apply_hardfork( uint32_t hardfork )
                rfo.curation_reward_curve = curve_id::quadratic_curation;
             });
 
-            auto linear_rf = create< reward_fund_object >( [&]( reward_fund_object& rfo )
-            {
-               rfo.name = STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME;
-               rfo.last_update = head_block_time();
-               rfo.content_constant = 0;
-               rfo.percent_curation_rewards = STEEMIT_1_PERCENT * 25;
-               rfo.percent_content_rewards = 0;
-               rfo.reward_balance = asset( 0, STEEM_SYMBOL );
-               rfo.recent_claims = 0;
-               rfo.author_reward_curve = curve_id::linear;
-               rfo.curation_reward_curve = curve_id::square_root;
-            });
-
             // As a shortcut in payout processing, we use the id as an array index.
             // The IDs must be assigned this way. The assertion is a dummy check to ensure this happens.
             FC_ASSERT( post_rf.id._id == 0 );
-            FC_ASSERT( linear_rf.id._id == STEEMIT_TEMP_LINEAR_REWARD_FUND_ID );
 
             modify( gpo, [&]( dynamic_global_property_object& g )
             {
@@ -3877,40 +3835,15 @@ void database::apply_hardfork( uint32_t hardfork )
                gpo.vote_power_reserve_rate = 10;
             });
 
-            const auto& linear = get< reward_fund_object, by_name >( STEEMIT_TEMP_LINEAR_REWARD_FUND_NAME );
             modify( get< reward_fund_object, by_name >( STEEMIT_POST_REWARD_FUND_NAME ), [&]( reward_fund_object &rfo )
             {
-               #warning( "TODO: Replace with constant after HF 19" )
-               rfo.recent_claims = linear.recent_claims;
+#ifndef IS_TEST_NET
+               rfo.recent_claims = STEEMIT_HF_19_RECENT_CLAIMS;
+#endif
                rfo.author_reward_curve = curve_id::linear;
                rfo.curation_reward_curve = curve_id::square_root;
             });
 
-            #warning( "TODO: Remove weight conversion after HF 19" )
-            const auto& cidx = get_index< comment_index, by_cashout_time >();
-            const auto& vidx = get_index< comment_vote_index, by_comment_voter >();
-
-            /*
-             * Iterator through all comments that have not yet been paid, setting their total vote weight to the sqrt weight
-             * and update their votes as well.
-             */
-            for( auto c_itr = cidx.begin(); c_itr != cidx.end() && c_itr->cashout_time < fc::time_point_sec::maximum(); ++c_itr )
-            {
-               modify( *c_itr, [&]( comment_object& c )
-               {
-                  c.total_vote_weight = c.total_sqrt_vote_weight;
-               });
-
-               for( auto v_itr = vidx.lower_bound( c_itr->id ); v_itr != vidx.end() && v_itr->comment == c_itr->id; ++v_itr )
-               {
-                  modify( *v_itr, [&]( comment_vote_object& v )
-                  {
-                     v.weight = v.sqrt_weight;
-                  });
-               }
-            }
-
-            #warning( "TODO: Remove if 0 delegation opjects are not created in pre HF19 consensus" )
             /* Remove all 0 delegation objects */
             vector< const vesting_delegation_object* > to_remove;
             const auto& delegation_idx = get_index< vesting_delegation_index, by_id >();

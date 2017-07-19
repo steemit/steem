@@ -51,7 +51,9 @@ will build out of the box without further effort:
         libssl-dev \
         libtool \
         make \
-        pkg-config
+        pkg-config \
+        python3 \
+        python3-jinja2
 
     # Boost packages (also required)
     sudo apt-get install -y \
@@ -108,7 +110,9 @@ Here are the required packages:
         libreadline-dev \
         libbz2-dev \
         python-dev \
-        perl
+        perl \
+        python3 \
+        python3-jinja2
 
 The Boost provided in the Ubuntu 14.04 package manager (Boost 1.55) is too old.
 Steem requires Boost 1.58 (as in Ubuntu 16.04) and works with versions up to 1.60 (including).
@@ -162,7 +166,6 @@ Install Homebrew by following the instructions here: http://brew.sh/
 
    brew doctor
    brew update
-   brew tap homebrew/versions
 
 ### Install steem dependencies:
 
@@ -171,10 +174,11 @@ Install Homebrew by following the instructions here: http://brew.sh/
         automake \
         cmake \
         git \
-        homebrew/versions/boost160 \
+        boost160 \
         libtool \
         openssl \
-        python3
+        python3 \
+        python3-jinja2
 
 Note: brew recently updated to boost 1.61.0, which is not yet supported by
 steem. Until then, this will allow you to install boost 1.60.0.
@@ -196,7 +200,7 @@ steem. Until then, this will allow you to install boost 1.60.0.
 ### Compile
 
     export OPENSSL_ROOT_DIR=$(brew --prefix)/Cellar/openssl/1.0.2h_1/
-    export BOOST_ROOT=$(brew --prefix)/Cellar/boost160/1.60.0/
+    export BOOST_ROOT=$(brew --prefix)/Cellar/boost@1.60/1.60.0/
     git submodule update --init --recursive
     mkdir build && cd build
     cmake -DBOOST_ROOT="$BOOST_ROOT" -DCMAKE_BUILD_TYPE=Release ..

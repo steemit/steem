@@ -9,8 +9,18 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-target_link_libraries( steemd
-                       PRIVATE steemit_external_plugins steemit_internal_plugins steemit_mf_plugins steemit_app steemit_witness steemit_account_history steemit_chain steemit_protocol fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( steemd PRIVATE
+   steemit_plugins
+   steemit_mf_plugins
+   steemit_app
+   steemit_witness
+   steemit_account_history
+   steemit_chain
+   steemit_protocol
+   fc
+   ${CMAKE_DL_LIBS}
+   ${PLATFORM_SPECIFIC_LIBS}
+)
 
 install( TARGETS
    steemd

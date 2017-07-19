@@ -11,6 +11,10 @@
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
+#include <boost/algorithm/string.hpp>
+
+#define STEEM_NAMESPACE_PREFIX "steemit::protocol::"
+
 namespace steemit { namespace account_history {
 
 namespace detail
@@ -35,7 +39,9 @@ class account_history_plugin_impl
 
       account_history_plugin& _self;
       flat_map< account_name_type, account_name_type > _tracked_accounts;
-      bool                    _filter_content = false;
+      bool                                             _filter_content = false;
+      bool                                             _blacklist = false;
+      flat_set< string >                               _op_list;
 };
 
 account_history_plugin_impl::~account_history_plugin_impl()
@@ -45,18 +51,15 @@ account_history_plugin_impl::~account_history_plugin_impl()
 
 struct operation_visitor
 {
-   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, account_name_type i ):_db(db),_note(note),new_obj(n),item(i){};
+   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, account_name_type i )
+      :_db(db), _note(note), new_obj(n), item(i) {}
+
    typedef void result_type;
 
    database& _db;
    const operation_notification& _note;
    const operation_object*& new_obj;
    account_name_type item;
-
-   /// ignore these ops
-   /*
-   */
-
 
    template<typename Op>
    void operator()( Op&& )const
@@ -94,79 +97,28 @@ struct operation_visitor
    }
 };
 
+struct operation_visitor_filter : operation_visitor
+{
+   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i, const flat_set< string >& filter, bool blacklist ):
+      operation_visitor( db, note, n, i ), _filter( filter ), _blacklist( blacklist ) {}
 
+   const flat_set< string >& _filter;
+   bool _blacklist;
 
-struct operation_visitor_filter : operation_visitor {
-   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i ):operation_visitor(db,note,n,i){}
-
-   void operator()( const comment_operation& )const {}
-   void operator()( const vote_operation& )const {}
-   void operator()( const delete_comment_operation& )const{}
-   void operator()( const custom_json_operation& )const {}
-   void operator()( const custom_operation& )const {}
-   void operator()( const curation_reward_operation& )const {}
-   void operator()( const fill_order_operation& )const {}
-   void operator()( const limit_order_create_operation& )const {}
-   void operator()( const limit_order_cancel_operation& )const {}
-   void operator()( const pow_operation& )const {}
-
-   void operator()( const transfer_operation& op )const
+   template< typename T >
+   void operator()( const T& op )const
    {
-      operation_visitor::operator()( op );
+      if( _filter.find( fc::get_typename< T >::name() ) != _filter.end() )
+      {
+         if( !_blacklist )
+            operation_visitor::operator()( op );
+      }
+      else
+      {
+         if( _blacklist )
+            operation_visitor::operator()( op );
+      }
    }
-
-   void operator()( const transfer_to_vesting_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const account_create_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const account_update_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const transfer_to_savings_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const transfer_from_savings_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const cancel_transfer_from_savings_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_transfer_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_dispute_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_release_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   void operator()( const escrow_approve_operation& op )const
-   {
-      operation_visitor::operator()( op );
-   }
-
-   template<typename Op>
-   void operator()( Op&& op )const{ }
 };
 
 void account_history_plugin_impl::on_operation( const operation_notification& note )
@@ -205,11 +157,16 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
          --itr;
       }
 
-      if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) ) {
-         if( _filter_content )
-            note.op.visit( operation_visitor_filter(db, note, new_obj, item) );
+      if( !_tracked_accounts.size() || (itr != _tracked_accounts.end() && itr->first <= item && item <= itr->second ) )
+      {
+         if(_filter_content)
+         {
+            note.op.visit( operation_visitor_filter( db, note, new_obj, item, _op_list, _blacklist ) );
+         }
          else
-            note.op.visit( operation_visitor(db, note, new_obj, item) );
+         {
+            note.op.visit( operation_visitor( db, note, new_obj, item ) );
+         }
       }
    }
 }
@@ -237,8 +194,9 @@ void account_history_plugin::plugin_set_program_options(
    )
 {
    cli.add_options()
-         ("track-account-range", boost::program_options::value<std::vector<std::string>>()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
-         ("filter-posting-ops", "Ignore posting operations, only track transfers and account updates")
+         ("track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
+         ("history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
+         ("history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
          ;
    cfg.add(cli);
 }
@@ -250,8 +208,43 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
 
    typedef pair<account_name_type,account_name_type> pairstring;
    LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
-   if( options.count( "filter-posting-ops" ) ) {
+
+   if( options.count( "history-whitelist-ops" ) )
+   {
       my->_filter_content = true;
+      my->_blacklist = false;
+
+      for( auto& arg : options.at( "history-whitelist-ops" ).as< vector< string > >() )
+      {
+         vector< string > ops;
+         boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+         for( const string& op : ops )
+         {
+            if( op.size() )
+               my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+         }
+      }
+
+      ilog( "Account History: whitelisting ops ${o}", ("o", my->_op_list) );
+   }
+   else if( options.count( "history-blacklist-ops" ) )
+   {
+      my->_filter_content = true;
+      my->_blacklist = true;
+      for( auto& arg : options.at( "history-blacklist-ops" ).as< vector< string > >() )
+      {
+         vector< string > ops;
+         boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+         for( const string& op : ops )
+         {
+            if( op.size() )
+               my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+         }
+      }
+
+      ilog( "Account History: blacklisting ops ${o}", ("o", my->_op_list) );
    }
 }
 
