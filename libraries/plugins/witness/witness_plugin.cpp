@@ -42,6 +42,10 @@
 #include <iostream>
 #include <memory>
 
+
+#define DISTANCE_CALC_PRECISION (10000)
+
+
 namespace steemit { namespace witness {
 
 namespace bpo = boost::program_options;
@@ -81,6 +85,7 @@ namespace detail
 
          void pre_transaction( const signed_transaction& trx );
          void pre_operation( const operation_notification& note );
+         void on_block( const signed_block& b );
 
          void update_account_bandwidth( const account_object& a, uint32_t trx_size, const bandwidth_type type );
 
@@ -117,7 +122,7 @@ namespace detail
    void check_memo( const string& memo, const account_object& account, const account_authority_object& auth )
    {
       vector< public_key_type > keys;
-      
+
       try
       {
          // Check if memo is a private key
@@ -216,7 +221,7 @@ namespace detail
 
       void operator()( const transfer_operation& o )const
       {
-         if( o.memo.length() > 0 ) 
+         if( o.memo.length() > 0 )
             check_memo( o.memo,
                         _db.get< account_object, chain::by_name >( o.from ),
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
@@ -224,7 +229,7 @@ namespace detail
 
       void operator()( const transfer_to_savings_operation& o )const
       {
-         if( o.memo.length() > 0 ) 
+         if( o.memo.length() > 0 )
             check_memo( o.memo,
                         _db.get< account_object, chain::by_name >( o.from ),
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
@@ -232,7 +237,7 @@ namespace detail
 
       void operator()( const transfer_from_savings_operation& o )const
       {
-         if( o.memo.length() > 0 ) 
+         if( o.memo.length() > 0 )
             check_memo( o.memo,
                         _db.get< account_object, chain::by_name >( o.from ),
                         _db.get< account_authority_object, chain::by_account >( o.from ) );
@@ -270,6 +275,82 @@ namespace detail
       if( _db.is_producing() )
       {
          note.op.visit( operation_visitor( _db ) );
+      }
+   }
+
+   void witness_plugin_impl::on_block( const signed_block& b )
+   {
+      auto& db = _self.database();
+      int64_t max_block_size = db.get_dynamic_global_properties().maximum_block_size;
+
+      auto reserve_ratio_ptr = db.find( reserve_ratio_id_type() );
+
+      if( BOOST_UNLIKELY( reserve_ratio_ptr == nullptr ) )
+      {
+         db.create< reserve_ratio_object >( [&]( reserve_ratio_object& r )
+         {
+            r.average_block_size = 0;
+            r.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
+            r.max_virtual_bandwidth = ( uint128_t( STEEMIT_MAX_BLOCK_SIZE * STEEMIT_MAX_RESERVE_RATIO )
+                                      * STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
+                                      / STEEMIT_BLOCK_INTERVAL;
+         });
+      }
+      else
+      {
+         db.modify( *reserve_ratio_ptr, [&]( reserve_ratio_object& r )
+         {
+            r.average_block_size = ( 99 * r.average_block_size + fc::raw::pack_size( b ) ) / 100;
+
+            /**
+            * About once per minute the average network use is consulted and used to
+            * adjust the reserve ratio. Anything above 25% usage reduces the reserve
+            * ratio proportional to the distance from 25%. If usage is at 50% then
+            * the reserve ratio will half. Likewise, if it is at 12% it will increase by 50%.
+            *
+            * If the reserve ratio is consistently low, then it is probably time to increase
+            * the capcacity of the network.
+            *
+            * This algorithm is designed to react quickly to observations significantly
+            * different from past observed behavior and make small adjustments when
+            * behavior is within expected norms.
+            */
+            if( db.head_block_num() % 20 == 0 )
+            {
+               int64_t distance = ( ( r.average_block_size - ( max_block_size / 4 ) ) * DISTANCE_CALC_PRECISION )
+                  / ( max_block_size / 4 );
+               auto old_reserve_ratio = r.current_reserve_ratio;
+
+               if( distance > 0 )
+               {
+                  r.current_reserve_ratio -= ( r.current_reserve_ratio * distance ) / ( distance + DISTANCE_CALC_PRECISION );
+
+                  // We do not want the reserve ratio to drop below 1
+                  if( r.current_reserve_ratio < RESERVE_RATIO_PRECISION )
+                     r.current_reserve_ratio = RESERVE_RATIO_PRECISION;
+               }
+               else
+               {
+                  // By default, we should always slowly increase the reserve ratio.
+                  r.current_reserve_ratio += std::max( RESERVE_RATIO_MIN_INCREMENT, ( r.current_reserve_ratio * distance ) / ( distance - DISTANCE_CALC_PRECISION ) );
+
+                  if( r.current_reserve_ratio > STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION )
+                     r.current_reserve_ratio = STEEMIT_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
+               }
+
+               if( old_reserve_ratio != r.current_reserve_ratio )
+               {
+                  ilog( "Reserve ratio updated from ${old} to ${new}. Block: ${blocknum}",
+                     ("old", old_reserve_ratio)
+                     ("new", r.current_reserve_ratio)
+                     ("blocknum", db.head_block_num()) );
+               }
+
+               r.max_virtual_bandwidth = ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
+                                         * uint128_t( STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
+                                         / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION );
+            }
+         });
       }
    }
 
@@ -314,13 +395,13 @@ namespace detail
          fc::uint128 account_vshares( a.effective_vesting_shares().amount.value );
          fc::uint128 total_vshares( props.total_vesting_shares.amount.value );
          fc::uint128 account_average_bandwidth( band->average_bandwidth.value );
-         fc::uint128 max_virtual_bandwidth( props.max_virtual_bandwidth );
+         fc::uint128 max_virtual_bandwidth( _db.get( reserve_ratio_id_type() ).max_virtual_bandwidth );
 
          has_bandwidth = ( account_vshares * max_virtual_bandwidth ) > ( account_average_bandwidth * total_vshares );
 
          if( _db.is_producing() )
             STEEMIT_ASSERT( has_bandwidth, chain::plugin_exception,
-               "Account: ${account} bandwidth limit exeeded. Please wait to transact or power up STEEM.",
+               "Account: ${account} bandwidth limit exceeded. Please wait to transact or power up STEEM.",
                ("account", a.name)
                ("account_vshares", account_vshares)
                ("account_average_bandwidth", account_average_bandwidth)
@@ -394,9 +475,11 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ _my->pre_transaction( tx ); } );
    db.pre_apply_operation.connect( [&]( const operation_notification& note ){ _my->pre_operation( note ); } );
+   db.applied_block.connect( [&]( const signed_block& b ){ _my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( db );
    add_plugin_index< content_edit_lock_index >( db );
+   add_plugin_index< reserve_ratio_index     >( db );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()

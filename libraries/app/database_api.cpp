@@ -284,7 +284,7 @@ price database_api::get_current_median_history_price()const
 
 dynamic_global_property_api_obj database_api_impl::get_dynamic_global_properties()const
 {
-   return _db.get(dynamic_global_property_id_type());
+   return dynamic_global_property_api_obj( _db.get( dynamic_global_property_id_type() ), _db );
 }
 
 witness_schedule_api_obj database_api::get_witness_schedule()const
