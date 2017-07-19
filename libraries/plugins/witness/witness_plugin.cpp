@@ -344,11 +344,11 @@ namespace detail
                      ("old", old_reserve_ratio)
                      ("new", r.current_reserve_ratio)
                      ("blocknum", db.head_block_num()) );
-
-                  r.max_virtual_bandwidth = ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
-                                            * uint128_t( STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
-                                            / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION );
                }
+
+               r.max_virtual_bandwidth = ( uint128_t( max_block_size ) * uint128_t( r.current_reserve_ratio )
+                                         * uint128_t( STEEMIT_BANDWIDTH_PRECISION * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS ) )
+                                         / ( STEEMIT_BLOCK_INTERVAL * RESERVE_RATIO_PRECISION );
             }
          });
       }
@@ -401,7 +401,7 @@ namespace detail
 
          if( _db.is_producing() )
             STEEMIT_ASSERT( has_bandwidth, chain::plugin_exception,
-               "Account: ${account} bandwidth limit exeeded. Please wait to transact or power up STEEM.",
+               "Account: ${account} bandwidth limit exceeded. Please wait to transact or power up STEEM.",
                ("account", a.name)
                ("account_vshares", account_vshares)
                ("account_average_bandwidth", account_average_bandwidth)
