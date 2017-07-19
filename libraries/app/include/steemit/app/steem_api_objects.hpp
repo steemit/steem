@@ -484,10 +484,14 @@ struct dynamic_global_property_api_obj : public dynamic_global_property_object
    {
       if( db.has_index< witness::reserve_ratio_index >() )
       {
-         const auto& r = db.get( witness::reserve_ratio_id_type() );
-         current_reserve_ratio = r.current_reserve_ratio;
-         average_block_size = r.average_block_size;
-         max_virtual_bandwidth = r.max_virtual_bandwidth;
+         const auto& r = db.find( witness::reserve_ratio_id_type() );
+
+         if( BOOST_LIKELY( r != nullptr ) )
+         {
+            current_reserve_ratio = r->current_reserve_ratio;
+            average_block_size = r->average_block_size;
+            max_virtual_bandwidth = r->max_virtual_bandwidth;
+         }
       }
    }
 
@@ -496,7 +500,7 @@ struct dynamic_global_property_api_obj : public dynamic_global_property_object
 
    dynamic_global_property_api_obj() {}
 
-   uint32_t    current_reserve_ratio = 1;
+   uint32_t    current_reserve_ratio = 0;
    uint64_t    average_block_size = 0;
    uint128_t   max_virtual_bandwidth = 0;
 };
