@@ -24,8 +24,8 @@ Builds steem for use in a private testnet. Also required for building unit tests
 
 ### SKIP_BY_TX_ID=[OFF/ON]
 
-The account history plugin does not allow querying of operations by transaction id.
-This requires around 65% of CPU time when reindexing so disabling the index is a
+By default this is off. Enabling will prevent the account history plugin querying transactions 
+by id, but saving around 65% of CPU time when reindexing. Enabling this option is a
 huge gain if you do not need this functionality.
 
 ## Building under Docker
@@ -98,7 +98,7 @@ Here are the required packages:
     # Required packages
     sudo apt-get install -y \
         autoconf \
-        cmake \
+        cmake3 \
         g++ \
         git \
         libssl-dev \
