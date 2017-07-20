@@ -14,4 +14,5 @@ target_link_libraries( appbase_test appbase
    follow_plugin
    follow_api_plugin
    tags_plugin
+   market_history_plugin
    ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )

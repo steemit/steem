@@ -470,7 +470,7 @@ class tags_plugin : public plugin< tags_plugin >
 
       APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
 
-      void plugin_set_program_options(
+      virtual void set_program_options(
          options_description& cli,
          options_description& cfg);
       void plugin_initialize( const variables_map& options );

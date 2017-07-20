@@ -495,12 +495,11 @@ tags_plugin::tags_plugin()
 
 tags_plugin::~tags_plugin() {}
 
-void tags_plugin::plugin_set_program_options(
+void tags_plugin::set_program_options(
    boost::program_options::options_description& cli,
    boost::program_options::options_description& cfg
    )
-{
-}
+{}
 
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
