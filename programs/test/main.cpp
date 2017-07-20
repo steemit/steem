@@ -12,6 +12,7 @@
 #include <steemit/plugins/account_history/account_history_plugin.hpp>
 #include <steemit/plugins/follow/follow_plugin.hpp>
 #include <steemit/plugins/follow_api/follow_api_plugin.hpp>
+#include <steemit/plugins/tags/tags_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
