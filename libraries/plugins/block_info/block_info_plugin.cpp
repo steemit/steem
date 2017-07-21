@@ -47,7 +47,6 @@ void block_info_plugin::on_applied_block( const chain::signed_block& b )
 
    info.block_id                    = b.id();
    info.block_size                  = fc::raw::pack_size( b );
-   info.average_block_size          = dgpo.average_block_size;
    info.aslot                       = dgpo.current_aslot;
    info.last_irreversible_block_num = dgpo.last_irreversible_block_num;
    info.num_pow_witnesses           = dgpo.num_pow_witnesses;

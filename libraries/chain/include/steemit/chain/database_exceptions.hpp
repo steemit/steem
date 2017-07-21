@@ -75,6 +75,9 @@ namespace steemit { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( plugin_exception,                  steemit::chain::chain_exception, 4100000, "plugin exception" )
    FC_DECLARE_DERIVED_EXCEPTION( block_log_exception,               steemit::chain::chain_exception, 4110000, "block log exception" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( transaction_expiration_exception,  steemit::chain::transaction_exception, 4030100, "transaction expiration exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( transaction_tapos_exception,       steemit::chain::transaction_exception, 4030200, "transaction tapos exception" )
+
    FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   steemit::chain::undo_database_exception, 4070001, "there are no blocks to pop" )
 
    STEEMIT_DECLARE_OP_BASE_EXCEPTIONS( transfer );
