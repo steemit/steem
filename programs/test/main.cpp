@@ -14,6 +14,7 @@
 #include <steemit/plugins/follow_api/follow_api_plugin.hpp>
 #include <steemit/plugins/tags/tags_plugin.hpp>
 #include <steemit/plugins/market_history/market_history_plugin.hpp>
+#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -102,6 +103,7 @@ int main( int argc, char** argv )
       appbase::app().register_plugin< steemit::plugins::follow_api::follow_api_plugin >();
       appbase::app().register_plugin< steemit::plugins::tags::tags_plugin >();
       appbase::app().register_plugin< steemit::plugins::market_history::market_history_plugin >();
+      appbase::app().register_plugin< steemit::plugins::market_history_api::market_history_api_plugin >();
 
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
