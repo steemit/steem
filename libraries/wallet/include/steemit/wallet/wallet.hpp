@@ -817,12 +817,38 @@ namespace steemit {
              */
             annotated_signed_transaction post_comment(string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast);
 
+            /**
+             * Send the encrypted private email-like message to user
+             * @param from message author name
+             * @param to message recipient name
+             * @param subject message subject
+             * @param body message content
+             * @param broadcast true if you wish to broadcast the transaction
+             */
             annotated_signed_transaction send_private_message(string from, string to, string subject, string body, bool broadcast);
 
+            /**
+             * Retrieves the private message inbox for the account mentioned
+             * @param account account to retrieve inbox for
+             * @param newest timestamp to start retrieve messages from
+             * @param limit amount of messages to retrieve
+             * @return message api objects vector
+             */
             vector<extended_message_object> get_inbox(string account, fc::time_point newest, uint32_t limit);
 
+            /**
+             * Retrieves the private message outbox for the account mentioned
+             * @param account account to retrieve outbox for
+             * @param newest timestamp to start retireve messages from
+             * @param limit amount of messages to retrieve
+             * @return message api objects vector
+             */
             vector<extended_message_object> get_outbox(string account, fc::time_point newest, uint32_t limit);
 
+            /**
+             *
+             * @param mo message api object to try to decrypt
+             */
             message_body try_decrypt_message(const message_api_obj &mo);
 
             /**
