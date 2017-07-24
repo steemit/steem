@@ -25,7 +25,7 @@
 
 #include <steemit/app/api.hpp>
 #include <steemit/app/api_access.hpp>
-#include <steemit/app/application.hpp>
+//#include <steemit/app/application.hpp>
 #include <steemit/app/impacted.hpp>
 
 #include <steemit/protocol/get_config.hpp>

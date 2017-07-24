@@ -234,6 +234,7 @@ vector<applied_operation> database_api::get_ops_in_block(uint32_t block_num, boo
 
 vector<applied_operation> database_api_impl::get_ops_in_block(uint32_t block_num, bool only_virtual)const
 {
+#pragma message( "TODO: Move to account history plugin" )
    const auto& idx = _db.get_index< operation_index >().indices().get< by_location >();
    auto itr = idx.lower_bound( block_num );
    vector<applied_operation> result;

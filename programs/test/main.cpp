@@ -1,20 +1,8 @@
 #include <appbase/application.hpp>
-#include <steemit/plugins/webserver/webserver_plugin.hpp>
-#include <steemit/plugins/test_api/test_api_plugin.hpp>
-#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
-#include <steemit/plugins/chain/chain_plugin.hpp>
-#include <steemit/plugins/p2p/p2p_plugin.hpp>
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
-#include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <steemit/plugins/witness/witness_plugin.hpp>
-#include <steemit/plugins/account_by_key/account_by_key_plugin.hpp>
-#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steemit/plugins/account_history/account_history_plugin.hpp>
-#include <steemit/plugins/follow/follow_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/tags/tags_plugin.hpp>
-#include <steemit/plugins/market_history/market_history_plugin.hpp>
-#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <steemit/manifest/plugins.hpp>
+
+#include <steemit/protocol/types.hpp>
+#include <steemit/protocol/version.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
@@ -88,22 +76,7 @@ int main( int argc, char** argv )
 
       appbase::app().add_program_options( bpo::options_description(), options );
 
-      appbase::app().register_plugin< steemit::plugins::webserver::webserver_plugin >();
-      appbase::app().register_plugin< steemit::plugins::json_rpc::json_rpc_plugin >();
-      appbase::app().register_plugin< steemit::plugins::test_api::test_api_plugin >();
-      appbase::app().register_plugin< steemit::plugins::chain::chain_plugin >();
-      appbase::app().register_plugin< steemit::plugins::p2p::p2p_plugin >();
-      appbase::app().register_plugin< steemit::plugins::database_api::database_api_plugin >();
-      appbase::app().register_plugin< steemit::plugins::network_broadcast_api::network_broadcast_api_plugin >();
-      appbase::app().register_plugin< steemit::plugins::witness::witness_plugin >();
-      appbase::app().register_plugin< steemit::plugins::account_by_key::account_by_key_plugin >();
-      appbase::app().register_plugin< steemit::plugins::account_by_key_api::account_by_key_api_plugin >();
-      appbase::app().register_plugin< steemit::plugins::account_history::account_history_plugin >();
-      appbase::app().register_plugin< steemit::plugins::follow::follow_plugin >();
-      appbase::app().register_plugin< steemit::plugins::follow_api::follow_api_plugin >();
-      appbase::app().register_plugin< steemit::plugins::tags::tags_plugin >();
-      appbase::app().register_plugin< steemit::plugins::market_history::market_history_plugin >();
-      appbase::app().register_plugin< steemit::plugins::market_history_api::market_history_api_plugin >();
+      steemit::plugins::register_plugins();
 
       if( !appbase::app().initialize( argc, argv ) )
          return -1;

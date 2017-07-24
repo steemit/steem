@@ -1,40 +1,19 @@
-#include <boost/container/flat_map.hpp>
+#include <appbase/application.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 
 #include <steemit/manifest/plugins.hpp>
 
-namespace steemit { namespace plugin {
-
 {% for plugin in plugins %}
-std::shared_ptr< steemit::app::abstract_plugin > create_{{ plugin["plugin_name"] }}_plugin( steemit::app::application* app );
+#include <steemit/plugins/{{ plugin["plugin_name"] }}/{{ plugin["plugin_name"] }}_plugin.hpp>
 {% endfor %}
 
-boost::container::flat_map< std::string, std::function< std::shared_ptr< steemit::app::abstract_plugin >( steemit::app::application* app ) > > plugin_factories_by_name;
+namespace steemit { namespace plugins {
 
-void initialize_plugin_factories()
+void register_plugins()
 {
    {% for plugin in plugins %}
-   plugin_factories_by_name[ "{{ plugin["plugin_name"] }}" ] = []( steemit::app::application* app ) -> std::shared_ptr< steemit::app::abstract_plugin >
-   {
-      return create_{{ plugin["plugin_name"] }}_plugin( app );
-   };
+   appbase::app().register_plugin< steemit::plugins::{{ plugin["plugin_name"] }}::{{ plugin["plugin_name" ] }}_plugin >();
    {% endfor %}
-}
-
-std::shared_ptr< steemit::app::abstract_plugin > create_plugin( const std::string& name, steemit::app::application* app )
-{
-   auto it = plugin_factories_by_name.find( name );
-   if( it == plugin_factories_by_name.end() )
-      return std::shared_ptr< steemit::app::abstract_plugin >();
-   return it->second( app );
-}
-
-std::vector< std::string > get_available_plugins()
-{
-   std::vector< std::string > result;
-   for( const auto& e : plugin_factories_by_name )
-      result.push_back( e.first );
-   return result;
 }
 
 } }

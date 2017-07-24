@@ -1,17 +1,18 @@
-file(GLOB HEADERS "include/steemit/witness/*.hpp")
+file(GLOB HEADERS "include/steemit/plugins/witness/*.hpp")
 
-add_library( steemit_witness
+add_library( witness_plugin
              witness_plugin.cpp
              witness_evaluators.cpp
              witness_operations.cpp
+             ${HEADERS}
            )
 
-target_link_libraries( steemit_witness steemit_chain steemit_protocol steemit_app )
-target_include_directories( steemit_witness
+target_link_libraries( witness_plugin p2p_plugin chain_plugin appbase steemit_chain steemit_app graphene_utilities )
+target_include_directories( witness_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 install( TARGETS
-   steemit_witness
+   witness_plugin
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

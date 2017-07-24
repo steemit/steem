@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/manifest/*.hpp")
+file(GLOB HEADERS "include/steemit/plugins/*.hpp")
 
 # helpful hints from
 # https://blog.kangz.net/posts/2016/05/26/integrating-a-code-generator-with-cmake/
