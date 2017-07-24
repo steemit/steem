@@ -6652,5 +6652,99 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test enable content editing " );
+      ACTORS( (alice)  )
+      generate_block();
+
+      comment_operation comment;
+      vote_operation vote;
+      custom_json_operation custom;
+      signed_transaction tx;
+
+      BOOST_TEST_MESSAGE( "--- Publish initial comment" );
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar";
+
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+
+      BOOST_TEST_MESSAGE( "--- Vote on the comment" );
+      vote.author = "alice";
+      vote.permlink = "test";
+      vote.voter = "alice";
+      vote.weight = STEEMIT_100_PERCENT;
+
+      tx.clear();
+      tx.operations.push_back( vote );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+
+      BOOST_TEST_MESSAGE( "--- Payout rewards and lock post" );
+
+      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time - STEEMIT_BLOCK_INTERVAL );
+      db_plugin->debug_update( [=]( database& db )
+      {
+         db.modify( db.get_dynamic_global_properties(), [=]( dynamic_global_property_object& gpo )
+         {
+            gpo.current_supply -= gpo.total_reward_fund_steem;
+            gpo.total_reward_fund_steem = ASSET( "100.000 TESTS" );
+            gpo.current_supply += gpo.total_reward_fund_steem;
+         });
+      });
+      generate_block();
+
+      BOOST_TEST_MESSAGE( "--- Test failing to edit archived comment" );
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar2";
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      BOOST_REQUIRE_THROW(db.push_transaction( tx ), chain::plugin_exception);
+
+      BOOST_TEST_MESSAGE( "--- Test unlocking and editing post" );
+
+      custom.required_auths.insert( "alice" );
+      custom.id = "witness";
+      custom.json = "[\"enable_content_editing\",{\"account\":\"alice\",\"relock_time\":\"2100-01-01T12:00:00\"}]";
+
+      tx.clear();
+      tx.operations.push_back( custom );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+      generate_block();
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar3";
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
