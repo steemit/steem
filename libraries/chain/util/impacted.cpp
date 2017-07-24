@@ -24,7 +24,7 @@
 
 #include <steemit/protocol/authority.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <steemit/chain/util/impacted.hpp>
 
 #include <fc/utility.hpp>
 

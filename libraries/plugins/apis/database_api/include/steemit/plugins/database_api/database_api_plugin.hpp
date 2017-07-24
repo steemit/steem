@@ -1,32 +1,34 @@
 #pragma once
-#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 #include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 
 #include <appbase/application.hpp>
-
-#define DATABASE_API_PLUGIN_NAME "database_api"
 
 namespace steemit { namespace plugins { namespace database_api {
 
 using namespace appbase;
 
-class database_api_plugin : public appbase::plugin< database_api_plugin >
+#define DATABASE_API_PLUGIN_NAME "database_api"
+
+class database_api_plugin : public plugin< database_api_plugin >
 {
-public:
-   APPBASE_PLUGIN_REQUIRES( (steemit::plugins::json_rpc::json_rpc_plugin)(steemit::plugins::chain::chain_plugin) )
+   public:
+      database_api_plugin();
+      virtual ~database_api_plugin();
 
-   database_api_plugin();
-   virtual ~database_api_plugin();
+      APPBASE_PLUGIN_REQUIRES(
+         (steemit::plugins::json_rpc::json_rpc_plugin)
+         (steemit::plugins::chain::chain_plugin)
+      )
 
-   std::string get_name(){ return database_API_PLUGIN_NAME; }
-   virtual void set_program_options( options_description& cli, options_description& cfg ) override;
+      virtual void set_program_options(
+         options_description& cli,
+         options_description& cfg ) override;
+      void plugin_initialize( const variables_map& options );
+      void plugin_startup();
+      void plugin_shutdown();
 
-   void plugin_initialize( const variables_map& options );
-   void plugin_startup();
-   void plugin_shutdown();
-
-private:
-   std::unique_ptr< class database_api > db_api;
+      std::unique_ptr< class database_api > _my;
 };
 
 } } } // steemit::plugins::database_api
