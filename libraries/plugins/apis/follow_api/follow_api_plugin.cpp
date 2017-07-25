@@ -11,7 +11,7 @@ void follow_api_plugin::set_program_options( options_description& cli, options_d
 
 void follow_api_plugin::plugin_initialize( const variables_map& options )
 {
-   _api = std::make_unique< follow_api >();
+   _api = std::make_shared< follow_api >();
 }
 
 void follow_api_plugin::plugin_startup() {}

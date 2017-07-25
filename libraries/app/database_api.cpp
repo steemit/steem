@@ -1825,7 +1825,7 @@ vector<discussion>  database_api::get_discussions_by_author_before_date(
             {
                result.push_back( *itr );
                set_pending_payout( result.back() );
-               result.back().active_votes = get_active_votes( itr->author, to_string( itr->permlink ) );
+               result.back().active_votes = g( itr->author, to_string( itr->permlink ) );
                ++count;
             }
             ++itr;

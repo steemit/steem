@@ -2,7 +2,7 @@
 #include <steemit/plugins/follow/follow_objects.hpp>
 #include <steemit/plugins/follow/follow_operations.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <steemit/chain/util/impacted.hpp>
 
 #include <steemit/protocol/config.hpp>
 

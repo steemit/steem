@@ -1,9 +1,9 @@
 #pragma once
 #include <steemit/plugins/json_rpc/utility.hpp>
 #include <steemit/plugins/follow/follow_objects.hpp>
+#include <steemit/plugins/database_api/database_api_objects.hpp>
 
 #include <steemit/protocol/types.hpp>
-#include <steemit/app/steem_api_objects.hpp>
 
 #include <fc/optional.hpp>
 #include <fc/variant.hpp>
@@ -29,10 +29,10 @@ struct feed_entry
 
 struct comment_feed_entry
 {
-   steemit::app::comment_api_obj comment;
-   vector< account_name_type >   reblog_by;
-   time_point_sec                reblog_on;
-   uint32_t                      entry_id = 0;
+   database_api::api_comment_object comment;
+   vector< account_name_type >      reblog_by;
+   time_point_sec                   reblog_on;
+   uint32_t                         entry_id = 0;
 };
 
 struct blog_entry
@@ -46,10 +46,10 @@ struct blog_entry
 
 struct comment_blog_entry
 {
-   steemit::app::comment_api_obj comment;
-   string                        blog;
-   time_point_sec                reblog_on;
-   uint32_t                      entry_id = 0;
+   database_api::api_comment_object comment;
+   string                           blog;
+   time_point_sec                   reblog_on;
+   uint32_t                         entry_id = 0;
 };
 
 struct account_reputation
@@ -58,7 +58,7 @@ struct account_reputation
    steemit::protocol::share_type reputation;
 };
 
-struct follow_api_obj
+struct api_follow_object
 {
    account_name_type             follower;
    account_name_type             following;
@@ -81,14 +81,14 @@ struct get_followers_args
 
 struct get_followers_return
 {
-   vector< follow_api_obj > followers;
+   vector< api_follow_object > followers;
 };
 
 typedef get_followers_args get_following_args;
 
 struct get_following_return
 {
-   vector< follow_api_obj > following;
+   vector< api_follow_object > following;
 };
 
 struct get_follow_count_args
@@ -213,7 +213,7 @@ FC_REFLECT( steemit::plugins::follow_api::comment_blog_entry,
 FC_REFLECT( steemit::plugins::follow_api::account_reputation,
             (account)(reputation) );
 
-FC_REFLECT( steemit::plugins::follow_api::follow_api_obj,
+FC_REFLECT( steemit::plugins::follow_api::api_follow_object,
             (follower)(following)(what) );
 
 FC_REFLECT( steemit::plugins::follow_api::reblog_count,

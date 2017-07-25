@@ -6,7 +6,7 @@ add_library( follow_plugin
              follow_evaluators.cpp
            )
 
-target_link_libraries( follow_plugin chain_plugin steemit_app )
+target_link_libraries( follow_plugin chain_plugin )
 target_include_directories( follow_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

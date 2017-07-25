@@ -1,7 +1,7 @@
 #pragma once
 #include <steemit/protocol/base.hpp>
 
-#include <steemit/app/plugin.hpp>
+#include <steemit/chain/evaluator.hpp>
 
 
 namespace steemit { namespace plugins { namespace follow {

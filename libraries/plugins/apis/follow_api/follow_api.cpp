@@ -47,7 +47,7 @@ DEFINE_API( follow_api_impl, get_followers )
    {
       if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
       {
-         follow_api_obj entry;
+         api_follow_object entry;
          entry.follower = itr->follower;
          entry.following = itr->following;
          set_what( entry.what, itr->what );
@@ -73,7 +73,7 @@ DEFINE_API( follow_api_impl, get_following )
    {
       if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
       {
-         follow_api_obj entry;
+         api_follow_object entry;
          entry.follower = itr->follower;
          entry.following = itr->following;
          set_what( entry.what, itr->what );
@@ -152,7 +152,7 @@ DEFINE_API( follow_api_impl, get_feed )
    {
       const auto& comment = _db.get( itr->comment );
       comment_feed_entry entry;
-      entry.comment = comment;
+      entry.comment = database_api::api_comment_object( comment, _db );
       entry.entry_id = itr->account_feed_id;
 
       if( itr->first_reblogged_by != account_name_type() )
@@ -217,7 +217,7 @@ DEFINE_API( follow_api_impl, get_blog )
    {
       const auto& comment = _db.get( itr->comment );
       comment_blog_entry entry;
-      entry.comment = comment;
+      entry.comment = database_api::api_comment_object( comment, _db );
       entry.blog = args.account;
       entry.reblog_on = itr->reblogged_on;
       entry.entry_id = itr->blog_feed_id;

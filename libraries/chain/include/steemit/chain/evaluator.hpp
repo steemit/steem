@@ -53,3 +53,19 @@ class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator >
                                                                             \
       void do_apply( const X ## _operation& o );                            \
 };
+
+#define DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )                     \
+class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator, OPERATION > \
+{                                                                           \
+   public:                                                                  \
+      typedef X ## _operation operation_type;                               \
+                                                                            \
+      X ## _evaluator( steemit::chain::database& db, PLUGIN* plugin )       \
+         : steemit::chain::evaluator_impl< X ## _evaluator, OPERATION >( db ), \
+           _plugin( plugin )                                                \
+      {}                                                                    \
+                                                                            \
+      void do_apply( const X ## _operation& o );                            \
+                                                                            \
+      PLUGIN* _plugin;                                                      \
+};

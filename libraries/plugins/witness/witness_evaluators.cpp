@@ -1,6 +1,8 @@
 #include <steemit/plugins/witness/witness_operations.hpp>
 #include <steemit/plugins/witness/witness_objects.hpp>
 
+#include <steemit/chain/database.hpp>
+
 namespace steemit { namespace plugins { namespace witness {
 
 void enable_content_editing_evaluator::do_apply( const enable_content_editing_operation& o )

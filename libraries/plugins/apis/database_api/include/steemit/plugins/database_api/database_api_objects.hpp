@@ -30,7 +30,7 @@ typedef reward_fund_object                     api_reward_fund_object;
 
 struct api_comment_object
 {
-   api_comment_object( const chain::comment_object& o, const chain::database& db ):
+   api_comment_object( const comment_object& o, const database& db ):
       id( o.id ),
       category( to_string( o.category ) ),
       parent_author( o.parent_author ),
@@ -129,7 +129,7 @@ struct api_comment_object
 
 struct api_comment_vote_object
 {
-   api_comment_vote_object( const chain::comment_vote_object& cv, const chain::database& db ) :
+   api_comment_vote_object( const comment_vote_object& cv, const database& db ) :
       id( cv.id ),
       weight( cv.weight ),
       rshares( cv.rshares),
@@ -157,7 +157,7 @@ struct api_comment_vote_object
 
 struct api_account_object
 {
-   api_account_object( const chain::account_object& a, const chain::database& db ) :
+   api_account_object( const account_object& a, const database& db ) :
       id( a.id ),
       name( a.name ),
       memo_key( a.memo_key ),
@@ -213,7 +213,7 @@ struct api_account_object
       for( size_t i=0; i<n; i++ )
          proxied_vsf_votes.push_back( a.proxied_vsf_votes[i] );
 
-      const auto& auth = db.get< account_authority_object, chain::by_account >( name );
+      const auto& auth = db.get< account_authority_object, by_account >( name );
       owner = authority( auth.owner );
       active = authority( auth.active );
       posting = authority( auth.posting );
@@ -295,7 +295,7 @@ struct api_account_object
 
 struct api_owner_authority_history_object
 {
-   api_owner_authority_history_object( const chain::owner_authority_history_object& o ) :
+   api_owner_authority_history_object( const owner_authority_history_object& o ) :
       id( o.id ),
       account( o.account ),
       previous_owner_authority( authority( o.previous_owner_authority ) ),
@@ -313,7 +313,7 @@ struct api_owner_authority_history_object
 
 struct api_account_recovery_request_object
 {
-   api_account_recovery_request_object( const chain::account_recovery_request_object& o ) :
+   api_account_recovery_request_object( const account_recovery_request_object& o ) :
       id( o.id ),
       account_to_recover( o.account_to_recover ),
       new_owner_authority( authority( o.new_owner_authority ) ),
@@ -335,7 +335,7 @@ struct api_account_history_object
 
 struct api_savings_withdraw_object
 {
-   api_savings_withdraw_object( const chain::savings_withdraw_object& o ) :
+   api_savings_withdraw_object( const savings_withdraw_object& o ) :
       id( o.id ),
       from( o.from ),
       to( o.to ),
@@ -358,7 +358,7 @@ struct api_savings_withdraw_object
 
 struct api_feed_history_object
 {
-   api_feed_history_object( const chain::feed_history_object& f ) :
+   api_feed_history_object( const feed_history_object& f ) :
       id( f.id ),
       current_median_history( f.current_median_history ),
       price_history( f.price_history.begin(), f.price_history.end() )
@@ -373,7 +373,7 @@ struct api_feed_history_object
 
 struct api_witness_object
 {
-   api_witness_object( const chain::witness_object& w ) :
+   api_witness_object( const witness_object& w ) :
       id( w.id ),
       owner( w.owner ),
       created( w.created ),
@@ -439,7 +439,7 @@ struct api_signed_block_object : public signed_block
 
 struct api_hardfork_property_object
 {
-   api_hardfork_property_object( const chain::hardfork_property_object& h ) :
+   api_hardfork_property_object( const hardfork_property_object& h ) :
       id( h.id ),
       last_hardfork( h.last_hardfork ),
       current_hardfork_version( h.current_hardfork_version ),

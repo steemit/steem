@@ -1,34 +1,35 @@
 #pragma once
-#include <steemit/plugins/follow/follow_plugin.hpp>
+#include <steemit/plugins/tags/tags_plugin.hpp>
 #include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 
 #include <appbase/application.hpp>
 
-#define FOLLOW_API_PLUGIN_NAME "follow_api"
+#define TAGS_API_PLUGIN_NAME "tags_api"
 
 
-namespace steemit { namespace plugins { namespace follow_api {
+namespace steemit { namespace plugins { namespace tags_api {
 
 using namespace appbase;
 
-class follow_api_plugin : public appbase::plugin< follow_api_plugin >
+class tags_api_plugin : public appbase::plugin< tags_api_plugin >
 {
 public:
    APPBASE_PLUGIN_REQUIRES(
-      (steemit::plugins::follow::follow_plugin)
+      (steemit::plugins::tags::tags_plugin)
       (steemit::plugins::json_rpc::json_rpc_plugin)
    )
 
-   follow_api_plugin();
-   virtual ~follow_api_plugin();
+   tags_api_plugin();
+   virtual ~tags_api_plugin();
 
+   std::string get_name(){ return TAGS_API_PLUGIN_NAME; }
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
    void plugin_initialize( const variables_map& options );
    void plugin_startup();
    void plugin_shutdown();
 
-   std::shared_ptr< class follow_api > _api;
+   std::shared_ptr< class tags_api > _api;
 };
 
-} } } // steemit::plugins::follow_api
+} } } // steemit::plugins::tags_api
