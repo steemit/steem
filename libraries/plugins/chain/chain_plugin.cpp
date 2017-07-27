@@ -5,13 +5,16 @@
 #include <fc/io/json.hpp>
 #include <fc/string.hpp>
 
+#include <iostream>
+
 namespace steemit { namespace plugins { namespace chain {
 
 using namespace steemit;
 using fc::flat_map;
 using steemit::chain::block_id_type;
 
-class chain_plugin_impl {
+class chain_plugin_impl
+{
    public:
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;

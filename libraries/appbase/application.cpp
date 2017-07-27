@@ -38,11 +38,17 @@ void application::startup() {
       plugin->startup();
 }
 
-application& application::instance() {
-   static application _app;
-   return _app;
+application& application::instance( bool reset ) {
+   static application* _app = new application();
+   if( reset )
+   {
+      delete _app;
+      _app = new application();
+   }
+   return *_app;
 }
 application& app() { return application::instance(); }
+application& reset() { return application::instance( true ); }
 
 
 void application::set_program_options()

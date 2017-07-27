@@ -36,7 +36,7 @@ namespace appbase {
          void                 exec();
          void                 quit();
 
-         static application&  instance();
+         static application&  instance( bool reset = false );
 
          abstract_plugin* find_plugin(const string& name)const;
          abstract_plugin& get_plugin(const string& name)const;
@@ -99,7 +99,7 @@ namespace appbase {
    };
 
    application& app();
-
+   application& reset();
 
    template<typename Impl>
    class plugin : public abstract_plugin {
@@ -119,7 +119,7 @@ namespace appbase {
                _state = initialized;
                static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.initialize(options); });
                static_cast<Impl*>(this)->plugin_initialize(options);
-               //ilog( "initializing plugin ${name}", ("name",name()) );
+               // std::cout << "initializing plugin " << name() << std::endl;
                app().plugin_initialized(*this);
             }
             assert(_state == initialized); /// if initial state was not registered, final state cannot be initiaized

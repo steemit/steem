@@ -2574,6 +2574,9 @@ void database::show_free_memory( bool force )
    {
       uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
 
+#ifdef IS_TEST_NET
+   if( !disable_low_mem_warning )
+#endif
       if( free_mb <= 100 && head_block_num() % 10 == 0 )
          elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
    }
