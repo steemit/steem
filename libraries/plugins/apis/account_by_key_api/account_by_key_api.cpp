@@ -3,7 +3,7 @@
 
 #include <steemit/plugins/account_by_key/account_by_key_objects.hpp>
 
-namespace steemit { namespace plugins { namespace account_by_key_api {
+namespace steemit { namespace plugins { namespace account_by_key {
 
 namespace detail {
 

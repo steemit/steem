@@ -6,9 +6,9 @@
 
 namespace steemit { namespace plugins { namespace chain {
 
-using steemit::chain::database;
 using std::unique_ptr;
 using namespace appbase;
+using namespace steemit::chain;
 
 class chain_plugin : public plugin< chain_plugin >
 {

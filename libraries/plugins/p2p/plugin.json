@@ -1,4 +1,5 @@
 {
    "plugin_name": "p2p",
+   "plugin_namespace": "p2p",
    "plugin_project": "p2p_plugin"
 }

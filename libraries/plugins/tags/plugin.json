@@ -1,4 +1,5 @@
 {
    "plugin_name": "tags",
+   "plugin_namespace": "tags",
    "plugin_project": "tags_plugin"
 }

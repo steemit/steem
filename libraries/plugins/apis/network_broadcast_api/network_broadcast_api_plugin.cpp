@@ -10,7 +10,7 @@ void network_broadcast_api_plugin::set_program_options( options_description& cli
 
 void network_broadcast_api_plugin::plugin_initialize( const variables_map& options )
 {
-   nb_api = std::make_unique< network_broadcast_api >();
+   api = std::make_shared< network_broadcast_api >();
 }
 
 void network_broadcast_api_plugin::plugin_startup() {}

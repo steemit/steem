@@ -548,8 +548,8 @@ optional< escrow_api_obj > database_api::get_escrow( string from, uint32_t escro
       try
       {
          result = my->_db.get_escrow( from, escrow_id );
-      }
       catch ( ... ) {}
+      }
 
       return result;
    });

@@ -12,7 +12,7 @@ namespace steemit { namespace plugins {
 void register_plugins()
 {
    {% for plugin in plugins %}
-   appbase::app().register_plugin< steemit::plugins::{{ plugin["plugin_name"] }}::{{ plugin["plugin_name" ] }}_plugin >();
+   appbase::app().register_plugin< steemit::plugins::{{ plugin["plugin_namespace"] }}::{{ plugin["plugin_name" ] }}_plugin >();
    {% endfor %}
 }
 

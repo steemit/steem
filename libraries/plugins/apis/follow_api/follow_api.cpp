@@ -3,7 +3,7 @@
 
 #include <steemit/plugins/follow/follow_objects.hpp>
 
-namespace steemit { namespace plugins { namespace follow_api {
+namespace steemit { namespace plugins { namespace follow {
 
 namespace detail {
 

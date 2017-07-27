@@ -3,7 +3,7 @@
 
 #include <steemit/chain/steem_objects.hpp>
 
-namespace steemit { namespace plugins { namespace market_history_api {
+namespace steemit { namespace plugins { namespace market_history {
 
 namespace detail {
 
@@ -46,9 +46,9 @@ DEFINE_API( market_history_api_impl, get_ticker )
 
    auto orders = get_order_book( get_order_book_args{ 1 } );
    if( orders.bids.size() )
-      result.highest_bid = orders.bids[0].price;
+      result.highest_bid = orders.bids[0].real_price;
    if( orders.asks.size() )
-      result.lowest_ask = orders.asks[0].price;
+      result.lowest_ask = orders.asks[0].real_price;
 
    auto volume = get_volume( get_volume_args() );
    result.steem_volume = volume.steem_volume;
@@ -90,9 +90,11 @@ DEFINE_API( market_history_api_impl, get_order_book )
    while( itr != order_idx.end() && itr->sell_price.base.symbol == SBD_SYMBOL && result.bids.size() < args.limit )
    {
       order cur;
-      cur.price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
+      cur.order_price = itr->sell_price;
+      cur.real_price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * itr->sell_price ).amount;
       cur.sbd = itr->for_sale;
+      cur.created = itr->created;
       result.bids.push_back( cur );
       ++itr;
    }
@@ -102,9 +104,11 @@ DEFINE_API( market_history_api_impl, get_order_book )
    while( itr != order_idx.end() && itr->sell_price.base.symbol == STEEM_SYMBOL && result.asks.size() < args.limit )
    {
       order cur;
-      cur.price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
+      cur.order_price = itr->sell_price;
+      cur.real_price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
       cur.steem = itr->for_sale;
       cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * itr->sell_price ).amount;
+      cur.created = itr->created;
       result.asks.push_back( cur );
       ++itr;
    }
@@ -253,6 +257,5 @@ DEFINE_API( market_history_api, get_market_history_buckets )
       return my->get_market_history_buckets( args );
    });
 }
-
 
 } } } // steemit::plugins::market_history

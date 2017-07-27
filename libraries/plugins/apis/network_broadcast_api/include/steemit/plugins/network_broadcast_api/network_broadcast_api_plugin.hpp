@@ -30,8 +30,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-private:
-   std::unique_ptr< class network_broadcast_api > nb_api;
+   std::shared_ptr< class network_broadcast_api > api;
 };
 
 } } } // steemit::plugins::network_broadcast_api

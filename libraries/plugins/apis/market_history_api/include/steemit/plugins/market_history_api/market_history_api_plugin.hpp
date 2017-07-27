@@ -7,7 +7,7 @@
 #define MARKET_HISTORY_API_PLUGIN_NAME "market_history_api"
 
 
-namespace steemit { namespace plugins { namespace market_history_api {
+namespace steemit { namespace plugins { namespace market_history {
 
 using namespace appbase;
 
@@ -28,8 +28,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-private:
-   std::unique_ptr< class market_history_api > _api;
+   std::shared_ptr< class market_history_api > api;
 };
 
-} } } // steemit::plugins::market_history_api
+} } } // steemit::plugins::market_history

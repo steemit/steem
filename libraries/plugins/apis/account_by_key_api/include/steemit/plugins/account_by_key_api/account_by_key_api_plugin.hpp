@@ -7,7 +7,7 @@
 #define ACCOUNT_BY_KEY_API_PLUGIN_NAME "account_by_key_api"
 
 
-namespace steemit { namespace plugins { namespace account_by_key_api {
+namespace steemit { namespace plugins { namespace account_by_key {
 
 using namespace appbase;
 
@@ -29,8 +29,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-private:
-   std::unique_ptr< class account_by_key_api > _api;
+   std::shared_ptr< class account_by_key_api > api;
 };
 
-} } } // steemit::plugins::account_by_key_api
+} } } // steemit::plugins::account_by_key

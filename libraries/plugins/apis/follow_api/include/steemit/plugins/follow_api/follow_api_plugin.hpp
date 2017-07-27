@@ -7,7 +7,7 @@
 #define FOLLOW_API_PLUGIN_NAME "follow_api"
 
 
-namespace steemit { namespace plugins { namespace follow_api {
+namespace steemit { namespace plugins { namespace follow {
 
 using namespace appbase;
 
@@ -28,7 +28,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   std::shared_ptr< class follow_api > _api;
+   std::shared_ptr< class follow_api > api;
 };
 
-} } } // steemit::plugins::follow_api
+} } } // steemit::plugins::follow

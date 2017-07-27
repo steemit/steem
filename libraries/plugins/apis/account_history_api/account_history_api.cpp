@@ -1,7 +1,7 @@
 #include <steemit/plugins/account_history_api/account_history_api_plugin.hpp>
 #include <steemit/plugins/account_history_api/account_history_api.hpp>
 
-namespace steemit { namespace plugins { namespace account_history_api {
+namespace steemit { namespace plugins { namespace account_history {
 
 namespace detail {
 

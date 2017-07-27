@@ -1,4 +1,5 @@
 {
    "plugin_name": "json_rpc",
+   "plugin_namespace": "json_rpc",
    "plugin_project": "json_rpc_plugin"
 }

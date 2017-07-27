@@ -8,7 +8,7 @@
 #include <steemit/chain/util/reward.hpp>
 #include <steemit/chain/util/uint256.hpp>
 
-namespace steemit { namespace plugins { namespace tags_api {
+namespace steemit { namespace plugins { namespace tags {
 
 namespace detail {
 
@@ -62,7 +62,7 @@ class tags_api_impl
       steemit::chain::comment_id_type get_parent( const discussion_query& q );
 
       steemit::chain::database& _db;
-      std::shared_ptr< steemit::plugins::follow_api::follow_api > _follow_api;
+      std::shared_ptr< steemit::plugins::follow::follow_api > _follow_api;
 };
 
 DEFINE_API( tags_api_impl, get_trending_tags )
@@ -86,7 +86,7 @@ DEFINE_API( tags_api_impl, get_trending_tags )
 
    while( itr != ridx.end() && result.tags.size() < args.limit )
    {
-      result.tags.push_back( tag_api_obj( *itr ) );
+      result.tags.push_back( api_tag_object( *itr ) );
       ++itr;
    }
    return result;
@@ -534,7 +534,7 @@ DEFINE_API( tags_api_impl, get_active_votes )
 
       if( _follow_api )
       {
-         auto reps = _follow_api->get_account_reputations( follow_api::get_account_reputations_args( { vo.name, 1 } ) ).reputations;
+         auto reps = _follow_api->get_account_reputations( follow::get_account_reputations_args( { vo.name, 1 } ) ).reputations;
          if( reps.size() )
             vstate.reputation = reps[0].reputation;
       }
@@ -589,7 +589,7 @@ void tags_api_impl::set_pending_payout( discussion& d )
 
       if( _follow_api )
       {
-         d.author_reputation = _follow_api->get_account_reputations( follow_api::get_account_reputations_args( { d.author, 1} ) ).reputations[0].reputation;
+         d.author_reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { d.author, 1} ) ).reputations[0].reputation;
       }
    }
 
@@ -917,12 +917,17 @@ DEFINE_API( tags_api, get_active_votes )
    });
 }
 
+void tags_api::set_pending_payout( discussion& d )
+{
+   my->set_pending_payout( d );
+}
+
 void tags_api::api_startup()
 {
-   auto follow_api_plugin = appbase::app().find_plugin< steemit::plugins::follow_api::follow_api_plugin >();
+   auto follow_api_plugin = appbase::app().find_plugin< steemit::plugins::follow::follow_api_plugin >();
 
    if( follow_api_plugin != nullptr )
-      my->_follow_api = follow_api_plugin->_api;
+      my->_follow_api = follow_api_plugin->api;
 }
 
 } } } // steemit::plugins::tags

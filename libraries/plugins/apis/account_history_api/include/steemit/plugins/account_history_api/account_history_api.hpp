@@ -10,7 +10,7 @@
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
 
-namespace steemit { namespace plugins { namespace account_history_api {
+namespace steemit { namespace plugins { namespace account_history {
 
 
 namespace detail { class account_history_api_impl; }
@@ -84,22 +84,22 @@ class account_history_api
       std::shared_ptr< detail::account_history_api_impl > my;
 };
 
-} } } // steemit::plugins::account_history_api
+} } } // steemit::plugins::account_history
 
-FC_REFLECT( steemit::plugins::account_history_api::api_operation_object,
+FC_REFLECT( steemit::plugins::account_history::api_operation_object,
    (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
 
-FC_REFLECT( steemit::plugins::account_history_api::get_ops_in_block_args,
+FC_REFLECT( steemit::plugins::account_history::get_ops_in_block_args,
    (block_num)(only_virtual) )
 
-FC_REFLECT( steemit::plugins::account_history_api::get_ops_in_block_return,
+FC_REFLECT( steemit::plugins::account_history::get_ops_in_block_return,
    (ops) )
 
-FC_REFLECT( steemit::plugins::account_history_api::get_transaction_args,
+FC_REFLECT( steemit::plugins::account_history::get_transaction_args,
    (id) )
 
-FC_REFLECT( steemit::plugins::account_history_api::get_account_history_args,
+FC_REFLECT( steemit::plugins::account_history::get_account_history_args,
    (account)(start)(limit) )
 
-FC_REFLECT( steemit::plugins::account_history_api::get_account_history_return,
+FC_REFLECT( steemit::plugins::account_history::get_account_history_return,
    (history) )

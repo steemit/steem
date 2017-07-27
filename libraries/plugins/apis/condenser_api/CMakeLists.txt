@@ -4,7 +4,15 @@ add_library( condenser_api_plugin
              condenser_api_plugin.cpp
              ${HEADERS} )
 
-target_link_libraries( condenser_api_plugin chain_plugin json_rpc_plugin steemit_app appbase )
+target_link_libraries( condenser_api_plugin
+   account_by_key_api_plugin
+   account_history_api_plugin
+   database_api_plugin
+   follow_api_plugin
+   market_history_api_plugin
+   network_broadcast_api_plugin
+   tags_api_plugin
+   witness_api_plugin )
 target_include_directories( condenser_api_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 install( TARGETS

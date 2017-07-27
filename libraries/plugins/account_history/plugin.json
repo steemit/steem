@@ -1,4 +1,5 @@
 {
    "plugin_name": "account_history",
+   "plugin_namespace": "account_history",
    "plugin_project": "account_history_plugin"
 }

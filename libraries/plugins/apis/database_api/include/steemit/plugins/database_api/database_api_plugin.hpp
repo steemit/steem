@@ -28,7 +28,7 @@ class database_api_plugin : public plugin< database_api_plugin >
       void plugin_startup();
       void plugin_shutdown();
 
-      std::unique_ptr< class database_api > _my;
+      std::shared_ptr< class database_api > api;
 };
 
 } } } // steemit::plugins::database_api

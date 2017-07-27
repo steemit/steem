@@ -14,7 +14,7 @@ void database_api_plugin::set_program_options(
 
 void database_api_plugin::plugin_initialize( const variables_map& options )
 {
-   _my = std::make_unique< database_api >();
+   api = std::make_shared< database_api >();
 }
 
 void database_api_plugin::plugin_startup() {}

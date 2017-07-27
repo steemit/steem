@@ -1,4 +1,5 @@
 {
    "plugin_name": "chain",
+   "plugin_namespace": "chain",
    "plugin_project": "chain_plugin"
 }

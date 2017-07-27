@@ -7,7 +7,7 @@
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
 
-namespace steemit { namespace plugins { namespace account_by_key_api {
+namespace steemit { namespace plugins { namespace account_by_key {
 
 namespace detail
 {
@@ -35,10 +35,10 @@ class account_by_key_api
       std::shared_ptr< detail::account_by_key_api_impl > my;
 };
 
-} } } // steemit::plugins::account_by_key_api
+} } } // steemit::plugins::account_by_key
 
-FC_REFLECT( steemit::plugins::account_by_key_api::get_key_references_args,
+FC_REFLECT( steemit::plugins::account_by_key::get_key_references_args,
    (keys) )
 
-FC_REFLECT( steemit::plugins::account_by_key_api::get_key_references_return,
+FC_REFLECT( steemit::plugins::account_by_key::get_key_references_return,
    (accounts) )

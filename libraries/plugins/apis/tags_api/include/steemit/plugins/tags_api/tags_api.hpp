@@ -1,6 +1,7 @@
 #pragma once
 #include <steemit/plugins/json_rpc/utility.hpp>
 #include <steemit/plugins/database_api/database_api_objects.hpp>
+#include <steemit/plugins/tags/tags_plugin.hpp>
 
 #include <steemit/protocol/types.hpp>
 #include <steemit/chain/database.hpp>
@@ -9,7 +10,7 @@
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
 
-namespace steemit { namespace plugins { namespace tags_api {
+namespace steemit { namespace plugins { namespace tags {
 
 using steemit::protocol::share_type;
 using steemit::protocol::asset;
@@ -18,9 +19,9 @@ using fc::time_point_sec;
 
 namespace detail { class tags_api_impl; }
 
-struct tag_api_obj
+struct api_tag_object
 {
-   tag_api_obj( const tags::tag_stats_object& o ) :
+   api_tag_object( const tag_stats_object& o ) :
       name( o.tag ),
       total_payouts( o.total_payout ),
       net_votes( o.net_votes ),
@@ -28,7 +29,7 @@ struct tag_api_obj
       comments( o.comments ),
       trending( o.total_trending ) {}
 
-   tag_api_obj() {}
+   api_tag_object() {}
 
    string               name;
    asset                total_payouts;
@@ -77,7 +78,7 @@ struct get_trending_tags_args
 
 struct get_trending_tags_return
 {
-   vector< tag_api_obj > tags;
+   vector< api_tag_object > tags;
 };
 
 struct get_tags_used_by_author_args
@@ -227,6 +228,8 @@ class tags_api
    DECLARE_API( get_discussions_by_author_before_date )
    DECLARE_API( get_active_votes )
 
+   void set_pending_payout( discussion& d );
+
    private:
       friend class tags_api_plugin;
       void api_startup();
@@ -234,46 +237,46 @@ class tags_api
       std::shared_ptr< detail::tags_api_impl > my;
 };
 
-} } } // steemit::plugins::tags_api
+} } } // steemit::plugins::tags
 
-FC_REFLECT( steemit::plugins::tags_api::tag_api_obj,
+FC_REFLECT( steemit::plugins::tags::api_tag_object,
             (name)(total_payouts)(net_votes)(top_posts)(comments)(trending) )
 
-FC_REFLECT( steemit::plugins::tags_api::vote_state,
+FC_REFLECT( steemit::plugins::tags::vote_state,
             (voter)(weight)(rshares)(percent)(reputation)(time) )
 
-FC_REFLECT_DERIVED( steemit::plugins::tags_api::discussion, (steemit::plugins::database_api::api_comment_object),
+FC_REFLECT_DERIVED( steemit::plugins::tags::discussion, (steemit::plugins::database_api::api_comment_object),
             (url)(root_title)(pending_payout_value)(total_pending_payout_value)(active_votes)(replies)(author_reputation)(promoted)(body_length)(reblogged_by)(first_reblogged_by)(first_reblogged_on) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_trending_tags_args,
+FC_REFLECT( steemit::plugins::tags::get_trending_tags_args,
             (start_tag)(limit) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_trending_tags_return,
+FC_REFLECT( steemit::plugins::tags::get_trending_tags_return,
             (tags) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_tags_used_by_author_args,
+FC_REFLECT( steemit::plugins::tags::get_tags_used_by_author_args,
             (author) )
 
-FC_REFLECT( steemit::plugins::tags_api::tag_count_object,
+FC_REFLECT( steemit::plugins::tags::tag_count_object,
             (tag)(count) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_tags_used_by_author_return,
+FC_REFLECT( steemit::plugins::tags::get_tags_used_by_author_return,
             (tags) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_discussion_args,
+FC_REFLECT( steemit::plugins::tags::get_discussion_args,
             (author)(permlink) )
 
-FC_REFLECT( steemit::plugins::tags_api::discussion_query,
+FC_REFLECT( steemit::plugins::tags::discussion_query,
             (tag)(limit)(filter_tags)(select_authors)(select_tags)(truncate_body)(start_author)(start_permlink)(parent_author)(parent_permlink) )
 
-FC_REFLECT( steemit::plugins::tags_api::discussion_query_result,
+FC_REFLECT( steemit::plugins::tags::discussion_query_result,
             (discussions) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_replies_by_last_update_args,
+FC_REFLECT( steemit::plugins::tags::get_replies_by_last_update_args,
             (start_author)(start_permlink)(limit) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_discussions_by_author_before_date_args,
+FC_REFLECT( steemit::plugins::tags::get_discussions_by_author_before_date_args,
             (author)(start_permlink)(before_date)(limit) )
 
-FC_REFLECT( steemit::plugins::tags_api::get_active_votes_return,
+FC_REFLECT( steemit::plugins::tags::get_active_votes_return,
             (votes) )
