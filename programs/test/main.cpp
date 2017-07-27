@@ -11,6 +11,9 @@
 #include <fc/log/file_appender.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/reflect/reflect.hpp>
+#include <fc/reflect/variant.hpp>
+#include <fc/io/json.hpp>
 
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -129,6 +132,25 @@ vector< string > tokenize_config_args( const vector< string >& args )
    return result;
 }
 
+struct console_appender_arg
+{
+   std::string appender;
+   std::string stream;
+};
+
+struct file_appender_arg
+{
+   std::string appender;
+   std::string file;
+};
+
+struct logger_arg
+{
+   std::string name;
+   std::string level;
+   std::string appender;
+};
+
 fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& args )
 {
    try
@@ -138,43 +160,42 @@ fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& 
 
       if( args.count( "log-console-appender" ) )
       {
-         std::vector< string > console_appender_args = tokenize_config_args( args["log-console-appender"].as< vector< string > >() );
-         uint32_t root = 0;
+         std::vector< string > console_appender_args = args["log-console-appender"].as< vector< string > >();
 
-         while( console_appender_args.size() - root >= 2 )
+         for( string& s : console_appender_args )
          {
-            std::string console_appender_name = console_appender_args[ root ];
-            std::string stream_name = console_appender_args[ root + 1 ];
+            try
+            {
+               auto console_appender = fc::json::from_string( s ).as< console_appender_arg >();
 
-            // construct a default console appender config here
-            // stdout/stderr will be taken from ini file, everything else hard-coded here
-            fc::console_appender::config console_appender_config;
-            console_appender_config.level_colors.emplace_back(
-               fc::console_appender::level_color( fc::log_level::debug,
-                                                  fc::console_appender::color::green));
-            console_appender_config.level_colors.emplace_back(
-               fc::console_appender::level_color( fc::log_level::warn,
-                                                  fc::console_appender::color::brown));
-            console_appender_config.level_colors.emplace_back(
-               fc::console_appender::level_color( fc::log_level::error,
-                                                  fc::console_appender::color::red));
-            console_appender_config.stream = fc::variant( stream_name ).as< fc::console_appender::stream::type >();
-            logging_config.appenders.push_back(
-               fc::appender_config( console_appender_name, "console", fc::variant( console_appender_config ) ) );
-            found_logging_config = true;
-            root += 2;
+               fc::console_appender::config console_appender_config;
+               console_appender_config.level_colors.emplace_back(
+                  fc::console_appender::level_color( fc::log_level::debug,
+                                                   fc::console_appender::color::green));
+               console_appender_config.level_colors.emplace_back(
+                  fc::console_appender::level_color( fc::log_level::warn,
+                                                   fc::console_appender::color::brown));
+               console_appender_config.level_colors.emplace_back(
+                  fc::console_appender::level_color( fc::log_level::error,
+                                                   fc::console_appender::color::red));
+               console_appender_config.stream = fc::variant( console_appender.stream ).as< fc::console_appender::stream::type >();
+               logging_config.appenders.push_back(
+                  fc::appender_config( console_appender.appender, "console", fc::variant( console_appender_config ) ) );
+               found_logging_config = true;
+            }
+            catch( ... ) {}
          }
       }
 
       if( args.count( "log-file-appender" ) )
       {
-         std::vector< string > file_appender_args = tokenize_config_args( args["log-file-appender"].as< vector< string > >() );
-         uint32_t root = 0;
+         std::vector< string > file_appender_args = args["log-file-appender"].as< vector< string > >();
 
-         while( file_appender_args.size() - root >= 2 )
+         for( string& s : file_appender_args )
          {
-            std::string file_appender_name = file_appender_args[ root ];
-            fc::path file_name = file_appender_args[ root + 1 ];
+            auto file_appender = fc::json::from_string( s ).as< file_appender_arg >();
+
+            fc::path file_name = file_appender.file;
             if( file_name.is_relative() )
                file_name = fc::absolute( appbase::app().data_dir() ) / file_name;
 
@@ -187,30 +208,26 @@ fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& 
             file_appender_config.rotation_interval = fc::hours(1);
             file_appender_config.rotation_limit = fc::days(1);
             logging_config.appenders.push_back(
-               fc::appender_config( file_appender_name, "file", fc::variant( file_appender_config ) ) );
+               fc::appender_config( file_appender.appender, "file", fc::variant( file_appender_config ) ) );
             found_logging_config = true;
-            root += 2;
          }
       }
 
       if( args.count( "log-logger" ) )
       {
-         std::vector< string > logger_args = tokenize_config_args( args[ "log-logger" ].as< std::vector< std::string > >() );
-         uint32_t root = 0;
+         std::vector< string > logger_args = args[ "log-logger" ].as< std::vector< std::string > >();
 
-         while( logger_args.size() - root >= 3 )
+         for( string& s : logger_args )
          {
-            std::string logger_name = logger_args[ root ];
-            std::string level_string = logger_args[ root + 1 ];
-            std::string appenders_string = logger_args[ root + 2 ];
-            fc::logger_config logger_config( logger_name );
-            logger_config.level = fc::variant( level_string ).as< fc::log_level >();
-            boost::split( logger_config.appenders, appenders_string,
+            auto logger = fc::json::from_string( s ).as< logger_arg >();
+
+            fc::logger_config logger_config( logger.name );
+            logger_config.level = fc::variant( logger.level ).as< fc::log_level >();
+            boost::split( logger_config.appenders, logger.appender,
                           boost::is_any_of(" ,"),
                           boost::token_compress_on );
             logging_config.loggers.push_back( logger_config );
             found_logging_config = true;
-            root += 3;
          }
       }
 
@@ -221,3 +238,7 @@ fc::optional<fc::logging_config> load_logging_config( const bpo::variables_map& 
    }
    FC_RETHROW_EXCEPTIONS(warn, "")
 }
+
+FC_REFLECT( console_appender_arg, (appender)(stream) )
+FC_REFLECT( file_appender_arg, (appender)(file) )
+FC_REFLECT( logger_arg, (name)(level)(appender) )

@@ -14,4 +14,3 @@ install( TARGETS debug_node_plugin
          LIBRARY DESTINATION lib
          ARCHIVE DESTINATION lib
        )
-INSTALL( FILES ${HEADERS} DESTINATION "include/steemit/plugins/debug_node" )
