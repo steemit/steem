@@ -177,7 +177,7 @@ typedef discussion_query_result  get_discussions_by_promoted_return;
 
 struct get_replies_by_last_update_args
 {
-   account_name_type start_author;
+   account_name_type start_parent_author;
    string            start_permlink;
    uint32_t          limit = 100;
 };
@@ -273,7 +273,7 @@ FC_REFLECT( steemit::plugins::tags::discussion_query_result,
             (discussions) )
 
 FC_REFLECT( steemit::plugins::tags::get_replies_by_last_update_args,
-            (start_author)(start_permlink)(limit) )
+            (start_parent_author)(start_permlink)(limit) )
 
 FC_REFLECT( steemit::plugins::tags::get_discussions_by_author_before_date_args,
             (author)(start_permlink)(before_date)(limit) )

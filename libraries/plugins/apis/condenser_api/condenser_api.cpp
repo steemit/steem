@@ -191,7 +191,7 @@ namespace detail
                   {
                      const auto link = acnt + "/" + to_string( itr->permlink );
                      eacnt.comments->push_back( link );
-                     _state.content[ link ] = *itr;
+                     _state.content[ link ] = tags::discussion( *itr, _db );
 
                      if( _tags_api )
                         _tags_api->set_pending_payout( _state.content[ link ] );

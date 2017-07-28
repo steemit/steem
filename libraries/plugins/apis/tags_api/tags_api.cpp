@@ -445,9 +445,9 @@ DEFINE_API( tags_api_impl, get_replies_by_last_update )
    FC_ASSERT( args.limit <= 100 );
    const auto& last_update_idx = _db.get_index< comment_index, by_last_update >();
    auto itr = last_update_idx.begin();
-   const account_name_type parent_author = args.start_parent_author;
+   account_name_type parent_author = args.start_parent_author;
 
-   if( start_permlink.size() )
+   if( args.start_permlink.size() )
    {
       const auto& comment = _db.get_comment( args.start_parent_author, args.start_permlink );
       itr = last_update_idx.iterator_to( comment );
@@ -458,11 +458,11 @@ DEFINE_API( tags_api_impl, get_replies_by_last_update )
       itr = last_update_idx.lower_bound( args.start_parent_author );
    }
 
-   result.reserve( args.limit );
+   result.discussions.reserve( args.limit );
 
-   while( itr != last_update_idx.end() && result.size() < limit && itr->parent_author == parent_author )
+   while( itr != last_update_idx.end() && result.discussions.size() < args.limit && itr->parent_author == parent_author )
    {
-      result.discussions.push_back( *itr );
+      result.discussions.push_back( discussion( *itr, _db ) );
       set_pending_payout( result.discussions.back() );
       result.discussions.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, steemit::chain::to_string( itr->permlink ) } ) ).votes;
       ++itr;
@@ -478,8 +478,8 @@ DEFINE_API( tags_api_impl, get_discussions_by_author_before_date )
    {
       get_discussions_by_author_before_date_return result;
 #ifndef IS_LOW_MEM
-      FC_ASSERT( limit <= 100 );
-      result.discussions.reserve( limit );
+      FC_ASSERT( args.limit <= 100 );
+      result.discussions.reserve( args.limit );
       uint32_t count = 0;
       const auto& didx = _db.get_index< comment_index, by_author_last_update >();
 
@@ -501,9 +501,9 @@ DEFINE_API( tags_api_impl, get_discussions_by_author_before_date )
       {
          if( itr->parent_author.size() == 0 )
          {
-            result.discussions.push_back( *itr );
+            result.discussions.push_back( discussion( *itr, _db ) );
             set_pending_payout( result.discussions.back() );
-            result.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, steemit::chain::to_string( itr->permlink ) } ) ).votes;
+            result.discussions.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, steemit::chain::to_string( itr->permlink ) } ) ).votes;
             ++count;
          }
          ++itr;
