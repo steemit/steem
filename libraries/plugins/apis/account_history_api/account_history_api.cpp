@@ -34,6 +34,9 @@ DEFINE_API( account_history_api_impl, get_ops_in_block )
 
 DEFINE_API( account_history_api_impl, get_transaction )
 {
+#ifdef SKIP_BY_TX_ID
+   FC_ASSERT( false, "This node's operator has disabled operation indexing by transaction_id" );
+#else
    const auto& idx = _db.get_index< steemit::chain::operation_index, steemit::chain::by_transaction_id >();
    auto itr = idx.lower_bound( args.id );
    if( itr != idx.end() && itr->trx_id == args.id )
@@ -47,6 +50,7 @@ DEFINE_API( account_history_api_impl, get_transaction )
       return result;
    }
    FC_ASSERT( false, "Unknown Transaction ${t}", ("t",args.id) );
+#endif
 }
 
 DEFINE_API( account_history_api_impl, get_account_history )
