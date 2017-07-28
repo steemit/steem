@@ -27,10 +27,10 @@ using std::vector;
 
 string& version_string()
 {
-   static string v_str = ( std::stringstream() <<
-      "steem_blockchain_version: " << fc::string( STEEMIT_BLOCKCHAIN_VERSION ) << "\n" <<
-      "steem_git_revision:       " << fc::string( steemit::utilities::git_revision_sha ) << "\n" <<
-      "fc_git_revision:          " << fc::string( fc::git_revision_sha ) << "\n" ).str();
+   static string v_str =
+      "steem_blockchain_version: " + fc::string( STEEMIT_BLOCKCHAIN_VERSION ) + "\n" +
+      "steem_git_revision:       " + fc::string( steemit::utilities::git_revision_sha ) + "\n" +
+      "fc_git_revision:          " + fc::string( fc::git_revision_sha ) + "\n";
    return v_str;
 }
 

@@ -88,7 +88,8 @@ chown -R steemd:steemd $HOME/*
 if [[ "$USE_MULTICORE_READONLY" ]]; then
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=127.0.0.1:8091 \
+            --webserver-ws-endpoint=127.0.0.1:8091 \
+            --webserver-http-endpoint=127.0.0.1:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \
@@ -111,7 +112,8 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
       do
         exec chpst -usteemd \
         $STEEMD \
-          --rpc-endpoint=127.0.0.1:$PORT_NUM \
+          --webserver-ws-endpoint=127.0.0.1:$PORT_NUM \
+          --webserver-http-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
           $ARGS \
           --read-forward-rpc=127.0.0.1:8091 \
@@ -142,7 +144,8 @@ else
     service nginx restart
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=0.0.0.0:8091 \
+            --webserver-ws-endpoint=127.0.0.1:8091 \
+            --webserver-http-endpoint=127.0.0.1:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \

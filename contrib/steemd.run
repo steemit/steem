@@ -116,7 +116,8 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
       do
         exec chpst -usteemd \
         $STEEMD \
-          --rpc-endpoint=127.0.0.1:$PORT_NUM \
+          --webserver-ws-endpoint=127.0.0.1:$PORT_NUM \
+          --webserver-http-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
           --read-forward-rpc=127.0.0.1:8091 \
           --read-only \
@@ -142,7 +143,8 @@ elif [[ "$USE_NGINX_FRONTEND" ]]; then
     service nginx restart
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=0.0.0.0:8091 \
+            --webserver-ws-endpoint=127.0.0.1:8091 \
+            --webserver-http-endpoint=127.0.0.1:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \
@@ -151,7 +153,8 @@ elif [[ "$USE_NGINX_FRONTEND" ]]; then
 else
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=0.0.0.0:8090 \
+            --webserver-ws-endpoint=127.0.0.1:8090 \
+            --webserver-http-endpoint=127.0.0.1:8090 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \
