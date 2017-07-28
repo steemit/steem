@@ -53,18 +53,6 @@ application& reset() { return application::instance( true ); }
 
 void application::set_program_options()
 {
-   for(auto& plug : plugins) {
-      boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->name());
-      boost::program_options::options_description plugin_cfg_opts("Config Options for " + plug.second->name());
-      plug.second->set_program_options(plugin_cli_opts, plugin_cfg_opts);
-      if(plugin_cfg_opts.options().size()) {
-         my->_app_options.add(plugin_cfg_opts);
-         my->_cfg_options.add(plugin_cfg_opts);
-      }
-      if(plugin_cli_opts.options().size())
-         my->_app_options.add(plugin_cli_opts);
-   }
-
    options_description app_cfg_opts( "Application Config Options" );
    options_description app_cli_opts( "Application Command Line Options" );
    app_cfg_opts.add_options()
@@ -79,6 +67,18 @@ void application::set_program_options()
    my->_cfg_options.add(app_cfg_opts);
    my->_app_options.add(app_cfg_opts);
    my->_app_options.add(app_cli_opts);
+
+   for(auto& plug : plugins) {
+      boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->name());
+      boost::program_options::options_description plugin_cfg_opts("Config Options for " + plug.second->name());
+      plug.second->set_program_options(plugin_cli_opts, plugin_cfg_opts);
+      if(plugin_cfg_opts.options().size()) {
+         my->_app_options.add(plugin_cfg_opts);
+         my->_cfg_options.add(plugin_cfg_opts);
+      }
+      if(plugin_cli_opts.options().size())
+         my->_app_options.add(plugin_cli_opts);
+   }
 }
 
 bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins)
@@ -89,6 +89,12 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
 
    if( my->_args.count( "help" ) ) {
       cout << my->_app_options << "\n";
+      return false;
+   }
+
+   if( my->_args.count( "version" ) )
+   {
+      cout << version_info << "\n";
       return false;
    }
 

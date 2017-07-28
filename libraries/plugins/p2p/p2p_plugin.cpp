@@ -142,14 +142,12 @@ void p2p_plugin::set_program_options(bpo::options_description&, bpo::options_des
       ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
       ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
-      ("p2p-user-agent", bpo::value<string>()->default_value("Graphene Reference Implementation"),"User agent to advertise to peers")
+      ("p2p-user-agent", bpo::value<string>()->implicit_value("Graphene Reference Implementation"),"User agent to advertise to peers")
       ;
 }
 
 void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
-   ilog("Initialize P2P Plugin");
-
    if( options.count( "p2p-endpoint" ) )
       my->endpoint = fc::ip::endpoint::from_string( options.at( "p2p-endpoint" ).as< string >() );
 

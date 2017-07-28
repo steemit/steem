@@ -1,5 +1,4 @@
 #ifdef IS_TEST_NET
-#include <steemit/app/plugin.hpp>
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/account_object.hpp>
 

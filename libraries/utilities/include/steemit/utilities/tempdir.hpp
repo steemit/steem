@@ -23,10 +23,12 @@
  */
 #pragma once
 
-#include <string>
+#include <cstdlib>
 
-namespace graphene { namespace utilities {
+#include <fc/filesystem.hpp>
 
-  std::string escape_string_for_c_source_code(const std::string& input);
+namespace steemit { namespace utilities {
 
-} } // end namespace graphene::utilities
+fc::path temp_directory_path();
+
+} } // steemit::utilities

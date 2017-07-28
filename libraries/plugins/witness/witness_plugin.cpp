@@ -32,7 +32,7 @@
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 #include <steemit/chain/index.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -604,7 +604,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       const std::vector<std::string> keys = options["private-key"].as<std::vector<std::string>>();
       for (const std::string& wif_key : keys )
       {
-         fc::optional<fc::ecc::private_key> private_key = graphene::utilities::wif_to_key(wif_key);
+         fc::optional<fc::ecc::private_key> private_key = steemit::utilities::wif_to_key(wif_key);
          FC_ASSERT( private_key.valid(), "unable to parse private key" );
          my->_private_keys[private_key->get_public_key()] = *private_key;
       }

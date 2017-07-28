@@ -32,7 +32,7 @@
 
 #include <steemit/plugins/account_history/account_history_plugin.hpp>
 
-#include <graphene/utilities/tempdir.hpp>
+#include <steemit/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 {
    try {
       fc::time_point_sec now( STEEMIT_TESTING_GENESIS_TIMESTAMP );
-      fc::temp_directory data_dir( graphene::utilities::temp_directory_path() );
+      fc::temp_directory data_dir( steemit::utilities::temp_directory_path() );
       signed_block b;
 
       // TODO:  Don't generate this here
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 BOOST_AUTO_TEST_CASE( undo_block )
 {
    try {
-      fc::temp_directory data_dir( graphene::utilities::temp_directory_path() );
+      fc::temp_directory data_dir( steemit::utilities::temp_directory_path() );
       {
          database db;
          db._log_hardforks = false;
@@ -157,8 +157,8 @@ BOOST_AUTO_TEST_CASE( undo_block )
 BOOST_AUTO_TEST_CASE( fork_blocks )
 {
    try {
-      fc::temp_directory data_dir1( graphene::utilities::temp_directory_path() );
-      fc::temp_directory data_dir2( graphene::utilities::temp_directory_path() );
+      fc::temp_directory data_dir1( steemit::utilities::temp_directory_path() );
+      fc::temp_directory data_dir2( steemit::utilities::temp_directory_path() );
 
       //TODO This test needs 6-7 ish witnesses prior to fork
 
@@ -224,8 +224,8 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
 BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 {
    try {
-      fc::temp_directory dir1( graphene::utilities::temp_directory_path() ),
-                         dir2( graphene::utilities::temp_directory_path() );
+      fc::temp_directory dir1( steemit::utilities::temp_directory_path() ),
+                         dir2( steemit::utilities::temp_directory_path() );
       database db1,
                db2;
       db1._log_hardforks = false;
@@ -283,8 +283,8 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 BOOST_AUTO_TEST_CASE( duplicate_transactions )
 {
    try {
-      fc::temp_directory dir1( graphene::utilities::temp_directory_path() ),
-                         dir2( graphene::utilities::temp_directory_path() );
+      fc::temp_directory dir1( steemit::utilities::temp_directory_path() ),
+                         dir2( steemit::utilities::temp_directory_path() );
       database db1,
                db2;
       db1._log_hardforks = false;
@@ -337,7 +337,7 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 BOOST_AUTO_TEST_CASE( tapos )
 {
    try {
-      fc::temp_directory dir1( graphene::utilities::temp_directory_path() );
+      fc::temp_directory dir1( steemit::utilities::temp_directory_path() );
       database db1;
       db1._log_hardforks = false;
       db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );

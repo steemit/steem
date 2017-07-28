@@ -7,7 +7,7 @@ add_library( witness_plugin
              ${HEADERS}
            )
 
-target_link_libraries( witness_plugin p2p_plugin chain_plugin appbase steemit_chain graphene_utilities )
+target_link_libraries( witness_plugin p2p_plugin chain_plugin appbase steemit_chain steemit_utilities )
 target_include_directories( witness_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

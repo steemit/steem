@@ -20,7 +20,7 @@ ARGS=""
 # seed nodes, use the ones above:
 if [[ -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -28,7 +28,7 @@ fi
 # the ones the user specified:
 if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $STEEMD_SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -36,10 +36,6 @@ if [[ ! -z "$STEEMD_WITNESS_NAME" ]]; then
     ARGS+=" --witness=\"$STEEMD_WITNESS_NAME\""
 fi
 
-if [[ ! -z "$STEEMD_MINER_NAME" ]]; then
-    ARGS+=" --miner=[\"$STEEMD_MINER_NAME\",\"$STEEMD_PRIVATE_KEY\"]"
-    ARGS+=" --mining-threads=$(nproc)"
-fi
 
 if [[ ! -z "$STEEMD_PRIVATE_KEY" ]]; then
     ARGS+=" --private-key=$STEEMD_PRIVATE_KEY"
@@ -47,9 +43,9 @@ fi
 
 if [[ ! -z "$TRACK_ACCOUNT" ]]; then
     if [[ ! "$USE_WAY_TOO_MUCH_RAM" ]]; then
-        ARGS+=" --enable-plugin=account_history"
+        ARGS+=" --plugin=account_history"
     fi
-    ARGS+=" --track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
+    ARGS+=" --account-history-track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
 fi
 
 NOW=`date +%s`

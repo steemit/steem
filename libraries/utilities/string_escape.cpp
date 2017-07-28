@@ -21,10 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <graphene/utilities/string_escape.hpp>
+#include <steemit/utilities/string_escape.hpp>
 #include <sstream>
 
-namespace graphene { namespace utilities {
+namespace steemit { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input)
   {
@@ -34,31 +34,31 @@ namespace graphene { namespace utilities {
     {
       switch (input[i])
       {
-      case '\a': 
+      case '\a':
         escaped_string << "\\a";
         break;
-      case '\b': 
+      case '\b':
         escaped_string << "\\b";
         break;
-      case '\t': 
+      case '\t':
         escaped_string << "\\t";
         break;
-      case '\n': 
+      case '\n':
         escaped_string << "\\n";
         break;
-      case '\v': 
+      case '\v':
         escaped_string << "\\v";
         break;
-      case '\f': 
+      case '\f':
         escaped_string << "\\f";
         break;
-      case '\r': 
+      case '\r':
         escaped_string << "\\r";
         break;
-      case '\\': 
+      case '\\':
         escaped_string << "\\\\";
         break;
-      case '\"': 
+      case '\"':
         escaped_string << "\\\"";
         break;
       default:
@@ -69,5 +69,5 @@ namespace graphene { namespace utilities {
     return escaped_string.str();
   }
 
-} } // end namespace graphene::utilities
+} } // end namespace steemit::utilities
 

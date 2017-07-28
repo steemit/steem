@@ -8,7 +8,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 #include <steemit/protocol/types.hpp>
 #include <steemit/protocol/authority.hpp>

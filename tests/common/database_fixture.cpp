@@ -1,7 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <graphene/utilities/tempdir.hpp>
+#include <steemit/utilities/tempdir.hpp>
 
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
@@ -197,7 +197,7 @@ string database_fixture::generate_anon_acct_name()
 void database_fixture::open_database()
 {
    if( !data_dir ) {
-      data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
+      data_dir = fc::temp_directory( steemit::utilities::temp_directory_path() );
       db->_log_hardforks = false;
       db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8, chainbase::database::read_write ); // 8 MB file for testing
    }
@@ -206,7 +206,7 @@ void database_fixture::open_database()
 void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
 {
    skip |= default_skip;
-   db_plugin->debug_generate_blocks( graphene::utilities::key_to_wif( key ), 1, skip, miss_blocks );
+   db_plugin->debug_generate_blocks( steemit::utilities::key_to_wif( key ), 1, skip, miss_blocks );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )

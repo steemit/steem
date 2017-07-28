@@ -23,10 +23,14 @@
  */
 #pragma once
 
-namespace graphene { namespace words {
+#include <string>
+#include <fc/crypto/elliptic.hpp>
+#include <fc/optional.hpp>
 
-typedef const char* const_char_ptr;
-extern const const_char_ptr word_list[];
-extern const uint32_t word_list_size;
+namespace steemit { namespace utilities {
 
-} }
+std::string                        key_to_wif(const fc::sha256& private_secret );
+std::string                        key_to_wif(const fc::ecc::private_key& key);
+fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key );
+
+} } // end namespace steemit::utilities

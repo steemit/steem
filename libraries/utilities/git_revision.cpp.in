@@ -1,14 +1,14 @@
 #include <stdint.h>
-#include <graphene/utilities/git_revision.hpp>
+#include <steemit/utilities/git_revision.hpp>
 
-#define GRAPHENE_GIT_REVISION_SHA "@GRAPHENE_GIT_REVISION_SHA@"
-#define GRAPHENE_GIT_REVISION_UNIX_TIMESTAMP @GRAPHENE_GIT_REVISION_UNIX_TIMESTAMP@
-#define GRAPHENE_GIT_REVISION_DESCRIPTION "@GRAPHENE_GIT_REVISION_DESCRIPTION@"
+#define STEEMIT_GIT_REVISION_SHA "@STEEMIT_GIT_REVISION_SHA@"
+#define STEEMIT_GIT_REVISION_UNIX_TIMESTAMP @STEEMIT_GIT_REVISION_UNIX_TIMESTAMP@
+#define STEEMIT_GIT_REVISION_DESCRIPTION "@STEEMIT_GIT_REVISION_DESCRIPTION@"
 
-namespace graphene { namespace utilities {
+namespace steemit { namespace utilities {
 
-const char* const git_revision_sha = GRAPHENE_GIT_REVISION_SHA;
-const uint32_t git_revision_unix_timestamp = GRAPHENE_GIT_REVISION_UNIX_TIMESTAMP;
-const char* const git_revision_description = GRAPHENE_GIT_REVISION_DESCRIPTION;
+const char* const git_revision_sha = STEEMIT_GIT_REVISION_SHA;
+const uint32_t git_revision_unix_timestamp = STEEMIT_GIT_REVISION_UNIX_TIMESTAMP;
+const char* const git_revision_description = STEEMIT_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace graphene::utilities
+} } // end namespace steemit::utilities

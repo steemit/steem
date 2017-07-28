@@ -10,7 +10,7 @@
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/witness_objects.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 namespace steemit { namespace plugins { namespace debug_node {
 
@@ -31,6 +31,31 @@ class debug_private_key_storage : public private_key_storage
       std::string                dev_key_prefix;
       std::map< steemit::chain::public_key_type, fc::ecc::private_key > key_table;
 };
+
+void debug_private_key_storage::maybe_get_private_key(
+   fc::optional< fc::ecc::private_key >& result,
+   const steemit::chain::public_key_type& pubkey,
+   const std::string& account_name
+)
+{
+   auto it = key_table.find( pubkey );
+   if( it != key_table.end() )
+   {
+      result = it->second;
+      return;
+   }
+   fc::ecc::private_key gen_priv = fc::ecc::private_key::regenerate( fc::sha256::hash( dev_key_prefix + account_name ) );
+   chain::public_key_type gen_pub = gen_priv.get_public_key();
+   key_table[ gen_pub ] = gen_priv;
+   if( (pubkey == steemit::chain::public_key_type()) || (gen_pub == pubkey) )
+   {
+      result = gen_priv;
+      return;
+   }
+
+   result.reset();
+   return;
+}
 
 class debug_node_api_impl
 {
@@ -152,7 +177,7 @@ DEFINE_API( debug_node_api_impl, debug_set_dev_key_prefix )
 void debug_node_api_impl::debug_get_dev_key( debug_get_dev_key_return& result, const debug_get_dev_key_args& args )
 {
    fc::ecc::private_key priv = fc::ecc::private_key::regenerate( fc::sha256::hash( key_storage.dev_key_prefix + args.name ) );
-   result.private_key = graphene::utilities::key_to_wif( priv );
+   result.private_key = steemit::utilities::key_to_wif( priv );
    result.public_key = priv.get_public_key();
    return;
 }

@@ -1,5 +1,5 @@
 {
-   "plugin_name": "account_by_key_api",
-   "plugin_namespace": "account_by_key",
-   "plugin_project": "account_by_key_api_plugin"
+   "plugin_name": "debug_node_api",
+   "plugin_namespace": "debug_node",
+   "plugin_project": "debug_node_api_plugin"
 }

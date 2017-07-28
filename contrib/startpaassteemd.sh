@@ -19,7 +19,7 @@ ARGS=""
 # seed nodes, use the ones above:
 if [[ -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -27,7 +27,7 @@ fi
 # the ones the user specified:
 if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $STEEMD_SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -35,8 +35,6 @@ NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
 
 ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
-
-ARGS+=" --disable-get-block"
 
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini

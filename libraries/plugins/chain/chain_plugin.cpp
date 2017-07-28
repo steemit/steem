@@ -55,7 +55,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
-   ilog("initializing chain plugin");
    my->shared_memory_dir = app().data_dir() / "blockchain";
 
    if( options.count("shared-file-dir") )
@@ -68,7 +67,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
-   ilog( "shared_file_size is ${n} bytes", ("n", my->shared_memory_size) );
 
    my->replay   = options.at("replay-blockchain").as<bool>();
    my->reset    = options.at("resync-blockchain").as<bool>();
@@ -88,6 +86,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 void chain_plugin::plugin_startup()
 {
+   ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
+
    if(my->reset)
    {
       wlog("resync requested: deleting block log and shared memory");

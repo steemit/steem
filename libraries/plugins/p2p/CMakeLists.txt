@@ -5,7 +5,7 @@ add_library( p2p_plugin
              ${HEADERS}
            )
 
-target_link_libraries( p2p_plugin chain_plugin appbase steemit_chain graphene_utilities graphene_net )
+target_link_libraries( p2p_plugin chain_plugin appbase steemit_chain graphene_net )
 target_include_directories( p2p_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

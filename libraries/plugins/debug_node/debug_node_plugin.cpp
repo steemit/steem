@@ -10,7 +10,7 @@
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>
@@ -272,7 +272,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    steemit::chain::public_key_type debug_public_key;
    if( debug_key != "" )
    {
-      debug_private_key = graphene::utilities::wif_to_key( debug_key );
+      debug_private_key = steemit::utilities::wif_to_key( debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }

@@ -21,11 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/variant.hpp>
 
-namespace graphene { namespace utilities {
+namespace steemit { namespace utilities {
 
 std::string key_to_wif(const fc::sha256& secret )
 {
@@ -61,12 +61,12 @@ fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key )
   fc::ecc::private_key key = fc::variant(key_bytes).as<fc::ecc::private_key>();
   fc::sha256 check = fc::sha256::hash(wif_bytes.data(), wif_bytes.size() - 4);
   fc::sha256 check2 = fc::sha256::hash(check);
-    
-  if( memcmp( (char*)&check, wif_bytes.data() + wif_bytes.size() - 4, 4 ) == 0 || 
+
+  if( memcmp( (char*)&check, wif_bytes.data() + wif_bytes.size() - 4, 4 ) == 0 ||
       memcmp( (char*)&check2, wif_bytes.data() + wif_bytes.size() - 4, 4 ) == 0 )
     return key;
 
   return fc::optional<fc::ecc::private_key>();
 }
 
-} } // end namespace graphene::utilities
+} } // end namespace steemit::utilities
