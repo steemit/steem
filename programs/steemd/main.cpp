@@ -8,6 +8,10 @@
 #include <steemit/utilities/key_conversion.hpp>
 #include <steemit/utilities/git_revision.hpp>
 
+#include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steemit/plugins/p2p/p2p_plugin.hpp>
+#include <steemit/plugins/webserver/webserver_plugin.hpp>
+
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
 #include <fc/interprocess/signals.hpp>
@@ -67,7 +71,11 @@ int main( int argc, char** argv )
       steemit::plugins::register_plugins();
       appbase::app().set_version_string( version_string() );
 
-      if( !appbase::app().initialize( argc, argv ) )
+      if( !appbase::app().initialize<
+            steemit::plugins::chain::chain_plugin,
+            steemit::plugins::p2p::p2p_plugin,
+            steemit::plugins::webserver::webserver_plugin >
+            ( argc, argv ) )
          return 0;
 
       try

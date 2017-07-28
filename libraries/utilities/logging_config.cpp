@@ -15,15 +15,15 @@ using std::vector;
 
 void set_logging_program_options( boost::program_options::options_description& options )
 {
-   std::vector< std::string > default_console_appender( { "{\"appender\":\"stderr\",\"stream\":\"std_err\"}" } );
+   std::vector< std::string > default_console_appender( { "{\"appender\":\"stderr\",\"stream\":\"std_error\"}" } );
    std::string str_default_console_appender = boost::algorithm::join( default_console_appender, " " );
 
    std::vector< std::string > default_file_appender( { "{\"appender\":\"p2p\",\"file\":\"logs/p2p/p2p.log\"}" } );
    std::string str_default_file_appender = boost::algorithm::join( default_file_appender, " " );
 
    std::vector< std::string > default_logger(
-      { "{\"name\":\"default\",\"level\":\"warn\",\"appender\":\"stderr\"}",
-         "{\"name\":\"p2p\",\"level\":\"warn\",\"appender\":\"p2p\"}" } );
+      { "{\"name\":\"default\",\"level\":\"warn\",\"appender\":\"stderr\"}\n",
+         "log-logger = {\"name\":\"p2p\",\"level\":\"warn\",\"appender\":\"p2p\"}" } );
    std::string str_default_logger = boost::algorithm::join( default_logger, " " );
 
    options.add_options()
