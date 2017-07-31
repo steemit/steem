@@ -480,6 +480,8 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    add_plugin_index< account_bandwidth_index >( db );
    add_plugin_index< content_edit_lock_index >( db );
    add_plugin_index< reserve_ratio_index     >( db );
+
+   _my->plugin_initialize();
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
