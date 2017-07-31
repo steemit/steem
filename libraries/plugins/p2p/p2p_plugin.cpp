@@ -119,6 +119,8 @@ public:
    vector<fc::ip::endpoint> seeds;
    string user_agent;
    uint32_t max_connections = 0;
+   bool force_validate = false;
+   bool block_producer = false;
 
    std::unique_ptr<graphene::net::node> node;
 
@@ -143,6 +145,9 @@ void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::option
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
       ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
       ("p2p-user-agent", bpo::value<string>()->implicit_value("Graphene Reference Implementation"),"User agent to advertise to peers")
+      ;
+   cli.add_options()
+      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions" )
       ;
 }
 
@@ -187,6 +192,8 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
          }
       }
    }
+
+   my->force_validate = options.at( "force-validate" ).as< bool >();
 }
 
 void p2p_plugin::plugin_startup()
@@ -246,6 +253,11 @@ void p2p_plugin::broadcast_transaction( const steemit::protocol::signed_transact
    my->node->broadcast( graphene::net::trx_message( tx ) );
 }
 
+void p2p_plugin::set_block_production( bool producing_blocks )
+{
+   my->block_producer = producing_blocks;
+}
+
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
 bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 {
@@ -295,7 +307,7 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
       // you can help the network code out by throwing a block_older_than_undo_history exception.
       // when the net code sees that, it will stop trying to push blocks from that chain, but
       // leave that peer connected so that they can get sync blocks from us
-      bool result = chain.db().push_block( blk_msg.block );
+      bool result = chain.db().push_block( blk_msg.block, ( block_producer | force_validate ) ? chain::database::skip_nothing : chain::database::skip_transaction_signatures );
 
       if( !sync_mode )
       {

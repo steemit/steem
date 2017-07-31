@@ -21,6 +21,7 @@ class chain_plugin_impl
       bool                             replay = false;
       bool                             reset   = false;
       bool                             readonly = false;
+      bool                             check_locks = false;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -47,10 +48,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             "flush shared memory changes to disk every N blocks")
          ;
    cli.add_options()
-         ("replay-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database and replay all blocks")
-         ("resync-blockchain", bpo::bool_switch()->default_value(false),
-          "clear chain database and block log")
+         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
+         ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
+         ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ;
 }
 
@@ -68,9 +68,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
 
-   my->replay   = options.at("replay-blockchain").as<bool>();
-   my->reset    = options.at("resync-blockchain").as<bool>();
-   my->flush_interval = options.at("flush-state-interval").as<uint32_t>();
+   my->replay           = options.at( "replay-blockchain").as<bool>();
+   my->reset            = options.at( "resync-blockchain").as<bool>();
+   my->check_locks      = options.at( "check-locks" ).as< bool >();
+   my->flush_interval   = options.at( "flush-state-interval" ).as<uint32_t>();
 
    if(options.count("checkpoint"))
    {
@@ -94,8 +95,10 @@ void chain_plugin::plugin_startup()
       my->db.wipe( app().data_dir() / "blockchain", my->shared_memory_dir, true );
    }
 
-   my->db.set_flush_interval(my->flush_interval);
-   my->db.add_checkpoints(my->loaded_checkpoints);
+   my->db.set_flush_interval( my->flush_interval );
+   my->db.add_checkpoints( my->loaded_checkpoints );
+   my->db.set_require_locking( my->check_locks );
+
 
    if(my->replay)
    {

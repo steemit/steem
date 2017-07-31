@@ -620,6 +620,8 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< content_edit_lock_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
+
+   appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >().set_block_production( true );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()

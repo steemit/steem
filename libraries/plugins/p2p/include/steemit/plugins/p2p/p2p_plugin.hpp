@@ -48,6 +48,7 @@ public:
 
    void broadcast_block( const steemit::protocol::signed_block& block );
    void broadcast_transaction( const steemit::protocol::signed_transaction& tx );
+   void set_block_production( bool producing_blocks );
 
 private:
    std::unique_ptr<class p2p_plugin_impl> my;
