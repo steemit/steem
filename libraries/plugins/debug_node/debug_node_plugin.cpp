@@ -127,9 +127,8 @@ void debug_node_plugin::set_program_options(
    options_description& cli,
    options_description& cfg )
 {
-   cli.add_options()
+   cfg.add_options()
       ("edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
-   cfg.add(cli);
 }
 
 void debug_node_plugin::plugin_initialize( const variables_map& options )

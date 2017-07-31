@@ -136,8 +136,8 @@ p2p_plugin::p2p_plugin()
 
 p2p_plugin::~p2p_plugin() {}
 
-void p2p_plugin::set_program_options(bpo::options_description&, bpo::options_description& config_file_options) {
-   config_file_options.add_options()
+void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
+   cfg.add_options()
       ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
       ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")

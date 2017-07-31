@@ -581,18 +581,17 @@ witness_plugin::witness_plugin() :
 witness_plugin::~witness_plugin() {}
 
 void witness_plugin::set_program_options(
-   boost::program_options::options_description& command_line_options,
-   boost::program_options::options_description& config_file_options)
+   boost::program_options::options_description& cli,
+   boost::program_options::options_description& cfg)
 {
    string witness_id_example = "initwitness";
-   command_line_options.add_options()
+   cfg.add_options()
          ("enable-stale-production", bpo::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("required-participation", bpo::bool_switch()->notifier([this](int e){my->_required_witness_participation = uint32_t(e*STEEMIT_1_PERCENT);}), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
          ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
             ("name of witness controlled by this node (e.g. " + witness_id_example + " )" ).c_str() )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
          ;
-   config_file_options.add(command_line_options);
 }
 
 void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)

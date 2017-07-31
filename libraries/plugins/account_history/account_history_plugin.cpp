@@ -186,12 +186,11 @@ void account_history_plugin::set_program_options(
    options_description& cfg
    )
 {
-   cli.add_options()
+   cfg.add_options()
          ("account-history-track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
          ("account-history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
          ("account-history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
          ;
-   cfg.add(cli);
 }
 
 void account_history_plugin::plugin_initialize( const boost::program_options::variables_map& options )

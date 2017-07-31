@@ -326,11 +326,10 @@ void follow_plugin::set_program_options(
    boost::program_options::options_description& cfg
    )
 {
-   cli.add_options()
+   cfg.add_options()
       ("follow-max-feed-size", boost::program_options::value< uint32_t >()->default_value( 500 ), "Set the maximum size of cached feed for an account" )
       ("follow-start-feeds", boost::program_options::value< uint32_t >()->default_value( 0 ), "Block time (in epoch seconds) when to start calculating feeds" )
       ;
-   cfg.add( cli );
 }
 
 void follow_plugin::plugin_initialize( const boost::program_options::variables_map& options )
