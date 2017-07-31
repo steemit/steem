@@ -6742,6 +6742,46 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
       tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
       tx.sign( alice_private_key, db.get_chain_id() );
       db.push_transaction( tx );
+      generate_block();
+
+      BOOST_TEST_MESSAGE( "--- Test relocking and editing post" );
+
+      custom.required_auths.insert( "alice" );
+      custom.id = "witness";
+      custom.json = "[\"enable_content_editing\",{\"account\":\"alice\",\"relock_time\":\"" + fc::string(db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT) + "\"}]";
+
+      tx.clear();
+      tx.operations.push_back( custom );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+      generate_block();
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar4";
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      db.push_transaction( tx );
+      generate_blocks( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+
+      comment.author = "alice";
+      comment.permlink = "test";
+      comment.parent_permlink = "test";
+      comment.title = "test";
+      comment.body = "foobar5";
+
+      tx.clear();
+      tx.operations.push_back( comment );
+      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db.get_chain_id() );
+      BOOST_REQUIRE_THROW(db.push_transaction( tx ), chain::plugin_exception);
+
    }
    FC_LOG_AND_RETHROW()
 }
