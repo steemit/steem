@@ -12,13 +12,21 @@ namespace detail
 {
    class account_by_key_api_impl;
 }
-
+/**
+ * @brief Lookup accounts by the keys associated with them.
+*/
 class account_by_key_api
 {
    public:
       account_by_key_api( const app::api_context& ctx );
 
       void on_api_startup();
+
+      /**
+       * @brief Lookup accounts by the keys associated with them.
+       * @param keys vector of @ref public_key_type.
+       * @returns 2D vector array of @ref account_name_type: vector< vector< @ref account_name_type > >
+      */
 
       vector< vector< account_name_type > > get_key_references( vector< public_key_type > keys )const;
 

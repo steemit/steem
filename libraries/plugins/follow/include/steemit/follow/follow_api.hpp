@@ -77,7 +77,11 @@ namespace detail
 {
    class follow_api_impl;
 }
-
+/**
+ *  Follow api provides an api for retrieving account information concerning the Follow plugin.
+ *  This information includes followers pertaining to an account, blogs made by an account, and the reputation of the account.
+ *  API calls can be invoked using the @ref custom_json rpc call.
+*/
 class follow_api
 {
    public:
@@ -85,17 +89,91 @@ class follow_api
 
       void on_api_startup();
 
+      /**
+       * Returns an vector array of @ref follow_api_obj of each user that is following this account. This includes: Follower, Following, and "what" they're following.
+       * If alice creates an account and bob begins to follower her this array will be mapped out like so: \n
+       * follow_api_obj followObject = "follow_api_obj" : { \n
+       *  0: {"follower":"bob",  \n
+       *    "following":"alice",  \n
+       *    "what":["blog"]}}  \n
+       *
+       * @param to The user who's followers you are trying to query
+       * @param start The account you wish to begin iterating at, "" for the begining.
+       * @param type "what" you wish to query ["undefined", "blog", "ignore"]
+       * @return vector< @ref follow_api_obj >
+       */
       vector< follow_api_obj > get_followers( string to, string start, follow_type type, uint16_t limit )const;
+
+      /**
+       * Returns an vector array of @ref follow_api_obj for accounts that this user is following This includes: Follower, Following, and "what" they're following.
+       * If alice creates an account and bob begins to follower her this array will be mapped out like so: \n
+       * follow_api_obj followObject = "follow_api_obj" : { \n
+       *  0: {"follower":"bob",  \n
+       *    "following":"alice",  \n
+       *    "what":["blog"]}}  \n
+       *
+       * @param from The user you are trying to query
+       * @param start The account you wish to begin iterating at, "" for the begining.
+       * @param type "what" you wish to query ["undefined", "blog", "ignore"]
+       * @return vector< @ref follow_api_obj >
+       */ //FIXME: Possibly remove documentation duplication here?
       vector< follow_api_obj > get_following( string from, string start, follow_type type, uint16_t limit )const;
 
+      /**
+       * Returns the number of followers of a given account.
+       *
+       * @param account The user who's followers you are trying to count
+       * @return vector< @ref follow_count_api_obj >
+       */
       follow_count_api_obj get_follow_count( string account )const;
 
+      /**
+       * Returns an vector array of @ref feed_obj for each entry that this account has in there feed.
+       *
+       * @param account The account you are trying to query
+       * @param entry_id The entry_id you wish to begin iterating at, 0 for the first.
+       * @param limit How many objects you wish to iterate over.
+       * @return vector< @ref feed_entry >
+       */
       vector< feed_entry > get_feed_entries( string account, uint32_t entry_id = 0, uint16_t limit = 500 )const;
+
+      /**
+       * Returns an vector array of @ref comment_feed_obj for each comment feed entry that this account has in there feed.
+       *
+       * @param account The account you are trying to query
+       * @param entry_id The entry_id you wish to begin iterating at, 0 for the first.
+       * @param limit How many objects you wish to iterate over.
+       * @return vector< @ref feed_entry >
+       */
       vector< comment_feed_entry > get_feed( string account, uint32_t entry_id = 0, uint16_t limit = 500 )const;
 
+      /**
+       * Returns an vector array of @ref blog_entry for each blog entry that this account has in there feed.
+       *
+       * @param account The account you are trying to query
+       * @param entry_id The entry_id you wish to begin iterating at, 0 for the first.
+       * @param limit How many objects you wish to iterate over.
+       * @return vector< @ref feed_entry >
+       */
       vector< blog_entry > get_blog_entries( string account, uint32_t entry_id = 0, uint16_t limit = 500 )const;
+
+      /**
+       * Returns an vector array of @ref comment_blog_entry for each blog entry that this account has in there feed.
+       *
+       * @param account The account you are trying to query
+       * @param entry_id The entry_id you wish to begin iterating at, 0 for the first.
+       * @param limit How many objects you wish to iterate over.
+       * @return vector< @ref comment_blog_entry >
+       */
       vector< comment_blog_entry > get_blog( string account, uint32_t entry_id = 0, uint16_t limit = 500 )const;
 
+      /**
+       * Returns an vector array of @account_reputation for each blog entry that this account has in there feed.
+       *
+       * @param lower_bound_name The account to begin iterating at.
+       * @param limit How many objects you wish to iterate over in alphabetical order.
+       * @return vector< @ref account_reputation >
+       */
       vector< account_reputation > get_account_reputations( string lower_bound_name, uint32_t limit = 1000 )const;
 
       /**
