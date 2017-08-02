@@ -68,6 +68,8 @@ struct bucket_object : public object< bucket_object_type, bucket_object >
       c( *this );
    }
 
+   bucket_object() {}
+
    id_type              id;
 
    fc::time_point_sec   open;

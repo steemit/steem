@@ -34,6 +34,7 @@ typedef broadcast_transaction_args broadcast_transaction_synchronous_args;
 
 struct broadcast_transaction_synchronous_return
 {
+   broadcast_transaction_synchronous_return() {}
    broadcast_transaction_synchronous_return( transaction_id_type txid, int32_t bn, int32_t tn, bool ex )
    : id(txid), block_num(bn), trx_num(tn), expired(ex) {}
 

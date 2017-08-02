@@ -10,6 +10,10 @@
 #include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
 #include <steemit/plugins/witness_api/witness_api_plugin.hpp>
 
+#include <steemit/utilities/git_revision.hpp>
+
+#include <fc/git_revision.hpp>
+
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -839,6 +843,7 @@ condenser_api::condenser_api()
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
       CONDENSER_API_PLUGIN_NAME,
       {
+         API_METHOD( get_version ),
          API_METHOD( get_trending_tags ),
          API_METHOD( get_state ),
          API_METHOD( get_active_witnesses ),
@@ -943,6 +948,16 @@ void condenser_api::api_startup()
    auto witness = appbase::app().find_plugin< witness::witness_api_plugin >();
    if( witness != nullptr )
       my->_witness_api = witness->api;
+}
+
+DEFINE_API( condenser_api, get_version )
+{
+   return get_version_return
+   (
+      fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
+      fc::string( steemit::utilities::git_revision_sha ),
+      fc::string( fc::git_revision_sha )
+   );
 }
 
 DEFINE_API( condenser_api, get_trending_tags )
