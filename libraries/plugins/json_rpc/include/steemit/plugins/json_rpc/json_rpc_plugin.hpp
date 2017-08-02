@@ -51,26 +51,30 @@ namespace steemit { namespace plugins { namespace json_rpc {
 
 using namespace appbase;
 
+/**
+ * @brief Internal type used to bind api methods
+ * to names.
+ *
+ * Arguments: Variant object of propert arg type
+ */
+typedef std::function< fc::variant(const fc::variant&) > api_call;
+
+/**
+ * @brief An API, containing APIs and Methods
+ *
+ * An API is composed of several calls, where each call has a
+ * name defined by the API class. The api_call functions
+ * are compile time bindings of names to methods.
+ */
+typedef std::map< string, api_call > api_description;
+
 namespace detail
 {
-   /**
-    * @brief Internal type used to bind api methods
-    * to names.
-    *
-    * Arguments: Variant object of propert arg type
-    */
-   using api_call = std::function< fc::variant(const fc::variant&) >;
+   class json_rpc_plugin_impl;
 
-   /**
-    * @brief An API, containing APIs and Methods
-    *
-    * An API is composed of several calls, where each call has a
-    * name defined by the API class. The api_call functions
-    * are compile time bindings of names to methods.
-    */
-   using api_description = std::map<string, api_call>;
 
-   struct json_rpc_error
+
+   /*struct json_rpc_error
    {
       json_rpc_error( int32_t c, std::string m, fc::optional< fc::variant > d = fc::optional< fc::variant >() )
          : code( c ), message( m ), data( d ) {}
@@ -86,7 +90,7 @@ namespace detail
       fc::optional< fc::variant >      result;
       fc::optional< json_rpc_error >   error;
       fc::variant                      id;
-   };
+   };*/
 }
 
 class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
@@ -102,18 +106,11 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
       void plugin_startup();
       void plugin_shutdown();
 
-      void add_api( const string& api_name, const detail::api_description& api )
-      {
-         _registered_apis[ api_name ] = api;
-      }
-
+      void add_api( const string& api_name, const api_description& api );
       string call( const string& body );
 
    private:
-      map< string, detail::api_description > _registered_apis;
+      std::shared_ptr< detail::json_rpc_plugin_impl >   _my;
 };
 
 } } } // steemit::plugins::json_rpc
-
-FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
-FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
