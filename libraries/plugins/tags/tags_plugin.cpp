@@ -29,6 +29,7 @@ class tags_plugin_impl
       tags_plugin_impl();
       virtual ~tags_plugin_impl();
 
+      void pre_operation( const operation_notification& note );
       void on_operation( const operation_notification& note );
 
       steemit::chain::database& _db;
@@ -38,6 +39,37 @@ tags_plugin_impl::tags_plugin_impl() :
    _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
 tags_plugin_impl::~tags_plugin_impl() {}
+
+struct pre_apply_operation_visitor
+{
+   pre_apply_operation_visitor( database& db ) : _db( db ) {};
+   typedef void result_type;
+
+   database& _db;
+
+   void operator()( const delete_comment_operation& op )const
+   {
+      const auto& comment = _db.find< comment_object, chain::by_permlink >( boost::make_tuple( op.author, op.permlink ) );
+
+      if( comment == nullptr )
+         return;
+
+      const auto& idx = _db.get_index< tag_index, by_author_comment >();
+      const auto& auth = _db.get_account( op.author );
+
+      auto itr = idx.lower_bound( boost::make_tuple( auth.id, comment->id ) );
+
+      while( itr != idx.end() && itr->author == auth.id && itr->comment == comment->id )
+      {
+         const auto& tobj = *itr;
+         ++itr;
+         _db.remove( tobj );
+      }
+   }
+
+   template<typename Op>
+   void operator()( Op&& )const{} /// ignore all other ops
+};
 
 struct operation_visitor
 {
@@ -426,24 +458,6 @@ struct operation_visitor
                          */
    }
 
-   void operator()( const delete_comment_operation& op )const
-   {
-      const auto& idx = _db.get_index<tag_index>().indices().get<by_author_comment>();
-
-      const auto& auth = _db.get_account(op.author);
-      auto itr = idx.lower_bound( boost::make_tuple( auth.id ) );
-      while( itr != idx.end() && itr->author == auth.id )
-      {
-         const auto& tobj = *itr;
-         const auto* obj = _db.find< comment_object >( itr->comment );
-         ++itr;
-         if( !obj )
-         {
-            _db.remove( tobj );
-         }
-      }
-   }
-
    void operator()( const comment_reward_operation& op )const
    {
       const auto& c = _db.get_comment( op.author, op.permlink );
@@ -470,9 +484,25 @@ struct operation_visitor
    void operator()( Op&& )const{} /// ignore all other ops
 };
 
+void tags_plugin_impl::pre_operation( const operation_notification& note )
+{
+   try
+   {
+      /// plugins shouldn't ever throw
+      note.op.visit( pre_apply_operation_visitor( _db ) );
+   }
+   catch ( const fc::exception& e )
+   {
+      edump( (e.to_detail_string()) );
+   }
+   catch ( ... )
+   {
+      elog( "unhandled exception" );
+   }
+}
 
-
-void tags_plugin_impl::on_operation( const operation_notification& note ) {
+void tags_plugin_impl::on_operation( const operation_notification& note )
+{
    try
    {
       /// plugins shouldn't ever throw
@@ -506,7 +536,8 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->_db.post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
+   my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
 
    add_plugin_index< tag_index               >( my->_db );
    add_plugin_index< tag_stats_index         >( my->_db );
