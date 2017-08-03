@@ -37,9 +37,6 @@ struct api_comment_object
       parent_permlink( to_string( o.parent_permlink ) ),
       author( o.author ),
       permlink( to_string( o.permlink ) ),
-      title( to_string( o.title ) ),
-      body( to_string( o.body ) ),
-      json_metadata( to_string( o.json_metadata ) ),
       last_update( o.last_update ),
       created( o.created ),
       active( o.active ),
@@ -76,6 +73,12 @@ struct api_comment_object
          root_author = root->author;
          root_permlink = to_string( root->permlink );
       }
+#ifndef IS_LOW_MEM
+      const auto& con = db.get< chain::comment_content_object, chain::by_comment >( o.id );
+      title = to_string( con.title );
+      body = to_string( con.body );
+      json_metadata = to_string( con.json_metadata );
+#endif
    }
 
    api_comment_object(){}
