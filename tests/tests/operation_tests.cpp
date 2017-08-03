@@ -6674,9 +6674,9 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
       comment.body = "foobar";
 
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
 
       BOOST_TEST_MESSAGE( "--- Vote on the comment" );
       vote.author = "alice";
@@ -6686,13 +6686,13 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
 
       tx.clear();
       tx.operations.push_back( vote );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
 
       BOOST_TEST_MESSAGE( "--- Payout rewards and lock post" );
 
-      generate_blocks( db.get_comment( "alice", string( "test" ) ).cashout_time - STEEMIT_BLOCK_INTERVAL );
+      generate_blocks( db->get_comment( "alice", string( "test" ) ).cashout_time - STEEMIT_BLOCK_INTERVAL );
       db_plugin->debug_update( [=]( database& db )
       {
          db.modify( db.get_dynamic_global_properties(), [=]( dynamic_global_property_object& gpo )
@@ -6714,9 +6714,9 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      BOOST_REQUIRE_THROW(db.push_transaction( tx ), chain::plugin_exception);
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW(db->push_transaction( tx ), chain::plugin_exception);
 
       BOOST_TEST_MESSAGE( "--- Test unlocking and editing post" );
 
@@ -6726,9 +6726,9 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
 
       tx.clear();
       tx.operations.push_back( custom );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
       generate_block();
 
       comment.author = "alice";
@@ -6739,22 +6739,22 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
       generate_block();
 
       BOOST_TEST_MESSAGE( "--- Test relocking and editing post" );
 
       custom.required_auths.insert( "alice" );
       custom.id = "witness";
-      custom.json = "[\"enable_content_editing\",{\"account\":\"alice\",\"relock_time\":\"" + fc::string(db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT) + "\"}]";
+      custom.json = "[\"enable_content_editing\",{\"account\":\"alice\",\"relock_time\":\"" + fc::string(db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT) + "\"}]";
 
       tx.clear();
       tx.operations.push_back( custom );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
       generate_block();
 
       comment.author = "alice";
@@ -6765,10 +6765,10 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      db.push_transaction( tx );
-      generate_blocks( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+      generate_blocks( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
 
       comment.author = "alice";
       comment.permlink = "test";
@@ -6778,9 +6778,9 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
 
       tx.clear();
       tx.operations.push_back( comment );
-      tx.set_expiration( db.head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
-      tx.sign( alice_private_key, db.get_chain_id() );
-      BOOST_REQUIRE_THROW(db.push_transaction( tx ), chain::plugin_exception);
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW(db->push_transaction( tx ), chain::plugin_exception);
 
    }
    FC_LOG_AND_RETHROW()
