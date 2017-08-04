@@ -159,7 +159,7 @@ namespace steemit {
             id_type id;
 
             price current_median_history; ///< the current median of the price history, used as the base for convert operations
-            bip::deque <price, allocator<price>> price_history; ///< tracks this last week of median_feed one per hour
+            boost::interprocess::deque <price, allocator<price>> price_history; ///< tracks this last week of median_feed one per hour
         };
 
 

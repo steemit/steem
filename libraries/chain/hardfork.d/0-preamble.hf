@@ -26,7 +26,7 @@ namespace steemit {
 
             id_type id;
 
-            bip::vector <fc::time_point_sec, allocator<fc::time_point_sec>> processed_hardforks;
+            boost::interprocess::vector <fc::time_point_sec, allocator<fc::time_point_sec>> processed_hardforks;
             uint32_t last_hardfork = 0;
             protocol::hardfork_version current_hardfork_version;
             protocol::hardfork_version next_hardfork;

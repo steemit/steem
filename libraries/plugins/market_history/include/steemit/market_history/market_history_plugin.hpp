@@ -101,7 +101,7 @@ namespace steemit {
             }
         };
 
-        typedef oid<bucket_object> bucket_id_type;
+        typedef object_id<bucket_object> bucket_id_type;
 
 
         struct order_history_object
@@ -117,7 +117,7 @@ namespace steemit {
             protocol::fill_order_operation op;
         };
 
-        typedef oid<order_history_object> order_history_id_type;
+        typedef object_id<order_history_object> order_history_id_type;
 
 
         struct by_bucket;
