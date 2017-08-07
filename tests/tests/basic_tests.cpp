@@ -31,7 +31,7 @@
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/hex.hpp>
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 #include <algorithm>
 #include <random>
