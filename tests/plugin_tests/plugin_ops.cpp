@@ -5,7 +5,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 using namespace steemit::chain;
 using namespace steemit::chain::test;
