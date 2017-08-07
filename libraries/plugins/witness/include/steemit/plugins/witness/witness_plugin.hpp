@@ -35,6 +35,8 @@
 
 namespace steemit { namespace plugins { namespace witness {
 
+namespace detail { class witness_plugin_impl; }
+
 namespace block_production_condition
 {
    enum block_production_condition_enum
@@ -70,7 +72,7 @@ public:
    virtual void plugin_shutdown();
 
 private:
-   std::unique_ptr<class witness_plugin_impl> my;
+   std::unique_ptr< detail::witness_plugin_impl > my;
 };
 
 } } } // steemit::plugins::witness
