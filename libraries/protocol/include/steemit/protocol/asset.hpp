@@ -86,17 +86,37 @@ namespace steemit { namespace protocol {
       }
    };
 
-   /** Represents a value of given 'quote' assets expressed in number of 'base' another assets.
+   /** Represents quotation of the relative value of asset against another asset.
+       Similar to 'currency pair' used to determine value of currencies.
+
+       For example:
+       1 EUR / 1.25 USD where:
+       1 EUR is an asset specified as a base
+       1.25 USD us an asset specified as a qute
+
+       can determine value of EUR against USD.
    */
    struct price
    {
       /** Even non-single argument, lets make it an explicit one to avoid implicit calls for 
           initialization lists. 
+
+          \param base  - represents a value of the price object to be expressed relatively to quote
+                         asset. Cannot have amount == 0 if you want to build valid price.
+          \param quote - represents an relative asset. Cannot have amount == 0, otherwise
+                         asertion fail.
+
+        Both base and quote shall have different symbol defined, since it also results in 
+        creation of invalid price object. \see validate() method.
       */
       explicit price(const asset& base, const asset& quote) : base(base),quote(quote)
       {
-          FC_ASSERT(base != asset(), "base must be valid asset");
-          FC_ASSERT(quote != asset(), "quote must be valid asset");
+          /** Even price having base.amount == 0 is invalid too, probably this place
+          is located at too low level to make such checks.
+          Zero base does not affect this object sanity (in opposite to quote, which can lead to
+          division by zero during usage of this class methods).
+          */
+          FC_ASSERT(quote.amount != 0, "quote must be valid asset");
       }
 
       /** Default constructor is needed because of fc::variant::as method requirements.
