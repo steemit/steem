@@ -57,13 +57,18 @@ struct pre_apply_operation_visitor
       const auto& idx = _db.get_index< tag_index, by_author_comment >();
       const auto& auth = _db.get_account( op.author );
 
-      auto itr = idx.lower_bound( boost::make_tuple( auth.id, comment->id ) );
+      auto tag_itr = idx.lower_bound( boost::make_tuple( auth.id, comment->id ) );
+      vector< const tag_object* > to_remove;
 
-      while( itr != idx.end() && itr->author == auth.id && itr->comment == comment->id )
+      while( tag_itr != idx.end() && tag_itr->author == auth.id && tag_itr->comment == comment->id )
       {
-         const auto& tobj = *itr;
-         ++itr;
-         _db.remove( tobj );
+         to_remove.push_back( &(*tag_itr) );
+         ++tag_itr;
+      }
+
+      for( const auto* tag_ptr : to_remove )
+      {
+         _db.remove( *tag_ptr );
       }
    }
 
