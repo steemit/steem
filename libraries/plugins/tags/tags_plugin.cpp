@@ -109,15 +109,15 @@ struct operation_visitor
       });
    }
 
-   comment_metadata filter_tags( const comment_object& c ) const
+   comment_metadata filter_tags( const comment_object& c, const comment_content_object& con ) const
    {
       comment_metadata meta;
 
-      if( c.json_metadata.size() )
+      if( con.json_metadata.size() )
       {
          try
          {
-            meta = fc::json::from_string( to_string( c.json_metadata ) ).as< comment_metadata >();
+            meta = fc::json::from_string( to_string( con.json_metadata ) ).as< comment_metadata >();
          }
          catch( const fc::exception& e )
          {
@@ -261,9 +261,10 @@ struct operation_visitor
 
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
 
+#ifndef IS_LOW_MEM
       if( parse_tags )
       {
-         auto meta = filter_tags( c );
+         auto meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
          auto citr = comment_idx.lower_bound( c.id );
 
          map< string, const tag_object* > existing_tags;
@@ -302,6 +303,7 @@ struct operation_visitor
             remove_tag(*item);
       }
       else
+#endif
       {
          auto citr = comment_idx.lower_bound( c.id );
 
@@ -449,7 +451,8 @@ struct operation_visitor
       const auto& c = _db.get_comment( op.author, op.permlink );
       update_tags( c );
 
-      comment_metadata meta = filter_tags( c );
+#ifndef IS_LOW_MEM
+      comment_metadata meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
 
       for( const string& tag : meta.tags )
       {
@@ -458,6 +461,7 @@ struct operation_visitor
             ts.total_payout += op.payout;
          });
       }
+#endif
    }
 
    void operator()( const comment_payout_update_operation& op )const

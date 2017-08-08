@@ -454,13 +454,13 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       BOOST_REQUIRE( alice_comment.cashout_time == fc::time_point_sec( db->head_block_time() + fc::seconds( STEEMIT_CASHOUT_WINDOW_SECONDS ) ) );
 
       #ifndef IS_LOW_MEM
-         BOOST_REQUIRE( to_string( alice_comment.title ) == op.title );
-         BOOST_REQUIRE( to_string( alice_comment.body ) == op.body );
-         //BOOST_REQUIRE( alice_comment.json_metadata == op.json_metadata );
+         const auto& alice_comment_content = db->get< comment_content_object, by_comment >( alice_comment.id );
+         BOOST_REQUIRE( to_string( alice_comment_content.title ) == op.title );
+         BOOST_REQUIRE( to_string( alice_comment_content.body ) == op.body );
+         BOOST_REQUIRE( to_string( alice_comment_content.json_metadata ) == op.json_metadata );
       #else
-         BOOST_REQUIRE( to_string( alice_comment.title ) == "" );
-         BOOST_REQUIRE( to_string( alice_comment.body ) == "" );
-         //BOOST_REQUIRE( alice_comment.json_metadata == "" );
+         const auto* alice_comment_content = db->find< comment_content_object, by_comment >( alice_comment.id );
+         BOOST_REQUIRE( alice_comment_content == nullptr );
       #endif
 
       validate_database();
