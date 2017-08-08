@@ -271,6 +271,7 @@ namespace graphene { namespace net
       fc::thread* _thread;
       unsigned _send_message_queue_tasks_running; // temporary debugging
 #endif
+      bool _currently_handling_message; // true while we're in the middle of handling a message from the remote system
     private:
       peer_connection(peer_connection_delegate* delegate);
       void destroy();
@@ -301,8 +302,9 @@ namespace graphene { namespace net
       fc::ip::endpoint get_local_endpoint();
       void set_remote_endpoint(fc::optional<fc::ip::endpoint> new_remote_endpoint);
 
-      bool busy();
-      bool idle();
+      bool busy() const;
+      bool idle() const;
+      bool is_currently_handling_message() const;
 
       bool is_transaction_fetching_inhibited() const;
       fc::sha512 get_shared_secret() const;
