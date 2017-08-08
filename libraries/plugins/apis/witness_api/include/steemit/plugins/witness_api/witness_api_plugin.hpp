@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define WITNESS_API_PLUGIN_NAME "witness_api"
+#define STEEM_WITNESS_API_PLUGIN_NAME "witness_api"
 
 
 namespace steemit { namespace plugins { namespace witness {

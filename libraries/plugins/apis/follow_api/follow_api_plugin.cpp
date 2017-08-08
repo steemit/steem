@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace follow {
 
-follow_api_plugin::follow_api_plugin() : appbase::plugin< follow_api_plugin >( FOLLOW_API_PLUGIN_NAME ) {}
+follow_api_plugin::follow_api_plugin() : appbase::plugin< follow_api_plugin >( STEEM_FOLLOW_API_PLUGIN_NAME ) {}
 follow_api_plugin::~follow_api_plugin() {}
 
 void follow_api_plugin::set_program_options( options_description& cli, options_description& cfg ) {}

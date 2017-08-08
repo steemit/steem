@@ -21,8 +21,8 @@ T dejsonify(const std::string& s) {
 }
 
 // TODO: Move this somewhere else. Also exists in app/plugin.hpp, which will be removed.
-#ifndef LOAD_VALUE_SET
-#define LOAD_VALUE_SET(options, name, container, type) \
+#ifndef STEEM_LOAD_VALUE_SET
+#define STEEM_LOAD_VALUE_SET(options, name, container, type) \
 if( options.count(name) ) { \
    const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
    std::transform(ops.begin(), ops.end(), std::inserter(container, container.end()), &dejsonify<type>); \
@@ -177,7 +177,7 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
 
 
 account_history_plugin::account_history_plugin() :
-   plugin< account_history_plugin >( ACCOUNT_HISTORY_PLUGIN_NAME ) {}
+   plugin< account_history_plugin >( STEEM_ACCOUNT_HISTORY_PLUGIN_NAME ) {}
 
 account_history_plugin::~account_history_plugin() {}
 
@@ -200,7 +200,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
    my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
 
    typedef pair< account_name_type, account_name_type > pairstring;
-   LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
+   STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
 
    if( options.count( "account-history-whitelist-ops" ) )
    {

@@ -723,7 +723,7 @@ tags_api::tags_api()
    my = std::make_shared< detail::tags_api_impl >();
 
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      TAGS_API_PLUGIN_NAME,
+      STEEM_TAGS_API_PLUGIN_NAME,
       {
          API_METHOD( get_trending_tags ),
          API_METHOD( get_tags_used_by_author ),

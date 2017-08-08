@@ -8,13 +8,13 @@ namespace steemit { namespace account_by_key {
 using namespace std;
 using namespace steemit::chain;
 
-#ifndef ACCOUNT_BY_KEY_SPACE_ID
-#define ACCOUNT_BY_KEY_SPACE_ID 11
+#ifndef STEEM_ACCOUNT_BY_KEY_SPACE_ID
+#define STEEM_ACCOUNT_BY_KEY_SPACE_ID 11
 #endif
 
 enum account_by_key_object_types
 {
-   key_lookup_object_type = ( ACCOUNT_BY_KEY_SPACE_ID << 8 )
+   key_lookup_object_type = ( STEEM_ACCOUNT_BY_KEY_SPACE_ID << 8 )
 };
 
 class key_lookup_object : public object< key_lookup_object_type, key_lookup_object >

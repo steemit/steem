@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define ACCOUNT_BY_KEY_API_PLUGIN_NAME "account_by_key_api"
+#define STEEM_ACCOUNT_BY_KEY_API_PLUGIN_NAME "account_by_key_api"
 
 
 namespace steemit { namespace plugins { namespace account_by_key {
@@ -22,7 +22,7 @@ public:
    account_by_key_api_plugin();
    virtual ~account_by_key_api_plugin();
 
-   std::string get_name(){ return ACCOUNT_BY_KEY_API_PLUGIN_NAME; }
+   std::string get_name(){ return STEEM_ACCOUNT_BY_KEY_API_PLUGIN_NAME; }
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
    void plugin_initialize( const variables_map& options );

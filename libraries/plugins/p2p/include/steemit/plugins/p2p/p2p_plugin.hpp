@@ -27,7 +27,7 @@
 
 #include <appbase/application.hpp>
 
-#define P2P_PLUGIN_NAME "p2p"
+#define STEEM_P2P_PLUGIN_NAME "p2p"
 
 namespace steemit { namespace plugins { namespace p2p {
 namespace bpo = boost::program_options;

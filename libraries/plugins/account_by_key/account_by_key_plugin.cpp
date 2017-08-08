@@ -235,7 +235,7 @@ void account_by_key_plugin_impl::post_operation( const operation_notification& n
 
 
 account_by_key_plugin::account_by_key_plugin() :
-   appbase::plugin< account_by_key_plugin >( ACCOUNT_BY_KEY_PLUGIN_NAME ) {}
+   appbase::plugin< account_by_key_plugin >( STEEM_ACCOUNT_BY_KEY_PLUGIN_NAME ) {}
 
 account_by_key_plugin::~account_by_key_plugin() {}
 

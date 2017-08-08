@@ -30,7 +30,7 @@ class chain_plugin_impl
 
 
 chain_plugin::chain_plugin()
-   : appbase::plugin< chain_plugin >( CHAIN_PLUGIN_NAME ), my( new chain_plugin_impl() ) {}
+   : appbase::plugin< chain_plugin >( STEEM_CHAIN_PLUGIN_NAME ), my( new chain_plugin_impl() ) {}
 
 chain_plugin::~chain_plugin(){}
 

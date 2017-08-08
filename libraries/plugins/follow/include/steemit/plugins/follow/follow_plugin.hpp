@@ -6,7 +6,7 @@
 #include <steemit/chain/generic_custom_operation_interpreter.hpp>
 
 
-#define FOLLOW_PLUGIN_NAME "follow"
+#define STEEM_FOLLOW_PLUGIN_NAME "follow"
 
 
 namespace steemit { namespace plugins{ namespace follow {

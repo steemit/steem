@@ -3,7 +3,7 @@
 
 #include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 
-#define TEST_API_PLUGIN_NAME "test_api"
+#define STEEM_TEST_API_PLUGIN_NAME "test_api"
 
 #define REGISTER_API( api_name, ... )
 

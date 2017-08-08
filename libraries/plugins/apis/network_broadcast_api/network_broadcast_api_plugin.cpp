@@ -3,7 +3,7 @@
 
 namespace steemit { namespace plugins { namespace network_broadcast_api {
 
-network_broadcast_api_plugin::network_broadcast_api_plugin() : appbase::plugin< network_broadcast_api_plugin >( NETWORK_BROADCAST_API_PLUGIN_NAME ) {}
+network_broadcast_api_plugin::network_broadcast_api_plugin() : appbase::plugin< network_broadcast_api_plugin >( STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME ) {}
 network_broadcast_api_plugin::~network_broadcast_api_plugin() {}
 
 void network_broadcast_api_plugin::set_program_options( options_description& cli, options_description& cfg ) {}

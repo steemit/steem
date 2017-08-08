@@ -15,12 +15,12 @@
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef BLOCKCHAIN_STATISTICS_SPACE_ID
-#define BLOCKCHAIN_STATISTICS_SPACE_ID 9
+#ifndef STEEM_BLOCKCHAIN_STATISTICS_SPACE_ID
+#define STEEM_BLOCKCHAIN_STATISTICS_SPACE_ID 9
 #endif
 
-#ifndef BLOCKCHAIN_STATISTICS_PLUGIN_NAME
-#define BLOCKCHAIN_STATISTICS_PLUGIN_NAME "chain_stats"
+#ifndef STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME
+#define STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME "chain_stats"
 #endif
 
 namespace steemit { namespace blockchain_statistics {
@@ -30,7 +30,7 @@ using app::application;
 
 enum blockchain_statistics_object_type
 {
-   bucket_object_type = ( BLOCKCHAIN_STATISTICS_SPACE_ID << 8 )
+   bucket_object_type = ( STEEM_BLOCKCHAIN_STATISTICS_SPACE_ID << 8 )
 };
 
 namespace detail
@@ -44,7 +44,7 @@ class blockchain_statistics_plugin : public steemit::app::plugin
       blockchain_statistics_plugin( application* app );
       virtual ~blockchain_statistics_plugin();
 
-      virtual std::string plugin_name()const override { return BLOCKCHAIN_STATISTICS_PLUGIN_NAME; }
+      virtual std::string plugin_name()const override { return STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME; }
       virtual void plugin_set_program_options(
          boost::program_options::options_description& cli,
          boost::program_options::options_description& cfg ) override;

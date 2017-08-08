@@ -33,7 +33,7 @@ namespace detail
    {
       statistics result;
       const auto& bucket_itr = _app.chain_database()->get_index< bucket_index >().indices().get< by_bucket >();
-      const auto& sizes = _app.get_plugin< blockchain_statistics_plugin >( BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets();
+      const auto& sizes = _app.get_plugin< blockchain_statistics_plugin >( STEEM_BLOCKCHAIN_STATISTICS_PLUGIN_NAME )->get_tracked_buckets();
       auto size_itr = sizes.rbegin();
       auto time = start;
 

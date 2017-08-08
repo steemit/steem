@@ -110,7 +110,7 @@ database_api::database_api()
    : my( new database_api_impl() )
 {
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      DATABASE_API_PLUGIN_NAME,
+      STEEM_DATABASE_API_PLUGIN_NAME,
       {
          API_METHOD( get_block_header ),
          API_METHOD( get_block ),

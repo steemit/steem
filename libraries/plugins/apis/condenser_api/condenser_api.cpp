@@ -841,7 +841,7 @@ condenser_api::condenser_api()
    : my( new detail::condenser_api_impl() )
 {
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      CONDENSER_API_PLUGIN_NAME,
+      STEEM_CONDENSER_API_PLUGIN_NAME,
       {
          API_METHOD( get_version ),
          API_METHOD( get_trending_tags ),

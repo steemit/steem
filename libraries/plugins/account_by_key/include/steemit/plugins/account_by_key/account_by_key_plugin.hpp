@@ -7,7 +7,7 @@ namespace steemit { namespace plugins { namespace account_by_key {
 
 using namespace appbase;
 
-#define ACCOUNT_BY_KEY_PLUGIN_NAME "account_by_key"
+#define STEEM_ACCOUNT_BY_KEY_PLUGIN_NAME "account_by_key"
 
 class account_by_key_plugin : public appbase::plugin< account_by_key_plugin >
 {

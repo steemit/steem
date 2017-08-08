@@ -151,7 +151,7 @@ struct post_operation_visitor
    {
       try
       {
-         if( op.id == FOLLOW_PLUGIN_NAME )
+         if( op.id == STEEM_FOLLOW_PLUGIN_NAME )
          {
             custom_json_operation new_cop;
 
@@ -393,4 +393,4 @@ void follow_plugin::plugin_startup()
 
 STEEMIT_DEFINE_PLUGIN( follow, steemit::follow::follow_plugin )
 
-//DEFINE_OPERATION_TYPE( steemit::follow::follow_plugin_operation )
+//STEEM_DEFINE_OPERATION_TYPE( steemit::follow::follow_plugin_operation )

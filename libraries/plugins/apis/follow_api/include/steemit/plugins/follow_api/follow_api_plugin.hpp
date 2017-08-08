@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define FOLLOW_API_PLUGIN_NAME "follow_api"
+#define STEEM_FOLLOW_API_PLUGIN_NAME "follow_api"
 
 
 namespace steemit { namespace plugins { namespace follow {

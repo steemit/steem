@@ -27,7 +27,7 @@ typedef fc::static_variant<
          enable_content_editing_operation
       > witness_plugin_operation;
 
-DEFINE_PLUGIN_EVALUATOR( witness_plugin, witness_plugin_operation, enable_content_editing );
+STEEM_DEFINE_PLUGIN_EVALUATOR( witness_plugin, witness_plugin_operation, enable_content_editing );
 
 } } // steemit::witness
 
@@ -35,4 +35,4 @@ FC_REFLECT( steemit::witness::enable_content_editing_operation, (account)(relock
 
 FC_REFLECT_TYPENAME( steemit::witness::witness_plugin_operation )
 
-DECLARE_OPERATION_TYPE( steemit::witness::witness_plugin_operation )
+STEEM_DECLARE_OPERATION_TYPE( steemit::witness::witness_plugin_operation )

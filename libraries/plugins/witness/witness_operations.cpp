@@ -11,4 +11,4 @@ void enable_content_editing_operation::validate()const
 
 } } } // steemit::plugins::witness
 
-DEFINE_OPERATION_TYPE( steemit::plugins::witness::witness_plugin_operation )
+STEEM_DEFINE_OPERATION_TYPE( steemit::plugins::witness::witness_plugin_operation )

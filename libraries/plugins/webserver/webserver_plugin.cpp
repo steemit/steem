@@ -134,7 +134,7 @@ class webserver_plugin_impl
       plugins::json_rpc::json_rpc_plugin* api;
 };
 
-webserver_plugin::webserver_plugin() : appbase::plugin< webserver_plugin >( WEBSERVER_PLUGIN_NAME ), _my( new webserver_plugin_impl() ) {}
+webserver_plugin::webserver_plugin() : appbase::plugin< webserver_plugin >( STEEM_WEBSERVER_PLUGIN_NAME ), _my( new webserver_plugin_impl() ) {}
 webserver_plugin::~webserver_plugin(){}
 
 void webserver_plugin::set_program_options( options_description&, options_description& cfg )

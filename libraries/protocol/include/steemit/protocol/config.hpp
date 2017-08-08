@@ -250,8 +250,8 @@
 
 #define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
 
-#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
-#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
+#define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
+#define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
 /**
  *  Reserved Account IDs with special meaning

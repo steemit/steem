@@ -29,11 +29,11 @@ using chainbase::allocator;
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef TAG_SPACE_ID
-#define TAG_SPACE_ID 5
+#ifndef STEEM_TAG_SPACE_ID
+#define STEEM_TAG_SPACE_ID 5
 #endif
 
-#define TAGS_PLUGIN_NAME "tags"
+#define STEEM_TAGS_PLUGIN_NAME "tags"
 
 typedef protocol::fixed_string_32 tag_name_type;
 
@@ -43,10 +43,10 @@ typedef protocol::fixed_string_32 tag_name_type;
 // to define as they see fit.
 enum
 {
-   tag_object_type              = ( TAG_SPACE_ID << 8 ),
-   tag_stats_object_type        = ( TAG_SPACE_ID << 8 ) + 1,
-   peer_stats_object_type       = ( TAG_SPACE_ID << 8 ) + 2,
-   author_tag_stats_object_type = ( TAG_SPACE_ID << 8 ) + 3
+   tag_object_type              = ( STEEM_TAG_SPACE_ID << 8 ),
+   tag_stats_object_type        = ( STEEM_TAG_SPACE_ID << 8 ) + 1,
+   peer_stats_object_type       = ( STEEM_TAG_SPACE_ID << 8 ) + 2,
+   author_tag_stats_object_type = ( STEEM_TAG_SPACE_ID << 8 ) + 3
 };
 
 namespace detail { class tags_plugin_impl; }
@@ -469,7 +469,7 @@ class tags_plugin : public steemit::app::plugin
       tags_plugin( application* app );
       virtual ~tags_plugin();
 
-      std::string plugin_name()const override { return TAGS_PLUGIN_NAME; }
+      std::string plugin_name()const override { return STEEM_TAGS_PLUGIN_NAME; }
       virtual void plugin_set_program_options(
          boost::program_options::options_description& cli,
          boost::program_options::options_description& cfg) override;

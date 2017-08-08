@@ -79,7 +79,7 @@ account_history_api::account_history_api()
    my = std::make_shared< detail::account_history_api_impl >();
 
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      ACCOUNT_HISTORY_API_PLUGIN_NAME,
+      STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME,
       {
          API_METHOD( get_ops_in_block ),
          API_METHOD( get_transaction ),

@@ -8,7 +8,7 @@ namespace steemit { namespace plugins { namespace database_api {
 
 using namespace appbase;
 
-#define DATABASE_API_PLUGIN_NAME "database_api"
+#define STEEM_DATABASE_API_PLUGIN_NAME "database_api"
 
 class database_api_plugin : public plugin< database_api_plugin >
 {

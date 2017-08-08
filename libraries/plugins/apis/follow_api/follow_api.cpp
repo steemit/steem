@@ -297,7 +297,7 @@ follow_api::follow_api()
    my = std::make_shared< detail::follow_api_impl >();
 
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      FOLLOW_API_PLUGIN_NAME,
+      STEEM_FOLLOW_API_PLUGIN_NAME,
       {
          API_METHOD( get_followers ),
          API_METHOD( get_following ),

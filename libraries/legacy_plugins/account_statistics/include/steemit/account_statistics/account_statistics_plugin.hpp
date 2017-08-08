@@ -12,12 +12,12 @@
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef ACCOUNT_STATISTICS_SPACE_ID
-#define ACCOUNT_STATISTICS_SPACE_ID 10
+#ifndef STEEM_ACCOUNT_STATISTICS_SPACE_ID
+#define STEEM_ACCOUNT_STATISTICS_SPACE_ID 10
 #endif
 
-#ifndef ACCOUNT_STATISTICS_PLUGIN_NAME
-#define ACCOUNT_STATISTICS_PLUGIN_NAME "account_stats"
+#ifndef STEEM_ACCOUNT_STATISTICS_PLUGIN_NAME
+#define STEEM_ACCOUNT_STATISTICS_PLUGIN_NAME "account_stats"
 #endif
 
 namespace steemit { namespace account_statistics {
@@ -27,8 +27,8 @@ using app::application;
 
 enum account_statistics_plugin_object_types
 {
-   account_stats_bucket_object_type    = ( ACCOUNT_STATISTICS_SPACE_ID << 8 ),
-   account_activity_bucket_object_type = ( ACCOUNT_STATISTICS_SPACE_ID << 8 ) + 1
+   account_stats_bucket_object_type    = ( STEEM_ACCOUNT_STATISTICS_SPACE_ID << 8 ),
+   account_activity_bucket_object_type = ( STEEM_ACCOUNT_STATISTICS_SPACE_ID << 8 ) + 1
 };
 
 struct account_stats_bucket_object : public object< account_stats_bucket_object_type, account_stats_bucket_object >
@@ -141,7 +141,7 @@ class account_statistics_plugin : public steemit::app::plugin
       account_statistics_plugin( application* app );
       virtual ~account_statistics_plugin();
 
-      virtual std::string plugin_name()const override { return ACCOUNT_STATISTICS_PLUGIN_NAME; }
+      virtual std::string plugin_name()const override { return STEEM_ACCOUNT_STATISTICS_PLUGIN_NAME; }
       virtual void plugin_set_program_options(
          boost::program_options::options_description& cli,
          boost::program_options::options_description& cfg ) override;

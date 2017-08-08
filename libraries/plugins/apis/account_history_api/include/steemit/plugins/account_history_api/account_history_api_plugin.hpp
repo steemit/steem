@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define ACCOUNT_HISTORY_API_PLUGIN_NAME "account_history_api"
+#define STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME "account_history_api"
 
 
 namespace steemit { namespace plugins { namespace account_history {

@@ -495,7 +495,7 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
 } /// end detail namespace
 
 tags_plugin::tags_plugin()
-   : plugin< tags_plugin >( TAGS_PLUGIN_NAME ) {}
+   : plugin< tags_plugin >( STEEM_TAGS_PLUGIN_NAME ) {}
 
 tags_plugin::~tags_plugin() {}
 

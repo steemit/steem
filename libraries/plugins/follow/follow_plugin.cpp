@@ -130,7 +130,7 @@ struct post_operation_visitor
    {
       try
       {
-         if( op.id == FOLLOW_PLUGIN_NAME )
+         if( op.id == STEEM_FOLLOW_PLUGIN_NAME )
          {
             custom_json_operation new_cop;
 
@@ -317,7 +317,7 @@ void follow_plugin_impl::post_operation( const operation_notification& note )
 
 
 follow_plugin::follow_plugin()
-   : plugin< follow_plugin >( FOLLOW_PLUGIN_NAME ) {}
+   : plugin< follow_plugin >( STEEM_FOLLOW_PLUGIN_NAME ) {}
 
 follow_plugin::~follow_plugin() {}
 

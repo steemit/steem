@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define TAGS_API_PLUGIN_NAME "tags_api"
+#define STEEM_TAGS_API_PLUGIN_NAME "tags_api"
 
 
 namespace steemit { namespace plugins { namespace tags {
@@ -22,7 +22,7 @@ public:
    tags_api_plugin();
    virtual ~tags_api_plugin();
 
-   std::string get_name(){ return TAGS_API_PLUGIN_NAME; }
+   std::string get_name(){ return STEEM_TAGS_API_PLUGIN_NAME; }
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
    void plugin_initialize( const variables_map& options );

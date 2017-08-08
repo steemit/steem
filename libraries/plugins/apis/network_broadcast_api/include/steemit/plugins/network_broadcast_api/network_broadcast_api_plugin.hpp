@@ -5,7 +5,7 @@
 
 #include <appbase/application.hpp>
 
-#define NETWORK_BROADCAST_API_PLUGIN_NAME "network_broadcast_api"
+#define STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME "network_broadcast_api"
 
 namespace steemit { namespace plugins { namespace network_broadcast_api {
 
@@ -23,7 +23,7 @@ public:
    network_broadcast_api_plugin();
    virtual ~network_broadcast_api_plugin();
 
-   std::string get_name(){ return NETWORK_BROADCAST_API_PLUGIN_NAME; }
+   std::string get_name(){ return STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME; }
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
    void plugin_initialize( const variables_map& options );

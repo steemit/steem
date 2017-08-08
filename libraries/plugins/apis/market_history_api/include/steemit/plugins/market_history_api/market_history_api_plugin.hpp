@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define MARKET_HISTORY_API_PLUGIN_NAME "market_history_api"
+#define STEEM_MARKET_HISTORY_API_PLUGIN_NAME "market_history_api"
 
 
 namespace steemit { namespace plugins { namespace market_history {
