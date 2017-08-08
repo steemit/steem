@@ -15,12 +15,12 @@
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef MARKET_HISTORY_SPACE_ID
-#define MARKET_HISTORY_SPACE_ID 7
+#ifndef STEEM_MARKET_HISTORY_SPACE_ID
+#define STEEM_MARKET_HISTORY_SPACE_ID 7
 #endif
 
-#ifndef MARKET_HISTORY_PLUGIN_NAME
-#define MARKET_HISTORY_PLUGIN_NAME "market_history"
+#ifndef STEEM_MARKET_HISTORY_PLUGIN_NAME
+#define STEEM_MARKET_HISTORY_PLUGIN_NAME "market_history"
 #endif
 
 
@@ -31,8 +31,8 @@ using namespace appbase;
 
 enum market_history_object_types
 {
-   bucket_object_type        = ( MARKET_HISTORY_SPACE_ID << 8 ),
-   order_history_object_type = ( MARKET_HISTORY_SPACE_ID << 8 ) + 1
+   bucket_object_type        = ( STEEM_MARKET_HISTORY_SPACE_ID << 8 ),
+   order_history_object_type = ( STEEM_MARKET_HISTORY_SPACE_ID << 8 ) + 1
 };
 
 namespace detail { class market_history_plugin_impl; }

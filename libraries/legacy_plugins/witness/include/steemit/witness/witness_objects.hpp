@@ -9,15 +9,15 @@ namespace steemit { namespace witness {
 using namespace std;
 using namespace steemit::chain;
 
-#ifndef WITNESS_SPACE_ID
-#define WITNESS_SPACE_ID 12
+#ifndef STEEM_WITNESS_SPACE_ID
+#define STEEM_WITNESS_SPACE_ID 12
 #endif
 
 enum witness_plugin_object_type
 {
-   account_bandwidth_object_type = ( WITNESS_SPACE_ID << 8 ),
-   content_edit_lock_object_type = ( WITNESS_SPACE_ID << 8 ) + 1,
-   reserve_ratio_object_type      = ( WITNESS_SPACE_ID << 8 ) + 2
+   account_bandwidth_object_type = ( STEEM_WITNESS_SPACE_ID << 8 ),
+   content_edit_lock_object_type = ( STEEM_WITNESS_SPACE_ID << 8 ) + 1,
+   reserve_ratio_object_type      = ( STEEM_WITNESS_SPACE_ID << 8 ) + 2
 };
 
 enum bandwidth_type

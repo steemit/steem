@@ -42,8 +42,8 @@ using app::application;
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef ACCOUNT_HISTORY_SPACE_ID
-#define ACCOUNT_HISTORY_SPACE_ID 5
+#ifndef STEEM_ACCOUNT_HISTORY_SPACE_ID
+#define STEEM_ACCOUNT_HISTORY_SPACE_ID 5
 #endif
 
 enum account_history_object_type

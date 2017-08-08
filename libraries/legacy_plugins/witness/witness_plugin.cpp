@@ -458,7 +458,7 @@ using std::string;
 void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    _options = &options;
-   LOAD_VALUE_SET(options, "witness", _witnesses, string)
+   STEEM_LOAD_VALUE_SET(options, "witness", _witnesses, string)
 
    if( options.count("private-key") )
    {

@@ -9,7 +9,7 @@
 namespace steemit { namespace follow {
 using steemit::app::application;
 
-#define FOLLOW_PLUGIN_NAME "follow"
+#define STEEM_FOLLOW_PLUGIN_NAME "follow"
 
 namespace detail { class follow_plugin_impl; }
 
@@ -18,7 +18,7 @@ class follow_plugin : public steemit::app::plugin
    public:
       follow_plugin( application* app );
 
-      std::string plugin_name()const override { return FOLLOW_PLUGIN_NAME; }
+      std::string plugin_name()const override { return STEEM_FOLLOW_PLUGIN_NAME; }
       virtual void plugin_set_program_options(
          boost::program_options::options_description& cli,
          boost::program_options::options_description& cfg ) override;

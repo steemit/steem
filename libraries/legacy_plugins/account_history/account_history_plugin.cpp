@@ -207,7 +207,7 @@ void account_history_plugin::plugin_initialize(const boost::program_options::var
    database().pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
 
    typedef pair<account_name_type,account_name_type> pairstring;
-   LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
+   STEEM_LOAD_VALUE_SET(options, "track-account-range", my->_tracked_accounts, pairstring);
 
    if( options.count( "history-whitelist-ops" ) )
    {

@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace condenser_api {
 
-condenser_api_plugin::condenser_api_plugin() : appbase::plugin< condenser_api_plugin >( CONDENSER_API_PLUGIN_NAME ) {}
+condenser_api_plugin::condenser_api_plugin() : appbase::plugin< condenser_api_plugin >( STEEM_CONDENSER_API_PLUGIN_NAME ) {}
 condenser_api_plugin::~condenser_api_plugin() {}
 
 void condenser_api_plugin::set_program_options( options_description& cli, options_description& cfg )

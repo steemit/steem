@@ -75,8 +75,8 @@ T dejsonify(const string& s) {
 }
 
 // TODO: Move this somewhere else. Also exists in app/plugin.hpp, which will be removed.
-#ifndef LOAD_VALUE_SET
-#define LOAD_VALUE_SET(options, name, container, type) \
+#ifndef STEEM_LOAD_VALUE_SET
+#define STEEM_LOAD_VALUE_SET(options, name, container, type) \
 if( options.count(name) ) { \
    const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
    std::transform(ops.begin(), ops.end(), std::inserter(container, container.end()), &dejsonify<type>); \
@@ -579,7 +579,7 @@ namespace detail {
 
 
 witness_plugin::witness_plugin() :
-   appbase::plugin< witness_plugin >( WITNESS_PLUGIN_NAME ),
+   appbase::plugin< witness_plugin >( STEEM_WITNESS_PLUGIN_NAME ),
    my( new detail::witness_plugin_impl( appbase::app().get_io_service() ) ) {}
 
 witness_plugin::~witness_plugin() {}
@@ -600,7 +600,7 @@ void witness_plugin::set_program_options(
 
 void witness_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-   LOAD_VALUE_SET( options, "witness", my->_witnesses, steemit::protocol::account_name_type )
+   STEEM_LOAD_VALUE_SET( options, "witness", my->_witnesses, steemit::protocol::account_name_type )
 
    if( options.count("private-key") )
    {

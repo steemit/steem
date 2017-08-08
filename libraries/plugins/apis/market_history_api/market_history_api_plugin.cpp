@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace market_history {
 
-market_history_api_plugin::market_history_api_plugin() : appbase::plugin< market_history_api_plugin >( MARKET_HISTORY_API_PLUGIN_NAME ) {}
+market_history_api_plugin::market_history_api_plugin() : appbase::plugin< market_history_api_plugin >( STEEM_MARKET_HISTORY_API_PLUGIN_NAME ) {}
 market_history_api_plugin::~market_history_api_plugin() {}
 
 void market_history_api_plugin::set_program_options( options_description& cli, options_description& cfg ) {}

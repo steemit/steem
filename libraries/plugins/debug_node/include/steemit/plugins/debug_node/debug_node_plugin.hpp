@@ -7,7 +7,7 @@
 #include <map>
 #include <fstream>
 
-#define DEBUG_NODE_PLUGIN_NAME "debug_node"
+#define STEEM_DEBUG_NODE_PLUGIN_NAME "debug_node"
 
 namespace steemit { namespace protocol {
    struct chain_properties;

@@ -16,4 +16,4 @@ void reblog_operation::validate()const
 
 } } } //steemit::plugins::follow
 
-DEFINE_OPERATION_TYPE( steemit::plugins::follow::follow_plugin_operation )
+STEEM_DEFINE_OPERATION_TYPE( steemit::plugins::follow::follow_plugin_operation )

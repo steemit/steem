@@ -24,7 +24,7 @@
 #pragma once
 #include <steemit/plugins/chain/chain_plugin.hpp>
 
-#define ACCOUNT_HISTORY_PLUGIN_NAME "account_history"
+#define STEEM_ACCOUNT_HISTORY_PLUGIN_NAME "account_history"
 
 namespace steemit { namespace plugins { namespace account_history {
 
@@ -41,8 +41,8 @@ using steemit::protocol::account_name_type;
 // various template automagic depends on them being known at compile
 // time.
 //
-#ifndef ACCOUNT_HISTORY_SPACE_ID
-#define ACCOUNT_HISTORY_SPACE_ID 5
+#ifndef STEEM_ACCOUNT_HISTORY_SPACE_ID
+#define STEEM_ACCOUNT_HISTORY_SPACE_ID 5
 #endif
 
 /**

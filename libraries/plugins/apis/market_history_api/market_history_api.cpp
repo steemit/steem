@@ -190,7 +190,7 @@ market_history_api::market_history_api()
    my = std::make_shared< detail::market_history_api_impl >();
 
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      MARKET_HISTORY_API_PLUGIN_NAME,
+      STEEM_MARKET_HISTORY_API_PLUGIN_NAME,
       {
          API_METHOD( get_ticker ),
          API_METHOD( get_volume ),

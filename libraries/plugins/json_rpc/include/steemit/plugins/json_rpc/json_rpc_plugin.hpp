@@ -35,7 +35,7 @@
  * as the argument type.
  */
 
-#define JSON_RPC_PLUGIN_NAME "json_rpc"
+#define STEEM_JSON_RPC_PLUGIN_NAME "json_rpc"
 
 #define API_METHOD( handle )                                                        \
 { std::string( #handle ),                                                           \

@@ -41,7 +41,7 @@ class evaluator_impl : public evaluator<OperationType>
 
 } }
 
-#define DEFINE_EVALUATOR( X ) \
+#define STEEM_DEFINE_EVALUATOR( X ) \
 class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator > \
 {                                                                           \
    public:                                                                  \
@@ -54,7 +54,7 @@ class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator >
       void do_apply( const X ## _operation& o );                            \
 };
 
-#define DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )                     \
+#define STEEM_DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )               \
 class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator, OPERATION > \
 {                                                                           \
    public:                                                                  \

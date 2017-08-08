@@ -6,7 +6,7 @@
 #include <boost/thread.hpp>
 #include <boost/container/vector.hpp>
 
-#define WEBSERVER_PLUGIN_NAME "webserver"
+#define STEEM_WEBSERVER_PLUGIN_NAME "webserver"
 
 namespace steemit { namespace plugins { namespace webserver {
 

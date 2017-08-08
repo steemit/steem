@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-#define DEBUG_NODE_API_PLUGIN_NAME "debug_node_api"
+#define STEEM_DEBUG_NODE_API_PLUGIN_NAME "debug_node_api"
 
 
 namespace steemit { namespace plugins { namespace debug_node {

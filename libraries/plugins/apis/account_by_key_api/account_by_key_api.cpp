@@ -48,7 +48,7 @@ account_by_key_api::account_by_key_api()
    my = std::make_shared< detail::account_by_key_api_impl >();
 
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      ACCOUNT_BY_KEY_API_PLUGIN_NAME,
+      STEEM_ACCOUNT_BY_KEY_API_PLUGIN_NAME,
       {
          API_METHOD( get_key_references )
       });

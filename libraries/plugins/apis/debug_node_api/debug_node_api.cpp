@@ -264,7 +264,7 @@ debug_node_api::debug_node_api()
    my = std::make_shared< detail::debug_node_api_impl >();
 
    appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      DEBUG_NODE_API_PLUGIN_NAME,
+      STEEM_DEBUG_NODE_API_PLUGIN_NAME,
       {
          API_METHOD( debug_push_blocks ),
          API_METHOD( debug_generate_blocks ),

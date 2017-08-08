@@ -34,4 +34,4 @@ bool is_virtual_operation( const operation& op )
 
 } } // steemit::protocol
 
-DEFINE_OPERATION_TYPE( steemit::protocol::operation )
+STEEM_DEFINE_OPERATION_TYPE( steemit::protocol::operation )
