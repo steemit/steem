@@ -1,12 +1,13 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <graphene/utilities/tempdir.hpp>
+#include <steemit/utilities/tempdir.hpp>
 
 #include <steemit/chain/steem_objects.hpp>
 #include <steemit/chain/history_object.hpp>
-#include <steemit/account_history/account_history_plugin.hpp>
-#include <steemit/witness/witness_plugin.hpp>
+#include <steemit/plugins/account_history/account_history_plugin.hpp>
+#include <steemit/plugins/witness/witness_plugin.hpp>
+#include <steemit/plugins/chain/chain_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -39,26 +40,28 @@ clean_database_fixture::clean_database_fixture()
       if( arg == "--show-test-names" )
          std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
    }
-   auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
-   db_plugin = app.register_plugin< steemit::plugin::debug_node::debug_node_plugin >();
-   auto wit_plugin = app.register_plugin< steemit::witness::witness_plugin >();
-   init_account_pub_key = init_account_priv_key.get_public_key();
 
-   boost::program_options::variables_map options;
+   appbase::app().register_plugin< steemit::plugins::account_history::account_history_plugin >();
+   db_plugin = &appbase::app().register_plugin< steemit::plugins::debug_node::debug_node_plugin >();
+   appbase::app().register_plugin< steemit::plugins::witness::witness_plugin >();
 
    db_plugin->logging = false;
-   ahplugin->plugin_initialize( options );
-   db_plugin->plugin_initialize( options );
-   wit_plugin->plugin_initialize( options );
+   appbase::app().initialize<
+      steemit::plugins::account_history::account_history_plugin,
+      steemit::plugins::debug_node::debug_node_plugin,
+      steemit::plugins::witness::witness_plugin
+      >( argc, argv );
+
+   db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+
+   init_account_pub_key = init_account_priv_key.get_public_key();
 
    open_database();
 
    generate_block();
-   db.set_hardfork( STEEMIT_NUM_HARDFORKS );
+   db->set_hardfork( STEEMIT_NUM_HARDFORKS );
    generate_block();
 
-   //ahplugin->plugin_startup();
-   db_plugin->plugin_startup();
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
@@ -85,17 +88,17 @@ clean_database_fixture::~clean_database_fixture()
    // This way, boost test's last checkpoint tells us approximately where the error was.
    if( !std::uncaught_exception() )
    {
-      BOOST_CHECK( db.get_node_properties().skip_flags == database::skip_nothing );
+      BOOST_CHECK( db->get_node_properties().skip_flags == database::skip_nothing );
    }
 
    if( data_dir )
-      db.close();
+      db->wipe( data_dir->path(), data_dir->path(), true );
    return;
 } FC_CAPTURE_AND_RETHROW() }
 
 void clean_database_fixture::resize_shared_mem( uint64_t size )
 {
-   db.wipe( data_dir->path(), data_dir->path(), true );
+   db->wipe( data_dir->path(), data_dir->path(), true );
    int argc = boost::unit_test::framework::master_test_suite().argc;
    char** argv = boost::unit_test::framework::master_test_suite().argv;
    for( int i=1; i<argc; i++ )
@@ -108,13 +111,13 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
    }
    init_account_pub_key = init_account_priv_key.get_public_key();
 
-   db.open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size, chainbase::database::read_write );
+   db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size, chainbase::database::read_write );
 
    boost::program_options::variables_map options;
 
 
    generate_block();
-   db.set_hardfork( STEEMIT_NUM_HARDFORKS );
+   db->set_hardfork( STEEMIT_NUM_HARDFORKS );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -134,14 +137,21 @@ live_database_fixture::live_database_fixture()
 {
    try
    {
+      int argc = boost::unit_test::framework::master_test_suite().argc;
+      char** argv = boost::unit_test::framework::master_test_suite().argv;
+
       ilog( "Loading saved chain" );
       _chain_dir = fc::current_path() / "test_blockchain";
       FC_ASSERT( fc::exists( _chain_dir ), "Requires blockchain to test on in ./test_blockchain" );
 
-      auto ahplugin = app.register_plugin< steemit::account_history::account_history_plugin >();
-      ahplugin->plugin_initialize( boost::program_options::variables_map() );
+      appbase::app().register_plugin< steemit::plugins::account_history::account_history_plugin >();
+      appbase::app().initialize<
+         steemit::plugins::account_history::account_history_plugin
+         >( argc, argv );
 
-      db.open( _chain_dir, _chain_dir );
+      db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+
+      db->open( _chain_dir, _chain_dir );
 
       validate_database();
       generate_block();
@@ -159,11 +169,11 @@ live_database_fixture::~live_database_fixture()
       // This way, boost test's last checkpoint tells us approximately where the error was.
       if( !std::uncaught_exception() )
       {
-         BOOST_CHECK( db.get_node_properties().skip_flags == database::skip_nothing );
+         BOOST_CHECK( db->get_node_properties().skip_flags == database::skip_nothing );
       }
 
-      db.pop_block();
-      db.close();
+      db->pop_block();
+      db->close();
       return;
    }
    FC_LOG_AND_RETHROW()
@@ -187,16 +197,16 @@ string database_fixture::generate_anon_acct_name()
 void database_fixture::open_database()
 {
    if( !data_dir ) {
-      data_dir = fc::temp_directory( graphene::utilities::temp_directory_path() );
-      db._log_hardforks = false;
-      db.open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8, chainbase::database::read_write ); // 8 MB file for testing
+      data_dir = fc::temp_directory( steemit::utilities::temp_directory_path() );
+      db->_log_hardforks = false;
+      db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8, chainbase::database::read_write ); // 8 MB file for testing
    }
 }
 
 void database_fixture::generate_block(uint32_t skip, const fc::ecc::private_key& key, int miss_blocks)
 {
    skip |= default_skip;
-   db_plugin->debug_generate_blocks( graphene::utilities::key_to_wif( key ), 1, skip, miss_blocks );
+   db_plugin->debug_generate_blocks( steemit::utilities::key_to_wif( key ), 1, skip, miss_blocks );
 }
 
 void database_fixture::generate_blocks( uint32_t block_count )
@@ -208,7 +218,7 @@ void database_fixture::generate_blocks( uint32_t block_count )
 void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks)
 {
    db_plugin->debug_generate_blocks_until( debug_key, timestamp, miss_intermediate_blocks, default_skip );
-   BOOST_REQUIRE( ( db.head_block_time() - timestamp ).to_seconds() < STEEMIT_BLOCK_INTERVAL );
+   BOOST_REQUIRE( ( db->head_block_time() - timestamp ).to_seconds() < STEEMIT_BLOCK_INTERVAL );
 }
 
 const account_object& database_fixture::account_create(
@@ -223,7 +233,7 @@ const account_object& database_fixture::account_create(
 {
    try
    {
-      if( db.has_hardfork( STEEMIT_HARDFORK_0_17 ) )
+      if( db->has_hardfork( STEEMIT_HARDFORK_0_17 ) )
       {
          account_create_with_delegation_operation op;
          op.new_account_name = name;
@@ -253,14 +263,14 @@ const account_object& database_fixture::account_create(
          trx.operations.push_back( op );
       }
 
-      trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( creator_key, db.get_chain_id() );
+      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.sign( creator_key, db->get_chain_id() );
       trx.validate();
-      db.push_transaction( trx, 0 );
+      db->push_transaction( trx, 0 );
       trx.operations.clear();
       trx.signatures.clear();
 
-      const account_object& acct = db.get_account( name );
+      const account_object& acct = db->get_account( name );
 
       return acct;
    }
@@ -279,7 +289,7 @@ const account_object& database_fixture::account_create(
          name,
          STEEMIT_INIT_MINER_NAME,
          init_account_priv_key,
-         std::max( db.get_witness_schedule_object().median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, share_type( 100 ) ),
+         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, share_type( 100 ) ),
          key,
          post_key,
          "" );
@@ -311,14 +321,14 @@ const witness_object& database_fixture::witness_create(
       op.fee = asset( fee, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-      trx.sign( owner_key, db.get_chain_id() );
+      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.sign( owner_key, db->get_chain_id() );
       trx.validate();
-      db.push_transaction( trx, 0 );
+      db->push_transaction( trx, 0 );
       trx.operations.clear();
       trx.signatures.clear();
 
-      return db.get_witness( owner );
+      return db->get_witness( owner );
    }
    FC_CAPTURE_AND_RETHROW( (owner)(url) )
 }
@@ -385,22 +395,22 @@ void database_fixture::convert(
 {
    try
    {
-      const account_object& account = db.get_account( account_name );
+      const account_object& account = db->get_account( account_name );
 
 
       if ( amount.symbol == STEEM_SYMBOL )
       {
-         db.adjust_balance( account, -amount );
-         db.adjust_balance( account, db.to_sbd( amount ) );
-         db.adjust_supply( -amount );
-         db.adjust_supply( db.to_sbd( amount ) );
+         db->adjust_balance( account, -amount );
+         db->adjust_balance( account, db->to_sbd( amount ) );
+         db->adjust_supply( -amount );
+         db->adjust_supply( db->to_sbd( amount ) );
       }
       else if ( amount.symbol == SBD_SYMBOL )
       {
-         db.adjust_balance( account, -amount );
-         db.adjust_balance( account, db.to_steem( amount ) );
-         db.adjust_supply( -amount );
-         db.adjust_supply( db.to_steem( amount ) );
+         db->adjust_balance( account, -amount );
+         db->adjust_balance( account, db->to_steem( amount ) );
+         db->adjust_supply( -amount );
+         db->adjust_supply( db->to_steem( amount ) );
       }
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
@@ -418,9 +428,9 @@ void database_fixture::transfer(
       op.amount = amount;
 
       trx.operations.push_back( op );
-      trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
-      db.push_transaction( trx, ~0 );
+      db->push_transaction( trx, ~0 );
       trx.operations.clear();
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
@@ -435,9 +445,9 @@ void database_fixture::vest( const string& from, const share_type& amount )
       op.amount = asset( amount, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
-      db.push_transaction( trx, ~0 );
+      db->push_transaction( trx, ~0 );
       trx.operations.clear();
    } FC_CAPTURE_AND_RETHROW( (from)(amount) )
 }
@@ -468,7 +478,7 @@ void database_fixture::proxy( const string& account, const string& proxy )
       op.account = account;
       op.proxy = proxy;
       trx.operations.push_back( op );
-      db.push_transaction( trx, ~0 );
+      db->push_transaction( trx, ~0 );
       trx.operations.clear();
    } FC_CAPTURE_AND_RETHROW( (account)(proxy) )
 }
@@ -483,8 +493,8 @@ void database_fixture::set_price_feed( const price& new_price )
          op.publisher = STEEMIT_INIT_MINER_NAME + fc::to_string( i );
          op.exchange_rate = new_price;
          trx.operations.push_back( op );
-         trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-         db.push_transaction( trx, ~0 );
+         trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         db->push_transaction( trx, ~0 );
          trx.operations.clear();
       }
    } FC_CAPTURE_AND_RETHROW( (new_price) )
@@ -492,32 +502,32 @@ void database_fixture::set_price_feed( const price& new_price )
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
-      !db.skip_price_feed_limit_check ||
+      !db->skip_price_feed_limit_check ||
 #endif
-      db.get(feed_history_id_type()).current_median_history == new_price
+      db->get(feed_history_id_type()).current_median_history == new_price
    );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
 {
-  return db.get_account( account_name ).balance;
+  return db->get_account( account_name ).balance;
 }
 
 void database_fixture::sign(signed_transaction& trx, const fc::ecc::private_key& key)
 {
-   trx.sign( key, db.get_chain_id() );
+   trx.sign( key, db->get_chain_id() );
 }
 
 vector< operation > database_fixture::get_last_operations( uint32_t num_ops )
 {
    vector< operation > ops;
-   const auto& acc_hist_idx = db.get_index< account_history_index >().indices().get< by_id >();
+   const auto& acc_hist_idx = db->get_index< account_history_index >().indices().get< by_id >();
    auto itr = acc_hist_idx.end();
 
    while( itr != acc_hist_idx.begin() && ops.size() < num_ops )
    {
       itr--;
-      ops.push_back( fc::raw::unpack< steemit::chain::operation >( db.get(itr->op).serialized_op ) );
+      ops.push_back( fc::raw::unpack< steemit::chain::operation >( db->get(itr->op).serialized_op ) );
    }
 
    return ops;
@@ -527,7 +537,7 @@ void database_fixture::validate_database( void )
 {
    try
    {
-      db.validate_invariants();
+      db->validate_invariants();
    }
    FC_LOG_AND_RETHROW();
 }

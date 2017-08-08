@@ -5426,7 +5426,7 @@ namespace graphene { namespace net { namespace detail {
                                                    &_ ## method_name ## _execution_accumulator, \
                                                    &_ ## method_name ## _delay_before_accumulator, \
                                                    &_ ## method_name ## _delay_after_accumulator); \
-    if (_thread->is_current()) \
+    if ( _thread->is_current()) \
     { \
       call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
       return _node_delegate->method_name(__VA_ARGS__); \

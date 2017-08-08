@@ -3,6 +3,7 @@
 
 #include <steemit/protocol/steem_operations.hpp>
 #include <steemit/protocol/operation_util_impl.hpp>
+#include <steemit/protocol/types.hpp>
 
 #include <steemit/chain/evaluator.hpp>
 #include <steemit/chain/evaluator_registry.hpp>
@@ -16,6 +17,10 @@
 #include <vector>
 
 namespace steemit { namespace chain {
+
+using protocol::operation;
+using protocol::authority;
+using protocol::account_name_type;
 
 class database;
 

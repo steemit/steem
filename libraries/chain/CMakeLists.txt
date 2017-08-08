@@ -29,6 +29,7 @@ add_library( steemit_chain
              block_log.cpp
 
              util/reward.cpp
+             util/impacted.cpp
 
              ${HEADERS}
              ${hardfork_hpp_file}

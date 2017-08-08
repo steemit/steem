@@ -19,7 +19,7 @@ ARGS=""
 # seed nodes, use the ones above:
 if [[ -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -27,7 +27,7 @@ fi
 # the ones the user specified:
 if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $STEEMD_SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -35,8 +35,6 @@ NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
 
 ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
-
-ARGS+=" --disable-get-block"
 
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
@@ -90,7 +88,8 @@ chown -R steemd:steemd $HOME/*
 if [[ "$USE_MULTICORE_READONLY" ]]; then
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=127.0.0.1:8091 \
+            --webserver-ws-endpoint=127.0.0.1:8091 \
+            --webserver-http-endpoint=127.0.0.1:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \
@@ -113,7 +112,8 @@ if [[ "$USE_MULTICORE_READONLY" ]]; then
       do
         exec chpst -usteemd \
         $STEEMD \
-          --rpc-endpoint=127.0.0.1:$PORT_NUM \
+          --webserver-ws-endpoint=127.0.0.1:$PORT_NUM \
+          --webserver-http-endpoint=127.0.0.1:$PORT_NUM \
           --data-dir=$HOME \
           $ARGS \
           --read-forward-rpc=127.0.0.1:8091 \
@@ -144,7 +144,8 @@ else
     service nginx restart
     exec chpst -usteemd \
         $STEEMD \
-            --rpc-endpoint=0.0.0.0:8091 \
+            --webserver-ws-endpoint=127.0.0.1:8091 \
+            --webserver-http-endpoint=127.0.0.1:8091 \
             --p2p-endpoint=0.0.0.0:2001 \
             --data-dir=$HOME \
             $ARGS \

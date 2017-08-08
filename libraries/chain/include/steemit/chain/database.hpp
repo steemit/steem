@@ -409,6 +409,7 @@ namespace steemit { namespace chain {
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;
          bool skip_transaction_delta_check = true;
+         bool disable_low_mem_warning = true;
 #endif
 
    protected:

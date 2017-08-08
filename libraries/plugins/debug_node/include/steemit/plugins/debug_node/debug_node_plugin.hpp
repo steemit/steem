@@ -1,12 +1,13 @@
 
 #pragma once
-
-#include <steemit/app/plugin.hpp>
+#include <steemit/plugins/chain/chain_plugin.hpp>
 
 #include <fc/variant_object.hpp>
 
 #include <map>
 #include <fstream>
+
+#define DEBUG_NODE_PLUGIN_NAME "debug_node"
 
 namespace steemit { namespace protocol {
    struct chain_properties;
@@ -14,13 +15,9 @@ namespace steemit { namespace protocol {
    struct signed_block;
 } }
 
-namespace graphene { namespace db {
-   struct object_id_type;
-   class object;
-} }
+namespace steemit { namespace plugins { namespace debug_node {
 
-namespace steemit { namespace plugin { namespace debug_node {
-using app::application;
+using namespace appbase;
 
 namespace detail { class debug_node_plugin_impl; }
 
@@ -36,19 +33,23 @@ class private_key_storage
          ) = 0;
 };
 
-class debug_node_plugin : public steemit::app::plugin
+class debug_node_plugin : public plugin< debug_node_plugin >
 {
    public:
-      debug_node_plugin( application* app );
+      debug_node_plugin();
       virtual ~debug_node_plugin();
 
-      virtual std::string plugin_name()const override;
-      virtual void plugin_initialize( const boost::program_options::variables_map& options ) override;
-      virtual void plugin_set_program_options(
-         boost::program_options::options_description& cli,
-         boost::program_options::options_description& cfg ) override;
-      virtual void plugin_startup() override;
-      virtual void plugin_shutdown() override;
+      APPBASE_PLUGIN_REQUIRES( (chain::chain_plugin) )
+
+
+      virtual void set_program_options(
+         options_description& cli,
+         options_description& cfg ) override;
+      void plugin_initialize( const variables_map& options );
+      void plugin_startup();
+      void plugin_shutdown();
+
+      chain::database& database();
 
       template< typename Lambda >
       void debug_update( Lambda&& callback, uint32_t skip = steemit::chain::database::skip_nothing )
@@ -99,8 +100,6 @@ class debug_node_plugin : public steemit::app::plugin
       bool logging = true;
 
    private:
-      void on_changed_objects( const std::vector<graphene::db::object_id_type>& ids );
-      void on_removed_objects( const std::vector<const graphene::db::object*> objs );
       void on_applied_block( const protocol::signed_block& b );
 
       void apply_debug_updates();

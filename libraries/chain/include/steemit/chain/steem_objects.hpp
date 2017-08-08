@@ -225,8 +225,8 @@ namespace steemit { namespace chain {
 
          id_type  id;
 
-         account_id_type   from_account;
-         account_id_type   to_account;
+         account_name_type from_account;
+         account_name_type to_account;
          uint16_t          percent = 0;
          bool              auto_vest = false;
    };
@@ -245,7 +245,7 @@ namespace steemit { namespace chain {
 
          id_type           id;
 
-         account_id_type   account;
+         account_name_type account;
          time_point_sec    effective_date;
    };
 
@@ -362,14 +362,14 @@ namespace steemit { namespace chain {
          ordered_unique< tag< by_id >, member< withdraw_vesting_route_object, withdraw_vesting_route_id_type, &withdraw_vesting_route_object::id > >,
          ordered_unique< tag< by_withdraw_route >,
             composite_key< withdraw_vesting_route_object,
-               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::from_account >,
-               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::to_account >
+               member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::from_account >,
+               member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::to_account >
             >,
-            composite_key_compare< std::less< account_id_type >, std::less< account_id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >,
          ordered_unique< tag< by_destination >,
             composite_key< withdraw_vesting_route_object,
-               member< withdraw_vesting_route_object, account_id_type, &withdraw_vesting_route_object::to_account >,
+               member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::to_account >,
                member< withdraw_vesting_route_object, withdraw_vesting_route_id_type, &withdraw_vesting_route_object::id >
             >
          >
@@ -378,10 +378,7 @@ namespace steemit { namespace chain {
    > withdraw_vesting_route_index;
 
    struct by_from_id;
-   struct by_to;
-   struct by_agent;
    struct by_ratification_deadline;
-   struct by_sbd_balance;
    typedef multi_index_container<
       escrow_object,
       indexed_by<
@@ -392,18 +389,6 @@ namespace steemit { namespace chain {
                member< escrow_object, uint32_t, &escrow_object::escrow_id >
             >
          >,
-         ordered_unique< tag< by_to >,
-            composite_key< escrow_object,
-               member< escrow_object, account_name_type,  &escrow_object::to >,
-               member< escrow_object, escrow_id_type, &escrow_object::id >
-            >
-         >,
-         ordered_unique< tag< by_agent >,
-            composite_key< escrow_object,
-               member< escrow_object, account_name_type,  &escrow_object::agent >,
-               member< escrow_object, escrow_id_type, &escrow_object::id >
-            >
-         >,
          ordered_unique< tag< by_ratification_deadline >,
             composite_key< escrow_object,
                const_mem_fun< escrow_object, bool, &escrow_object::is_approved >,
@@ -411,13 +396,6 @@ namespace steemit { namespace chain {
                member< escrow_object, escrow_id_type, &escrow_object::id >
             >,
             composite_key_compare< std::less< bool >, std::less< time_point_sec >, std::less< escrow_id_type > >
-         >,
-         ordered_unique< tag< by_sbd_balance >,
-            composite_key< escrow_object,
-               member< escrow_object, asset, &escrow_object::sbd_balance >,
-               member< escrow_object, escrow_id_type, &escrow_object::id >
-            >,
-            composite_key_compare< std::greater< asset >, std::less< escrow_id_type > >
          >
       >,
       allocator< escrow_object >
@@ -436,18 +414,18 @@ namespace steemit { namespace chain {
                member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
             >
          >,
-         ordered_unique< tag< by_to_complete >,
-            composite_key< savings_withdraw_object,
-               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::to >,
-               member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
-               member< savings_withdraw_object, savings_withdraw_id_type, &savings_withdraw_object::id >
-            >
-         >,
          ordered_unique< tag< by_complete_from_rid >,
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
                member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::from >,
                member< savings_withdraw_object, uint32_t, &savings_withdraw_object::request_id >
+            >
+         >,
+         ordered_unique< tag< by_to_complete >,
+            composite_key< savings_withdraw_object,
+               member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::to >,
+               member< savings_withdraw_object, time_point_sec,  &savings_withdraw_object::complete >,
+               member< savings_withdraw_object, savings_withdraw_id_type, &savings_withdraw_object::id >
             >
          >
       >,
@@ -461,14 +439,14 @@ namespace steemit { namespace chain {
       indexed_by<
          ordered_unique< tag< by_id >, member< decline_voting_rights_request_object, decline_voting_rights_request_id_type, &decline_voting_rights_request_object::id > >,
          ordered_unique< tag< by_account >,
-            member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+            member< decline_voting_rights_request_object, account_name_type, &decline_voting_rights_request_object::account >
          >,
          ordered_unique< tag< by_effective_date >,
             composite_key< decline_voting_rights_request_object,
                member< decline_voting_rights_request_object, time_point_sec, &decline_voting_rights_request_object::effective_date >,
-               member< decline_voting_rights_request_object, account_id_type, &decline_voting_rights_request_object::account >
+               member< decline_voting_rights_request_object, account_name_type, &decline_voting_rights_request_object::account >
             >,
-            composite_key_compare< std::less< time_point_sec >, std::less< account_id_type > >
+            composite_key_compare< std::less< time_point_sec >, std::less< account_name_type > >
          >
       >,
       allocator< decline_voting_rights_request_object >

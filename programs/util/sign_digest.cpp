@@ -8,7 +8,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 #include <steemit/protocol/types.hpp>
 
@@ -45,7 +45,7 @@ int main(int argc, char** argv, char** envp)
       fc::from_variant( v, sreq );
       signing_result sres;
       sres.dig = sreq.dig;
-      fc::ecc::private_key priv_key = *graphene::utilities::wif_to_key( sreq.wif );
+      fc::ecc::private_key priv_key = *steemit::utilities::wif_to_key( sreq.wif );
       sres.sig = priv_key.sign_compact( sreq.dig );
       sres.key = steemit::protocol::public_key_type( priv_key.get_public_key() );
       std::cout << fc::json::to_string( sres ) << std::endl;

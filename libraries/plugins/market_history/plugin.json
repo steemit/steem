@@ -1,4 +1,5 @@
 {
    "plugin_name": "market_history",
-   "plugin_project": "steemit_market_history"
+   "plugin_namespace": "market_history",
+   "plugin_project": "market_history_plugin"
 }

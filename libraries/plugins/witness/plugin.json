@@ -1,4 +1,5 @@
 {
    "plugin_name": "witness",
-   "plugin_project": "steemit_witness"
+   "plugin_namespace": "witness",
+   "plugin_project": "witness_plugin"
 }

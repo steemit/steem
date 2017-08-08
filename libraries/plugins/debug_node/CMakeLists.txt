@@ -1,18 +1,16 @@
 file(GLOB HEADERS "include/steemit/plugins/debug_node/*.hpp")
 
-add_library( steemit_debug_node
+add_library( debug_node_plugin
              ${HEADERS}
              debug_node_plugin.cpp
-             debug_node_api.cpp
            )
 
-target_link_libraries( steemit_debug_node steemit_app steemit_chain steemit_protocol fc )
-target_include_directories( steemit_debug_node
+target_link_libraries( debug_node_plugin chain_plugin steemit_utilities )
+target_include_directories( debug_node_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
-install( TARGETS steemit_debug_node
+install( TARGETS debug_node_plugin
          RUNTIME DESTINATION bin
          LIBRARY DESTINATION lib
          ARCHIVE DESTINATION lib
        )
-INSTALL( FILES ${HEADERS} DESTINATION "include/steemit/plugins/debug_node" )
