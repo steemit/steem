@@ -28,6 +28,8 @@
 
 #include <fc/thread/thread.hpp>
 
+#include <boost/scope_exit.hpp>
+
 #ifdef DEFAULT_LOGGER
 # undef DEFAULT_LOGGER
 #endif
@@ -85,11 +87,12 @@ namespace graphene { namespace net
       inhibit_fetching_sync_blocks(false),
       transaction_fetching_inhibited_until(fc::time_point::min()),
       last_known_fork_block_number(0),
-      firewall_check_state(nullptr)
+      firewall_check_state(nullptr),
 #ifndef NDEBUG
-      ,_thread(&fc::thread::current()),
-      _send_message_queue_tasks_running(0)
+      _thread(&fc::thread::current()),
+      _send_message_queue_tasks_running(0),
 #endif
+      _currently_handling_message(false)
     {
     }
 
@@ -264,6 +267,10 @@ namespace graphene { namespace net
     void peer_connection::on_message( message_oriented_connection* originating_connection, const message& received_message )
     {
       VERIFY_CORRECT_THREAD();
+      _currently_handling_message = true;
+      BOOST_SCOPE_EXIT(this_) {
+        this_->_currently_handling_message = false;
+      } BOOST_SCOPE_EXIT_END
       _node->on_message( this, received_message );
     }
 
@@ -437,16 +444,22 @@ namespace graphene { namespace net
       _remote_endpoint = new_remote_endpoint;
     }
 
-    bool peer_connection::busy()
+    bool peer_connection::busy() const
     {
       VERIFY_CORRECT_THREAD();
       return !items_requested_from_peer.empty() || !sync_items_requested_from_peer.empty() || item_ids_requested_from_peer;
     }
 
-    bool peer_connection::idle()
+    bool peer_connection::idle() const
     {
       VERIFY_CORRECT_THREAD();
       return !busy();
+    }
+
+    bool peer_connection::is_currently_handling_message() const
+    {
+      VERIFY_CORRECT_THREAD();
+      return _currently_handling_message;
     }
 
     bool peer_connection::is_transaction_fetching_inhibited() const
