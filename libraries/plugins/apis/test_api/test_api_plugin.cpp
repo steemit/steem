@@ -9,12 +9,7 @@ test_api_plugin::~test_api_plugin() {}
 
 void test_api_plugin::plugin_initialize( const variables_map& options )
 {
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      name(),
-      {
-         API_METHOD( test_api_a ),
-         API_METHOD( test_api_b )
-      });
+   JSON_RPC_REGISTER_API( name(), (test_api_a)(test_api_b) );
 }
 
 void test_api_plugin::plugin_startup() {}

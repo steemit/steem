@@ -20,16 +20,18 @@ class follow_api_impl
    public:
       follow_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API( get_followers )
-      DECLARE_API( get_following )
-      DECLARE_API( get_follow_count )
-      DECLARE_API( get_feed_entries )
-      DECLARE_API( get_feed )
-      DECLARE_API( get_blog_entries )
-      DECLARE_API( get_blog )
-      DECLARE_API( get_account_reputations )
-      DECLARE_API( get_reblogged_by )
-      DECLARE_API( get_blog_authors )
+      DECLARE_API(
+         (get_followers)
+         (get_following)
+         (get_follow_count)
+         (get_feed_entries)
+         (get_feed)
+         (get_blog_entries)
+         (get_blog)
+         (get_account_reputations)
+         (get_reblogged_by)
+         (get_blog_authors)
+      )
 
       steemit::chain::database& _db;
 };
@@ -296,20 +298,19 @@ follow_api::follow_api()
 {
    my = std::make_shared< detail::follow_api_impl >();
 
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_FOLLOW_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_followers ),
-         API_METHOD( get_following ),
-         API_METHOD( get_follow_count ),
-         API_METHOD( get_feed_entries ),
-         API_METHOD( get_feed ),
-         API_METHOD( get_blog_entries ),
-         API_METHOD( get_blog ),
-         API_METHOD( get_account_reputations ),
-         API_METHOD( get_reblogged_by ),
-         API_METHOD( get_blog_authors )
-      });
+      (get_followers)
+      (get_following)
+      (get_follow_count)
+      (get_feed_entries)
+      (get_feed)
+      (get_blog_entries)
+      (get_blog)
+      (get_account_reputations)
+      (get_reblogged_by)
+      (get_blog_authors)
+   );
 }
 
 DEFINE_API( follow_api, get_followers )

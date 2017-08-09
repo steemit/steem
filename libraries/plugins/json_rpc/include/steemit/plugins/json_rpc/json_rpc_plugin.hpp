@@ -37,14 +37,20 @@
 
 #define STEEM_JSON_RPC_PLUGIN_NAME "json_rpc"
 
-#define API_METHOD( handle )                                                        \
-{ std::string( #handle ),                                                           \
-   [this]( const fc::variant& args ) -> fc::variant                                 \
-   {                                                                                \
-      /*fc::variant v;*/                                                                \
-      return fc::variant( this->handle( args.as< handle ## _args >() ) );            \
-      /*return v;*/                                                                     \
-   }                                                                                \
+#define JSON_RPC_API_METHOD_HELPER( handle )                               \
+   [this]( const fc::variant& args ) -> fc::variant                        \
+   {                                                                       \
+      return fc::variant( this->handle( args.as< handle ## _args >() ) );  \
+   }
+
+#define JSON_RPC_API_METHOD( r, api_name, method ) \
+   jsonrpc.add_api_method( api_name, std::string( #method ), JSON_RPC_API_METHOD_HELPER( method ) );
+
+
+#define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                                       \
+{                                                                                               \
+   auto& jsonrpc = appbase::app().get_plugin< steemit::plugins::json_rpc::json_rpc_plugin >();  \
+   BOOST_PP_SEQ_FOR_EACH( JSON_RPC_API_METHOD, API_NAME, METHODS )                              \
 }
 
 namespace steemit { namespace plugins { namespace json_rpc {
@@ -57,7 +63,7 @@ using namespace appbase;
  *
  * Arguments: Variant object of propert arg type
  */
-typedef std::function< fc::variant(const fc::variant&) > api_call;
+typedef std::function< fc::variant(const fc::variant&) > api_method;
 
 /**
  * @brief An API, containing APIs and Methods
@@ -66,7 +72,7 @@ typedef std::function< fc::variant(const fc::variant&) > api_call;
  * name defined by the API class. The api_call functions
  * are compile time bindings of names to methods.
  */
-typedef std::map< string, api_call > api_description;
+typedef std::map< string, api_method > api_description;
 
 namespace detail
 {
@@ -108,7 +114,7 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
       void plugin_startup();
       void plugin_shutdown();
 
-      void add_api( const string& api_name, const api_description& api );
+      void add_api_method( const string& api_name, const string& method_name, const api_method& api );
       string call( const string& body );
 
    private:

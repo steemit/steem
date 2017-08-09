@@ -33,7 +33,7 @@ class witness_api
    public:
       witness_api();
 
-      get_account_bandwidth_return get_account_bandwidth( const get_account_bandwidth_args& args );
+      DECLARE_API( (get_account_bandwidth) )
 
    private:
       std::shared_ptr< detail::witness_api_impl > my;

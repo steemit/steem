@@ -112,13 +112,15 @@ class market_history_api
    public:
       market_history_api();
 
-      DECLARE_API( get_ticker )
-      DECLARE_API( get_volume )
-      DECLARE_API( get_order_book )
-      DECLARE_API( get_trade_history )
-      DECLARE_API( get_recent_trades )
-      DECLARE_API( get_market_history )
-      DECLARE_API( get_market_history_buckets )
+      DECLARE_API(
+         (get_ticker)
+         (get_volume)
+         (get_order_book)
+         (get_trade_history)
+         (get_recent_trades)
+         (get_market_history)
+         (get_market_history_buckets)
+      )
 
    private:
       std::shared_ptr< detail::market_history_api_impl > my;

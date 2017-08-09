@@ -76,9 +76,11 @@ class account_history_api
    public:
       account_history_api();
 
-      DECLARE_API( get_ops_in_block )
-      DECLARE_API( get_transaction )
-      DECLARE_API( get_account_history )
+      DECLARE_API(
+         (get_ops_in_block)
+         (get_transaction)
+         (get_account_history)
+      )
 
    private:
       std::shared_ptr< detail::account_history_api_impl > my;

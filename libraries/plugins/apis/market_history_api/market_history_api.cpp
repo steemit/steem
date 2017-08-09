@@ -14,13 +14,15 @@ class market_history_api_impl
    public:
       market_history_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API( get_ticker )
-      DECLARE_API( get_volume )
-      DECLARE_API( get_order_book )
-      DECLARE_API( get_trade_history )
-      DECLARE_API( get_recent_trades )
-      DECLARE_API( get_market_history )
-      DECLARE_API( get_market_history_buckets )
+      DECLARE_API(
+         (get_ticker)
+         (get_volume)
+         (get_order_book)
+         (get_trade_history)
+         (get_recent_trades)
+         (get_market_history)
+         (get_market_history_buckets)
+      )
 
       steemit::chain::database& _db;
 };
@@ -189,17 +191,16 @@ market_history_api::market_history_api()
 {
    my = std::make_shared< detail::market_history_api_impl >();
 
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_MARKET_HISTORY_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_ticker ),
-         API_METHOD( get_volume ),
-         API_METHOD( get_order_book ),
-         API_METHOD( get_trade_history ),
-         API_METHOD( get_recent_trades ),
-         API_METHOD( get_market_history ),
-         API_METHOD( get_market_history_buckets )
-      });
+      (get_ticker)
+      (get_volume)
+      (get_order_book)
+      (get_trade_history)
+      (get_recent_trades)
+      (get_market_history)
+      (get_market_history_buckets)
+   );
 }
 
 DEFINE_API( market_history_api, get_ticker )
