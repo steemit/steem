@@ -17,7 +17,7 @@ class account_by_key_plugin : public appbase::plugin< account_by_key_plugin >
 
       APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
 
-      static std::string& name() { static std::string name = STEEM_ACCOUNT_BY_KEY_PLUGIN_NAME; return name; }
+      static const std::string& name() { static std::string name = STEEM_ACCOUNT_BY_KEY_PLUGIN_NAME; return name; }
 
       virtual void set_program_options( options_description& cli, options_description& cfg ) override;
       void plugin_initialize( const variables_map& options );

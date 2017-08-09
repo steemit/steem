@@ -22,7 +22,7 @@ class follow_plugin : public appbase::plugin< follow_plugin >
 
       APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
 
-      static std::string& name() { static std::string name = STEEM_FOLLOW_PLUGIN_NAME; return name; }
+      static const std::string& name() { static std::string name = STEEM_FOLLOW_PLUGIN_NAME; return name; }
 
       void set_program_options(
          options_description& cli,

@@ -22,7 +22,7 @@ public:
    witness_api_plugin();
    virtual ~witness_api_plugin();
 
-   static std::string& name() { static std::string name = STEEM_WITNESS_API_PLUGIN_NAME; return name; }
+   static const std::string& name() { static std::string name = STEEM_WITNESS_API_PLUGIN_NAME; return name; }
 
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
