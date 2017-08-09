@@ -1622,6 +1622,7 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
 {
    FC_ASSERT( !is_locked() );
 
+   steemit::chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
    witness_update_operation op;
 
    optional< database_api::api_witness_object > wit = my->_remote_api->get_witness_by_account( witness_account_name );
@@ -1640,6 +1641,8 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
    op.owner = witness_account_name;
    op.block_signing_key = block_signing_key;
    op.props = props;
+   op.has_hardfork = db.has_hardfork( STEEMIT_HARDFORK_0_1 );
+   op.head_block_num = db.head_block_num();
 
    signed_transaction tx;
    tx.operations.push_back(op);

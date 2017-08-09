@@ -422,6 +422,8 @@ namespace steemit { namespace protocol {
       public_key_type   block_signing_key;
       chain_properties  props;
       asset             fee; ///< the fee paid to register a new witness, should be 10x current block production pay
+      bool              has_hardfork;
+      uint32_t          head_block_num;
 
       void validate()const;
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }

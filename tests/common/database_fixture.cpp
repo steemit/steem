@@ -319,6 +319,8 @@ const witness_object& database_fixture::witness_create(
       op.url = url;
       op.block_signing_key = signing_key;
       op.fee = asset( fee, STEEM_SYMBOL );
+      op.has_hardfork = db->has_hardfork( STEEMIT_HARDFORK_0_1 );
+      op.head_block_num = db->head_block_num();
 
       trx.operations.push_back( op );
       trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
