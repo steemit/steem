@@ -1662,14 +1662,14 @@ void database::process_comment_cashout()
       // Add all reward funds to the local cache and decay their recent rshares
       modify( *itr, [&]( reward_fund_object& rfo )
       {
-         fc::microseconds decay_rate;
+         fc::microseconds decay_time;
 
          if( has_hardfork( STEEMIT_HARDFORK_0_19__1051 ) )
-            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19;
+            decay_time = STEEM_RECENT_RSHARES_DECAY_TIME_HF19;
          else
-            decay_rate = STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17;
+            decay_time = STEEM_RECENT_RSHARES_DECAY_TIME_HF17;
 
-         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / decay_rate.to_seconds();
+         rfo.recent_claims -= ( rfo.recent_claims * ( head_block_time() - rfo.last_update ).to_seconds() ) / decay_time.to_seconds();
          rfo.last_update = head_block_time();
       });
 
