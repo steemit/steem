@@ -189,15 +189,7 @@ namespace steemit { namespace protocol {
    {
       validate_account_name( owner );
 
-      if ( has_hardfork )
-      {
-        FC_ASSERT( url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "URL is too long" );
-      }
-      else if( url.size() > STEEMIT_MAX_WITNESS_URL_LENGTH )
-      {
-        // after HF, above check can be moved to validate() if reindex doesn't show this warning
-        wlog( "URL is too long in block ${b}", ("b", head_block_num+1) );
-      }
+      FC_ASSERT( url.size() <= STEEMIT_MAX_WITNESS_URL_LENGTH, "URL is too long" );
 
       FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
       FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
