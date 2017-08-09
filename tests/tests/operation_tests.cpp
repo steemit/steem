@@ -1584,8 +1584,6 @@ BOOST_AUTO_TEST_CASE( witness_update_authorities )
       op.url = "foo.bar";
       op.fee = ASSET( "1.000 TESTS" );
       op.block_signing_key = signing_key.get_public_key();
-      op.has_hardfork = db->has_hardfork( STEEMIT_HARDFORK_0_1 );
-      op.head_block_num = db->head_block_num();
 
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
@@ -1641,8 +1639,6 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.url = "foo.bar";
       op.fee = ASSET( "1.000 TESTS" );
       op.block_signing_key = signing_key.get_public_key();
-      op.has_hardfork = db->has_hardfork( STEEMIT_HARDFORK_0_1 );
-      op.head_block_num = db->head_block_num();
       op.props.account_creation_fee = asset( STEEMIT_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL);
       op.props.maximum_block_size = STEEMIT_MIN_BLOCK_SIZE_LIMIT + 100;
 
