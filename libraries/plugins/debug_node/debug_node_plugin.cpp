@@ -1,8 +1,6 @@
-
-#include <steemit/app/application.hpp>
-#include <steemit/app/plugin.hpp>
-#include <steemit/plugins/debug_node/debug_node_api.hpp>
 #include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+
+#include <steemit/chain/witness_objects.hpp>
 
 #include <fc/io/buffered_iostream.hpp>
 #include <fc/io/fstream.hpp>
@@ -12,39 +10,36 @@
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>
 
-namespace steemit { namespace plugin { namespace debug_node {
+namespace steemit { namespace plugins { namespace debug_node {
 
 namespace detail {
 class debug_node_plugin_impl
 {
    public:
-      debug_node_plugin_impl( debug_node_plugin* self );
+      debug_node_plugin_impl();
       virtual ~debug_node_plugin_impl();
-
-      debug_node_plugin* _self;
 
       uint32_t                                  _mining_threads = 1;
       std::vector<std::shared_ptr<fc::thread> > _thread_pool;
+      chain::database&                          _db;
 };
 
-debug_node_plugin_impl::debug_node_plugin_impl( debug_node_plugin* self )
-   : _self(self)
-{ }
+debug_node_plugin_impl::debug_node_plugin_impl() :
+   _db( appbase::app().get_plugin< chain::chain_plugin >().db() ) {}
 debug_node_plugin_impl::~debug_node_plugin_impl() {}
+
 }
 
 private_key_storage::private_key_storage() {}
 private_key_storage::~private_key_storage() {}
 
-debug_node_plugin::debug_node_plugin( application* app ) : plugin( app )
-{
-   _my = std::make_shared< detail::debug_node_plugin_impl >( this );
-}
+debug_node_plugin::debug_node_plugin() :
+   appbase::plugin< debug_node_plugin >( STEEM_DEBUG_NODE_PLUGIN_NAME ) {}
 debug_node_plugin::~debug_node_plugin() {}
 
 struct debug_mine_state
@@ -128,22 +123,18 @@ void debug_node_plugin::debug_mine_work(
    return;
 }
 
-std::string debug_node_plugin::plugin_name()const
+void debug_node_plugin::set_program_options(
+   options_description& cli,
+   options_description& cfg )
 {
-   return "debug_node";
-}
-
-void debug_node_plugin::plugin_set_program_options(
-   boost::program_options::options_description& cli,
-   boost::program_options::options_description& cfg )
-{
-   cli.add_options()
+   cfg.add_options()
       ("edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
-   cfg.add(cli);
 }
 
-void debug_node_plugin::plugin_initialize( const boost::program_options::variables_map& options )
+void debug_node_plugin::plugin_initialize( const variables_map& options )
 {
+   _my = std::make_shared< detail::debug_node_plugin_impl >();
+
    if( options.count("edit-script") > 0 )
    {
       _edit_scripts = options.at("edit-script").as< std::vector< std::string > >();
@@ -158,19 +149,13 @@ void debug_node_plugin::plugin_initialize( const boost::program_options::variabl
    _my->_thread_pool.resize( _my->_mining_threads );
    for( uint32_t i = 0; i < _my->_mining_threads; ++i )
       _my->_thread_pool[i] = std::make_shared<fc::thread>();
+
+   // connect needed signals
+   _applied_block_conn  = _my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
 }
 
 void debug_node_plugin::plugin_startup()
 {
-   if( logging ) ilog("debug_node_plugin::plugin_startup() begin");
-   chain::database& db = database();
-
-   // connect needed signals
-
-   _applied_block_conn  = db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
-
-   app().register_api_factory< debug_node_api >( "debug_node_api" );
-
    /*for( const std::string& fn : _edit_scripts )
    {
       std::shared_ptr< fc::ifstream > stream = std::make_shared< fc::ifstream >( fc::path(fn) );
@@ -179,6 +164,8 @@ void debug_node_plugin::plugin_startup()
       load_debug_updates( v.get_object() );
    }*/
 }
+
+chain::database& debug_node_plugin::database() { return _my->_db; }
 
 /*
 void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool logging )
@@ -284,7 +271,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    steemit::chain::public_key_type debug_public_key;
    if( debug_key != "" )
    {
-      debug_private_key = graphene::utilities::wif_to_key( debug_key );
+      debug_private_key = steemit::utilities::wif_to_key( debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
@@ -437,6 +424,4 @@ void debug_node_plugin::plugin_shutdown()
    return;
 }
 
-} } }
-
-STEEMIT_DEFINE_PLUGIN( debug_node, steemit::plugin::debug_node::debug_node_plugin )
+} } } // steemit::plugins::debug_node

@@ -22,7 +22,7 @@ void reset_virtual_schedule_time( database& db )
       {
          wobj.virtual_position = fc::uint128();
          wobj.virtual_last_update = wso.current_virtual_time;
-         wobj.virtual_scheduled_time = VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
+         wobj.virtual_scheduled_time = STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wobj.votes.value+1);
       } );
    }
 }
@@ -161,7 +161,7 @@ void update_witness_schedule4( database& db )
    bool reset_virtual_time = false;
    for( auto itr = processed_witnesses.begin(); itr != processed_witnesses.end(); ++itr )
    {
-      auto new_virtual_scheduled_time = new_virtual_time + VIRTUAL_SCHEDULE_LAP_LENGTH2 / ((*itr)->votes.value+1);
+      auto new_virtual_scheduled_time = new_virtual_time + STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 / ((*itr)->votes.value+1);
       if( new_virtual_scheduled_time < new_virtual_time )
       {
          reset_virtual_time = true; /// overflow
@@ -367,9 +367,9 @@ void update_witness_schedule(database& db)
 
                /// this witness will produce again here
                if( db.has_hardfork( STEEMIT_HARDFORK_0_2 ) )
-                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
+                  wo.virtual_scheduled_time += STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 / (wo.votes.value+1);
                else
-                  wo.virtual_scheduled_time += VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
+                  wo.virtual_scheduled_time += STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH / (wo.votes.value+1);
             } );
          }
       }

@@ -10,8 +10,8 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/reflect/variant.hpp>
-#include <fc/optional.hpp>
 #include <fc/safe.hpp>
+#include <fc/optional.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/string.hpp>
 #include <fc/io/raw.hpp>

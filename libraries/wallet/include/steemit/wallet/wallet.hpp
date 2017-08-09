@@ -1,24 +1,19 @@
 #pragma once
 
-#include <steemit/app/api.hpp>
-#include <steemit/private_message/private_message_plugin.hpp>
-#include <steemit/follow/follow_plugin.hpp>
-#include <steemit/app/steem_api_objects.hpp>
+#include <steemit/wallet/remote_node_api.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steemit/utilities/key_conversion.hpp>
 
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>
-
-using namespace steemit::app;
-using namespace steemit::chain;
-using namespace graphene::utilities;
-using namespace std;
+#include <fc/api.hpp>
 
 namespace steemit { namespace wallet {
 
-using steemit::app::discussion;
-using namespace steemit::private_message;
+using namespace std;
+
+using namespace steemit::utilities;
+using namespace steemit::protocol;
 
 typedef uint16_t transaction_handle_type;
 
@@ -85,7 +80,7 @@ class wallet_api_impl;
 class wallet_api
 {
    public:
-      wallet_api( const wallet_data& initial_data, fc::api<login_api> rapi );
+      wallet_api( const wallet_data& initial_data, fc::api< remote_node_api > rapi );
       virtual ~wallet_api();
 
       bool copy_wallet_file( string destination_filename );
@@ -116,35 +111,30 @@ class wallet_api
        *
        * @returns Public block data on the blockchain
        */
-      optional<signed_block_api_obj>    get_block( uint32_t num );
+      optional< database_api::api_signed_block_object > get_block( uint32_t num );
 
       /** Returns sequence of operations included/generated in a specified block
        *
        * @param block_num Block height of specified block
        * @param only_virtual Whether to only return virtual operations
        */
-      vector<applied_operation>           get_ops_in_block( uint32_t block_num, bool only_virtual = true );
+      vector< account_history::api_operation_object > get_ops_in_block( uint32_t block_num, bool only_virtual = true );
 
       /** Return the current price feed history
        *
        * @returns Price feed history data on the blockchain
        */
-      feed_history_api_obj                 get_feed_history()const;
+      database_api::api_feed_history_object get_feed_history()const;
 
       /**
        * Returns the list of witnesses producing blocks in the current round (21 Blocks)
        */
-      vector<account_name_type>                      get_active_witnesses()const;
-
-      /**
-       * Returns the queue of pow miners waiting to produce blocks.
-       */
-      vector<account_name_type>                      get_miner_queue()const;
+      vector< account_name_type > get_active_witnesses()const;
 
       /**
        * Returns the state info associated with the URL
        */
-      app::state                          get_state( string url );
+      condenser_api::state get_state( string url );
 
       /**
        * Returns vesting withdraw routes for an account.
@@ -152,12 +142,12 @@ class wallet_api
        * @param account Account to query routes
        * @param type Withdraw type type [incoming, outgoing, all]
        */
-      vector< withdraw_route >            get_withdraw_routes( string account, withdraw_route_type type = all )const;
+      vector< database_api::api_withdraw_vesting_route_object > get_withdraw_routes( string account, condenser_api::withdraw_route_type type = condenser_api::all )const;
 
       /**
        *  Gets the account information for all accounts for which this wallet has a private key
        */
-      vector<account_api_obj>              list_my_accounts();
+      vector< database_api::api_account_object > list_my_accounts();
 
       /** Lists all accounts registered in the blockchain.
        * This returns a list of all account names and their account ids, sorted by account name.
@@ -171,7 +161,7 @@ class wallet_api
        * @param limit the maximum number of accounts to return (max: 1000)
        * @returns a list of accounts mapping account names to account ids
        */
-      set<string>  list_accounts(const string& lowerbound, uint32_t limit);
+      vector< account_name_type > list_accounts(const string& lowerbound, uint32_t limit);
 
       /** Returns the block chain's rapidly-changing properties.
        * The returned object contains information that changes every block interval
@@ -179,14 +169,14 @@ class wallet_api
        * @see \c get_global_properties() for less-frequently changing properties
        * @returns the dynamic global properties
        */
-      dynamic_global_property_api_obj    get_dynamic_global_properties() const;
+      database_api::api_dynamic_global_property_object get_dynamic_global_properties() const;
 
       /** Returns information about the given account.
        *
        * @param account_name the name of the account to provide information about
        * @returns the public account data stored in the blockchain
        */
-      account_api_obj                     get_account( string account_name ) const;
+      database_api::api_account_object get_account( string account_name ) const;
 
       /** Returns the current wallet filename.
        *
@@ -212,7 +202,7 @@ class wallet_api
       /**
        * Returns transaction by ID.
        */
-      annotated_signed_transaction      get_transaction( transaction_id_type trx_id )const;
+      annotated_signed_transaction get_transaction( transaction_id_type trx_id )const;
 
       /** Checks whether the wallet has just been created and has not yet had a password set.
        *
@@ -533,13 +523,13 @@ class wallet_api
        * @param limit the maximum number of witnesss to return (max: 1000)
        * @returns a list of witnesss mapping witness names to witness ids
        */
-      set<account_name_type>       list_witnesses(const string& lowerbound, uint32_t limit);
+      vector< account_name_type > list_witnesses(const string& lowerbound, uint32_t limit);
 
       /** Returns information about the given witness.
        * @param owner_account the name or id of the witness account owner, or the id of the witness
        * @returns the information about the witness stored in the block chain
        */
-      optional< witness_api_obj > get_witness(string owner_account);
+      optional< database_api::api_witness_object > get_witness(string owner_account);
 
       /** Returns conversion requests by an account
        *
@@ -547,7 +537,7 @@ class wallet_api
        *
        * @returns All pending conversion requests by account
        */
-      vector<convert_request_api_obj> get_conversion_requests( string owner );
+      vector< database_api::api_convert_request_object > get_conversion_requests( string owner );
 
 
       /**
@@ -807,16 +797,13 @@ class wallet_api
        */
       operation get_prototype_operation(string operation_type);
 
-      void network_add_nodes( const vector<string>& nodes );
-      vector< variant > network_get_connected_peers();
-
       /**
        * Gets the current order book for STEEM:SBD
        *
        * @param limit Maximum number of orders to return for bids and asks. Max is 1000.
        */
-      order_book  get_order_book( uint32_t limit = 1000 );
-      vector<extended_limit_order>  get_open_orders( string accountname );
+      market_history::get_order_book_return get_order_book( uint32_t limit = 1000 );
+      vector< condenser_api::extended_limit_order > get_open_orders( string accountname );
 
       /**
        *  Creates a limit order at the price amount_to_sell / min_to_receive and will deduct amount_to_sell from account
@@ -853,11 +840,6 @@ class wallet_api
        *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction post_comment( string author, string permlink, string parent_author, string parent_permlink, string title, string body, string json, bool broadcast );
-
-      annotated_signed_transaction      send_private_message( string from, string to, string subject, string body, bool broadcast );
-      vector<extended_message_object>   get_inbox( string account, fc::time_point newest, uint32_t limit );
-      vector<extended_message_object>   get_outbox( string account, fc::time_point newest, uint32_t limit );
-      message_body try_decrypt_message( const message_api_obj& mo );
 
       /**
        * Vote on a comment to be paid STEEM
@@ -920,7 +902,7 @@ class wallet_api
        */
       annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
 
-      vector< owner_authority_history_api_obj > get_owner_history( string account )const;
+      vector< database_api::api_owner_authority_history_object > get_owner_history( string account )const;
 
       /**
        * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making
@@ -939,7 +921,7 @@ class wallet_api
        *  @param from - the absolute sequence number, -1 means most recent, limit is the number of operations before from.
        *  @param limit - the maximum number of items that can be queried (0 to 1000], must be less than from
        */
-      map<uint32_t,applied_operation> get_account_history( string account, uint32_t from, uint32_t limit );
+      map< uint32_t, account_history::api_operation_object > get_account_history( string account, uint32_t from, uint32_t limit );
 
 
       /**
@@ -959,7 +941,7 @@ class wallet_api
       /**
        * Checks memos against private keys on account and imported in wallet
        */
-      void check_memo( const string& memo, const account_api_obj& account )const;
+      void check_memo( const string& memo, const database_api::api_account_object& account )const;
 
       /**
        *  Returns the encrypted memo if memo starts with '#' otherwise returns memo
@@ -1072,21 +1054,12 @@ FC_API( steemit::wallet::wallet_api,
         (decline_voting_rights)
         (claim_reward_balance)
 
-        // private message api
-        (send_private_message)
-        (get_inbox)
-        (get_outbox)
-
         /// helper api
         (get_prototype_operation)
         (serialize_transaction)
         (sign_transaction)
 
-        (network_add_nodes)
-        (network_get_connected_peers)
-
         (get_active_witnesses)
-        (get_miner_queue)
         (get_transaction)
       )
 

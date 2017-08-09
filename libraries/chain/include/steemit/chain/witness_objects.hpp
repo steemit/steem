@@ -132,8 +132,8 @@ namespace steemit { namespace chain {
 
          id_type           id;
 
-         witness_id_type   witness;
-         account_id_type   account;
+         account_name_type witness;
+         account_name_type account;
    };
 
    class witness_schedule_object : public object< witness_schedule_object_type, witness_schedule_object >
@@ -205,20 +205,20 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       witness_vote_object,
       indexed_by<
-         ordered_unique< tag<by_id>, member< witness_vote_object, witness_vote_id_type, &witness_vote_object::id > >,
-         ordered_unique< tag<by_account_witness>,
+         ordered_unique< tag< by_id >, member< witness_vote_object, witness_vote_id_type, &witness_vote_object::id > >,
+         ordered_unique< tag< by_account_witness >,
             composite_key< witness_vote_object,
-               member<witness_vote_object, account_id_type, &witness_vote_object::account >,
-               member<witness_vote_object, witness_id_type, &witness_vote_object::witness >
+               member< witness_vote_object, account_name_type, &witness_vote_object::account >,
+               member< witness_vote_object, account_name_type, &witness_vote_object::witness >
             >,
-            composite_key_compare< std::less< account_id_type >, std::less< witness_id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >,
-         ordered_unique< tag<by_witness_account>,
+         ordered_unique< tag< by_witness_account >,
             composite_key< witness_vote_object,
-               member<witness_vote_object, witness_id_type, &witness_vote_object::witness >,
-               member<witness_vote_object, account_id_type, &witness_vote_object::account >
+               member< witness_vote_object, account_name_type, &witness_vote_object::witness >,
+               member< witness_vote_object, account_name_type, &witness_vote_object::account >
             >,
-            composite_key_compare< std::less< witness_id_type >, std::less< account_id_type > >
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >
       >, // indexed_by
       allocator< witness_vote_object >

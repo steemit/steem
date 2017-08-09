@@ -77,10 +77,10 @@ struct operation_get_required_auth_visitor
 } } // steemit::protocol
 
 //
-// Place DEFINE_OPERATION_TYPE in a .cpp file to define
+// Place STEEM_DEFINE_OPERATION_TYPE in a .cpp file to define
 // functions related to your operation type
 //
-#define DEFINE_OPERATION_TYPE( OperationType )                             \
+#define STEEM_DEFINE_OPERATION_TYPE( OperationType )                       \
 namespace fc {                                                             \
                                                                            \
 void to_variant( const OperationType& var,  fc::variant& vo )              \

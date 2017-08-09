@@ -1,6 +1,4 @@
-#include <steemit/tags/tags_plugin.hpp>
-
-#include <steemit/app/impacted.hpp>
+#include <steemit/plugins/tags/tags_plugin.hpp>
 
 #include <steemit/protocol/config.hpp>
 
@@ -19,7 +17,7 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace steemit { namespace tags {
+namespace steemit { namespace plugins { namespace tags {
 
 namespace detail {
 
@@ -28,25 +26,18 @@ using namespace steemit::protocol;
 class tags_plugin_impl
 {
    public:
-      tags_plugin_impl(tags_plugin& _plugin)
-         : _self( _plugin )
-      { }
+      tags_plugin_impl();
       virtual ~tags_plugin_impl();
-
-      steemit::chain::database& database()
-      {
-         return _self.database();
-      }
 
       void on_operation( const operation_notification& note );
 
-      tags_plugin& _self;
+      steemit::chain::database& _db;
 };
 
-tags_plugin_impl::~tags_plugin_impl()
-{
-   return;
-}
+tags_plugin_impl::tags_plugin_impl() :
+   _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+
+tags_plugin_impl::~tags_plugin_impl() {}
 
 struct operation_visitor
 {
@@ -118,15 +109,15 @@ struct operation_visitor
       });
    }
 
-   comment_metadata filter_tags( const comment_object& c ) const
+   comment_metadata filter_tags( const comment_object& c, const comment_content_object& con ) const
    {
       comment_metadata meta;
 
-      if( c.json_metadata.size() )
+      if( con.json_metadata.size() )
       {
          try
          {
-            meta = fc::json::from_string( to_string( c.json_metadata ) ).as< comment_metadata >();
+            meta = fc::json::from_string( to_string( con.json_metadata ) ).as< comment_metadata >();
          }
          catch( const fc::exception& e )
          {
@@ -270,9 +261,10 @@ struct operation_visitor
 
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
 
+#ifndef IS_LOW_MEM
       if( parse_tags )
       {
-         auto meta = filter_tags( c );
+         auto meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
          auto citr = comment_idx.lower_bound( c.id );
 
          map< string, const tag_object* > existing_tags;
@@ -311,6 +303,7 @@ struct operation_visitor
             remove_tag(*item);
       }
       else
+#endif
       {
          auto citr = comment_idx.lower_bound( c.id );
 
@@ -396,7 +389,7 @@ struct operation_visitor
          vector<string> part; part.reserve(4);
          auto path = op.memo;
          boost::split( part, path, boost::is_any_of("/") );
-         if( part[0].size() && part[0][0] == '@' )
+         if( part.size() > 1 && part[0].size() && part[0][0] == '@' )
          {
             auto acnt = part[0].substr(1);
             auto perm = part[1];
@@ -458,7 +451,8 @@ struct operation_visitor
       const auto& c = _db.get_comment( op.author, op.permlink );
       update_tags( c );
 
-      comment_metadata meta = filter_tags( c );
+#ifndef IS_LOW_MEM
+      comment_metadata meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
 
       for( const string& tag : meta.tags )
       {
@@ -467,6 +461,7 @@ struct operation_visitor
             ts.total_payout += op.payout;
          });
       }
+#endif
    }
 
    void operator()( const comment_payout_update_operation& op )const
@@ -485,7 +480,7 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
    try
    {
       /// plugins shouldn't ever throw
-      note.op.visit( operation_visitor( database() ) );
+      note.op.visit( operation_visitor( _db ) );
    }
    catch ( const fc::exception& e )
    {
@@ -499,40 +494,33 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
 
 } /// end detail namespace
 
-tags_plugin::tags_plugin( application* app )
-   : plugin( app ), my( new detail::tags_plugin_impl(*this) )
-{
-   chain::database& db = database();
-   add_plugin_index< tag_index        >(db);
-   add_plugin_index< tag_stats_index  >(db);
-   add_plugin_index< peer_stats_index >(db);
-   add_plugin_index< author_tag_stats_index >(db);
-}
+tags_plugin::tags_plugin()
+   : plugin< tags_plugin >( STEEM_TAGS_PLUGIN_NAME ) {}
 
-tags_plugin::~tags_plugin()
-{
-}
+tags_plugin::~tags_plugin() {}
 
-void tags_plugin::plugin_set_program_options(
+void tags_plugin::set_program_options(
    boost::program_options::options_description& cli,
    boost::program_options::options_description& cfg
    )
-{
-}
+{}
 
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing tags plugin" );
-   database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
+   my = std::make_unique< detail::tags_plugin_impl >();
 
-   app().register_api_factory<tag_api>("tag_api");
+   my->_db.post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
+
+   add_plugin_index< tag_index               >( my->_db );
+   add_plugin_index< tag_stats_index         >( my->_db );
+   add_plugin_index< peer_stats_index        >( my->_db );
+   add_plugin_index< author_tag_stats_index  >( my->_db );
+
 }
 
 
-void tags_plugin::plugin_startup()
-{
-}
+void tags_plugin::plugin_startup() {}
+void tags_plugin::plugin_shutdown() {}
 
-} } /// steemit::tags
-
-STEEMIT_DEFINE_PLUGIN( tags, steemit::tags::tags_plugin )
+} } } /// steemit::plugins::tags

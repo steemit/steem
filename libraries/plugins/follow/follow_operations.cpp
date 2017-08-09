@@ -1,8 +1,8 @@
-#include <steemit/follow/follow_operations.hpp>
+#include <steemit/plugins/follow/follow_operations.hpp>
 
 #include <steemit/protocol/operation_util_impl.hpp>
 
-namespace steemit { namespace follow {
+namespace steemit { namespace plugins{ namespace follow {
 
 void follow_operation::validate()const
 {
@@ -14,6 +14,6 @@ void reblog_operation::validate()const
    FC_ASSERT( account != author, "You cannot reblog your own content" );
 }
 
-} } //steemit::follow
+} } } //steemit::plugins::follow
 
-DEFINE_OPERATION_TYPE( steemit::follow::follow_plugin_operation )
+STEEM_DEFINE_OPERATION_TYPE( steemit::plugins::follow::follow_plugin_operation )

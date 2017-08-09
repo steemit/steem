@@ -44,7 +44,7 @@ namespace steemit { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), title( a ), body( a ), json_metadata( a ), beneficiaries( a )
+            :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a )
          {
             c( *this );
          }
@@ -57,9 +57,6 @@ namespace steemit { namespace chain {
          account_name_type author;
          shared_string     permlink;
 
-         shared_string     title;
-         shared_string     body;
-         shared_string     json_metadata;
          time_point_sec    last_update;
          time_point_sec    created;
          time_point_sec    active; ///< the last time this post was "touched" by voting or reply
@@ -101,6 +98,26 @@ namespace steemit { namespace chain {
          bip::vector< beneficiary_route_type, allocator< beneficiary_route_type > > beneficiaries;
    };
 
+   class comment_content_object : public object< comment_content_object_type, comment_content_object >
+   {
+      comment_content_object() = delete;
+
+      public:
+         template< typename Constructor, typename Allocator >
+         comment_content_object( Constructor&& c, allocator< Allocator > a ) :
+            title( a ), body( a ), json_metadata( a )
+         {
+            c( *this );
+         }
+
+         id_type           id;
+
+         comment_id_type   comment;
+
+         shared_string     title;
+         shared_string     body;
+         shared_string     json_metadata;
+   };
 
    /**
     * This index maintains the set of voter/comment pairs that have been used, voters cannot
@@ -171,15 +188,7 @@ namespace steemit { namespace chain {
    struct by_permlink; /// author, perm
    struct by_root;
    struct by_parent;
-   struct by_active; /// parent_auth, active
-   struct by_pending_payout;
-   struct by_total_pending_payout;
    struct by_last_update; /// parent_auth, last_update
-   struct by_created; /// parent_auth, last_update
-   struct by_payout; /// parent_auth, last_update
-   struct by_blog;
-   struct by_votes;
-   struct by_responses;
    struct by_author_last_update;
 
    /**
@@ -188,7 +197,7 @@ namespace steemit { namespace chain {
    typedef multi_index_container<
       comment_object,
       indexed_by<
-         /// CONSENUSS INDICIES - used by evaluators
+         /// CONSENSUS INDICES - used by evaluators
          ordered_unique< tag< by_id >, member< comment_object, comment_id_type, &comment_object::id > >,
          ordered_unique< tag< by_cashout_time >,
             composite_key< comment_object,
@@ -241,12 +250,23 @@ namespace steemit { namespace chain {
       allocator< comment_object >
    > comment_index;
 
+   struct by_comment;
+
+   typedef multi_index_container<
+      comment_content_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< comment_content_object, comment_content_id_type, &comment_content_object::id > >,
+         ordered_unique< tag< by_comment >, member< comment_content_object, comment_id_type, &comment_content_object::comment > >
+      >,
+      allocator< comment_content_object >
+   > comment_content_index;
+
 } } // steemit::chain
 
 FC_REFLECT( steemit::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
-             (title)(body)(json_metadata)(last_update)(created)(active)(last_payout)
+             (last_update)(created)(active)(last_payout)
              (depth)(children)
              (net_rshares)(abs_rshares)(vote_rshares)
              (children_abs_rshares)(cashout_time)(max_cashout_time)
@@ -255,6 +275,10 @@ FC_REFLECT( steemit::chain::comment_object,
              (beneficiaries)
           )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
+
+FC_REFLECT( steemit::chain::comment_content_object,
+            (id)(comment)(title)(body)(json_metadata) )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_content_object, steemit::chain::comment_content_index )
 
 FC_REFLECT( steemit::chain::comment_vote_object,
              (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
