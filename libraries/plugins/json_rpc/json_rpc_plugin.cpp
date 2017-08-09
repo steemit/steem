@@ -183,9 +183,7 @@ namespace detail
 using detail::json_rpc_error;
 using detail::json_rpc_response;
 
-json_rpc_plugin::json_rpc_plugin() :
-   appbase::plugin< json_rpc_plugin >( STEEM_JSON_RPC_PLUGIN_NAME ),
-   _my( new detail::json_rpc_plugin_impl() ) {}
+json_rpc_plugin::json_rpc_plugin() : _my( new detail::json_rpc_plugin_impl() ) {}
 json_rpc_plugin::~json_rpc_plugin() {}
 
 void json_rpc_plugin::plugin_initialize( const variables_map& options ) {}

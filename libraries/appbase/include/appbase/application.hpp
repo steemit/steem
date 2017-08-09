@@ -52,8 +52,8 @@ namespace appbase {
             if( existing )
                return *existing;
 
-            auto plug = new Plugin();
-            plugins[plug->name()].reset( plug );
+            auto plug = std::make_shared< Plugin >();
+            plugins[Plugin::name()] = plug;
             plug->register_dependencies();
             return *plug;
          }
@@ -61,7 +61,7 @@ namespace appbase {
          template< typename Plugin >
          Plugin* find_plugin()const
          {
-            return dynamic_cast< Plugin* >( find_plugin( Plugin().name() ) );
+            return dynamic_cast< Plugin* >( find_plugin( Plugin::name() ) );
          }
 
          template< typename Plugin >
@@ -96,7 +96,7 @@ namespace appbase {
 
       private:
          application(); ///< private because application is a singlton that should be accessed via instance()
-         map< string, std::unique_ptr< abstract_plugin > >  plugins; ///< all registered plugins
+         map< string, std::shared_ptr< abstract_plugin > >  plugins; ///< all registered plugins
          vector< abstract_plugin* >                         initialized_plugins; ///< stored in the order they were started running
          vector< abstract_plugin* >                         running_plugins; ///< stored in the order they were started running
          std::shared_ptr< boost::asio::io_service >         io_serv;
@@ -115,11 +115,10 @@ namespace appbase {
    class plugin : public abstract_plugin
    {
       public:
-         plugin() : _name( boost::core::demangle( typeid( Impl ).name() ) ) {}
          virtual ~plugin() {}
 
-         virtual state get_state()const override         { return _state; }
-         virtual const std::string& name()const override { return _name; }
+         virtual state get_state()const override { return _state; }
+         virtual const std::string& get_name()const override final { return Impl::name(); }
 
          virtual void register_dependencies()
          {
@@ -162,10 +161,9 @@ namespace appbase {
          }
 
       protected:
-         plugin( const string& name ) : _name( name ) {}
+         plugin() {}
 
       private:
          state _state = abstract_plugin::registered;
-         std::string _name;
    };
 }

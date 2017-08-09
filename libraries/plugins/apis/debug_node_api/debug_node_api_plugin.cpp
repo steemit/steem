@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace debug_node {
 
-debug_node_api_plugin::debug_node_api_plugin() : appbase::plugin< debug_node_api_plugin >( STEEM_DEBUG_NODE_API_PLUGIN_NAME ) {}
+debug_node_api_plugin::debug_node_api_plugin() {}
 debug_node_api_plugin::~debug_node_api_plugin() {}
 
 void debug_node_api_plugin::set_program_options( options_description& cli, options_description& cfg ) {}

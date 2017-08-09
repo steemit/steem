@@ -153,8 +153,7 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
 
 } // detail
 
-market_history_plugin::market_history_plugin()
-   : plugin< market_history_plugin >( STEEM_MARKET_HISTORY_PLUGIN_NAME ) {}
+market_history_plugin::market_history_plugin() {}
 market_history_plugin::~market_history_plugin() {}
 
 void market_history_plugin::set_program_options(

@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace tags {
 
-tags_api_plugin::tags_api_plugin() : appbase::plugin< tags_api_plugin >( STEEM_TAGS_API_PLUGIN_NAME ) {}
+tags_api_plugin::tags_api_plugin() {}
 tags_api_plugin::~tags_api_plugin() {}
 
 void tags_api_plugin::set_program_options( options_description& cli, options_description& cfg ) {}
