@@ -2690,58 +2690,58 @@ FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
 
 struct process_header_visitor
 {
-    process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
+   process_header_visitor( const std::string& witness, database& db ) : _witness( witness ), _db( db ) {}
 
-    typedef void result_type;
+   typedef void result_type;
 
-    const std::string& _witness;
-    database& _db;
+   const std::string& _witness;
+   database& _db;
 
-    void operator()( const void_t& obj ) const
-    {
-        //Nothing to do.
-    }
+   void operator()( const void_t& obj ) const
+   {
+      //Nothing to do.
+   }
 
-    void operator()( const version& reported_version ) const
-    {
-        const auto& signing_witness = _db.get_witness( _witness );
-        //idump( (next_block.witness)(signing_witness.running_version)(reported_version) );
+   void operator()( const version& reported_version ) const
+   {
+      const auto& signing_witness = _db.get_witness( _witness );
+      //idump( (next_block.witness)(signing_witness.running_version)(reported_version) );
 
-        if( reported_version != signing_witness.running_version )
-        {
-            _db.modify( signing_witness, [&]( witness_object& wo )
-            {
-                wo.running_version = reported_version;
-            });
-        }
-    }
+      if( reported_version != signing_witness.running_version )
+      {
+         _db.modify( signing_witness, [&]( witness_object& wo )
+         {
+            wo.running_version = reported_version;
+         });
+      }
+   }
 
-    void operator()( const hardfork_version_vote& hfv ) const
-    {
-        const auto& signing_witness = _db.get_witness( _witness );
-        //idump( (next_block.witness)(signing_witness.running_version)(hfv) );
+   void operator()( const hardfork_version_vote& hfv ) const
+   {
+      const auto& signing_witness = _db.get_witness( _witness );
+      //idump( (next_block.witness)(signing_witness.running_version)(hfv) );
 
-        if( hfv.hf_version != signing_witness.hardfork_version_vote || hfv.hf_time != signing_witness.hardfork_time_vote )
-           _db.modify( signing_witness, [&]( witness_object& wo )
-           {
-              wo.hardfork_version_vote = hfv.hf_version;
-              wo.hardfork_time_vote = hfv.hf_time;
-           });
-    }
+      if( hfv.hf_version != signing_witness.hardfork_version_vote || hfv.hf_time != signing_witness.hardfork_time_vote )
+         _db.modify( signing_witness, [&]( witness_object& wo )
+         {
+            wo.hardfork_version_vote = hfv.hf_version;
+            wo.hardfork_time_vote = hfv.hf_time;
+         });
+   }
 
-    template<typename T>
-    void operator()( const T& unknown_obj )
-    {
-        FC_ASSERT( false, "Unknown extension in block header" );
-    }
+   template<typename T>
+   void operator()( const T& unknown_obj ) const
+   {
+      FC_ASSERT( false, "Unknown extension in block header" );
+   }
 };
 
 void database::process_header_extensions( const signed_block& next_block )
 {
-    process_header_visitor _v( next_block.witness, *this );
+   process_header_visitor _v( next_block.witness, *this );
 
-    for( const auto& e : next_block.extensions )
-        e.visit( _v );
+   for( const auto& e : next_block.extensions )
+      e.visit( _v );
 }
 
 void database::update_median_feed() {
