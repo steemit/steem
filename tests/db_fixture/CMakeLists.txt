@@ -14,10 +14,9 @@ add_library(db_fixture
 target_link_libraries(db_fixture
                       steemit_chain
                       steemit_protocol
-                      steemit_app
-                      steemit_account_history
-                      steemit_market_history
-                      steemit_witness
-                      steemit_debug_node
+                      account_history_plugin
+                      market_history_plugin
+                      witness_plugin
+                      debug_node_plugin
                       fc
                       ${PLATFORM_SPECIFIC_LIBS})
