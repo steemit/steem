@@ -316,8 +316,7 @@ void follow_plugin_impl::post_operation( const operation_notification& note )
 }
 
 
-follow_plugin::follow_plugin()
-   : plugin< follow_plugin >( STEEM_FOLLOW_PLUGIN_NAME ) {}
+follow_plugin::follow_plugin() {}
 
 follow_plugin::~follow_plugin() {}
 

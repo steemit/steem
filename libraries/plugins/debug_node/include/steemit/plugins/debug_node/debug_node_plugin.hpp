@@ -41,6 +41,7 @@ class debug_node_plugin : public plugin< debug_node_plugin >
 
       APPBASE_PLUGIN_REQUIRES( (chain::chain_plugin) )
 
+      static std::string& name() { static std::string name = STEEM_DEBUG_NODE_PLUGIN_NAME; return name; }
 
       virtual void set_program_options(
          options_description& cli,

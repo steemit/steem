@@ -102,6 +102,8 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
       APPBASE_PLUGIN_REQUIRES();
       virtual void set_program_options( options_description&, options_description& ) override {}
 
+      static std::string& name() { static std::string name = STEEM_JSON_RPC_PLUGIN_NAME; return name; }
+
       void plugin_initialize( const variables_map& options );
       void plugin_startup();
       void plugin_shutdown();

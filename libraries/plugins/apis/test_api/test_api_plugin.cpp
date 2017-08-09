@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace test_api {
 
-test_api_plugin::test_api_plugin() : appbase::plugin< test_api_plugin >( STEEM_TEST_API_PLUGIN_NAME ) {}
+test_api_plugin::test_api_plugin() {}
 test_api_plugin::~test_api_plugin() {}
 
 void test_api_plugin::plugin_initialize( const variables_map& options )

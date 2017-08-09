@@ -29,9 +29,7 @@ class chain_plugin_impl
 };
 
 
-chain_plugin::chain_plugin()
-   : appbase::plugin< chain_plugin >( STEEM_CHAIN_PLUGIN_NAME ), my( new chain_plugin_impl() ) {}
-
+chain_plugin::chain_plugin() : my( new chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }

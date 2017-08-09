@@ -22,6 +22,9 @@ class test_api_plugin : public appbase::plugin< test_api_plugin >
 
       //APPBASE_PLUGIN_REQUIRES()
       APPBASE_PLUGIN_REQUIRES( (plugins::json_rpc::json_rpc_plugin) );
+
+      static std::string& name() { static std::string name = STEEM_TEST_API_PLUGIN_NAME; return name; }
+
       virtual void set_program_options( options_description&, options_description& ) override {}
 
       void plugin_initialize( const variables_map& options );

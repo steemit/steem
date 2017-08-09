@@ -579,7 +579,6 @@ namespace detail {
 
 
 witness_plugin::witness_plugin() :
-   appbase::plugin< witness_plugin >( STEEM_WITNESS_PLUGIN_NAME ),
    my( new detail::witness_plugin_impl( appbase::app().get_io_service() ) ) {}
 
 witness_plugin::~witness_plugin() {}

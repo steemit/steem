@@ -62,6 +62,8 @@ public:
    witness_plugin();
    virtual ~witness_plugin();
 
+   static std::string& name() { static std::string name = STEEM_WITNESS_PLUGIN_NAME; return name; }
+
    virtual void set_program_options(
       boost::program_options::options_description &command_line_options,
       boost::program_options::options_description &config_file_options
