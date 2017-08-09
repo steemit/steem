@@ -32,11 +32,7 @@ witness_api::witness_api()
 {
    my = std::make_shared< detail::witness_api_impl >();
 
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
-      STEEM_WITNESS_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_account_bandwidth )
-      });
+   JSON_RPC_REGISTER_API( STEEM_WITNESS_API_PLUGIN_NAME, (get_account_bandwidth) );
 }
 
 get_account_bandwidth_return witness_api::get_account_bandwidth( const get_account_bandwidth_args& args )

@@ -173,24 +173,26 @@ class follow_api
    public:
       follow_api();
 
-      DECLARE_API( get_followers )
-      DECLARE_API( get_following )
-      DECLARE_API( get_follow_count )
-      DECLARE_API( get_feed_entries )
-      DECLARE_API( get_feed )
-      DECLARE_API( get_blog_entries )
-      DECLARE_API( get_blog )
-      DECLARE_API( get_account_reputations )
+      DECLARE_API(
+         (get_followers)
+         (get_following)
+         (get_follow_count)
+         (get_feed_entries)
+         (get_feed)
+         (get_blog_entries)
+         (get_blog)
+         (get_account_reputations)
 
-      /**
-       * Gets list of accounts that have reblogged a particular post
-       */
-      DECLARE_API( get_reblogged_by )
+         /**
+          * Gets list of accounts that have reblogged a particular post
+          */
+         (get_reblogged_by)
 
-      /**
-       * Gets a list of authors that have had their content reblogged on a given blog account
-       */
-      DECLARE_API( get_blog_authors )
+         /**
+          * Gets a list of authors that have had their content reblogged on a given blog account
+          */
+         (get_blog_authors)
+      )
 
    private:
       std::shared_ptr< detail::follow_api_impl > my;

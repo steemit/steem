@@ -12,13 +12,12 @@ network_broadcast_api::network_broadcast_api() :
    _p2p( appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >() ),
    _chain( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >() )
 {
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME,
-      {
-         API_METHOD( broadcast_transaction ),
-         API_METHOD( broadcast_transaction_synchronous ),
-         API_METHOD( broadcast_block )
-      });
+      (broadcast_transaction)
+      (broadcast_transaction_synchronous)
+      (broadcast_block)
+   );
 }
 
 network_broadcast_api::~network_broadcast_api() {}

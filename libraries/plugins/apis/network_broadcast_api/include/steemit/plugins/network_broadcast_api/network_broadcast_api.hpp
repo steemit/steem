@@ -59,9 +59,11 @@ public:
    network_broadcast_api();
    ~network_broadcast_api();
 
-   DECLARE_API( broadcast_transaction )
-   DECLARE_API( broadcast_transaction_synchronous )
-   DECLARE_API( broadcast_block )
+   DECLARE_API(
+      (broadcast_transaction)
+      (broadcast_transaction_synchronous)
+      (broadcast_block)
+   )
 
    bool check_max_block_age( int32_t max_block_age ) const;
 

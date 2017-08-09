@@ -40,7 +40,7 @@ namespace detail
          json_rpc_plugin_impl();
          ~json_rpc_plugin_impl();
 
-         void add_api( const string& api_name, const api_description& api );
+         void add_api_method( const string& api_name, const string& method_name, const api_method& api );
          json_rpc_response rpc( const fc::variant& message );
 
          map< string, api_description > _registered_apis;
@@ -49,9 +49,9 @@ namespace detail
    json_rpc_plugin_impl::json_rpc_plugin_impl() {}
    json_rpc_plugin_impl::~json_rpc_plugin_impl() {}
 
-   void json_rpc_plugin_impl::add_api( const string& api_name, const api_description& api )
+   void json_rpc_plugin_impl::add_api_method( const string& api_name, const string& method_name, const api_method& api )
    {
-      _registered_apis[ api_name ] = api;
+      _registered_apis[ api_name ][ method_name ] = api;
    }
 
    json_rpc_response json_rpc_plugin_impl::rpc( const fc::variant& message )
@@ -86,7 +86,7 @@ namespace detail
                {
                   string method = request[ "method" ].as_string();
 
-                  api_call* call;
+                  api_method* call;
                   fc::variant params;
 
                   // This is to maintain backwards compatibility with existing call structure.
@@ -192,9 +192,9 @@ void json_rpc_plugin::plugin_initialize( const variables_map& options ) {}
 void json_rpc_plugin::plugin_startup() {}
 void json_rpc_plugin::plugin_shutdown() {}
 
-void json_rpc_plugin::add_api( const string& api_name, const api_description& api )
+void json_rpc_plugin::add_api_method( const string& api_name, const string& method_name, const api_method& api )
 {
-   _my->add_api( api_name, api );
+   _my->add_api_method( api_name, method_name, api );
 }
 
 string json_rpc_plugin::call( const string& message )

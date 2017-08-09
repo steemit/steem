@@ -64,17 +64,20 @@ class debug_node_api_impl
          _db( appbase::app().get_plugin< chain::chain_plugin >().db() ),
          _debug_node( appbase::app().get_plugin< debug_node_plugin >() ) {}
 
-      DECLARE_API( debug_push_blocks )
-      DECLARE_API( debug_generate_blocks )
-      DECLARE_API( debug_generate_blocks_until )
-      DECLARE_API( debug_pop_block )
-      DECLARE_API( debug_get_witness_schedule )
-      DECLARE_API( debug_get_hardfork_property_object )
-      DECLARE_API( debug_set_dev_key_prefix )
+      DECLARE_API(
+         (debug_push_blocks)
+         (debug_generate_blocks)
+         (debug_generate_blocks_until)
+         (debug_pop_block)
+         (debug_get_witness_schedule)
+         (debug_get_hardfork_property_object)
+         (debug_set_dev_key_prefix)
+         (debug_set_hardfork)
+         (debug_has_hardfork)
+      )
+
       void debug_get_dev_key( debug_get_dev_key_return& result, const debug_get_dev_key_args& args );
       void debug_mine( debug_mine_return& result, const debug_mine_args& args );
-      DECLARE_API( debug_set_hardfork )
-      DECLARE_API( debug_has_hardfork )
       void debug_get_json_schema( std::string& schema );
 
       chain::database& _db;
@@ -263,22 +266,21 @@ debug_node_api::debug_node_api()
 {
    my = std::make_shared< detail::debug_node_api_impl >();
 
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_DEBUG_NODE_API_PLUGIN_NAME,
-      {
-         API_METHOD( debug_push_blocks ),
-         API_METHOD( debug_generate_blocks ),
-         API_METHOD( debug_generate_blocks_until ),
-         API_METHOD( debug_pop_block ),
-         API_METHOD( debug_get_witness_schedule ),
-         API_METHOD( debug_get_hardfork_property_object ),
-         API_METHOD( debug_set_dev_key_prefix ),
-         API_METHOD( debug_get_dev_key ),
-         API_METHOD( debug_mine ),
-         API_METHOD( debug_set_hardfork ),
-         API_METHOD( debug_has_hardfork ),
-         API_METHOD( debug_get_json_schema )
-      });
+      (debug_push_blocks)
+      (debug_generate_blocks)
+      (debug_generate_blocks_until)
+      (debug_pop_block)
+      (debug_get_witness_schedule)
+      (debug_get_hardfork_property_object)
+      (debug_set_dev_key_prefix)
+      (debug_get_dev_key)
+      (debug_mine)
+      (debug_set_hardfork)
+      (debug_has_hardfork)
+      (debug_get_json_schema)
+   );
 }
 
 DEFINE_API( debug_node_api, debug_push_blocks )

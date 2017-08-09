@@ -13,72 +13,56 @@ class database_api_impl
       database_api_impl();
       ~database_api_impl();
 
-      // Blocks
-      DECLARE_API( get_block_header )
-      DECLARE_API( get_block )
-
-      // Globals
-      DECLARE_API( get_config )
-      DECLARE_API( get_dynamic_global_properties )
-      DECLARE_API( get_witness_schedule )
-      DECLARE_API( get_hardfork_properties )
-      DECLARE_API( get_reward_funds )
-      DECLARE_API( get_current_price_feed )
-      DECLARE_API( get_feed_history )
-
-
-      // Witnesses
-      DECLARE_API( list_witnesses )
-      DECLARE_API( find_witnesses )
-      DECLARE_API( list_witness_votes )
-      DECLARE_API( get_active_witnesses )
-
-
-      // Accounts
-      DECLARE_API( list_accounts )
-      DECLARE_API( find_accounts )
-      DECLARE_API( list_owner_histories )
-      DECLARE_API( find_owner_histories )
-      DECLARE_API( list_account_recovery_requests )
-      DECLARE_API( find_account_recovery_requests )
-      DECLARE_API( list_change_recovery_account_requests )
-      DECLARE_API( find_change_recovery_account_requests )
-      DECLARE_API( list_escrows )
-      DECLARE_API( find_escrows )
-      DECLARE_API( list_withdraw_vesting_routes )
-      DECLARE_API( find_withdraw_vesting_routes )
-      DECLARE_API( list_savings_withdrawals )
-      DECLARE_API( find_savings_withdrawals )
-      DECLARE_API( list_vesting_delegations )
-      DECLARE_API( find_vesting_delegations )
-      DECLARE_API( list_vesting_delegation_expirations )
-      DECLARE_API( find_vesting_delegation_expirations )
-      DECLARE_API( list_sbd_conversion_requests )
-      DECLARE_API( find_sbd_conversion_requests )
-      DECLARE_API( list_decline_voting_rights_requests )
-      DECLARE_API( find_decline_voting_rights_requests )
-
-
-      // Comments
-      DECLARE_API( list_comments )
-      DECLARE_API( find_comments )
-      DECLARE_API( list_votes )
-      DECLARE_API( find_votes )
-
-
-      // Market
-      DECLARE_API( list_limit_orders )
-      DECLARE_API( find_limit_orders )
-      DECLARE_API( get_order_book )
-
-
-      // Authority / validation
-
-      DECLARE_API( get_transaction_hex )
-      DECLARE_API( get_required_signatures )
-      DECLARE_API( get_potential_signatures )
-      DECLARE_API( verify_authority )
-      DECLARE_API( verify_account_authority )
+      DECLARE_API
+      (
+         (get_block_header)
+         (get_block)
+         (get_config)
+         (get_dynamic_global_properties)
+         (get_witness_schedule)
+         (get_hardfork_properties)
+         (get_reward_funds)
+         (get_current_price_feed)
+         (get_feed_history)
+         (list_witnesses)
+         (find_witnesses)
+         (list_witness_votes)
+         (get_active_witnesses)
+         (list_accounts)
+         (find_accounts)
+         (list_owner_histories)
+         (find_owner_histories)
+         (list_account_recovery_requests)
+         (find_account_recovery_requests)
+         (list_change_recovery_account_requests)
+         (find_change_recovery_account_requests)
+         (list_escrows)
+         (find_escrows)
+         (list_withdraw_vesting_routes)
+         (find_withdraw_vesting_routes)
+         (list_savings_withdrawals)
+         (find_savings_withdrawals)
+         (list_vesting_delegations)
+         (find_vesting_delegations)
+         (list_vesting_delegation_expirations)
+         (find_vesting_delegation_expirations)
+         (list_sbd_conversion_requests)
+         (find_sbd_conversion_requests)
+         (list_decline_voting_rights_requests)
+         (find_decline_voting_rights_requests)
+         (list_comments)
+         (find_comments)
+         (list_votes)
+         (find_votes)
+         (list_limit_orders)
+         (find_limit_orders)
+         (get_order_book)
+         (get_transaction_hex)
+         (get_required_signatures)
+         (get_potential_signatures)
+         (verify_authority)
+         (verify_account_authority)
+      )
 
       template< typename ResultType >
       static ResultType on_push_default( const ResultType& r ) { return r; }
@@ -109,57 +93,55 @@ class database_api_impl
 database_api::database_api()
    : my( new database_api_impl() )
 {
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_DATABASE_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_block_header ),
-         API_METHOD( get_block ),
-         API_METHOD( get_config ),
-         API_METHOD( get_dynamic_global_properties ),
-         API_METHOD( get_witness_schedule ),
-         API_METHOD( get_hardfork_properties ),
-         API_METHOD( get_reward_funds ),
-         API_METHOD( get_current_price_feed ),
-         API_METHOD( get_feed_history ),
-         API_METHOD( list_witnesses ),
-         API_METHOD( find_witnesses ),
-         API_METHOD( list_witness_votes ),
-         API_METHOD( get_active_witnesses ),
-         API_METHOD( list_accounts ),
-         API_METHOD( find_accounts ),
-         API_METHOD( list_owner_histories ),
-         API_METHOD( find_owner_histories ),
-         API_METHOD( list_account_recovery_requests ),
-         API_METHOD( find_account_recovery_requests ),
-         API_METHOD( list_change_recovery_account_requests ),
-         API_METHOD( find_change_recovery_account_requests ),
-         API_METHOD( list_escrows ),
-         API_METHOD( find_escrows ),
-         API_METHOD( list_withdraw_vesting_routes ),
-         API_METHOD( find_withdraw_vesting_routes ),
-         API_METHOD( list_savings_withdrawals ),
-         API_METHOD( find_savings_withdrawals ),
-         API_METHOD( list_vesting_delegations ),
-         API_METHOD( find_vesting_delegations ),
-         API_METHOD( list_vesting_delegation_expirations ),
-         API_METHOD( find_vesting_delegation_expirations ),
-         API_METHOD( list_sbd_conversion_requests ),
-         API_METHOD( find_sbd_conversion_requests ),
-         API_METHOD( list_decline_voting_rights_requests ),
-         API_METHOD( find_decline_voting_rights_requests ),
-         API_METHOD( list_comments ),
-         API_METHOD( find_comments ),
-         API_METHOD( list_votes ),
-         API_METHOD( find_votes ),
-         API_METHOD( list_limit_orders ),
-         API_METHOD( find_limit_orders ),
-         API_METHOD( get_order_book ),
-         API_METHOD( get_transaction_hex ),
-         API_METHOD( get_required_signatures ),
-         API_METHOD( get_potential_signatures ),
-         API_METHOD( verify_authority ),
-         API_METHOD( verify_account_authority )
-      }
+      (get_block_header)
+      (get_block)
+      (get_config)
+      (get_dynamic_global_properties)
+      (get_witness_schedule)
+      (get_hardfork_properties)
+      (get_reward_funds)
+      (get_current_price_feed)
+      (get_feed_history)
+      (list_witnesses)
+      (find_witnesses)
+      (list_witness_votes)
+      (get_active_witnesses)
+      (list_accounts)
+      (find_accounts)
+      (list_owner_histories)
+      (find_owner_histories)
+      (list_account_recovery_requests)
+      (find_account_recovery_requests)
+      (list_change_recovery_account_requests)
+      (find_change_recovery_account_requests)
+      (list_escrows)
+      (find_escrows)
+      (list_withdraw_vesting_routes)
+      (find_withdraw_vesting_routes)
+      (list_savings_withdrawals)
+      (find_savings_withdrawals)
+      (list_vesting_delegations)
+      (find_vesting_delegations)
+      (list_vesting_delegation_expirations)
+      (find_vesting_delegation_expirations)
+      (list_sbd_conversion_requests)
+      (find_sbd_conversion_requests)
+      (list_decline_voting_rights_requests)
+      (find_decline_voting_rights_requests)
+      (list_comments)
+      (find_comments)
+      (list_votes)
+      (find_votes)
+      (list_limit_orders)
+      (find_limit_orders)
+      (get_order_book)
+      (get_transaction_hex)
+      (get_required_signatures)
+      (get_potential_signatures)
+      (verify_authority)
+      (verify_account_authority)
    );
 }
 

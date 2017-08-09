@@ -268,11 +268,11 @@ bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
       else
          return chain.db().is_known_transaction(id.item_hash);
    }
-   FC_CAPTURE_AND_RETHROW( (id) )
+   FC_CAPTURE_LOG_AND_RETHROW( (id) )
 }
 
 bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& )
-{
+{ try {
    uint32_t head_block_num;
 
    head_block_num = chain.db().head_block_num();
@@ -338,14 +338,14 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
    }
 
    return false;
-}
+} FC_LOG_AND_RETHROW() }
 
 void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_msg )
 {
    try
    {
       chain.db().push_transaction( trx_msg.trx );
-   } FC_CAPTURE_AND_RETHROW( (trx_msg) )
+   } FC_CAPTURE_LOG_AND_RETHROW( (trx_msg) )
 }
 
 void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_process )
@@ -355,7 +355,7 @@ void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_p
 }
 
 std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_block_ids( const std::vector< graphene::net::item_hash_t >& blockchain_synopsis, uint32_t& remaining_item_count, uint32_t limit )
-{
+{ try {
    vector<block_id_type> result;
    remaining_item_count = 0;
    if( chain.db().head_block_num() == 0 )
@@ -403,10 +403,10 @@ std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_block_ids( const 
       remaining_item_count = chain.db().head_block_num() - block_header::num_from_id(result.back());
 
    return result;
-}
+} FC_LOG_AND_RETHROW() }
 
 graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& id )
-{
+{ try {
    if( id.item_type == graphene::net::block_message_type )
    {
       return chain.db().with_read_lock( [&]()
@@ -422,7 +422,7 @@ graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& 
    }
 
    return trx_message( chain.db().get_recent_transaction( id.item_hash ) );
-}
+} FC_LOG_AND_RETHROW() }
 
 steemit::chain::chain_id_type p2p_plugin_impl::get_chain_id() const
 {
@@ -551,7 +551,7 @@ std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_blockchain_synops
    });
 
    return synopsis;
-} FC_CAPTURE_AND_RETHROW() }
+} FC_LOG_AND_RETHROW() }
 
 void p2p_plugin_impl::sync_status( uint32_t item_type, uint32_t item_count )
 {
@@ -567,7 +567,7 @@ uint32_t p2p_plugin_impl::get_block_number( const graphene::net::item_hash_t& bl
 {
    try {
    return block_header::num_from_id(block_id);
-} FC_CAPTURE_AND_RETHROW( (block_id) ) }
+} FC_CAPTURE_LOG_AND_RETHROW( (block_id) ) }
 
 fc::time_point_sec p2p_plugin_impl::get_block_time( const graphene::net::item_hash_t& block_id )
 {
@@ -579,16 +579,16 @@ fc::time_point_sec p2p_plugin_impl::get_block_time( const graphene::net::item_ha
          if( opt_block.valid() ) return opt_block->timestamp;
          return fc::time_point_sec::min();
       });
-   } FC_CAPTURE_AND_RETHROW( (block_id) )
+   } FC_CAPTURE_LOG_AND_RETHROW( (block_id) )
 }
 
 graphene::net::item_hash_t p2p_plugin_impl::get_head_block_id() const
-{
+{ try {
    return chain.db().with_read_lock( [&]()
    {
       return chain.db().head_block_id();
    });
-}
+} FC_LOG_AND_RETHROW() }
 
 uint32_t p2p_plugin_impl::estimate_last_known_fork_from_git_revision_timestamp(uint32_t) const
 {
@@ -601,19 +601,19 @@ void p2p_plugin_impl::error_encountered( const string& message, const fc::oexcep
 }
 
 fc::time_point_sec p2p_plugin_impl::get_blockchain_now()
-{
+{ try {
    return fc::time_point::now();
-}
+} FC_LOG_AND_RETHROW() }
 
 bool p2p_plugin_impl::is_included_block(const block_id_type& block_id)
-{
+{ try {
    return chain.db().with_read_lock( [&]()
    {
       uint32_t block_num = block_header::num_from_id(block_id);
       block_id_type block_id_in_preferred_chain = chain.db().get_block_id_for_num(block_num);
       return block_id == block_id_in_preferred_chain;
    });
-}
+} FC_LOG_AND_RETHROW() }
 
 ////////////////////////////// End node_delegate Implementation //////////////////////////////
 

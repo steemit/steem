@@ -10,9 +10,11 @@ class account_history_api_impl
    public:
       account_history_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API( get_ops_in_block )
-      DECLARE_API( get_transaction )
-      DECLARE_API( get_account_history )
+      DECLARE_API(
+         (get_ops_in_block)
+         (get_transaction)
+         (get_account_history)
+      )
 
       steemit::chain::database& _db;
 };
@@ -78,13 +80,12 @@ account_history_api::account_history_api()
 {
    my = std::make_shared< detail::account_history_api_impl >();
 
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_ops_in_block ),
-         API_METHOD( get_transaction ),
-         API_METHOD( get_account_history )
-      });
+      (get_ops_in_block)
+      (get_transaction)
+      (get_account_history)
+   );
 }
 
 DEFINE_API( account_history_api, get_ops_in_block )

@@ -109,90 +109,49 @@ class debug_node_api
    public:
       debug_node_api();
 
-      /**
-       * Push blocks from existing database.
-       */
-      DECLARE_API( debug_push_blocks )
+      DECLARE_API(
+         /**
+         * Push blocks from existing database.
+         */
+         (debug_push_blocks)
 
-      /**
-       * Generate blocks locally.
-       */
-      DECLARE_API( debug_generate_blocks )
+         /**
+         * Generate blocks locally.
+         */
+         (debug_generate_blocks)
 
-      /*
-       * Generate blocks locally until a specified head block time. Can generate them sparsely.
-       */
-      DECLARE_API( debug_generate_blocks_until )
+         /*
+         * Generate blocks locally until a specified head block time. Can generate them sparsely.
+         */
+         (debug_generate_blocks_until)
 
-      /*
-       * Pop a block from the blockchain, returning it
-       */
-      DECLARE_API( debug_pop_block )
+         /*
+         * Pop a block from the blockchain, returning it
+         */
+         (debug_pop_block)
+         (debug_get_witness_schedule)
+         (debug_get_hardfork_property_object)
 
-      /*
-       * Push an already constructed block onto the blockchain. For use with pop_block to traverse state block by block.
-       */
-      // not implemented
-      //void debug_push_block( steemit::chain::signed_block& block );
+         /**
+         * Set developer key prefix. This prefix only applies to the current API session.
+         * (Thus, this method is only useful to websocket-based API clients.)
+         * Prefix will be used for debug_get_dev_key() and debug_mine_account().
+         */
+         (debug_set_dev_key_prefix)
 
-      DECLARE_API( debug_get_witness_schedule )
+         /**
+         * Get developer key. Use debug_set_key_prefix() to set a prefix if desired.
+         */
+         (debug_get_dev_key)
 
-      DECLARE_API( debug_get_hardfork_property_object )
-
-      /**
-       * Directly manipulate database objects (will undo and re-apply last block with new changes post-applied).
-       */
-      //void debug_update_object( fc::variant_object update );
-
-      //fc::variant_object debug_get_edits();
-
-      //void debug_set_edits( fc::variant_object edits );
-
-      /**
-       * Set developer key prefix. This prefix only applies to the current API session.
-       * (Thus, this method is only useful to websocket-based API clients.)
-       * Prefix will be used for debug_get_dev_key() and debug_mine_account().
-       */
-      DECLARE_API( debug_set_dev_key_prefix )
-
-      /**
-       * Get developer key. Use debug_set_key_prefix() to set a prefix if desired.
-       */
-      DECLARE_API( debug_get_dev_key )
-
-      /**
-       * Synchronous mining, does not return until work is found.
-       */
-      DECLARE_API( debug_mine )
-
-      /**
-       * Start a node with given initial path.
-       */
-      // not implemented
-      //void start_node( std::string name, std::string initial_db_path );
-
-      /**
-       * Save the database to disk.
-       */
-      // not implemented
-      //void save_db( std::string db_path );
-
-      /**
-       * Stream objects to file.  (Hint:  Create with mkfifo and pipe it to a script)
-       */
-
-      //void debug_stream_json_objects( std::string filename );
-
-      /**
-       * Flush streaming file.
-       */
-      //void debug_stream_json_objects_flush();
-
-      DECLARE_API( debug_set_hardfork )
-
-      DECLARE_API( debug_has_hardfork )
-
-      DECLARE_API( debug_get_json_schema )
+         /**
+         * Synchronous mining, does not return until work is found.
+         */
+         (debug_mine)
+         (debug_set_hardfork)
+         (debug_has_hardfork)
+         (debug_get_json_schema)
+      )
 
    private:
       std::shared_ptr< detail::debug_node_api_impl > my;
