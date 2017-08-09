@@ -952,6 +952,7 @@ void condenser_api::api_startup()
 
 DEFINE_API( condenser_api, get_version )
 {
+   CHECK_ARG_SIZE( 0 )
    return get_version_return
    (
       fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
@@ -978,6 +979,7 @@ DEFINE_API( condenser_api, get_state )
 
 DEFINE_API( condenser_api, get_active_witnesses )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_active_witnesses( {} ).witnesses;
 }
 
@@ -1003,41 +1005,49 @@ DEFINE_API( condenser_api, get_ops_in_block )
 
 DEFINE_API( condenser_api, get_config )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_config( {} );
 }
 
 DEFINE_API( condenser_api, get_dynamic_global_properties )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_dynamic_global_properties( {} );
 }
 
 DEFINE_API( condenser_api, get_chain_properties )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_witness_schedule( {} ).median_props;
 }
 
 DEFINE_API( condenser_api, get_current_median_history_price )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_current_price_feed( {} );
 }
 
 DEFINE_API( condenser_api, get_feed_history )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_feed_history( {} );
 }
 
 DEFINE_API( condenser_api, get_witness_schedule )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_witness_schedule( {} );
 }
 
 DEFINE_API( condenser_api, get_hardfork_version )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_hardfork_properties( {} ).current_hardfork_version;
 }
 
 DEFINE_API( condenser_api, get_next_scheduled_hardfork )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_next_scheduled_hardfork( args );
@@ -1091,6 +1101,7 @@ DEFINE_API( condenser_api, lookup_accounts )
 
 DEFINE_API( condenser_api, get_account_count )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_account_count( args );
@@ -1268,6 +1279,7 @@ DEFINE_API( condenser_api, lookup_witness_accounts )
 
 DEFINE_API( condenser_api, get_witness_count )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_witness_count( args );
@@ -1619,6 +1631,7 @@ DEFINE_API( condenser_api, get_blog_authors )
 
 DEFINE_API( condenser_api, get_ticker )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_ticker( {} );
@@ -1626,6 +1639,7 @@ DEFINE_API( condenser_api, get_ticker )
 
 DEFINE_API( condenser_api, get_volume )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_volume( {} );
@@ -1665,6 +1679,7 @@ DEFINE_API( condenser_api, get_market_history )
 
 DEFINE_API( condenser_api, get_market_history_buckets )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_market_history_buckets( {} ).bucket_sizes;
