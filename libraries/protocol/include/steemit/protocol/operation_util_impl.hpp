@@ -7,8 +7,6 @@
 
 namespace fc
 {
-   using namespace steemit::protocol;
-
    std::string name_from_type( const std::string& type_name );
 
    struct from_operation
