@@ -16,7 +16,7 @@ class plugin_a : public appbase::plugin<plugin_a>
    public:
      APPBASE_PLUGIN_REQUIRES();
 
-     static std::string& name() { static std::string name = "plugin_a"; return name; }
+     static const std::string& name() { static std::string name = "plugin_a"; return name; }
 
      virtual void set_program_options( options_description& cli, options_description& cfg ) override
      {
@@ -48,7 +48,7 @@ class plugin_b : public appbase::plugin<plugin_b>
 
      APPBASE_PLUGIN_REQUIRES( (plugin_a) );
 
-     static std::string& name() { static std::string name = "plugin_b"; return name; }
+     static const std::string& name() { static std::string name = "plugin_b"; return name; }
 
      virtual void set_program_options( options_description& cli, options_description& cfg ) override
      {
