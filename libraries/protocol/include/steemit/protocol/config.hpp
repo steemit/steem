@@ -3,6 +3,10 @@
  */
 #pragma once
 
+// WARNING!
+// Every symbol defined here needs to be handled appropriately in get_config.cpp
+// This is checked by get_config_check.sh called from Dockerfile
+
 #define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 2) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
@@ -244,6 +248,9 @@
 
 #define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
 #define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
+
+#define STEEM_INITIAL_VOTE_POWER_RATE (40)
+#define STEEM_REDUCED_VOTE_POWER_RATE (10)
 
 /**
  *  Reserved Account IDs with special meaning
