@@ -29,19 +29,21 @@ namespace detail
       public:
          condenser_api_impl() : _db( appbase::app().get_plugin< chain::chain_plugin >().db() ) {}
 
-         DECLARE_API( get_state )
-         DECLARE_API( get_next_scheduled_hardfork )
-         DECLARE_API( get_reward_fund )
-         DECLARE_API( get_accounts )
-         DECLARE_API( lookup_account_names )
-         DECLARE_API( lookup_accounts )
-         DECLARE_API( get_account_count )
-         DECLARE_API( get_savings_withdraw_to )
-         DECLARE_API( get_witnesses )
-         DECLARE_API( get_witness_count )
-         DECLARE_API( get_open_orders )
-         DECLARE_API( get_account_votes )
-         DECLARE_API( lookup_witness_accounts )
+         DECLARE_API(
+            (get_state)
+            (get_next_scheduled_hardfork)
+            (get_reward_fund)
+            (get_accounts)
+            (lookup_account_names)
+            (lookup_accounts)
+            (get_account_count)
+            (get_savings_withdraw_to)
+            (get_witnesses)
+            (get_witness_count)
+            (get_open_orders)
+            (get_account_votes)
+            (lookup_witness_accounts)
+         )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
 
@@ -840,77 +842,76 @@ namespace detail
 condenser_api::condenser_api()
    : my( new detail::condenser_api_impl() )
 {
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_CONDENSER_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_version ),
-         API_METHOD( get_trending_tags ),
-         API_METHOD( get_state ),
-         API_METHOD( get_active_witnesses ),
-         API_METHOD( get_block_header ),
-         API_METHOD( get_block ),
-         API_METHOD( get_ops_in_block ),
-         API_METHOD( get_config ),
-         API_METHOD( get_dynamic_global_properties ),
-         API_METHOD( get_chain_properties ),
-         API_METHOD( get_current_median_history_price ),
-         API_METHOD( get_feed_history ),
-         API_METHOD( get_witness_schedule ),
-         API_METHOD( get_hardfork_version ),
-         API_METHOD( get_next_scheduled_hardfork ),
-         API_METHOD( get_reward_fund ),
-         API_METHOD( get_key_references ),
-         API_METHOD( get_accounts ),
-         API_METHOD( get_account_references ),
-         API_METHOD( lookup_account_names ),
-         API_METHOD( lookup_accounts ),
-         API_METHOD( get_account_count ),
-         API_METHOD( get_owner_history ),
-         API_METHOD( get_recovery_request ),
-         API_METHOD( get_escrow ),
-         API_METHOD( get_withdraw_routes ),
-         API_METHOD( get_account_bandwidth ),
-         API_METHOD( get_savings_withdraw_from ),
-         API_METHOD( get_savings_withdraw_to ),
-         API_METHOD( get_vesting_delegations ),
-         API_METHOD( get_expiring_vesting_delegations ),
-         API_METHOD( get_witnesses ),
-         API_METHOD( get_conversion_requests ),
-         API_METHOD( get_witness_by_account ),
-         API_METHOD( get_witnesses_by_vote ),
-         API_METHOD( lookup_witness_accounts ),
-         API_METHOD( get_witness_count ),
-         API_METHOD( get_order_book ),
-         API_METHOD( get_open_orders ),
-         API_METHOD( get_transaction_hex ),
-         API_METHOD( get_transaction ),
-         API_METHOD( get_required_signatures ),
-         API_METHOD( get_potential_signatures ),
-         API_METHOD( verify_authority ),
-         API_METHOD( verify_account_authority ),
-         API_METHOD( get_active_votes ),
-         API_METHOD( get_account_votes ),
-         API_METHOD( get_content ),
-         API_METHOD( get_content_replies ),
-         API_METHOD( get_tags_used_by_author ),
-         API_METHOD( get_discussions_by_payout ),
-         API_METHOD( get_post_discussions_by_payout ),
-         API_METHOD( get_comment_discussions_by_payout ),
-         API_METHOD( get_discussions_by_trending ),
-         API_METHOD( get_discussions_by_created ),
-         API_METHOD( get_discussions_by_active ),
-         API_METHOD( get_discussions_by_cashout ),
-         API_METHOD( get_discussions_by_votes ),
-         API_METHOD( get_discussions_by_children ),
-         API_METHOD( get_discussions_by_hot ),
-         API_METHOD( get_discussions_by_feed ),
-         API_METHOD( get_discussions_by_blog ),
-         API_METHOD( get_discussions_by_comments ),
-         API_METHOD( get_discussions_by_promoted ),
-         API_METHOD( get_replies_by_last_update ),
-         API_METHOD( get_discussions_by_author_before_date ),
-         API_METHOD( get_account_history )
-      });
+      (get_version)
+      (get_trending_tags)
+      (get_state)
+      (get_active_witnesses)
+      (get_block_header)
+      (get_block)
+      (get_ops_in_block)
+      (get_config)
+      (get_dynamic_global_properties)
+      (get_chain_properties)
+      (get_current_median_history_price)
+      (get_feed_history)
+      (get_witness_schedule)
+      (get_hardfork_version)
+      (get_next_scheduled_hardfork)
+      (get_reward_fund)
+      (get_key_references)
+      (get_accounts)
+      (get_account_references)
+      (lookup_account_names)
+      (lookup_accounts)
+      (get_account_count)
+      (get_owner_history)
+      (get_recovery_request)
+      (get_escrow)
+      (get_withdraw_routes)
+      (get_account_bandwidth)
+      (get_savings_withdraw_from)
+      (get_savings_withdraw_to)
+      (get_vesting_delegations)
+      (get_expiring_vesting_delegations)
+      (get_witnesses)
+      (get_conversion_requests)
+      (get_witness_by_account)
+      (get_witnesses_by_vote)
+      (lookup_witness_accounts)
+      (get_witness_count)
+      (get_order_book)
+      (get_open_orders)
+      (get_transaction_hex)
+      (get_transaction)
+      (get_required_signatures)
+      (get_potential_signatures)
+      (verify_authority)
+      (verify_account_authority)
+      (get_active_votes)
+      (get_account_votes)
+      (get_content)
+      (get_content_replies)
+      (get_tags_used_by_author)
+      (get_discussions_by_payout)
+      (get_post_discussions_by_payout)
+      (get_comment_discussions_by_payout)
+      (get_discussions_by_trending)
+      (get_discussions_by_created)
+      (get_discussions_by_active)
+      (get_discussions_by_cashout)
+      (get_discussions_by_votes)
+      (get_discussions_by_children)
+      (get_discussions_by_hot)
+      (get_discussions_by_feed)
+      (get_discussions_by_blog)
+      (get_discussions_by_comments)
+      (get_discussions_by_promoted)
+      (get_replies_by_last_update)
+      (get_discussions_by_author_before_date)
+      (get_account_history)
+   );
 }
 
 condenser_api::~condenser_api() {}

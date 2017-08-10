@@ -29,7 +29,7 @@ class account_by_key_api
    public:
       account_by_key_api();
 
-      get_key_references_return get_key_references( const get_key_references_args& keys );
+      DECLARE_API( (get_key_references) )
 
    private:
       std::shared_ptr< detail::account_by_key_api_impl > my;

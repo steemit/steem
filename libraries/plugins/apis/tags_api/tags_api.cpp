@@ -17,27 +17,29 @@ class tags_api_impl
    public:
       tags_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API( get_trending_tags )
-      DECLARE_API( get_tags_used_by_author )
-      DECLARE_API( get_discussion )
-      DECLARE_API( get_content_replies )
-      DECLARE_API( get_discussions_by_payout )
-      DECLARE_API( get_post_discussions_by_payout )
-      DECLARE_API( get_comment_discussions_by_payout )
-      DECLARE_API( get_discussions_by_trending )
-      DECLARE_API( get_discussions_by_created )
-      DECLARE_API( get_discussions_by_active )
-      DECLARE_API( get_discussions_by_cashout )
-      DECLARE_API( get_discussions_by_votes )
-      DECLARE_API( get_discussions_by_children )
-      DECLARE_API( get_discussions_by_hot )
-      DECLARE_API( get_discussions_by_feed )
-      DECLARE_API( get_discussions_by_blog )
-      DECLARE_API( get_discussions_by_comments )
-      DECLARE_API( get_discussions_by_promoted )
-      DECLARE_API( get_replies_by_last_update )
-      DECLARE_API( get_discussions_by_author_before_date )
-      DECLARE_API( get_active_votes )
+      DECLARE_API(
+         (get_trending_tags)
+         (get_tags_used_by_author)
+         (get_discussion)
+         (get_content_replies)
+         (get_discussions_by_payout)
+         (get_post_discussions_by_payout)
+         (get_comment_discussions_by_payout)
+         (get_discussions_by_trending)
+         (get_discussions_by_created)
+         (get_discussions_by_active)
+         (get_discussions_by_cashout)
+         (get_discussions_by_votes)
+         (get_discussions_by_children)
+         (get_discussions_by_hot)
+         (get_discussions_by_feed)
+         (get_discussions_by_blog)
+         (get_discussions_by_comments)
+         (get_discussions_by_promoted)
+         (get_replies_by_last_update)
+         (get_discussions_by_author_before_date)
+         (get_active_votes)
+      )
 
       void set_pending_payout( discussion& d );
       void set_url( discussion& d );
@@ -722,31 +724,30 @@ tags_api::tags_api()
 {
    my = std::make_shared< detail::tags_api_impl >();
 
-   appbase::app().get_plugin< plugins::json_rpc::json_rpc_plugin >().add_api(
+   JSON_RPC_REGISTER_API(
       STEEM_TAGS_API_PLUGIN_NAME,
-      {
-         API_METHOD( get_trending_tags ),
-         API_METHOD( get_tags_used_by_author ),
-         API_METHOD( get_discussion ),
-         API_METHOD( get_content_replies ),
-         API_METHOD( get_discussions_by_payout ),
-         API_METHOD( get_post_discussions_by_payout ),
-         API_METHOD( get_comment_discussions_by_payout ),
-         API_METHOD( get_discussions_by_trending ),
-         API_METHOD( get_discussions_by_created ),
-         API_METHOD( get_discussions_by_active ),
-         API_METHOD( get_discussions_by_cashout ),
-         API_METHOD( get_discussions_by_votes ),
-         API_METHOD( get_discussions_by_children ),
-         API_METHOD( get_discussions_by_hot ),
-         API_METHOD( get_discussions_by_feed ),
-         API_METHOD( get_discussions_by_blog ),
-         API_METHOD( get_discussions_by_comments ),
-         API_METHOD( get_discussions_by_promoted ),
-         API_METHOD( get_replies_by_last_update ),
-         API_METHOD( get_discussions_by_author_before_date ),
-         API_METHOD( get_active_votes )
-      });
+      (get_trending_tags)
+      (get_tags_used_by_author)
+      (get_discussion)
+      (get_content_replies)
+      (get_discussions_by_payout)
+      (get_post_discussions_by_payout)
+      (get_comment_discussions_by_payout)
+      (get_discussions_by_trending)
+      (get_discussions_by_created)
+      (get_discussions_by_active)
+      (get_discussions_by_cashout)
+      (get_discussions_by_votes)
+      (get_discussions_by_children)
+      (get_discussions_by_hot)
+      (get_discussions_by_feed)
+      (get_discussions_by_blog)
+      (get_discussions_by_comments)
+      (get_discussions_by_promoted)
+      (get_replies_by_last_update)
+      (get_discussions_by_author_before_date)
+      (get_active_votes)
+   );
 }
 
 DEFINE_API( tags_api, get_trending_tags )
