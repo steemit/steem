@@ -78,13 +78,46 @@ namespace steemit { namespace protocol {
          FC_ASSERT( a.symbol == b.symbol );
          return asset( a.amount + b.amount, a.symbol );
       }
-
+      
+      friend asset operator * ( const asset& a, const asset& b )
+      {
+         FC_ASSERT( a.symbol == b.symbol );
+         return asset( a.amount * b.amount, a.symbol );
+      }
    };
 
+   /** Represents quotation of the relative value of asset against another asset.
+       Similar to 'currency pair' used to determine value of currencies.
+
+       For example:
+       1 EUR / 1.25 USD where:
+       1 EUR is an asset specified as a base
+       1.25 USD us an asset specified as a qute
+
+       can determine value of EUR against USD.
+   */
    struct price
    {
-      price(const asset& base = asset(), const asset& quote = asset())
-         : base(base),quote(quote){}
+      /** Even non-single argument, lets make it an explicit one to avoid implicit calls for 
+          initialization lists. 
+
+          \param base  - represents a value of the price object to be expressed relatively to quote
+                         asset. Cannot have amount == 0 if you want to build valid price.
+          \param quote - represents an relative asset. Cannot have amount == 0, otherwise
+                         asertion fail.
+
+        Both base and quote shall have different symbol defined, since it also results in 
+        creation of invalid price object. \see validate() method.
+      */
+      explicit price(const asset& base, const asset& quote) : base(base),quote(quote)
+      {
+          /// Call validate to verify passed arguments. \warning It throws on error.
+          validate();
+      }
+
+      /** Default constructor is needed because of fc::variant::as method requirements.
+      */
+      price() = default;
 
       asset base;
       asset quote;
@@ -99,7 +132,7 @@ namespace steemit { namespace protocol {
 
       bool is_null()const;
       void validate()const;
-   };
+   }; /// price
 
    price operator / ( const asset& base, const asset& quote );
    inline price operator~( const price& p ) { return price{p.quote,p.base}; }
