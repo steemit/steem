@@ -111,12 +111,8 @@ namespace steemit { namespace protocol {
       */
       explicit price(const asset& base, const asset& quote) : base(base),quote(quote)
       {
-          /** Even price having base.amount == 0 is invalid too, probably this place
-          is located at too low level to make such checks.
-          Zero base does not affect this object sanity (in opposite to quote, which can lead to
-          division by zero during usage of this class methods).
-          */
-          FC_ASSERT(quote.amount != 0, "quote must be valid asset");
+          /// Call validate to verify passed arguments. \warning It throws on error.
+          validate();
       }
 
       /** Default constructor is needed because of fc::variant::as method requirements.

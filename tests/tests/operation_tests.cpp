@@ -2895,8 +2895,28 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
 
       BOOST_TEST_MESSAGE( "--- Test failure when price is 0" );
 
+      /// First check validation on price constructor level:
+      {
+        price broken_price;
+        /// Invalid base value
+        STEEMIT_REQUIRE_THROW(broken_price=price(ASSET("0.000 TESTS"), ASSET("1.000 TBD")),
+          fc::exception);
+        /// Invalid quote value
+        STEEMIT_REQUIRE_THROW(broken_price=price(ASSET("1.000 TESTS"), ASSET("0.000 TBD")),
+          fc::exception);
+        /// Invalid symbol (same in base & quote)          
+        STEEMIT_REQUIRE_THROW(broken_price=price(ASSET("1.000 TESTS"), ASSET("0.000 TESTS")),
+          fc::exception);        
+      }
+
       op.owner = "alice";
-      op.exchange_rate = price( ASSET( "0.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      /** Here intentionally price has assigned its members directly, to skip validation
+          inside price constructor, and force the one performed at tx push.
+      */
+      op.exchange_rate = price();
+      op.exchange_rate.base = ASSET("0.000 TESTS");
+      op.exchange_rate.quote = ASSET("1.000 TBD");
+
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
