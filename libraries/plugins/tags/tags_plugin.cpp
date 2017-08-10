@@ -358,62 +358,6 @@ struct operation_visitor
       } FC_CAPTURE_LOG_AND_RETHROW( (c) )
    }
 
-   const peer_stats_object& get_or_create_peer_stats( account_id_type voter, account_id_type peer )const
-   {
-      const auto& peeridx = _db.get_index<peer_stats_index>().indices().get<by_voter_peer>();
-      auto itr = peeridx.find( boost::make_tuple( voter, peer ) );
-      if( itr == peeridx.end() )
-      {
-         return _db.create<peer_stats_object>( [&]( peer_stats_object& obj ) {
-               obj.voter = voter;
-               obj.peer  = peer;
-         });
-      }
-      return *itr;
-   }
-
-   void update_indirect_vote( account_id_type a, account_id_type b, int positive )const
-   {
-      if( a == b )
-         return;
-      const auto& ab = get_or_create_peer_stats( a, b );
-      const auto& ba = get_or_create_peer_stats( b, a );
-      _db.modify( ab, [&]( peer_stats_object& o )
-      {
-         o.indirect_positive_votes += positive;
-         o.indirect_votes++;
-         o.update_rank();
-      });
-      _db.modify( ba, [&]( peer_stats_object& o )
-      {
-         o.indirect_positive_votes += positive;
-         o.indirect_votes++;
-         o.update_rank();
-      });
-   }
-
-   void update_peer_stats( const account_object& voter, const account_object& author, const comment_object& c, int vote )const
-   {
-      if( voter.id == author.id ) return; /// ignore votes for yourself
-      if( c.parent_author.size() ) return; /// only count top level posts
-
-      const auto& stat = get_or_create_peer_stats( voter.id, author.id );
-      _db.modify( stat, [&]( peer_stats_object& obj )
-      {
-         obj.direct_votes++;
-         obj.direct_positive_votes += vote > 0;
-         obj.update_rank();
-      });
-
-      const auto& voteidx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
-      auto itr = voteidx.lower_bound( boost::make_tuple( comment_id_type(c.id), account_id_type() ) );
-      while( itr != voteidx.end() && itr->comment == c.id )
-      {
-         update_indirect_vote( voter.id, itr->voter, (itr->vote_percent > 0)  == (vote > 0) );
-         ++itr;
-      }
-   }
-
    void operator()( const comment_operation& op )const
    {
       update_tags( _db.get_comment( op.author, op.permlink ), true );
@@ -457,12 +401,6 @@ struct operation_visitor
    void operator()( const vote_operation& op )const
    {
       update_tags( _db.get_comment( op.author, op.permlink ) );
-      /*
-      update_peer_stats( _db.get_account(op.voter),
-                         _db.get_account(op.author),
-                         _db.get_comment(op.author, op.permlink),
-                         op.weight );
-                         */
    }
 
    void operator()( const comment_reward_operation& op )const
@@ -548,7 +486,6 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 
    add_plugin_index< tag_index               >( my->_db );
    add_plugin_index< tag_stats_index         >( my->_db );
-   add_plugin_index< peer_stats_index        >( my->_db );
    add_plugin_index< author_tag_stats_index  >( my->_db );
 
 }

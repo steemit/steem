@@ -22,7 +22,6 @@ class tags_api_impl
          (get_tags_used_by_author)
          (get_discussion)
          (get_content_replies)
-         (get_discussions_by_payout)
          (get_post_discussions_by_payout)
          (get_comment_discussions_by_payout)
          (get_discussions_by_trending)
@@ -143,18 +142,6 @@ DEFINE_API( tags_api_impl, get_content_replies )
       ++itr;
    }
    return result;
-}
-
-DEFINE_API( tags_api_impl, get_discussions_by_payout )
-{
-   args.validate();
-   auto tag = fc::to_lower( args.tag );
-   auto parent = get_parent( args );
-
-   const auto& tidx = _db.get_index< tags::tag_index, tags::by_net_rshares >();
-   auto tidx_itr = tidx.lower_bound( tag );
-
-   return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, []( const database_api::api_comment_object& c ){ return c.net_rshares <= 0; }, exit_default, tag_exit_default, true );
 }
 
 DEFINE_API( tags_api_impl, get_post_discussions_by_payout )
@@ -730,7 +717,6 @@ tags_api::tags_api()
       (get_tags_used_by_author)
       (get_discussion)
       (get_content_replies)
-      (get_discussions_by_payout)
       (get_post_discussions_by_payout)
       (get_comment_discussions_by_payout)
       (get_discussions_by_trending)
@@ -779,14 +765,6 @@ DEFINE_API( tags_api, get_content_replies )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_content_replies( args );
-   });
-}
-
-DEFINE_API( tags_api, get_discussions_by_payout )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_discussions_by_payout( args );
    });
 }
 
