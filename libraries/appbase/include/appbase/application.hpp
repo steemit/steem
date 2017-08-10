@@ -68,6 +68,8 @@ namespace appbase {
          Plugin& get_plugin()const
          {
             auto ptr = find_plugin< Plugin >();
+            if( ptr == nullptr )
+               BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find plugin: " + Plugin::name() ) );
             return *ptr;
          }
 
