@@ -42,6 +42,8 @@ public:
    virtual void set_program_options(bpo::options_description &,
                                     bpo::options_description &config_file_options) override;
 
+   static const std::string& name() { static std::string name = STEEM_P2P_PLUGIN_NAME; return name; }
+
    virtual void plugin_initialize(const bpo::variables_map& options);
    virtual void plugin_startup();
    virtual void plugin_shutdown();

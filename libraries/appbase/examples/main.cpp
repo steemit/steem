@@ -11,10 +11,12 @@ using bpo::variables_map;
 using std::string;
 using std::vector;
 
-class chain_plugin : public appbase::plugin<chain_plugin>
+class plugin_a : public appbase::plugin<plugin_a>
 {
    public:
      APPBASE_PLUGIN_REQUIRES();
+
+     static const std::string& name() { static std::string name = "plugin_a"; return name; }
 
      virtual void set_program_options( options_description& cli, options_description& cfg ) override
      {
@@ -23,14 +25,14 @@ class chain_plugin : public appbase::plugin<chain_plugin>
                ("dbsize", bpo::value<uint64_t>()->default_value( 8*1024 ), "Minimum size MB of database shared memory file")
                ;
          cli.add_options()
-               ("replay", "clear chain database and replay all blocks" )
-               ("reset", "clear chain database and block log" )
+               ("replay", "clear plugin_a database and replay all blocks" )
+               ("reset", "clear plugin_a database and block log" )
                ;
      }
 
-     void plugin_initialize( const variables_map& options ) { std::cout << "initialize chain plugin\n"; }
-     void plugin_startup()  { std::cout << "starting chain plugin \n"; }
-     void plugin_shutdown() { std::cout << "shutdown chain plugin \n"; }
+     void plugin_initialize( const variables_map& options ) { std::cout << "initialize plugin_a plugin\n"; }
+     void plugin_startup()  { std::cout << "starting plugin_a plugin \n"; }
+     void plugin_shutdown() { std::cout << "shutdown plugin_a plugin \n"; }
 
      database& db() { return _db; }
 
@@ -38,13 +40,15 @@ class chain_plugin : public appbase::plugin<chain_plugin>
      database _db;
 };
 
-class net_plugin : public appbase::plugin<net_plugin>
+class plugin_b : public appbase::plugin<plugin_b>
 {
    public:
-     net_plugin(){};
-     ~net_plugin(){};
+     plugin_b(){};
+     ~plugin_b(){};
 
-     APPBASE_PLUGIN_REQUIRES( (chain_plugin) );
+     APPBASE_PLUGIN_REQUIRES( (plugin_a) );
+
+     static const std::string& name() { static std::string name = "plugin_b"; return name; }
 
      virtual void set_program_options( options_description& cli, options_description& cfg ) override
      {
@@ -55,9 +59,9 @@ class net_plugin : public appbase::plugin<net_plugin>
               ;
      }
 
-     void plugin_initialize( const variables_map& options ) { std::cout << "initialize net plugin\n"; }
-     void plugin_startup()  { std::cout << "starting net plugin \n"; }
-     void plugin_shutdown() { std::cout << "shutdown net plugin \n"; }
+     void plugin_initialize( const variables_map& options ) { std::cout << "initialize plugin_b plugin\n"; }
+     void plugin_startup()  { std::cout << "starting plugin_b plugin \n"; }
+     void plugin_shutdown() { std::cout << "shutdown plugin_b plugin \n"; }
 
 };
 
@@ -65,7 +69,7 @@ class net_plugin : public appbase::plugin<net_plugin>
 
 int main( int argc, char** argv ) {
    try {
-      appbase::app().register_plugin<net_plugin>();
+      appbase::app().register_plugin<plugin_b>();
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
       appbase::app().startup();

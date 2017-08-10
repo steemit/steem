@@ -38,8 +38,7 @@ debug_node_plugin_impl::~debug_node_plugin_impl() {}
 private_key_storage::private_key_storage() {}
 private_key_storage::~private_key_storage() {}
 
-debug_node_plugin::debug_node_plugin() :
-   appbase::plugin< debug_node_plugin >( STEEM_DEBUG_NODE_PLUGIN_NAME ) {}
+debug_node_plugin::debug_node_plugin() {}
 debug_node_plugin::~debug_node_plugin() {}
 
 struct debug_mine_state

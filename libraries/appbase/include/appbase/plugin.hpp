@@ -6,7 +6,7 @@
 #include <map>
 
 #define APPBASE_PLUGIN_REQUIRES_VISIT( r, visitor, elem ) \
-  visitor( appbase::app().register_plugin<elem>() ); 
+  visitor( appbase::app().register_plugin<elem>() );
 
 #define APPBASE_PLUGIN_REQUIRES( PLUGINS )                               \
    template<typename Lambda>                                           \
@@ -36,7 +36,7 @@ namespace appbase {
 
          virtual ~abstract_plugin(){}
          virtual state get_state()const = 0;
-         virtual const std::string& name()const  = 0;
+         virtual const std::string& get_name()const  = 0;
          virtual void set_program_options( options_description& cli, options_description& cfg ) = 0;
          virtual void initialize(const variables_map& options) = 0;
          virtual void startup() = 0;

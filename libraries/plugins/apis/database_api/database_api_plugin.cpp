@@ -3,10 +3,8 @@
 
 namespace steemit { namespace plugins { namespace database_api {
 
-database_api_plugin::database_api_plugin() :
-   appbase::plugin< database_api_plugin >( STEEM_DATABASE_API_PLUGIN_NAME ) {}
-
-database_api_plugin::~database_api_plugin(){}
+database_api_plugin::database_api_plugin() {}
+database_api_plugin::~database_api_plugin() {}
 
 void database_api_plugin::set_program_options(
    options_description& cli,

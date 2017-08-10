@@ -18,9 +18,9 @@ public:
    chain_plugin();
    virtual ~chain_plugin();
 
-   std::string get_name(){ return STEEM_CHAIN_PLUGIN_NAME; }
-   virtual void set_program_options( options_description& cli, options_description& cfg ) override;
+   static const std::string& name() { static std::string name = STEEM_CHAIN_PLUGIN_NAME; return name; }
 
+   virtual void set_program_options( options_description& cli, options_description& cfg ) override;
    void plugin_initialize( const variables_map& options );
    void plugin_startup();
    void plugin_shutdown();

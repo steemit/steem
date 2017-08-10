@@ -45,6 +45,8 @@ class market_history_plugin : public plugin< market_history_plugin >
 
       APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
 
+      static const std::string& name() { static std::string name = STEEM_MARKET_HISTORY_PLUGIN_NAME; return name; }
+
       virtual void set_program_options(
          options_description& cli,
          options_description& cfg );

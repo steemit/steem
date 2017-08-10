@@ -4,7 +4,7 @@
 
 namespace steemit { namespace plugins { namespace witness {
 
-witness_api_plugin::witness_api_plugin() : appbase::plugin< witness_api_plugin >( STEEM_WITNESS_API_PLUGIN_NAME ) {}
+witness_api_plugin::witness_api_plugin() {}
 witness_api_plugin::~witness_api_plugin() {}
 
 void witness_api_plugin::set_program_options( options_description& cli, options_description& cfg ) {}

@@ -176,9 +176,7 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
 }
 
 
-account_history_plugin::account_history_plugin() :
-   plugin< account_history_plugin >( STEEM_ACCOUNT_HISTORY_PLUGIN_NAME ) {}
-
+account_history_plugin::account_history_plugin() {}
 account_history_plugin::~account_history_plugin() {}
 
 void account_history_plugin::set_program_options(

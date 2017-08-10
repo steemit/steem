@@ -69,8 +69,8 @@ void application::set_program_options()
    my->_app_options.add(app_cli_opts);
 
    for(auto& plug : plugins) {
-      boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->name());
-      boost::program_options::options_description plugin_cfg_opts("Config Options for " + plug.second->name());
+      boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->get_name());
+      boost::program_options::options_description plugin_cfg_opts("Config Options for " + plug.second->get_name());
       plug.second->set_program_options(plugin_cli_opts, plugin_cfg_opts);
       if(plugin_cfg_opts.options().size()) {
          my->_app_options.add(plugin_cfg_opts);
@@ -148,7 +148,7 @@ void application::shutdown() {
    }
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
-      plugins.erase((*ritr)->name());
+      plugins.erase((*ritr)->get_name());
    }
    running_plugins.clear();
    initialized_plugins.clear();
