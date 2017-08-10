@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 1) )
+#define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 2) )
 #define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
 
 #ifdef IS_TEST_NET
@@ -26,12 +26,10 @@
 #define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (STEEMIT_CASHOUT_WINDOW_SECONDS)
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
-#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
 #define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
 #define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
 
 
-#define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE 0
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE          0
 
 #define STEEMIT_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(60)
@@ -56,11 +54,9 @@
 #define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  /// 7 days
 #define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
 #define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
-#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2)     /// 2 hours
 #define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
 #define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::hours(12))
 
-#define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE  100000
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE           1
 
 #define STEEMIT_OWNER_AUTH_RECOVERY_PERIOD                  fc::days(30)
@@ -109,14 +105,12 @@
 #define STEEMIT_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
 #define STEEMIT_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
 #define STEEMIT_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
-#define STEEMIT_POST_MAX_BANDWIDTH              (4*STEEMIT_100_PERCENT) // 2 posts per 1 days, average 1 every 12 hours
-#define STEEMIT_POST_WEIGHT_CONSTANT            (uint64_t(STEEMIT_POST_MAX_BANDWIDTH) * STEEMIT_POST_MAX_BANDWIDTH)
+#define STEEMIT_POST_WEIGHT_CONSTANT            (uint64_t(4*STEEMIT_100_PERCENT) * (4*STEEMIT_100_PERCENT))// (4*STEEMIT_100_PERCENT) -> 2 posts per 1 days, average 1 every 12 hours
 
 #define STEEMIT_MAX_ACCOUNT_WITNESS_VOTES       30
 
 #define STEEMIT_100_PERCENT                     10000
 #define STEEMIT_1_PERCENT                       (STEEMIT_100_PERCENT/100)
-#define STEEMIT_1_TENTH_PERCENT                 (STEEMIT_100_PERCENT/1000)
 #define STEEMIT_DEFAULT_SBD_INTEREST_RATE       (10*STEEMIT_1_PERCENT) ///< 10% APR
 
 #define STEEMIT_INFLATION_RATE_START_PERCENT    (978) // Fixes block 7,000,000 to 9.5%
@@ -126,9 +120,7 @@
 #define STEEMIT_VESTING_FUND_PERCENT            (15*STEEMIT_1_PERCENT) //15% of inflation, 1.425% inflation
 
 #define STEEMIT_MINER_PAY_PERCENT               (STEEMIT_1_PERCENT) // 1%
-#define STEEMIT_MIN_RATION                      100000
 #define STEEMIT_MAX_RATION_DECAY_RATE           (1000000)
-#define STEEMIT_FREE_TRANSACTIONS_WITH_NEW_ACCOUNT 100
 
 #define STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEMIT_BANDWIDTH_PRECISION             (uint64_t(1000000)) ///< 1 million
@@ -163,8 +155,8 @@
 
 #define STEEMIT_POST_REWARD_FUND_NAME           ("post")
 #define STEEMIT_COMMENT_REWARD_FUND_NAME        ("comment")
-#define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF17  (fc::days(30))
-#define STEEMIT_RECENT_RSHARES_DECAY_RATE_HF19  (fc::days(15))
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF17    (fc::days(30))
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF19    (fc::days(15))
 #define STEEMIT_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))
 // note, if redefining these constants make sure calculate_claims doesn't overflow
 
@@ -250,8 +242,8 @@
 
 #define STEEMIT_IRREVERSIBLE_THRESHOLD          (75 * STEEMIT_1_PERCENT)
 
-#define VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
-#define VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
+#define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
+#define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
 
 /**
  *  Reserved Account IDs with special meaning

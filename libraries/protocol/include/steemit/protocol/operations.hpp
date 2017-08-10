@@ -99,5 +99,5 @@ namespace steemit { namespace protocol {
     void from_variant( const fc::variant& var,  steemit::protocol::operation& vo );
 }*/
 
-DECLARE_OPERATION_TYPE( steemit::protocol::operation )
+STEEM_DECLARE_OPERATION_TYPE( steemit::protocol::operation )
 FC_REFLECT_TYPENAME( steemit::protocol::operation )

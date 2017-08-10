@@ -10,14 +10,9 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( steemd PRIVATE
+   appbase
+   steemit_utilities
    steemit_plugins
-   steemit_mf_plugins
-   steemit_app
-   steemit_witness
-   steemit_account_history
-   steemit_chain
-   steemit_protocol
-   fc
    ${CMAKE_DL_LIBS}
    ${PLATFORM_SPECIFIC_LIBS}
 )

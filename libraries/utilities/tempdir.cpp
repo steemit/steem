@@ -22,18 +22,18 @@
  * THE SOFTWARE.
  */
 
-#include <graphene/utilities/tempdir.hpp>
+#include <steemit/utilities/tempdir.hpp>
 
 #include <cstdlib>
 
-namespace graphene { namespace utilities {
+namespace steemit { namespace utilities {
 
 fc::path temp_directory_path()
 {
-   const char* graphene_tempdir = getenv("GRAPHENE_TEMPDIR");
-   if( graphene_tempdir != nullptr )
-      return fc::path( graphene_tempdir );
-   return fc::temp_directory_path() / "graphene-tmp";
+   const char* steemit_tempdir = getenv("STEEMIT_TEMPDIR");
+   if( steemit_tempdir != nullptr )
+      return fc::path( steemit_tempdir );
+   return fc::temp_directory_path() / "steemit-tmp";
 }
 
-} } // graphene::utilities
+} } // steemit::utilities

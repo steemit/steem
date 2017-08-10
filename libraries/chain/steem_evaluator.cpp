@@ -584,21 +584,27 @@ void comment_evaluator::do_apply( const comment_operation& o )
          {
             com.cashout_time = com.created + STEEMIT_CASHOUT_WINDOW_SECONDS;
          }
-
-         #ifndef IS_LOW_MEM
-            from_string( com.title, o.title );
-            if( o.body.size() < 1024*1024*128 )
-            {
-               from_string( com.body, o.body );
-            }
-            if( fc::is_utf8( o.json_metadata ) )
-               from_string( com.json_metadata, o.json_metadata );
-            else
-               wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
-         #endif
       });
 
       id = new_comment.id;
+
+   #ifndef IS_LOW_MEM
+      _db.create< comment_content_object >( [&]( comment_content_object& con )
+      {
+         con.comment = id;
+
+         from_string( con.title, o.title );
+         if( o.body.size() < 1024*1024*128 )
+         {
+            from_string( con.body, o.body );
+         }
+         if( fc::is_utf8( o.json_metadata ) )
+            from_string( con.json_metadata, o.json_metadata );
+         else
+         wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
+      });
+   #endif
+
 
 /// this loop can be skiped for validate-only nodes as it is merely gathering stats for indicies
       auto now = _db.head_block_time();
@@ -643,39 +649,42 @@ void comment_evaluator::do_apply( const comment_operation& o )
             FC_ASSERT( com.parent_author == o.parent_author, "The parent of a comment cannot change." );
             FC_ASSERT( equal( com.parent_permlink, o.parent_permlink ), "The permlink of a comment cannot change." );
          }
-
-         #ifndef IS_LOW_MEM
-           if( o.title.size() )         from_string( com.title, o.title );
-           if( o.json_metadata.size() )
-           {
-              if( fc::is_utf8( o.json_metadata ) )
-                 from_string( com.json_metadata, o.json_metadata );
-              else
-                 wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
-           }
-
-           if( o.body.size() ) {
-              try {
-               diff_match_patch<std::wstring> dmp;
-               auto patch = dmp.patch_fromText( utf8_to_wstring(o.body) );
-               if( patch.size() ) {
-                  auto result = dmp.patch_apply( patch, utf8_to_wstring( to_string( com.body ) ) );
-                  auto patched_body = wstring_to_utf8(result.first);
-                  if( !fc::is_utf8( patched_body ) ) {
-                     idump(("invalid utf8")(patched_body));
-                     from_string( com.body, fc::prune_invalid_utf8(patched_body) );
-                  } else { from_string( com.body, patched_body ); }
-               }
-               else { // replace
-                  from_string( com.body, o.body );
-               }
-              } catch ( ... ) {
-                  from_string( com.body, o.body );
-              }
-           }
-         #endif
-
       });
+   #ifndef IS_LOW_MEM
+      _db.modify( _db.get< comment_content_object, by_comment >( comment.id ), [&]( comment_content_object& con )
+      {
+         if( o.title.size() )         from_string( con.title, o.title );
+         if( o.json_metadata.size() )
+         {
+            if( fc::is_utf8( o.json_metadata ) )
+               from_string( con.json_metadata, o.json_metadata );
+            else
+               wlog( "Comment ${a}/${p} contains invalid UTF-8 metadata", ("a", o.author)("p", o.permlink) );
+         }
+
+         if( o.body.size() ) {
+            try {
+            diff_match_patch<std::wstring> dmp;
+            auto patch = dmp.patch_fromText( utf8_to_wstring(o.body) );
+            if( patch.size() ) {
+               auto result = dmp.patch_apply( patch, utf8_to_wstring( to_string( con.body ) ) );
+               auto patched_body = wstring_to_utf8(result.first);
+               if( !fc::is_utf8( patched_body ) ) {
+                  idump(("invalid utf8")(patched_body));
+                  from_string( con.body, fc::prune_invalid_utf8(patched_body) );
+               } else { from_string( con.body, patched_body ); }
+            }
+            else { // replace
+               from_string( con.body, o.body );
+            }
+            } catch ( ... ) {
+               from_string( con.body, o.body );
+            }
+         }
+      });
+   #endif
+
+
 
    } // end EDIT case
 
@@ -950,7 +959,7 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    const auto& from_account = _db.get_account( o.from_account );
    const auto& to_account = _db.get_account( o.to_account );
    const auto& wd_idx = _db.get_index< withdraw_vesting_route_index >().indices().get< by_withdraw_route >();
-   auto itr = wd_idx.find( boost::make_tuple( from_account.id, to_account.id ) );
+   auto itr = wd_idx.find( boost::make_tuple( from_account.name, to_account.name ) );
 
    if( itr == wd_idx.end() )
    {
@@ -959,8 +968,8 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
 
       _db.create< withdraw_vesting_route_object >( [&]( withdraw_vesting_route_object& wvdo )
       {
-         wvdo.from_account = from_account.id;
-         wvdo.to_account = to_account.id;
+         wvdo.from_account = from_account.name;
+         wvdo.to_account = to_account.name;
          wvdo.percent = o.percent;
          wvdo.auto_vest = o.auto_vest;
       });
@@ -983,17 +992,17 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    {
       _db.modify( *itr, [&]( withdraw_vesting_route_object& wvdo )
       {
-         wvdo.from_account = from_account.id;
-         wvdo.to_account = to_account.id;
+         wvdo.from_account = from_account.name;
+         wvdo.to_account = to_account.name;
          wvdo.percent = o.percent;
          wvdo.auto_vest = o.auto_vest;
       });
    }
 
-   itr = wd_idx.upper_bound( boost::make_tuple( from_account.id, account_id_type() ) );
+   itr = wd_idx.upper_bound( boost::make_tuple( from_account.name, account_name_type() ) );
    uint16_t total_percent = 0;
 
-   while( itr->from_account == from_account.id && itr != wd_idx.end() )
+   while( itr->from_account == from_account.name && itr != wd_idx.end() )
    {
       total_percent += itr->percent;
       ++itr;
@@ -1062,7 +1071,7 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
    const auto& witness = _db.get_witness( o.witness );
 
    const auto& by_account_witness_idx = _db.get_index< witness_vote_index >().indices().get< by_account_witness >();
-   auto itr = by_account_witness_idx.find( boost::make_tuple( voter.id, witness.id ) );
+   auto itr = by_account_witness_idx.find( boost::make_tuple( voter.name, witness.owner ) );
 
    if( itr == by_account_witness_idx.end() ) {
       FC_ASSERT( o.approve, "Vote doesn't exist, user must indicate a desire to approve witness." );
@@ -1072,8 +1081,8 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
          FC_ASSERT( voter.witnesses_voted_for < STEEMIT_MAX_ACCOUNT_WITNESS_VOTES, "Account has voted for too many witnesses." ); // TODO: Remove after hardfork 2
 
          _db.create<witness_vote_object>( [&]( witness_vote_object& v ) {
-             v.witness = witness.id;
-             v.account = voter.id;
+             v.witness = witness.owner;
+             v.account = voter.name;
          });
 
          if( _db.has_hardfork( STEEMIT_HARDFORK_0_3 ) ) {
@@ -1086,8 +1095,8 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
       } else {
 
          _db.create<witness_vote_object>( [&]( witness_vote_object& v ) {
-             v.witness = witness.id;
-             v.account = voter.id;
+             v.witness = witness.owner;
+             v.account = voter.name;
          });
          _db.modify( witness, [&]( witness_object& w ) {
              w.votes += voter.witness_vote_weight();
@@ -2067,7 +2076,7 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
 
    const auto& account = _db.get_account( o.account );
    const auto& request_idx = _db.get_index< decline_voting_rights_request_index >().indices().get< by_account >();
-   auto itr = request_idx.find( account.id );
+   auto itr = request_idx.find( account.name );
 
    if( o.decline )
    {
@@ -2075,7 +2084,7 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
 
       _db.create< decline_voting_rights_request_object >( [&]( decline_voting_rights_request_object& req )
       {
-         req.account = account.id;
+         req.account = account.name;
          req.effective_date = _db.head_block_time() + STEEMIT_OWNER_AUTH_RECOVERY_PERIOD;
       });
    }
