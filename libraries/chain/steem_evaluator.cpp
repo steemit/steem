@@ -37,7 +37,7 @@ inline void validate_permlink_0_1( const string& permlink )
 {
    FC_ASSERT( permlink.size() > STEEMIT_MIN_PERMLINK_LENGTH && permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "Permlink is not a valid size." );
 
-   for( auto c : permlink )
+   for( const auto& c : permlink )
    {
       switch( c )
       {
@@ -205,17 +205,17 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
                ("f", wso.median_props.account_creation_fee)
                ("p", o.fee) );
 
-   for( auto& a : o.owner.account_auths )
+   for( const auto& a : o.owner.account_auths )
    {
       _db.get_account( a.first );
    }
 
-   for( auto& a : o.active.account_auths )
+   for( const auto& a : o.active.account_auths )
    {
       _db.get_account( a.first );
    }
 
-   for( auto& a : o.posting.account_auths )
+   for( const auto& a : o.posting.account_auths )
    {
       _db.get_account( a.first );
    }
@@ -287,7 +287,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
       if( ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
       {
-         for( auto a: o.owner->account_auths )
+         for( const auto& a: o.owner->account_auths )
          {
             _db.get_account( a.first );
          }
@@ -299,7 +299,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    if( o.active && ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
    {
-      for( auto a: o.active->account_auths )
+      for( const auto& a: o.active->account_auths )
       {
          _db.get_account( a.first );
       }
@@ -307,7 +307,7 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 
    if( o.posting && ( _db.has_hardfork( STEEMIT_HARDFORK_0_15__465 ) ) )
    {
-      for( auto a: o.posting->account_auths )
+      for( const auto& a: o.posting->account_auths )
       {
          _db.get_account( a.first );
       }

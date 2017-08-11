@@ -3819,7 +3819,7 @@ void database::apply_hardfork( uint32_t hardfork )
                }
             }
 
-            for( auto itr : root_posts )
+            for( const auto& itr : root_posts )
             {
                modify( *itr, [&]( comment_object& c )
                {
@@ -3827,7 +3827,7 @@ void database::apply_hardfork( uint32_t hardfork )
                });
             }
 
-            for( auto itr : replies )
+            for( const auto& itr : replies )
             {
                modify( *itr, [&]( comment_object& c )
                {
