@@ -25,6 +25,8 @@ class chain_plugin_impl
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
+      uint32_t allow_future_time = 5;
+
       database  db;
 };
 
@@ -142,6 +144,8 @@ bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool
            ("n", block.block_num()) );
    }
 
+   check_time_in_block( block );
+
    return db().push_block(block);
 }
 
@@ -158,6 +162,15 @@ bool chain_plugin::block_is_on_preferred_chain(const steemit::chain::block_id_ty
    // Extract the block number from block_id, and fetch that block number's ID from the database.
    // If the database's block ID matches block_id, then block_id is on the preferred chain. Otherwise, it's on a fork.
    return db().get_block_id_for_num( steemit::chain::block_header::num_from_id( block_id ) ) == block_id;
+}
+
+void chain_plugin::check_time_in_block( const steemit::chain::signed_block& block )
+{
+   time_point_sec now = fc::time_point::now();
+
+   uint64_t max_accept_time = now.sec_since_epoch();
+   max_accept_time += my->allow_future_time;
+   FC_ASSERT( block.timestamp.sec_since_epoch() <= max_accept_time );
 }
 
 } } } // namespace steemit::plugis::chain::chain_apis

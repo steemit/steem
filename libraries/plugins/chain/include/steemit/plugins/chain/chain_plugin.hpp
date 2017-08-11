@@ -30,6 +30,8 @@ public:
 
    bool block_is_on_preferred_chain( const steemit::chain::block_id_type& block_id );
 
+   void check_time_in_block( const steemit::chain::signed_block& block );
+
    template< typename MultiIndexType >
    bool has_index() const
    {
