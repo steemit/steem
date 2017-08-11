@@ -77,26 +77,6 @@ typedef std::map< string, api_method > api_description;
 namespace detail
 {
    class json_rpc_plugin_impl;
-
-
-
-   /*struct json_rpc_error
-   {
-      json_rpc_error( int32_t c, std::string m, fc::optional< fc::variant > d = fc::optional< fc::variant >() )
-         : code( c ), message( m ), data( d ) {}
-
-      int32_t                          code;
-      std::string                      message;
-      fc::optional< fc::variant >      data;
-   };
-
-   struct json_rpc_response
-   {
-      std::string                      jsonrpc = "2.0";
-      fc::optional< fc::variant >      result;
-      fc::optional< json_rpc_error >   error;
-      fc::variant                      id;
-   };*/
 }
 
 class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
