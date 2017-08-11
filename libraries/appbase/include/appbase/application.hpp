@@ -76,7 +76,7 @@ namespace appbase {
          void add_program_options( const bpo::options_description& cli, const bpo::options_description& cfg );
          const bpo::variables_map& get_args() const;
 
-         void set_version_string( string& version ) { version_info = version; }
+         void set_version_string( const string& version ) { version_info = version; }
 
          boost::asio::io_service& get_io_service() { return *io_serv; }
 
