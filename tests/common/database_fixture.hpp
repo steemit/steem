@@ -136,7 +136,7 @@ using namespace steemit::protocol;
 struct database_fixture {
    // the reason we use an app is to exercise the indexes of built-in
    //   plugins
-   chain::database* db;
+   chain::database* db = nullptr;
    signed_transaction trx;
    public_key_type committee_key;
    account_id_type committee_account;
