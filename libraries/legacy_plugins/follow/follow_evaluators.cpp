@@ -26,7 +26,7 @@ void follow_evaluator::do_apply( const follow_operation& o )
       uint16_t what = 0;
       bool is_following = false;
 
-      for( auto target : o.what )
+      for( const auto& target : o.what )
       {
          switch( follow_type_map[ target ] )
          {

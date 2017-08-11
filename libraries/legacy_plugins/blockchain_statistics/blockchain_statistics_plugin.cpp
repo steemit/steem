@@ -273,13 +273,13 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    uint32_t trx_size = 0;
    uint32_t num_trx =b.transactions.size();
 
-   for( auto trx : b.transactions )
+   for( const auto& trx : b.transactions )
    {
       trx_size += fc::raw::pack_size( trx );
    }
 
 
-   for( auto bucket : _tracked_buckets )
+   for( const auto& bucket : _tracked_buckets )
    {
       auto open = fc::time_point_sec( ( db.head_block_time().sec_since_epoch() / bucket ) * bucket );
       auto itr = bucket_idx.find( boost::make_tuple( bucket, open ) );
@@ -335,7 +335,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
 {
    auto& db = _self.database();
 
-   for( auto bucket_id : _current_buckets )
+   for( const auto& bucket_id : _current_buckets )
    {
       if( o.op.which() == operation::tag< delete_comment_operation >::value )
       {
@@ -384,7 +384,7 @@ void blockchain_statistics_plugin_impl::post_operation( const operation_notifica
    {
    auto& db = _self.database();
 
-   for( auto bucket_id : _current_buckets )
+   for( const auto& bucket_id : _current_buckets )
    {
       const auto& bucket = db.get(bucket_id);
 

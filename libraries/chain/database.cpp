@@ -2787,8 +2787,9 @@ try {
 
          if( fho.price_history.size() )
          {
+            /// BW-TODO Why deque is used here ? Also why don't make copy of whole container ?
             std::deque< price > copy;
-            for( auto i : fho.price_history )
+            for( const auto& i : fho.price_history )
             {
                copy.push_back( i );
             }

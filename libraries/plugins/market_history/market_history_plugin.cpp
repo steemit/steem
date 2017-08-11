@@ -47,7 +47,7 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
       if( !_maximum_history_per_bucket_size ) return;
       if( !_tracked_buckets.size() ) return;
 
-      for( auto bucket : _tracked_buckets )
+      for( const auto& bucket : _tracked_buckets )
       {
          auto cutoff = _db.head_block_time() - fc::seconds( bucket * _maximum_history_per_bucket_size );
 

@@ -214,9 +214,10 @@ namespace detail
                if( _follow_api )
                {
                   auto blog = _follow_api->get_blog_entries( follow::get_blog_entries_args( { eacnt.name, 0, 20 } ) ).blog;
-                  eacnt.blog = vector< string >();
+                  eacnt.blog = vector<string>();
+                  eacnt.blog->reserve(blog.size());
 
-                  for( auto b: blog )
+                  for( const auto& b: blog )
                   {
                      const auto link = b.author + "/" + b.permlink;
                      eacnt.blog->push_back( link );
@@ -238,8 +239,9 @@ namespace detail
                {
                   auto feed = _follow_api->get_feed_entries( follow::get_feed_entries_args( { eacnt.name, 0, 20 } ) ).feed;
                   eacnt.feed = vector<string>();
+                  eacnt.feed->reserve( feed.size());
 
-                  for( auto f: feed )
+                  for( const auto& f: feed )
                   {
                      const auto link = f.author + "/" + f.permlink;
                      eacnt.feed->push_back( link );
@@ -248,10 +250,9 @@ namespace detail
                      if( _tags_api )
                         _tags_api->set_pending_payout( _state.content[ link ] );
 
-                     if( f.reblog_by.size() )
+                     if( f.reblog_by.empty() == false)
                      {
-                        if( f.reblog_by.size() )
-                           _state.content[link].first_reblogged_by = f.reblog_by[0];
+                        _state.content[link].first_reblogged_by = f.reblog_by[0];
                         _state.content[link].reblogged_by = f.reblog_by;
                         _state.content[link].first_reblogged_on = f.reblog_on;
                      }
@@ -610,13 +611,14 @@ namespace detail
       const auto& idx  = _db.get_index< account_index >().indices().get< by_name >();
       const auto& vidx = _db.get_index< witness_vote_index >().indices().get< by_account_witness >();
       vector< extended_account > results;
+      results.reserve(names.size());
 
-      for( auto name: names )
+      for( const auto& name: names )
       {
          auto itr = idx.find( name );
          if ( itr != idx.end() )
          {
-            results.push_back( extended_account( *itr, _db ) );
+            results.emplace_back( extended_account( *itr, _db ) );
 
             if( _follow_api )
             {
