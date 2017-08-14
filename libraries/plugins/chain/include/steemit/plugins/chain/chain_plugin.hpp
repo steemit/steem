@@ -25,7 +25,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   bool accept_block( const steemit::chain::signed_block& block, bool currently_syncing );
+   bool accept_block( const steemit::chain::signed_block& block, bool currently_syncing, uint32_t skip );
    void accept_transaction( const steemit::chain::signed_transaction& trx );
 
    bool block_is_on_preferred_chain( const steemit::chain::block_id_type& block_id );

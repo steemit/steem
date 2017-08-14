@@ -136,7 +136,7 @@ void chain_plugin::plugin_shutdown()
    ilog("database closed successfully");
 }
 
-bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool currently_syncing )
+bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool currently_syncing, uint32_t skip )
 {
    if (currently_syncing && block.block_num() % 10000 == 0) {
       ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
@@ -146,7 +146,7 @@ bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool
 
    check_time_in_block( block );
 
-   return db().push_block(block);
+   return db().push_block(block, skip);
 }
 
 void chain_plugin::accept_transaction( const steemit::chain::signed_transaction& trx )
