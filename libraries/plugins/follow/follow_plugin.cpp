@@ -35,8 +35,10 @@ class follow_plugin_impl
       void pre_operation( const operation_notification& op_obj );
       void post_operation( const operation_notification& op_obj );
 
-      steemit::chain::database&  _db;
-      follow_plugin&             _self;
+      steemit::chain::database&     _db;
+      follow_plugin&                _self;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
 
 struct pre_operation_visitor
@@ -349,8 +351,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       // Add the registry to the database so the database can delegate custom ops to the plugin
       _my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
 
-      _my->_db.pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
-      _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
+      _my->pre_apply_connection = _my->_db.pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
+      _my->post_apply_connection = _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
       add_plugin_index< follow_index            >( _my->_db );
       add_plugin_index< feed_index              >( _my->_db );
       add_plugin_index< blog_index              >( _my->_db );
@@ -375,6 +377,10 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
 
 void follow_plugin::plugin_startup() {}
 
-void follow_plugin::plugin_shutdown() {}
+void follow_plugin::plugin_shutdown()
+{
+   _my->_db.disconnect_signal( _my->pre_apply_connection );
+   _my->_db.disconnect_signal( _my->post_apply_connection );
+}
 
 } } } // steemit::plugins::follow

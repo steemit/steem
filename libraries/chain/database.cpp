@@ -2583,6 +2583,13 @@ void database::show_free_memory( bool force )
    }
 }
 
+void database::disconnect_signal( boost::signals2::connection& signal )
+{
+   if( signal.connected() )
+      signal.disconnect();
+   FC_ASSERT( !signal.connected() );
+}
+
 void database::_apply_block( const signed_block& next_block )
 { try {
    uint32_t next_block_num = next_block.block_num();

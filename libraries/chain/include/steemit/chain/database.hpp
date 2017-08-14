@@ -405,6 +405,8 @@ namespace steemit { namespace chain {
          void set_flush_interval( uint32_t flush_blocks );
          void show_free_memory( bool force );
 
+         void disconnect_signal( boost::signals2::connection& signal );
+
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
          bool skip_price_feed_limit_check = true;

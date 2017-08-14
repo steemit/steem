@@ -27,6 +27,8 @@ class account_by_key_plugin_impl
       flat_set< public_key_type >   cached_keys;
       steemit::chain::database&     _db;
       account_by_key_plugin&        _self;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
 
 struct pre_operation_visitor
@@ -247,8 +249,8 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
       ilog( "Initializing account_by_key plugin" );
       chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
 
-      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      my->pre_apply_connection = db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      my->post_apply_connection = db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
 
       add_plugin_index< key_lookup_index >(db);
    }
@@ -257,6 +259,10 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
 
 void account_by_key_plugin::plugin_startup() {}
 
-void account_by_key_plugin::plugin_shutdown() {}
+void account_by_key_plugin::plugin_shutdown()
+{
+   my->_db.disconnect_signal( my->pre_apply_connection );
+   my->_db.disconnect_signal( my->post_apply_connection );
+}
 
 } } } // steemit::plugins::account_by_key

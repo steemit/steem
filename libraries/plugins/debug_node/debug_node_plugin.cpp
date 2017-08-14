@@ -27,6 +27,7 @@ class debug_node_plugin_impl
       uint32_t                                  _mining_threads = 1;
       std::vector<std::shared_ptr<fc::thread> > _thread_pool;
       chain::database&                          _db;
+      boost::signals2::connection               applied_block_connection;
 };
 
 debug_node_plugin_impl::debug_node_plugin_impl() :
@@ -150,7 +151,7 @@ void debug_node_plugin::plugin_initialize( const variables_map& options )
       _my->_thread_pool[i] = std::make_shared<fc::thread>();
 
    // connect needed signals
-   _applied_block_conn  = _my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
+   _my->applied_block_connection = _my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
 }
 
 void debug_node_plugin::plugin_startup()
@@ -415,6 +416,7 @@ void debug_node_plugin::on_applied_block( const chain::signed_block& b )
 
 void debug_node_plugin::plugin_shutdown()
 {
+   _my->_db.disconnect_signal( _my->applied_block_connection );
    /*if( _json_object_stream )
    {
       _json_object_stream->close();
