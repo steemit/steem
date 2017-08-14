@@ -21,9 +21,9 @@ public:
    static const std::string& name() { static std::string name = STEEM_CHAIN_PLUGIN_NAME; return name; }
 
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
-   void plugin_initialize( const variables_map& options );
-   void plugin_startup();
-   void plugin_shutdown();
+   virtual void plugin_initialize( const variables_map& options ) override;
+   virtual void plugin_startup() override;
+   virtual void plugin_shutdown() override;
 
    bool accept_block( const steemit::chain::signed_block& block, bool currently_syncing );
    void accept_transaction( const steemit::chain::signed_transaction& trx );

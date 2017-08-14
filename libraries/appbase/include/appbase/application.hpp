@@ -117,51 +117,51 @@ namespace appbase {
       public:
          virtual ~plugin() {}
 
-         virtual state get_state()const override { return _state; }
+         virtual state get_state() const override { return _state; }
          virtual const std::string& get_name()const override final { return Impl::name(); }
 
          virtual void register_dependencies()
          {
-            static_cast< Impl* >( this )->plugin_requires( [&]( auto& plug ){} );
+            this->plugin_requires( [&]( abstract_plugin& plug ){} );
          }
 
-         virtual void initialize(const variables_map& options) override
+         virtual void initialize(const variables_map& options) override final
          {
             if( _state == registered )
             {
                _state = initialized;
-               static_cast< Impl* >( this )->plugin_requires( [&]( auto& plug ){ plug.initialize( options ); } );
-               static_cast< Impl* >( this )->plugin_initialize( options );
+               this->plugin_requires( [&]( abstract_plugin& plug ){ plug.initialize( options ); } );
+               this->plugin_initialize( options );
                // std::cout << "initializing plugin " << name() << std::endl;
                app().plugin_initialized( *this );
             }
             assert( _state == initialized ); /// if initial state was not registered, final state cannot be initiaized
          }
 
-         virtual void startup() override
+         virtual void startup() override final
          {
             if( _state == initialized )
             {
                _state = started;
-               static_cast< Impl* >( this )->plugin_requires( [&]( auto& plug ){ plug.startup(); } );
-               static_cast< Impl* >( this )->plugin_startup();
+               this->plugin_requires( [&]( abstract_plugin& plug ){ plug.startup(); } );
+               this->plugin_startup();
                app().plugin_started( *this );
             }
             assert( _state == started ); // if initial state was not initialized, final state cannot be started
          }
 
-         virtual void shutdown() override
+         virtual void shutdown() override final
          {
             if( _state == started )
             {
                _state = stopped;
                //ilog( "shutting down plugin ${name}", ("name",name()) );
-               static_cast< Impl* >( this )->plugin_shutdown();
+               this->plugin_shutdown();
             }
          }
 
       protected:
-         plugin() {}
+         plugin() = default;
 
       private:
          state _state = abstract_plugin::registered;

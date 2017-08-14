@@ -90,9 +90,9 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
 
       static const std::string& name() { static std::string name = STEEM_JSON_RPC_PLUGIN_NAME; return name; }
 
-      void plugin_initialize( const variables_map& options );
-      void plugin_startup();
-      void plugin_shutdown();
+      virtual void plugin_initialize( const variables_map& options ) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
 
       void add_api_method( const string& api_name, const string& method_name, const api_method& api );
       string call( const string& body );
