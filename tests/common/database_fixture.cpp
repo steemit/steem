@@ -53,6 +53,7 @@ clean_database_fixture::clean_database_fixture()
       >( argc, argv );
 
    db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+   BOOST_REQUIRE( db );
 
    init_account_pub_key = init_account_priv_key.get_public_key();
 
@@ -150,6 +151,7 @@ live_database_fixture::live_database_fixture()
          >( argc, argv );
 
       db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      BOOST_REQUIRE( db );
 
       db->open( _chain_dir, _chain_dir );
 
