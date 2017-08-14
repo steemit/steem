@@ -98,6 +98,10 @@ int main( int argc, char** argv )
    {
       std::cerr << boost::diagnostic_information(e) << "\n";
    }
+   catch ( const fc::exception& e )
+   {
+      std::cerr << e.to_string() << "\n";
+   }
    catch ( const std::exception& e )
    {
       std::cerr << e.what() << "\n";

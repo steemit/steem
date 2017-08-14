@@ -33,9 +33,6 @@ using boost::asio::ip::tcp;
 using std::shared_ptr;
 using websocketpp::connection_hdl;
 
-#define WEBSERVER_DEFAULT_THREAD_POOL_SIZE 256
-#define WEBSERVER_THREAD_POOL_SIZE_OPTION "webserver-thread-pool-size"
-
 typedef uint32_t thread_pool_size_t;
 
 namespace detail {
@@ -146,19 +143,17 @@ void webserver_plugin::set_program_options( options_description&, options_descri
    cfg.add_options()
       ("webserver-http-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming http connections.")
       ("webserver-ws-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming websocket connections.")
-      (WEBSERVER_THREAD_POOL_SIZE_OPTION, bpo::value<thread_pool_size_t>()->default_value(WEBSERVER_DEFAULT_THREAD_POOL_SIZE),
-      "Number of threads used to handle queries. Default: " BOOST_PP_STRINGIZE(WEBSERVER_DEFAULT_THREAD_POOL_SIZE) ".")
+      ("webserver-thread-pool-size", bpo::value<thread_pool_size_t>()->default_value(256),
+       "Number of threads used to handle queries. Default: 256.")
       ;
 }
 
 void webserver_plugin::plugin_initialize( const variables_map& options )
 {
-   FC_ASSERT(options.count(WEBSERVER_THREAD_POOL_SIZE_OPTION) != 0, WEBSERVER_THREAD_POOL_SIZE_OPTION "is required!");
-   auto thread_pool_size = options.at(WEBSERVER_THREAD_POOL_SIZE_OPTION).as<thread_pool_size_t>();
-   if (thread_pool_size <= 0)
-      thread_pool_size = WEBSERVER_DEFAULT_THREAD_POOL_SIZE;
+   auto thread_pool_size = options.at("webserver-thread-pool-size").as<thread_pool_size_t>();
+   FC_ASSERT(thread_pool_size > 0, "webserver-thread-pool-size must be greater than 0");
+   ilog("configured with ${tps} thread pool size", ("tps", thread_pool_size));
    _my.reset(new webserver_plugin_impl(thread_pool_size));
-   ilog( "configured with ${tps} thread pool size", ("tps", thread_pool_size) );
 
    if( options.count( "webserver-http-endpoint" ) )
    {
