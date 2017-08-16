@@ -1,5 +1,4 @@
 #pragma once
-#include <steemit/plugins/json_rpc/utility.hpp>
 
 #include <steemit/plugins/database_api/database_api.hpp>
 #include <steemit/plugins/account_history_api/account_history_api.hpp>
