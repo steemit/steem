@@ -32,6 +32,8 @@
 namespace steemit { namespace plugins { namespace p2p {
 namespace bpo = boost::program_options;
 
+namespace detail { class p2p_plugin_impl; }
+
 class p2p_plugin : public appbase::plugin<p2p_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((plugins::chain::chain_plugin))
@@ -53,7 +55,7 @@ public:
    void set_block_production( bool producing_blocks );
 
 private:
-   std::unique_ptr<class p2p_plugin_impl> my;
+   std::unique_ptr< detail::p2p_plugin_impl > my;
 };
 
 } } } // steemit::plugins::p2p

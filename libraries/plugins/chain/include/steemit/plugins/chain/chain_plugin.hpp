@@ -6,6 +6,8 @@
 
 namespace steemit { namespace plugins { namespace chain {
 
+namespace detail { class chain_plugin_impl; }
+
 using std::unique_ptr;
 using namespace appbase;
 using namespace steemit::chain;
@@ -71,7 +73,7 @@ public:
    const database& db() const;
 
 private:
-   unique_ptr<class chain_plugin_impl> my;
+   unique_ptr< detail::chain_plugin_impl > my;
 };
 
 } } } // steemit::plugins::chain
