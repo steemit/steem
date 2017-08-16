@@ -143,7 +143,6 @@ void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::option
       ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
       ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
-      ("p2p-user-agent", bpo::value<string>()->implicit_value("Graphene Reference Implementation"),"User agent to advertise to peers")
       ;
    cli.add_options()
       ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions" )
@@ -155,8 +154,7 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
    if( options.count( "p2p-endpoint" ) )
       my->endpoint = fc::ip::endpoint::from_string( options.at( "p2p-endpoint" ).as< string >() );
 
-   if( options.count( "p2p-user-agent" ) )
-      my->user_agent = options.at( "p2p-user-agent" ).as< string >();
+   my->user_agent = "Steem Reference Implementation";
 
    if( options.count( "p2p-max-connections" ) )
       my->max_connections = options.at( "p2p-max-connections" ).as< uint32_t >();
