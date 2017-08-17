@@ -1678,7 +1678,7 @@ void database::process_comment_cashout()
       rf_ctx.reward_balance = itr->reward_balance;
 
       // The index is by ID, so the ID should be the current size of the vector (0, 1, 2, etc...)
-      assert( funds.size() == itr->id._id );
+      assert( funds.size() == size_t( itr->id._id ) );
 
       funds.push_back( rf_ctx );
    }
