@@ -44,7 +44,7 @@
    }
 
 #define JSON_RPC_API_METHOD( r, api_name, method ) \
-   jsonrpc.add_api_method( api_name, std::string( #method ), JSON_RPC_API_METHOD_HELPER( method ) );
+   jsonrpc.add_api_method( api_name, std::string( BOOST_PP_STRINGIZE(method) ), JSON_RPC_API_METHOD_HELPER( method ) );
 
 
 #define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                                       \
