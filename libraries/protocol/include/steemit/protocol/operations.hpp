@@ -3,6 +3,7 @@
 #include <steemit/protocol/operation_util.hpp>
 #include <steemit/protocol/steem_operations.hpp>
 #include <steemit/protocol/steem_virtual_operations.hpp>
+#include <steemit/protocol/smt_operations.hpp>
 
 namespace steemit { namespace protocol {
 
@@ -61,6 +62,14 @@ namespace steemit { namespace protocol {
             claim_reward_balance_operation,
             delegate_vesting_shares_operation,
             account_create_with_delegation_operation,
+
+            /// SMT operations
+            smt_setup_operation,
+            smt_cap_reveal_operation,
+            smt_refund_operation,
+            smt_setup_inflation_operation,
+            smt_set_setup_parameters_operation,
+            smt_set_runtime_parameters_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
