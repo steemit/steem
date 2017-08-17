@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE( open_and_create ) {
       chainbase::database db;
       BOOST_CHECK_THROW( db.open( temp ), std::runtime_error ); /// temp does not exist
 
-      db.open( temp, database::read_write, 1024*1024*8 );
+      db.open( temp, 0, 1024*1024*8 );
 
       chainbase::database db2; /// open an already created db
       db2.open( temp );
