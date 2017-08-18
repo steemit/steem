@@ -77,7 +77,6 @@ class debug_node_api_impl
       )
 
       void debug_get_dev_key( debug_get_dev_key_return& result, const debug_get_dev_key_args& args );
-      void debug_mine( debug_mine_return& result, const debug_mine_args& args );
       void debug_get_json_schema( std::string& schema );
 
       chain::database& _db;
@@ -185,58 +184,6 @@ void debug_node_api_impl::debug_get_dev_key( debug_get_dev_key_return& result, c
    return;
 }
 
-void debug_node_api_impl::debug_mine( debug_mine_return& result, const debug_mine_args& args )
-{
-   chain::pow2 work;
-   work.input.worker_account = args.worker_account;
-   work.input.prev_block = _db.head_block_id();
-   _debug_node.debug_mine_work( work, _db.get_pow_summary_target() );
-
-   chain::pow2_operation op;
-   op.work = work;
-
-   if( args.props.valid() )
-      op.props = *(args.props);
-   else
-      op.props = _db.get_witness_schedule_object().median_props;
-
-   const auto& acct_idx  = _db.get_index< chain::account_index >().indices().get< chain::by_name >();
-   auto acct_it = acct_idx.find( args.worker_account );
-   auto acct_auth = _db.find< chain::account_authority_object, chain::by_account >( args.worker_account );
-   bool has_account = (acct_it != acct_idx.end());
-
-   fc::optional< fc::ecc::private_key > priv;
-   if( !has_account )
-   {
-      // this copies logic from get_dev_key
-      priv = fc::ecc::private_key::regenerate( fc::sha256::hash( key_storage.dev_key_prefix + args.worker_account ) );
-      op.new_owner_key = priv->get_public_key();
-   }
-   else
-   {
-      chain::public_key_type pubkey;
-      if( acct_auth->active.key_auths.size() != 1 )
-      {
-         elog( "debug_mine does not understand authority for miner account ${miner}", ("miner", args.worker_account) );
-      }
-      FC_ASSERT( acct_auth->active.key_auths.size() == 1 );
-      pubkey = acct_auth->active.key_auths.begin()->first;
-      key_storage.maybe_get_private_key( priv, pubkey, args.worker_account );
-   }
-   FC_ASSERT( priv.valid(), "debug_node_api does not know private key for miner account ${miner}", ("miner", args.worker_account) );
-
-   chain::signed_transaction tx;
-   tx.operations.push_back(op);
-   tx.ref_block_num = _db.head_block_num();
-   tx.ref_block_prefix = work.input.prev_block._hash[1];
-   tx.set_expiration( _db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-
-   tx.sign( *priv, STEEMIT_CHAIN_ID );
-
-   _db.push_transaction( tx );
-   return;
-}
-
 DEFINE_API( debug_node_api_impl, debug_set_hardfork )
 {
    if( args.hardfork_id > STEEMIT_NUM_HARDFORKS )
@@ -276,7 +223,6 @@ debug_node_api::debug_node_api()
       (debug_get_hardfork_property_object)
       (debug_set_dev_key_prefix)
       (debug_get_dev_key)
-      (debug_mine)
       (debug_set_hardfork)
       (debug_has_hardfork)
       (debug_get_json_schema)
@@ -322,13 +268,6 @@ DEFINE_API( debug_node_api, debug_get_dev_key )
 {
    debug_get_dev_key_return result;
    my->debug_get_dev_key( result, args );
-   return result;
-}
-
-DEFINE_API( debug_node_api, debug_mine )
-{
-   debug_mine_return result;
-   my->debug_mine( result, args );
    return result;
 }
 

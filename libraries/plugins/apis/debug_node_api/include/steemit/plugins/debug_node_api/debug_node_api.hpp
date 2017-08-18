@@ -74,14 +74,6 @@ struct debug_get_dev_key_return
    chain::public_key_type                    public_key;
 };
 
-struct debug_mine_args
-{
-   std::string                               worker_account;
-   fc::optional< chain::chain_properties >   props;
-};
-
-typedef void_type debug_mine_return;
-
 struct debug_set_hardfork_args
 {
    uint32_t hardfork_id;
@@ -144,10 +136,6 @@ class debug_node_api
          */
          (debug_get_dev_key)
 
-         /**
-         * Synchronous mining, does not return until work is found.
-         */
-         (debug_mine)
          (debug_set_hardfork)
          (debug_has_hardfork)
          (debug_get_json_schema)
@@ -182,9 +170,6 @@ FC_REFLECT( steemit::plugins::debug_node::debug_get_dev_key_args,
 
 FC_REFLECT( steemit::plugins::debug_node::debug_get_dev_key_return,
             (private_key)(public_key) )
-
-FC_REFLECT( steemit::plugins::debug_node::debug_mine_args,
-            (worker_account)(props) )
 
 FC_REFLECT( steemit::plugins::debug_node::debug_set_hardfork_args,
             (hardfork_id) )
