@@ -122,7 +122,7 @@ namespace appbase {
 
          virtual void register_dependencies()
          {
-            this->plugin_requires( [&]( abstract_plugin& plug ){} );
+            this->plugin_for_each_dependency( [&]( abstract_plugin& plug ){} );
          }
 
          virtual void initialize(const variables_map& options) override final
@@ -130,7 +130,7 @@ namespace appbase {
             if( _state == registered )
             {
                _state = initialized;
-               this->plugin_requires( [&]( abstract_plugin& plug ){ plug.initialize( options ); } );
+               this->plugin_for_each_dependency( [&]( abstract_plugin& plug ){ plug.initialize( options ); } );
                this->plugin_initialize( options );
                // std::cout << "initializing plugin " << name() << std::endl;
                app().plugin_initialized( *this );
@@ -143,7 +143,7 @@ namespace appbase {
             if( _state == initialized )
             {
                _state = started;
-               this->plugin_requires( [&]( abstract_plugin& plug ){ plug.startup(); } );
+               this->plugin_for_each_dependency( [&]( abstract_plugin& plug ){ plug.startup(); } );
                this->plugin_startup();
                app().plugin_started( *this );
             }

@@ -11,7 +11,7 @@
   visitor( appbase::app().register_plugin<elem>() );
 
 #define APPBASE_PLUGIN_REQUIRES( PLUGINS )                               \
-   virtual void plugin_requires( plugin_processor&& l ) override {  \
+   virtual void plugin_for_each_dependency( plugin_processor&& l ) override {  \
       BOOST_PP_SEQ_FOR_EACH( APPBASE_PLUGIN_REQUIRES_VISIT, l, PLUGINS ) \
    }
 
@@ -51,7 +51,7 @@ namespace appbase {
              It is a part of initialization/startup process triggerred by main application.
              Allows to process all plugins, this one depends on.
          */
-         virtual void plugin_requires(plugin_processor&& processor) = 0;
+         virtual void plugin_for_each_dependency(plugin_processor&& processor) = 0;
 
          /** Abstract method to be reimplemented in final plugin implementation.
              It is a part of initialization process triggerred by main application.
