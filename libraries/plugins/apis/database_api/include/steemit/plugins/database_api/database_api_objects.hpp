@@ -23,7 +23,6 @@ typedef limit_order_object                     api_limit_order_object;
 typedef withdraw_vesting_route_object          api_withdraw_vesting_route_object;
 typedef decline_voting_rights_request_object   api_decline_voting_rights_request_object;
 typedef witness_vote_object                    api_witness_vote_object;
-//typedef witness_schedule_object                api_witness_schedule_object;
 typedef vesting_delegation_object              api_vesting_delegation_object;
 typedef vesting_delegation_expiration_object   api_vesting_delegation_expiration_object;
 typedef reward_fund_object                     api_reward_fund_object;
@@ -445,10 +444,8 @@ struct api_witness_schedule_object
    {
       size_t n = wso.current_shuffled_witnesses.size();
       current_shuffled_witnesses.reserve( n );
-      //for( size_t i=0; i<n; i++ )
-      //   current_shuffled_witnesses.push_back( wso.current_shuffled_witnesses[i] ); 
       std::transform(wso.current_shuffled_witnesses.begin(), wso.current_shuffled_witnesses.end(),
-                     current_shuffled_witnesses.begin(),
+                     std::back_inserter(current_shuffled_witnesses),
                      [](const account_name_type& s) -> std::string { return s; } );
                      // ^ fixed_string std::string operator used here.
    }
