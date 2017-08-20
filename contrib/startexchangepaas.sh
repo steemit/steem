@@ -30,6 +30,11 @@ if [[ ! -z "$TRACK_ACCOUNT" ]]; then
     ARGS+=" --track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
 fi
 
+NOW=`date +%s`
+STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
+
+ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
+
 # overwrite local config with image one
 cp /etc/steemd/config.ini $HOME/config.ini
 
