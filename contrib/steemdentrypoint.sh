@@ -6,7 +6,8 @@ ulimit -c unlimited
 # if we're not using PaaS mode then start steemd traditionally with sv to control it
 if [[ "$USE_PAAS" ]]; then
 	/usr/local/bin/startpaassteemd.sh
-else if [[ "$EXCHANGE_PAAS_MODE" ]]; then
+fi
+if [[ "$EXCHANGE_PAAS_MODE" ]]; then
 	/usr/local/bin/startexchangepaas.sh
 else
   mkdir -p /etc/service/steemd
