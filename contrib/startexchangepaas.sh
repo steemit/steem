@@ -24,6 +24,9 @@ if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
 fi
 
 if [[ ! -z "$TRACK_ACCOUNT" ]]; then
+    if [[ ! "$USE_WAY_TOO_MUCH_RAM" ]]; then
+        ARGS+=" --enable-plugin=account_history"
+    fi
     ARGS+=" --track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
 fi
 
