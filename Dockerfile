@@ -205,10 +205,12 @@ ADD contrib/healthcheck.conf.template /etc/nginx/healthcheck.conf.template
 
 # add PaaS startup script and service script
 ADD contrib/startpaassteemd.sh /usr/local/bin/startpaassteemd.sh
+ADD contrib/startexchangepaas.sh /usr/local/bin/startexchangepaas.sh
 ADD contrib/paas-sv-run.sh /usr/local/bin/paas-sv-run.sh
 ADD contrib/sync-sv-run.sh /usr/local/bin/sync-sv-run.sh
 ADD contrib/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/startpaassteemd.sh
+RUN chmod +x /usr/local/bin/startexchangepaas.sh
 RUN chmod +x /usr/local/bin/paas-sv-run.sh
 RUN chmod +x /usr/local/bin/sync-sv-run.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
