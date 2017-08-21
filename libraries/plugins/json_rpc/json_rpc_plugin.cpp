@@ -18,6 +18,9 @@ namespace detail
 {
    struct json_rpc_error
    {
+      json_rpc_error()
+         : code( 0 ) {}
+
       json_rpc_error( int32_t c, std::string m, fc::optional< fc::variant > d = fc::optional< fc::variant >() )
          : code( c ), message( m ), data( d ) {}
 
@@ -30,7 +33,7 @@ namespace detail
    {
       std::string                      jsonrpc = "2.0";
       fc::optional< fc::variant >      result;
-      fc::optional< json_rpc_error >   error;
+      json_rpc_error                   error;
       fc::variant                      id;
    };
 
