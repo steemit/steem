@@ -40,10 +40,7 @@ Do not add other APIs or plugins unless you know what you are doing.
 This configuration exists in Docker with the following command
 
 ```
-docker run \
-    --env TRACK_ACCOUNT="yourexchangeid" \
-    -d -p 2001:2001 -p 8090:8090 --name steemd-exchange \
-    steemit/steem
+docker run -d --env TRACK_ACCOUNT="yourexchangeid" steemit/steem
 ```
 
 ### Resources usage
