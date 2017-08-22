@@ -1648,6 +1648,28 @@ annotated_signed_transaction wallet_api::update_witness( string witness_account_
    return my->sign_transaction( tx, broadcast );
 }
 
+annotated_signed_transaction wallet_api::shutdown_witness(string witness_name, bool broadcast )
+{
+   FC_ASSERT( !is_locked() );
+
+   witness_update_operation op;
+
+   fc::optional< witness_object > wit = my->_remote_db->get_witness_by_account( witness_name );
+   FC_ASSERT( wit.valid(), "Cannot shutdown witness that does not have a witness object yet" );
+   FC_ASSERT( wit->owner == witness_name );
+
+   op.owner = witness_name;
+   op.url   = wit->url;
+   op.block_signing_key = public_key_type();
+   op.props = wit->props;
+
+   signed_transaction tx;
+   tx.operations.push_back(op);
+   tx.validate();
+
+   return my->sign_transaction( tx, broadcast );
+}
+
 annotated_signed_transaction wallet_api::vote_for_witness(string voting_account, string witness_to_vote_for, bool approve, bool broadcast )
 { try {
    FC_ASSERT( !is_locked() );

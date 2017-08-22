@@ -545,7 +545,7 @@ class wallet_api
        *
        * @param witness_name The name of the witness account.
        * @param url A URL containing some information about the witness.  The empty string makes it remain the same.
-       * @param block_signing_key The new block signing public key.  The empty string disables block production.
+       * @param block_signing_key The new block signing public key.
        * @param props The chain properties the witness is voting on.
        * @param broadcast true if you wish to broadcast the transaction.
        */
@@ -554,6 +554,15 @@ class wallet_api
                                         public_key_type block_signing_key,
                                         const chain_properties& props,
                                         bool broadcast = false);
+
+      /**
+       * Shutdown a witness.
+       *
+       * @param witness_name The name of the witness account.
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      annotated_signed_transaction shutdown_witness(string witness_name, bool broadcast = false);
+
 
       /** Set the voting proxy for an account.
        *
@@ -1020,6 +1029,7 @@ FC_API( steemit::wallet::wallet_api,
         (update_account_memo_key)
         (delegate_vesting_shares)
         (update_witness)
+        (shutdown_witness)
         (set_voting_proxy)
         (vote_for_witness)
         (follow)
