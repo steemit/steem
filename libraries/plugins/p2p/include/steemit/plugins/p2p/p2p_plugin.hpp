@@ -46,9 +46,9 @@ public:
 
    static const std::string& name() { static std::string name = STEEM_P2P_PLUGIN_NAME; return name; }
 
-   virtual void plugin_initialize(const bpo::variables_map& options);
-   virtual void plugin_startup();
-   virtual void plugin_shutdown();
+   virtual void plugin_initialize(const bpo::variables_map& options) override;
+   virtual void plugin_startup() override;
+   virtual void plugin_shutdown() override;
 
    void broadcast_block( const steemit::protocol::signed_block& block );
    void broadcast_transaction( const steemit::protocol::signed_transaction& tx );

@@ -26,12 +26,12 @@ class follow_plugin : public appbase::plugin< follow_plugin >
 
       static const std::string& name() { static std::string name = STEEM_FOLLOW_PLUGIN_NAME; return name; }
 
-      void set_program_options(
+      virtual void set_program_options(
          options_description& cli,
-         options_description& cfg );
-      void plugin_initialize( const variables_map& options );
-      void plugin_startup();
-      void plugin_shutdown();
+         options_description& cfg ) override;
+      virtual void plugin_initialize( const variables_map& options ) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
 
       uint32_t max_feed_size = 500;
       fc::time_point_sec start_feeds;

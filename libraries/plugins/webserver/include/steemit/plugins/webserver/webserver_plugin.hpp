@@ -39,9 +39,10 @@ class webserver_plugin : public appbase::plugin< webserver_plugin >
 
       virtual void set_program_options(options_description&, options_description& cfg) override;
 
-      void plugin_initialize(const variables_map& options);
-      void plugin_startup();
-      void plugin_shutdown();
+   protected:
+      virtual void plugin_initialize(const variables_map& options) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
 
    private:
       std::unique_ptr< detail::webserver_plugin_impl > _my;
