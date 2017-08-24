@@ -10,6 +10,7 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( steemd PRIVATE
+   "-static-libstdc++ -static-libgcc"
    appbase
    steemit_utilities
    steemit_plugins
