@@ -74,6 +74,34 @@ namespace steemit { namespace chain {
                }
                FC_LOG_AND_RETHROW()
             }
+
+            /**
+             * Append the block_id of the last block to block_log.
+             */
+            void write_last_block_id();
+
+            /**
+             * Read the ID written by write_last_block_id().
+             */
+            block_id_type read_last_block_id();
+
+            /**
+             * Truncate the block_log file to remove the last_block_id bytes.
+             */
+            void remove_last_block_id();
+
+            /**
+             * Check the indexes and cryptographic integrity of the last n blocks.
+             *
+             * Throws fc::exception if any of the following occurs:
+             *
+             * - Index file does not exist
+             * - Last indexes do not match last blocks in file
+             * - Some block does not deserialize
+             * - There are gaps in blocks
+             * - Cryptographic integrity check of any block fails
+             */
+            void check_last_blocks( int num_blocks );
       };
    }
 
@@ -174,6 +202,7 @@ namespace steemit { namespace chain {
 
    void block_log::close()
    {
+      my->write_last_block_id();
       my.reset( new detail::block_log_impl() );
    }
 
@@ -304,4 +333,34 @@ namespace steemit { namespace chain {
       }
       FC_LOG_AND_RETHROW()
    }
+
+   void block_log_impl::check_last_blocks( int num_blocks )
+   {
+      uint64_t log_size = fc::file_size( block_file );
+      uint64_t index_size = fc::file_size( index_file );
+
+      uint64_t index_blocks = index_size / sizeof( uint64_t );
+
+      FC_ASSERT( index_size == index_blocks * sizeof( uint64_t ), "Index file size must be multiple of 64 bits" );
+
+      if( index_size == 0 )
+      {
+         FC_ASSERT( log_size == 0, "Nonempty log file must be nonempty index file" );
+         return;
+      }
+      FC_ASSERT( log_size >= index_blocks * STEEMIT_MIN_BLOCK_SIZE, "Log file is too small for index file size" );
+
+      check_block_read();
+      check_index_read();
+
+      uint64_t block_id = 
+
+      while( true )
+      {
+         
+      }
+
+      return
+   }
+
 } } // steemit::chain
