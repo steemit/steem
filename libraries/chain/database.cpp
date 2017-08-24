@@ -2392,6 +2392,7 @@ void database::init_genesis( uint64_t init_supply )
             a.name = STEEMIT_INIT_MINER_NAME + ( i ? fc::to_string( i ) : std::string() );
             a.memo_key = init_public_key;
             a.balance  = asset( i ? 0 : init_supply, STEEM_SYMBOL );
+            a.sbd_balance = asset( i ? 0 : STEEMIT_INIT_SBD_SUPPLY, SBD_SYMBOL );
          } );
 
          create< account_authority_object >( [&]( account_authority_object& auth )

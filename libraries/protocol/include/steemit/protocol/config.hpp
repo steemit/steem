@@ -216,6 +216,7 @@
 #define STEEMIT_MAX_WITNESS_URL_LENGTH          2048
 
 #define STEEMIT_INIT_SUPPLY                     int64_t(0)
+#define STEEMIT_INIT_SBD_SUPPLY                 int64_t(0)
 #define STEEMIT_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define STEEMIT_MAX_SIG_CHECK_DEPTH             2
 
