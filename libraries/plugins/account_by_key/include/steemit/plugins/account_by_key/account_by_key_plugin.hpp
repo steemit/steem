@@ -5,6 +5,8 @@
 
 namespace steemit { namespace plugins { namespace account_by_key {
 
+namespace detail { class account_by_key_plugin_impl; }
+
 using namespace appbase;
 
 #define STEEM_ACCOUNT_BY_KEY_PLUGIN_NAME "account_by_key"
@@ -24,7 +26,7 @@ class account_by_key_plugin : public appbase::plugin< account_by_key_plugin >
       void plugin_startup();
       void plugin_shutdown();
 
-      std::unique_ptr< class account_by_key_plugin_impl > my;
+      std::unique_ptr< detail::account_by_key_plugin_impl > my;
 };
 
 } } } // steemit::plugins::account_by_key

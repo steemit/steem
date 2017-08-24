@@ -11,6 +11,8 @@
 
 namespace steemit { namespace plugins { namespace account_by_key {
 
+namespace detail {
+
 class account_by_key_plugin_impl
 {
    public:
@@ -233,6 +235,7 @@ void account_by_key_plugin_impl::post_operation( const operation_notification& n
    note.op.visit( post_operation_visitor( *this ) );
 }
 
+} // detail
 
 account_by_key_plugin::account_by_key_plugin() {}
 account_by_key_plugin::~account_by_key_plugin() {}
@@ -241,7 +244,7 @@ void account_by_key_plugin::set_program_options( options_description& cli, optio
 
 void account_by_key_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-   my = std::make_unique< account_by_key_plugin_impl >( *this );
+   my = std::make_unique< detail::account_by_key_plugin_impl >( *this );
    try
    {
       ilog( "Initializing account_by_key plugin" );

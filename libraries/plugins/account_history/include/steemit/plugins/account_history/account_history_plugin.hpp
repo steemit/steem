@@ -28,6 +28,8 @@
 
 namespace steemit { namespace plugins { namespace account_history {
 
+namespace detail { class account_history_plugin_impl; }
+
 using namespace appbase;
 using steemit::protocol::account_name_type;
 
@@ -68,7 +70,7 @@ class account_history_plugin : public plugin< account_history_plugin >
 
       flat_map< account_name_type, account_name_type > tracked_accounts()const; /// map start_range to end_range
 
-      std::unique_ptr< class account_history_plugin_impl > my;
+      std::unique_ptr< detail::account_history_plugin_impl > my;
 };
 
 } } } //steemit::plugins::account_history
