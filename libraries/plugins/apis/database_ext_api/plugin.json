@@ -1,0 +1,5 @@
+{
+   "plugin_name": "database_ext_api",
+   "plugin_namespace": "database_ext_api",
+   "plugin_project": "database_ext_api_plugin"
+}
