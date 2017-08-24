@@ -3344,6 +3344,7 @@ namespace graphene { namespace net { namespace detail {
             else
             {
               dlog("Already received and accepted this block (presumably through normal inventory mechanism), treating it as accepted");
+              std::vector< peer_connection_ptr > peers_needing_next_batch;
               for (const peer_connection_ptr& peer : _active_connections)
               {
                 auto items_being_processed_iter = peer->ids_of_items_being_processed.find(received_block_iter->block_id);
@@ -3354,17 +3355,19 @@ namespace graphene { namespace net { namespace detail {
                        ("endpoint", peer->get_remote_endpoint())("len", peer->ids_of_items_being_processed.size()));
 
                   // if we just processed the last item in our list from this peer, we will want to
-                  // send another request to find out if we are now in sync (this is normally handled in 
+                  // send another request to find out if we are now in sync (this is normally handled in
                   // send_sync_block_to_node_delegate)
                   if (peer->ids_of_items_to_get.empty() &&
                       peer->number_of_unfetched_item_ids == 0 &&
                       peer->ids_of_items_being_processed.empty())
                   {
                     dlog("We received last item in our list for peer ${endpoint}, setup to do a sync check", ("endpoint", peer->get_remote_endpoint()));
-                    fetch_next_batch_of_item_ids_from_peer(peer.get());
+                    peers_needing_next_batch.push_back( peer );
                   }
                 }
               }
+              for( const peer_connection_ptr& peer : peers_needing_next_batch )
+                fetch_next_batch_of_item_ids_from_peer(peer.get());
             }
 
             break; // start iterating _received_sync_items from the beginning
