@@ -76,27 +76,6 @@ namespace chainbase {
          _segment->find_or_construct< environment_check >( "environment" )();
       }
 
-
-      abs_path = bfs::absolute( dir / "shared_memory.meta" );
-
-      if( bfs::exists( abs_path ) )
-      {
-         _meta.reset( new bip::managed_mapped_file( bip::open_only, abs_path.generic_string().c_str()
-                                                    ) );
-
-         _rw_manager = _meta->find< read_write_mutex_manager >( "rw_manager" ).first;
-         if( !_rw_manager )
-            BOOST_THROW_EXCEPTION( std::runtime_error( "could not find read write lock manager" ) );
-      }
-      else
-      {
-         _meta.reset( new bip::managed_mapped_file( bip::create_only,
-                                                    abs_path.generic_string().c_str(), sizeof( read_write_mutex_manager ) * 2
-                                                    ) );
-
-         _rw_manager = _meta->find_or_construct< read_write_mutex_manager >( "rw_manager" )();
-      }
-
       if( write )
       {
          _flock = bip::file_lock( abs_path.generic_string().c_str() );
