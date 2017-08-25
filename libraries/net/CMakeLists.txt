@@ -24,6 +24,13 @@ if (USE_PCH)
   cotire(graphene_net)
 endif(USE_PCH)
 
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      graphene_net PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
+
 install( TARGETS
    graphene_net
 

@@ -26,6 +26,13 @@ target_link_libraries( steemit_chain steemit_protocol fc chainbase graphene_sche
 target_include_directories( steemit_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      steemit_chain PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
+
 if(MSVC)
   set_source_files_properties( database.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)

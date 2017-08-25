@@ -31,6 +31,13 @@ if (USE_PCH)
   cotire(steemit_utilities)
 endif(USE_PCH)
 
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      steemit_utilities PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
+
 install( TARGETS
    steemit_utilities
 
