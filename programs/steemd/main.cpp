@@ -100,7 +100,7 @@ int main( int argc, char** argv )
    }
    catch ( const fc::exception& e )
    {
-      std::cerr << e.to_string() << "\n";
+      std::cerr << e.to_detail_string() << "\n";
    }
    catch ( const std::exception& e )
    {
