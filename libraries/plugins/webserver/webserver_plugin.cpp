@@ -154,7 +154,7 @@ void webserver_plugin::plugin_initialize( const variables_map& options )
    auto thread_pool_size = options.at("webserver-thread-pool-size").as<thread_pool_size_t>();
    FC_ASSERT(thread_pool_size > 0, "webserver-thread-pool-size must be greater than 0");
    ilog("configured with ${tps} thread pool size", ("tps", thread_pool_size));
-   _my.reset(new webserver_plugin_impl(thread_pool_size));
+   _my.reset(new detail::webserver_plugin_impl(thread_pool_size));
 
    if( options.count( "webserver-http-endpoint" ) )
    {
