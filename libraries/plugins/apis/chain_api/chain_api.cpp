@@ -8,14 +8,14 @@ namespace detail {
 class chain_api_impl
 {
    public:
-      chain_api_impl() : db( appbase::app().get_plugin<steemit::plugins::chain::chain_plugin>().db() ) {}
+      chain_api_impl() : _chain( appbase::app().get_plugin<chain_plugin>() ) {}
 
       DECLARE_API(
          (push_block)
          (push_transaction) )
 
-   public:
-      steemit::chain::database& db;
+   private:
+      chain_plugin& _chain;
 };
 
 DEFINE_API( chain_api_impl, push_block )
@@ -26,7 +26,7 @@ DEFINE_API( chain_api_impl, push_block )
 
    try
    {
-      db._push_block(args);
+      _chain.accept_block(args.block, args.currently_syncing);
       result.success = true;
    }
    catch (const fc::exception& e)
@@ -53,7 +53,7 @@ DEFINE_API( chain_api_impl, push_transaction )
 
    try
    {
-      db._push_transaction(args);
+      _chain.accept_transaction(args);
       result.success = true;
    }
    catch (const fc::exception& e)
@@ -86,18 +86,12 @@ chain_api::chain_api()
 
 DEFINE_API( chain_api, push_block )
 {
-   return _my->db.with_write_lock( [&]()
-   {
-      return _my->push_block( args );
-   });
+   return _my->push_block( args );
 }
 
 DEFINE_API( chain_api, push_transaction )
 {
-   return _my->db.with_write_lock( [&]()
-   {
-      return _my->push_transaction( args );
-   });
+   return _my->push_transaction( args );
 }
 
 } } } //steemit::plugins::chain

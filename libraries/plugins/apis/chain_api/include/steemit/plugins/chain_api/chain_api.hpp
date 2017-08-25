@@ -9,7 +9,12 @@ namespace steemit { namespace plugins { namespace chain {
 
 namespace detail { class chain_api_impl; }
 
-typedef steemit::chain::signed_block push_block_args;
+struct push_block_args
+{
+   steemit::chain::signed_block block;
+   bool                         currently_syncing;
+};
+
 
 struct push_block_return
 {
@@ -41,5 +46,6 @@ class chain_api
 
 } } } // steemit::plugins::chain
 
+FC_REFLECT( steemit::plugins::chain::push_block_args, (block)(currently_syncing) )
 FC_REFLECT( steemit::plugins::chain::push_block_return, (success)(error) )
 FC_REFLECT( steemit::plugins::chain::push_transaction_return, (success)(error) )
