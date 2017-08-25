@@ -38,6 +38,20 @@ Don't forget the `.` at the end of the line which indicates the build target is 
 
 When the build completes you will see a message indicating that it is 'successfully built'.
 
+### Running a binary build with Docker
+
+If you build with Docker but do not want to run steemd from within a docker container, you can extract the binary from the container. Our binaries are built mostly static, only dynamically linking to linux kernel libraries. We have tested and confirmed binaries built in Docker work on Ubuntu and Fedora and will likely work on many other Linux distrubutions. Building the image yourself or pulling one of our pre-built images both work.
+
+To extract the binary you need to start a container and then copy the file from it.
+
+```
+docker run -d --name steemd-exchange .
+docker cp steemd-exchange:/usr/local/steemd-default/bin/steem /local/path/to/steemd
+docker cp steemd-exchange:/usr/local/steemd-default/bin/cli-wallet /local/path/to/cli-wallet
+```
+
+For your convenience, we have provided a provided an [example_config](doc/example_config.ini) that should be sufficient to run an exchange node.
+
 ### Create directories to store blockchain and wallet data outside of docker
 
 For re-usability, you can create directories to store blockchain and wallet data and easily link them inside your docker container.
