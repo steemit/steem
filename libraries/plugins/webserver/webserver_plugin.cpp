@@ -110,10 +110,10 @@ class webserver_plugin_impl
 {
    public:
       webserver_plugin_impl() :
-         api_work( this->api_ios )
+         thread_pool_work( this->thread_pool_ios )
       {
          for( uint32_t i = 0; i < WEBSERVER_THREAD_POOL_SIZE; i++ )
-            api_thread_pool.create_thread( boost::bind( &asio::io_service::run, &api_ios ) );
+         thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
       }
 
       shared_ptr< std::thread >  http_thread;
@@ -126,9 +126,9 @@ class webserver_plugin_impl
       optional< tcp::endpoint >  ws_endpoint;
       websocket_server_type      ws_server;
 
-      boost::thread_group        api_thread_pool;
-      asio::io_service           api_ios;
-      asio::io_service::work     api_work;
+      boost::thread_group        thread_pool;
+      asio::io_service           thread_pool_ios;
+      asio::io_service::work     thread_pool_work;
 
       plugins::json_rpc::json_rpc_plugin* api;
 };
@@ -188,7 +188,7 @@ void webserver_plugin::plugin_startup()
             {
                auto con = _my->ws_server.get_con_from_hdl( hdl );
 
-               _my->api_ios.post( [con, msg, this]()
+               _my->thread_pool_ios.post( [con, msg, this]()
                {
                   try
                   {
@@ -211,7 +211,7 @@ void webserver_plugin::plugin_startup()
                   auto con = _my->ws_server.get_con_from_hdl( hdl );
                   con->defer_http_response();
 
-                  _my->api_ios.post( [con, this]()
+                  _my->thread_pool_ios.post( [con, this]()
                   {
                      auto body = con->get_request_body();
 
@@ -265,7 +265,7 @@ void webserver_plugin::plugin_startup()
                auto con = _my->http_server.get_con_from_hdl( hdl );
                con->defer_http_response();
 
-               _my->api_ios.post( [con, this]()
+               _my->thread_pool_ios.post( [con, this]()
                {
                   auto body = con->get_request_body();
 
@@ -309,8 +309,8 @@ void webserver_plugin::plugin_shutdown()
    if( _my->http_server.is_listening() )
       _my->http_server.stop_listening();
 
-   _my->api_ios.stop();
-   _my->api_thread_pool.join_all();
+   _my->thread_pool_ios.stop();
+   _my->thread_pool.join_all();
 
    if( _my->ws_thread )
    {
