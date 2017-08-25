@@ -23,7 +23,6 @@ typedef limit_order_object                     api_limit_order_object;
 typedef withdraw_vesting_route_object          api_withdraw_vesting_route_object;
 typedef decline_voting_rights_request_object   api_decline_voting_rights_request_object;
 typedef witness_vote_object                    api_witness_vote_object;
-typedef witness_schedule_object                api_witness_schedule_object;
 typedef vesting_delegation_object              api_vesting_delegation_object;
 typedef vesting_delegation_expiration_object   api_vesting_delegation_expiration_object;
 typedef reward_fund_object                     api_reward_fund_object;
@@ -423,6 +422,53 @@ struct api_witness_object
    time_point_sec    hardfork_time_vote;
 };
 
+struct api_witness_schedule_object
+{
+   api_witness_schedule_object() {}
+
+   api_witness_schedule_object( const witness_schedule_object& wso) :
+      id( wso.id ),
+      current_virtual_time( wso.current_virtual_time ),
+      next_shuffle_block_num( wso.next_shuffle_block_num ),
+      num_scheduled_witnesses( wso.num_scheduled_witnesses ),
+      top19_weight( wso.top19_weight ),
+      timeshare_weight( wso.timeshare_weight ),
+      miner_weight( wso.miner_weight ),
+      witness_pay_normalization_factor( wso.witness_pay_normalization_factor ),
+      median_props( wso.median_props ),
+      majority_version( wso.majority_version ),
+      max_voted_witnesses( wso.max_voted_witnesses ),
+      max_miner_witnesses( wso.max_miner_witnesses ),
+      max_runner_witnesses( wso.max_runner_witnesses ),
+      hardfork_required_witnesses( wso.hardfork_required_witnesses )
+   {
+      size_t n = wso.current_shuffled_witnesses.size();
+      current_shuffled_witnesses.reserve( n );
+      std::transform(wso.current_shuffled_witnesses.begin(), wso.current_shuffled_witnesses.end(),
+                     std::back_inserter(current_shuffled_witnesses),
+                     [](const account_name_type& s) -> std::string { return s; } );
+                     // ^ fixed_string std::string operator used here.
+   }
+
+   witness_schedule_id_type   id;
+   
+   fc::uint128                current_virtual_time;
+   uint32_t                   next_shuffle_block_num;
+   vector<string>             current_shuffled_witnesses;   // fc::array<account_name_type,...> -> vector<string>
+   uint8_t                    num_scheduled_witnesses;
+   uint8_t                    top19_weight;
+   uint8_t                    timeshare_weight;
+   uint8_t                    miner_weight;
+   uint32_t                   witness_pay_normalization_factor;
+   chain_properties           median_props;
+   version                    majority_version;
+
+   uint8_t                    max_voted_witnesses;
+   uint8_t                    max_miner_witnesses;
+   uint8_t                    max_runner_witnesses;
+   uint8_t                    hardfork_required_witnesses;
+};
+
 struct api_signed_block_object : public signed_block
 {
    api_signed_block_object( const signed_block& block ) : signed_block( block )
@@ -560,6 +606,24 @@ FC_REFLECT( steemit::plugins::database_api::api_witness_object,
              (last_work)
              (running_version)
              (hardfork_version_vote)(hardfork_time_vote)
+          )
+
+FC_REFLECT( steemit::plugins::database_api::api_witness_schedule_object,
+             (id)
+             (current_virtual_time)
+             (next_shuffle_block_num)
+             (current_shuffled_witnesses)
+             (num_scheduled_witnesses)
+             (top19_weight)
+             (timeshare_weight)
+             (miner_weight)
+             (witness_pay_normalization_factor)
+             (median_props)
+             (majority_version)
+             (max_voted_witnesses)
+             (max_miner_witnesses)
+             (max_runner_witnesses)
+             (hardfork_required_witnesses)
           )
 
 FC_REFLECT_DERIVED( steemit::plugins::database_api::api_signed_block_object, (steemit::protocol::signed_block),

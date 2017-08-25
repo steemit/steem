@@ -32,6 +32,8 @@
 namespace steemit { namespace plugins { namespace p2p {
 namespace bpo = boost::program_options;
 
+namespace detail { class p2p_plugin_impl; }
+
 class p2p_plugin : public appbase::plugin<p2p_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((plugins::chain::chain_plugin))
@@ -44,16 +46,16 @@ public:
 
    static const std::string& name() { static std::string name = STEEM_P2P_PLUGIN_NAME; return name; }
 
-   virtual void plugin_initialize(const bpo::variables_map& options);
-   virtual void plugin_startup();
-   virtual void plugin_shutdown();
+   virtual void plugin_initialize(const bpo::variables_map& options) override;
+   virtual void plugin_startup() override;
+   virtual void plugin_shutdown() override;
 
    void broadcast_block( const steemit::protocol::signed_block& block );
    void broadcast_transaction( const steemit::protocol::signed_transaction& tx );
    void set_block_production( bool producing_blocks );
 
 private:
-   std::unique_ptr<class p2p_plugin_impl> my;
+   std::unique_ptr< detail::p2p_plugin_impl > my;
 };
 
 } } } // steemit::plugins::p2p
