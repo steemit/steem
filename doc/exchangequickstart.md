@@ -1,9 +1,9 @@
 Exchange Quickstart
 -------------------
 
-System Requirements: A minimum of 16GB of RAM and at least 50GB of fast local SSD storage. STEEM is currently the most active blockchain in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
+System Requirements: A minimum of 16GB of RAM and at least 50GB of fast local SSD storage. STEEM is one of the most active blockchains in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
 
-We recommend using docker to both build and run steem for exchanges. Docker is the world's leading containerization platform and using it guarantees that your build and run environment is identical to what our developers use. You can still build from source and you can keep both blockchain data and wallet data outside of the docker container. The instructions below will show you how to do this in just a few easy steps.
+We recommend using docker to both build and run STEEM for exchanges. Docker is the world's leading containerization platform and using it guarantees that your build and run environment is identical to what our developers use. You can still build from source and you can keep both blockchain data and wallet data outside of the docker container. The instructions below will show you how to do this in just a few easy steps.
 
 ### Install docker and git (if not already installed)
 
@@ -36,9 +36,19 @@ docker build -t=steemit/steem .
 
 Don't forget the `.` at the end of the line which indicates the build target is in the current directory.
 
+This will build everything including running our full suite of tests during the build process. It will anywhere from thirty minutes to a couple hours depending on how fast your equipment is.
+
 When the build completes you will see a message indicating that it is 'successfully built'.
 
-### Running a binary build with Docker
+### Using our official Docker images without building from source
+
+If you'd like to use our already pre-built official binary images, it's as simple as downloading it from the Dockerhub registry with only one command:
+
+```
+docker pull steemit/steem
+```
+
+### Running a binary build without a Docker container
 
 If you build with Docker but do not want to run steemd from within a docker container, you can extract the binary from the container. Our binaries are built mostly static, only dynamically linking to linux kernel libraries. We have tested and confirmed binaries built in Docker work on Ubuntu and Fedora and will likely work on many other Linux distrubutions. Building the image yourself or pulling one of our pre-built images both work.
 
@@ -48,11 +58,12 @@ To extract the binary you need to start a container and then copy the file from 
 docker run -d --name steemd-exchange .
 docker cp steemd-exchange:/usr/local/steemd-default/bin/steem /local/path/to/steemd
 docker cp steemd-exchange:/usr/local/steemd-default/bin/cli-wallet /local/path/to/cli-wallet
+docker stop steemd-exchange
 ```
 
-For your convenience, we have provided a provided an [example_config](doc/example_config.ini) that should be sufficient to run an exchange node.
+For your convenience, we have provided a provided an [example\_config](doc/example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`.
 
-### Create directories to store blockchain and wallet data outside of docker
+### Create directories to store blockchain and wallet data outside of Docker
 
 For re-usability, you can create directories to store blockchain and wallet data and easily link them inside your docker container.
 
