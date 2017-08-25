@@ -113,7 +113,7 @@ class webserver_plugin_impl
       webserver_plugin_impl(thread_pool_size_t thread_pool_size) :
          thread_pool_work( this->thread_pool_ios )
       {
-         for( uint32_t i = 0; i < size; ++i )
+         for( uint32_t i = 0; i < thread_pool_size; ++i )
             thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
       }
 
