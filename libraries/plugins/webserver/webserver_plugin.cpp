@@ -8,6 +8,7 @@
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
 #include <boost/bind.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 #include <websocketpp/config/asio_client.hpp>
 #include <websocketpp/config/asio.hpp>
@@ -21,8 +22,6 @@
 #include <memory>
 #include <iostream>
 
-#define WEBSERVER_THREAD_POOL_SIZE 256
-
 namespace steemit { namespace plugins { namespace webserver {
 
 namespace asio = boost::asio;
@@ -33,6 +32,8 @@ using boost::optional;
 using boost::asio::ip::tcp;
 using std::shared_ptr;
 using websocketpp::connection_hdl;
+
+typedef uint32_t thread_pool_size_t;
 
 namespace detail {
 
@@ -109,11 +110,11 @@ std::vector<fc::ip::endpoint> resolve_string_to_ip_endpoints( const std::string&
 class webserver_plugin_impl
 {
    public:
-      webserver_plugin_impl() :
+      webserver_plugin_impl(thread_pool_size_t thread_pool_size) :
          thread_pool_work( this->thread_pool_ios )
       {
-         for( uint32_t i = 0; i < WEBSERVER_THREAD_POOL_SIZE; i++ )
-         thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
+         for( uint32_t i = 0; i < thread_pool_size; ++i )
+            thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
       }
 
       shared_ptr< std::thread >  http_thread;
@@ -135,19 +136,26 @@ class webserver_plugin_impl
 
 } // detail
 
-webserver_plugin::webserver_plugin() : _my( new detail::webserver_plugin_impl() ) {}
-webserver_plugin::~webserver_plugin(){}
+webserver_plugin::webserver_plugin() {}
+webserver_plugin::~webserver_plugin() {}
 
 void webserver_plugin::set_program_options( options_description&, options_description& cfg )
 {
    cfg.add_options()
-         ("webserver-http-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming http connections.")
-         ("webserver-ws-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming websocket connections.")
-         ;
+      ("webserver-http-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming http connections.")
+      ("webserver-ws-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming websocket connections.")
+      ("webserver-thread-pool-size", bpo::value<thread_pool_size_t>()->default_value(256),
+       "Number of threads used to handle queries. Default: 256.")
+      ;
 }
 
 void webserver_plugin::plugin_initialize( const variables_map& options )
 {
+   auto thread_pool_size = options.at("webserver-thread-pool-size").as<thread_pool_size_t>();
+   FC_ASSERT(thread_pool_size > 0, "webserver-thread-pool-size must be greater than 0");
+   ilog("configured with ${tps} thread pool size", ("tps", thread_pool_size));
+   _my.reset(new detail::webserver_plugin_impl(thread_pool_size));
+
    if( options.count( "webserver-http-endpoint" ) )
    {
       auto http_endpoint = options.at( "webserver-http-endpoint" ).as< string >();
