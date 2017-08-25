@@ -69,9 +69,9 @@ public:
       boost::program_options::options_description &config_file_options
       ) override;
 
-   virtual void plugin_initialize(const boost::program_options::variables_map& options);
-   virtual void plugin_startup();
-   virtual void plugin_shutdown();
+   virtual void plugin_initialize(const boost::program_options::variables_map& options) override;
+   virtual void plugin_startup() override;
+   virtual void plugin_shutdown() override;
 
 private:
    std::unique_ptr< detail::witness_plugin_impl > my;
