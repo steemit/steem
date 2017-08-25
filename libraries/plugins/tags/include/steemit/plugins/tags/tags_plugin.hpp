@@ -474,10 +474,10 @@ class tags_plugin : public plugin< tags_plugin >
 
       virtual void set_program_options(
          options_description& cli,
-         options_description& cfg);
-      void plugin_initialize( const variables_map& options );
-      void plugin_startup();
-      void plugin_shutdown();
+         options_description& cfg) override;
+      virtual void plugin_initialize( const variables_map& options ) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
 
       friend class detail::tags_plugin_impl;
       std::unique_ptr< detail::tags_plugin_impl > my;

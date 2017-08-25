@@ -29,9 +29,19 @@ class plugin_a : public appbase::plugin<plugin_a>
                ;
      }
 
-     void plugin_initialize( const variables_map& options ) { std::cout << "initialize plugin_a plugin\n"; }
-     void plugin_startup()  { std::cout << "starting plugin_a plugin \n"; }
-     void plugin_shutdown() { std::cout << "shutdown plugin_a plugin \n"; }
+    virtual void plugin_initialize( const variables_map& options ) override
+    {
+        std::cout << "initialize plugin_a plugin\n";
+    }
+    virtual void plugin_startup() override
+    {
+       std::cout << "starting plugin_a plugin \n";
+    }
+    
+    virtual void plugin_shutdown() override
+    {
+      std::cout << "shutdown plugin_a plugin \n";
+    }
 
      database& db() { return _db; }
 
@@ -58,9 +68,21 @@ class plugin_b : public appbase::plugin<plugin_b>
               ;
      }
 
-     void plugin_initialize( const variables_map& options ) { std::cout << "initialize plugin_b plugin\n"; }
-     void plugin_startup()  { std::cout << "starting plugin_b plugin \n"; }
-     void plugin_shutdown() { std::cout << "shutdown plugin_b plugin \n"; }
+    protected:
+      virtual void plugin_initialize( const variables_map& options ) override
+      {
+      std::cout << "initialize plugin_b plugin\n";
+      }
+     
+      virtual void plugin_startup() override
+      {
+         std::cout << "starting plugin_b plugin \n";
+      }
+
+      virtual void plugin_shutdown() override
+      {
+         std::cout << "shutdown plugin_b plugin \n";
+      }
 
 };
 

@@ -913,7 +913,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-            read_lock lock( _rw_manager->current_lock(), bip::defer_lock_type() );
+            read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _read_lock_count );
@@ -935,7 +935,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-            write_lock lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+            write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _write_lock_count );
@@ -949,9 +949,9 @@ namespace chainbase {
             {
                while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
-                  _rw_manager->next_lock();
-                  std::cerr << "Lock timeout, moving to lock " << _rw_manager->current_lock_num() << std::endl;
-                  lock = write_lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+                  _rw_manager.next_lock();
+                  std::cerr << "Lock timeout, moving to lock " << _rw_manager.current_lock_num() << std::endl;
+                  lock = write_lock( _rw_manager.current_lock(), boost::defer_lock_t() );
                }
             }
 
@@ -974,9 +974,9 @@ namespace chainbase {
          }
 
       private:
+         read_write_mutex_manager                                    _rw_manager;
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
-         read_write_mutex_manager*                                   _rw_manager = nullptr;
          bip::file_lock                                              _flock;
 
          /**

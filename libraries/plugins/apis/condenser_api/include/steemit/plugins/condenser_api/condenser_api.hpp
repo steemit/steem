@@ -152,6 +152,10 @@ struct get_version_return
 
 typedef map< uint32_t, account_history::api_operation_object > get_account_history_return_type;
 
+#define DEFINE_API_ARGS( api_name, arg_type, return_type )  \
+typedef arg_type api_name ## _args;                         \
+typedef return_type api_name ## _return;
+
 /*               API,                                    args,                return */
 DEFINE_API_ARGS( get_trending_tags,                      vector< variant >,   vector< tags::api_tag_object > )
 DEFINE_API_ARGS( get_state,                              vector< variant >,   state )
@@ -238,6 +242,8 @@ DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_history::market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
 DEFINE_API_ARGS( get_market_history_buckets,             void_type,           flat_set< uint32_t > )
+
+#undef DEFINE_API_ARGS
 
 class condenser_api
 {

@@ -27,9 +27,9 @@ class test_api_plugin : public appbase::plugin< test_api_plugin >
 
       virtual void set_program_options( options_description&, options_description& ) override {}
 
-      void plugin_initialize( const variables_map& options );
-      void plugin_startup();
-      void plugin_shutdown();
+      virtual void plugin_initialize( const variables_map& options ) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
 
       string test_api_a( const test_api_a_args& args ) { return "A"; }
       string test_api_b( const test_api_b_args& args ) { return "B"; }
