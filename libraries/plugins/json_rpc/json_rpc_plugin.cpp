@@ -33,7 +33,7 @@ namespace detail
    {
       std::string                      jsonrpc = "2.0";
       fc::optional< fc::variant >      result;
-      json_rpc_error                   error;
+      fc::optional< json_rpc_error >   error;
       fc::variant                      id;
    };
 
