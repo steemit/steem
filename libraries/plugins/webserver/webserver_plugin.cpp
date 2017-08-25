@@ -74,7 +74,6 @@ namespace detail {
 
          static const long timeout_open_handshake = 0;
    };
-}
 
 using websocket_server_type = websocketpp::server< detail::asio_with_stub_log >;
 
@@ -135,6 +134,8 @@ class webserver_plugin_impl
       plugins::json_rpc::json_rpc_plugin* api;
 };
 
+} // detail
+
 webserver_plugin::webserver_plugin() {}
 webserver_plugin::~webserver_plugin() {}
 
@@ -158,7 +159,7 @@ void webserver_plugin::plugin_initialize( const variables_map& options )
    if( options.count( "webserver-http-endpoint" ) )
    {
       auto http_endpoint = options.at( "webserver-http-endpoint" ).as< string >();
-      auto endpoints = resolve_string_to_ip_endpoints( http_endpoint );
+      auto endpoints = detail::resolve_string_to_ip_endpoints( http_endpoint );
       FC_ASSERT( endpoints.size(), "webserver-http-endpoint ${hostname} did not resolve", ("hostname", http_endpoint) );
       _my->http_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
       ilog( "configured http to listen on ${ep}", ("ep", endpoints[0]) );
@@ -167,7 +168,7 @@ void webserver_plugin::plugin_initialize( const variables_map& options )
    if( options.count( "webserver-ws-endpoint" ) )
    {
       auto ws_endpoint = options.at( "webserver-ws-endpoint" ).as< string >();
-      auto endpoints = resolve_string_to_ip_endpoints( ws_endpoint );
+      auto endpoints = detail::resolve_string_to_ip_endpoints( ws_endpoint );
       FC_ASSERT( endpoints.size(), "ws-server-endpoint ${hostname} did not resolve", ("hostname", ws_endpoint) );
       _my->ws_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
       ilog( "configured ws to listen on ${ep}", ("ep", endpoints[0]) );
@@ -191,7 +192,7 @@ void webserver_plugin::plugin_startup()
             _my->ws_server.init_asio( &_my->ws_ios );
             _my->ws_server.set_reuse_addr( true );
 
-            _my->ws_server.set_message_handler( [&]( connection_hdl hdl, websocket_server_type::message_ptr msg )
+            _my->ws_server.set_message_handler( [&]( connection_hdl hdl, detail::websocket_server_type::message_ptr msg )
             {
                auto con = _my->ws_server.get_con_from_hdl( hdl );
 
