@@ -144,6 +144,8 @@ namespace detail
 
                   try
                   {
+                     if( !call )
+                        FC_THROW( "Api method is null" );
                      response.result = (*call)( params );
                   }
                   catch( fc::exception& e )
