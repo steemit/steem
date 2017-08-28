@@ -89,7 +89,7 @@ namespace detail
                {
                   string method = request[ "method" ].as_string();
 
-                  api_method* call;
+                  api_method* call = nullptr;
                   fc::variant params;
 
                   // This is to maintain backwards compatibility with existing call structure.
@@ -147,6 +147,8 @@ namespace detail
 
                   try
                   {
+                     if( !call )
+                        FC_THROW( "Api method is null" );
                      response.result = (*call)( params );
                   }
                   catch( fc::exception& e )
