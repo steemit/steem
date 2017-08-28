@@ -2616,6 +2616,13 @@ void database::_apply_block( const signed_block& next_block )
       FC_ASSERT( block_size <= gprops.maximum_block_size, "Block Size is too Big", ("next_block_num",next_block_num)("block_size", block_size)("max",gprops.maximum_block_size) );
    }
 
+   if( block_size < STEEMIT_MIN_BLOCK_SIZE )
+   {
+      elog( "Block size is too small",
+         ("next_block_num",next_block_num)("block_size", block_size)("min",STEEMIT_MIN_BLOCK_SIZE)
+      );
+   }
+
    /// modify current witness so transaction evaluators can know who included the transaction,
    /// this is mostly for POW operations which must pay the current_witness
    modify( gprops, [&]( dynamic_global_property_object& dgp ){
