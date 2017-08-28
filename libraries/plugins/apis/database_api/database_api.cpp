@@ -15,8 +15,6 @@ class database_api_impl
 
       DECLARE_API
       (
-         (get_block_header)
-         (get_block)
          (get_config)
          (get_dynamic_global_properties)
          (get_witness_schedule)
@@ -95,8 +93,6 @@ database_api::database_api()
 {
    JSON_RPC_REGISTER_API(
       STEEM_DATABASE_API_PLUGIN_NAME,
-      (get_block_header)
-      (get_block)
       (get_config)
       (get_dynamic_global_properties)
       (get_witness_schedule)
@@ -151,53 +147,6 @@ database_api_impl::database_api_impl()
    : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
 database_api_impl::~database_api_impl() {}
-
-
-//////////////////////////////////////////////////////////////////////
-//                                                                  //
-// Blocks and transactions                                          //
-//                                                                  //
-//////////////////////////////////////////////////////////////////////
-
-DEFINE_API( database_api, get_block_header )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_block_header( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_block_header )
-{
-   get_block_header_return result;
-   auto block = _db.fetch_block_by_number( args.block_num );
-
-   if( block )
-      result.header = *block;
-
-   return result;
-}
-
-
-DEFINE_API( database_api, get_block )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_block( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_block )
-{
-   get_block_return result;
-   auto block = _db.fetch_block_by_number( args.block_num );
-
-   if( block )
-      result.block = *block;
-
-   return result;
-}
-
 
 //////////////////////////////////////////////////////////////////////
 //                                                                  //

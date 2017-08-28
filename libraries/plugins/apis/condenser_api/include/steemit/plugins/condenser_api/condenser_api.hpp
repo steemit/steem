@@ -1,6 +1,7 @@
 #pragma once
 
 #include <steemit/plugins/database_api/database_api.hpp>
+#include <steemit/plugins/block_api/block_api.hpp>
 #include <steemit/plugins/account_history_api/account_history_api.hpp>
 #include <steemit/plugins/account_by_key_api/account_by_key_api.hpp>
 #include <steemit/plugins/network_broadcast_api/network_broadcast_api.hpp>
@@ -161,7 +162,7 @@ DEFINE_API_ARGS( get_trending_tags,                      vector< variant >,   ve
 DEFINE_API_ARGS( get_state,                              vector< variant >,   state )
 DEFINE_API_ARGS( get_active_witnesses,                   void_type,           vector< account_name_type > )
 DEFINE_API_ARGS( get_block_header,                       vector< variant >,   optional< block_header > )
-DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< database_api::api_signed_block_object > )
+DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< block_api::api_signed_block_object > )
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< account_history::api_operation_object > )
 DEFINE_API_ARGS( get_config,                             void_type,           fc::variant_object )
 DEFINE_API_ARGS( get_dynamic_global_properties,          void_type,           database_api::api_dynamic_global_property_object )
