@@ -58,6 +58,7 @@ namespace steemit { namespace chain {
 
       private:
          void construct_index();
+         void check_last_blocks( block_log& bl, int num_blocks );
 
          std::unique_ptr<detail::block_log_impl> my;
    };

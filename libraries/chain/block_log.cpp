@@ -89,19 +89,6 @@ namespace steemit { namespace chain {
              * Truncate the block_log file to remove the last_block_id bytes.
              */
             void remove_last_block_id();
-
-            /**
-             * Check the indexes and cryptographic integrity of the last n blocks.
-             *
-             * Throws fc::exception if any of the following occurs:
-             *
-             * - Index file does not exist
-             * - Last indexes do not match last blocks in file
-             * - Some block does not deserialize
-             * - There are gaps in blocks
-             * - Cryptographic integrity check of any block fails
-             */
-            void check_last_blocks( int num_blocks );
       };
    }
 
@@ -334,10 +321,21 @@ namespace steemit { namespace chain {
       FC_LOG_AND_RETHROW()
    }
 
-   void block_log_impl::check_last_blocks( int num_blocks )
+   /**
+    * Check the indexes and cryptographic integrity of the last n blocks.
+    *
+    * Throws fc::exception if any of the following occurs:
+    *
+    * - Index file does not exist
+    * - Last indexes do not match last blocks in file
+    * - Some block does not deserialize
+    * - There are gaps in blocks
+    * - Cryptographic integrity check of any block fails
+    */
+   void block_log::check_last_blocks( int num_blocks )
    {
-      uint64_t log_size = fc::file_size( block_file );
-      uint64_t index_size = fc::file_size( index_file );
+      uint64_t log_size = fc::file_size( my->block_file );
+      uint64_t index_size = fc::file_size( my->index_file );
 
       uint64_t index_blocks = index_size / sizeof( uint64_t );
 
@@ -350,14 +348,22 @@ namespace steemit { namespace chain {
       }
       FC_ASSERT( log_size >= index_blocks * STEEMIT_MIN_BLOCK_SIZE, "Log file is too small for index file size" );
 
-      check_block_read();
-      check_index_read();
+      my->check_block_read();
+      my->check_index_read();
 
-      uint64_t block_id = 
+      block_id_type last_prev = my->read_last_block_id();
+      uint64_t last_pos = log_size - sizeof( block_id_type );
+      uint32_t block_num = uint32_t(index_blocks);
 
       while( true )
       {
-         
+         if( block_num == 0 )
+            break;
+
+         // 
+
+         optional< signed_block > b = read_block_by_num( block_num );
+         FC_ASSERT( b );
       }
 
       return
