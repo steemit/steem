@@ -32,6 +32,8 @@
 #include <graphene/net/stcp_socket.hpp>
 #include <graphene/net/config.hpp>
 
+#include <atomic>
+
 #ifdef DEFAULT_LOGGER
 # undef DEFAULT_LOGGER
 #endif
@@ -61,7 +63,7 @@ namespace graphene { namespace net {
       fc::time_point _last_message_sent_time;
 
       bool _send_message_in_progress;
-
+      std::atomic_bool readLoopInProgress;
 #ifndef NDEBUG
       fc::thread* _thread;
 #endif
@@ -97,7 +99,8 @@ namespace graphene { namespace net {
       _delegate(delegate),
       _bytes_received(0),
       _bytes_sent(0),
-      _send_message_in_progress(false)
+      _send_message_in_progress(false),
+      readLoopInProgress(false)
 #ifndef NDEBUG
       ,_thread(&fc::thread::current())
 #endif
@@ -137,6 +140,20 @@ namespace graphene { namespace net {
       _sock.bind(local_endpoint);
     }
 
+    class THelper final
+    {
+      std::atomic_bool* Flag;
+    public:
+      explicit THelper(std::atomic_bool* flag) : Flag(flag)
+      {
+      FC_ASSERT(*flag == false, "Only one thread at time can visit it");
+      *flag = true;
+      }
+      ~THelper()
+      {
+         *Flag = false;
+      }
+    };
 
     void message_oriented_connection_impl::read_loop()
     {
@@ -144,6 +161,8 @@ namespace graphene { namespace net {
       const int BUFFER_SIZE = 16;
       const int LEFTOVER = BUFFER_SIZE - sizeof(message_header);
       static_assert(BUFFER_SIZE >= sizeof(message_header), "insufficient buffer");
+
+      THelper helper(&this->readLoopInProgress);
 
       _connected_time = fc::time_point::now();
 
@@ -261,8 +280,13 @@ namespace graphene { namespace net {
         //pad the message we send to a multiple of 16 bytes
         size_t size_with_padding = 16 * ((size_of_message_and_header + 15) / 16);
         std::unique_ptr<char[]> padded_message(new char[size_with_padding]);
+
         memcpy(padded_message.get(), (char*)&message_to_send, sizeof(message_header));
         memcpy(padded_message.get() + sizeof(message_header), message_to_send.data.data(), message_to_send.size );
+        char* paddingSpace = padded_message.get() + sizeof(message_header) + message_to_send.size;
+        size_t toClean = size_with_padding - size_of_message_and_header;
+        memset(paddingSpace, 0, toClean);
+
         _sock.write(padded_message.get(), size_with_padding);
         _sock.flush();
         _bytes_sent += size_with_padding;
