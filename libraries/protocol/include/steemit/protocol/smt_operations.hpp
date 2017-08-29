@@ -26,6 +26,8 @@ struct smt_elevate_account_operation : public base_operation
     */
    explicit smt_elevate_account_operation(const account_name_type& account_to_elevate, const asset& amount)
     : account(account_to_elevate), fee(amount) {}
+
+   void validate()const;
 };
 
 // TODO:  Rename these curves to match naming in manual.md
