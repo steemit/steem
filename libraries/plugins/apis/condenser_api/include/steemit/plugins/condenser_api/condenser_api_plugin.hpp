@@ -12,7 +12,7 @@ using namespace appbase;
 class condenser_api_plugin : public appbase::plugin< condenser_api_plugin >
 {
 public:
-   APPBASE_PLUGIN_REQUIRES( (steemit::plugins::json_rpc::json_rpc_plugin)(steemit::plugins::database_api::database_api_plugin)(steemit::plugins::block_api::block_api_plugin) )
+   APPBASE_PLUGIN_REQUIRES( (steemit::plugins::json_rpc::json_rpc_plugin)(steemit::plugins::database_api::database_api_plugin) )
 
    condenser_api_plugin();
    virtual ~condenser_api_plugin();
