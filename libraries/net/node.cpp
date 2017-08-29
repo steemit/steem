@@ -5477,17 +5477,21 @@ namespace graphene { namespace net { namespace detail {
 #  define INVOKE_AND_COLLECT_STATISTICS(method_name, ...) \
     try \
     { \
-      call_statistics_collector statistics_collector(#method_name, \
-                                                     &_ ## method_name ## _execution_accumulator, \
-                                                     &_ ## method_name ## _delay_before_accumulator, \
-                                                     &_ ## method_name ## _delay_after_accumulator); \
       if (_thread->is_current()) \
       { \
+         call_statistics_collector statistics_collector(#method_name, \
+            &_ ## method_name ## _execution_accumulator, \
+            &_ ## method_name ## _delay_before_accumulator, \
+            &_ ## method_name ## _delay_after_accumulator); \
         call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
         return _node_delegate->method_name(__VA_ARGS__); \
       } \
       else \
         return _thread->async([&](){ \
+         call_statistics_collector statistics_collector(#method_name, \
+            &_ ## method_name ## _execution_accumulator, \
+            &_ ## method_name ## _delay_before_accumulator, \
+            &_ ## method_name ## _delay_after_accumulator); \
           call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
           return _node_delegate->method_name(__VA_ARGS__); \
         }, "invoke " BOOST_STRINGIZE(method_name)).wait(); \
@@ -5509,17 +5513,21 @@ namespace graphene { namespace net { namespace detail {
     }
 #else
 #  define INVOKE_AND_COLLECT_STATISTICS(method_name, ...) \
-    call_statistics_collector statistics_collector(#method_name, \
-                                                   &_ ## method_name ## _execution_accumulator, \
-                                                   &_ ## method_name ## _delay_before_accumulator, \
-                                                   &_ ## method_name ## _delay_after_accumulator); \
     if (_thread->is_current()) \
     { \
+      call_statistics_collector statistics_collector(#method_name, \
+         &_ ## method_name ## _execution_accumulator, \
+         &_ ## method_name ## _delay_before_accumulator, \
+         &_ ## method_name ## _delay_after_accumulator); \
       call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
       return _node_delegate->method_name(__VA_ARGS__); \
     } \
     else \
       return _thread->async([&](){ \
+         call_statistics_collector statistics_collector(#method_name, \
+            &_ ## method_name ## _execution_accumulator, \
+            &_ ## method_name ## _delay_before_accumulator, \
+            &_ ## method_name ## _delay_after_accumulator); \
         call_statistics_collector::actual_execution_measurement_helper helper(statistics_collector); \
         return _node_delegate->method_name(__VA_ARGS__); \
       }, "invoke " BOOST_STRINGIZE(method_name)).wait()
