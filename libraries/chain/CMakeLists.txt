@@ -19,12 +19,14 @@ add_library( steemit_chain
 
              # As database takes the longest to compile, start it first
              database.cpp
-             fork_database.cpp
-             witness_schedule.cpp
 
+             smt_evaluator.cpp
              steem_evaluator.cpp
-
              steem_objects.cpp
+
+             witness_schedule.cpp
+             fork_database.cpp
+
              shared_authority.cpp
              block_log.cpp
 
