@@ -8,6 +8,7 @@
 #include <steemit/chain/fork_database.hpp>
 #include <steemit/chain/block_log.hpp>
 #include <steemit/chain/operation_notification.hpp>
+#include <steemit/chain/util/signal.hpp>
 
 #include <steemit/protocol/protocol.hpp>
 
