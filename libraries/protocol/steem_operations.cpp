@@ -5,11 +5,6 @@
 
 namespace steemit { namespace protocol {
 
-   bool inline is_asset_type( asset asset, asset_symbol_type symbol )
-   {
-      return asset.symbol == symbol;
-   }
-
    void account_create_operation::validate() const
    {
       validate_account_name( new_account_name );
