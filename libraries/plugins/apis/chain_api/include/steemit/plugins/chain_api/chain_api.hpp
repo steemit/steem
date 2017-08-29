@@ -12,7 +12,7 @@ namespace detail { class chain_api_impl; }
 struct push_block_args
 {
    steemit::chain::signed_block block;
-   bool                         currently_syncing;
+   bool                         currently_syncing = false;
 };
 
 
