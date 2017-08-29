@@ -56,6 +56,8 @@ using steemit::protocol::signed_block_header;
 using steemit::protocol::signed_block;
 using steemit::protocol::block_id_type;
 
+namespace detail {
+
 // This exists in p2p_plugin and http_plugin. It should be added to fc.
 std::vector<fc::ip::endpoint> resolve_string_to_ip_endpoints( const std::string& endpoint_string )
 {
@@ -129,131 +131,6 @@ public:
 
    fc::thread p2p_thread;
 };
-
-p2p_plugin::p2p_plugin()
-{
-   my.reset( new p2p_plugin_impl( appbase::app().get_plugin< plugins::chain::chain_plugin >() ) );
-}
-
-p2p_plugin::~p2p_plugin() {}
-
-void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
-   cfg.add_options()
-      ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
-      ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
-      ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
-      ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
-      ;
-   cli.add_options()
-      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions" )
-      ;
-}
-
-void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& options)
-{
-   if( options.count( "p2p-endpoint" ) )
-      my->endpoint = fc::ip::endpoint::from_string( options.at( "p2p-endpoint" ).as< string >() );
-
-   my->user_agent = "Steem Reference Implementation";
-
-   if( options.count( "p2p-max-connections" ) )
-      my->max_connections = options.at( "p2p-max-connections" ).as< uint32_t >();
-
-   if( options.count( "seed-node" ) || options.count( "p2p-seed-node" ) )
-   {
-      vector< string > seeds;
-      if( options.count( "seed-node" ) )
-      {
-         wlog( "Option seed-node is deprecated in favor of p2p-seed-node" );
-         auto s = options.at("seed-node").as<vector<string>>();
-         seeds.insert( seeds.end(), s.begin(), s.end() );
-      }
-
-      if( options.count( "p2p-seed-node" ) )
-      {
-         auto s = options.at("p2p-seed-node").as<vector<string>>();
-         seeds.insert( seeds.end(), s.begin(), s.end() );
-      }
-
-      for( const string& endpoint_string : seeds )
-      {
-         try
-         {
-            std::vector<fc::ip::endpoint> endpoints = resolve_string_to_ip_endpoints(endpoint_string);
-            my->seeds.insert( my->seeds.end(), endpoints.begin(), endpoints.end() );
-         }
-         catch( const fc::exception& e )
-         {
-            wlog( "caught exception ${e} while adding seed node ${endpoint}",
-               ("e", e.to_detail_string())("endpoint", endpoint_string) );
-         }
-      }
-   }
-
-   my->force_validate = options.at( "force-validate" ).as< bool >();
-}
-
-void p2p_plugin::plugin_startup()
-{
-   my->p2p_thread.async( [this]
-   {
-      my->node.reset(new graphene::net::node(my->user_agent));
-      my->node->load_configuration(app().data_dir() / "p2p");
-      my->node->set_node_delegate( &(*my) );
-
-      if( my->endpoint )
-      {
-         ilog("Configuring P2P to listen at ${ep}", ("ep", my->endpoint));
-         my->node->listen_on_endpoint(*my->endpoint, true);
-      }
-
-      for( const auto& seed : my->seeds )
-      {
-         ilog("P2P adding seed node ${s}", ("s", seed));
-         my->node->add_node(seed);
-         my->node->connect_to_endpoint(seed);
-      }
-
-      if( my->max_connections )
-      {
-         ilog( "Setting p2p max connections to ${n}", ("n", my->max_connections) );
-         fc::variant_object node_param = fc::variant_object(
-            "maximum_number_of_connections",
-            fc::variant( my->max_connections ) );
-         my->node->set_advanced_node_parameters( node_param );
-      }
-
-      my->node->listen_to_p2p_network();
-      my->node->connect_to_p2p_network();
-      my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, my->chain.db().head_block_id()), std::vector<uint32_t>());
-      ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
-   }).wait();
-   idump( (my->p2p_thread.is_running()) );
-}
-
-void p2p_plugin::plugin_shutdown() {
-   ilog("Shutting down P2P Plugin");
-   my->node->close();
-   my->p2p_thread.quit();
-   my->node.reset();
-}
-
-void p2p_plugin::broadcast_block( const steemit::protocol::signed_block& block )
-{
-   ulog("Broadcasting block #${n}", ("n", block.block_num()));
-   my->node->broadcast( graphene::net::block_message( block ) );
-}
-
-void p2p_plugin::broadcast_transaction( const steemit::protocol::signed_transaction& tx )
-{
-   ulog("Broadcasting tx #${n}", ("id", tx.id()));
-   my->node->broadcast( graphene::net::trx_message( tx ) );
-}
-
-void p2p_plugin::set_block_production( bool producing_blocks )
-{
-   my->block_producer = producing_blocks;
-}
 
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
 bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
@@ -613,5 +490,134 @@ bool p2p_plugin_impl::is_included_block(const block_id_type& block_id)
 } FC_LOG_AND_RETHROW() }
 
 ////////////////////////////// End node_delegate Implementation //////////////////////////////
+
+} // detail
+
+p2p_plugin::p2p_plugin()
+{
+   my.reset( new detail::p2p_plugin_impl( appbase::app().get_plugin< plugins::chain::chain_plugin >() ) );
+}
+
+p2p_plugin::~p2p_plugin() {}
+
+void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
+   cfg.add_options()
+      ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
+      ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
+      ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
+      ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
+      ("p2p-user-agent", bpo::value<string>()->implicit_value("Graphene Reference Implementation"),"User agent to advertise to peers")
+      ;
+   cli.add_options()
+      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions" )
+      ;
+}
+
+void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& options)
+{
+   if( options.count( "p2p-endpoint" ) )
+      my->endpoint = fc::ip::endpoint::from_string( options.at( "p2p-endpoint" ).as< string >() );
+
+   if( options.count( "p2p-user-agent" ) )
+      my->user_agent = options.at( "p2p-user-agent" ).as< string >();
+
+   if( options.count( "p2p-max-connections" ) )
+      my->max_connections = options.at( "p2p-max-connections" ).as< uint32_t >();
+
+   if( options.count( "seed-node" ) || options.count( "p2p-seed-node" ) )
+   {
+      vector< string > seeds;
+      if( options.count( "seed-node" ) )
+      {
+         wlog( "Option seed-node is deprecated in favor of p2p-seed-node" );
+         auto s = options.at("seed-node").as<vector<string>>();
+         seeds.insert( seeds.end(), s.begin(), s.end() );
+      }
+
+      if( options.count( "p2p-seed-node" ) )
+      {
+         auto s = options.at("p2p-seed-node").as<vector<string>>();
+         seeds.insert( seeds.end(), s.begin(), s.end() );
+      }
+
+      for( const string& endpoint_string : seeds )
+      {
+         try
+         {
+            std::vector<fc::ip::endpoint> endpoints = detail::resolve_string_to_ip_endpoints(endpoint_string);
+            my->seeds.insert( my->seeds.end(), endpoints.begin(), endpoints.end() );
+         }
+         catch( const fc::exception& e )
+         {
+            wlog( "caught exception ${e} while adding seed node ${endpoint}",
+               ("e", e.to_detail_string())("endpoint", endpoint_string) );
+         }
+      }
+   }
+
+   my->force_validate = options.at( "force-validate" ).as< bool >();
+}
+
+void p2p_plugin::plugin_startup()
+{
+   my->p2p_thread.async( [this]
+   {
+      my->node.reset(new graphene::net::node(my->user_agent));
+      my->node->load_configuration(app().data_dir() / "p2p");
+      my->node->set_node_delegate( &(*my) );
+
+      if( my->endpoint )
+      {
+         ilog("Configuring P2P to listen at ${ep}", ("ep", my->endpoint));
+         my->node->listen_on_endpoint(*my->endpoint, true);
+      }
+
+      for( const auto& seed : my->seeds )
+      {
+         ilog("P2P adding seed node ${s}", ("s", seed));
+         my->node->add_node(seed);
+         my->node->connect_to_endpoint(seed);
+      }
+
+      if( my->max_connections )
+      {
+         ilog( "Setting p2p max connections to ${n}", ("n", my->max_connections) );
+         fc::variant_object node_param = fc::variant_object(
+            "maximum_number_of_connections",
+            fc::variant( my->max_connections ) );
+         my->node->set_advanced_node_parameters( node_param );
+      }
+
+      my->node->listen_to_p2p_network();
+      my->node->connect_to_p2p_network();
+      my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, my->chain.db().head_block_id()), std::vector<uint32_t>());
+      ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
+   }).wait();
+   idump( (my->p2p_thread.is_running()) );
+}
+
+void p2p_plugin::plugin_shutdown() {
+   ilog("Shutting down P2P Plugin");
+   my->node->close();
+   my->p2p_thread.quit();
+   my->node.reset();
+}
+
+void p2p_plugin::broadcast_block( const steemit::protocol::signed_block& block )
+{
+   ulog("Broadcasting block #${n}", ("n", block.block_num()));
+   my->node->broadcast( graphene::net::block_message( block ) );
+}
+
+void p2p_plugin::broadcast_transaction( const steemit::protocol::signed_transaction& tx )
+{
+   ulog("Broadcasting tx #${n}", ("id", tx.id()));
+   my->node->broadcast( graphene::net::trx_message( tx ) );
+}
+
+void p2p_plugin::set_block_production( bool producing_blocks )
+{
+   my->block_producer = producing_blocks;
+}
 
 } } } // namespace steemit::plugins::p2p

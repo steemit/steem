@@ -18,6 +18,9 @@ namespace detail
 {
    struct json_rpc_error
    {
+      json_rpc_error()
+         : code( 0 ) {}
+
       json_rpc_error( int32_t c, std::string m, fc::optional< fc::variant > d = fc::optional< fc::variant >() )
          : code( c ), message( m ), data( d ) {}
 
@@ -86,7 +89,7 @@ namespace detail
                {
                   string method = request[ "method" ].as_string();
 
-                  api_method* call;
+                  api_method* call = nullptr;
                   fc::variant params;
 
                   // This is to maintain backwards compatibility with existing call structure.
@@ -144,6 +147,8 @@ namespace detail
 
                   try
                   {
+                     if( !call )
+                        FC_THROW( "Api method is null" );
                      response.result = (*call)( params );
                   }
                   catch( fc::exception& e )

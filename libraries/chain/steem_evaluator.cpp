@@ -1166,18 +1166,18 @@ void vote_evaluator::do_apply( const vote_operation& o )
    FC_ASSERT( current_power > 0, "Account currently does not have voting power." );
 
    int64_t  abs_weight    = abs(o.weight);
-   int64_t  used_power    = (current_power * abs_weight) / STEEMIT_100_PERCENT;
+   // Less rounding error would occur if we did the division last, but we need to maintain backward
+   // compatibility with the previous implementation which was replaced in #1285
+   int64_t  used_power  = ((current_power * abs_weight) / STEEMIT_100_PERCENT) * (60*60*24);
 
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
-   // used_power = (current_power * abs_weight / STEEMIT_100_PERCENT) * (reserve / max_vote_denom)
    // The second multiplication is rounded up as of HF 259
-   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEMIT_VOTE_REGENERATION_SECONDS / (60*60*24);
+   int64_t max_vote_denom = dgpo.vote_power_reserve_rate * STEEMIT_VOTE_REGENERATION_SECONDS;
    FC_ASSERT( max_vote_denom > 0 );
 
    if( !_db.has_hardfork( STEEMIT_HARDFORK_0_14__259 ) )
    {
-      FC_ASSERT( max_vote_denom == 200 );   // TODO: Remove this assert
       used_power = (used_power / max_vote_denom)+1;
    }
    else
