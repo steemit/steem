@@ -19,7 +19,6 @@ namespace steemit { namespace plugins { namespace condenser_api {
 using std::vector;
 using fc::variant;
 using fc::optional;
-using steemit::plugins::json_rpc::void_type;
 
 using namespace chain;
 
@@ -137,7 +136,7 @@ enum withdraw_route_type
    all
 };
 
-typedef void_type get_version_args;
+typedef vector< variant > get_version_args;
 
 struct get_version_return
 {
@@ -159,25 +158,25 @@ typedef return_type api_name ## _return;
 /*               API,                                    args,                return */
 DEFINE_API_ARGS( get_trending_tags,                      vector< variant >,   vector< tags::api_tag_object > )
 DEFINE_API_ARGS( get_state,                              vector< variant >,   state )
-DEFINE_API_ARGS( get_active_witnesses,                   void_type,           vector< account_name_type > )
+DEFINE_API_ARGS( get_active_witnesses,                   vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_block_header,                       vector< variant >,   optional< block_header > )
 DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< database_api::api_signed_block_object > )
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< account_history::api_operation_object > )
-DEFINE_API_ARGS( get_config,                             void_type,           fc::variant_object )
-DEFINE_API_ARGS( get_dynamic_global_properties,          void_type,           database_api::api_dynamic_global_property_object )
-DEFINE_API_ARGS( get_chain_properties,                   void_type,           chain_properties )
-DEFINE_API_ARGS( get_current_median_history_price,       void_type,           price )
-DEFINE_API_ARGS( get_feed_history,                       void_type,           database_api::api_feed_history_object )
-DEFINE_API_ARGS( get_witness_schedule,                   void_type,           database_api::api_witness_schedule_object )
-DEFINE_API_ARGS( get_hardfork_version,                   void_type,           hardfork_version )
-DEFINE_API_ARGS( get_next_scheduled_hardfork,            void_type,           scheduled_hardfork )
+DEFINE_API_ARGS( get_config,                             vector< variant >,   fc::variant_object )
+DEFINE_API_ARGS( get_dynamic_global_properties,          vector< variant >,   database_api::api_dynamic_global_property_object )
+DEFINE_API_ARGS( get_chain_properties,                   vector< variant >,   chain_properties )
+DEFINE_API_ARGS( get_current_median_history_price,       vector< variant >,   price )
+DEFINE_API_ARGS( get_feed_history,                       vector< variant >,   database_api::api_feed_history_object )
+DEFINE_API_ARGS( get_witness_schedule,                   vector< variant >,   database_api::api_witness_schedule_object )
+DEFINE_API_ARGS( get_hardfork_version,                   vector< variant >,   hardfork_version )
+DEFINE_API_ARGS( get_next_scheduled_hardfork,            vector< variant >,   scheduled_hardfork )
 DEFINE_API_ARGS( get_reward_fund,                        vector< variant >,   database_api::api_reward_fund_object )
 DEFINE_API_ARGS( get_key_references,                     vector< variant >,   vector< vector< account_name_type > > )
 DEFINE_API_ARGS( get_accounts,                           vector< variant >,   vector< extended_account > )
 DEFINE_API_ARGS( get_account_references,                 vector< variant >,   vector< account_id_type > )
 DEFINE_API_ARGS( lookup_account_names,                   vector< variant >,   vector< optional< database_api::api_account_object > > )
 DEFINE_API_ARGS( lookup_accounts,                        vector< variant >,   set< string > )
-DEFINE_API_ARGS( get_account_count,                      void_type,           uint64_t )
+DEFINE_API_ARGS( get_account_count,                      vector< variant >,   uint64_t )
 DEFINE_API_ARGS( get_owner_history,                      vector< variant >,   vector< database_api::api_owner_authority_history_object > )
 DEFINE_API_ARGS( get_recovery_request,                   vector< variant >,   optional< database_api::api_account_recovery_request_object > )
 DEFINE_API_ARGS( get_escrow,                             vector< variant >,   optional< database_api::api_escrow_object > )
@@ -193,7 +192,7 @@ DEFINE_API_ARGS( get_witness_by_account,                 vector< variant >,   op
 DEFINE_API_ARGS( get_witnesses_by_vote,                  vector< variant >,   vector< database_api::api_witness_object > )
 DEFINE_API_ARGS( lookup_witness_accounts,                vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_open_orders,                        vector< variant >,   vector< extended_limit_order > )
-DEFINE_API_ARGS( get_witness_count,                      void_type,           uint64_t )
+DEFINE_API_ARGS( get_witness_count,                      vector< variant >,   uint64_t )
 DEFINE_API_ARGS( get_transaction_hex,                    vector< variant >,   string )
 DEFINE_API_ARGS( get_transaction,                        vector< variant >,   annotated_signed_transaction )
 DEFINE_API_ARGS( get_required_signatures,                vector< variant >,   set< public_key_type > )
@@ -222,9 +221,9 @@ DEFINE_API_ARGS( get_discussions_by_promoted,            vector< variant >,   ve
 DEFINE_API_ARGS( get_replies_by_last_update,             vector< variant >,   vector< tags::discussion > )
 DEFINE_API_ARGS( get_discussions_by_author_before_date,  vector< variant >,   vector< tags::discussion > )
 DEFINE_API_ARGS( get_account_history,                    vector< variant >,   get_account_history_return_type )
-DEFINE_API_ARGS( broadcast_transaction,                  vector< variant >,   void_type )
+DEFINE_API_ARGS( broadcast_transaction,                  vector< variant >,   json_rpc::void_type )
 DEFINE_API_ARGS( broadcast_transaction_synchronous,      vector< variant >,   network_broadcast_api::broadcast_transaction_synchronous_return )
-DEFINE_API_ARGS( broadcast_block,                        vector< variant >,   void_type )
+DEFINE_API_ARGS( broadcast_block,                        vector< variant >,   json_rpc::void_type )
 DEFINE_API_ARGS( get_followers,                          vector< variant >,   vector< follow::api_follow_object > )
 DEFINE_API_ARGS( get_following,                          vector< variant >,   vector< follow::api_follow_object > )
 DEFINE_API_ARGS( get_follow_count,                       vector< variant >,   follow::get_follow_count_return )
@@ -235,13 +234,13 @@ DEFINE_API_ARGS( get_blog,                               vector< variant >,   ve
 DEFINE_API_ARGS( get_account_reputations,                vector< variant >,   vector< follow::account_reputation > )
 DEFINE_API_ARGS( get_reblogged_by,                       vector< variant >,   vector< account_name_type > )
 DEFINE_API_ARGS( get_blog_authors,                       vector< variant >,   vector< follow::reblog_count > )
-DEFINE_API_ARGS( get_ticker,                             void_type,           market_history::get_ticker_return )
-DEFINE_API_ARGS( get_volume,                             void_type,           market_history::get_volume_return )
+DEFINE_API_ARGS( get_ticker,                             vector< variant >,   market_history::get_ticker_return )
+DEFINE_API_ARGS( get_volume,                             vector< variant >,   market_history::get_volume_return )
 DEFINE_API_ARGS( get_order_book,                         vector< variant >,   market_history::get_order_book_return )
 DEFINE_API_ARGS( get_trade_history,                      vector< variant >,   vector< market_history::market_trade > )
 DEFINE_API_ARGS( get_recent_trades,                      vector< variant >,   vector< market_history::market_trade > )
 DEFINE_API_ARGS( get_market_history,                     vector< variant >,   vector< market_history::bucket_object > )
-DEFINE_API_ARGS( get_market_history_buckets,             void_type,           flat_set< uint32_t > )
+DEFINE_API_ARGS( get_market_history_buckets,             vector< variant >,   flat_set< uint32_t > )
 
 #undef DEFINE_API_ARGS
 
