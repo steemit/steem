@@ -70,6 +70,7 @@ namespace steemit { namespace protocol {
             smt_setup_inflation_operation,
             smt_set_setup_parameters_operation,
             smt_set_runtime_parameters_operation,
+            smt_elevate_account_operation,
 
             /// virtual operations below this point
             fill_convert_request_operation,
