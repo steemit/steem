@@ -18,6 +18,8 @@ struct smt_elevate_account_operation : public base_operation
    asset             fee;
 
    extensions_type   extensions;
+
+   void validate()const;
 };
 
 // TODO:  Rename these curves to match naming in manual.md
