@@ -37,6 +37,8 @@ using steemit::chain::database;
 using steemit::chain::operation_notification;
 using steemit::chain::operation_object;
 
+namespace detail {
+
 class account_history_plugin_impl
 {
    public:
@@ -176,6 +178,7 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
    }
 }
 
+} // detail
 
 account_history_plugin::account_history_plugin() {}
 account_history_plugin::~account_history_plugin() {}
@@ -194,7 +197,7 @@ void account_history_plugin::set_program_options(
 
 void account_history_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-   my = std::make_unique< account_history_plugin_impl >();
+   my = std::make_unique< detail::account_history_plugin_impl >();
 
    my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
 

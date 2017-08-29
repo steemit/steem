@@ -26,9 +26,9 @@ public:
 
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
-   void plugin_initialize( const variables_map& options );
-   void plugin_startup();
-   void plugin_shutdown();
+   virtual void plugin_initialize( const variables_map& options ) override;
+   virtual void plugin_startup() override;
+   virtual void plugin_shutdown() override;
 
    std::shared_ptr< class debug_node_api > api;
 };

@@ -24,6 +24,8 @@ namespace steemit { namespace plugins { namespace follow {
 
 using namespace steemit::protocol;
 
+namespace detail {
+
 class follow_plugin_impl
 {
    public:
@@ -317,6 +319,7 @@ void follow_plugin_impl::post_operation( const operation_notification& note )
    }
 }
 
+} // detail
 
 follow_plugin::follow_plugin() {}
 
@@ -339,7 +342,7 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    {
       ilog("Intializing follow plugin" );
 
-      _my = std::make_unique< follow_plugin_impl >( *this );
+      _my = std::make_unique< detail::follow_plugin_impl >( *this );
 
       // Each plugin needs its own evaluator registry.
       _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::plugins::follow::follow_plugin_operation > >( _my->_db );
