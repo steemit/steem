@@ -1,5 +1,6 @@
 
 #include <steemit/protocol/smt_operations.hpp>
+#include <steemit/protocol/validation.hpp>
 
 #define SMT_MAX_UNIT_ROUTES       10
 
