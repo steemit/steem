@@ -63,7 +63,6 @@ namespace graphene { namespace net {
       fc::time_point _last_message_sent_time;
 
       bool _send_message_in_progress;
-      std::atomic_bool readLoopInProgress;
 #ifndef NDEBUG
       fc::thread* _thread;
 #endif
@@ -99,8 +98,7 @@ namespace graphene { namespace net {
       _delegate(delegate),
       _bytes_received(0),
       _bytes_sent(0),
-      _send_message_in_progress(false),
-      readLoopInProgress(false)
+      _send_message_in_progress(false)
 #ifndef NDEBUG
       ,_thread(&fc::thread::current())
 #endif
@@ -140,29 +138,12 @@ namespace graphene { namespace net {
       _sock.bind(local_endpoint);
     }
 
-    class THelper final
-    {
-      std::atomic_bool* Flag;
-    public:
-      explicit THelper(std::atomic_bool* flag) : Flag(flag)
-      {
-      FC_ASSERT(*flag == false, "Only one thread at time can visit it");
-      *flag = true;
-      }
-      ~THelper()
-      {
-         *Flag = false;
-      }
-    };
-
     void message_oriented_connection_impl::read_loop()
     {
       VERIFY_CORRECT_THREAD();
       const int BUFFER_SIZE = 16;
       const int LEFTOVER = BUFFER_SIZE - sizeof(message_header);
       static_assert(BUFFER_SIZE >= sizeof(message_header), "insufficient buffer");
-
-      THelper helper(&this->readLoopInProgress);
 
       _connected_time = fc::time_point::now();
 
