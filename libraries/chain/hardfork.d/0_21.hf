@@ -1,0 +1,8 @@
+#ifndef STEEMIT_HARDFORK_0_21
+#define STEEMIT_HARDFORK_0_21 21
+
+#define STEEMIT_HARDFORK_0_21_TIME 1597970800 // Future 2020...
+
+#define STEEMIT_HARDFORK_0_21_VERSION hardfork_version( 0, 21 )
+
+#endif
