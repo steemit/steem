@@ -263,6 +263,13 @@ struct smt_set_runtime_parameters_operation : public base_operation
 
 } }
 
+FC_REFLECT(
+   steemit::protocol::smt_elevate_account_operation,
+   (account)
+   (fee)
+   (extensions)
+)
+
 FC_REFLECT_ENUM(
    steemit::protocol::curve_id,
    (quadratic)
