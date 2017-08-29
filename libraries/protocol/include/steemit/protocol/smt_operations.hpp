@@ -5,6 +5,29 @@
 
 namespace steemit { namespace protocol {
 
+/**
+ * This operation elevates given steem account to SMT control account on conditions that:
+ * a) the account is not SMT control account already and
+ * b) successful fee transfer occurs.
+ */
+struct smt_elevate_account_operation : public base_operation
+{
+   /// Account to be elevated.
+   account_name_type account;
+   /// The amount to be transfered from @account to null account as elevation fee.
+   asset             fee;
+
+   extensions_type   extensions;
+
+   /**
+    * \param account_to_elevate  - The name of account being elevated.
+    * \param amount              - The value defined by 'smt_creation_fee' field
+                                   of 'dynamic_global_properties_object'.
+    */
+   explicit smt_elevate_account_operation(const account_name_type& account_to_elevate, const asset& amount)
+    : account(account_to_elevate), fee(amount) {}
+};
+
 // TODO:  Rename these curves to match naming in manual.md
 // TODO:  Remove duplicate definition in steemit::chain
 enum curve_id
