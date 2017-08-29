@@ -379,8 +379,8 @@ void follow_plugin::plugin_startup() {}
 
 void follow_plugin::plugin_shutdown()
 {
-   _my->_db.disconnect_signal( _my->pre_apply_connection );
-   _my->_db.disconnect_signal( _my->post_apply_connection );
+   chain::util::disconnect_signal( _my->pre_apply_connection );
+   chain::util::disconnect_signal( _my->post_apply_connection );
 }
 
 } } } // steemit::plugins::follow

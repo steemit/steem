@@ -654,9 +654,9 @@ void witness_plugin::plugin_shutdown()
 {
    try
    {
-      my->_db.disconnect_signal( my->pre_apply_connection );
-      my->_db.disconnect_signal( my->applied_block_connection );
-      my->_db.disconnect_signal( my->on_pre_apply_transaction_connection );
+      chain::util::disconnect_signal( my->pre_apply_connection );
+      chain::util::disconnect_signal( my->applied_block_connection );
+      chain::util::disconnect_signal( my->on_pre_apply_transaction_connection );
 
       my->_timer.cancel();
    }

@@ -261,8 +261,8 @@ void account_by_key_plugin::plugin_startup() {}
 
 void account_by_key_plugin::plugin_shutdown()
 {
-   my->_db.disconnect_signal( my->pre_apply_connection );
-   my->_db.disconnect_signal( my->post_apply_connection );
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
 }
 
 } } } // steemit::plugins::account_by_key

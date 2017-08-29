@@ -200,7 +200,7 @@ void market_history_plugin::plugin_startup() {}
 
 void market_history_plugin::plugin_shutdown()
 {
-   _my->_db.disconnect_signal( _my->post_apply_connection );
+   chain::util::disconnect_signal( _my->post_apply_connection );
 }
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const

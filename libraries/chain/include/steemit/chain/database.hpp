@@ -8,6 +8,7 @@
 #include <steemit/chain/fork_database.hpp>
 #include <steemit/chain/block_log.hpp>
 #include <steemit/chain/operation_notification.hpp>
+#include <steemit/chain/util/signal.hpp>
 
 #include <steemit/protocol/protocol.hpp>
 
@@ -404,8 +405,6 @@ namespace steemit { namespace chain {
 
          void set_flush_interval( uint32_t flush_blocks );
          void show_free_memory( bool force );
-
-         void disconnect_signal( boost::signals2::connection& signal );
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;

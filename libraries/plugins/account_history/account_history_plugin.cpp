@@ -244,7 +244,7 @@ void account_history_plugin::plugin_startup() {}
 
 void account_history_plugin::plugin_shutdown()
 {
-   my->_db.disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->pre_apply_connection );
 }
 
 flat_map< account_name_type, account_name_type > account_history_plugin::tracked_accounts() const

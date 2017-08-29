@@ -559,8 +559,8 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 void tags_plugin::plugin_startup() {}
 void tags_plugin::plugin_shutdown()
 {
-   my->_db.disconnect_signal( my->pre_apply_connection );
-   my->_db.disconnect_signal( my->post_apply_connection );
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
 }
 
 } } } /// steemit::plugins::tags

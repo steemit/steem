@@ -416,7 +416,7 @@ void debug_node_plugin::on_applied_block( const chain::signed_block& b )
 
 void debug_node_plugin::plugin_shutdown()
 {
-   _my->_db.disconnect_signal( _my->applied_block_connection );
+   chain::util::disconnect_signal( _my->applied_block_connection );
    /*if( _json_object_stream )
    {
       _json_object_stream->close();
