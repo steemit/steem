@@ -92,7 +92,7 @@ RUN \
         -DCMAKE_BUILD_TYPE=Release \
         -DLOW_MEMORY_NODE=ON \
         -DCLEAR_VOTES=ON \
-        -DSKIP_BY_TX_ID=ON \
+        -DSKIP_BY_TX_ID=OFF \
         -DBUILD_STEEM_TESTNET=OFF \
         .. \
     && \

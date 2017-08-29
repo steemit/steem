@@ -13,6 +13,8 @@ using namespace steemit;
 using fc::flat_map;
 using steemit::chain::block_id_type;
 
+namespace detail {
+
 class chain_plugin_impl
 {
    public:
@@ -28,8 +30,9 @@ class chain_plugin_impl
       database  db;
 };
 
+} // detail
 
-chain_plugin::chain_plugin() : my( new chain_plugin_impl() ) {}
+chain_plugin::chain_plugin() : my( new detail::chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }

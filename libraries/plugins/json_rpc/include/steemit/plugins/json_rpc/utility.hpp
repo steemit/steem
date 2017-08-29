@@ -3,10 +3,6 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/cat.hpp>
 
-#define DEFINE_API_ARGS( api_name, arg_type, return_type )  \
-typedef arg_type api_name ## _args;                         \
-typedef return_type api_name ## _return;
-
 #define DECLARE_API_HELPER( r, data, method ) \
 BOOST_PP_CAT( method, _return ) method( const BOOST_PP_CAT( method, _args )& );
 
