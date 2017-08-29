@@ -3,12 +3,13 @@ file(GLOB HEADERS "include/steemit/protocol/*.hpp")
 ## SORT .cpp by most likely to change / break compile
 add_library( steemit_protocol
 
+             smt_operations.cpp
+             steem_operations.cpp
              types.cpp
              authority.cpp
              operations.cpp
              sign_state.cpp
              operation_util_impl.cpp
-             steem_operations.cpp
              transaction.cpp
              block.cpp
              asset.cpp
