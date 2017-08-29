@@ -43,6 +43,7 @@
 #include <fc/rpc/api_connection.hpp>
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/network/resolve.hpp>
+#include <fc/stacktrace.hpp>
 #include <fc/string.hpp>
 
 #include <boost/algorithm/string.hpp>
@@ -252,6 +253,12 @@ namespace detail {
 
       void startup()
       { try {
+         if( _options->at("backtrace").as<string>() == "yes" )
+         {
+            fc::print_stacktrace_on_segfault();
+            ilog( "Backtrace on segfault is enabled" );
+         }
+
          _shared_file_size = fc::parse_size( _options->at( "shared-file-size" ).as< string >() );
          ilog( "shared_file_size is ${n} bytes", ("n", _shared_file_size) );
          bool read_only = _options->count( "read-only" );
@@ -984,6 +991,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("enable-plugin", bpo::value< vector<string> >()->composing()->default_value(default_plugins, str_default_plugins), "Plugin(s) to enable, may be specified multiple times")
          ("max-block-age", bpo::value< int32_t >()->default_value(200), "Maximum age of head block when broadcasting tx via API")
          ("flush", bpo::value< uint32_t >()->default_value(100000), "Flush shared memory file to disk this many blocks")
+         ("backtrace", bpo::value<string>()->default_value("yes"), "Whether to print backtrace on SIGSEGV")
          ;
    command_line_options.add(configuration_file_options);
    command_line_options.add_options()
