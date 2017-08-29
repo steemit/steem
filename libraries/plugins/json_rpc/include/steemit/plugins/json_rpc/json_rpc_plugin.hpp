@@ -44,7 +44,7 @@
    }
 
 #define JSON_RPC_API_METHOD( r, api_name, method ) \
-   jsonrpc.add_api_method( api_name, std::string( #method ), JSON_RPC_API_METHOD_HELPER( method ) );
+   jsonrpc.add_api_method( api_name, std::string( BOOST_PP_STRINGIZE(method) ), JSON_RPC_API_METHOD_HELPER( method ) );
 
 
 #define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                                       \
@@ -77,26 +77,6 @@ typedef std::map< string, api_method > api_description;
 namespace detail
 {
    class json_rpc_plugin_impl;
-
-
-
-   /*struct json_rpc_error
-   {
-      json_rpc_error( int32_t c, std::string m, fc::optional< fc::variant > d = fc::optional< fc::variant >() )
-         : code( c ), message( m ), data( d ) {}
-
-      int32_t                          code;
-      std::string                      message;
-      fc::optional< fc::variant >      data;
-   };
-
-   struct json_rpc_response
-   {
-      std::string                      jsonrpc = "2.0";
-      fc::optional< fc::variant >      result;
-      fc::optional< json_rpc_error >   error;
-      fc::variant                      id;
-   };*/
 }
 
 class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
@@ -110,9 +90,9 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
 
       static const std::string& name() { static std::string name = STEEM_JSON_RPC_PLUGIN_NAME; return name; }
 
-      void plugin_initialize( const variables_map& options );
-      void plugin_startup();
-      void plugin_shutdown();
+      virtual void plugin_initialize( const variables_map& options ) override;
+      virtual void plugin_startup() override;
+      virtual void plugin_shutdown() override;
 
       void add_api_method( const string& api_name, const string& method_name, const api_method& api );
       string call( const string& body );

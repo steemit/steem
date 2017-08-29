@@ -13,13 +13,15 @@ using namespace steemit;
 using fc::flat_map;
 using steemit::chain::block_id_type;
 
+namespace detail {
+
 class chain_plugin_impl
 {
    public:
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;
       bool                             replay = false;
-      bool                             reset   = false;
+      bool                             resync   = false;
       bool                             readonly = false;
       bool                             check_locks = false;
       uint32_t                         flush_interval = 0;
@@ -28,8 +30,9 @@ class chain_plugin_impl
       database  db;
 };
 
+} // detail
 
-chain_plugin::chain_plugin() : my( new chain_plugin_impl() ) {}
+chain_plugin::chain_plugin() : my( new detail::chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }
@@ -67,7 +70,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
 
    my->replay           = options.at( "replay-blockchain").as<bool>();
-   my->reset            = options.at( "resync-blockchain").as<bool>();
+   my->resync            = options.at( "resync-blockchain").as<bool>();
    my->check_locks      = options.at( "check-locks" ).as< bool >();
    my->flush_interval   = options.at( "flush-state-interval" ).as<uint32_t>();
 
@@ -87,7 +90,7 @@ void chain_plugin::plugin_startup()
 {
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
 
-   if(my->reset)
+   if(my->resync)
    {
       wlog("resync requested: deleting block log and shared memory");
       my->db.wipe( app().data_dir() / "blockchain", my->shared_memory_dir, true );
