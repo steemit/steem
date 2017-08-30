@@ -12,4 +12,4 @@
 #include <steemit/protocol/version.hpp>
 #include <set>
 
-#define STEEMIT_NUM_HARDFORKS 19
+#define STEEMIT_NUM_HARDFORKS 21
