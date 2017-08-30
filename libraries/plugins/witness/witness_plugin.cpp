@@ -110,7 +110,10 @@ namespace detail {
       boost::asio::deadline_timer                                          _timer;
 
       std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
-      steemit::chain::database& _db;
+      steemit::chain::database&     _db;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   applied_block_connection;
+      boost::signals2::connection   on_pre_apply_transaction_connection;
    };
 
    struct comment_options_extension_visitor
@@ -616,9 +619,9 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    my->_custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( this );
    appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db().set_custom_operation_interpreter( name(), my->_custom_operation_interpreter );
 
-   my->_db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
-   my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->_db.applied_block.connect( [&]( const signed_block& b ){ my->on_block( b ); } );
+   my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->applied_block_connection = my->_db.applied_block.connect( [&]( const signed_block& b ){ my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< content_edit_lock_index >( my->_db );
@@ -651,6 +654,10 @@ void witness_plugin::plugin_shutdown()
 {
    try
    {
+      chain::util::disconnect_signal( my->pre_apply_connection );
+      chain::util::disconnect_signal( my->applied_block_connection );
+      chain::util::disconnect_signal( my->on_pre_apply_transaction_connection );
+
       my->_timer.cancel();
    }
    catch(fc::exception& e)

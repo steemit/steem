@@ -216,9 +216,10 @@ namespace detail
                if( _follow_api )
                {
                   auto blog = _follow_api->get_blog_entries( follow::get_blog_entries_args( { eacnt.name, 0, 20 } ) ).blog;
-                  eacnt.blog = vector< string >();
+                  eacnt.blog = vector<string>();
+                  eacnt.blog->reserve(blog.size());
 
-                  for( auto b: blog )
+                  for( const auto& b: blog )
                   {
                      const auto link = b.author + "/" + b.permlink;
                      eacnt.blog->push_back( link );
@@ -240,8 +241,9 @@ namespace detail
                {
                   auto feed = _follow_api->get_feed_entries( follow::get_feed_entries_args( { eacnt.name, 0, 20 } ) ).feed;
                   eacnt.feed = vector<string>();
+                  eacnt.feed->reserve( feed.size());
 
-                  for( auto f: feed )
+                  for( const auto& f: feed )
                   {
                      const auto link = f.author + "/" + f.permlink;
                      eacnt.feed->push_back( link );
@@ -250,10 +252,9 @@ namespace detail
                      if( _tags_api )
                         _tags_api->set_pending_payout( _state.content[ link ] );
 
-                     if( f.reblog_by.size() )
+                     if( f.reblog_by.empty() == false)
                      {
-                        if( f.reblog_by.size() )
-                           _state.content[link].first_reblogged_by = f.reblog_by[0];
+                        _state.content[link].first_reblogged_by = f.reblog_by[0];
                         _state.content[link].reblogged_by = f.reblog_by;
                         _state.content[link].first_reblogged_on = f.reblog_on;
                      }
@@ -612,13 +613,14 @@ namespace detail
       const auto& idx  = _db.get_index< account_index >().indices().get< by_name >();
       const auto& vidx = _db.get_index< witness_vote_index >().indices().get< by_account_witness >();
       vector< extended_account > results;
+      results.reserve(names.size());
 
-      for( auto name: names )
+      for( const auto& name: names )
       {
          auto itr = idx.find( name );
          if ( itr != idx.end() )
          {
-            results.push_back( extended_account( *itr, _db ) );
+            results.emplace_back( extended_account( *itr, _db ) );
 
             if( _follow_api )
             {
@@ -959,6 +961,7 @@ void condenser_api::api_startup()
 
 DEFINE_API( condenser_api, get_version )
 {
+   CHECK_ARG_SIZE( 0 )
    return get_version_return
    (
       fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
@@ -985,6 +988,7 @@ DEFINE_API( condenser_api, get_state )
 
 DEFINE_API( condenser_api, get_active_witnesses )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_active_witnesses( {} ).witnesses;
 }
 
@@ -1010,41 +1014,49 @@ DEFINE_API( condenser_api, get_ops_in_block )
 
 DEFINE_API( condenser_api, get_config )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_config( {} );
 }
 
 DEFINE_API( condenser_api, get_dynamic_global_properties )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_dynamic_global_properties( {} );
 }
 
 DEFINE_API( condenser_api, get_chain_properties )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_witness_schedule( {} ).median_props;
 }
 
 DEFINE_API( condenser_api, get_current_median_history_price )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_current_price_feed( {} );
 }
 
 DEFINE_API( condenser_api, get_feed_history )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_feed_history( {} );
 }
 
 DEFINE_API( condenser_api, get_witness_schedule )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_witness_schedule( {} );
 }
 
 DEFINE_API( condenser_api, get_hardfork_version )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_hardfork_properties( {} ).current_hardfork_version;
 }
 
 DEFINE_API( condenser_api, get_next_scheduled_hardfork )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_next_scheduled_hardfork( args );
@@ -1098,6 +1110,7 @@ DEFINE_API( condenser_api, lookup_accounts )
 
 DEFINE_API( condenser_api, get_account_count )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_account_count( args );
@@ -1275,6 +1288,7 @@ DEFINE_API( condenser_api, lookup_witness_accounts )
 
 DEFINE_API( condenser_api, get_witness_count )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_witness_count( args );
@@ -1626,6 +1640,7 @@ DEFINE_API( condenser_api, get_blog_authors )
 
 DEFINE_API( condenser_api, get_ticker )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_ticker( {} );
@@ -1633,6 +1648,7 @@ DEFINE_API( condenser_api, get_ticker )
 
 DEFINE_API( condenser_api, get_volume )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_volume( {} );
@@ -1672,6 +1688,7 @@ DEFINE_API( condenser_api, get_market_history )
 
 DEFINE_API( condenser_api, get_market_history_buckets )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_market_history_buckets( {} ).bucket_sizes;

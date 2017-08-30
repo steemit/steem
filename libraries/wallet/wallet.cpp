@@ -1127,7 +1127,7 @@ void wallet_api::lock()
 { try {
    FC_ASSERT( !is_locked() );
    encrypt_keys();
-   for( auto key : my->_keys )
+   for( auto& key : my->_keys )
       key.second = key_to_wif(fc::ecc::private_key());
    my->_keys.clear();
    my->_checksum = fc::sha512();

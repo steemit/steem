@@ -54,6 +54,7 @@ class account_history_plugin_impl
       bool                                             _blacklist = false;
       flat_set< string >                               _op_list;
       database&                        _db;
+      boost::signals2::connection      pre_apply_connection;
 };
 
 struct operation_visitor
@@ -198,7 +199,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
 {
    my = std::make_unique< detail::account_history_plugin_impl >();
 
-   my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
 
    typedef pair< account_name_type, account_name_type > pairstring;
    STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
@@ -244,7 +245,10 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
 
 void account_history_plugin::plugin_startup() {}
 
-void account_history_plugin::plugin_shutdown() {}
+void account_history_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->pre_apply_connection );
+}
 
 flat_map< account_name_type, account_name_type > account_history_plugin::tracked_accounts() const
 {

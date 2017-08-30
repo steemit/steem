@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE( retally_votes )
 
       const auto& by_account_witness_idx = db->get_index< witness_vote_index >().indices();
 
-      for( auto vote: by_account_witness_idx )
+      for( const auto& vote: by_account_witness_idx )
       {
          if( expected_votes.find( vote.witness ) == expected_votes.end() )
             expected_votes[ vote.witness ] = db->get< account_object, by_name >( vote.account ).witness_vote_weight();
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE( retally_votes )
 
       const auto& witness_idx = db->get_index< witness_index, by_name >();
 
-      for( auto witness: witness_idx )
+      for( const auto& witness : witness_idx )
       {
          BOOST_REQUIRE_EQUAL( witness.votes.value, expected_votes[ witness.owner ].value );
       }

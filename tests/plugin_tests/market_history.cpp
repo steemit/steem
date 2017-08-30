@@ -42,6 +42,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       >( argc, argv );
 
       db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      BOOST_REQUIRE( db );
 
       open_database();
 

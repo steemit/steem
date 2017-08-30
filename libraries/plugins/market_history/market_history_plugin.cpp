@@ -25,9 +25,10 @@ class market_history_plugin_impl
        */
       void update_market_histories( const operation_notification& o );
 
-      steemit::chain::database&  _db;
-      flat_set<uint32_t>         _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
-      int32_t                    _maximum_history_per_bucket_size = 1000;
+      steemit::chain::database&     _db;
+      flat_set<uint32_t>            _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
+      int32_t                       _maximum_history_per_bucket_size = 1000;
+      boost::signals2::connection   post_apply_connection;
 };
 
 void market_history_plugin_impl::update_market_histories( const operation_notification& o )
@@ -47,7 +48,7 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
       if( !_maximum_history_per_bucket_size ) return;
       if( !_tracked_buckets.size() ) return;
 
-      for( auto bucket : _tracked_buckets )
+      for( const auto& bucket : _tracked_buckets )
       {
          auto cutoff = _db.head_block_time() - fc::seconds( bucket * _maximum_history_per_bucket_size );
 
@@ -176,7 +177,7 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
       ilog( "market_history: plugin_initialize() begin" );
       _my = std::make_unique< detail::market_history_plugin_impl >();
 
-      _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
+      _my->post_apply_connection = _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
       add_plugin_index< bucket_index        >( _my->_db );
       add_plugin_index< order_history_index >( _my->_db );
 
@@ -197,7 +198,10 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 
 void market_history_plugin::plugin_startup() {}
 
-void market_history_plugin::plugin_shutdown() {}
+void market_history_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( _my->post_apply_connection );
+}
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const
 {

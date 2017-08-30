@@ -32,7 +32,9 @@ class tags_plugin_impl
       void pre_operation( const operation_notification& note );
       void on_operation( const operation_notification& note );
 
-      steemit::chain::database& _db;
+      steemit::chain::database&     _db;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
 
 tags_plugin_impl::tags_plugin_impl() :
@@ -543,8 +545,8 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
 
    add_plugin_index< tag_index               >( my->_db );
    add_plugin_index< tag_stats_index         >( my->_db );
@@ -555,6 +557,10 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 
 
 void tags_plugin::plugin_startup() {}
-void tags_plugin::plugin_shutdown() {}
+void tags_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
+}
 
 } } } /// steemit::plugins::tags

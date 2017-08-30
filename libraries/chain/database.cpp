@@ -2218,7 +2218,15 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
+
+   _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
+   _my->_evaluator_registry.register_evaluator< smt_cap_reveal_evaluator                 >();
+   _my->_evaluator_registry.register_evaluator< smt_refund_evaluator                     >();
+   _my->_evaluator_registry.register_evaluator< smt_setup_inflation_evaluator            >();
+   _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
+   _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
 }
+
 
 void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
 {
@@ -2787,8 +2795,9 @@ try {
 
          if( fho.price_history.size() )
          {
+            /// BW-TODO Why deque is used here ? Also why don't make copy of whole container ?
             std::deque< price > copy;
-            for( auto i : fho.price_history )
+            for( const auto& i : fho.price_history )
             {
                copy.push_back( i );
             }
@@ -3819,7 +3828,7 @@ void database::apply_hardfork( uint32_t hardfork )
                }
             }
 
-            for( auto itr : root_posts )
+            for( const auto& itr : root_posts )
             {
                modify( *itr, [&]( comment_object& c )
                {
@@ -3827,7 +3836,7 @@ void database::apply_hardfork( uint32_t hardfork )
                });
             }
 
-            for( auto itr : replies )
+            for( const auto& itr : replies )
             {
                modify( *itr, [&]( comment_object& c )
                {
