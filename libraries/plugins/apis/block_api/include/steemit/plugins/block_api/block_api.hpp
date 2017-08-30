@@ -17,9 +17,17 @@ class block_api
       ~block_api();
 
       DECLARE_API(
+
          /////////////////////////////
          // Blocks and transactions //
          /////////////////////////////
+
+         /**
+         * @brief Retrieve a block header
+         * @param block_num Height of the block whose header should be returned
+         * @return header of the referenced block, or null if no matching block was found
+         */
+         (get_block_header)
 
          /**
          * @brief Retrieve a full, signed block

@@ -1,6 +1,7 @@
 #pragma once
 #include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
 #include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steemit/plugins/block_api/block_api_plugin.hpp>
 
 #define STEEM_CONDENSER_API_PLUGIN_NAME "condenser_api"
 

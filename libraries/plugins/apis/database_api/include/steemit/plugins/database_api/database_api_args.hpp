@@ -49,33 +49,6 @@ enum sort_order_type
    by_price
 };
 
-
-/* get_block_header */
-
-struct get_block_header_args
-{
-   uint32_t block_num;
-};
-
-struct get_block_header_return
-{
-   optional< block_header > header;
-};
-
-
-/* get_block */
-
-struct get_block_args
-{
-   uint32_t block_num;
-};
-
-struct get_block_return
-{
-   optional< api_signed_block_object > block;
-};
-
-
 /* get_config */
 
 typedef void_type          get_config_args;
@@ -583,18 +556,6 @@ FC_REFLECT_ENUM( steemit::plugins::database_api::sort_order_type,
    (by_voter_last_update)
    (by_comment_weight_voter)
    (by_price) )
-
-FC_REFLECT( steemit::plugins::database_api::get_block_header_args,
-   (block_num) )
-
-FC_REFLECT( steemit::plugins::database_api::get_block_header_return,
-   (header) )
-
-FC_REFLECT( steemit::plugins::database_api::get_block_args,
-   (block_num) )
-
-FC_REFLECT( steemit::plugins::database_api::get_block_return,
-   (block) )
 
 FC_REFLECT( steemit::plugins::database_api::get_reward_funds_return,
    (funds) )

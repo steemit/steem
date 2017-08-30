@@ -2,6 +2,7 @@
 #include <steemit/plugins/condenser_api/condenser_api_plugin.hpp>
 
 #include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steemit/plugins/block_api/block_api_plugin.hpp>
 #include <steemit/plugins/account_history_api/account_history_api_plugin.hpp>
 #include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
 #include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
@@ -50,6 +51,7 @@ namespace detail
          steemit::chain::database& _db;
 
          std::shared_ptr< database_api::database_api > _database_api;
+         std::shared_ptr< block_api::block_api > _block_api;
          std::shared_ptr< account_history::account_history_api > _account_history_api;
          std::shared_ptr< account_by_key::account_by_key_api > _account_by_key_api;
          std::shared_ptr< network_broadcast_api::network_broadcast_api > _network_broadcast_api;
@@ -924,6 +926,10 @@ void condenser_api::api_startup()
    if( database != nullptr )
       my->_database_api = database->api;
 
+   auto block = appbase::app().find_plugin< block_api::block_api_plugin >();
+   if( block != nullptr )
+      my->_block_api = block->api;
+
    auto account_by_key = appbase::app().find_plugin< account_by_key::account_by_key_api_plugin >();
    if( account_by_key != nullptr )
       my->_account_by_key_api = account_by_key->api;
@@ -989,13 +995,15 @@ DEFINE_API( condenser_api, get_active_witnesses )
 DEFINE_API( condenser_api, get_block_header )
 {
    CHECK_ARG_SIZE( 1 )
-   return my->_database_api->get_block_header( { args[0].as< uint32_t >() } ).header;
+   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
+   return my->_block_api->get_block_header( { args[0].as< uint32_t >() } ).header;
 }
 
 DEFINE_API( condenser_api, get_block )
 {
    CHECK_ARG_SIZE( 1 )
-   return my->_database_api->get_block( { args[0].as< uint32_t >() } ).block;
+   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
+   return my->_block_api->get_block( { args[0].as< uint32_t >() } ).block;
 }
 
 DEFINE_API( condenser_api, get_ops_in_block )

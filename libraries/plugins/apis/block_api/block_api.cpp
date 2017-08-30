@@ -15,6 +15,7 @@ class block_api_impl
 
       DECLARE_API
       (
+         (get_block_header)
          (get_block)
       )
 
@@ -32,6 +33,7 @@ block_api::block_api()
 {
    JSON_RPC_REGISTER_API(
       STEEM_BLOCK_API_PLUGIN_NAME,
+      (get_block_header)
       (get_block)
    );
 }
@@ -49,6 +51,24 @@ block_api_impl::~block_api_impl() {}
 // Blocks and transactions                                          //
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
+DEFINE_API( block_api, get_block_header )
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->get_block_header( args );
+   });
+}
+
+DEFINE_API( block_api_impl, get_block_header )
+{
+   get_block_header_return result;
+   auto block = _db.fetch_block_by_number( args.block_num );
+
+   if( block )
+      result.header = *block;
+
+   return result;
+}
 
 DEFINE_API( block_api, get_block )
 {
