@@ -995,12 +995,14 @@ DEFINE_API( condenser_api, get_active_witnesses )
 DEFINE_API( condenser_api, get_block_header )
 {
    CHECK_ARG_SIZE( 1 )
+   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
    return my->_block_api->get_block_header( { args[0].as< uint32_t >() } ).header;
 }
 
 DEFINE_API( condenser_api, get_block )
 {
    CHECK_ARG_SIZE( 1 )
+   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
    return my->_block_api->get_block( { args[0].as< uint32_t >() } ).block;
 }
 
