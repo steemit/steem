@@ -11,6 +11,7 @@
 #include <steemit/chain/util/signal.hpp>
 
 #include <steemit/protocol/protocol.hpp>
+#include <steemit/protocol/hardfork.hpp>
 
 //#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>

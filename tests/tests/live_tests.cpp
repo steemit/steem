@@ -1,9 +1,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/protocol/exceptions.hpp>
+#include <steemit/protocol/hardfork.hpp>
 
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
