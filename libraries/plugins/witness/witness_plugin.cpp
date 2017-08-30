@@ -131,6 +131,10 @@ namespace detail
       catch( fc::parse_error_exception& ) {}
       catch( fc::assert_exception& ) {}
 
+      fc::optional<fc::ecc::private_key> maybe_key = steemit::utilities::wif_to_key( memo );
+      if( maybe_key.valid() )
+         keys.push_back( maybe_key->get_public_key() );
+
       // Get possible keys if memo was an account password
       string owner_seed = account.name + "owner" + memo;
       auto owner_secret = fc::sha256::hash( owner_seed.c_str(), owner_seed.size() );
