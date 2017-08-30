@@ -20,6 +20,9 @@ struct smt_elevate_account_operation : public base_operation
    extensions_type   extensions;
 
    void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( account ); }
 };
 
 // TODO:  Rename these curves to match naming in manual.md
