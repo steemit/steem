@@ -60,7 +60,7 @@ clean_database_fixture::clean_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( STEEMIT_NUM_HARDFORKS );
+   db->set_hardfork( STEEMIT_BLOCKCHAIN_VERSION.minor() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -118,7 +118,7 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
 
 
    generate_block();
-   db->set_hardfork( STEEMIT_NUM_HARDFORKS );
+   db->set_hardfork( STEEMIT_BLOCKCHAIN_VERSION.minor() );
    generate_block();
 
    vest( "initminer", 10000 );
