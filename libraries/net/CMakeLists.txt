@@ -10,10 +10,9 @@ set(SOURCES node.cpp
 add_library( graphene_net ${SOURCES} ${HEADERS} )
 
 target_link_libraries( graphene_net
-  PUBLIC fc )
+  PUBLIC steemit_protocol fc )
 target_include_directories( graphene_net
-  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  PRIVATE "${CMAKE_SOURCE_DIR}/libraries/protocol/include"
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
 )
 
 if(MSVC)
