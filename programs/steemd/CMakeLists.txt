@@ -9,18 +9,34 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-target_link_libraries( steemd PRIVATE
-   steemit_plugins
-   steemit_mf_plugins
-   steemit_app
-   steemit_witness
-   steemit_account_history
-   steemit_chain
-   steemit_protocol
-   fc
-   ${CMAKE_DL_LIBS}
-   ${PLATFORM_SPECIFIC_LIBS}
-)
+if( STEEM_STATIC_BUILD )
+   target_link_libraries( steemd PRIVATE
+      "-static-libstdc++ -static-libgcc"
+      steemit_plugins
+      steemit_mf_plugins
+      steemit_app
+      steemit_witness
+      steemit_account_history
+      steemit_chain
+      steemit_protocol
+      fc
+      ${CMAKE_DL_LIBS}
+      ${PLATFORM_SPECIFIC_LIBS}
+   )
+else( STEEM_STATIC_BUILD )
+   target_link_libraries( steemd PRIVATE
+      steemit_plugins
+      steemit_mf_plugins
+      steemit_app
+      steemit_witness
+      steemit_account_history
+      steemit_chain
+      steemit_protocol
+      fc
+      ${CMAKE_DL_LIBS}
+      ${PLATFORM_SPECIFIC_LIBS}
+   )
+endif( STEEM_STATIC_BUILD )
 
 install( TARGETS
    steemd

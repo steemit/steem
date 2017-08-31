@@ -39,8 +39,8 @@ namespace graphene { namespace net {
    */
   struct message_header
   {
-     uint32_t  size;   // number of bytes in message, capped at MAX_MESSAGE_SIZE
-     uint32_t  msg_type;  // every channel gets a 16 bit message type specifier
+     uint32_t  size = 0;   // number of bytes in message, capped at MAX_MESSAGE_SIZE
+     uint32_t  msg_type = 0;  // every channel gets a 16 bit message type specifier
   };
 
   typedef fc::uint160_t message_hash_type;

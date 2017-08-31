@@ -16,8 +16,8 @@ namespace steemit { namespace chain {
             std::fstream             index_stream;
             fc::path                 block_file;
             fc::path                 index_file;
-            bool                     block_write;
-            bool                     index_write;
+            bool                     block_write = false;
+            bool                     index_write = false;
 
             inline void check_block_read()
             {
@@ -190,7 +190,8 @@ namespace steemit { namespace chain {
          my->check_index_write();
 
          uint64_t pos = my->block_stream.tellp();
-         FC_ASSERT( my->index_stream.tellp() == sizeof( uint64_t ) * ( b.block_num() - 1 ), "Append to index file occuring at wrong position.", ( "position", (uint64_t) my->index_stream.tellp() )( "expected",( b.block_num() - 1 ) * sizeof( uint64_t ) ) );
+         uint64_t index_pos = my->index_stream.tellp();
+         FC_ASSERT( index_pos == sizeof( uint64_t ) * uint64_t( b.block_num() - 1 ), "Append to index file occuring at wrong position.", ( "position", (uint64_t) my->index_stream.tellp() )( "expected",( b.block_num() - 1 ) * sizeof( uint64_t ) ) );
          auto data = fc::raw::pack( b );
          my->block_stream.write( data.data(), data.size() );
          my->block_stream.write( (char*)&pos, sizeof( pos ) );

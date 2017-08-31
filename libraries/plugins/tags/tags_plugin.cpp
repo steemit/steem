@@ -396,7 +396,7 @@ struct operation_visitor
          vector<string> part; part.reserve(4);
          auto path = op.memo;
          boost::split( part, path, boost::is_any_of("/") );
-         if( part[0].size() && part[0][0] == '@' )
+         if( part.size() > 1 && part[0].size() && part[0][0] == '@' )
          {
             auto acnt = part[0].substr(1);
             auto perm = part[1];
