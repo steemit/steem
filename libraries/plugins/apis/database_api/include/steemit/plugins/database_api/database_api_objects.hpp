@@ -208,7 +208,8 @@ struct api_account_object
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
-      last_root_post( a.last_root_post )
+      last_root_post( a.last_root_post ),
+      is_smt( a.is_smt )
    {
       size_t n = a.proxied_vsf_votes.size();
       proxied_vsf_votes.reserve( n );
@@ -293,6 +294,8 @@ struct api_account_object
 
    time_point_sec    last_post;
    time_point_sec    last_root_post;
+
+   bool              is_smt = false;
 };
 
 struct api_owner_authority_history_object
@@ -563,6 +566,7 @@ FC_REFLECT( steemit::plugins::database_api::api_account_object,
              (posting_rewards)
              (proxied_vsf_votes)(witnesses_voted_for)
              (last_post)(last_root_post)
+             (is_smt)
           )
 
 FC_REFLECT( steemit::plugins::database_api::api_owner_authority_history_object,
