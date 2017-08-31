@@ -50,14 +50,14 @@ docker pull steemit/steem
 
 ### Running a binary build without a Docker container
 
-If you build with Docker but do not want to run steemd from within a docker container, you can extract the binary from the container. Our binaries are built mostly static, only dynamically linking to linux kernel libraries. We have tested and confirmed binaries built in Docker work on Ubuntu and Fedora and will likely work on many other Linux distrubutions. Building the image yourself or pulling one of our pre-built images both work.
+If you build with Docker but do not want to run steemd from within a docker container, you can stop here with this step and instead extract the binary from the container with the commands below. If you are going to run steemd with docker (recommended method), skip this step altogether. We're simply providing an option for everyone's use-case. Our binaries are built mostly static, only dynamically linking to linux kernel libraries. We have tested and confirmed binaries built in Docker work on Ubuntu and Fedora and will likely work on many other Linux distrubutions. Building the image yourself or pulling one of our pre-built images both work.
 
 To extract the binary you need to start a container and then copy the file from it.
 
 ```
-docker run -d --name steemd-exchange .
-docker cp steemd-exchange:/usr/local/steemd-default/bin/steem /local/path/to/steemd
-docker cp steemd-exchange:/usr/local/steemd-default/bin/cli-wallet /local/path/to/cli-wallet
+docker run -d --name steemd-exchange steemit/steem
+docker cp steemd-exchange:/usr/local/steemd-default/bin/steemd /local/path/to/steemd
+docker cp steemd-exchange:/usr/local/steemd-default/bin/cli_wallet /local/path/to/cli_wallet
 docker stop steemd-exchange
 ```
 
