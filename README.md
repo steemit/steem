@@ -30,13 +30,13 @@ You can read the Steem Whitepaper at [Steem.io/SteemWhitePaper.pdf](https://stee
 
 # Quickstart
 
-Just want to get up and running quickly? We have pre-build docker images for your convenience. More details are in our [quickstart guide](https://github.com/steemit/steem/doc/exchangequickstart.md).
+Just want to get up and running quickly? We have pre-build docker images for your convenience. More details are in our [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
 
 # Building
 
-We strongly recommend using one of our pre-built Docker images or using Docker to build Steem. Both of these processes are described in the [quickstart guide](https://github.com/steemit/steem/doc/exchangequickstart.md).
+We strongly recommend using one of our pre-built Docker images or using Docker to build Steem. Both of these processes are described in the [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
 
-If you would still like to build from source, we do have [build instructions](https://github.com/steemit/steem/doc/building.md) for Linux (Ubuntu LTS) and macOS X.
+If you would still like to build from source, we do have [build instructions](https://github.com/steemit/steem/blob/master/doc/building.md) for Linux (Ubuntu LTS) and macOS X.
 
 ## Dockerized p2p Node
 
