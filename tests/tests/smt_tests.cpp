@@ -22,6 +22,7 @@ BOOST_AUTO_TEST_CASE( elevate_account )
    try
    {
       db->set_hardfork( STEEMIT_SMT_HARDFORK );
+      generate_block();
 
       set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
 
