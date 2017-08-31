@@ -2,13 +2,14 @@
  * Copyright (c) 2016 Steemit, Inc., and contributors.
  */
 #pragma once
+#include <steemit/protocol/hardfork.hpp>
 
 // WARNING!
 // Every symbol defined here needs to be handled appropriately in get_config.cpp
 // This is checked by get_config_check.sh called from Dockerfile
 
 #define STEEMIT_BLOCKCHAIN_VERSION              ( version(0, 19, 2) )
-#define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( STEEMIT_BLOCKCHAIN_VERSION ) )
+#define STEEMIT_BLOCKCHAIN_HARDFORK_VERSION     ( hardfork_version( 0, STEEMIT_NUM_HARDFORKS ) )
 
 #ifdef IS_TEST_NET
 #define STEEMIT_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
