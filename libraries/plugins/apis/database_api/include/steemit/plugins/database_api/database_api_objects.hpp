@@ -5,6 +5,7 @@
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
+#include <steemit/chain/smt_objects.hpp>
 #include <steemit/chain/transaction_object.hpp>
 #include <steemit/chain/witness_objects.hpp>
 #include <steemit/chain/database.hpp>
@@ -208,8 +209,7 @@ struct api_account_object
       withdraw_routes( a.withdraw_routes ),
       witnesses_voted_for( a.witnesses_voted_for ),
       last_post( a.last_post ),
-      last_root_post( a.last_root_post ),
-      is_smt( a.is_smt )
+      last_root_post( a.last_root_post )
    {
       size_t n = a.proxied_vsf_votes.size();
       proxied_vsf_votes.reserve( n );
@@ -221,6 +221,9 @@ struct api_account_object
       active = authority( auth.active );
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
+
+      const auto* smt = db.find< smt_token_object, by_control_account >( name );
+      is_smt = (smt != nullptr);
    }
 
 
