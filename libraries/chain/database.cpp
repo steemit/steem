@@ -805,14 +805,14 @@ signed_block database::_generate_block(
 
       const auto& hfp = get_hardfork_property_object();
 
-      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_HARDFORK_VERSION // Binary is newer hardfork than has been applied
+      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
          && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
          // Make vote match binary configuration
          pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
       }
-      else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_HARDFORK_VERSION // Binary does not know of a new hardfork
-         && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_HARDFORK_VERSION ) // Voting for hardfork in the future, that we do not know of...
+      else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
+         && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
       {
          // Make vote match binary configuration. This is vote to not apply the new hardfork.
          pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
@@ -3564,6 +3564,7 @@ void database::init_hardforks()
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
    FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
+   FC_ASSERT( STEEMIT_BLOCKCHAIN_HARDFORK_VERSION >= STEEMIT_BLOCKCHAIN_VERSION );
    FC_ASSERT( STEEMIT_BLOCKCHAIN_HARDFORK_VERSION == _hardfork_versions[ STEEMIT_NUM_HARDFORKS ] );
 }
 
