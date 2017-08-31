@@ -16,47 +16,6 @@ namespace steemit { namespace plugins { namespace debug_node {
 
 namespace detail {
 
-class debug_private_key_storage : public private_key_storage
-{
-   public:
-      debug_private_key_storage() {}
-      virtual ~debug_private_key_storage() {}
-
-      virtual void maybe_get_private_key(
-         fc::optional< fc::ecc::private_key >& result,
-         const steemit::chain::public_key_type& pubkey,
-         const std::string& account_name
-         ) override;
-
-      std::string                dev_key_prefix;
-      std::map< steemit::chain::public_key_type, fc::ecc::private_key > key_table;
-};
-
-void debug_private_key_storage::maybe_get_private_key(
-   fc::optional< fc::ecc::private_key >& result,
-   const steemit::chain::public_key_type& pubkey,
-   const std::string& account_name
-)
-{
-   auto it = key_table.find( pubkey );
-   if( it != key_table.end() )
-   {
-      result = it->second;
-      return;
-   }
-   fc::ecc::private_key gen_priv = fc::ecc::private_key::regenerate( fc::sha256::hash( dev_key_prefix + account_name ) );
-   chain::public_key_type gen_pub = gen_priv.get_public_key();
-   key_table[ gen_pub ] = gen_priv;
-   if( (pubkey == steemit::chain::public_key_type()) || (gen_pub == pubkey) )
-   {
-      result = gen_priv;
-      return;
-   }
-
-   result.reset();
-   return;
-}
-
 class debug_node_api_impl
 {
    public:
@@ -71,17 +30,14 @@ class debug_node_api_impl
          (debug_pop_block)
          (debug_get_witness_schedule)
          (debug_get_hardfork_property_object)
-         (debug_set_dev_key_prefix)
          (debug_set_hardfork)
          (debug_has_hardfork)
       )
 
-      void debug_get_dev_key( debug_get_dev_key_return& result, const debug_get_dev_key_args& args );
       void debug_get_json_schema( std::string& schema );
 
       chain::database& _db;
       debug_node::debug_node_plugin& _debug_node;
-      debug_private_key_storage key_storage;
 };
 
 DEFINE_API( debug_node_api_impl, debug_push_blocks )
@@ -147,12 +103,12 @@ DEFINE_API( debug_node_api_impl, debug_push_blocks )
 
 DEFINE_API( debug_node_api_impl, debug_generate_blocks )
 {
-   return { _debug_node.debug_generate_blocks( args.debug_key, args.count, chain::database::skip_nothing, 0, &key_storage ) };
+   return { _debug_node.debug_generate_blocks( args.debug_key, args.count, chain::database::skip_nothing, 0 ) };
 }
 
 DEFINE_API( debug_node_api_impl, debug_generate_blocks_until )
 {
-   return { _debug_node.debug_generate_blocks_until( args.debug_key, args.head_block_time, args.generate_sparsely, steemit::chain::database::skip_nothing, &key_storage ) };
+   return { _debug_node.debug_generate_blocks_until( args.debug_key, args.head_block_time, args.generate_sparsely, steemit::chain::database::skip_nothing ) };
 }
 
 DEFINE_API( debug_node_api_impl, debug_pop_block )
@@ -168,20 +124,6 @@ DEFINE_API( debug_node_api_impl, debug_get_witness_schedule )
 DEFINE_API( debug_node_api_impl, debug_get_hardfork_property_object )
 {
    return _db.get( steemit::chain::hardfork_property_id_type() );
-}
-
-DEFINE_API( debug_node_api_impl, debug_set_dev_key_prefix )
-{
-   key_storage.dev_key_prefix = args.prefix;
-   return {};
-}
-
-void debug_node_api_impl::debug_get_dev_key( debug_get_dev_key_return& result, const debug_get_dev_key_args& args )
-{
-   fc::ecc::private_key priv = fc::ecc::private_key::regenerate( fc::sha256::hash( key_storage.dev_key_prefix + args.name ) );
-   result.private_key = steemit::utilities::key_to_wif( priv );
-   result.public_key = priv.get_public_key();
-   return;
 }
 
 DEFINE_API( debug_node_api_impl, debug_set_hardfork )
@@ -221,8 +163,6 @@ debug_node_api::debug_node_api()
       (debug_pop_block)
       (debug_get_witness_schedule)
       (debug_get_hardfork_property_object)
-      (debug_set_dev_key_prefix)
-      (debug_get_dev_key)
       (debug_set_hardfork)
       (debug_has_hardfork)
       (debug_get_json_schema)
@@ -257,18 +197,6 @@ DEFINE_API( debug_node_api, debug_get_witness_schedule )
 DEFINE_API( debug_node_api, debug_get_hardfork_property_object )
 {
    return my->debug_get_hardfork_property_object( args );
-}
-
-DEFINE_API( debug_node_api, debug_set_dev_key_prefix )
-{
-   return my->debug_set_dev_key_prefix( args );
-}
-
-DEFINE_API( debug_node_api, debug_get_dev_key )
-{
-   debug_get_dev_key_return result;
-   my->debug_get_dev_key( result, args );
-   return result;
 }
 
 DEFINE_API( debug_node_api, debug_set_hardfork )

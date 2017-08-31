@@ -24,8 +24,6 @@ class debug_node_plugin_impl
       debug_node_plugin_impl();
       virtual ~debug_node_plugin_impl();
 
-      uint32_t                                  _mining_threads = 1;
-      std::vector<std::shared_ptr<fc::thread> > _thread_pool;
       chain::database&                          _db;
 };
 
@@ -35,93 +33,8 @@ debug_node_plugin_impl::~debug_node_plugin_impl() {}
 
 }
 
-private_key_storage::private_key_storage() {}
-private_key_storage::~private_key_storage() {}
-
 debug_node_plugin::debug_node_plugin() {}
 debug_node_plugin::~debug_node_plugin() {}
-
-struct debug_mine_state
-{
-   debug_mine_state();
-   virtual ~debug_mine_state();
-
-   std::string                    worker_account;
-   chain::block_id_type           prev_block;
-   uint32_t                       summary_target = 0;
-   fc::promise< chain::pow2 >::ptr work;
-   fc::mutex                      set_work_mutex;
-};
-
-debug_mine_state::debug_mine_state() {}
-debug_mine_state::~debug_mine_state() {}
-
-void debug_node_plugin::debug_mine_work(
-   chain::pow2& work,
-   uint32_t summary_target
-   )
-{
-   std::shared_ptr< debug_mine_state > mine_state = std::make_shared< debug_mine_state >();
-   mine_state->worker_account = work.input.worker_account;
-   mine_state->prev_block = work.input.prev_block;
-   mine_state->summary_target = summary_target;
-   mine_state->work = fc::promise< chain::pow2 >::ptr( new fc::promise< chain::pow2 >() );
-
-   uint32_t thread_num = 0;
-   uint32_t num_threads = _my->_mining_threads;
-
-   wlog( "Mining for worker account ${a} on block ${b} with target ${t} using ${n} threads",
-      ("a", work.input.worker_account) ("b", work.input.prev_block) ("c", summary_target) ("n", num_threads) ("t", summary_target) );
-
-   uint32_t nonce_start = 0;
-
-   for( auto& t : _my->_thread_pool )
-   {
-      uint32_t nonce_offset = nonce_start + thread_num;
-      uint32_t nonce_stride = num_threads;
-      wlog( "Launching thread ${i}", ("i", thread_num) );
-      t->async( [mine_state,nonce_offset,nonce_stride]()
-      {
-         chain::pow2 work;
-         std::string worker_account = mine_state->worker_account;
-         chain::block_id_type prev_block = mine_state->prev_block;
-         uint32_t summary_target = mine_state->summary_target;
-         wlog( "Starting thread mining at offset ${o}", ("o", nonce_offset) );
-         work.input.prev_block = prev_block;
-         work.input.worker_account = worker_account;
-         work.input.nonce = nonce_offset;
-         while( !(mine_state->work->ready()) )
-         {
-            work.create( prev_block, worker_account, work.input.nonce );
-            if( work.pow_summary < summary_target )
-            {
-               wlog( "Found work with nonce ${n}", ("n", work.input.nonce) );
-	       fc::scoped_lock< fc::mutex > lock(mine_state->set_work_mutex);
-	       if( !mine_state->work->ready() )
-	       {
-                  mine_state->work->set_value( work );
-                  wlog( "Quitting successfully (start nonce was ${n})", ("n", nonce_offset) );
-               }
-	       else
-               {
-                  wlog( "Quitting, but other thread found nonce first (start nonce was ${n})", ("n", nonce_offset) );
-               }
-               break;
-            }
-            work.input.nonce += nonce_stride;
-         }
-         wlog( "Quitting (start nonce was ${n})", ("n", nonce_offset) );
-         return;
-      });
-      ++thread_num;
-   }
-
-   work = mine_state->work->wait();
-
-   wlog( "Finished, work=${w}", ("w", work) );
-   return;
-}
-
 void debug_node_plugin::set_program_options(
    options_description& cli,
    options_description& cfg )
@@ -138,16 +51,6 @@ void debug_node_plugin::plugin_initialize( const variables_map& options )
    {
       _edit_scripts = options.at("edit-script").as< std::vector< std::string > >();
    }
-
-   if( options.count("mining-threads") > 0 )
-   {
-      _my->_mining_threads = options.at("mining-threads").as< uint32_t >();
-   }
-
-   if( logging ) wlog( "Initializing ${n} mining threads", ("n", _my->_mining_threads) );
-   _my->_thread_pool.resize( _my->_mining_threads );
-   for( uint32_t i = 0; i < _my->_mining_threads; ++i )
-      _my->_thread_pool[i] = std::make_shared<fc::thread>();
 
    // connect needed signals
    _applied_block_conn  = _my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
@@ -259,8 +162,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    const std::string& debug_key,
    uint32_t count,
    uint32_t skip,
-   uint32_t miss_blocks,
-   private_key_storage* key_storage
+   uint32_t miss_blocks
 )
 {
    if( count == 0 )
@@ -274,6 +176,11 @@ uint32_t debug_node_plugin::debug_generate_blocks(
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
+   else
+   {
+      if( logging ) elog( "Skipping generation because I don't know the private key");
+      return 0;
+   }
 
    steemit::chain::database& db = database();
    uint32_t slot = miss_blocks+1, produced = 0;
@@ -284,33 +191,19 @@ uint32_t debug_node_plugin::debug_generate_blocks(
       fc::time_point_sec scheduled_time = db.get_slot_time( slot );
       const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
       steemit::chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-      if( debug_key != "" )
+      if( logging ) wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+      if( scheduled_key != debug_public_key )
       {
-         if( logging ) wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
-         if( scheduled_key != debug_public_key )
+         if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+         debug_update( [=]( chain::database& db )
          {
-            if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-            debug_update( [=]( chain::database& db )
+            db.modify( db.get_witness( scheduled_witness_name ), [&]( chain::witness_object& w )
             {
-               db.modify( db.get_witness( scheduled_witness_name ), [&]( chain::witness_object& w )
-               {
-                  w.signing_key = debug_public_key;
-               });
-            }, skip );
-         }
+               w.signing_key = debug_public_key;
+            });
+         }, skip );
       }
-      else
-      {
-         debug_private_key.reset();
-         if( key_storage != nullptr )
-            key_storage->maybe_get_private_key( debug_private_key, scheduled_key, scheduled_witness_name );
-         if( !debug_private_key.valid() )
-         {
-            if( logging ) elog( "Skipping ${wit} because I don't know the private key", ("wit", scheduled_witness_name) );
-            new_slot = slot+1;
-            FC_ASSERT( slot < miss_blocks+50 );
-         }
-      }
+
       db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
       ++produced;
       slot = new_slot;
@@ -323,8 +216,7 @@ uint32_t debug_node_plugin::debug_generate_blocks_until(
    const std::string& debug_key,
    const fc::time_point_sec& head_block_time,
    bool generate_sparsely,
-   uint32_t skip,
-   private_key_storage* key_storage
+   uint32_t skip
 )
 {
    steemit::chain::database& db = database();
@@ -341,7 +233,7 @@ uint32_t debug_node_plugin::debug_generate_blocks_until(
       if( slots_to_miss > 1 )
       {
          slots_to_miss--;
-         new_blocks += debug_generate_blocks( debug_key, 1, skip, slots_to_miss, key_storage );
+         new_blocks += debug_generate_blocks( debug_key, 1, skip, slots_to_miss );
       }
    }
    else
