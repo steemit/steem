@@ -27,9 +27,9 @@ public:
 
    virtual void set_program_options( options_description& cli, options_description& cfg ) override;
 
-   void plugin_initialize( const variables_map& options );
-   void plugin_startup();
-   void plugin_shutdown();
+   void plugin_initialize( const variables_map& options ) override;
+   void plugin_startup() override;
+   void plugin_shutdown() override;
 
 public:
    std::shared_ptr< class chain_api > api;
