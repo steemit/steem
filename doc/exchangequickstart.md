@@ -61,7 +61,7 @@ docker cp steemd-exchange:/usr/local/steemd-default/bin/cli_wallet /local/path/t
 docker stop steemd-exchange
 ```
 
-For your convenience, we have provided a provided an [example\_config](doc/example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`.
+For your convenience, we have provided a provided an [example\_config](example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`.
 
 ### Create directories to store blockchain and wallet data outside of Docker
 
