@@ -6,7 +6,8 @@
 
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/history_object.hpp>
-#include <steemit/utilities/json_operations.hpp>
+
+#include <steemit/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
