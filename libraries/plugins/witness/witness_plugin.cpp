@@ -33,7 +33,7 @@
 #include <steemit/chain/index.hpp>
 
 #include <steemit/utilities/key_conversion.hpp>
-#include <steemit/utilities/json_operations.hpp>
+#include <steemit/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
