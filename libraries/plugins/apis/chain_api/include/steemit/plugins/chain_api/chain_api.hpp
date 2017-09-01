@@ -41,7 +41,7 @@ class chain_api
          (push_transaction) )
       
    private:
-      std::shared_ptr< detail::chain_api_impl > _my;
+      std::shared_ptr< detail::chain_api_impl > my;
 };
 
 } } } // steemit::plugins::chain

@@ -344,7 +344,7 @@ public:
       friend class condenser_api_plugin;
       void api_startup();
 
-      std::unique_ptr< detail::condenser_api_impl > my;
+      std::shared_ptr< detail::condenser_api_impl > my;
 };
 
 } } } // steemit::plugins::condenser_api

@@ -69,14 +69,14 @@ void debug_node_plugin::debug_mine_work(
    mine_state->work = fc::promise< chain::pow2 >::ptr( new fc::promise< chain::pow2 >() );
 
    uint32_t thread_num = 0;
-   uint32_t num_threads = _my->_mining_threads;
+   uint32_t num_threads = my->_mining_threads;
 
    wlog( "Mining for worker account ${a} on block ${b} with target ${t} using ${n} threads",
       ("a", work.input.worker_account) ("b", work.input.prev_block) ("c", summary_target) ("n", num_threads) ("t", summary_target) );
 
    uint32_t nonce_start = 0;
 
-   for( auto& t : _my->_thread_pool )
+   for( auto& t : my->_thread_pool )
    {
       uint32_t nonce_offset = nonce_start + thread_num;
       uint32_t nonce_stride = num_threads;
@@ -133,7 +133,7 @@ void debug_node_plugin::set_program_options(
 
 void debug_node_plugin::plugin_initialize( const variables_map& options )
 {
-   _my = std::make_shared< detail::debug_node_plugin_impl >();
+   my = std::make_shared< detail::debug_node_plugin_impl >();
 
    if( options.count("edit-script") > 0 )
    {
@@ -142,16 +142,16 @@ void debug_node_plugin::plugin_initialize( const variables_map& options )
 
    if( options.count("mining-threads") > 0 )
    {
-      _my->_mining_threads = options.at("mining-threads").as< uint32_t >();
+      my->_mining_threads = options.at("mining-threads").as< uint32_t >();
    }
 
-   if( logging ) wlog( "Initializing ${n} mining threads", ("n", _my->_mining_threads) );
-   _my->_thread_pool.resize( _my->_mining_threads );
-   for( uint32_t i = 0; i < _my->_mining_threads; ++i )
-      _my->_thread_pool[i] = std::make_shared<fc::thread>();
+   if( logging ) wlog( "Initializing ${n} mining threads", ("n", my->_mining_threads) );
+   my->_thread_pool.resize( my->_mining_threads );
+   for( uint32_t i = 0; i < my->_mining_threads; ++i )
+      my->_thread_pool[i] = std::make_shared<fc::thread>();
 
    // connect needed signals
-   _my->applied_block_connection = _my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
+   my->applied_block_connection = my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
 }
 
 void debug_node_plugin::plugin_startup()
@@ -165,7 +165,7 @@ void debug_node_plugin::plugin_startup()
    }*/
 }
 
-chain::database& debug_node_plugin::database() { return _my->_db; }
+chain::database& debug_node_plugin::database() { return my->_db; }
 
 /*
 void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool logging )
@@ -416,7 +416,7 @@ void debug_node_plugin::on_applied_block( const chain::signed_block& b )
 
 void debug_node_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( _my->applied_block_connection );
+   chain::util::disconnect_signal( my->applied_block_connection );
    /*if( _json_object_stream )
    {
       _json_object_stream->close();

@@ -171,7 +171,7 @@ namespace detail
 using detail::json_rpc_error;
 using detail::json_rpc_response;
 
-json_rpc_plugin::json_rpc_plugin() : _my( new detail::json_rpc_plugin_impl() ) {}
+json_rpc_plugin::json_rpc_plugin() : my( new detail::json_rpc_plugin_impl() ) {}
 json_rpc_plugin::~json_rpc_plugin() {}
 
 void json_rpc_plugin::plugin_initialize( const variables_map& options ) {}
@@ -180,7 +180,7 @@ void json_rpc_plugin::plugin_shutdown() {}
 
 void json_rpc_plugin::add_api_method( const string& api_name, const string& method_name, const api_method& api )
 {
-   _my->add_api_method( api_name, method_name, api );
+   my->add_api_method( api_name, method_name, api );
 }
 
 string json_rpc_plugin::call( const string& message )
@@ -198,13 +198,13 @@ string json_rpc_plugin::call( const string& message )
          responses.reserve( messages.size() );
 
          for( auto& m : messages )
-            responses.push_back( _my->rpc( m ) );
+            responses.push_back( my->rpc( m ) );
 
          return fc::json::to_string( responses );
       }
       else
       {
-         return fc::json::to_string( _my->rpc( v ) );
+         return fc::json::to_string( my->rpc( v ) );
       }
    }
    catch( fc::exception& e )

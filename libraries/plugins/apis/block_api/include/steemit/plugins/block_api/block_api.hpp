@@ -38,7 +38,7 @@ class block_api
       )
 
    private:
-      std::unique_ptr< block_api_impl > my;
+      std::shared_ptr< block_api_impl > my;
 };
 
 } } } //steemit::plugins::block_api

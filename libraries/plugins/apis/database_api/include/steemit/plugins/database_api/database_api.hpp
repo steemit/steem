@@ -128,7 +128,7 @@ class database_api
       )
 
    private:
-      std::unique_ptr< database_api_impl > my;
+      std::shared_ptr< database_api_impl > my;
 };
 
 } } } //steemit::plugins::database_api

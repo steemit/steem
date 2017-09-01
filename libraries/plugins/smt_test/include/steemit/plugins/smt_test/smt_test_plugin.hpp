@@ -24,6 +24,7 @@ class smt_test_plugin : public appbase::plugin< smt_test_plugin >
       void plugin_startup();
       void plugin_shutdown();
 
+   private:
       std::unique_ptr< class smt_test_plugin_impl > my;
 };
 

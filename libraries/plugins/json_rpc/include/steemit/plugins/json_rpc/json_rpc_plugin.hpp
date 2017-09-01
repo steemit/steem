@@ -98,7 +98,7 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
       string call( const string& body );
 
    private:
-      std::shared_ptr< detail::json_rpc_plugin_impl >   _my;
+      std::unique_ptr< detail::json_rpc_plugin_impl > my;
 };
 
 } } } // steemit::plugins::json_rpc
