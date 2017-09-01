@@ -97,9 +97,9 @@ class message_object : public object< message_object_type, message_object >
 
 typedef message_object::id_type message_id_type;
 
-struct message_api_obj
+struct api_message_object
 {
-   message_api_obj( const message_object& o ) :
+   api_message_object( const message_object& o ) :
       id( o.id ),
       from( o.from ),
       to( o.to ),
@@ -111,7 +111,7 @@ struct message_api_obj
       encrypted_message( o.encrypted_message.begin(), o.encrypted_message.end() )
    {}
 
-   message_api_obj(){}
+   api_message_object(){}
 
    message_id_type   id;
    account_name_type from;
@@ -124,10 +124,10 @@ struct message_api_obj
    vector< char >    encrypted_message;
 };
 
-struct extended_message_object : public message_api_obj
+struct api_extended_message_object : public api_message_object
 {
-   extended_message_object() {}
-   extended_message_object( const message_api_obj& o ):message_api_obj( o ) {}
+   api_extended_message_object() {}
+   api_extended_message_object( const api_message_object& o ):api_message_object( o ) {}
 
    message_body   message;
 };
@@ -199,8 +199,8 @@ class private_message_api : public std::enable_shared_from_this<private_message_
       /**
        *
        */
-      vector< message_api_obj > get_inbox( string to, time_point newest, uint16_t limit )const;
-      vector< message_api_obj > get_outbox( string from, time_point newest, uint16_t limit )const;
+      vector< api_message_object > get_inbox( string to, time_point newest, uint16_t limit )const;
+      vector< api_message_object > get_outbox( string from, time_point newest, uint16_t limit )const;
 
    private:
       app::application* _app = nullptr;
@@ -215,6 +215,6 @@ FC_REFLECT( steemit::private_message::message_body, (thread_start)(subject)(body
 FC_REFLECT( steemit::private_message::message_object, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
 CHAINBASE_SET_INDEX_TYPE( steemit::private_message::message_object, steemit::private_message::message_index );
 
-FC_REFLECT( steemit::private_message::message_api_obj, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
+FC_REFLECT( steemit::private_message::api_message_object, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
 
-FC_REFLECT_DERIVED( steemit::private_message::extended_message_object, (steemit::private_message::message_api_obj), (message) );
+FC_REFLECT_DERIVED( steemit::private_message::api_extended_message_object, (steemit::private_message::api_message_object), (message) );

@@ -146,9 +146,9 @@ void private_message_plugin::plugin_initialize(const boost::program_options::var
    STEEM_LOAD_VALUE_SET(options, "pm-accounts", my->_tracked_accounts, pairstring);
 }
 
-vector< message_api_obj > private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
+vector< api_message_object > private_message_api::get_inbox( string to, time_point newest, uint16_t limit )const {
    FC_ASSERT( limit <= 100 );
-   vector< message_api_obj > result;
+   vector< api_message_object > result;
    const auto& idx = _app->chain_database()->get_index< message_index >().indices().get< by_to_date >();
    auto itr = idx.lower_bound( std::make_tuple( to, newest ) );
    while( itr != idx.end() && limit && itr->to == to ) {
@@ -160,9 +160,9 @@ vector< message_api_obj > private_message_api::get_inbox( string to, time_point 
    return result;
 }
 
-vector< message_api_obj > private_message_api::get_outbox( string from, time_point newest, uint16_t limit )const {
+vector< api_message_object > private_message_api::get_outbox( string from, time_point newest, uint16_t limit )const {
    FC_ASSERT( limit <= 100 );
-   vector< message_api_obj > result;
+   vector< api_message_object > result;
    const auto& idx = _app->chain_database()->get_index< message_index >().indices().get< by_from_date >();
 
    auto itr = idx.lower_bound( std::make_tuple( from, newest ) );
