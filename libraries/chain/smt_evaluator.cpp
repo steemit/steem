@@ -19,19 +19,24 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
 
    asset effective_creation_fee;
 
-   if( o.fee.symbol == STEEM_SYMBOL )
-   {
-      FC_ASSERT( false, "Payment of fee using STEEM not yet implemented" );
-      // TODO:  Calculate effective_creation_fee in STEEM from price feed
-      effective_creation_fee = asset( STEEM_MAX_SHARE_SUPPLY, STEEM_SYMBOL );
-   }
-   else if( o.fee.symbol == SBD_SYMBOL )
+   FC_ASSERT( o.fee.symbol == STEEM_SYMBOL || o.fee.symbol == SBD_SYMBOL,
+              "Asset fee must be STEEM or SBD, was ${s}", ("s", o.fee.symbol) );
+   if( o.fee.symbol == dgpo.smt_creation_fee.symbol )
    {
       effective_creation_fee = dgpo.smt_creation_fee;
    }
    else
    {
-      FC_ASSERT( false, "Asset fee must be STEEM or SBD, was ${s}", ("s", o.fee.symbol) );
+      const auto& fhistory = _db.get_feed_history();
+      FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using SBD because there is no price feed." );
+      if( o.fee.symbol == STEEM_SYMBOL )
+      {
+         effective_creation_fee = _db.to_sbd( o.fee );
+      }
+      else
+      {
+         effective_creation_fee = _db.to_steem( o.fee );         
+      }
    }
 
    const account_object& acct = _db.get_account( o.account );
