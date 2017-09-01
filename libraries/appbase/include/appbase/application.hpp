@@ -3,6 +3,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/core/demangle.hpp>
 #include <boost/asio.hpp>
+#include <boost/throw_exception.hpp>
 
 #include <iostream>
 
@@ -137,7 +138,8 @@ namespace appbase {
                // std::cout << "initializing plugin " << name() << std::endl;
                app().plugin_initialized( *this );
             }
-            assert( _state == initialized ); /// if initial state was not registered, final state cannot be initiaized
+            if (_state != initialized)
+               BOOST_THROW_EXCEPTION( std::runtime_error("Initial state was not registered, so final state cannot be initialized.") );
          }
 
          virtual void startup() override final
@@ -149,7 +151,8 @@ namespace appbase {
                this->plugin_startup();
                app().plugin_started( *this );
             }
-            assert( _state == started ); // if initial state was not initialized, final state cannot be started
+            if (_state != started )
+               BOOST_THROW_EXCEPTION( std::runtime_error("Initial state was not initialized, so final state cannot be started.") );
          }
 
          virtual void shutdown() override final
