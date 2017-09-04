@@ -2566,16 +2566,16 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
-   show_free_memory( false );
+   show_free_memory( false, next_block.block_num() );
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
-void database::show_free_memory( bool force )
+void database::show_free_memory( bool force, uint32_t current_block_num )
 {
    uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
    if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
    {
-      ilog( "Free memory is now ${n}G", ("n", free_gb) );
+      ilog( "Free memory is now ${n}G. Current block number: ${block}", ("n", free_gb)("block",current_block_num) );
       _last_free_gb_printed = free_gb;
    }
 
