@@ -182,7 +182,7 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
             if( cur_block_num % 100000 == 0 )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
-            apply_block( itr.first, skip_flags, cur_block_num );
+            apply_block( itr.first, skip_flags );
             itr = _block_log.read_block( itr.second );
          }
 
@@ -2497,7 +2497,7 @@ void database::set_flush_interval( uint32_t flush_blocks )
 
 //////////////////// private methods ////////////////////
 
-void database::apply_block( const signed_block& next_block, uint32_t skip, uint32_t current_block_num )
+void database::apply_block( const signed_block& next_block, uint32_t skip )
 { try {
    //fc::time_point begin_time = fc::time_point::now();
 
@@ -2566,7 +2566,7 @@ void database::apply_block( const signed_block& next_block, uint32_t skip, uint3
       }
    }
 
-   show_free_memory( false, current_block_num );
+   show_free_memory( false, next_block.block_num() );
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
@@ -2575,10 +2575,7 @@ void database::show_free_memory( bool force, uint32_t current_block_num )
    uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
    if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
    {
-      if( current_block_num )
-         ilog( "Free memory is now ${n}G. Current block number: ${block}", ("n", free_gb)("block",current_block_num) );
-      else
-         ilog( "Free memory is now ${n}G", ("n", free_gb) );
+      ilog( "Free memory is now ${n}G. Current block number: ${block}", ("n", free_gb)("block",current_block_num) );
       _last_free_gb_printed = free_gb;
    }
 
