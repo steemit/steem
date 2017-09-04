@@ -26,6 +26,7 @@ class account_by_key_plugin : public appbase::plugin< account_by_key_plugin >
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
+   private:
       std::unique_ptr< detail::account_by_key_plugin_impl > my;
 };
 

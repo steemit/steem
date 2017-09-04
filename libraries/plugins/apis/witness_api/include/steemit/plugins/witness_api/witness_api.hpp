@@ -32,11 +32,12 @@ class witness_api
 {
    public:
       witness_api();
+      ~witness_api();
 
       DECLARE_API( (get_account_bandwidth) )
 
    private:
-      std::shared_ptr< detail::witness_api_impl > my;
+      std::unique_ptr< detail::witness_api_impl > my;
 };
 
 } } } // steemit::plugins::witness

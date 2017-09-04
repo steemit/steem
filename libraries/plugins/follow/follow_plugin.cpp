@@ -342,26 +342,26 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
    {
       ilog("Intializing follow plugin" );
 
-      _my = std::make_unique< detail::follow_plugin_impl >( *this );
+      my = std::make_unique< detail::follow_plugin_impl >( *this );
 
       // Each plugin needs its own evaluator registry.
-      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::plugins::follow::follow_plugin_operation > >( _my->_db );
+      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::plugins::follow::follow_plugin_operation > >( my->_db );
 
       // Add each operation evaluator to the registry
       _custom_operation_interpreter->register_evaluator< follow_evaluator >( this );
       _custom_operation_interpreter->register_evaluator< reblog_evaluator >( this );
 
       // Add the registry to the database so the database can delegate custom ops to the plugin
-      _my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
+      my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
 
-      _my->pre_apply_connection = _my->_db.pre_apply_operation.connect( [&]( const operation_notification& o ){ _my->pre_operation( o ); } );
-      _my->post_apply_connection = _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->post_operation( o ); } );
-      add_plugin_index< follow_index            >( _my->_db );
-      add_plugin_index< feed_index              >( _my->_db );
-      add_plugin_index< blog_index              >( _my->_db );
-      add_plugin_index< reputation_index        >( _my->_db );
-      add_plugin_index< follow_count_index      >( _my->_db );
-      add_plugin_index< blog_author_stats_index >( _my->_db );
+      my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      add_plugin_index< follow_index            >( my->_db );
+      add_plugin_index< feed_index              >( my->_db );
+      add_plugin_index< blog_index              >( my->_db );
+      add_plugin_index< reputation_index        >( my->_db );
+      add_plugin_index< follow_count_index      >( my->_db );
+      add_plugin_index< blog_author_stats_index >( my->_db );
 
 
       if( options.count( "follow-max-feed-size" ) )
@@ -382,8 +382,8 @@ void follow_plugin::plugin_startup() {}
 
 void follow_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( _my->pre_apply_connection );
-   chain::util::disconnect_signal( _my->post_apply_connection );
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
 }
 
 } } } // steemit::plugins::follow

@@ -175,22 +175,22 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "market_history: plugin_initialize() begin" );
-      _my = std::make_unique< detail::market_history_plugin_impl >();
+      my = std::make_unique< detail::market_history_plugin_impl >();
 
-      _my->post_apply_connection = _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
-      add_plugin_index< bucket_index        >( _my->_db );
-      add_plugin_index< order_history_index >( _my->_db );
+      my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->update_market_histories( o ); } );
+      add_plugin_index< bucket_index        >( my->_db );
+      add_plugin_index< order_history_index >( my->_db );
 
       if( options.count("bucket-size" ) )
       {
          std::string buckets = options["bucket-size"].as< string >();
-         _my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
+         my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
       }
       if( options.count("history-per-size" ) )
-         _my->_maximum_history_per_bucket_size = options["history-per-size"].as< uint32_t >();
+         my->_maximum_history_per_bucket_size = options["history-per-size"].as< uint32_t >();
 
-      wlog( "bucket-size ${b}", ("b", _my->_tracked_buckets) );
-      wlog( "history-per-size ${h}", ("h", _my->_maximum_history_per_bucket_size) );
+      wlog( "bucket-size ${b}", ("b", my->_tracked_buckets) );
+      wlog( "history-per-size ${h}", ("h", my->_maximum_history_per_bucket_size) );
 
       ilog( "market_history: plugin_initialize() end" );
    } FC_CAPTURE_AND_RETHROW()
@@ -200,17 +200,17 @@ void market_history_plugin::plugin_startup() {}
 
 void market_history_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( _my->post_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
 }
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const
 {
-   return _my->_tracked_buckets;
+   return my->_tracked_buckets;
 }
 
 uint32_t market_history_plugin::get_max_history_per_bucket() const
 {
-   return _my->_maximum_history_per_bucket_size;
+   return my->_maximum_history_per_bucket_size;
 }
 
 } } } // steemit::plugins::market_history

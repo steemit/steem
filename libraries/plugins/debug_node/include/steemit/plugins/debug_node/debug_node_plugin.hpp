@@ -88,7 +88,7 @@ class debug_node_plugin : public plugin< debug_node_plugin >
 
       std::map<protocol::public_key_type, fc::ecc::private_key> _private_keys;
 
-      std::shared_ptr< detail::debug_node_plugin_impl > _my;
+      std::shared_ptr< detail::debug_node_plugin_impl > my;
 
       //std::shared_ptr< std::ofstream > _json_object_stream;
       boost::signals2::scoped_connection _applied_block_conn;

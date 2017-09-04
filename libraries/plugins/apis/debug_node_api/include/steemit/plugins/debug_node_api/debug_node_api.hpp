@@ -100,6 +100,7 @@ class debug_node_api
 {
    public:
       debug_node_api();
+      ~debug_node_api();
 
       DECLARE_API(
          /**
@@ -130,7 +131,7 @@ class debug_node_api
       )
 
    private:
-      std::shared_ptr< detail::debug_node_api_impl > my;
+      std::unique_ptr< detail::debug_node_api_impl > my;
 };
 
 } } } // steemit::plugins::debug_node

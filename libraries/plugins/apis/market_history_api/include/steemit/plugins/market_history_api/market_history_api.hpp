@@ -111,6 +111,7 @@ class market_history_api
 {
    public:
       market_history_api();
+      ~market_history_api();
 
       DECLARE_API(
          (get_ticker)
@@ -123,7 +124,7 @@ class market_history_api
       )
 
    private:
-      std::shared_ptr< detail::market_history_api_impl > my;
+      std::unique_ptr< detail::market_history_api_impl > my;
 };
 
 } } } // steemit::plugins::market_history

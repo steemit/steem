@@ -205,6 +205,7 @@ class tags_api
 {
    public:
       tags_api();
+      ~tags_api();
 
    DECLARE_API(
       (get_trending_tags)
@@ -236,7 +237,7 @@ class tags_api
       friend class tags_api_plugin;
       void api_startup();
 
-      std::shared_ptr< detail::tags_api_impl > my;
+      std::unique_ptr< detail::tags_api_impl > my;
 };
 
 } } } // steemit::plugins::tags

@@ -172,6 +172,7 @@ class follow_api
 {
    public:
       follow_api();
+      ~follow_api();
 
       DECLARE_API(
          (get_followers)
@@ -195,7 +196,7 @@ class follow_api
       )
 
    private:
-      std::shared_ptr< detail::follow_api_impl > my;
+      std::unique_ptr< detail::follow_api_impl > my;
 };
 
 } } } // steemit::plugins::follow
