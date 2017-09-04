@@ -27,10 +27,12 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
-   bool accept_block( const steemit::chain::signed_block& block, bool currently_syncing );
+   bool accept_block( const steemit::chain::signed_block& block, bool currently_syncing, uint32_t skip );
    void accept_transaction( const steemit::chain::signed_transaction& trx );
 
    bool block_is_on_preferred_chain( const steemit::chain::block_id_type& block_id );
+
+   void check_time_in_block( const steemit::chain::signed_block& block );
 
    template< typename MultiIndexType >
    bool has_index() const
