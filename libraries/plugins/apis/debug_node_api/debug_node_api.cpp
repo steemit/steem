@@ -151,10 +151,8 @@ void debug_node_api_impl::debug_get_json_schema( std::string& schema )
 
 } // detail
 
-debug_node_api::debug_node_api()
+debug_node_api::debug_node_api(): my( new detail::debug_node_api_impl() )
 {
-   my = std::make_shared< detail::debug_node_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_DEBUG_NODE_API_PLUGIN_NAME,
       (debug_push_blocks)
@@ -168,6 +166,8 @@ debug_node_api::debug_node_api()
       (debug_get_json_schema)
    );
 }
+
+debug_node_api::~debug_node_api() {}
 
 DEFINE_API( debug_node_api, debug_push_blocks )
 {

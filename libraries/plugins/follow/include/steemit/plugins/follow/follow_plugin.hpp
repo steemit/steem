@@ -37,7 +37,9 @@ class follow_plugin : public appbase::plugin< follow_plugin >
       fc::time_point_sec start_feeds;
 
       std::shared_ptr< generic_custom_operation_interpreter< follow_plugin_operation > > _custom_operation_interpreter;
-      std::unique_ptr< detail::follow_plugin_impl > _my;
+
+   private:
+      std::unique_ptr< detail::follow_plugin_impl > my;
 };
 
 } } } //steemit::follow

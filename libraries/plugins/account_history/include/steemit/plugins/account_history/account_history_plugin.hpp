@@ -70,6 +70,7 @@ class account_history_plugin : public plugin< account_history_plugin >
 
       flat_map< account_name_type, account_name_type > tracked_accounts()const; /// map start_range to end_range
 
+   private:
       std::unique_ptr< detail::account_history_plugin_impl > my;
 };
 

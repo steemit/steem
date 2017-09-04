@@ -74,24 +74,24 @@ DEFINE_API( chain_api_impl, push_transaction )
 
 } // detail
 
-chain_api::chain_api()
+chain_api::chain_api(): my( new detail::chain_api_impl() )
 {
-   _my = std::make_shared< detail::chain_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_CHAIN_API_PLUGIN_NAME,
       (push_block)
       (push_transaction) );
 }
 
+chain_api::~chain_api() {}
+
 DEFINE_API( chain_api, push_block )
 {
-   return _my->push_block( args );
+   return my->push_block( args );
 }
 
 DEFINE_API( chain_api, push_transaction )
 {
-   return _my->push_transaction( args );
+   return my->push_transaction( args );
 }
 
 } } } //steemit::plugins::chain

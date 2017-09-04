@@ -36,6 +36,7 @@ debug_node_plugin_impl::~debug_node_plugin_impl() {}
 
 debug_node_plugin::debug_node_plugin() {}
 debug_node_plugin::~debug_node_plugin() {}
+
 void debug_node_plugin::set_program_options(
    options_description& cli,
    options_description& cfg )
@@ -46,7 +47,7 @@ void debug_node_plugin::set_program_options(
 
 void debug_node_plugin::plugin_initialize( const variables_map& options )
 {
-   _my = std::make_shared< detail::debug_node_plugin_impl >();
+   my = std::make_shared< detail::debug_node_plugin_impl >();
 
    if( options.count("edit-script") > 0 )
    {
@@ -54,7 +55,7 @@ void debug_node_plugin::plugin_initialize( const variables_map& options )
    }
 
    // connect needed signals
-   _my->applied_block_connection = _my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
+   my->applied_block_connection = my->_db.applied_block.connect([this](const chain::signed_block& b){ on_applied_block(b); });
 }
 
 void debug_node_plugin::plugin_startup()
@@ -68,7 +69,7 @@ void debug_node_plugin::plugin_startup()
    }*/
 }
 
-chain::database& debug_node_plugin::database() { return _my->_db; }
+chain::database& debug_node_plugin::database() { return my->_db; }
 
 /*
 void debug_apply_update( chain::database& db, const fc::variant_object& vo, bool logging )
@@ -308,7 +309,7 @@ void debug_node_plugin::on_applied_block( const chain::signed_block& b )
 
 void debug_node_plugin::plugin_shutdown()
 {
-   chain::util::disconnect_signal( _my->applied_block_connection );
+   chain::util::disconnect_signal( my->applied_block_connection );
    /*if( _json_object_stream )
    {
       _json_object_stream->close();

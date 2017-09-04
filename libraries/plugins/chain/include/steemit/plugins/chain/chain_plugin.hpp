@@ -75,7 +75,7 @@ public:
    const database& db() const;
 
 private:
-   unique_ptr< detail::chain_plugin_impl > my;
+   std::unique_ptr< detail::chain_plugin_impl > my;
 };
 
 } } } // steemit::plugins::chain

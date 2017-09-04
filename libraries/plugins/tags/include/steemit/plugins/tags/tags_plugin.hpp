@@ -480,6 +480,8 @@ class tags_plugin : public plugin< tags_plugin >
       virtual void plugin_shutdown() override;
 
       friend class detail::tags_plugin_impl;
+
+   private:
       std::unique_ptr< detail::tags_plugin_impl > my;
 };
 

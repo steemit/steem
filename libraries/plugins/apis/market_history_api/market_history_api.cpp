@@ -187,10 +187,8 @@ DEFINE_API( market_history_api_impl, get_market_history_buckets )
 
 } // detail
 
-market_history_api::market_history_api()
+market_history_api::market_history_api(): my( new detail::market_history_api_impl() )
 {
-   my = std::make_shared< detail::market_history_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_MARKET_HISTORY_API_PLUGIN_NAME,
       (get_ticker)
@@ -202,6 +200,8 @@ market_history_api::market_history_api()
       (get_market_history_buckets)
    );
 }
+
+market_history_api::~market_history_api() {}
 
 DEFINE_API( market_history_api, get_ticker )
 {

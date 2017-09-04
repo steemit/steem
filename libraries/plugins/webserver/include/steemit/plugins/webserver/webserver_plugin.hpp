@@ -45,7 +45,7 @@ class webserver_plugin : public appbase::plugin< webserver_plugin >
       virtual void plugin_shutdown() override;
 
    private:
-      std::unique_ptr< detail::webserver_plugin_impl > _my;
+      std::unique_ptr< detail::webserver_plugin_impl > my;
 };
 
 } } } // steemit::plugins::webserver
