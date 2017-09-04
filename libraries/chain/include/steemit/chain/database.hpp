@@ -405,7 +405,7 @@ namespace steemit { namespace chain {
          const std::string& get_json_schema() const;
 
          void set_flush_interval( uint32_t flush_blocks );
-         void show_free_memory( bool force );
+         void show_free_memory( bool force, uint32_t current_block_num );
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
@@ -422,7 +422,7 @@ namespace steemit { namespace chain {
       private:
          optional< chainbase::database::session > _pending_tx_session;
 
-         void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing );
+         void apply_block( const signed_block& next_block, uint32_t skip = skip_nothing, uint32_t current_block_num = 0 );
          void apply_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
          void _apply_block( const signed_block& next_block );
          void _apply_transaction( const signed_transaction& trx );
