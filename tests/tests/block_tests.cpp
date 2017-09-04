@@ -36,7 +36,7 @@
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 using namespace steemit;
 using namespace steemit::chain;
@@ -725,6 +725,7 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       >( argc, argv );
 
       db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      BOOST_REQUIRE( db );
 
 
       open_database();

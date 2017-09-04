@@ -74,14 +74,6 @@ struct debug_get_dev_key_return
    chain::public_key_type                    public_key;
 };
 
-struct debug_mine_args
-{
-   std::string                               worker_account;
-   fc::optional< chain::chain_properties >   props;
-};
-
-typedef void_type debug_mine_return;
-
 struct debug_set_hardfork_args
 {
    uint32_t hardfork_id;
@@ -132,22 +124,6 @@ class debug_node_api
          (debug_get_witness_schedule)
          (debug_get_hardfork_property_object)
 
-         /**
-         * Set developer key prefix. This prefix only applies to the current API session.
-         * (Thus, this method is only useful to websocket-based API clients.)
-         * Prefix will be used for debug_get_dev_key() and debug_mine_account().
-         */
-         (debug_set_dev_key_prefix)
-
-         /**
-         * Get developer key. Use debug_set_key_prefix() to set a prefix if desired.
-         */
-         (debug_get_dev_key)
-
-         /**
-         * Synchronous mining, does not return until work is found.
-         */
-         (debug_mine)
          (debug_set_hardfork)
          (debug_has_hardfork)
          (debug_get_json_schema)
@@ -173,18 +149,6 @@ FC_REFLECT( steemit::plugins::debug_node::debug_generate_blocks_until_args,
 
 FC_REFLECT( steemit::plugins::debug_node::debug_pop_block_return,
             (block) )
-
-FC_REFLECT( steemit::plugins::debug_node::debug_set_dev_key_prefix_args,
-            (prefix) )
-
-FC_REFLECT( steemit::plugins::debug_node::debug_get_dev_key_args,
-            (name) )
-
-FC_REFLECT( steemit::plugins::debug_node::debug_get_dev_key_return,
-            (private_key)(public_key) )
-
-FC_REFLECT( steemit::plugins::debug_node::debug_mine_args,
-            (worker_account)(props) )
 
 FC_REFLECT( steemit::plugins::debug_node::debug_set_hardfork_args,
             (hardfork_id) )

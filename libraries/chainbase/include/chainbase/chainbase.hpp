@@ -318,7 +318,7 @@ namespace chainbase {
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
 
-            for( auto id : head.new_ids )
+            for( const auto& id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
             }
@@ -411,7 +411,7 @@ namespace chainbase {
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
-            for( auto id : state.new_ids )
+            for( const auto& id : state.new_ids )
                prev_state.new_ids.insert(id);
 
             // *+del
@@ -744,7 +744,7 @@ namespace chainbase {
          void set_revision( int64_t revision )
          {
              CHAINBASE_REQUIRE_WRITE_LOCK( "set_revision", int64_t );
-             for( auto i : _index_list ) i->set_revision( revision );
+             for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
 
@@ -924,7 +924,7 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-            read_lock lock( _rw_manager->current_lock(), bip::defer_lock_type() );
+            read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _read_lock_count );
@@ -949,7 +949,7 @@ namespace chainbase {
             if( _read_only )
                BOOST_THROW_EXCEPTION( std::logic_error( "cannot acquire write lock on read-only process" ) );
 
-            write_lock lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+            write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _write_lock_count );
@@ -963,9 +963,9 @@ namespace chainbase {
             {
                while( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
                {
-                  _rw_manager->next_lock();
-                  std::cerr << "Lock timeout, moving to lock " << _rw_manager->current_lock_num() << std::endl;
-                  lock = write_lock( _rw_manager->current_lock(), boost::defer_lock_t() );
+                  _rw_manager.next_lock();
+                  std::cerr << "Lock timeout, moving to lock " << _rw_manager.current_lock_num() << std::endl;
+                  lock = write_lock( _rw_manager.current_lock(), boost::defer_lock_t() );
                }
             }
 
@@ -988,9 +988,9 @@ namespace chainbase {
          }
 
       private:
+         read_write_mutex_manager                                    _rw_manager;
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
-         read_write_mutex_manager*                                   _rw_manager = nullptr;
          bool                                                        _read_only = false;
          bip::file_lock                                              _flock;
 

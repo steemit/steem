@@ -8,6 +8,7 @@
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
 #include <boost/bind.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 #include <websocketpp/config/asio_client.hpp>
 #include <websocketpp/config/asio.hpp>
@@ -21,8 +22,6 @@
 #include <memory>
 #include <iostream>
 
-#define WEBSERVER_THREAD_POOL_SIZE 256
-
 namespace steemit { namespace plugins { namespace webserver {
 
 namespace asio = boost::asio;
@@ -33,6 +32,8 @@ using boost::optional;
 using boost::asio::ip::tcp;
 using std::shared_ptr;
 using websocketpp::connection_hdl;
+
+typedef uint32_t thread_pool_size_t;
 
 namespace detail {
 
@@ -73,7 +74,6 @@ namespace detail {
 
          static const long timeout_open_handshake = 0;
    };
-}
 
 using websocket_server_type = websocketpp::server< detail::asio_with_stub_log >;
 
@@ -110,11 +110,11 @@ std::vector<fc::ip::endpoint> resolve_string_to_ip_endpoints( const std::string&
 class webserver_plugin_impl
 {
    public:
-      webserver_plugin_impl() :
-         api_work( this->api_ios )
+      webserver_plugin_impl(thread_pool_size_t thread_pool_size) :
+         thread_pool_work( this->thread_pool_ios )
       {
-         for( uint32_t i = 0; i < WEBSERVER_THREAD_POOL_SIZE; i++ )
-            api_thread_pool.create_thread( boost::bind( &asio::io_service::run, &api_ios ) );
+         for( uint32_t i = 0; i < thread_pool_size; ++i )
+            thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
       }
 
       shared_ptr< std::thread >  http_thread;
@@ -127,30 +127,39 @@ class webserver_plugin_impl
       optional< tcp::endpoint >  ws_endpoint;
       websocket_server_type      ws_server;
 
-      boost::thread_group        api_thread_pool;
-      asio::io_service           api_ios;
-      asio::io_service::work     api_work;
+      boost::thread_group        thread_pool;
+      asio::io_service           thread_pool_ios;
+      asio::io_service::work     thread_pool_work;
 
       plugins::json_rpc::json_rpc_plugin* api;
 };
 
-webserver_plugin::webserver_plugin() : _my( new webserver_plugin_impl() ) {}
-webserver_plugin::~webserver_plugin(){}
+} // detail
+
+webserver_plugin::webserver_plugin() {}
+webserver_plugin::~webserver_plugin() {}
 
 void webserver_plugin::set_program_options( options_description&, options_description& cfg )
 {
    cfg.add_options()
-         ("webserver-http-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming http connections.")
-         ("webserver-ws-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming websocket connections.")
-         ;
+      ("webserver-http-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming http connections.")
+      ("webserver-ws-endpoint", bpo::value< string >(), "The local IP and port to listen for incoming websocket connections.")
+      ("webserver-thread-pool-size", bpo::value<thread_pool_size_t>()->default_value(256),
+       "Number of threads used to handle queries. Default: 256.")
+      ;
 }
 
 void webserver_plugin::plugin_initialize( const variables_map& options )
 {
+   auto thread_pool_size = options.at("webserver-thread-pool-size").as<thread_pool_size_t>();
+   FC_ASSERT(thread_pool_size > 0, "webserver-thread-pool-size must be greater than 0");
+   ilog("configured with ${tps} thread pool size", ("tps", thread_pool_size));
+   _my.reset(new detail::webserver_plugin_impl(thread_pool_size));
+
    if( options.count( "webserver-http-endpoint" ) )
    {
       auto http_endpoint = options.at( "webserver-http-endpoint" ).as< string >();
-      auto endpoints = resolve_string_to_ip_endpoints( http_endpoint );
+      auto endpoints = detail::resolve_string_to_ip_endpoints( http_endpoint );
       FC_ASSERT( endpoints.size(), "webserver-http-endpoint ${hostname} did not resolve", ("hostname", http_endpoint) );
       _my->http_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
       ilog( "configured http to listen on ${ep}", ("ep", endpoints[0]) );
@@ -159,7 +168,7 @@ void webserver_plugin::plugin_initialize( const variables_map& options )
    if( options.count( "webserver-ws-endpoint" ) )
    {
       auto ws_endpoint = options.at( "webserver-ws-endpoint" ).as< string >();
-      auto endpoints = resolve_string_to_ip_endpoints( ws_endpoint );
+      auto endpoints = detail::resolve_string_to_ip_endpoints( ws_endpoint );
       FC_ASSERT( endpoints.size(), "ws-server-endpoint ${hostname} did not resolve", ("hostname", ws_endpoint) );
       _my->ws_endpoint = tcp::endpoint( boost::asio::ip::address_v4::from_string( ( string )endpoints[0].get_address() ), endpoints[0].port() );
       ilog( "configured ws to listen on ${ep}", ("ep", endpoints[0]) );
@@ -183,11 +192,11 @@ void webserver_plugin::plugin_startup()
             _my->ws_server.init_asio( &_my->ws_ios );
             _my->ws_server.set_reuse_addr( true );
 
-            _my->ws_server.set_message_handler( [&]( connection_hdl hdl, websocket_server_type::message_ptr msg )
+            _my->ws_server.set_message_handler( [&]( connection_hdl hdl, detail::websocket_server_type::message_ptr msg )
             {
                auto con = _my->ws_server.get_con_from_hdl( hdl );
 
-               _my->api_ios.post( [con, msg, this]()
+               _my->thread_pool_ios.post( [con, msg, this]()
                {
                   try
                   {
@@ -210,7 +219,7 @@ void webserver_plugin::plugin_startup()
                   auto con = _my->ws_server.get_con_from_hdl( hdl );
                   con->defer_http_response();
 
-                  _my->api_ios.post( [con, this]()
+                  _my->thread_pool_ios.post( [con, this]()
                   {
                      auto body = con->get_request_body();
 
@@ -264,7 +273,7 @@ void webserver_plugin::plugin_startup()
                auto con = _my->http_server.get_con_from_hdl( hdl );
                con->defer_http_response();
 
-               _my->api_ios.post( [con, this]()
+               _my->thread_pool_ios.post( [con, this]()
                {
                   auto body = con->get_request_body();
 
@@ -308,8 +317,8 @@ void webserver_plugin::plugin_shutdown()
    if( _my->http_server.is_listening() )
       _my->http_server.stop_listening();
 
-   _my->api_ios.stop();
-   _my->api_thread_pool.join_all();
+   _my->thread_pool_ios.stop();
+   _my->thread_pool.join_all();
 
    if( _my->ws_thread )
    {

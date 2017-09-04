@@ -7,7 +7,7 @@
 
 #include <steemit/plugins/market_history/market_history_plugin.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 using namespace steemit::chain;
 using namespace steemit::protocol;
@@ -42,6 +42,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       >( argc, argv );
 
       db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      BOOST_REQUIRE( db );
 
       open_database();
 

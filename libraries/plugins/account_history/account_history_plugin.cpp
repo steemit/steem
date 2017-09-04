@@ -7,6 +7,8 @@
 #include <steemit/chain/operation_notification.hpp>
 #include <steemit/chain/history_object.hpp>
 
+#include <steemit/utilities/plugin_utilities.hpp>
+
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 
@@ -15,20 +17,6 @@
 
 #define STEEM_NAMESPACE_PREFIX "steemit::protocol::"
 
-template<typename T>
-T dejsonify(const std::string& s) {
-   return fc::json::from_string(s).as<T>();
-}
-
-// TODO: Move this somewhere else. Also exists in app/plugin.hpp, which will be removed.
-#ifndef STEEM_LOAD_VALUE_SET
-#define STEEM_LOAD_VALUE_SET(options, name, container, type) \
-if( options.count(name) ) { \
-   const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
-   std::transform(ops.begin(), ops.end(), std::inserter(container, container.end()), &dejsonify<type>); \
-}
-#endif
-
 namespace steemit { namespace plugins { namespace account_history {
 
 using namespace steemit::protocol;
@@ -36,6 +24,8 @@ using namespace steemit::protocol;
 using steemit::chain::database;
 using steemit::chain::operation_notification;
 using steemit::chain::operation_object;
+
+namespace detail {
 
 class account_history_plugin_impl
 {
@@ -52,6 +42,7 @@ class account_history_plugin_impl
       bool                                             _blacklist = false;
       flat_set< string >                               _op_list;
       database&                        _db;
+      boost::signals2::connection      pre_apply_connection;
 };
 
 struct operation_visitor
@@ -175,6 +166,7 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
    }
 }
 
+} // detail
 
 account_history_plugin::account_history_plugin() {}
 account_history_plugin::~account_history_plugin() {}
@@ -193,9 +185,9 @@ void account_history_plugin::set_program_options(
 
 void account_history_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
-   my = std::make_unique< account_history_plugin_impl >();
+   my = std::make_unique< detail::account_history_plugin_impl >();
 
-   my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
 
    typedef pair< account_name_type, account_name_type > pairstring;
    STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
@@ -241,7 +233,10 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
 
 void account_history_plugin::plugin_startup() {}
 
-void account_history_plugin::plugin_shutdown() {}
+void account_history_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->pre_apply_connection );
+}
 
 flat_map< account_name_type, account_name_type > account_history_plugin::tracked_accounts() const
 {

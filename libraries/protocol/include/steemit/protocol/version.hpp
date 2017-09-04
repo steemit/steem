@@ -25,6 +25,10 @@ struct version
 
    operator fc::string()const;
 
+   uint32_t major() { return ( v_num & 0XFF000000 ) >> 24; }
+   uint32_t minor() { return ( v_num & 0x00FF0000 ) >> 16; }
+   uint32_t rev()   { return   v_num & 0x0000FFFF; }
+
    uint32_t v_num = 0;
 };
 

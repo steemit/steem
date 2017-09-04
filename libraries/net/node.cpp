@@ -1067,7 +1067,7 @@ namespace graphene { namespace net { namespace detail {
           } // end non-preemptable section
 
           // make all the requests we scheduled in the loop above
-          for( auto sync_item_request : sync_item_requests_to_send )
+          for( const auto& sync_item_request : sync_item_requests_to_send )
             request_sync_items_from_peer( sync_item_request.first, sync_item_request.second );
           sync_item_requests_to_send.clear();
         }
@@ -1287,7 +1287,7 @@ namespace graphene { namespace net { namespace detail {
                    ("count", total_items_to_send_to_this_peer)
                    ("types", items_to_advertise_by_type.size())
                    ("endpoint", peer->get_remote_endpoint()));
-            for (auto items_group : items_to_advertise_by_type)
+            for (const auto& items_group : items_to_advertise_by_type)
               inventory_messages_to_send.push_back(std::make_pair(peer, item_ids_inventory_message(items_group.first, items_group.second)));
           }
           peer->clear_old_inventory();
@@ -3048,14 +3048,14 @@ namespace graphene { namespace net { namespace detail {
       // received yet, reschedule them to be fetched from another peer
       if (!originating_peer->sync_items_requested_from_peer.empty())
       {
-        for (auto sync_item : originating_peer->sync_items_requested_from_peer)
+        for (const auto& sync_item : originating_peer->sync_items_requested_from_peer)
           _active_sync_requests.erase(sync_item);
         trigger_fetch_sync_items_loop();
       }
 
       if (!originating_peer->items_requested_from_peer.empty())
       {
-        for (auto item_and_time : originating_peer->items_requested_from_peer)
+        for (const auto& item_and_time : originating_peer->items_requested_from_peer)
         {
           if (is_item_in_any_peers_inventory(item_and_time.first))
             _items_to_fetch.insert(prioritized_item_id(item_and_time.first, _items_to_fetch_sequence_counter++));

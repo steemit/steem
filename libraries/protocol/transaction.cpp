@@ -117,7 +117,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
       s.max_recursion = max_recursion_depth;
       for( auto& id : posting_approvals )
          s.approved_by.insert( id );
-      for( auto id : required_posting )
+      for( const auto& id : required_posting )
       {
          STEEMIT_ASSERT( s.check_authority(id) ||
                           s.check_authority(get_active(id)) ||
@@ -150,14 +150,14 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
    }
 
    // fetch all of the top level authorities
-   for( auto id : required_active )
+   for( const auto& id : required_active )
    {
       STEEMIT_ASSERT( s.check_authority(id) ||
                        s.check_authority(get_owner(id)),
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
-   for( auto id : required_owner )
+   for( const auto& id : required_owner )
    {
       STEEMIT_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
                        s.check_authority(get_owner(id)),

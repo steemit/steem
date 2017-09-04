@@ -2,10 +2,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/protocol/exceptions.hpp>
+#include <steemit/protocol/hardfork.hpp>
 
 #include <steemit/chain/block_summary_object.hpp>
 #include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/history_object.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
@@ -15,7 +15,7 @@
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 #include <cmath>
 

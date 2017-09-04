@@ -13,6 +13,8 @@ using namespace steemit;
 using fc::flat_map;
 using steemit::chain::block_id_type;
 
+namespace detail {
+
 class chain_plugin_impl
 {
    public:
@@ -30,8 +32,9 @@ class chain_plugin_impl
       database  db;
 };
 
+} // detail
 
-chain_plugin::chain_plugin() : my( new chain_plugin_impl() ) {}
+chain_plugin::chain_plugin() : my( new detail::chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }
@@ -77,7 +80,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    {
       auto cps = options.at("checkpoint").as<vector<string>>();
       my->loaded_checkpoints.reserve(cps.size());
-      for(auto cp : cps)
+      for(const auto& cp : cps)
       {
          auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
          my->loaded_checkpoints[item.first] = item.second;

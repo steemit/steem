@@ -2,10 +2,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include <steemit/protocol/exceptions.hpp>
+#include <steemit/protocol/hardfork.hpp>
 
 #include <steemit/chain/database.hpp>
 #include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
 #include <steemit/chain/util/reward.hpp>
@@ -14,7 +14,7 @@
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -2904,9 +2904,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
         /// Invalid quote value
         STEEMIT_REQUIRE_THROW(broken_price=price(ASSET("1.000 TESTS"), ASSET("0.000 TBD")),
           fc::exception);
-        /// Invalid symbol (same in base & quote)          
+        /// Invalid symbol (same in base & quote)
         STEEMIT_REQUIRE_THROW(broken_price=price(ASSET("1.000 TESTS"), ASSET("0.000 TESTS")),
-          fc::exception);        
+          fc::exception);
       }
 
       op.owner = "alice";

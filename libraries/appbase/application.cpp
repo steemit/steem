@@ -34,7 +34,7 @@ application::application()
 application::~application() { }
 
 void application::startup() {
-   for (auto plugin : initialized_plugins)
+   for (const auto& plugin : initialized_plugins)
       plugin->startup();
 }
 
@@ -132,7 +132,7 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
             get_plugin(name).initialize(my->_args);
       }
    }
-   for (auto plugin : autostart_plugins)
+   for (const auto& plugin : autostart_plugins)
       if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
          plugin->initialize(my->_args);
 

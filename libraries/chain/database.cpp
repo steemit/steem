@@ -150,7 +150,7 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
    {
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
-      open( data_dir, shared_mem_dir, 0, shared_file_size, chainbase::database::read_write );
+      open( data_dir, shared_mem_dir, STEEMIT_INIT_SUPPLY, shared_file_size, chainbase::database::read_write );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -805,14 +805,14 @@ signed_block database::_generate_block(
 
       const auto& hfp = get_hardfork_property_object();
 
-      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_HARDFORK_VERSION // Binary is newer hardfork than has been applied
+      if( hfp.current_hardfork_version < STEEMIT_BLOCKCHAIN_VERSION // Binary is newer hardfork than has been applied
          && ( witness.hardfork_version_vote != _hardfork_versions[ hfp.last_hardfork + 1 ] || witness.hardfork_time_vote != _hardfork_times[ hfp.last_hardfork + 1 ] ) ) // Witness vote does not match binary configuration
       {
          // Make vote match binary configuration
          pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork + 1 ], _hardfork_times[ hfp.last_hardfork + 1 ] ) ) );
       }
-      else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_HARDFORK_VERSION // Binary does not know of a new hardfork
-         && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_HARDFORK_VERSION ) // Voting for hardfork in the future, that we do not know of...
+      else if( hfp.current_hardfork_version == STEEMIT_BLOCKCHAIN_VERSION // Binary does not know of a new hardfork
+         && witness.hardfork_version_vote > STEEMIT_BLOCKCHAIN_VERSION ) // Voting for hardfork in the future, that we do not know of...
       {
          // Make vote match binary configuration. This is vote to not apply the new hardfork.
          pending_block.extensions.insert( block_header_extensions( hardfork_version_vote( _hardfork_versions[ hfp.last_hardfork ], _hardfork_times[ hfp.last_hardfork ] ) ) );
@@ -2218,7 +2218,15 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
+
+   _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
+   _my->_evaluator_registry.register_evaluator< smt_cap_reveal_evaluator                 >();
+   _my->_evaluator_registry.register_evaluator< smt_refund_evaluator                     >();
+   _my->_evaluator_registry.register_evaluator< smt_setup_inflation_evaluator            >();
+   _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
+   _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
 }
+
 
 void database::set_custom_operation_interpreter( const std::string& id, std::shared_ptr< custom_operation_interpreter > registry )
 {
@@ -2787,8 +2795,9 @@ try {
 
          if( fho.price_history.size() )
          {
+            /// BW-TODO Why deque is used here ? Also why don't make copy of whole container ?
             std::deque< price > copy;
-            for( auto i : fho.price_history )
+            for( const auto& i : fho.price_history )
             {
                copy.push_back( i );
             }
@@ -3550,11 +3559,20 @@ void database::init_hardforks()
    FC_ASSERT( STEEMIT_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
    _hardfork_times[ STEEMIT_HARDFORK_0_19 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_19_TIME );
    _hardfork_versions[ STEEMIT_HARDFORK_0_19 ] = STEEMIT_HARDFORK_0_19_VERSION;
+#ifdef IS_TEST_NET
+   FC_ASSERT( STEEMIT_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_20 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_20_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_20 ] = STEEMIT_HARDFORK_0_20_VERSION;
+   FC_ASSERT( STEEMIT_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
+   _hardfork_times[ STEEMIT_HARDFORK_0_21 ] = fc::time_point_sec( STEEMIT_HARDFORK_0_21_TIME );
+   _hardfork_versions[ STEEMIT_HARDFORK_0_21 ] = STEEMIT_HARDFORK_0_21_VERSION;
+#endif
 
 
    const auto& hardforks = get_hardfork_property_object();
    FC_ASSERT( hardforks.last_hardfork <= STEEMIT_NUM_HARDFORKS, "Chain knows of more hardforks than configuration", ("hardforks.last_hardfork",hardforks.last_hardfork)("STEEMIT_NUM_HARDFORKS",STEEMIT_NUM_HARDFORKS) );
    FC_ASSERT( _hardfork_versions[ hardforks.last_hardfork ] <= STEEMIT_BLOCKCHAIN_VERSION, "Blockchain version is older than last applied hardfork" );
+   FC_ASSERT( STEEMIT_BLOCKCHAIN_HARDFORK_VERSION >= STEEMIT_BLOCKCHAIN_VERSION );
    FC_ASSERT( STEEMIT_BLOCKCHAIN_HARDFORK_VERSION == _hardfork_versions[ STEEMIT_NUM_HARDFORKS ] );
 }
 
@@ -3819,7 +3837,7 @@ void database::apply_hardfork( uint32_t hardfork )
                }
             }
 
-            for( auto itr : root_posts )
+            for( const auto& itr : root_posts )
             {
                modify( *itr, [&]( comment_object& c )
                {
@@ -3827,7 +3845,7 @@ void database::apply_hardfork( uint32_t hardfork )
                });
             }
 
-            for( auto itr : replies )
+            for( const auto& itr : replies )
             {
                modify( *itr, [&]( comment_object& c )
                {
@@ -3873,6 +3891,12 @@ void database::apply_hardfork( uint32_t hardfork )
             }
          }
          break;
+#ifdef IS_TEST_NET
+      case STEEMIT_HARDFORK_0_20:
+         break;
+      case STEEMIT_HARDFORK_0_21:
+         break;
+#endif
       default:
          break;
    }
