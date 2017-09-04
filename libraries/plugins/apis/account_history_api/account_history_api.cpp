@@ -76,10 +76,8 @@ DEFINE_API( account_history_api_impl, get_account_history )
 
 } // detail
 
-account_history_api::account_history_api()
+account_history_api::account_history_api(): my( new detail::account_history_api_impl() )
 {
-   my = std::make_shared< detail::account_history_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME,
       (get_ops_in_block)
@@ -87,6 +85,8 @@ account_history_api::account_history_api()
       (get_account_history)
    );
 }
+
+account_history_api::~account_history_api() {}
 
 DEFINE_API( account_history_api, get_ops_in_block )
 {

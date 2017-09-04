@@ -74,15 +74,15 @@ DEFINE_API( chain_api_impl, push_transaction )
 
 } // detail
 
-chain_api::chain_api()
+chain_api::chain_api(): my( new detail::chain_api_impl() )
 {
-   my = std::make_shared< detail::chain_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_CHAIN_API_PLUGIN_NAME,
       (push_block)
       (push_transaction) );
 }
+
+chain_api::~chain_api() {}
 
 DEFINE_API( chain_api, push_block )
 {

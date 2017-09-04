@@ -28,11 +28,12 @@ class account_by_key_api
 {
    public:
       account_by_key_api();
+      ~account_by_key_api();
 
       DECLARE_API( (get_key_references) )
 
    private:
-      std::shared_ptr< detail::account_by_key_api_impl > my;
+      std::unique_ptr< detail::account_by_key_api_impl > my;
 };
 
 } } } // steemit::plugins::account_by_key

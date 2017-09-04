@@ -35,13 +35,14 @@ class chain_api
 {
    public:
       chain_api();
+      ~chain_api();
 
       DECLARE_API(
          (push_block)
          (push_transaction) )
       
    private:
-      std::shared_ptr< detail::chain_api_impl > my;
+      std::unique_ptr< detail::chain_api_impl > my;
 };
 
 } } } // steemit::plugins::chain

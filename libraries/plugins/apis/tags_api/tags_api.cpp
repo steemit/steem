@@ -720,10 +720,8 @@ steemit::chain::comment_id_type tags_api_impl::get_parent( const discussion_quer
 
 } // detail
 
-tags_api::tags_api()
+tags_api::tags_api(): my( new detail::tags_api_impl() )
 {
-   my = std::make_shared< detail::tags_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_TAGS_API_PLUGIN_NAME,
       (get_trending_tags)
@@ -749,6 +747,8 @@ tags_api::tags_api()
       (get_active_votes)
    );
 }
+
+tags_api::~tags_api() {}
 
 DEFINE_API( tags_api, get_trending_tags )
 {
