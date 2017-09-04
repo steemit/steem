@@ -18,7 +18,7 @@
       proxy_set_header Connection "upgrade";
       add_header 'Access-Control-Allow-Origin' '*';
       add_header 'Access-Control-Allow-Methods' 'POST, OPTIONS';
-      add_header 'Access-Control-Allow-Headers' to '*';
+      add_header 'Access-Control-Allow-Headers' '*';
       add_header Strict-Transport-Security "max-age=31557600; includeSubDomains; preload" always;
     }
 }
