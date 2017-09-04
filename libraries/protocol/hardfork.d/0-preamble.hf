@@ -12,4 +12,8 @@
 #include <steemit/protocol/version.hpp>
 #include <set>
 
+#ifdef IS_TEST_NET
+#define STEEMIT_NUM_HARDFORKS 21
+#else
 #define STEEMIT_NUM_HARDFORKS 19
+#endif
