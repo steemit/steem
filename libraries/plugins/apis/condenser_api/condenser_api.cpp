@@ -898,7 +898,6 @@ condenser_api::condenser_api()
       (get_content)
       (get_content_replies)
       (get_tags_used_by_author)
-      (get_discussions_by_payout)
       (get_post_discussions_by_payout)
       (get_comment_discussions_by_payout)
       (get_discussions_by_trending)
@@ -1384,15 +1383,6 @@ DEFINE_API( condenser_api, get_tags_used_by_author )
    FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
 
    return my->_tags_api->get_tags_used_by_author( { args[0].as< account_name_type >() } ).tags;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_payout )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_payout(
-      args[0].as< tags::get_discussions_by_payout_args >() ).discussions;
 }
 
 DEFINE_API( condenser_api, get_post_discussions_by_payout )

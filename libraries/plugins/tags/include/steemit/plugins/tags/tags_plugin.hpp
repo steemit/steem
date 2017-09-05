@@ -97,16 +97,13 @@ typedef oid< tag_object > tag_id_type;
 
 
 struct by_cashout; /// all posts regardless of depth
-struct by_net_rshares; /// all comments regardless of depth
 struct by_parent_created;
 struct by_parent_active;
 struct by_parent_promoted;
-struct by_parent_net_rshares; /// all top level posts by direct pending payout
 struct by_parent_net_votes; /// all top level posts by direct votes
 struct by_parent_trending;
 struct by_parent_children; /// all top level posts with the most discussion (replies at all levels)
 struct by_parent_hot;
-struct by_author_parent_created;  /// all blog posts by author with tag
 struct by_author_comment;
 struct by_reward_fund_net_rshares;
 struct by_comment;
@@ -159,15 +156,6 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<tag_name_type>, std::less<comment_id_type>, std::greater< share_type >, std::less< tag_id_type > >
       >,
-      ordered_unique< tag< by_parent_net_rshares >,
-            composite_key< tag_object,
-               member< tag_object, tag_name_type, &tag_object::tag >,
-               member< tag_object, comment_id_type, &tag_object::parent >,
-               member< tag_object, int64_t, &tag_object::net_rshares >,
-               member< tag_object, tag_id_type, &tag_object::id >
-            >,
-            composite_key_compare< std::less<tag_name_type>, std::less<comment_id_type>, std::greater< int64_t >, std::less< tag_id_type > >
-      >,
       ordered_unique< tag< by_parent_net_votes >,
             composite_key< tag_object,
                member< tag_object, tag_name_type, &tag_object::tag >,
@@ -211,23 +199,6 @@ typedef multi_index_container<
                member< tag_object, tag_id_type, &tag_object::id >
             >,
             composite_key_compare< std::less<tag_name_type>, std::less< time_point_sec >, std::less< tag_id_type > >
-      >,
-      ordered_unique< tag< by_net_rshares >,
-            composite_key< tag_object,
-               member< tag_object, tag_name_type, &tag_object::tag >,
-               member< tag_object, int64_t, &tag_object::net_rshares >,
-               member< tag_object, tag_id_type, &tag_object::id >
-            >,
-            composite_key_compare< std::less<tag_name_type>, std::greater< int64_t >, std::less< tag_id_type > >
-      >,
-      ordered_unique< tag< by_author_parent_created >,
-            composite_key< tag_object,
-               member< tag_object, tag_name_type, &tag_object::tag >,
-               member< tag_object, account_id_type, &tag_object::author >,
-               member< tag_object, time_point_sec, &tag_object::created >,
-               member< tag_object, tag_id_type, &tag_object::id >
-            >,
-            composite_key_compare< std::less<tag_name_type>, std::less<account_id_type>, std::greater< time_point_sec >, std::less< tag_id_type > >
       >,
       ordered_unique< tag< by_reward_fund_net_rshares >,
             composite_key< tag_object,
@@ -307,82 +278,6 @@ typedef multi_index_container<
 
 
 /**
- *  The purpose of this object is to track the relationship between accounts based upon how a user votes. Every time
- *  a user votes on a post, the relationship between voter and author increases direct rshares.
- */
-class peer_stats_object : public object< peer_stats_object_type, peer_stats_object >
-{
-   public:
-      template< typename Constructor, typename Allocator >
-      peer_stats_object( Constructor&& c, allocator< Allocator > a )
-      {
-         c( *this );
-      }
-
-      peer_stats_object() {}
-
-      id_type           id;
-
-      account_id_type   voter;
-      account_id_type   peer;
-      int32_t           direct_positive_votes = 0;
-      int32_t           direct_votes = 1;
-
-      int32_t           indirect_positive_votes = 0;
-      int32_t           indirect_votes = 1;
-
-      float             rank = 0;
-
-      void update_rank()
-      {
-          auto direct         = float( direct_positive_votes ) / direct_votes;
-          auto indirect       = float( indirect_positive_votes ) / indirect_votes;
-          auto direct_order   = log( direct_votes );
-          auto indirect_order = log( indirect_votes );
-
-          if( !(direct_positive_votes+indirect_positive_votes) ){
-            direct_order *= -1;
-            indirect_order *= -1;
-          }
-
-          direct *= direct;
-          indirect *= indirect;
-
-          direct *= direct_order * 10;
-          indirect *= indirect_order;
-
-          rank = direct + indirect;
-      }
-};
-
-typedef oid< peer_stats_object > peer_stats_id_type;
-
-struct by_rank;
-struct by_voter_peer;
-typedef multi_index_container<
-   peer_stats_object,
-   indexed_by<
-      ordered_unique< tag< by_id >, member< peer_stats_object, peer_stats_id_type, &peer_stats_object::id > >,
-      ordered_unique< tag< by_rank >,
-         composite_key< peer_stats_object,
-            member< peer_stats_object, account_id_type, &peer_stats_object::voter >,
-            member< peer_stats_object, float, &peer_stats_object::rank >,
-            member< peer_stats_object, account_id_type, &peer_stats_object::peer >
-         >,
-         composite_key_compare< std::less< account_id_type >, std::greater< float >, std::less< account_id_type > >
-      >,
-      ordered_unique< tag< by_voter_peer >,
-         composite_key< peer_stats_object,
-            member< peer_stats_object, account_id_type, &peer_stats_object::voter >,
-            member< peer_stats_object, account_id_type, &peer_stats_object::peer >
-         >,
-         composite_key_compare< std::less< account_id_type >,  std::less< account_id_type > >
-      >
-   >,
-   allocator< peer_stats_object >
-> peer_stats_index;
-
-/**
  *  This purpose of this object is to maintain stats about which tags an author uses, how frequnetly, and
  *  how many total earnings of all posts by author in tag.  It also allows us to answer the question of which
  *  authors earn the most in each tag category.  This helps users to discover the best bloggers to follow for
@@ -407,8 +302,6 @@ typedef oid< author_tag_stats_object > author_tag_stats_id_type;
 
 struct by_author_tag_posts;
 struct by_author_posts_tag;
-struct by_author_tag_rewards;
-struct by_tag_rewards_author;
 using std::less;
 using std::greater;
 
@@ -433,22 +326,6 @@ typedef chainbase::shared_multi_index_container<
             member< author_tag_stats_object, uint32_t, &author_tag_stats_object::total_posts >
          >,
          composite_key_compare< less< account_id_type >, less< tag_name_type >, greater< uint32_t > >
-      >,
-      ordered_unique< tag< by_author_tag_rewards >,
-         composite_key< author_tag_stats_object,
-            member< author_tag_stats_object, account_id_type, &author_tag_stats_object::author >,
-            member< author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag >,
-            member< author_tag_stats_object, asset, &author_tag_stats_object::total_rewards >
-         >,
-         composite_key_compare< less< account_id_type >, less< tag_name_type >, greater< asset > >
-      >,
-      ordered_unique< tag< by_tag_rewards_author >,
-         composite_key< author_tag_stats_object,
-            member< author_tag_stats_object, tag_name_type, &author_tag_stats_object::tag >,
-            member< author_tag_stats_object, asset, &author_tag_stats_object::total_rewards >,
-            member< author_tag_stats_object, account_id_type, &author_tag_stats_object::author >
-         >,
-         composite_key_compare< less< tag_name_type >, greater< asset >, less< account_id_type > >
       >
   >
 > author_tag_stats_index;
@@ -514,10 +391,6 @@ CHAINBASE_SET_INDEX_TYPE( steemit::plugins::tags::tag_object, steemit::plugins::
 FC_REFLECT( steemit::plugins::tags::tag_stats_object,
    (id)(tag)(total_payout)(net_votes)(top_posts)(comments)(total_trending) );
 CHAINBASE_SET_INDEX_TYPE( steemit::plugins::tags::tag_stats_object, steemit::plugins::tags::tag_stats_index )
-
-FC_REFLECT( steemit::plugins::tags::peer_stats_object,
-   (id)(voter)(peer)(direct_positive_votes)(direct_votes)(indirect_positive_votes)(indirect_votes)(rank) );
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::tags::peer_stats_object, steemit::plugins::tags::peer_stats_index )
 
 FC_REFLECT( steemit::plugins::tags::comment_metadata, (tags) );
 
