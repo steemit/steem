@@ -361,7 +361,7 @@ struct operation_visitor
 
    void operator()( const comment_operation& op )const
    {
-      update_tags( _db.get_comment( op.author, op.permlink ), true );
+      update_tags( _db.get_comment( op.author, op.permlink ), op.json_metadata.size() );
    }
 
    void operator()( const transfer_operation& op )const
