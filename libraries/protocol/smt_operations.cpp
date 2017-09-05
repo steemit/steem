@@ -6,6 +6,13 @@
 
 namespace steemit { namespace protocol {
 
+void smt_elevate_account_operation::validate()const
+{
+   validate_account_name( account );
+   FC_ASSERT( fee.amount >= 0, "fee cannot be negative" );
+   FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ) || is_asset_type( fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
+}
+
 bool is_valid_unit_target( const account_name_type& name )
 {
    if( is_valid_account_name(name) )

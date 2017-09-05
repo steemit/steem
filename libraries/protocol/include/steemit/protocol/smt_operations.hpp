@@ -5,6 +5,26 @@
 
 namespace steemit { namespace protocol {
 
+/**
+ * This operation elevates given steem account to SMT control account on conditions that:
+ * a) the account is not SMT control account already and
+ * b) successful fee transfer occurs.
+ */
+struct smt_elevate_account_operation : public base_operation
+{
+   /// Account to be elevated.
+   account_name_type account;
+   /// The amount to be transfered from @account to null account as elevation fee.
+   asset             fee;
+
+   extensions_type   extensions;
+
+   void validate()const;
+
+   void get_required_active_authorities( flat_set<account_name_type>& a )const
+   { a.insert( account ); }
+};
+
 // TODO:  Rename these curves to match naming in manual.md
 // TODO:  Remove duplicate definition in steemit::chain
 enum curve_id
@@ -247,6 +267,13 @@ struct smt_set_runtime_parameters_operation : public base_operation
 };
 
 } }
+
+FC_REFLECT(
+   steemit::protocol::smt_elevate_account_operation,
+   (account)
+   (fee)
+   (extensions)
+)
 
 FC_REFLECT_ENUM(
    steemit::protocol::curve_id,
