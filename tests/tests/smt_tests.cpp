@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
    {
       set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
 
-      ACTORS( (alice) )
+      ACTORS( (alice)(bob) )
 
       fund( "alice", 10 * 1000 * 1000 );
 
@@ -97,11 +97,13 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
       convert( "alice", ASSET( "5000.000 TESTS" ) );
       db->push_transaction( tx, 0 );
 
+      // Check the account cannot elevate itself twice
+      STEEMIT_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+
       // TODO:
       // - Check that 1000 TESTS throws
       // - Check that less than 1000 SBD throws
       // - Check that more than 1000 SBD succeeds
-      // - Check that account cannot elevate itself twice
       //
    }
    FC_LOG_AND_RETHROW()
