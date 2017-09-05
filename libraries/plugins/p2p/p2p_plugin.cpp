@@ -162,12 +162,6 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
             ("block_num", blk_msg.block.block_num())
             ("block_hash", blk_msg.block_id)
             ("head", head_block_num));
-   if (sync_mode && blk_msg.block.block_num() % 10000 == 0)
-   {
-      ilog("Syncing Blockchain --- Got block: #${n} time: ${t}",
-         ("t",blk_msg.block.timestamp)
-         ("n", blk_msg.block.block_num()) );
-   }
 
    try {
       // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
@@ -205,14 +199,14 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
    }
 
    return false;
-} FC_LOG_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW( (blk_msg)(sync_mode) ) }
 
 void p2p_plugin_impl::handle_transaction( const graphene::net::trx_message& trx_msg )
 {
    try
    {
       chain.db().push_transaction( trx_msg.trx );
-   } FC_CAPTURE_LOG_AND_RETHROW( (trx_msg) )
+   } FC_CAPTURE_AND_RETHROW( (trx_msg) )
 }
 
 void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_process )
@@ -270,7 +264,7 @@ std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_block_ids( const 
       remaining_item_count = chain.db().head_block_num() - block_header::num_from_id(result.back());
 
    return result;
-} FC_LOG_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW( (blockchain_synopsis)(remaining_item_count)(limit) ) }
 
 graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& id )
 { try {
@@ -289,7 +283,7 @@ graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& 
    }
 
    return trx_message( chain.db().get_recent_transaction( id.item_hash ) );
-} FC_LOG_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW( (id) ) }
 
 steemit::chain::chain_id_type p2p_plugin_impl::get_chain_id() const
 {
@@ -434,7 +428,7 @@ uint32_t p2p_plugin_impl::get_block_number( const graphene::net::item_hash_t& bl
 {
    try {
    return block_header::num_from_id(block_id);
-} FC_CAPTURE_LOG_AND_RETHROW( (block_id) ) }
+} FC_CAPTURE_AND_RETHROW( (block_id) ) }
 
 fc::time_point_sec p2p_plugin_impl::get_block_time( const graphene::net::item_hash_t& block_id )
 {
@@ -446,7 +440,7 @@ fc::time_point_sec p2p_plugin_impl::get_block_time( const graphene::net::item_ha
          if( opt_block.valid() ) return opt_block->timestamp;
          return fc::time_point_sec::min();
       });
-   } FC_CAPTURE_LOG_AND_RETHROW( (block_id) )
+   } FC_CAPTURE_AND_RETHROW( (block_id) )
 }
 
 graphene::net::item_hash_t p2p_plugin_impl::get_head_block_id() const
@@ -455,7 +449,7 @@ graphene::net::item_hash_t p2p_plugin_impl::get_head_block_id() const
    {
       return chain.db().head_block_id();
    });
-} FC_LOG_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW() }
 
 uint32_t p2p_plugin_impl::estimate_last_known_fork_from_git_revision_timestamp(uint32_t) const
 {
@@ -470,7 +464,7 @@ void p2p_plugin_impl::error_encountered( const string& message, const fc::oexcep
 fc::time_point_sec p2p_plugin_impl::get_blockchain_now()
 { try {
    return fc::time_point::now();
-} FC_LOG_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW() }
 
 bool p2p_plugin_impl::is_included_block(const block_id_type& block_id)
 { try {
@@ -480,7 +474,7 @@ bool p2p_plugin_impl::is_included_block(const block_id_type& block_id)
       block_id_type block_id_in_preferred_chain = chain.db().get_block_id_for_num(block_num);
       return block_id == block_id_in_preferred_chain;
    });
-} FC_LOG_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW() }
 
 ////////////////////////////// End node_delegate Implementation //////////////////////////////
 
@@ -585,7 +579,7 @@ void p2p_plugin::plugin_startup()
       my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, my->chain.db().head_block_id()), std::vector<uint32_t>());
       ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
    }).wait();
-   idump( (my->p2p_thread.is_running()) );
+   ilog( "P2P Plugin started" );
 }
 
 void p2p_plugin::plugin_shutdown() {
