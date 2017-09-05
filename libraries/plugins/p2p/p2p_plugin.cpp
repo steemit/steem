@@ -127,7 +127,6 @@ public:
    std::unique_ptr<graphene::net::node> node;
 
    plugins::chain::chain_plugin& chain;
-   uint32_t allow_future_time = 5;
 
    fc::thread p2p_thread;
 };
@@ -170,18 +169,12 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
          ("n", blk_msg.block.block_num()) );
    }
 
-   time_point_sec now = fc::time_point::now();
-
-   uint64_t max_accept_time = now.sec_since_epoch();
-   max_accept_time += allow_future_time;
-   FC_ASSERT( blk_msg.block.timestamp.sec_since_epoch() <= max_accept_time );
-
    try {
       // TODO: in the case where this block is valid but on a fork that's too old for us to switch to,
       // you can help the network code out by throwing a block_older_than_undo_history exception.
       // when the net code sees that, it will stop trying to push blocks from that chain, but
       // leave that peer connected so that they can get sync blocks from us
-      bool result = chain.db().push_block( blk_msg.block, ( block_producer | force_validate ) ? chain::database::skip_nothing : chain::database::skip_transaction_signatures );
+      bool result = chain.accept_block( blk_msg.block, sync_mode, ( block_producer | force_validate ) ? chain::database::skip_nothing : chain::database::skip_transaction_signatures );
 
       if( !sync_mode )
       {
@@ -495,7 +488,6 @@ bool p2p_plugin_impl::is_included_block(const block_id_type& block_id)
 
 p2p_plugin::p2p_plugin()
 {
-   my.reset( new detail::p2p_plugin_impl( appbase::app().get_plugin< plugins::chain::chain_plugin >() ) );
 }
 
 p2p_plugin::~p2p_plugin() {}
@@ -514,6 +506,8 @@ void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::option
 
 void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
+   my.reset( new detail::p2p_plugin_impl( appbase::app().get_plugin< plugins::chain::chain_plugin >() ) );
+
    if( options.count( "p2p-endpoint" ) )
       my->endpoint = fc::ip::endpoint::from_string( options.at( "p2p-endpoint" ).as< string >() );
 

@@ -61,7 +61,7 @@ class market_history_plugin : public plugin< market_history_plugin >
 
    private:
       friend class detail::market_history_plugin_impl;
-      std::unique_ptr< detail::market_history_plugin_impl > _my;
+      std::unique_ptr< detail::market_history_plugin_impl > my;
 };
 
 struct bucket_object : public object< bucket_object_type, bucket_object >

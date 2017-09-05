@@ -75,6 +75,7 @@ class account_history_api
 {
    public:
       account_history_api();
+      ~account_history_api();
 
       DECLARE_API(
          (get_ops_in_block)
@@ -83,7 +84,7 @@ class account_history_api
       )
 
    private:
-      std::shared_ptr< detail::account_history_api_impl > my;
+      std::unique_ptr< detail::account_history_api_impl > my;
 };
 
 } } } // steemit::plugins::account_history

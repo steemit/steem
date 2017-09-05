@@ -294,10 +294,8 @@ DEFINE_API( follow_api_impl, get_blog_authors )
 
 } // detail
 
-follow_api::follow_api()
+follow_api::follow_api(): my( new detail::follow_api_impl() )
 {
-   my = std::make_shared< detail::follow_api_impl >();
-
    JSON_RPC_REGISTER_API(
       STEEM_FOLLOW_API_PLUGIN_NAME,
       (get_followers)
@@ -312,6 +310,8 @@ follow_api::follow_api()
       (get_blog_authors)
    );
 }
+
+follow_api::~follow_api() {}
 
 DEFINE_API( follow_api, get_followers )
 {

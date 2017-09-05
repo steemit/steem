@@ -40,6 +40,8 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
    }
 
    const account_object& acct = _db.get_account( o.account );
+
+   FC_ASSERT( acct.is_smt == false, "The account has already been elevated." );
    FC_ASSERT( o.fee >= effective_elevation_fee, "Fee of ${of} is too small, must be at least ${ef}", ("of", o.fee)("ef", effective_elevation_fee) );
    FC_ASSERT( _db.get_balance( acct, o.fee.symbol ) >= o.fee, "Account does not have sufficient funds for specified fee of ${of}", ("of", o.fee) );
 
