@@ -46,6 +46,11 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
    {
       a.is_smt = true;
    });
+
+   _db.create< smt_token_object >( [&]( smt_token_object& token )
+   {
+      token.control_account = o.account;
+   });
 }
 
 void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
