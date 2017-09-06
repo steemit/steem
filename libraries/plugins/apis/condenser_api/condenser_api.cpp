@@ -63,7 +63,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_state )
    {
-      CHECK_ARG_SIZE( 1 )
       string path = args[0].as< string >();
 
       state _state;
@@ -596,7 +595,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_reward_fund )
    {
-      CHECK_ARG_SIZE( 1 )
       string name = args[0].as< string >();
 
       auto fund = _db.find< reward_fund_object, by_name >( name );
@@ -607,7 +605,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_accounts )
    {
-      CHECK_ARG_SIZE( 1 )
       vector< account_name_type > names = args[0].as< vector< account_name_type > >();
 
       const auto& idx  = _db.get_index< account_index >().indices().get< by_name >();
@@ -640,7 +637,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, lookup_account_names )
    {
-      CHECK_ARG_SIZE( 1 )
       vector< account_name_type > account_names = args[0].as< vector< account_name_type > >();
 
       vector< optional< database_api::api_account_object > > result;
@@ -665,7 +661,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, lookup_accounts )
    {
-      CHECK_ARG_SIZE( 2 )
       account_name_type lower_bound_name = args[0].as< account_name_type >();
       uint32_t limit = args[1].as< uint32_t >();
 
@@ -708,7 +703,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_witnesses )
    {
-      CHECK_ARG_SIZE( 1 )
       vector< witness_id_type > witness_ids = args[0].as< vector< witness_id_type > >();
 
       vector< optional< database_api::api_witness_object > > result;
@@ -735,7 +729,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_open_orders )
    {
-      CHECK_ARG_SIZE( 1 )
       account_name_type owner = args[0].as< account_name_type >();
 
       vector< extended_limit_order > result;
@@ -758,7 +751,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_account_votes )
    {
-      CHECK_ARG_SIZE( 1 )
       account_name_type voter = args[0].as< account_name_type >();
 
       vector< account_vote > result;
@@ -787,8 +779,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, lookup_witness_accounts )
    {
-      CHECK_ARG_SIZE( 2 )
-
       auto limit = args[1].as< uint32_t >();
 
       lookup_witness_accounts_return result;
@@ -979,6 +969,7 @@ DEFINE_API( condenser_api, get_trending_tags )
 
 DEFINE_API( condenser_api, get_state )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_state( args );
@@ -1007,7 +998,7 @@ DEFINE_API( condenser_api, get_block )
 
 DEFINE_API( condenser_api, get_ops_in_block )
 {
-   CHECK_ARG_SIZE( 2 )
+   FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
    FC_ASSERT( my->_account_history_api, "account_history_api_plugin not enabled." );
 
    return my->_account_history_api->get_ops_in_block( { args[0].as< uint32_t >(), args[1].as< bool >() } ).ops;
@@ -1066,6 +1057,7 @@ DEFINE_API( condenser_api, get_next_scheduled_hardfork )
 
 DEFINE_API( condenser_api, get_reward_fund )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_reward_fund( args );
@@ -1082,6 +1074,7 @@ DEFINE_API( condenser_api, get_key_references )
 
 DEFINE_API( condenser_api, get_accounts )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_accounts( args );
@@ -1095,6 +1088,7 @@ DEFINE_API( condenser_api, get_account_references )
 
 DEFINE_API( condenser_api, lookup_account_names )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->lookup_account_names( args );
@@ -1103,6 +1097,7 @@ DEFINE_API( condenser_api, lookup_account_names )
 
 DEFINE_API( condenser_api, lookup_accounts )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->lookup_accounts( args );
@@ -1200,6 +1195,7 @@ DEFINE_API( condenser_api, get_savings_withdraw_from )
 
 DEFINE_API( condenser_api, get_savings_withdraw_to )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_savings_withdraw_to( args );
@@ -1232,6 +1228,7 @@ DEFINE_API( condenser_api, get_expiring_vesting_delegations )
 
 DEFINE_API( condenser_api, get_witnesses )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_witnesses( args );
@@ -1281,6 +1278,7 @@ DEFINE_API( condenser_api, get_witnesses_by_vote )
 
 DEFINE_API( condenser_api, lookup_witness_accounts )
 {
+   CHECK_ARG_SIZE( 2 )
    return my->_db.with_read_lock( [&]()
    {
       return my->lookup_witness_accounts( args );
@@ -1298,6 +1296,7 @@ DEFINE_API( condenser_api, get_witness_count )
 
 DEFINE_API( condenser_api, get_open_orders )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_open_orders( args );
@@ -1355,6 +1354,7 @@ DEFINE_API( condenser_api, get_active_votes )
 
 DEFINE_API( condenser_api, get_account_votes )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_account_votes( args );
