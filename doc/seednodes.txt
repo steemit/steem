@@ -1,12 +1,10 @@
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
-steemwitness.matthewniemerg.com:2001 # complexring
-seed.jesta.us:2001             # jesta
-seed.liondani.com:2016         # liondani
 anyx.co:2001                   # anyx
 seed.xeldal.com:12150          # xeldal
 seed.steemnodes.com:2001       # wackou
+seed.liondani.com:2016         # liondani
 gtg.steem.house:2001           # gtg
 192.99.3.29:2001               # joseph
 5.9.18.213:2001                # pfunk
@@ -28,4 +26,8 @@ seed.bitcoiner.me:2001         # bitcoiner
 seed.bhuz.info:2001            # bhuz
 78.46.95.157:2001              # pcste
 seed.steemviz.com:2001         # ausbitbank
-45.76.13.167:2001              # chitty 
+steem-seed.lukestokes.info:2001 # lukestokes
+seed.blackrift.net:2001         # drakos
+seed.followbtcnews.com:2001     # followbtcnews
+node.mahdiyari.info:2001        # mahdi.yari
+seed.jerrybanfield.com:2001     # jerrybanfield
