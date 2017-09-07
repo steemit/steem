@@ -176,6 +176,16 @@ namespace steemit { namespace protocol {
 
    };
 
+   struct return_htlc_balance_operation : public virtual_operation
+   {
+      return_htlc_balance_operation(){}
+      return_htlc_balance_operation( const string& a, const asset& b ) : account( a ), balance( b ) {}
+
+      account_name_type account;
+      asset             balance;
+
+   };
+
 } } //steemit::protocol
 
 FC_REFLECT( steemit::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
@@ -193,3 +203,4 @@ FC_REFLECT( steemit::protocol::comment_payout_update_operation, (author)(permlin
 FC_REFLECT( steemit::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
 FC_REFLECT( steemit::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
 FC_REFLECT( steemit::protocol::producer_reward_operation, (producer)(vesting_shares) )
+FC_REFLECT( steemit::protocol::return_htlc_balance_operation, (account)(balance) )

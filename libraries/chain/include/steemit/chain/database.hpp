@@ -443,6 +443,7 @@ namespace steemit { namespace chain {
          void clear_expired_transactions();
          void clear_expired_orders();
          void clear_expired_delegations();
+         void clear_expired_htl_contracts();
          void process_header_extensions( const signed_block& next_block );
 
          void init_hardforks();

@@ -2218,6 +2218,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
+   _my->_evaluator_registry.register_evaluator< htlc_evaluator                           >();
+   _my->_evaluator_registry.register_evaluator< claim_htlc_evaluator                     >();
 
    _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
    _my->_evaluator_registry.register_evaluator< smt_cap_reveal_evaluator                 >();
@@ -2273,6 +2275,7 @@ void database::initialize_indexes()
    add_core_index< reward_fund_index                       >(*this);
    add_core_index< vesting_delegation_index                >(*this);
    add_core_index< vesting_delegation_expiration_index     >(*this);
+   add_core_index< htl_contract_index                      >(*this);
 
    _plugin_index_signal();
 }
@@ -2668,6 +2671,7 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_transactions();
    clear_expired_orders();
    clear_expired_delegations();
+   clear_expired_htl_contracts();
    update_witness_schedule(*this);
 
    update_median_feed();
@@ -3328,6 +3332,20 @@ void database::clear_expired_delegations()
 
       remove( *itr );
       itr = delegations_by_exp.begin();
+   }
+}
+
+void database::clear_expired_htl_contracts()
+{
+   auto now = head_block_time();
+   const auto& contracts_by_exp = get_index< htl_contract_index, by_expiration >();
+   auto itr = contracts_by_exp.begin();
+   while( itr != contracts_by_exp.end() && itr->expiration < now )
+   {
+      push_virtual_operation( return_htlc_balance_operation( itr->from_account, itr->htlc_balance ) );
+      adjust_balance( get_account(itr->from_account), itr->htlc_balance );
+      remove( *itr );
+      itr = contracts_by_exp.begin();
    }
 }
 

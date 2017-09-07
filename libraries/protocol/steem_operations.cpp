@@ -544,4 +544,23 @@ namespace steemit { namespace protocol {
       FC_ASSERT( vesting_shares >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
    }
 
+   void htlc_operation::validate()const
+   {
+      validate_account_name( from );
+      validate_account_name( to );
+      FC_ASSERT( from != to, "You cannot enter a contract with yourself" );
+      FC_ASSERT( !is_asset_type( htlc_balance, VESTS_SYMBOL ), "Balance cannot be in VESTS" );
+      FC_ASSERT( htlc_balance.amount >= 0, "Balance cannot be a negative amount (aka: stealing)" );
+      FC_ASSERT( commitment.size() == 40, "Commitment is not 40 bytes" );
+      FC_ASSERT( fc::is_utf8( commitment ), "Commitment is not UTF8" );
+   }
+
+   void claim_htlc_operation::validate()const
+   {
+      validate_account_name( from );
+      validate_account_name( to );
+      FC_ASSERT( from != to, "You cannot enter a contract with yourself" );
+      FC_ASSERT( fc::is_utf8( preimage ), "Preimage is not UTF8" );
+   }
+
 } } // steemit::protocol

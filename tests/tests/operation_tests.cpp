@@ -6806,5 +6806,168 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( htlc_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: htlc_apply" );
+      ACTORS( (alice) (bob)  )
+      generate_block();
+      fund( "alice", 10000 );
+
+      htlc_operation htlc;
+      signed_transaction tx;
+
+      BOOST_TEST_MESSAGE( "--- Publish initial contract" );
+
+      htlc.from = "alice";
+      htlc.to = "bob";
+      htlc.htlc_balance = ASSET( "10.000 TESTS" );
+      htlc.commitment = std::string(fc::ripemd160::hash(std::string(fc::sha256::hash(std::string("foo")))));
+      htlc.expiration = db->head_block_time() + 30;
+
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      generate_block();
+
+      BOOST_TEST_MESSAGE( "--- Decrease balance on contract" );
+      tx.clear();
+
+      htlc.htlc_balance = ASSET( "1.000 TESTS" );
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      auto& acct = db->get_account(htlc.from);
+      BOOST_REQUIRE(acct.balance == ASSET( "9.000 TESTS" ));
+
+      BOOST_TEST_MESSAGE( "--- Increase balance on contract" );
+      tx.clear();
+
+      htlc.htlc_balance = ASSET( "10.000 TESTS" );
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      BOOST_REQUIRE(acct.balance == ASSET( "0.000 TESTS" ));
+
+      BOOST_TEST_MESSAGE( "--- Increase contract expiration" );
+      tx.clear();
+
+      htlc.expiration = db->head_block_time() + 60;
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      auto htl_contract = db->find< htl_contract_object, by_from_to_commit >( boost::make_tuple( htlc.from, htlc.to, htlc.commitment ) );
+      BOOST_REQUIRE( htl_contract->expiration == db->head_block_time() + 60 );
+
+      BOOST_TEST_MESSAGE( "--- Decrease contract expiration" );
+      tx.clear();
+
+      htlc.expiration = db->head_block_time() + 3;
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      BOOST_REQUIRE( htl_contract->expiration == db->head_block_time() + 3 );
+
+      BOOST_TEST_MESSAGE( "--- Test failure if expiration is in the past" );
+      tx.clear();
+
+      htlc.expiration = db->head_block_time() - 60;
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+
+      BOOST_REQUIRE_THROW(db->push_transaction( tx ), fc::assert_exception);
+
+      BOOST_TEST_MESSAGE( "--- Delete contract" );
+      tx.clear();
+
+      htlc.expiration = fc::time_point_sec();
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      htl_contract = db->find< htl_contract_object, by_from_to_commit >( boost::make_tuple( htlc.from, htlc.to, htlc.commitment ) );
+      BOOST_REQUIRE( htl_contract == nullptr );
+      BOOST_REQUIRE( acct.balance == ASSET( "10.000 TESTS" ) );
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( claim_htlc_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: claim_htlc_apply" );
+      ACTORS( (alice) (bob)  )
+      generate_block();
+      fund( "alice", 10000 );
+
+      htlc_operation htlc;
+      claim_htlc_operation claim_htlc;
+      signed_transaction tx;
+
+      BOOST_TEST_MESSAGE( "--- Test failure with incorrect preimage" );
+
+      htlc.from = "alice";
+      htlc.to = "bob";
+      htlc.htlc_balance = ASSET( "10.000 TESTS" );
+      htlc.commitment = std::string(fc::ripemd160::hash(std::string(fc::sha256::hash(std::string("foo")))));
+      htlc.expiration = db->head_block_time() + 6;
+
+      tx.operations.push_back( htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      generate_block();
+
+      claim_htlc.from = "alice";
+      claim_htlc.to = "bob";
+      claim_htlc.preimage = "bar";
+
+      tx.clear();
+      tx.operations.push_back( claim_htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      BOOST_REQUIRE_THROW( db->push_transaction( tx ), fc::assert_exception );
+
+      claim_htlc.preimage = "foo";
+
+      tx.clear();
+      tx.operations.push_back( claim_htlc );
+      tx.set_expiration( db->head_block_time() + STEEMIT_MIN_TRANSACTION_EXPIRATION_LIMIT );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx );
+
+      generate_block();
+
+      auto& acct = db->get_account(claim_htlc.to);
+      BOOST_REQUIRE( acct.balance == ASSET( "10.000 TESTS" ) );
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif

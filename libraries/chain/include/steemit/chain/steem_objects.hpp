@@ -280,9 +280,29 @@ namespace steemit { namespace chain {
          curve_id                curation_reward_curve;
    };
 
+   class htl_contract_object : public object< htl_contract_object_type, htl_contract_object >
+   {
+      public:
+         template< typename Constructor, typename Allocator >
+         htl_contract_object( Constructor&& c, allocator< Allocator > a )
+         {
+            c( *this );
+         }
+
+         htl_contract_object() {}
+
+         id_type           id;
+         account_name_type from_account;
+         account_name_type to_account;
+         asset             htlc_balance = asset( 0, STEEM_SYMBOL );
+         string            commitment;
+         time_point_sec    expiration;
+   };
+
    struct by_price;
    struct by_expiration;
    struct by_account;
+
    typedef multi_index_container<
       limit_order_object,
       indexed_by<
@@ -462,6 +482,24 @@ namespace steemit { namespace chain {
       allocator< reward_fund_object >
    > reward_fund_index;
 
+   struct by_from_to_commit;
+   typedef multi_index_container<
+      htl_contract_object,
+      indexed_by<
+         ordered_unique< tag< by_id >, member< htl_contract_object, htl_contract_id_type, &htl_contract_object::id > >,
+         ordered_non_unique< tag< by_expiration >, member< htl_contract_object, time_point_sec, &htl_contract_object::expiration > >,
+         ordered_unique< tag< by_from_to_commit >,
+            composite_key< htl_contract_object,
+               member< htl_contract_object, account_name_type, &htl_contract_object::from_account >,
+               member< htl_contract_object, account_name_type, &htl_contract_object::to_account >,
+               member< htl_contract_object, string, &htl_contract_object::commitment >
+            >,
+            composite_key_compare< std::less< account_name_type >, std::less< account_name_type >, std::less< string > >
+         >
+      >,
+      allocator< htl_contract_object >
+   > htl_contract_index;
+
 } } // steemit::chain
 
 #include <steemit/chain/comment_object.hpp>
@@ -518,3 +556,13 @@ FC_REFLECT( steemit::chain::reward_fund_object,
             (curation_reward_curve)
          )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::reward_fund_object, steemit::chain::reward_fund_index )
+
+FC_REFLECT( steemit::chain::htl_contract_object,
+            (id)
+            (from_account)
+            (to_account)
+            (htlc_balance)
+            (commitment)
+            (expiration)
+         )
+CHAINBASE_SET_INDEX_TYPE( steemit::chain::htl_contract_object, steemit::chain::htl_contract_index )

@@ -204,6 +204,18 @@ struct get_impacted_account_visitor
       _impacted.insert( op.delegatee );
    }
 
+   void operator()( const htlc_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
+   void operator()( const claim_htlc_operation& op )
+   {
+      _impacted.insert( op.from );
+      _impacted.insert( op.to );
+   }
+
 
    // vops
 
@@ -269,6 +281,11 @@ struct get_impacted_account_visitor
    void operator()( const producer_reward_operation& op )
    {
       _impacted.insert( op.producer );
+   }
+
+   void operator()( const return_htlc_balance_operation& op )
+   {
+      _impacted.insert( op.account );
    }
 
    //void operator()( const operation& op ){}

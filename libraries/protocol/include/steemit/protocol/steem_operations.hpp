@@ -928,6 +928,32 @@ namespace steemit { namespace protocol {
       void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( delegator ); }
       void validate() const;
    };
+
+   struct htlc_operation : public base_operation
+   {
+      account_name_type from;
+      account_name_type to;
+      asset             htlc_balance;
+      string            commitment;
+      time_point_sec    expiration;
+
+      /**
+       * Requires both parties sign the contract
+       */
+      void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( from ); a.insert( to ); }
+      void validate() const;
+   };
+
+   struct claim_htlc_operation : public base_operation
+   {
+      account_name_type from;
+      account_name_type to;
+      string            preimage;
+
+      void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( to ); }
+      void validate() const;
+   };
+
 } } // steemit::protocol
 
 
@@ -1017,3 +1043,5 @@ FC_REFLECT( steemit::protocol::change_recovery_account_operation, (account_to_re
 FC_REFLECT( steemit::protocol::decline_voting_rights_operation, (account)(decline) );
 FC_REFLECT( steemit::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
 FC_REFLECT( steemit::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );
+FC_REFLECT( steemit::protocol::htlc_operation, (from)(to)(htlc_balance)(commitment)(expiration) );
+FC_REFLECT( steemit::protocol::claim_htlc_operation, (from)(to)(preimage) );

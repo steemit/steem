@@ -2259,4 +2259,96 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    }
 }
 
+void htlc_evaluator::do_apply( const htlc_operation& op )
+{
+
+   const auto& from_account = _db.get_account( op.from );
+   auto htl_contract = _db.find< htl_contract_object, by_from_to_commit >( boost::make_tuple( op.from, op.to, op.commitment ) );
+
+   // If contract doesn't exist, create it
+   if( htl_contract == nullptr )
+   {
+      FC_ASSERT( _db.get_balance( from_account, op.htlc_balance.symbol ) >= op.htlc_balance, "Account does not have sufficient funds for contract." );
+      FC_ASSERT( _db.head_block_time() < op.expiration, "Contract must expire in the future" );
+      _db.adjust_balance( from_account, -op.htlc_balance );
+
+      _db.create< htl_contract_object >( [&]( htl_contract_object& obj )
+      {
+         obj.from_account = op.from;
+         obj.to_account = op.to;
+         obj.htlc_balance = op.htlc_balance;
+         obj.commitment = op.commitment;
+         obj.expiration = op.expiration;
+      });
+   }
+   // Else if the contract balance is increasing
+   else if( op.htlc_balance > htl_contract->htlc_balance )
+   {
+      const auto delta = op.htlc_balance - htl_contract->htlc_balance;
+
+      FC_ASSERT((_db.get_balance( from_account, op.htlc_balance.symbol ) - delta).amount >= 0);
+
+      _db.adjust_balance( from_account, -delta.amount );
+      _db.modify( *htl_contract, [&]( htl_contract_object& obj )
+      {
+         obj.htlc_balance += delta;
+      });
+
+      if(op.htlc_balance.amount == 0)
+      {
+         _db.adjust_balance( from_account, htl_contract->htlc_balance);
+         _db.remove( *htl_contract );
+      }
+   }
+   // Else if the contract balance is decreasing
+   else if( op.htlc_balance < htl_contract->htlc_balance )
+   {
+      const auto delta = htl_contract->htlc_balance - op.htlc_balance;
+
+      _db.adjust_balance( from_account, delta.amount );
+      _db.modify( *htl_contract, [&]( htl_contract_object& obj )
+      {
+         obj.htlc_balance -= delta;
+      });
+
+      if(op.htlc_balance.amount == 0)
+      {
+         _db.remove( *htl_contract );
+      }
+   }
+   // Either deleting the contract or changing the date.
+   else if( op.expiration != htl_contract->expiration )
+   {
+      if(op.expiration == fc::time_point_sec())
+      {
+         _db.adjust_balance( from_account, htl_contract->htlc_balance);
+         _db.remove( *htl_contract );
+      }
+      else{
+         FC_ASSERT( _db.head_block_time() < op.expiration, "Contract must expire in the future" );
+         _db.modify( *htl_contract, [&]( htl_contract_object& obj )
+         {
+            obj.expiration = op.expiration;
+         });
+      }
+   }
+}
+
+void claim_htlc_evaluator::do_apply( const claim_htlc_operation& op )
+{
+   auto computed_hash = std::string(fc::ripemd160::hash(std::string(fc::sha256::hash(op.preimage))));
+   auto htl_contract = _db.find< htl_contract_object, by_from_to_commit >( boost::make_tuple( op.from, op.to, computed_hash ) );
+   if( htl_contract != nullptr )
+   {
+      const auto& to_account = _db.get_account(op.to);
+      _db.adjust_balance(to_account, htl_contract->htlc_balance);
+      _db.remove( *htl_contract );
+   }
+   else
+   {
+      FC_ASSERT( false, "No contract found with that commitment");
+   }
+
+}
+
 } } // steemit::chain
