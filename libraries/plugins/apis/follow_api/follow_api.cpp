@@ -33,7 +33,7 @@ class follow_api_impl
          (get_blog_authors)
       )
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 DEFINE_API( follow_api_impl, get_followers )
@@ -118,7 +118,7 @@ DEFINE_API( follow_api_impl, get_feed_entries )
       const auto& comment = _db.get( itr->comment );
       feed_entry entry;
       entry.author = comment.author;
-      entry.permlink = steemit::chain::to_string( comment.permlink );
+      entry.permlink = chain::to_string( comment.permlink );
       entry.entry_id = itr->account_feed_id;
 
       if( itr->first_reblogged_by != account_name_type() )
@@ -191,7 +191,7 @@ DEFINE_API( follow_api_impl, get_blog_entries )
       const auto& comment = _db.get( itr->comment );
       blog_entry entry;
       entry.author = comment.author;
-      entry.permlink = steemit::chain::to_string( comment.permlink );
+      entry.permlink = chain::to_string( comment.permlink );
       entry.blog = args.account;
       entry.reblog_on = itr->reblogged_on;
       entry.entry_id = itr->blog_feed_id;
@@ -235,7 +235,7 @@ DEFINE_API( follow_api_impl, get_account_reputations )
 {
    FC_ASSERT( args.limit <= 1000, "Cannot retrieve more than 1000 account reputations at a time." );
 
-   const auto& acc_idx = _db.get_index< steemit::chain::account_index >().indices().get< steemit::chain::by_name >();
+   const auto& acc_idx = _db.get_index< chain::account_index >().indices().get< chain::by_name >();
    const auto& rep_idx = _db.get_index< follow::reputation_index >().indices().get< follow::by_account >();
 
    auto acc_itr = acc_idx.lower_bound( args.account_lower_bound );

@@ -79,7 +79,7 @@ class database_api_impl
          }
       }
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -288,7 +288,7 @@ DEFINE_API( database_api_impl, list_witnesses )
    {
       case( by_name ):
       {
-         iterate_results< steemit::chain::witness_index, steemit::chain::by_name >(
+         iterate_results< chain::witness_index, chain::by_name >(
             args.start.as< protocol::account_name_type >(),
             result.witnesses,
             args.limit,
@@ -298,7 +298,7 @@ DEFINE_API( database_api_impl, list_witnesses )
       case( by_vote_name ):
       {
          auto key = args.start.as< std::pair< share_type, account_name_type > >();
-         iterate_results< steemit::chain::witness_index, steemit::chain::by_vote_name >(
+         iterate_results< chain::witness_index, chain::by_vote_name >(
             boost::make_tuple( key.first, key.second ),
             result.witnesses,
             args.limit,
@@ -308,8 +308,8 @@ DEFINE_API( database_api_impl, list_witnesses )
       case( by_schedule_time ):
       {
          auto key = args.start.as< std::pair< fc::uint128, account_name_type > >();
-         auto wit_id = _db.get< steemit::chain::witness_object, steemit::chain::by_name >( key.second ).id;
-         iterate_results< steemit::chain::witness_index, steemit::chain::by_schedule_time >(
+         auto wit_id = _db.get< chain::witness_object, chain::by_name >( key.second ).id;
+         iterate_results< chain::witness_index, chain::by_schedule_time >(
             boost::make_tuple( key.first, wit_id ),
             result.witnesses,
             args.limit,
@@ -340,7 +340,7 @@ DEFINE_API( database_api_impl, find_witnesses )
 
    for( auto& o : args.owners )
    {
-      auto witness = _db.find< steemit::chain::witness_object, steemit::chain::by_name >( o );
+      auto witness = _db.find< chain::witness_object, chain::by_name >( o );
 
       if( witness != nullptr )
          result.witnesses.push_back( api_witness_object( *witness ) );
@@ -370,7 +370,7 @@ DEFINE_API( database_api_impl, list_witness_votes )
       case( by_account_witness ):
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
-         iterate_results< steemit::chain::witness_vote_index, steemit::chain::by_account_witness >(
+         iterate_results< chain::witness_vote_index, chain::by_account_witness >(
             boost::make_tuple( key.first, key.second ),
             result.votes,
             args.limit,
@@ -380,7 +380,7 @@ DEFINE_API( database_api_impl, list_witness_votes )
       case( by_witness_account ):
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
-         iterate_results< steemit::chain::witness_vote_index, steemit::chain::by_witness_account >(
+         iterate_results< chain::witness_vote_index, chain::by_witness_account >(
             boost::make_tuple( key.first, key.second ),
             result.votes,
             args.limit,
@@ -442,7 +442,7 @@ DEFINE_API( database_api_impl, list_accounts )
    {
       case( by_name ):
       {
-         iterate_results< steemit::chain::account_index, steemit::chain::by_name >(
+         iterate_results< chain::account_index, chain::by_name >(
             args.start.as< protocol::account_name_type >(),
             result.accounts,
             args.limit,
@@ -452,7 +452,7 @@ DEFINE_API( database_api_impl, list_accounts )
       case( by_proxy ):
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
-         iterate_results< steemit::chain::account_index, steemit::chain::by_proxy >(
+         iterate_results< chain::account_index, chain::by_proxy >(
             boost::make_tuple( key.first, key.second ),
             result.accounts,
             args.limit,
@@ -462,7 +462,7 @@ DEFINE_API( database_api_impl, list_accounts )
       case( by_next_vesting_withdrawal ):
       {
          auto key = args.start.as< std::pair< fc::time_point_sec, account_name_type > >();
-         iterate_results< steemit::chain::account_index, steemit::chain::by_next_vesting_withdrawal >(
+         iterate_results< chain::account_index, chain::by_next_vesting_withdrawal >(
             boost::make_tuple( key.first, key.second ),
             result.accounts,
             args.limit,
@@ -492,7 +492,7 @@ DEFINE_API( database_api_impl, find_accounts )
 
    for( auto& a : args.accounts )
    {
-      auto acct = _db.find< steemit::chain::account_object, steemit::chain::by_name >( a );
+      auto acct = _db.find< chain::account_object, chain::by_name >( a );
       if( acct != nullptr )
          result.accounts.push_back( api_account_object( *acct, _db ) );
    }
@@ -519,7 +519,7 @@ DEFINE_API( database_api_impl, list_owner_histories )
    result.owner_auths.reserve( args.limit );
 
    auto key = args.start.as< std::pair< account_name_type, fc::time_point_sec > >();
-   iterate_results< steemit::chain::owner_authority_history_index, steemit::chain::by_account >(
+   iterate_results< chain::owner_authority_history_index, chain::by_account >(
       boost::make_tuple( key.first, key.second ),
       result.owner_auths,
       args.limit,
@@ -541,7 +541,7 @@ DEFINE_API( database_api_impl, find_owner_histories )
 {
    find_owner_histories_return result;
 
-   const auto& hist_idx = _db.get_index< steemit::chain::owner_authority_history_index, steemit::chain::by_account >();
+   const auto& hist_idx = _db.get_index< chain::owner_authority_history_index, chain::by_account >();
    auto itr = hist_idx.lower_bound( args.owner );
 
    while( itr != hist_idx.end() && itr->account == args.owner && result.owner_auths.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -575,7 +575,7 @@ DEFINE_API( database_api_impl, list_account_recovery_requests )
    {
       case( by_account ):
       {
-         iterate_results< steemit::chain::account_recovery_request_index, steemit::chain::by_account >(
+         iterate_results< chain::account_recovery_request_index, chain::by_account >(
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
@@ -585,7 +585,7 @@ DEFINE_API( database_api_impl, list_account_recovery_requests )
       case( by_expiration ):
       {
          auto key = args.start.as< std::pair< fc::time_point_sec, account_name_type > >();
-         iterate_results< steemit::chain::account_recovery_request_index, steemit::chain::by_expiration >(
+         iterate_results< chain::account_recovery_request_index, chain::by_expiration >(
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -615,7 +615,7 @@ DEFINE_API( database_api_impl, find_account_recovery_requests )
 
    for( auto& a : args.accounts )
    {
-      auto request = _db.find< steemit::chain::account_recovery_request_object, steemit::chain::by_account >( a );
+      auto request = _db.find< chain::account_recovery_request_object, chain::by_account >( a );
 
       if( request != nullptr )
          result.requests.push_back( api_account_recovery_request_object( *request ) );
@@ -646,7 +646,7 @@ DEFINE_API( database_api_impl, list_change_recovery_account_requests )
    {
       case( by_account ):
       {
-         iterate_results< steemit::chain::change_recovery_account_request_index, steemit::chain::by_account >(
+         iterate_results< chain::change_recovery_account_request_index, chain::by_account >(
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
@@ -656,7 +656,7 @@ DEFINE_API( database_api_impl, list_change_recovery_account_requests )
       case( by_effective_date ):
       {
          auto key = args.start.as< std::pair< fc::time_point_sec, account_name_type > >();
-         iterate_results< steemit::chain::change_recovery_account_request_index, steemit::chain::by_effective_date >(
+         iterate_results< chain::change_recovery_account_request_index, chain::by_effective_date >(
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -686,7 +686,7 @@ DEFINE_API( database_api_impl, find_change_recovery_account_requests )
 
    for( auto& a : args.accounts )
    {
-      auto request = _db.find< steemit::chain::change_recovery_account_request_object, steemit::chain::by_account >( a );
+      auto request = _db.find< chain::change_recovery_account_request_object, chain::by_account >( a );
 
       if( request != nullptr )
          result.requests.push_back( *request );
@@ -718,7 +718,7 @@ DEFINE_API( database_api_impl, list_escrows )
       case( by_from_id ):
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
-         iterate_results< steemit::chain::escrow_index, steemit::chain::by_from_id >(
+         iterate_results< chain::escrow_index, chain::by_from_id >(
             boost::make_tuple( key.first, key.second ),
             result.escrows,
             args.limit,
@@ -729,7 +729,7 @@ DEFINE_API( database_api_impl, list_escrows )
       {
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_ratification_deadline start requires 3 values. (bool, time_point_sec, escrow_id_type)" );
-         iterate_results< steemit::chain::escrow_index, steemit::chain::by_ratification_deadline >(
+         iterate_results< chain::escrow_index, chain::by_ratification_deadline >(
             boost::make_tuple( key[0].as< bool >(), key[1].as< fc::time_point_sec >(), key[2].as< escrow_id_type >() ),
             result.escrows,
             args.limit,
@@ -756,7 +756,7 @@ DEFINE_API( database_api_impl, find_escrows )
 {
    find_escrows_return result;
 
-   const auto& escrow_idx = _db.get_index< steemit::chain::escrow_index, steemit::chain::by_from_id >();
+   const auto& escrow_idx = _db.get_index< chain::escrow_index, chain::by_from_id >();
    auto itr = escrow_idx.lower_bound( args.from );
 
    while( itr != escrow_idx.end() && itr->from == args.from && result.escrows.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -791,7 +791,7 @@ DEFINE_API( database_api_impl, list_withdraw_vesting_routes )
       case( by_withdraw_route ):
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
-         iterate_results< steemit::chain::withdraw_vesting_route_index, steemit::chain::by_withdraw_route >(
+         iterate_results< chain::withdraw_vesting_route_index, chain::by_withdraw_route >(
             boost::make_tuple( key.first, key.second ),
             result.routes,
             args.limit,
@@ -801,7 +801,7 @@ DEFINE_API( database_api_impl, list_withdraw_vesting_routes )
       case( by_destination ):
       {
          auto key = args.start.as< std::pair< account_name_type, withdraw_vesting_route_id_type > >();
-         iterate_results< steemit::chain::withdraw_vesting_route_index, steemit::chain::by_destination >(
+         iterate_results< chain::withdraw_vesting_route_index, chain::by_destination >(
             boost::make_tuple( key.first, key.second ),
             result.routes,
             args.limit,
@@ -832,7 +832,7 @@ DEFINE_API( database_api_impl, find_withdraw_vesting_routes )
    {
       case( by_withdraw_route ):
       {
-         const auto& route_idx = _db.get_index< steemit::chain::withdraw_vesting_route_index, steemit::chain::by_withdraw_route >();
+         const auto& route_idx = _db.get_index< chain::withdraw_vesting_route_index, chain::by_withdraw_route >();
          auto itr = route_idx.lower_bound( args.account );
 
          while( itr != route_idx.end() && itr->from_account == args.account && result.routes.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -845,7 +845,7 @@ DEFINE_API( database_api_impl, find_withdraw_vesting_routes )
       }
       case( by_destination ):
       {
-         const auto& route_idx = _db.get_index< steemit::chain::withdraw_vesting_route_index, steemit::chain::by_destination >();
+         const auto& route_idx = _db.get_index< chain::withdraw_vesting_route_index, chain::by_destination >();
          auto itr = route_idx.lower_bound( args.account );
 
          while( itr != route_idx.end() && itr->to_account == args.account && result.routes.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -886,7 +886,7 @@ DEFINE_API( database_api_impl, list_savings_withdrawals )
       case( by_from_id ):
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
-         iterate_results< steemit::chain::savings_withdraw_index, steemit::chain::by_from_rid >(
+         iterate_results< chain::savings_withdraw_index, chain::by_from_rid >(
             boost::make_tuple( key.first, key.second ),
             result.withdrawals,
             args.limit,
@@ -897,7 +897,7 @@ DEFINE_API( database_api_impl, list_savings_withdrawals )
       {
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_complete_from_id start requires 3 values. (time_point_sec, account_name_type, uint32_t)" );
-         iterate_results< steemit::chain::savings_withdraw_index, steemit::chain::by_complete_from_rid >(
+         iterate_results< chain::savings_withdraw_index, chain::by_complete_from_rid >(
             boost::make_tuple( key[0].as< fc::time_point_sec >(), key[1].as< account_name_type >(), key[2].as< uint32_t >() ),
             result.withdrawals,
             args.limit,
@@ -908,7 +908,7 @@ DEFINE_API( database_api_impl, list_savings_withdrawals )
       {
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_to_complete start requires 3 values. (account_name_type, time_point_sec, savings_withdraw_id_type" );
-         iterate_results< steemit::chain::savings_withdraw_index, steemit::chain::by_to_complete >(
+         iterate_results< chain::savings_withdraw_index, chain::by_to_complete >(
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), key[2].as< savings_withdraw_id_type >() ),
             result.withdrawals,
             args.limit,
@@ -934,7 +934,7 @@ DEFINE_API( database_api, find_savings_withdrawals )
 DEFINE_API( database_api_impl, find_savings_withdrawals )
 {
    find_savings_withdrawals_return result;
-   const auto& withdraw_idx = _db.get_index< steemit::chain::savings_withdraw_index, steemit::chain::by_from_rid >();
+   const auto& withdraw_idx = _db.get_index< chain::savings_withdraw_index, chain::by_from_rid >();
    auto itr = withdraw_idx.lower_bound( args.account );
 
    while( itr != withdraw_idx.end() && itr->from == args.account && result.withdrawals.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -969,7 +969,7 @@ DEFINE_API( database_api_impl, list_vesting_delegations )
       case( by_delegation ):
       {
          auto key = args.start.as< std::pair< account_name_type, account_name_type > >();
-         iterate_results< steemit::chain::vesting_delegation_index, steemit::chain::by_delegation >(
+         iterate_results< chain::vesting_delegation_index, chain::by_delegation >(
             boost::make_tuple( key.first, key.second ),
             result.delegations,
             args.limit,
@@ -994,7 +994,7 @@ DEFINE_API( database_api, find_vesting_delegations )
 DEFINE_API( database_api_impl, find_vesting_delegations )
 {
    find_vesting_delegations_return result;
-   const auto& delegation_idx = _db.get_index< steemit::chain::vesting_delegation_index, steemit::chain::by_delegation >();
+   const auto& delegation_idx = _db.get_index< chain::vesting_delegation_index, chain::by_delegation >();
    auto itr = delegation_idx.lower_bound( args.account );
 
    while( itr != delegation_idx.end() && itr->delegator == args.account && result.delegations.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -1029,7 +1029,7 @@ DEFINE_API( database_api_impl, list_vesting_delegation_expirations )
       case( by_expiration ):
       {
          auto key = args.start.as< std::pair< time_point_sec, vesting_delegation_expiration_id_type > >();
-         iterate_results< steemit::chain::vesting_delegation_expiration_index, steemit::chain::by_expiration >(
+         iterate_results< chain::vesting_delegation_expiration_index, chain::by_expiration >(
             boost::make_tuple( key.first, key.second ),
             result.delegations,
             args.limit,
@@ -1040,7 +1040,7 @@ DEFINE_API( database_api_impl, list_vesting_delegation_expirations )
       {
          auto key = args.start.as< std::vector< fc::variant > >();
          FC_ASSERT( key.size() == 3, "by_account_expiration start requires 3 values. (account_name_type, time_point_sec, vesting_delegation_expiration_id_type" );
-         iterate_results< steemit::chain::vesting_delegation_expiration_index, steemit::chain::by_account_expiration >(
+         iterate_results< chain::vesting_delegation_expiration_index, chain::by_account_expiration >(
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< time_point_sec >(), key[2].as< vesting_delegation_expiration_id_type >() ),
             result.delegations,
             args.limit,
@@ -1066,7 +1066,7 @@ DEFINE_API( database_api, find_vesting_delegation_expirations )
 DEFINE_API( database_api_impl, find_vesting_delegation_expirations )
 {
    find_vesting_delegation_expirations_return result;
-   const auto& del_exp_idx = _db.get_index< steemit::chain::vesting_delegation_expiration_index, steemit::chain::by_account_expiration >();
+   const auto& del_exp_idx = _db.get_index< chain::vesting_delegation_expiration_index, chain::by_account_expiration >();
    auto itr = del_exp_idx.lower_bound( args.account );
 
    while( itr != del_exp_idx.end() && itr->delegator == args.account && result.delegations.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -1101,7 +1101,7 @@ DEFINE_API( database_api_impl, list_sbd_conversion_requests )
       case( by_conversion_date ):
       {
          auto key = args.start.as< std::pair< time_point_sec, convert_request_id_type > >();
-         iterate_results< steemit::chain::convert_request_index, steemit::chain::by_conversion_date >(
+         iterate_results< chain::convert_request_index, chain::by_conversion_date >(
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -1111,7 +1111,7 @@ DEFINE_API( database_api_impl, list_sbd_conversion_requests )
       case( by_account ):
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
-         iterate_results< steemit::chain::convert_request_index, steemit::chain::by_owner >(
+         iterate_results< chain::convert_request_index, chain::by_owner >(
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -1137,7 +1137,7 @@ DEFINE_API( database_api, find_sbd_conversion_requests )
 DEFINE_API( database_api_impl, find_sbd_conversion_requests )
 {
    find_sbd_conversion_requests_return result;
-   const auto& convert_idx = _db.get_index< steemit::chain::convert_request_index, steemit::chain::by_owner >();
+   const auto& convert_idx = _db.get_index< chain::convert_request_index, chain::by_owner >();
    auto itr = convert_idx.lower_bound( args.account );
 
    while( itr != convert_idx.end() && itr->owner == args.account && result.requests.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -1171,7 +1171,7 @@ DEFINE_API( database_api_impl, list_decline_voting_rights_requests )
    {
       case( by_account ):
       {
-         iterate_results< steemit::chain::decline_voting_rights_request_index, steemit::chain::by_account >(
+         iterate_results< chain::decline_voting_rights_request_index, chain::by_account >(
             args.start.as< account_name_type >(),
             result.requests,
             args.limit,
@@ -1181,7 +1181,7 @@ DEFINE_API( database_api_impl, list_decline_voting_rights_requests )
       case( by_effective_date ):
       {
          auto key = args.start.as< std::pair< time_point_sec, account_name_type > >();
-         iterate_results< steemit::chain::decline_voting_rights_request_index, steemit::chain::by_effective_date >(
+         iterate_results< chain::decline_voting_rights_request_index, chain::by_effective_date >(
             boost::make_tuple( key.first, key.second ),
             result.requests,
             args.limit,
@@ -1211,7 +1211,7 @@ DEFINE_API( database_api_impl, find_decline_voting_rights_requests )
 
    for( auto& a : args.accounts )
    {
-      auto request = _db.find< steemit::chain::decline_voting_rights_request_object, steemit::chain::by_account >( a );
+      auto request = _db.find< chain::decline_voting_rights_request_object, chain::by_account >( a );
 
       if( request != nullptr )
          result.requests.push_back( *request );
@@ -1257,12 +1257,12 @@ DEFINE_API( database_api_impl, list_comments )
 
          if( author != account_name_type() || permlink.size() )
          {
-            auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
             FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
             comment_id = comment->id;
          }
 
-         iterate_results< steemit::chain::comment_index, steemit::chain::by_cashout_time >(
+         iterate_results< chain::comment_index, chain::by_cashout_time >(
             boost::make_tuple( key[0].as< fc::time_point_sec >(), comment_id ),
             result.comments,
             args.limit,
@@ -1272,7 +1272,7 @@ DEFINE_API( database_api_impl, list_comments )
       case( by_permlink ):
       {
          auto key = args.start.as< std::pair< account_name_type, string > >();
-         iterate_results< steemit::chain::comment_index, steemit::chain::by_permlink >(
+         iterate_results< chain::comment_index, chain::by_permlink >(
             boost::make_tuple( key.first, key.second ),
             result.comments,
             args.limit,
@@ -1290,7 +1290,7 @@ DEFINE_API( database_api_impl, list_comments )
 
          if( root_author != account_name_type() || root_permlink.size() )
          {
-            auto root = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( root_author, root_permlink ) );
+            auto root = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( root_author, root_permlink ) );
             FC_ASSERT( root != nullptr, "Could not find comment ${a}/${p}.", ("a", root_author)("p", root_permlink) );
             root_id = root->id;
          }
@@ -1301,12 +1301,12 @@ DEFINE_API( database_api_impl, list_comments )
 
          if( child_author != account_name_type() || child_permlink.size() )
          {
-            auto child = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( child_author, child_permlink ) );
+            auto child = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( child_author, child_permlink ) );
             FC_ASSERT( child != nullptr, "Could not find comment ${a}/${p}.", ("a", child_author)("p", child_permlink) );
             child_id = child->id;
          }
 
-         iterate_results< steemit::chain::comment_index, steemit::chain::by_root >(
+         iterate_results< chain::comment_index, chain::by_root >(
             boost::make_tuple( root_id, child_id ),
             result.comments,
             args.limit,
@@ -1324,12 +1324,12 @@ DEFINE_API( database_api_impl, list_comments )
 
          if( child_author != account_name_type() || child_permlink.size() )
          {
-            auto child = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( child_author, child_permlink ) );
+            auto child = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( child_author, child_permlink ) );
             FC_ASSERT( child != nullptr, "Could not find comment ${a}/${p}.", ("a", child_author)("p", child_permlink) );
             child_id = child->id;
          }
 
-         iterate_results< steemit::chain::comment_index, steemit::chain::by_parent >(
+         iterate_results< chain::comment_index, chain::by_parent >(
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< string >(), child_id ),
             result.comments,
             args.limit,
@@ -1348,12 +1348,12 @@ DEFINE_API( database_api_impl, list_comments )
 
          if( child_author != account_name_type() || child_permlink.size() )
          {
-            auto child = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( child_author, child_permlink ) );
+            auto child = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( child_author, child_permlink ) );
             FC_ASSERT( child != nullptr, "Could not find comment ${a}/${p}.", ("a", child_author)("p", child_permlink) );
             child_id = child->id;
          }
 
-         iterate_results< steemit::chain::comment_index, steemit::chain::by_last_update >(
+         iterate_results< chain::comment_index, chain::by_last_update >(
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), child_id ),
             result.comments,
             args.limit,
@@ -1371,12 +1371,12 @@ DEFINE_API( database_api_impl, list_comments )
 
          if( author != account_name_type() || permlink.size() )
          {
-            auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
             FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
             comment_id = comment->id;
          }
 
-         iterate_results< steemit::chain::comment_index, steemit::chain::by_last_update >(
+         iterate_results< chain::comment_index, chain::by_last_update >(
             boost::make_tuple( key[0].as< account_name_type >(), key[1].as< fc::time_point_sec >(), comment_id ),
             result.comments,
             args.limit,
@@ -1408,7 +1408,7 @@ DEFINE_API( database_api_impl, find_comments )
 
    for( auto& key: args.comments )
    {
-      auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( key.first, key.second ) );
+      auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( key.first, key.second ) );
 
       if( comment != nullptr )
          result.comments.push_back( api_comment_object( *comment, _db ) );
@@ -1448,7 +1448,7 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( author != account_name_type() || permlink.size() )
          {
-            auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
             FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
             comment_id = comment->id;
          }
@@ -1458,12 +1458,12 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( voter != account_name_type() )
          {
-            auto account = _db.find< steemit::chain::account_object, steemit::chain::by_name >( voter );
+            auto account = _db.find< chain::account_object, chain::by_name >( voter );
             FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
             voter_id = account->id;
          }
 
-         iterate_results< steemit::chain::comment_vote_index, steemit::chain::by_comment_voter >(
+         iterate_results< chain::comment_vote_index, chain::by_comment_voter >(
             boost::make_tuple( comment_id, voter_id ),
             result.votes,
             args.limit,
@@ -1480,7 +1480,7 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( voter != account_name_type() )
          {
-            auto account = _db.find< steemit::chain::account_object, steemit::chain::by_name >( voter );
+            auto account = _db.find< chain::account_object, chain::by_name >( voter );
             FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
             voter_id = account->id;
          }
@@ -1491,12 +1491,12 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( author != account_name_type() || permlink.size() )
          {
-            auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
             FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
             comment_id = comment->id;
          }
 
-         iterate_results< steemit::chain::comment_vote_index, steemit::chain::by_voter_comment >(
+         iterate_results< chain::comment_vote_index, chain::by_voter_comment >(
             boost::make_tuple( voter_id, comment_id ),
             result.votes,
             args.limit,
@@ -1513,7 +1513,7 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( voter != account_name_type() )
          {
-            auto account = _db.find< steemit::chain::account_object, steemit::chain::by_name >( voter );
+            auto account = _db.find< chain::account_object, chain::by_name >( voter );
             FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
             voter_id = account->id;
          }
@@ -1524,12 +1524,12 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( author != account_name_type() || permlink.size() )
          {
-            auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
             FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
             comment_id = comment->id;
          }
 
-         iterate_results< steemit::chain::comment_vote_index, steemit::chain::by_voter_last_update >(
+         iterate_results< chain::comment_vote_index, chain::by_voter_last_update >(
             boost::make_tuple( voter_id, key[1].as< fc::time_point_sec >(), comment_id ),
             result.votes,
             args.limit,
@@ -1547,7 +1547,7 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( author != account_name_type() || permlink.size() )
          {
-            auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( author, permlink ) );
+            auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( author, permlink ) );
             FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}.", ("a", author)("p", permlink) );
             comment_id = comment->id;
          }
@@ -1557,12 +1557,12 @@ DEFINE_API( database_api_impl, list_votes )
 
          if( voter != account_name_type() )
          {
-            auto account = _db.find< steemit::chain::account_object, steemit::chain::by_name >( voter );
+            auto account = _db.find< chain::account_object, chain::by_name >( voter );
             FC_ASSERT( account != nullptr, "Could not find voter ${v}.", ("v", voter ) );
             voter_id = account->id;
          }
 
-         iterate_results< steemit::chain::comment_vote_index, steemit::chain::by_comment_weight_voter >(
+         iterate_results< chain::comment_vote_index, chain::by_comment_weight_voter >(
             boost::make_tuple( comment_id, key[2].as< uint64_t >(), voter_id ),
             result.votes,
             args.limit,
@@ -1589,10 +1589,10 @@ DEFINE_API( database_api_impl, find_votes )
 {
    find_votes_return result;
 
-   auto comment = _db.find< steemit::chain::comment_object, steemit::chain::by_permlink >( boost::make_tuple( args.author, args.permlink ) );
+   auto comment = _db.find< chain::comment_object, chain::by_permlink >( boost::make_tuple( args.author, args.permlink ) );
    FC_ASSERT( comment != nullptr, "Could not find comment ${a}/${p}", ("a", args.author)("p", args.permlink ) );
 
-   const auto& vote_idx = _db.get_index< steemit::chain::comment_vote_index, steemit::chain::by_comment_voter >();
+   const auto& vote_idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
    auto itr = vote_idx.lower_bound( comment->id );
 
    while( itr != vote_idx.end() && itr->comment == comment->id && result.votes.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -1633,7 +1633,7 @@ DEFINE_API( database_api_impl, list_limit_orders )
       case( by_price ):
       {
          auto key = args.start.as< std::pair< price, limit_order_id_type > >();
-         iterate_results< steemit::chain::limit_order_index, steemit::chain::by_price >(
+         iterate_results< chain::limit_order_index, chain::by_price >(
             boost::make_tuple( key.first, key.second ),
             result.orders,
             args.limit,
@@ -1643,7 +1643,7 @@ DEFINE_API( database_api_impl, list_limit_orders )
       case( by_account ):
       {
          auto key = args.start.as< std::pair< account_name_type, uint32_t > >();
-         iterate_results< steemit::chain::limit_order_index, steemit::chain::by_account >(
+         iterate_results< chain::limit_order_index, chain::by_account >(
             boost::make_tuple( key.first, key.second ),
             result.orders,
             args.limit,
@@ -1669,7 +1669,7 @@ DEFINE_API( database_api, find_limit_orders )
 DEFINE_API( database_api_impl, find_limit_orders )
 {
    find_limit_orders_return result;
-   const auto& order_idx = _db.get_index< steemit::chain::limit_order_index, steemit::chain::by_account >();
+   const auto& order_idx = _db.get_index< chain::limit_order_index, chain::by_account >();
    auto itr = order_idx.lower_bound( args.account );
 
    while( itr != order_idx.end() && itr->seller == args.account && result.orders.size() <= DATABASE_API_SINGLE_QUERY_LIMIT )
@@ -1700,7 +1700,7 @@ DEFINE_API( database_api_impl, get_order_book )
    auto max_sell = price::max( SBD_SYMBOL, STEEM_SYMBOL );
    auto max_buy = price::max( STEEM_SYMBOL, SBD_SYMBOL );
 
-   const auto& limit_price_idx = _db.get_index< steemit::chain::limit_order_index >().indices().get< steemit::chain::by_price >();
+   const auto& limit_price_idx = _db.get_index< chain::limit_order_index >().indices().get< chain::by_price >();
    auto sell_itr = limit_price_idx.lower_bound( max_sell );
    auto buy_itr  = limit_price_idx.lower_bound( max_buy );
    auto end = limit_price_idx.end();
@@ -1768,9 +1768,9 @@ DEFINE_API( database_api_impl, get_required_signatures )
    get_required_signatures_return result;
    result.keys = args.trx.get_required_signatures( STEEMIT_CHAIN_ID,
                                                    args.available_keys,
-                                                   [&]( string account_name ){ return authority( _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).active  ); },
-                                                   [&]( string account_name ){ return authority( _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).owner   ); },
-                                                   [&]( string account_name ){ return authority( _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).posting ); },
+                                                   [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
+                                                   [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
+                                                   [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
                                                    STEEMIT_MAX_SIG_CHECK_DEPTH );
 
    return result;
@@ -1793,21 +1793,21 @@ DEFINE_API( database_api_impl, get_potential_signatures )
       flat_set< public_key_type >(),
       [&]( account_name_type account_name )
       {
-         const auto& auth = _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).active;
+         const auto& auth = _db.get< chain::account_authority_object, chain::by_account >( account_name ).active;
          for( const auto& k : auth.get_keys() )
             result.keys.insert( k );
          return authority( auth );
       },
       [&]( account_name_type account_name )
       {
-         const auto& auth = _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).owner;
+         const auto& auth = _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner;
          for( const auto& k : auth.get_keys() )
             result.keys.insert( k );
          return authority( auth );
       },
       [&]( account_name_type account_name )
       {
-         const auto& auth = _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).posting;
+         const auto& auth = _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting;
          for( const auto& k : auth.get_keys() )
             result.keys.insert( k );
          return authority( auth );
@@ -1830,9 +1830,9 @@ DEFINE_API( database_api, verify_authority )
 DEFINE_API( database_api_impl, verify_authority )
 {
    args.trx.verify_authority( STEEMIT_CHAIN_ID,
-                           [&]( string account_name ){ return authority( _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).active  ); },
-                           [&]( string account_name ){ return authority( _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).owner   ); },
-                           [&]( string account_name ){ return authority( _db.get< steemit::chain::account_authority_object, steemit::chain::by_account >( account_name ).posting ); },
+                           [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
+                           [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
+                           [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
                            STEEMIT_MAX_SIG_CHECK_DEPTH );
    return verify_authority_return( { true } );
 }
@@ -1850,7 +1850,7 @@ DEFINE_API( database_api, verify_account_authority )
 // returns false because the TX is not signed.
 DEFINE_API( database_api_impl, verify_account_authority )
 {
-   auto account = _db.find< steemit::chain::account_object, steemit::chain::by_name >( args.account );
+   auto account = _db.find< chain::account_object, chain::by_name >( args.account );
    FC_ASSERT( account != nullptr, "no such account" );
 
    /// reuse trx.verify_authority by creating a dummy transfer

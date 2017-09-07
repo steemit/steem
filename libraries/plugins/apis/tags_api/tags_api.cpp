@@ -42,7 +42,7 @@ class tags_api_impl
 
       void set_pending_payout( discussion& d );
       void set_url( discussion& d );
-      discussion lookup_discussion( steemit::chain::comment_id_type, uint32_t truncate_body = 0 );
+      discussion lookup_discussion( chain::comment_id_type, uint32_t truncate_body = 0 );
 
       static bool filter_default( const database_api::api_comment_object& c ) { return false; }
       static bool exit_default( const database_api::api_comment_object& c )   { return false; }
@@ -51,7 +51,7 @@ class tags_api_impl
       template<typename Index, typename StartItr>
       discussion_query_result get_discussions( const discussion_query& q,
                                                const string& tag,
-                                               steemit::chain::comment_id_type parent,
+                                               chain::comment_id_type parent,
                                                const Index& idx, StartItr itr,
                                                uint32_t truncate_body = 0,
                                                const std::function< bool( const database_api::api_comment_object& ) >& filter = &tags_api_impl::filter_default,
@@ -60,9 +60,9 @@ class tags_api_impl
                                                bool ignore_parent = false
                                                );
 
-      steemit::chain::comment_id_type get_parent( const discussion_query& q );
+      chain::comment_id_type get_parent( const discussion_query& q );
 
-      steemit::chain::database& _db;
+      chain::database& _db;
       std::shared_ptr< steemit::plugins::follow::follow_api > _follow_api;
 };
 
@@ -114,7 +114,7 @@ DEFINE_API( tags_api_impl, get_tags_used_by_author )
 
 DEFINE_API( tags_api_impl, get_discussion )
 {
-   const auto& by_permlink_idx = _db.get_index< steemit::chain::comment_index, steemit::chain::by_permlink >();
+   const auto& by_permlink_idx = _db.get_index< chain::comment_index, chain::by_permlink >();
    auto itr = by_permlink_idx.find( boost::make_tuple( args.author, args.permlink ) );
 
    if( itr != by_permlink_idx.end() )
@@ -130,12 +130,12 @@ DEFINE_API( tags_api_impl, get_discussion )
 
 DEFINE_API( tags_api_impl, get_content_replies )
 {
-   const auto& by_permlink_idx = _db.get_index< steemit::chain::comment_index, steemit::chain::by_parent >();
+   const auto& by_permlink_idx = _db.get_index< chain::comment_index, chain::by_parent >();
    auto itr = by_permlink_idx.find( boost::make_tuple( args.author, args.permlink ) );
 
    get_content_replies_return result;
 
-   while( itr != by_permlink_idx.end() && itr->parent_author == args.author && steemit::chain::to_string( itr->parent_permlink ) == args.permlink )
+   while( itr != by_permlink_idx.end() && itr->parent_author == args.author && chain::to_string( itr->parent_permlink ) == args.permlink )
    {
       result.discussions.push_back( discussion( *itr, _db ) );
       set_pending_payout( result.discussions.back() );
@@ -148,7 +148,7 @@ DEFINE_API( tags_api_impl, get_post_discussions_by_payout )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
-   auto parent = steemit::chain::comment_id_type();
+   auto parent = chain::comment_id_type();
 
    const auto& tidx = _db.get_index< tags::tag_index, tags::by_reward_fund_net_rshares >();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, true ) );
@@ -160,7 +160,7 @@ DEFINE_API( tags_api_impl, get_comment_discussions_by_payout )
 {
    args.validate();
    auto tag = fc::to_lower( args.tag );
-   auto parent = steemit::chain::comment_id_type( 1 );
+   auto parent = chain::comment_id_type( 1 );
 
    const auto& tidx = _db.get_index< tags::tag_index, tags::by_reward_fund_net_rshares >();
    auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, false ) );
@@ -453,7 +453,7 @@ DEFINE_API( tags_api_impl, get_replies_by_last_update )
    {
       result.discussions.push_back( discussion( *itr, _db ) );
       set_pending_payout( result.discussions.back() );
-      result.discussions.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, steemit::chain::to_string( itr->permlink ) } ) ).votes;
+      result.discussions.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, chain::to_string( itr->permlink ) } ) ).votes;
       ++itr;
    }
 
@@ -492,7 +492,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_author_before_date )
          {
             result.discussions.push_back( discussion( *itr, _db ) );
             set_pending_payout( result.discussions.back() );
-            result.discussions.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, steemit::chain::to_string( itr->permlink ) } ) ).votes;
+            result.discussions.back().active_votes = get_active_votes( get_active_votes_args( { itr->author, chain::to_string( itr->permlink ) } ) ).votes;
             ++count;
          }
          ++itr;
@@ -508,8 +508,8 @@ DEFINE_API( tags_api_impl, get_active_votes )
 {
    get_active_votes_return result;
    const auto& comment = _db.get_comment( args.author, args.permlink );
-   const auto& idx = _db.get_index< steemit::chain::comment_vote_index, steemit::chain::by_comment_voter >();
-   steemit::chain::comment_id_type cid(comment.id);
+   const auto& idx = _db.get_index< chain::comment_vote_index, chain::by_comment_voter >();
+   chain::comment_id_type cid(comment.id);
    auto itr = idx.lower_bound( cid );
    while( itr != idx.end() && itr->comment == cid )
    {
@@ -555,9 +555,9 @@ void tags_api_impl::set_pending_payout( discussion& d )
 
    u256 total_r2 = 0;
    if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
-      total_r2 = steemit::chain::util::to256( _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).recent_claims );
+      total_r2 = chain::util::to256( _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).recent_claims );
    else
-      total_r2 = steemit::chain::util::to256( props.total_reward_shares2 );
+      total_r2 = chain::util::to256( props.total_reward_shares2 );
 
    if( total_r2 > 0 )
    {
@@ -565,12 +565,12 @@ void tags_api_impl::set_pending_payout( discussion& d )
       if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
       {
          const auto& rf = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) );
-         vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
+         vshares = d.net_rshares.value > 0 ? chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
       }
       else
-         vshares = d.net_rshares.value > 0 ? steemit::chain::util::evaluate_reward_curve( d.net_rshares.value ) : 0;
+         vshares = d.net_rshares.value > 0 ? chain::util::evaluate_reward_curve( d.net_rshares.value ) : 0;
 
-      u256 r2 = steemit::chain::util::to256( vshares ); //to256(abs_net_rshares);
+      u256 r2 = chain::util::to256( vshares ); //to256(abs_net_rshares);
       r2 *= pot.amount.value;
       r2 /= total_r2;
 
@@ -583,7 +583,7 @@ void tags_api_impl::set_pending_payout( discussion& d )
    }
 
    if( d.parent_author != STEEMIT_ROOT_POST_PARENT )
-      d.cashout_time = _db.calculate_discussion_payout_time( _db.get< steemit::chain::comment_object >( d.id ) );
+      d.cashout_time = _db.calculate_discussion_payout_time( _db.get< chain::comment_object >( d.id ) );
 
    if( d.body.size() > 1024*128 )
       d.body = "body pruned due to size";
@@ -602,7 +602,7 @@ void tags_api_impl::set_url( discussion& d )
       d.url += "#@" + d.author + "/" + d.permlink;
 }
 
-discussion tags_api_impl::lookup_discussion( steemit::chain::comment_id_type id, uint32_t truncate_body )
+discussion tags_api_impl::lookup_discussion( chain::comment_id_type id, uint32_t truncate_body )
 {
    discussion d( _db.get( id ), _db );
    set_url( d );
@@ -622,7 +622,7 @@ discussion tags_api_impl::lookup_discussion( steemit::chain::comment_id_type id,
 template<typename Index, typename StartItr>
 discussion_query_result tags_api_impl::get_discussions( const discussion_query& query,
                                                         const string& tag,
-                                                        steemit::chain::comment_id_type parent,
+                                                        chain::comment_id_type parent,
                                                         const Index& tidx, StartItr tidx_itr,
                                                         uint32_t truncate_body,
                                                         const std::function< bool( const database_api::api_comment_object& ) >& filter,
@@ -634,7 +634,7 @@ discussion_query_result tags_api_impl::get_discussions( const discussion_query& 
    discussion_query_result result;
 
    const auto& cidx = _db.get_index< tags::tag_index, tags::by_comment >();
-   steemit::chain::comment_id_type start;
+   chain::comment_id_type start;
 
    if( query.start_author && query.start_permlink )
    {
@@ -696,9 +696,9 @@ discussion_query_result tags_api_impl::get_discussions( const discussion_query& 
    return result;
 }
 
-steemit::chain::comment_id_type tags_api_impl::get_parent( const discussion_query& query )
+chain::comment_id_type tags_api_impl::get_parent( const discussion_query& query )
 {
-   steemit::chain::comment_id_type parent;
+   chain::comment_id_type parent;
    if( query.parent_author && query.parent_permlink ) {
       parent = _db.get_comment( *query.parent_author, *query.parent_permlink ).id;
    }

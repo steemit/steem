@@ -27,7 +27,7 @@ class account_by_key_plugin_impl
       void update_key_lookup( const account_authority_object& a );
 
       flat_set< public_key_type >   cached_keys;
-      steemit::chain::database&     _db;
+      database&                     _db;
       account_by_key_plugin&        _self;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   post_apply_connection;

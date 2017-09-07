@@ -49,14 +49,14 @@
 
 namespace steemit { namespace plugins { namespace witness {
 
-using steemit::chain::plugin_exception;
+using chain::plugin_exception;
 using std::string;
 using std::vector;
 
 namespace bpo = boost::program_options;
 
 
-void new_chain_banner( const steemit::chain::database& db )
+void new_chain_banner( const chain::database& db )
 {
    std::cerr << "\n"
       "********************************\n"
@@ -79,10 +79,10 @@ namespace detail {
          _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
 
       void pre_transaction( const steemit::protocol::signed_transaction& trx );
-      void pre_operation( const steemit::chain::operation_notification& note );
+      void pre_operation( const chain::operation_notification& note );
       void on_block( const signed_block& b );
 
-      void update_account_bandwidth( const steemit::chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
+      void update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
 
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
@@ -90,14 +90,14 @@ namespace detail {
 
       bool _production_enabled = false;
       uint32_t _required_witness_participation = 33 * STEEMIT_1_PERCENT;
-      uint32_t _production_skip_flags = steemit::chain::database::skip_nothing;
+      uint32_t _production_skip_flags = chain::database::skip_nothing;
 
       std::map< steemit::protocol::public_key_type, fc::ecc::private_key > _private_keys;
       std::set< steemit::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                          _timer;
 
       std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   applied_block_connection;
       boost::signals2::connection   on_pre_apply_transaction_connection;
@@ -120,7 +120,7 @@ namespace detail {
       }
    };
 
-   void check_memo( const string& memo, const steemit::chain::account_object& account, const account_authority_object& auth )
+   void check_memo( const string& memo, const chain::account_object& account, const account_authority_object& auth )
    {
       vector< public_key_type > keys;
 
@@ -208,7 +208,7 @@ namespace detail {
                "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEMIT_SOFT_MAX_COMMENT_DEPTH) );
          }
 
-         auto itr = _db.find< comment_object, steemit::chain::by_permlink >( boost::make_tuple( o.author, o.permlink ) );
+         auto itr = _db.find< comment_object, chain::by_permlink >( boost::make_tuple( o.author, o.permlink ) );
 
          if( itr != nullptr && itr->cashout_time == fc::time_point_sec::maximum() )
          {
@@ -224,24 +224,24 @@ namespace detail {
       {
          if( o.memo.length() > 0 )
             check_memo( o.memo,
-                        _db.get< steemit::chain::account_object, steemit::chain::by_name >( o.from ),
-                        _db.get< account_authority_object, steemit::chain::by_account >( o.from ) );
+                        _db.get< chain::account_object, chain::by_name >( o.from ),
+                        _db.get< account_authority_object, chain::by_account >( o.from ) );
       }
 
       void operator()( const transfer_to_savings_operation& o )const
       {
          if( o.memo.length() > 0 )
             check_memo( o.memo,
-                        _db.get< steemit::chain::account_object, steemit::chain::by_name >( o.from ),
-                        _db.get< account_authority_object, steemit::chain::by_account >( o.from ) );
+                        _db.get< chain::account_object, chain::by_name >( o.from ),
+                        _db.get< account_authority_object, chain::by_account >( o.from ) );
       }
 
       void operator()( const transfer_from_savings_operation& o )const
       {
          if( o.memo.length() > 0 )
             check_memo( o.memo,
-                        _db.get< steemit::chain::account_object, steemit::chain::by_name >( o.from ),
-                        _db.get< account_authority_object, steemit::chain::by_account >( o.from ) );
+                        _db.get< chain::account_object, chain::by_name >( o.from ),
+                        _db.get< account_authority_object, chain::by_account >( o.from ) );
       }
    };
 
@@ -269,7 +269,7 @@ namespace detail {
       }
    }
 
-   void witness_plugin_impl::pre_operation( const steemit::chain::operation_notification& note )
+   void witness_plugin_impl::pre_operation( const chain::operation_notification& note )
    {
       if( _db.is_producing() )
       {
@@ -352,7 +352,7 @@ namespace detail {
       }
    }
 
-   void witness_plugin_impl::update_account_bandwidth( const steemit::chain::account_object& a, uint32_t trx_size, const bandwidth_type type )
+   void witness_plugin_impl::update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type )
    {
       const auto& props = _db.get_dynamic_global_properties();
       bool has_bandwidth = true;
@@ -439,7 +439,7 @@ namespace detail {
          //We're trying to exit. Go ahead and let this one out.
          throw;
       }
-      catch( const steemit::chain::unknown_hardfork_exception& e )
+      catch( const chain::unknown_hardfork_exception& e )
       {
          // Hit a hardfork that the current node know nothing about, stop production and inform user
          elog( "${e}\nNode may be out of date...", ("e", e.to_detail_string()) );
@@ -490,7 +490,7 @@ namespace detail {
 
    block_production_condition::block_production_condition_enum witness_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture)
    {
-      steemit::chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
       fc::time_point now_fine = fc::time_point::now();
       fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
@@ -521,7 +521,7 @@ namespace detail {
       //
       assert( now > db.head_block_time() );
 
-      steemit::chain::account_name_type scheduled_witness = db.get_scheduled_witness( slot );
+      chain::account_name_type scheduled_witness = db.get_scheduled_witness( slot );
       // we must control the witness scheduled to produce the next block.
       if( _witnesses.find( scheduled_witness ) == _witnesses.end() )
       {
@@ -530,7 +530,7 @@ namespace detail {
       }
 
       fc::time_point_sec scheduled_time = db.get_slot_time( slot );
-      steemit::chain::public_key_type scheduled_key = db.get< steemit::chain::witness_object, steemit::chain::by_name >(scheduled_witness).signing_key;
+      chain::public_key_type scheduled_key = db.get< chain::witness_object, chain::by_name >(scheduled_witness).signing_key;
       auto private_key_itr = _private_keys.find( scheduled_key );
 
       if( private_key_itr == _private_keys.end() )
@@ -620,7 +620,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 void witness_plugin::plugin_startup()
 { try {
    ilog("witness plugin:  plugin_startup() begin");
-   steemit::chain::database& d = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+   chain::database& d = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
 
    if( !my->_witnesses.empty() )
    {
@@ -629,7 +629,7 @@ void witness_plugin::plugin_startup()
       {
          if( d.head_block_num() == 0 )
             new_chain_banner( d );
-         my->_production_skip_flags |= steemit::chain::database::skip_undo_history_check;
+         my->_production_skip_flags |= chain::database::skip_undo_history_check;
       }
       my->schedule_production_loop();
    } else

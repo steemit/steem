@@ -31,7 +31,7 @@ class tags_plugin_impl
       void pre_operation( const operation_notification& note );
       void on_operation( const operation_notification& note );
 
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   post_apply_connection;
 };

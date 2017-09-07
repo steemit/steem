@@ -29,7 +29,7 @@ class smt_test_plugin_impl
       void update_key_lookup( const account_authority_object& a );
 
       flat_set< public_key_type >   cached_keys;
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       smt_test_plugin&              _self;
 };
 

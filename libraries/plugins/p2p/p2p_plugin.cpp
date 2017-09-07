@@ -98,7 +98,7 @@ public:
    virtual ~p2p_plugin_impl() {}
 
    bool is_included_block(const block_id_type& block_id);
-   steemit::chain::chain_id_type get_chain_id()const;
+   chain::chain_id_type get_chain_id()const;
 
    // node_delegate interface
    virtual bool has_item( const graphene::net::item_id& ) override;
@@ -187,7 +187,7 @@ bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg,
       }
 
       return result;
-   } catch ( const steemit::chain::unlinkable_block_exception& e ) {
+   } catch ( const chain::unlinkable_block_exception& e ) {
       // translate to a graphene::net exception
       fc_elog(fc::logger::get("sync"),
             "Error when pushing block, current head block is ${head}:\n${e}",
@@ -291,7 +291,7 @@ graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& 
    return trx_message( chain.db().get_recent_transaction( id.item_hash ) );
 } FC_LOG_AND_RETHROW() }
 
-steemit::chain::chain_id_type p2p_plugin_impl::get_chain_id() const
+chain::chain_id_type p2p_plugin_impl::get_chain_id() const
 {
    return STEEMIT_CHAIN_ID;
 }
