@@ -16,12 +16,12 @@ class account_history_api_impl
          (get_account_history)
       )
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 DEFINE_API( account_history_api_impl, get_ops_in_block )
 {
-   const auto& idx = _db.get_index< steemit::chain::operation_index, steemit::chain::by_location >();
+   const auto& idx = _db.get_index< chain::operation_index, chain::by_location >();
    auto itr = idx.lower_bound( args.block_num );
    get_ops_in_block_return result;
    while( itr != idx.end() && itr->block == args.block_num )
@@ -39,7 +39,7 @@ DEFINE_API( account_history_api_impl, get_transaction )
 #ifdef SKIP_BY_TX_ID
    FC_ASSERT( false, "This node's operator has disabled operation indexing by transaction_id" );
 #else
-   const auto& idx = _db.get_index< steemit::chain::operation_index, steemit::chain::by_transaction_id >();
+   const auto& idx = _db.get_index< chain::operation_index, chain::by_transaction_id >();
    auto itr = idx.lower_bound( args.id );
    if( itr != idx.end() && itr->trx_id == args.id )
    {
@@ -60,7 +60,7 @@ DEFINE_API( account_history_api_impl, get_account_history )
    FC_ASSERT( args.limit <= 10000, "limit of ${l} is greater than maxmimum allowed", ("l",args.limit) );
    FC_ASSERT( args.start >= args.limit, "start must be greater than limit" );
 
-   const auto& idx = _db.get_index< steemit::chain::account_history_index, steemit::chain::by_account >();
+   const auto& idx = _db.get_index< chain::account_history_index, chain::by_account >();
    auto itr = idx.lower_bound( boost::make_tuple( args.account, args.start ) );
    auto end = idx.upper_bound( boost::make_tuple( args.account, std::max( int64_t(0), int64_t(itr->sequence) - args.limit ) ) );
 

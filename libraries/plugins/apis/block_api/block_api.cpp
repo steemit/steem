@@ -19,7 +19,7 @@ class block_api_impl
          (get_block)
       )
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 //////////////////////////////////////////////////////////////////////

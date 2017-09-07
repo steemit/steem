@@ -48,7 +48,7 @@ namespace detail
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
 
-         steemit::chain::database& _db;
+         chain::database& _db;
 
          std::shared_ptr< database_api::database_api > _database_api;
          std::shared_ptr< block_api::block_api > _block_api;

@@ -25,7 +25,7 @@ class market_history_plugin_impl
        */
       void update_market_histories( const operation_notification& o );
 
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       flat_set<uint32_t>            _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
       int32_t                       _maximum_history_per_bucket_size = 1000;
       boost::signals2::connection   post_apply_connection;

@@ -24,7 +24,7 @@ class market_history_api_impl
          (get_market_history_buckets)
       )
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 DEFINE_API( market_history_api_impl, get_ticker )
@@ -84,7 +84,7 @@ DEFINE_API( market_history_api_impl, get_order_book )
 {
    FC_ASSERT( args.limit <= 500 );
 
-   const auto& order_idx = _db.get_index< steemit::chain::limit_order_index, steemit::chain::by_price >();
+   const auto& order_idx = _db.get_index< chain::limit_order_index, chain::by_price >();
    auto itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
 
    get_order_book_return result;

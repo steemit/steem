@@ -37,7 +37,7 @@ class follow_plugin_impl
       void pre_operation( const operation_notification& op_obj );
       void post_operation( const operation_notification& op_obj );
 
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       follow_plugin&                _self;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   post_apply_connection;
