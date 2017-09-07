@@ -107,4 +107,4 @@ const flat_set< std::string >& account_statistics_plugin::get_tracked_accounts()
 
 } } // steemit::account_statistics
 
-STEEMIT_DEFINE_PLUGIN( account_statistics, steemit::account_statistics::account_statistics_plugin );
+STEEM_DEFINE_PLUGIN( account_statistics, steemit::account_statistics::account_statistics_plugin );

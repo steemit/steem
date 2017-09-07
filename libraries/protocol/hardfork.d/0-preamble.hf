@@ -13,7 +13,7 @@
 #include <set>
 
 #ifdef IS_TEST_NET
-#define STEEMIT_NUM_HARDFORKS 21
+#define STEEM_NUM_HARDFORKS 21
 #else
-#define STEEMIT_NUM_HARDFORKS 19
+#define STEEM_NUM_HARDFORKS 19
 #endif

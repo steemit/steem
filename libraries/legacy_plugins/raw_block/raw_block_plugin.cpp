@@ -30,4 +30,4 @@ void raw_block_plugin::plugin_shutdown()
 
 } } } // steemit::plugin::raw_block
 
-STEEMIT_DEFINE_PLUGIN( raw_block, steemit::plugin::raw_block::raw_block_plugin )
+STEEM_DEFINE_PLUGIN( raw_block, steemit::plugin::raw_block::raw_block_plugin )

@@ -2,7 +2,7 @@
 How plugins work
 ----------------
 
-All plugins in the `libraries/plugins` directory are iterated over by `CMakeLists.txt` and placed in a CMake environment variable `STEEMIT_INTERNAL_PLUGINS`, which is used to create a runtime-accessible list of available plugins used by the argument parsing.
+All plugins in the `libraries/plugins` directory are iterated over by `CMakeLists.txt` and placed in a CMake environment variable `STEEM_INTERNAL_PLUGINS`, which is used to create a runtime-accessible list of available plugins used by the argument parsing.
 
 Similarly, `external_plugins` is set aside for third-party plugins.  Just drop plugin code into `external_plugins` directory, `make steemd`, and the new plugin will be available.
 

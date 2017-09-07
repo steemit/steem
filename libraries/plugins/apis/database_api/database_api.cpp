@@ -1766,12 +1766,12 @@ DEFINE_API( database_api, get_required_signatures )
 DEFINE_API( database_api_impl, get_required_signatures )
 {
    get_required_signatures_return result;
-   result.keys = args.trx.get_required_signatures( STEEMIT_CHAIN_ID,
+   result.keys = args.trx.get_required_signatures( STEEM_CHAIN_ID,
                                                    args.available_keys,
                                                    [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
                                                    [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
                                                    [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
-                                                   STEEMIT_MAX_SIG_CHECK_DEPTH );
+                                                   STEEM_MAX_SIG_CHECK_DEPTH );
 
    return result;
 }
@@ -1789,7 +1789,7 @@ DEFINE_API( database_api_impl, get_potential_signatures )
 {
    get_potential_signatures_return result;
    args.trx.get_required_signatures(
-      STEEMIT_CHAIN_ID,
+      STEEM_CHAIN_ID,
       flat_set< public_key_type >(),
       [&]( account_name_type account_name )
       {
@@ -1812,7 +1812,7 @@ DEFINE_API( database_api_impl, get_potential_signatures )
             result.keys.insert( k );
          return authority( auth );
       },
-      STEEMIT_MAX_SIG_CHECK_DEPTH
+      STEEM_MAX_SIG_CHECK_DEPTH
    );
 
    return result;
@@ -1829,11 +1829,11 @@ DEFINE_API( database_api, verify_authority )
 
 DEFINE_API( database_api_impl, verify_authority )
 {
-   args.trx.verify_authority( STEEMIT_CHAIN_ID,
+   args.trx.verify_authority( STEEM_CHAIN_ID,
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).owner   ); },
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).posting ); },
-                           STEEMIT_MAX_SIG_CHECK_DEPTH );
+                           STEEM_MAX_SIG_CHECK_DEPTH );
    return verify_authority_return( { true } );
 }
 

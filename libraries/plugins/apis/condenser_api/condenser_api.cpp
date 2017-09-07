@@ -963,7 +963,7 @@ DEFINE_API( condenser_api, get_version )
    CHECK_ARG_SIZE( 0 )
    return get_version_return
    (
-      fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
+      fc::string( STEEM_BLOCKCHAIN_VERSION ),
       fc::string( steemit::utilities::git_revision_sha ),
       fc::string( fc::git_revision_sha )
    );

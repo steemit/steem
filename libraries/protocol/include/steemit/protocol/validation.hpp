@@ -21,7 +21,7 @@ inline void validate_account_name( const string& name )
 
 inline void validate_permlink( const string& permlink )
 {
-   FC_ASSERT( permlink.size() < STEEMIT_MAX_PERMLINK_LENGTH, "permlink is too long" );
+   FC_ASSERT( permlink.size() < STEEM_MAX_PERMLINK_LENGTH, "permlink is too long" );
    FC_ASSERT( fc::is_utf8( permlink ), "permlink not formatted in UTF8" );
 }
 

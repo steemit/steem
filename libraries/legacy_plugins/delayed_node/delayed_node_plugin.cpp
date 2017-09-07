@@ -165,4 +165,4 @@ void delayed_node_plugin::connection_failed()
 
 } }
 
-STEEMIT_DEFINE_PLUGIN( delayed_node, steemit::delayed_node::delayed_node_plugin )
+STEEM_DEFINE_PLUGIN( delayed_node, steemit::delayed_node::delayed_node_plugin )
