@@ -10,6 +10,7 @@ void smt_elevate_account_operation::validate()const
 {
    validate_account_name( account );
    FC_ASSERT( fee.amount >= 0, "fee cannot be negative" );
+   FC_ASSERT( fee.amount <= STEEMIT_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEMIT_MAX_SHARE_SUPPLY" );
    FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ) || is_asset_type( fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
 }
 

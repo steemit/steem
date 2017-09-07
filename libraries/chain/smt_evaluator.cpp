@@ -50,9 +50,9 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
    _db.adjust_balance( acct        , -o.fee );
    _db.adjust_balance( null_account,  o.fee );
 
-   _db.modify( acct, [&]( account_object& a )
+   _db.create< smt_token_object >( [&]( smt_token_object& token )
    {
-      a.is_smt = true;
+      token.control_account = o.account;
    });
 }
 

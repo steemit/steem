@@ -61,6 +61,8 @@ namespace detail
    {
       json_rpc_response response;
 
+      ddump( (message) );
+
       try
       {
          const auto request = message.get_object();
@@ -185,8 +187,6 @@ void json_rpc_plugin::add_api_method( const string& api_name, const string& meth
 
 string json_rpc_plugin::call( const string& message )
 {
-   wdump( (message) );
-
    try
    {
       fc::variant v = fc::json::from_string( message );
