@@ -30,7 +30,7 @@ namespace steemit { namespace utilities {
 
 fc::path temp_directory_path()
 {
-   const char* steemit_tempdir = getenv("STEEMIT_TEMPDIR");
+   const char* steemit_tempdir = getenv("STEEM_TEMPDIR");
    if( steemit_tempdir != nullptr )
       return fc::path( steemit_tempdir );
    return fc::temp_directory_path() / "steemit-tmp";

@@ -142,7 +142,7 @@ struct post_operation_visitor
 
    void operator()( const hardfork_operation& op )const
    {
-      if( op.hardfork_id == STEEMIT_HARDFORK_0_9 )
+      if( op.hardfork_id == STEEM_HARDFORK_0_9 )
       {
          auto& db = _plugin._db;
 

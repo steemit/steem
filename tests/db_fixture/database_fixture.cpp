@@ -20,7 +20,7 @@
 
 //using namespace steemit::chain::test;
 
-uint32_t STEEMIT_TESTING_GENESIS_TIMESTAMP = 1431700000;
+uint32_t STEEM_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
 namespace steemit { namespace chain {
 
@@ -60,17 +60,17 @@ clean_database_fixture::clean_database_fixture()
    open_database();
 
    generate_block();
-   db->set_hardfork( STEEMIT_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
    generate_block();
 
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
-   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_WITNESSES; i++ )
+   for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
    {
-      account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-      fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
-      witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+      account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
    }
 
    validate_database();
@@ -118,17 +118,17 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
 
 
    generate_block();
-   db->set_hardfork( STEEMIT_BLOCKCHAIN_VERSION.minor() );
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
    generate_block();
 
    vest( "initminer", 10000 );
 
    // Fill up the rest of the required miners
-   for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_WITNESSES; i++ )
+   for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
    {
-      account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-      fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
-      witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+      account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
    }
 
    validate_database();
@@ -220,7 +220,7 @@ void database_fixture::generate_blocks( uint32_t block_count )
 void database_fixture::generate_blocks(fc::time_point_sec timestamp, bool miss_intermediate_blocks)
 {
    db_plugin->debug_generate_blocks_until( debug_key, timestamp, miss_intermediate_blocks, default_skip );
-   BOOST_REQUIRE( ( db->head_block_time() - timestamp ).to_seconds() < STEEMIT_BLOCK_INTERVAL );
+   BOOST_REQUIRE( ( db->head_block_time() - timestamp ).to_seconds() < STEEM_BLOCK_INTERVAL );
 }
 
 const account_object& database_fixture::account_create(
@@ -235,7 +235,7 @@ const account_object& database_fixture::account_create(
 {
    try
    {
-      if( db->has_hardfork( STEEMIT_HARDFORK_0_17 ) )
+      if( db->has_hardfork( STEEM_HARDFORK_0_17 ) )
       {
          account_create_with_delegation_operation op;
          op.new_account_name = name;
@@ -265,7 +265,7 @@ const account_object& database_fixture::account_create(
          trx.operations.push_back( op );
       }
 
-      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.sign( creator_key, db->get_chain_id() );
       trx.validate();
       db->push_transaction( trx, 0 );
@@ -289,9 +289,9 @@ const account_object& database_fixture::account_create(
    {
       return account_create(
          name,
-         STEEMIT_INIT_MINER_NAME,
+         STEEM_INIT_MINER_NAME,
          init_account_priv_key,
-         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, share_type( 100 ) ),
+         std::max( db->get_witness_schedule_object().median_props.account_creation_fee.amount * STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER, share_type( 100 ) ),
          key,
          post_key,
          "" );
@@ -323,7 +323,7 @@ const witness_object& database_fixture::witness_create(
       op.fee = asset( fee, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.sign( owner_key, db->get_chain_id() );
       trx.validate();
       db->push_transaction( trx, 0 );
@@ -342,7 +342,7 @@ void database_fixture::fund(
 {
    try
    {
-      transfer( STEEMIT_INIT_MINER_NAME, account_name, amount );
+      transfer( STEEM_INIT_MINER_NAME, account_name, amount );
 
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
@@ -430,7 +430,7 @@ void database_fixture::transfer(
       op.amount = amount;
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
       db->push_transaction( trx, ~0 );
       trx.operations.clear();
@@ -447,7 +447,7 @@ void database_fixture::vest( const string& from, const share_type& amount )
       op.amount = asset( amount, STEEM_SYMBOL );
 
       trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       trx.validate();
       db->push_transaction( trx, ~0 );
       trx.operations.clear();
@@ -492,16 +492,16 @@ void database_fixture::set_price_feed( const price& new_price )
       for ( int i = 1; i < 8; i++ )
       {
          feed_publish_operation op;
-         op.publisher = STEEMIT_INIT_MINER_NAME + fc::to_string( i );
+         op.publisher = STEEM_INIT_MINER_NAME + fc::to_string( i );
          op.exchange_rate = new_price;
          trx.operations.push_back( op );
-         trx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+         trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
          db->push_transaction( trx, ~0 );
          trx.operations.clear();
       }
    } FC_CAPTURE_AND_RETHROW( (new_price) )
 
-   generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
+   generate_blocks( STEEM_BLOCKS_PER_HOUR );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
       !db->skip_price_feed_limit_check ||

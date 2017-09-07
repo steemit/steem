@@ -13,7 +13,7 @@
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
 
-extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
+extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 
 #define PUSH_TX \
    steemit::chain::test::_push_transaction
@@ -38,7 +38,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
    db.push_transaction( trx, ~0 ); \
 }
 
-/*#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
+/*#define STEEM_REQUIRE_THROW( expr, exc_type )          \
 {                                                         \
    std::string req_throw_info = fc::json::to_string(      \
       fc::mutable_variant_object()                        \
@@ -48,18 +48,18 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
       ("exc_type", #exc_type)                             \
       );                                                  \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "STEEMIT_REQUIRE_THROW begin "        \
+      std::cout << "STEEM_REQUIRE_THROW begin "        \
          << req_throw_info << std::endl;                  \
    BOOST_REQUIRE_THROW( expr, exc_type );                 \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "STEEMIT_REQUIRE_THROW end "          \
+      std::cout << "STEEM_REQUIRE_THROW end "          \
          << req_throw_info << std::endl;                  \
 }*/
 
-#define STEEMIT_REQUIRE_THROW( expr, exc_type )          \
+#define STEEM_REQUIRE_THROW( expr, exc_type )          \
    BOOST_REQUIRE_THROW( expr, exc_type );
 
-#define STEEMIT_CHECK_THROW( expr, exc_type )            \
+#define STEEM_CHECK_THROW( expr, exc_type )            \
 {                                                         \
    std::string req_throw_info = fc::json::to_string(      \
       fc::mutable_variant_object()                        \
@@ -69,11 +69,11 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
       ("exc_type", #exc_type)                             \
       );                                                  \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "STEEMIT_CHECK_THROW begin "          \
+      std::cout << "STEEM_CHECK_THROW begin "          \
          << req_throw_info << std::endl;                  \
    BOOST_CHECK_THROW( expr, exc_type );                   \
    if( fc::enable_record_assert_trip )                    \
-      std::cout << "STEEMIT_CHECK_THROW end "            \
+      std::cout << "STEEM_CHECK_THROW end "            \
          << req_throw_info << std::endl;                  \
 }
 
@@ -81,7 +81,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
 { \
    const auto temp = op.field; \
    op.field = value; \
-   STEEMIT_REQUIRE_THROW( op.validate(), exc_type ); \
+   STEEM_REQUIRE_THROW( op.validate(), exc_type ); \
    op.field = temp; \
 }
 #define REQUIRE_OP_VALIDATION_FAILURE( op, field, value ) \
@@ -93,7 +93,7 @@ extern uint32_t ( STEEMIT_TESTING_GENESIS_TIMESTAMP );
    op.field = value; \
    trx.operations.back() = op; \
    op.field = bak; \
-   STEEMIT_REQUIRE_THROW(db.push_transaction(trx, ~0), exc_type); \
+   STEEM_REQUIRE_THROW(db.push_transaction(trx, ~0), exc_type); \
 }
 
 #define REQUIRE_THROW_WITH_VALUE( op, field, value ) \

@@ -55,4 +55,4 @@ void block_info_plugin::on_applied_block( const chain::signed_block& b )
 
 } } } // steemit::plugin::block_info
 
-STEEMIT_DEFINE_PLUGIN( block_info, steemit::plugin::block_info::block_info_plugin )
+STEEM_DEFINE_PLUGIN( block_info, steemit::plugin::block_info::block_info_plugin )

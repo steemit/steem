@@ -47,17 +47,17 @@ BOOST_AUTO_TEST_CASE( mh_test )
       open_database();
 
       generate_block();
-      db->set_hardfork( STEEMIT_NUM_HARDFORKS );
+      db->set_hardfork( STEEM_NUM_HARDFORKS );
       generate_block();
 
       vest( "initminer", 10000 );
 
       // Fill up the rest of the required miners
-      for( int i = STEEMIT_NUM_INIT_MINERS; i < STEEMIT_MAX_WITNESSES; i++ )
+      for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
       {
-         account_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
-         fund( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), STEEMIT_MIN_PRODUCER_REWARD.amount.value );
-         witness_create( STEEMIT_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEMIT_MIN_PRODUCER_REWARD.amount );
+         account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+         fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+         witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
       }
 
       validate_database();
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       op.amount_to_sell = ASSET( "1.000 TBD" );
       op.min_to_receive = ASSET( "2.000 TESTS" );
       tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx,  0 );
 
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       op.amount_to_sell = ASSET( "1.000 TESTS" );
       op.min_to_receive = ASSET( "0.500 TBD" );
       tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( sam_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
 
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       op.amount_to_sell = ASSET( "0.500 TBD" );
       op.min_to_receive = ASSET( "0.900 TESTS" );
       tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
 
@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       op.amount_to_sell = ASSET( "0.450 TESTS" );
       op.min_to_receive = ASSET( "0.250 TBD" );
       tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( bob_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
       validate_database();
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE( mh_test )
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 86400 );
-      BOOST_REQUIRE( bucket->open == STEEMIT_GENESIS_TIME );
+      BOOST_REQUIRE( bucket->open == STEEM_GENESIS_TIME );
       BOOST_REQUIRE( bucket->high_steem == ASSET( "0.450 TESTS " ).amount );
       BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
       BOOST_REQUIRE( bucket->low_steem == ASSET( "1.500 TESTS" ).amount );

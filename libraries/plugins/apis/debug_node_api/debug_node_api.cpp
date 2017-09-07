@@ -128,7 +128,7 @@ DEFINE_API( debug_node_api_impl, debug_get_hardfork_property_object )
 
 DEFINE_API( debug_node_api_impl, debug_set_hardfork )
 {
-   if( args.hardfork_id > STEEMIT_NUM_HARDFORKS )
+   if( args.hardfork_id > STEEM_NUM_HARDFORKS )
       return {};
 
    _debug_node.debug_update( [=]( chain::database& db )

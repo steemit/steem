@@ -30,7 +30,7 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
 
       account_name_type       control_account;
       uint8_t                 decimal_places = 0;
-      int64_t                 max_supply = STEEMIT_MAX_SHARE_SUPPLY;
+      int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
       time_point_sec          generation_begin_time;
       time_point_sec          generation_end_time;

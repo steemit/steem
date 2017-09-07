@@ -421,7 +421,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_promoted )
    auto parent = get_parent( args );
 
    const auto& tidx = _db.get_index< tags::tag_index, tags::by_parent_promoted >();
-   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, share_type( STEEMIT_MAX_SHARE_SUPPLY ) )  );
+   auto tidx_itr = tidx.lower_bound( boost::make_tuple( tag, parent, share_type( STEEM_MAX_SHARE_SUPPLY ) )  );
 
    return get_discussions( args, tag, parent, tidx, tidx_itr, args.truncate_body, filter_default, exit_default, []( const tags::tag_object& t ){ return t.promoted_balance == 0; }  );
 }
@@ -546,7 +546,7 @@ void tags_api_impl::set_pending_payout( discussion& d )
    const auto& hist  = _db.get_feed_history();
 
    asset pot;
-   if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+   if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
       pot = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).reward_balance;
    else
       pot = props.total_reward_fund_steem;
@@ -554,7 +554,7 @@ void tags_api_impl::set_pending_payout( discussion& d )
    if( !hist.current_median_history.is_null() ) pot = pot * hist.current_median_history;
 
    u256 total_r2 = 0;
-   if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+   if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
       total_r2 = chain::util::to256( _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) ).recent_claims );
    else
       total_r2 = chain::util::to256( props.total_reward_shares2 );
@@ -562,7 +562,7 @@ void tags_api_impl::set_pending_payout( discussion& d )
    if( total_r2 > 0 )
    {
       uint128_t vshares;
-      if( _db.has_hardfork( STEEMIT_HARDFORK_0_17__774 ) )
+      if( _db.has_hardfork( STEEM_HARDFORK_0_17__774 ) )
       {
          const auto& rf = _db.get_reward_fund( _db.get_comment( d.author, d.permlink ) );
          vshares = d.net_rshares.value > 0 ? chain::util::evaluate_reward_curve( d.net_rshares.value, rf.author_reward_curve, rf.content_constant ) : 0;
@@ -582,7 +582,7 @@ void tags_api_impl::set_pending_payout( discussion& d )
       }
    }
 
-   if( d.parent_author != STEEMIT_ROOT_POST_PARENT )
+   if( d.parent_author != STEEM_ROOT_POST_PARENT )
       d.cashout_time = _db.calculate_discussion_payout_time( _db.get< chain::comment_object >( d.id ) );
 
    if( d.body.size() > 1024*128 )

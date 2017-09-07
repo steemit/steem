@@ -357,11 +357,11 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
          auto& account = db.get_account( op.account );
          const auto& bucket = db.get(bucket_id);
 
-         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS;
+         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEM_VESTING_WITHDRAW_INTERVALS;
          if( op.vesting_shares.amount > 0 && new_vesting_withdrawal_rate == 0 )
             new_vesting_withdrawal_rate = 1;
 
-         if( !db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+         if( !db.has_hardfork( STEEM_HARDFORK_0_1 ) )
             new_vesting_withdrawal_rate *= 1000000;
 
          db.modify( bucket, [&]( bucket_object& b )
@@ -470,4 +470,4 @@ uint32_t blockchain_statistics_plugin::get_max_history_per_bucket() const
 
 } } // steemit::blockchain_statistics
 
-STEEMIT_DEFINE_PLUGIN( blockchain_statistics, steemit::blockchain_statistics::blockchain_statistics_plugin );
+STEEM_DEFINE_PLUGIN( blockchain_statistics, steemit::blockchain_statistics::blockchain_statistics_plugin );
