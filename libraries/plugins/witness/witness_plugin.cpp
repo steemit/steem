@@ -578,7 +578,7 @@ void witness_plugin::set_program_options(
    string witness_id_example = "initwitness";
    cfg.add_options()
          ("enable-stale-production", bpo::bool_switch()->default_value(false), "Enable block production, even if the chain is stale.")
-         ("required-participation", bpo::value< uint32_t >()->default_value( 33 * STEEM_1_PERCENT ), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
+         ("required-participation", bpo::value< uint32_t >()->default_value( 33 ), "Percent of witnesses (0-99) that must be participating in order to produce blocks")
          ("witness,w", bpo::value<vector<string>>()->composing()->multitoken(),
             ("name of witness controlled by this node (e.g. " + witness_id_example + " )" ).c_str() )
          ("private-key", bpo::value<vector<string>>()->composing()->multitoken(), "WIF PRIVATE KEY to be used by one or more witnesses or miners" )
@@ -606,7 +606,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    if( options.count( "required-participation" ) )
    {
-      my->_required_witness_participation = options.at( "required-participation" ).as< uint32_t >();
+      my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();
    }
 
    my->_custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< witness_plugin_operation > >( my->_db );
