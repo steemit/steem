@@ -67,6 +67,8 @@ void smt_test_plugin_impl::post_operation( const operation_notification& note )
    note.op.visit( post_operation_visitor( *this ) );
 }
 
+#ifdef STEEM_ENABLE_SMT
+
 void test_alpha()
 {
    vector<operation>  operations;
@@ -240,6 +242,11 @@ void dump_operation_json()
    test_beta();
    test_delta();
 }
+#else
+void dump_operation_json()
+{
+}
+#endif
 
 smt_test_plugin::smt_test_plugin()
 {
