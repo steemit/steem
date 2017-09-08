@@ -94,7 +94,7 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
 
       /**
        *   Any time average_block_size <= 50% maximum_block_size this value grows by 1 until it
-       *   reaches STEEMIT_MAX_RESERVE_RATIO.  Any time average_block_size is greater than
+       *   reaches STEEM_MAX_RESERVE_RATIO.  Any time average_block_size is greater than
        *   50% it falls by 1%.  Upward adjustments happen once per round, downward adjustments
        *   happen every block.
        */
@@ -103,7 +103,7 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
       /**
        * The maximum bandwidth the blockchain can support is:
        *
-       *    max_bandwidth = maximum_block_size * STEEMIT_BANDWIDTH_AVERAGE_WINDOW_SECONDS / STEEMIT_BLOCK_INTERVAL
+       *    max_bandwidth = maximum_block_size * STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS / STEEM_BLOCK_INTERVAL
        *
        * The maximum virtual bandwidth is:
        *

@@ -57,17 +57,17 @@ DEFINE_API( debug_node_api_impl, debug_push_blocks )
    {
       ilog( "Loading ${n} from block_log ${fn}", ("n", count)("fn", src_filename) );
       idump( (src_filename)(count)(skip_validate_invariants) );
-      steemit::chain::block_log log;
+      chain::block_log log;
       log.open( src_path );
       uint32_t first_block = _db.head_block_num()+1;
-      uint32_t skip_flags = steemit::chain::database::skip_nothing;
+      uint32_t skip_flags = chain::database::skip_nothing;
       if( skip_validate_invariants )
-         skip_flags = skip_flags | steemit::chain::database::skip_validate_invariants;
+         skip_flags = skip_flags | chain::database::skip_validate_invariants;
       for( uint32_t i=0; i<count; i++ )
       {
-         //fc::optional< steemit::chain::signed_block > block = log.read_block( log.get_block_pos( first_block + i ) );
+         //fc::optional< chain::signed_block > block = log.read_block( log.get_block_pos( first_block + i ) );
          uint64_t block_pos = log.get_block_pos( first_block + i );
-         if( block_pos == steemit::chain::block_log::npos )
+         if( block_pos == chain::block_log::npos )
          {
             wlog( "Block database ${fn} only contained ${i} of ${n} requested blocks", ("i", i)("n", count)("fn", src_filename) );
             return { i };
@@ -108,7 +108,7 @@ DEFINE_API( debug_node_api_impl, debug_generate_blocks )
 
 DEFINE_API( debug_node_api_impl, debug_generate_blocks_until )
 {
-   return { _debug_node.debug_generate_blocks_until( args.debug_key, args.head_block_time, args.generate_sparsely, steemit::chain::database::skip_nothing ) };
+   return { _debug_node.debug_generate_blocks_until( args.debug_key, args.head_block_time, args.generate_sparsely, chain::database::skip_nothing ) };
 }
 
 DEFINE_API( debug_node_api_impl, debug_pop_block )
@@ -118,17 +118,17 @@ DEFINE_API( debug_node_api_impl, debug_pop_block )
 
 DEFINE_API( debug_node_api_impl, debug_get_witness_schedule )
 {
-   return _db.get( steemit::chain::witness_schedule_id_type() );
+   return _db.get( chain::witness_schedule_id_type() );
 }
 
 DEFINE_API( debug_node_api_impl, debug_get_hardfork_property_object )
 {
-   return _db.get( steemit::chain::hardfork_property_id_type() );
+   return _db.get( chain::hardfork_property_id_type() );
 }
 
 DEFINE_API( debug_node_api_impl, debug_set_hardfork )
 {
-   if( args.hardfork_id > STEEMIT_NUM_HARDFORKS )
+   if( args.hardfork_id > STEEM_NUM_HARDFORKS )
       return {};
 
    _debug_node.debug_update( [=]( chain::database& db )
@@ -141,7 +141,7 @@ DEFINE_API( debug_node_api_impl, debug_set_hardfork )
 
 DEFINE_API( debug_node_api_impl, debug_has_hardfork )
 {
-   return { _db.get( steemit::chain::hardfork_property_id_type() ).last_hardfork >= args.hardfork_id };
+   return { _db.get( chain::hardfork_property_id_type() ).last_hardfork >= args.hardfork_id };
 }
 
 void debug_node_api_impl::debug_get_json_schema( std::string& schema )

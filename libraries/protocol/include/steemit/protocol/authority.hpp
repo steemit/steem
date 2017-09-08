@@ -92,7 +92,7 @@ void add_authority_accounts(
  * In addition we require the following:
  *
  * - All letters are lowercase
- * - Length is between (inclusive) STEEMIT_MIN_ACCOUNT_NAME_LENGTH and STEEMIT_MAX_ACCOUNT_NAME_LENGTH
+ * - Length is between (inclusive) STEEM_MIN_ACCOUNT_NAME_LENGTH and STEEM_MAX_ACCOUNT_NAME_LENGTH
  */
 bool is_valid_account_name( const string& name );
 

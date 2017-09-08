@@ -185,6 +185,6 @@ flat_map<string,string> private_message_plugin::tracked_accounts() const
 
 } }
 
-STEEMIT_DEFINE_PLUGIN( private_message, steemit::private_message::private_message_plugin )
+STEEM_DEFINE_PLUGIN( private_message, steemit::private_message::private_message_plugin )
 
 STEEM_DEFINE_OPERATION_TYPE( steemit::private_message::private_message_plugin_operation )

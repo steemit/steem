@@ -31,7 +31,7 @@ class tags_plugin_impl
       void pre_operation( const operation_notification& note );
       void on_operation( const operation_notification& note );
 
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   post_apply_connection;
 };
@@ -366,7 +366,7 @@ struct operation_visitor
 
    void operator()( const transfer_operation& op )const
    {
-      if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
+      if( op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;

@@ -29,7 +29,7 @@ class smt_test_plugin_impl
       void update_key_lookup( const account_authority_object& a );
 
       flat_set< public_key_type >   cached_keys;
-      steemit::chain::database&     _db;
+      chain::database&     _db;
       smt_test_plugin&              _self;
 };
 
@@ -74,7 +74,7 @@ void test_alpha()
    vector<operation>  operations;
 
    smt_capped_generation_policy gpolicy;
-   uint64_t max_supply = STEEMIT_MAX_SHARE_SUPPLY / 6000;
+   uint64_t max_supply = STEEM_MAX_SHARE_SUPPLY / 6000;
 
    // set steem unit, total is 100 STEEM-satoshis = 0.1 STEEM
    gpolicy.pre_soft_cap_unit.steem_unit.emplace( "founder_a",   7 );
@@ -92,7 +92,7 @@ void test_alpha()
    gpolicy.min_steem_units_commitment.fillin_nonhidden_value( 1 );
    gpolicy.hard_cap_steem_units_commitment.fillin_nonhidden_value( max_supply );
 
-   gpolicy.soft_cap_percent = STEEMIT_100_PERCENT;
+   gpolicy.soft_cap_percent = STEEM_100_PERCENT;
 
    // .0006 ALPHA / 0.1 STEEM -> 1000 token-units / steem-unit
    gpolicy.min_unit_ratio = 1000;
@@ -149,7 +149,7 @@ void test_beta()
    gpolicy.min_steem_units_commitment.fillin_nonhidden_value( 5000000 );
    gpolicy.hard_cap_steem_units_commitment.fillin_nonhidden_value( 30000000 );
 
-   gpolicy.soft_cap_percent = STEEMIT_100_PERCENT;
+   gpolicy.soft_cap_percent = STEEM_100_PERCENT;
 
    // .0006 ALPHA / 0.1 STEEM -> 1000 token-units / steem-unit
    gpolicy.min_unit_ratio = 50;
@@ -202,7 +202,7 @@ void test_delta()
    gpolicy.min_steem_units_commitment.fillin_nonhidden_value(      10000000 );
    gpolicy.hard_cap_steem_units_commitment.fillin_nonhidden_value( 10000000 );
 
-   gpolicy.soft_cap_percent = STEEMIT_100_PERCENT;
+   gpolicy.soft_cap_percent = STEEM_100_PERCENT;
 
    // .001 STEEM / .100000 DELTA -> 100 DELTA / STEEM
    gpolicy.min_unit_ratio = 1000;

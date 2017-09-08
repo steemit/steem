@@ -132,6 +132,7 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
             get_plugin(name).initialize(my->_args);
       }
    }
+
    for (const auto& plugin : autostart_plugins)
       if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
          plugin->initialize(my->_args);
@@ -206,12 +207,15 @@ void application::write_default_config(const bfs::path& cfg_file) {
    out_cfg.close();
 }
 
-abstract_plugin* application::find_plugin(const string& name)const
+abstract_plugin* application::find_plugin( const string& name )const
 {
-   auto itr = plugins.find(name);
-   if(itr == plugins.end()) {
+   auto itr = plugins.find( name );
+
+   if( itr == plugins.end() )
+   {
       return nullptr;
    }
+
    return itr->second.get();
 }
 

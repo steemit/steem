@@ -208,7 +208,7 @@ if(ENABLE_COVERAGE_TESTING)
     SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
 endif()
 
-# external_plugins needs to be compiled first because libraries/app depends on STEEMIT_EXTERNAL_PLUGINS being fully populated
+# external_plugins needs to be compiled first because libraries/app depends on STEEM_EXTERNAL_PLUGINS being fully populated
 add_subdirectory( external_plugins )
 add_subdirectory( libraries )
 add_subdirectory( programs )

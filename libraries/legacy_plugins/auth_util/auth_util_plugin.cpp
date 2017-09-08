@@ -30,4 +30,4 @@ void auth_util_plugin::plugin_shutdown()
 
 } } } // steemit::plugin::auth_util
 
-STEEMIT_DEFINE_PLUGIN( auth_util, steemit::plugin::auth_util::auth_util_plugin )
+STEEM_DEFINE_PLUGIN( auth_util, steemit::plugin::auth_util::auth_util_plugin )

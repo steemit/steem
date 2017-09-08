@@ -29,7 +29,7 @@ namespace appbase {
          template< typename... Plugin >
          bool initialize( int argc, char** argv )
          {
-            return initialize_impl( argc, argv, { find_plugin< Plugin >()... } );
+            return initialize_impl( argc, argv, { find_plugin( Plugin::name() )... } );
          }
 
          void startup();
@@ -43,15 +43,12 @@ namespace appbase {
 
          static application& instance( bool reset = false );
 
-         abstract_plugin* find_plugin( const string& name )const;
-         abstract_plugin& get_plugin( const string& name )const;
-
          template< typename Plugin >
          auto& register_plugin()
          {
-            auto existing = find_plugin< Plugin >();
+            auto existing = find_plugin( Plugin::name() );
             if( existing )
-               return *existing;
+               return *dynamic_cast< Plugin* >( existing );
 
             auto plug = std::make_shared< Plugin >();
             plugins[Plugin::name()] = plug;
@@ -62,7 +59,15 @@ namespace appbase {
          template< typename Plugin >
          Plugin* find_plugin()const
          {
-            return dynamic_cast< Plugin* >( find_plugin( Plugin::name() ) );
+            Plugin* plugin = dynamic_cast< Plugin* >( find_plugin( Plugin::name() ) );
+
+            // Do not return plugins that are registered but not at least initialized.
+            if( plugin != nullptr && plugin->get_state() == abstract_plugin::registered )
+            {
+               return nullptr;
+            }
+
+            return plugin;
          }
 
          template< typename Plugin >
@@ -88,6 +93,9 @@ namespace appbase {
          friend class plugin;
 
          bool initialize_impl( int argc, char** argv, vector< abstract_plugin* > autostart_plugins );
+
+         abstract_plugin* find_plugin( const string& name )const;
+         abstract_plugin& get_plugin( const string& name )const;
 
          /** these notifications get called from the plugin when their state changes so that
           * the application can call shutdown in the reverse order.
@@ -135,7 +143,7 @@ namespace appbase {
                _state = initialized;
                this->plugin_for_each_dependency( [&]( abstract_plugin& plug ){ plug.initialize( options ); } );
                this->plugin_initialize( options );
-               // std::cout << "initializing plugin " << name() << std::endl;
+               // std::cout << "Initializing plugin " << Impl::name() << std::endl;
                app().plugin_initialized( *this );
             }
             if (_state != initialized)

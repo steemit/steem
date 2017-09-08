@@ -182,8 +182,8 @@ namespace steemit { namespace protocol {
          return price{ base, quote };
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
-      price price::max( asset_symbol_type base, asset_symbol_type quote ) { return asset( share_type(STEEMIT_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
-      price price::min( asset_symbol_type base, asset_symbol_type quote ) { return asset( 1, base ) / asset( STEEMIT_MAX_SHARE_SUPPLY, quote); }
+      price price::max( asset_symbol_type base, asset_symbol_type quote ) { return asset( share_type(STEEM_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
+      price price::min( asset_symbol_type base, asset_symbol_type quote ) { return asset( 1, base ) / asset( STEEM_MAX_SHARE_SUPPLY, quote); }
 
       bool price::is_null() const { return *this == price(); }
 

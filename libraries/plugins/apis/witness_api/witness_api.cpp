@@ -12,7 +12,7 @@ class witness_api_impl
 
       get_account_bandwidth_return get_account_bandwidth( const get_account_bandwidth_args& args );
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 get_account_bandwidth_return witness_api_impl::get_account_bandwidth( const get_account_bandwidth_args& args )

@@ -21,9 +21,9 @@ namespace steemit { namespace plugins { namespace account_history {
 
 using namespace steemit::protocol;
 
-using steemit::chain::database;
-using steemit::chain::operation_notification;
-using steemit::chain::operation_object;
+using chain::database;
+using chain::operation_notification;
+using chain::operation_object;
 
 namespace detail {
 
@@ -60,7 +60,7 @@ struct operation_visitor
    template<typename Op>
    void operator()( Op&& )const
    {
-         const auto& hist_idx = _db.get_index< steemit::chain::account_history_index >().indices().get< steemit::chain::by_account >();
+         const auto& hist_idx = _db.get_index< chain::account_history_index >().indices().get< chain::by_account >();
          if( !new_obj )
          {
             new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
@@ -84,7 +84,7 @@ struct operation_visitor
          if( hist_itr != hist_idx.end() && hist_itr->account == item )
             sequence = hist_itr->sequence + 1;
 
-         _db.create< steemit::chain::account_history_object >( [&]( steemit::chain::account_history_object& ahist )
+         _db.create< chain::account_history_object >( [&]( chain::account_history_object& ahist )
          {
             ahist.account  = item;
             ahist.sequence = sequence;

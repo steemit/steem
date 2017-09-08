@@ -110,8 +110,8 @@ std::string hello_api_api::get_message()
 } }
 
 /**
- * The STEEMIT_DEFINE_PLUGIN() macro will define a steemit::plugin::create_hello_api_plugin()
+ * The STEEM_DEFINE_PLUGIN() macro will define a steemit::plugin::create_hello_api_plugin()
  * factory method which is expected by the manifest.
  */
 
-STEEMIT_DEFINE_PLUGIN( hello_api, steemit::example_plugin::hello_api_plugin )
+STEEM_DEFINE_PLUGIN( hello_api, steemit::example_plugin::hello_api_plugin )

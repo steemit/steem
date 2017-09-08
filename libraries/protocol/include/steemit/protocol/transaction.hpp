@@ -63,7 +63,7 @@ namespace steemit { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
+         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH
          )const;
 
       void verify_authority(
@@ -71,7 +71,7 @@ namespace steemit { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH )const;
+         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH )const;
 
       set<public_key_type> minimize_required_signatures(
          const chain_id_type& chain_id,
@@ -79,7 +79,7 @@ namespace steemit { namespace protocol {
          const authority_getter& get_active,
          const authority_getter& get_owner,
          const authority_getter& get_posting,
-         uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH
+         uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH
          ) const;
 
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
@@ -95,7 +95,7 @@ namespace steemit { namespace protocol {
                           const authority_getter& get_active,
                           const authority_getter& get_owner,
                           const authority_getter& get_posting,
-                          uint32_t max_recursion = STEEMIT_MAX_SIG_CHECK_DEPTH,
+                          uint32_t max_recursion = STEEM_MAX_SIG_CHECK_DEPTH,
                           bool allow_committe = false,
                           const flat_set< account_name_type >& active_aprovals = flat_set< account_name_type >(),
                           const flat_set< account_name_type >& owner_aprovals = flat_set< account_name_type >(),

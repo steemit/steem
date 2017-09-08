@@ -14,7 +14,7 @@ class account_by_key_api_impl
 
       get_key_references_return get_key_references( const get_key_references_args& args )const;
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 get_key_references_return account_by_key_api_impl::get_key_references( const get_key_references_args& args )const

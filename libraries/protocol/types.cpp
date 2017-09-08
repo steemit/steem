@@ -20,7 +20,7 @@ namespace steemit { namespace protocol {
     {
       // TODO:  Refactor syntactic checks into static is_valid()
       //        to make public_key_type API more similar to address API
-       std::string prefix( STEEMIT_ADDRESS_PREFIX );
+       std::string prefix( STEEM_ADDRESS_PREFIX );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -48,7 +48,7 @@ namespace steemit { namespace protocol {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack( k );
-       return STEEMIT_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
+       return STEEM_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == ( const public_key_type& p1, const fc::ecc::public_key& p2)
@@ -80,7 +80,7 @@ namespace steemit { namespace protocol {
 
     extended_public_key_type::extended_public_key_type( const std::string& base58str )
     {
-       std::string prefix( STEEMIT_ADDRESS_PREFIX );
+       std::string prefix( STEEM_ADDRESS_PREFIX );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -102,7 +102,7 @@ namespace steemit { namespace protocol {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack( k );
-       return STEEMIT_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
+       return STEEM_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == ( const extended_public_key_type& p1, const fc::ecc::extended_public_key& p2)
@@ -134,7 +134,7 @@ namespace steemit { namespace protocol {
 
     extended_private_key_type::extended_private_key_type( const std::string& base58str )
     {
-       std::string prefix( STEEMIT_ADDRESS_PREFIX );
+       std::string prefix( STEEM_ADDRESS_PREFIX );
 
        const size_t prefix_len = prefix.size();
        FC_ASSERT( base58str.size() > prefix_len );
@@ -156,7 +156,7 @@ namespace steemit { namespace protocol {
        k.data = key_data;
        k.check = fc::ripemd160::hash( k.data.data, k.data.size() )._hash[0];
        auto data = fc::raw::pack( k );
-       return STEEMIT_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
+       return STEEM_ADDRESS_PREFIX + fc::to_base58( data.data(), data.size() );
     }
 
     bool operator == ( const extended_private_key_type& p1, const fc::ecc::extended_public_key& p2)

@@ -117,6 +117,9 @@ class webserver_plugin_impl
             thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
       }
 
+      void handle_ws_message( websocket_server_type*, connection_hdl, detail::websocket_server_type::message_ptr );
+      void handle_http_message( websocket_server_type*, connection_hdl );
+
       shared_ptr< std::thread >  http_thread;
       asio::io_service           http_ios;
       optional< tcp::endpoint >  http_endpoint;
@@ -133,6 +136,51 @@ class webserver_plugin_impl
 
       plugins::json_rpc::json_rpc_plugin* api;
 };
+
+void webserver_plugin_impl::handle_ws_message( websocket_server_type* server, connection_hdl hdl, detail::websocket_server_type::message_ptr msg )
+{
+   auto con = server->get_con_from_hdl( hdl );
+
+   thread_pool_ios.post( [con, msg, this]()
+   {
+      try
+      {
+         if( msg->get_opcode() == websocketpp::frame::opcode::text )
+            con->send( api->call( msg->get_payload() ) );
+         else
+            con->send( "error: string payload expected" );
+      }
+      catch( fc::exception& e )
+      {
+         con->send( "error calling API " + e.to_string() );
+      }
+   });
+}
+
+void webserver_plugin_impl::handle_http_message( websocket_server_type* server, connection_hdl hdl )
+{
+   auto con = server->get_con_from_hdl( hdl );
+   con->defer_http_response();
+
+   thread_pool_ios.post( [con, this]()
+   {
+      auto body = con->get_request_body();
+
+      try
+      {
+         con->set_body( api->call( body ) );
+         con->set_status( websocketpp::http::status_code::ok );
+      }
+      catch( fc::exception& e )
+      {
+         edump( (e) );
+         con->set_body( "Could not call API" );
+         con->set_status( websocketpp::http::status_code::not_found );
+      }
+
+      con->send_http_response();
+   });
+}
 
 } // detail
 
@@ -192,53 +240,11 @@ void webserver_plugin::plugin_startup()
             my->ws_server.init_asio( &my->ws_ios );
             my->ws_server.set_reuse_addr( true );
 
-            my->ws_server.set_message_handler( [&]( connection_hdl hdl, detail::websocket_server_type::message_ptr msg )
-            {
-               auto con = my->ws_server.get_con_from_hdl( hdl );
-
-               my->thread_pool_ios.post( [con, msg, this]()
-               {
-                  try
-                  {
-                     if( msg->get_opcode() == websocketpp::frame::opcode::text )
-                        con->send( my->api->call( msg->get_payload() ) );
-                     else
-                        con->send( "error: string payload expected" );
-                  }
-                  catch( fc::exception& e )
-                  {
-                     con->send( "error calling API " + e.to_string() );
-                  }
-               });
-            });
+            my->ws_server.set_message_handler( boost::bind( &detail::webserver_plugin_impl::handle_ws_message, &(*my), &my->ws_server, _1, _2 ) );
 
             if( my->http_endpoint && my->http_endpoint == my->ws_endpoint )
             {
-               my->ws_server.set_http_handler( [&]( connection_hdl hdl )
-               {
-                  auto con = my->ws_server.get_con_from_hdl( hdl );
-                  con->defer_http_response();
-
-                  my->thread_pool_ios.post( [con, this]()
-                  {
-                     auto body = con->get_request_body();
-
-                     try
-                     {
-                        con->set_body( my->api->call( body ) );
-                        con->set_status( websocketpp::http::status_code::ok );
-                     }
-                     catch( fc::exception& e )
-                     {
-                        edump( (e) );
-                        con->set_body( "Could not call API" );
-                        con->set_status( websocketpp::http::status_code::not_found );
-                     }
-
-                     con->send_http_response();
-                  });
-               });
-
+               my->ws_server.set_http_handler( boost::bind( &detail::webserver_plugin_impl::handle_http_message, &(*my), &my->ws_server, _1 ) );
                ilog( "start listending for http requests" );
             }
 
@@ -268,30 +274,7 @@ void webserver_plugin::plugin_startup()
             my->http_server.init_asio( &my->http_ios );
             my->http_server.set_reuse_addr( true );
 
-            my->http_server.set_http_handler( [&]( connection_hdl hdl )
-            {
-               auto con = my->http_server.get_con_from_hdl( hdl );
-               con->defer_http_response();
-
-               my->thread_pool_ios.post( [con, this]()
-               {
-                  auto body = con->get_request_body();
-
-                  try
-                  {
-                     con->set_body( my->api->call( body ) );
-                     con->set_status( websocketpp::http::status_code::ok );
-                  }
-                  catch( fc::exception& e )
-                  {
-                     edump( (e) );
-                     con->set_body( "Could not call API" );
-                     con->set_status( websocketpp::http::status_code::not_found );
-                  }
-
-                  con->send_http_response();
-               });
-            });
+            my->http_server.set_http_handler( boost::bind( &detail::webserver_plugin_impl::handle_http_message, &(*my), &my->http_server, _1 ) );
 
             ilog( "start listening for http requests" );
             my->http_server.listen( *my->http_endpoint );

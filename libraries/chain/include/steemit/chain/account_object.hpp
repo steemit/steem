@@ -44,14 +44,14 @@ namespace steemit { namespace chain {
          time_point_sec    last_owner_proved = time_point_sec::min();
          time_point_sec    last_active_proved = time_point_sec::min();
          account_name_type recovery_account;
-         account_name_type reset_account = STEEMIT_NULL_ACCOUNT;
+         account_name_type reset_account = STEEM_NULL_ACCOUNT;
          time_point_sec    last_account_recovery;
          uint32_t          comment_count = 0;
          uint32_t          lifetime_vote_count = 0;
          uint32_t          post_count = 0;
 
          bool              can_vote = true;
-         uint16_t          voting_power = STEEMIT_100_PERCENT;   ///< current voting power of this account, it falls after every vote
+         uint16_t          voting_power = STEEM_100_PERCENT;   ///< current voting power of this account, it falls after every vote
          time_point_sec    last_vote_time; ///< used to increase the voting power of this account the longer it goes without voting.
 
          asset             balance = asset( 0, STEEM_SYMBOL );  ///< total liquid shares held by this account
@@ -65,7 +65,7 @@ namespace steemit { namespace chain {
           *  interest = interest_rate * sbd_seconds / seconds_per_year
           *
           *  Every time the sbd_balance is updated the sbd_seconds is also updated. If at least
-          *  STEEMIT_MIN_COMPOUNDING_INTERVAL_SECONDS has past since sbd_last_interest_payment then
+          *  STEEM_MIN_COMPOUNDING_INTERVAL_SECONDS has past since sbd_last_interest_payment then
           *  interest is added to sbd_balance.
           *
           *  @defgroup sbd_data sbd Balance Data
@@ -103,7 +103,7 @@ namespace steemit { namespace chain {
          share_type        to_withdraw = 0; /// Might be able to look this up with operation history.
          uint16_t          withdraw_routes = 0;
 
-         fc::array<share_type, STEEMIT_MAX_PROXY_RECURSION_DEPTH> proxied_vsf_votes;// = std::vector<share_type>( STEEMIT_MAX_PROXY_RECURSION_DEPTH, 0 ); ///< the total VFS votes proxied to this account
+         fc::array<share_type, STEEM_MAX_PROXY_RECURSION_DEPTH> proxied_vsf_votes;// = std::vector<share_type>( STEEM_MAX_PROXY_RECURSION_DEPTH, 0 ); ///< the total VFS votes proxied to this account
 
          uint16_t          witnesses_voted_for = 0;
 

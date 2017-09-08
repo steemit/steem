@@ -90,7 +90,7 @@ namespace steemit { namespace chain {
          id_type           root_comment;
 
          asset             max_accepted_payout = asset( 1000000000, SBD_SYMBOL );       /// SBD value of the maximum payout this post will receive
-         uint16_t          percent_steem_dollars = STEEMIT_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
+         uint16_t          percent_steem_dollars = STEEM_100_PERCENT; /// the percent of Steem Dollars to key, unkept amounts will be received as Steem Power
          bool              allow_replies = true;      /// allows a post to disable replies.
          bool              allow_votes   = true;      /// allows a post to receive votes;
          bool              allow_curation_rewards = true;

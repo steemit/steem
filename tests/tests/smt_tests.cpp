@@ -25,24 +25,24 @@ BOOST_AUTO_TEST_CASE( elevate_account_validate )
       smt_elevate_account_operation op;
       op.account = "@@@@@";
       op.fee = ASSET( "1.000 TESTS" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.account = "alice";
       op.validate();
 
       op.fee.amount = -op.fee.amount;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       // passes with MAX_SHARE_SUPPLY
-      op.fee.amount = STEEMIT_MAX_SHARE_SUPPLY;
+      op.fee.amount = STEEM_MAX_SHARE_SUPPLY;
       op.validate();
 
       // fails with MAX_SHARE_SUPPLY+1
       ++op.fee.amount;
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.fee = ASSET( "1.000 WRONG" );
-      STEEMIT_REQUIRE_THROW( op.validate(), fc::exception );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -89,16 +89,16 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
       signed_transaction tx;
 
       tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
       // throw due to insufficient balance
-      STEEMIT_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       convert( "alice", ASSET( "5000.000 TESTS" ) );
       db->push_transaction( tx, 0 );
 
       // Check the account cannot elevate itself twice
-      STEEMIT_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       // TODO:
       // - Check that 1000 TESTS throws

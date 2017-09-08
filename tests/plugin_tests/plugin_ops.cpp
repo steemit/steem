@@ -77,7 +77,7 @@ test_plugin::test_plugin( application* app ) : plugin( app )
 
 } } // steemit::plugin_tests
 
-STEEMIT_DEFINE_PLUGIN( test, steemit::plugin_tests::test_plugin )
+STEEM_DEFINE_PLUGIN( test, steemit::plugin_tests::test_plugin )
 
 FC_REFLECT( steemit::plugin_tests::test_a_operation, (account) )
 FC_REFLECT( steemit::plugin_tests::test_b_operation, (account) )

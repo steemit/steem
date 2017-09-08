@@ -101,7 +101,7 @@ struct smt_setup_operation : public base_operation
 {
    account_name_type       control_account;
    uint8_t                 decimal_places = 0;
-   int64_t                 max_supply = STEEMIT_MAX_SHARE_SUPPLY;
+   int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
    smt_generation_policy   initial_generation_policy;
 
