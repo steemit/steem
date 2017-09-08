@@ -1,5 +1,7 @@
 #include <steemit/plugins/webserver/webserver_plugin.hpp>
 
+#include <steemit/plugins/chain/chain_plugin.hpp>
+
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/io/json.hpp>
@@ -117,6 +119,9 @@ class webserver_plugin_impl
             thread_pool.create_thread( boost::bind( &asio::io_service::run, &thread_pool_ios ) );
       }
 
+      void start_webserver();
+      void stop_webserver();
+
       void handle_ws_message( websocket_server_type*, connection_hdl, detail::websocket_server_type::message_ptr );
       void handle_http_message( websocket_server_type*, connection_hdl );
 
@@ -135,7 +140,99 @@ class webserver_plugin_impl
       asio::io_service::work     thread_pool_work;
 
       plugins::json_rpc::json_rpc_plugin* api;
+      boost::signals2::connection         chain_sync_con;
 };
+
+void webserver_plugin_impl::start_webserver()
+{
+   if( ws_endpoint )
+   {
+      ws_thread = std::make_shared<std::thread>( [&]()
+      {
+         ilog( "start processing ws thread" );
+         try
+         {
+            ws_server.clear_access_channels( websocketpp::log::alevel::all );
+            ws_server.clear_error_channels( websocketpp::log::elevel::all );
+            ws_server.init_asio( &ws_ios );
+            ws_server.set_reuse_addr( true );
+
+            ws_server.set_message_handler( boost::bind( &webserver_plugin_impl::handle_ws_message, this, &ws_server, _1, _2 ) );
+
+            if( http_endpoint && http_endpoint == ws_endpoint )
+            {
+               ws_server.set_http_handler( boost::bind( &webserver_plugin_impl::handle_http_message, this, &ws_server, _1 ) );
+               ilog( "start listending for http requests" );
+            }
+
+            ilog( "start listening for ws requests" );
+            ws_server.listen( *ws_endpoint );
+            ws_server.start_accept();
+
+            ws_ios.run();
+            ilog( "ws io service exit" );
+         }
+         catch( ... )
+         {
+            elog( "error thrown from http io service" );
+         }
+      });
+   }
+
+   if( http_endpoint && ( ( ws_endpoint && ws_endpoint != http_endpoint ) || !ws_endpoint ) )
+   {
+      http_thread = std::make_shared<std::thread>( [&]()
+      {
+         ilog( "start processing http thread" );
+         try
+         {
+            http_server.clear_access_channels( websocketpp::log::alevel::all );
+            http_server.clear_error_channels( websocketpp::log::elevel::all );
+            http_server.init_asio( &http_ios );
+            http_server.set_reuse_addr( true );
+
+            http_server.set_http_handler( boost::bind( &webserver_plugin_impl::handle_http_message, this, &http_server, _1 ) );
+
+            ilog( "start listening for http requests" );
+            http_server.listen( *http_endpoint );
+            http_server.start_accept();
+
+            http_ios.run();
+            ilog( "http io service exit" );
+         }
+         catch( ... )
+         {
+            elog( "error thrown from http io service" );
+         }
+      });
+   }
+}
+
+void webserver_plugin_impl::stop_webserver()
+{
+   if( ws_server.is_listening() )
+   ws_server.stop_listening();
+
+   if( http_server.is_listening() )
+      http_server.stop_listening();
+
+   thread_pool_ios.stop();
+   thread_pool.join_all();
+
+   if( ws_thread )
+   {
+      ws_ios.stop();
+      ws_thread->join();
+      ws_thread.reset();
+   }
+
+   if( http_thread )
+   {
+      http_ios.stop();
+      http_thread->join();
+      http_thread.reset();
+   }
+}
 
 void webserver_plugin_impl::handle_ws_message( websocket_server_type* server, connection_hdl hdl, detail::websocket_server_type::message_ptr msg )
 {
@@ -228,94 +325,24 @@ void webserver_plugin::plugin_startup()
    my->api = appbase::app().find_plugin< plugins::json_rpc::json_rpc_plugin >();
    FC_ASSERT( my->api != nullptr, "Could not find API Register Plugin" );
 
-   if( my->ws_endpoint )
+   plugins::chain::chain_plugin* chain = appbase::app().find_plugin< plugins::chain::chain_plugin >();
+   if( chain != nullptr && chain->get_state() != appbase::abstract_plugin::started )
    {
-      my->ws_thread = std::make_shared<std::thread>( [&]()
+      ilog( "Waiting for chain plugin to start" );
+      my->chain_sync_con = chain->on_sync.connect( [this]()
       {
-         ilog( "start processing ws thread" );
-         try
-         {
-            my->ws_server.clear_access_channels( websocketpp::log::alevel::all );
-            my->ws_server.clear_error_channels( websocketpp::log::elevel::all );
-            my->ws_server.init_asio( &my->ws_ios );
-            my->ws_server.set_reuse_addr( true );
-
-            my->ws_server.set_message_handler( boost::bind( &detail::webserver_plugin_impl::handle_ws_message, &(*my), &my->ws_server, _1, _2 ) );
-
-            if( my->http_endpoint && my->http_endpoint == my->ws_endpoint )
-            {
-               my->ws_server.set_http_handler( boost::bind( &detail::webserver_plugin_impl::handle_http_message, &(*my), &my->ws_server, _1 ) );
-               ilog( "start listending for http requests" );
-            }
-
-            ilog( "start listening for ws requests" );
-            my->ws_server.listen( *my->ws_endpoint );
-            my->ws_server.start_accept();
-
-            my->ws_ios.run();
-            ilog( "ws io service exit" );
-         }
-         catch( ... )
-         {
-            elog( "error thrown from http io service" );
-         }
+         my->start_webserver();
       });
    }
-
-   if( my->http_endpoint && ( ( my->ws_endpoint && my->ws_endpoint != my->http_endpoint ) || !my->ws_endpoint ) )
+   else
    {
-      my->http_thread = std::make_shared<std::thread>( [&]()
-      {
-         ilog( "start processing http thread" );
-         try
-         {
-            my->http_server.clear_access_channels( websocketpp::log::alevel::all );
-            my->http_server.clear_error_channels( websocketpp::log::elevel::all );
-            my->http_server.init_asio( &my->http_ios );
-            my->http_server.set_reuse_addr( true );
-
-            my->http_server.set_http_handler( boost::bind( &detail::webserver_plugin_impl::handle_http_message, &(*my), &my->http_server, _1 ) );
-
-            ilog( "start listening for http requests" );
-            my->http_server.listen( *my->http_endpoint );
-            my->http_server.start_accept();
-
-            my->http_ios.run();
-            ilog( "http io service exit" );
-         }
-         catch( ... )
-         {
-            elog( "error thrown from http io service" );
-         }
-      });
-
+      my->start_webserver();
    }
 }
 
 void webserver_plugin::plugin_shutdown()
 {
-   if( my->ws_server.is_listening() )
-      my->ws_server.stop_listening();
-
-   if( my->http_server.is_listening() )
-      my->http_server.stop_listening();
-
-   my->thread_pool_ios.stop();
-   my->thread_pool.join_all();
-
-   if( my->ws_thread )
-   {
-      my->ws_ios.stop();
-      my->ws_thread->join();
-      my->ws_thread.reset();
-   }
-
-   if( my->http_thread )
-   {
-      my->http_ios.stop();
-      my->http_thread->join();
-      my->http_thread.reset();
-   }
+   my->stop_webserver();
 }
 
 } } } // steemit::plugins::webserver

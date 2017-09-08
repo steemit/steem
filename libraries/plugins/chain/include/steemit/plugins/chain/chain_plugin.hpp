@@ -2,6 +2,8 @@
 #include <appbase/application.hpp>
 #include <steemit/chain/database.hpp>
 
+#include <boost/signals2.hpp>
+
 #define STEEM_CHAIN_PLUGIN_NAME "chain"
 
 namespace steemit { namespace plugins { namespace chain {
@@ -73,6 +75,10 @@ public:
    // Exposed for backwards compatibility. In the future, plugins should manage their own internal database
    database& db();
    const database& db() const;
+
+   // Emitted when the blockchain is syncing/live.
+   // This is to synchronize plugins that have the chain plugin as an optional dependency.
+   boost::signals2::signal<void()> on_sync;
 
 private:
    std::unique_ptr< detail::chain_plugin_impl > my;
