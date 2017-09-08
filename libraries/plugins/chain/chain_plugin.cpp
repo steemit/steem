@@ -132,6 +132,7 @@ void chain_plugin::plugin_startup()
    }
 
    ilog( "Started on blockchain with ${n} blocks", ("n", my->db.head_block_num()) );
+   on_sync();
 }
 
 void chain_plugin::plugin_shutdown()

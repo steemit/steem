@@ -4,7 +4,7 @@ add_library( webserver_plugin
              webserver_plugin.cpp
              ${HEADERS} )
 
-target_link_libraries( webserver_plugin json_rpc_plugin appbase fc )
+target_link_libraries( webserver_plugin json_rpc_plugin chain_plugin appbase fc )
 target_include_directories( webserver_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )
