@@ -500,7 +500,7 @@ void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::option
 
 void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
-   my.reset( new detail::p2p_plugin_impl( appbase::app().get_plugin< plugins::chain::chain_plugin >() ) );
+   my = std::make_unique< detail::p2p_plugin_impl >( appbase::app().get_plugin< plugins::chain::chain_plugin >() );
 
    if( options.count( "p2p-endpoint" ) )
       my->endpoint = fc::ip::endpoint::from_string( options.at( "p2p-endpoint" ).as< string >() );
