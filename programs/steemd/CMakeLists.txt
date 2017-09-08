@@ -17,6 +17,13 @@ target_link_libraries( steemd PRIVATE
    ${PLATFORM_SPECIFIC_LIBS}
 )
 
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      steemd PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
+
 install( TARGETS
    steemd
 

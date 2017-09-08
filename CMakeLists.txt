@@ -92,6 +92,34 @@ if( SKIP_BY_TX_ID )
    SET( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSKIP_BY_TX_ID" )
 endif()
 
+SET( STEEM_LINT_LEVEL "OFF" CACHE STRING "Lint level during steem build (FULL, HIGH, LOW, OFF)" )
+find_program(
+   CLANG_TIDY_EXE
+   NAMES "clang-tidy"
+   DOC "Path to clain-tidy executable"
+)
+
+if( NOT CLANG_TIDY_EXE )
+   message( STATUS "clang-tidy not found" )
+elseif( VERSION LESS 3.6 )
+   messgae( STATUS "clang-tidy found but only supported with CMake version >= 3.6" )
+else()
+   message( STATUS "clany-tidy found: ${CLANG_TIDY_EXE}" )
+   if( "${STEEM_LINT_LEVEL}" STREQUAL "FULL" )
+      message( STATUS "Linting level set to: FULL" )
+      set( DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks='*'" )
+   elseif( "${STEEM_LINT_LEVEL}" STREQUAL "HIGH" )
+      message( STATUS "Linting level set to: HIGH" )
+      set( DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks='boost-use-to-string,clang-analyzer-*,cppcoreguidelines-*,llvm-*,misc-*,performance-*,readability-*'" )
+   elseif( "${STEEM_LINT_LEVEL}" STREQUAL "LOW" )
+      message( STATUS "Linting level set to: LOW" )
+      set( DO_CLANG_TIDY "${CLANG_TIDY_EXE}" "-checks='clang-analyzer-*'" )
+   else()
+      unset( CLANG_TIDY_EXE )
+      message( STATUS "Linting level set to: OFF" )
+   endif()
+endif( NOT CLANG_TIDY_EXE )
+
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
   set(Boost_USE_MULTITHREADED ON)

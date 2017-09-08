@@ -9,6 +9,13 @@ target_link_libraries( p2p_plugin chain_plugin appbase steemit_chain graphene_ne
 target_include_directories( p2p_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      p2p_plugin PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
+
 install( TARGETS
    p2p_plugin
 
