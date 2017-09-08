@@ -406,6 +406,8 @@ namespace steem { namespace chain {
 
          void set_flush_interval( uint32_t flush_blocks );
          void show_free_memory( bool force, uint32_t current_block_num );
+         void set_validate_invariants( bool do_validate_invariants )
+            { _validate_invariants = do_validate_invariants; }
 
 #ifdef IS_TEST_NET
          bool liquidity_rewards_enabled = true;
@@ -480,6 +482,8 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
+
+         bool                          _validate_invariants = false;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
