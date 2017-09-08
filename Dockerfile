@@ -67,6 +67,28 @@ RUN \
     mkdir build && \
     cd build && \
     cmake \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_STEEM_TESTNET=ON \
+        -DLOW_MEMORY_NODE=OFF \
+        -DCLEAR_VOTES=ON \
+        -DSKIP_BY_TX_ID=ON \
+        -DENABLE_SMT_SUPPORT=ON \
+        .. && \
+    make -j$(nproc) chain_test test_fixed_string plugin_test && \
+    ./tests/chain_test && \
+    ./programs/util/test_fixed_string && \
+    cd /usr/local/src/steem && \
+    doxygen && \
+    programs/build_helpers/check_reflect.py && \
+    programs/build_helpers/get_config_check.sh && \
+    rm -rf /usr/local/src/steem/build
+
+RUN \
+    cd /usr/local/src/steem && \
+    git submodule update --init --recursive && \
+    mkdir build && \
+    cd build && \
+    cmake \
         -DCMAKE_BUILD_TYPE=Debug \
         -DENABLE_COVERAGE_TESTING=ON \
         -DBUILD_STEEM_TESTNET=ON \
