@@ -1,7 +1,7 @@
 
 #include <steemit/protocol/smt_operations.hpp>
 #include <steemit/protocol/validation.hpp>
-
+#ifdef STEEM_ENABLE_SMT
 #define SMT_MAX_UNIT_ROUTES       10
 
 namespace steemit { namespace protocol {
@@ -195,3 +195,4 @@ void smt_set_setup_parameters_operation::validate()const {}
 void smt_set_runtime_parameters_operation::validate()const {}
 
 } }
+#endif

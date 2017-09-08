@@ -7,7 +7,7 @@
 #include <steemit/chain/util/reward.hpp>
 
 #include <steemit/protocol/smt_operations.hpp>
-
+#ifdef STEEM_ENABLE_SMT
 namespace steemit { namespace chain {
 
 void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operation& o )
@@ -87,3 +87,4 @@ void smt_set_runtime_parameters_evaluator::do_apply( const smt_set_runtime_param
 }
 
 } }
+#endif

@@ -2,7 +2,7 @@
 
 #include <steemit/protocol/base.hpp>
 #include <steemit/protocol/asset.hpp>
-
+#ifdef STEEM_ENABLE_SMT
 namespace steemit { namespace protocol {
 
 /**
@@ -414,3 +414,5 @@ FC_REFLECT(
    (runtime_parameters)
    (extensions)
    )
+   
+#endif

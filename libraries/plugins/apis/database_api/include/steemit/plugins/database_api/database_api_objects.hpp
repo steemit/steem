@@ -221,9 +221,10 @@ struct api_account_object
       active = authority( auth.active );
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
-
+#ifdef STEEM_ENABLE_SMT
       const auto* smt = db.find< smt_token_object, by_control_account >( name );
       is_smt = (smt != nullptr);
+#endif
    }
 
 
