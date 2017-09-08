@@ -3631,7 +3631,10 @@ void database::process_hardforks()
       {
          while( hardforks.last_hardfork < STEEM_NUM_HARDFORKS
                && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time()
-               && hardforks.last_hardfork < STEEM_HARDFORK_0_5__54 )
+#ifndef IS_TEST_NET
+               && hardforks.last_hardfork < STEEMIT_HARDFORK_0_5__54
+#endif
+               )
          {
             apply_hardfork( hardforks.last_hardfork + 1 );
          }

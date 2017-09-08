@@ -19,21 +19,28 @@
 
 #define STEEM_GENESIS_TIME                    (fc::time_point_sec(1451606400))
 #define STEEM_MINING_TIME                     (fc::time_point_sec(1451606400))
-#define STEEM_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
+#define STEEM_CASHOUT_WINDOW_SECONDS          (60*6) /// 1 min
 #define STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEM_CASHOUT_WINDOW_SECONDS)
 #define STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF17 (STEEM_CASHOUT_WINDOW_SECONDS)
-#define STEEM_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
-#define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
-#define STEEM_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
-#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
+#define STEEM_SECOND_CASHOUT_WINDOW           (60*8) /// 8 minutes
+#define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*7) /// 7 minutes
+#define STEEM_UPVOTE_LOCKOUT_HF7              (fc::seconds(10))
+#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::seconds(30))
 
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE          0
 
-#define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(60)
-#define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
+#define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(30)
+#define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(6)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::seconds(0)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
+
+#define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*10) /// 10 minutes per interval
+#define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::minutes(3))
+
+#define STEEM_VOTE_REGENERATION_SECONDS       (20*60*60) // 20 hours
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*10) /// 10 minutes
+
 #else // IS LIVE STEEM NETWORK
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 3) )
@@ -59,6 +66,12 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::minutes(60)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
+
+#define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
+#define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
+
+#define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 
 #endif
 
@@ -94,13 +107,9 @@
 #define STEEM_MAX_PROXY_RECURSION_DEPTH       4
 #define STEEM_VESTING_WITHDRAW_INTERVALS_PRE_HF_16 104
 #define STEEM_VESTING_WITHDRAW_INTERVALS      13
-#define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEM_MAX_WITHDRAW_ROUTES             10
-#define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
 #define STEEM_SAVINGS_WITHDRAW_REQUEST_LIMIT  100
-#define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEM_MAX_VOTE_CHANGES                5
-#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 #define STEEM_MIN_VOTE_INTERVAL_SEC           3
 #define STEEM_VOTE_DUST_THRESHOLD             (50000000)
 

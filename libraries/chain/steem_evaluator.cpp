@@ -1167,7 +1167,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    int64_t  abs_weight    = abs(o.weight);
    // Less rounding error would occur if we did the division last, but we need to maintain backward
    // compatibility with the previous implementation which was replaced in #1285
-   int64_t  used_power  = ((current_power * abs_weight) / STEEM_100_PERCENT) * (60*60*24);
+   int64_t  used_power  = ((current_power * abs_weight) / STEEM_100_PERCENT) * (60*60);
 
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
