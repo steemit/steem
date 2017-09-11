@@ -56,24 +56,6 @@ typedef database_api::api_witness_schedule_object debug_get_witness_schedule_ret
 typedef void_type debug_get_hardfork_property_object_args;
 typedef database_api::api_hardfork_property_object debug_get_hardfork_property_object_return;
 
-struct debug_set_dev_key_prefix_args
-{
-   std::string prefix;
-};
-
-typedef void_type debug_set_dev_key_prefix_return;
-
-struct debug_get_dev_key_args
-{
-   std::string                               name;
-};
-
-struct debug_get_dev_key_return
-{
-   std::string                               private_key;
-   chain::public_key_type                    public_key;
-};
-
 struct debug_set_hardfork_args
 {
    uint32_t hardfork_id;
