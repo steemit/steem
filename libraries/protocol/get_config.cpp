@@ -15,6 +15,11 @@ fc::variant_object get_config()
 #else
    result[ "IS_TEST_NET" ] = false;
 #endif
+#ifdef STEEM_ENABLE_SMT
+   result[ "STEEM_ENABLE_SMT" ] = true;
+#else
+   result[ "STEEM_ENABLE_SMT" ] = false;
+#endif
 
    result["SBD_SYMBOL"] = SBD_SYMBOL;
    result["STEEM_INITIAL_VOTE_POWER_RATE"] = STEEM_INITIAL_VOTE_POWER_RATE;

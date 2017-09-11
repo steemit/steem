@@ -50,6 +50,7 @@ STEEM_DEFINE_EVALUATOR( reset_account )
 STEEM_DEFINE_EVALUATOR( set_reset_account )
 STEEM_DEFINE_EVALUATOR( claim_reward_balance )
 STEEM_DEFINE_EVALUATOR( delegate_vesting_shares )
+#ifdef STEEM_ENABLE_SMT
 STEEM_DEFINE_EVALUATOR( smt_setup )
 STEEM_DEFINE_EVALUATOR( smt_cap_reveal )
 STEEM_DEFINE_EVALUATOR( smt_refund )
@@ -57,5 +58,6 @@ STEEM_DEFINE_EVALUATOR( smt_setup_inflation )
 STEEM_DEFINE_EVALUATOR( smt_set_setup_parameters )
 STEEM_DEFINE_EVALUATOR( smt_set_runtime_parameters )
 STEEM_DEFINE_EVALUATOR( smt_elevate_account )
+#endif
 
 } } // steemit::chain
