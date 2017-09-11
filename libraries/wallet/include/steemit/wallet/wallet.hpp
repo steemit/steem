@@ -949,7 +949,15 @@ class wallet_api
        */
       annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
 
-
++       /**
++       *  Reblog another account's post.  Requires the posting authority of the account doing the reblog.
++       *  @param account account name of the user reblogging a post
++       *  @param author account name of the author of the post
++       *  @param permlink - permanent link of the post to reblog
++       *  @param broadcast true if you wish to broadcast the transaction
++       */
++       annotated_signed_transaction reblog(string account, string author, string permlink, bool broadcast);
++   
       std::map<string,std::function<string(fc::variant,const fc::variants&)>> get_result_formatters() const;
 
       fc::signal<void(bool)> lock_changed;
