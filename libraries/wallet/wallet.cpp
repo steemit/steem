@@ -2363,7 +2363,7 @@ annotated_signed_transaction wallet_api::reblog( string account, string author, 
    rop.permlink = permlink;
    follow::follow_plugin_operation op = rop;
    
-   _json_operation jop;
+   custom_json_operation jop;
    jop.id = "follow";
    jop.json = fc::json::to_string(op);
    jop.required_posting_auths.insert(account);
