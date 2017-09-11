@@ -96,7 +96,7 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags )
+void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags, bool do_validate_invariants )
 {
    try
    {
@@ -124,7 +124,7 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
             undo_all();
             FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
                ("rev", revision())("head_block", head_block_num()) );
-            if (_validate_invariants)
+            if (do_validate_invariants)
                validate_invariants();
          });
 
