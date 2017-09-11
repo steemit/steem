@@ -19,27 +19,51 @@
 
 #define STEEM_GENESIS_TIME                    (fc::time_point_sec(1451606400))
 #define STEEM_MINING_TIME                     (fc::time_point_sec(1451606400))
-#define STEEM_CASHOUT_WINDOW_SECONDS          (60*6) /// 1 min
+#define STEEM_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hr
 #define STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF12 (STEEM_CASHOUT_WINDOW_SECONDS)
 #define STEEM_CASHOUT_WINDOW_SECONDS_PRE_HF17 (STEEM_CASHOUT_WINDOW_SECONDS)
-#define STEEM_SECOND_CASHOUT_WINDOW           (60*8) /// 8 minutes
-#define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*7) /// 7 minutes
-#define STEEM_UPVOTE_LOCKOUT_HF7              (fc::seconds(10))
-#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::seconds(30))
+#define STEEM_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
+#define STEEM_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
+#define STEEM_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
+#define STEEM_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
 
 
 #define STEEM_MIN_ACCOUNT_CREATION_FEE          0
 
-#define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(30)
-#define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(6)
+#define STEEM_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(60)
+#define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::seconds(0)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 
 #define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*10) /// 10 minutes per interval
 #define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::minutes(3))
 
-#define STEEM_VOTE_REGENERATION_SECONDS       (20*60*60) // 20 hours
-#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*10) /// 10 minutes
+#define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
+
+#define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
+#define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
+#define STEEM_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
+
+#define STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
+
+#define STEEM_CREATE_ACCOUNT_DELEGATION_TIME     fc::days(30)
+
+#define STEEM_LIQUIDITY_TIMEOUT_SEC           (fc::seconds(60*60*24*7)) // After one week volume is set to 0
+#define STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume
+#define STEEM_LIQUIDITY_REWARD_PERIOD_SEC     (60*60)
+
+#define STEEM_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
+#define STEEM_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
+
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF17    (fc::days(30))
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF19    (fc::days(15))
+
+#define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
+#define STEEM_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
+#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
+#define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
+#define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
 #else // IS LIVE STEEM NETWORK
 
@@ -72,6 +96,30 @@
 
 #define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
+
+#define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
+#define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
+#define STEEM_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
+
+#define STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
+
+#define STEEM_CREATE_ACCOUNT_DELEGATION_TIME     fc::days(30)
+
+#define STEEM_LIQUIDITY_TIMEOUT_SEC           (fc::seconds(60*60*24*7)) // After one week volume is set to 0
+#define STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume
+#define STEEM_LIQUIDITY_REWARD_PERIOD_SEC     (60*60)
+
+#define STEEM_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
+#define STEEM_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
+
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF17    (fc::days(30))
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF19    (fc::days(15))
+
+#define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
+#define STEEM_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
+#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
+#define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
+#define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
 #endif
 
@@ -113,9 +161,6 @@
 #define STEEM_MIN_VOTE_INTERVAL_SEC           3
 #define STEEM_VOTE_DUST_THRESHOLD             (50000000)
 
-#define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
-#define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
-#define STEEM_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
 #define STEEM_POST_WEIGHT_CONSTANT            (uint64_t(4*STEEM_100_PERCENT) * (4*STEEM_100_PERCENT))// (4*STEEM_100_PERCENT) -> 2 posts per 1 days, average 1 every 12 hours
 
 #define STEEM_MAX_ACCOUNT_WITNESS_VOTES       30
@@ -133,7 +178,6 @@
 #define STEEM_MINER_PAY_PERCENT               (STEEM_1_PERCENT) // 1%
 #define STEEM_MAX_RATION_DECAY_RATE           (1000000)
 
-#define STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
 #define STEEM_BANDWIDTH_PRECISION             (uint64_t(1000000)) ///< 1 million
 #define STEEM_MAX_COMMENT_DEPTH_PRE_HF17      6
 #define STEEM_MAX_COMMENT_DEPTH               0xffff // 64k
@@ -143,15 +187,11 @@
 
 #define STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER 30
 #define STEEM_CREATE_ACCOUNT_DELEGATION_RATIO    5
-#define STEEM_CREATE_ACCOUNT_DELEGATION_TIME     fc::days(30)
 
 #define STEEM_MINING_REWARD                   asset( 1000, STEEM_SYMBOL )
 #define STEEM_EQUIHASH_N                      140
 #define STEEM_EQUIHASH_K                      6
 
-#define STEEM_LIQUIDITY_TIMEOUT_SEC           (fc::seconds(60*60*24*7)) // After one week volume is set to 0
-#define STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume
-#define STEEM_LIQUIDITY_REWARD_PERIOD_SEC     (60*60)
 #define STEEM_LIQUIDITY_REWARD_BLOCKS         (STEEM_LIQUIDITY_REWARD_PERIOD_SEC/STEEM_BLOCK_INTERVAL)
 #define STEEM_MIN_LIQUIDITY_REWARD            (asset( 1000*STEEM_LIQUIDITY_REWARD_BLOCKS, STEEM_SYMBOL )) // Minumum reward to be paid out to liquidity providers
 #define STEEM_MIN_CONTENT_REWARD              STEEM_MINING_REWARD
@@ -161,13 +201,9 @@
 
 #define STEEM_ACTIVE_CHALLENGE_FEE            asset( 2000, STEEM_SYMBOL )
 #define STEEM_OWNER_CHALLENGE_FEE             asset( 30000, STEEM_SYMBOL )
-#define STEEM_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
-#define STEEM_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
 
 #define STEEM_POST_REWARD_FUND_NAME           ("post")
 #define STEEM_COMMENT_REWARD_FUND_NAME        ("comment")
-#define STEEM_RECENT_RSHARES_DECAY_TIME_HF17    (fc::days(30))
-#define STEEM_RECENT_RSHARES_DECAY_TIME_HF19    (fc::days(15))
 #define STEEM_CONTENT_CONSTANT_HF0            (uint128_t(uint64_t(2000000000000ll)))
 // note, if redefining these constants make sure calculate_claims doesn't overflow
 
@@ -232,12 +268,7 @@
 #define STEEM_MAX_BLOCK_SIZE                  (STEEM_MAX_TRANSACTION_SIZE*STEEM_BLOCK_INTERVAL*2000)
 #define STEEM_BLOCKS_PER_HOUR                 (60*60/STEEM_BLOCK_INTERVAL)
 #define STEEM_FEED_INTERVAL_BLOCKS            (STEEM_BLOCKS_PER_HOUR)
-#define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
-#define STEEM_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
-#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
 #define STEEM_MIN_FEEDS                       (STEEM_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
-#define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
-#define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
 #define STEEM_MIN_UNDO_HISTORY                10
 #define STEEM_MAX_UNDO_HISTORY                10000

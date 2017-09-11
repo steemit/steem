@@ -84,12 +84,13 @@ namespace steem { namespace chain {
 
          typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
          typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
+
          /**
           * @brief Rebuild object graph from block history and open detabase
           *
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
-          * 
+          *
           * @return the last replayed block number.
           */
           uint32_t reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l),
@@ -374,7 +375,7 @@ namespace steem { namespace chain {
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_schema();
-         void init_genesis(uint64_t initial_supply = STEEM_INIT_SUPPLY );
+         void init_genesis( bool apply_all_hardforks, uint64_t initial_supply = STEEM_INIT_SUPPLY );
 
          /**
           *  This method validates transactions without adding it to the pending state.

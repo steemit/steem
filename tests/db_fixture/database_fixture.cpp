@@ -215,7 +215,7 @@ string database_fixture::generate_anon_acct_name()
    return "anon-acct-x" + std::to_string( anon_acct_count++ );
 }
 
-void database_fixture::open_database()
+void database_fixture::open_database( bool apply_all_hardforks )
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );

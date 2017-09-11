@@ -2375,7 +2375,7 @@ void database::init_schema()
    return;*/
 }
 
-void database::init_genesis( uint64_t init_supply )
+void database::init_genesis( bool apply_all_hardforks, uint64_t init_supply )
 {
    try
    {
@@ -2477,6 +2477,9 @@ void database::init_genesis( uint64_t init_supply )
       {
          wso.current_shuffled_witnesses[0] = STEEM_INIT_MINER_NAME;
       } );
+
+      if( apply_all_hardforks )
+         set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -3631,10 +3634,7 @@ void database::process_hardforks()
       {
          while( hardforks.last_hardfork < STEEM_NUM_HARDFORKS
                && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time()
-#ifndef IS_TEST_NET
-               && hardforks.last_hardfork < STEEMIT_HARDFORK_0_5__54
-#endif
-               )
+               && hardforks.last_hardfork < STEEM_HARDFORK_0_5__54 )
          {
             apply_hardfork( hardforks.last_hardfork + 1 );
          }
