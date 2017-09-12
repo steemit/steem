@@ -177,9 +177,12 @@ void account_history_plugin::set_program_options(
    )
 {
    cfg.add_options()
-         ("account-history-track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times")
+         ("account-history-track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times.")
+         ("track-account-range", boost::program_options::value< vector< string > >()->composing()->multitoken(), "Defines a range of accounts to track as a json pair [\"from\",\"to\"] [from,to] Can be specified multiple times. Deprecated in favor of account-history-track-account-range.")
          ("account-history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged.")
+         ("whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged. Deprecated in favor of history-whitelist-ops.")
          ("account-history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
+         ("blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored. Deprecated in favor of history-blacklist-ops.")
          ;
 }
 
@@ -192,38 +195,86 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
    typedef pair< account_name_type, account_name_type > pairstring;
    STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);
 
-   if( options.count( "account-history-whitelist-ops" ) )
+   if( options.count( "track-account-range" ) )
+   {
+      wlog( "track-account-range is deprecated in favor of account-history-track-account-range" );
+      STEEM_LOAD_VALUE_SET( options, "track-account-range", my->_tracked_accounts, pairstring );
+   }
+
+
+   if( options.count( "account-history-whitelist-ops" ) || options.count( "history-whitelist-ops" ) )
    {
       my->_filter_content = true;
       my->_blacklist = false;
 
-      for( auto& arg : options.at( "account-history-whitelist-ops" ).as< vector< string > >() )
+      if( options.count( "account-history-whitelist-ops" ) )
       {
-         vector< string > ops;
-         boost::split( ops, arg, boost::is_any_of( " \t," ) );
-
-         for( const string& op : ops )
+         for( auto& arg : options.at( "account-history-whitelist-ops" ).as< vector< string > >() )
          {
-            if( op.size() )
-               my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
+         }
+      }
+
+      if( options.count( "history-whitelist-ops" ) )
+      {
+         wlog( "history-whitelist-ops is deprecated in favor of account-history-whitelist-ops." );
+
+         for( auto& arg : options.at( "history-whitelist-ops" ).as< vector< string > >() )
+         {
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
          }
       }
 
       ilog( "Account History: whitelisting ops ${o}", ("o", my->_op_list) );
    }
-   else if( options.count( "account-history-blacklist-ops" ) )
+   else if( options.count( "account-history-blacklist-ops" ) || options.count( "history-blacklist-ops" ) )
    {
       my->_filter_content = true;
       my->_blacklist = true;
-      for( auto& arg : options.at( "account-history-blacklist-ops" ).as< vector< string > >() )
-      {
-         vector< string > ops;
-         boost::split( ops, arg, boost::is_any_of( " \t," ) );
 
-         for( const string& op : ops )
+      if( options.count( "account-history-blacklist-ops" ) )
+      {
+         for( auto& arg : options.at( "account-history-blacklist-ops" ).as< vector< string > >() )
          {
-            if( op.size() )
-               my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
+         }
+      }
+
+      if( options.count( "history-blacklist-ops" ) )
+      {
+         wlog( "history-blacklist-ops is deprecated in favor of account-history-blacklist-ops." );
+
+         for( auto& arg : options.at( "history-blacklist-ops" ).as< vector< string > >() )
+         {
+            vector< string > ops;
+            boost::split( ops, arg, boost::is_any_of( " \t," ) );
+
+            for( const string& op : ops )
+            {
+               if( op.size() )
+                  my->_op_list.insert( STEEM_NAMESPACE_PREFIX + op );
+            }
          }
       }
 

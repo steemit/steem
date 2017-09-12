@@ -465,12 +465,13 @@ p2p_plugin::~p2p_plugin() {}
 void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
    cfg.add_options()
       ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
-      ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
+      ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint.")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
       ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
       ;
    cli.add_options()
-      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions" )
+      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions. Deprecated in favor of p2p-force-validate" )
+      ("p2p-force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions." )
       ;
 }
 
@@ -517,7 +518,13 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
       }
    }
 
-   my->force_validate = options.at( "force-validate" ).as< bool >();
+   my->force_validate = options.at( "p2p-force-validate" ).as< bool >();
+
+   if( !my->force_validate && options.at( "force-validate" ).as< bool >() )
+   {
+      wlog( "Option force-validate is deprecated in favor of p2p-force-validate" );
+      my->force_validate = true;
+   }
 }
 
 void p2p_plugin::plugin_startup()

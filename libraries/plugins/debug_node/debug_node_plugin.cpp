@@ -42,16 +42,24 @@ void debug_node_plugin::set_program_options(
    options_description& cfg )
 {
    cfg.add_options()
-      ("edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
+      ("debug-node-edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
+      ("edit-script", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.");
 }
 
 void debug_node_plugin::plugin_initialize( const variables_map& options )
 {
    my = std::make_shared< detail::debug_node_plugin_impl >();
 
+   if( options.count( "debug-node-edit-script" ) > 0 )
+   {
+      _edit_scripts = options.at( "debug-node-edit-script" ).as< std::vector< std::string > >();
+   }
+
    if( options.count("edit-script") > 0 )
    {
-      _edit_scripts = options.at("edit-script").as< std::vector< std::string > >();
+      wlog( "edit-scripts is deprecated in favor of debug-node-edit-script" );
+      auto scripts = options.at( "edit-script" ).as< std::vector< std::string > >();
+      _edit_scripts.insert( _edit_scripts.end(), scripts.begin(), scripts.end() );
    }
 
    // connect needed signals
