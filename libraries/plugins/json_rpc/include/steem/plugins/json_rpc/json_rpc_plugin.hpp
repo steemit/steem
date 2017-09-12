@@ -37,20 +37,10 @@
 
 #define STEEM_JSON_RPC_PLUGIN_NAME "json_rpc"
 
-#define JSON_RPC_API_METHOD_HELPER( handle )                               \
-   [this]( const fc::variant& args ) -> fc::variant                        \
-   {                                                                       \
-      return fc::variant( this->handle( args.as< handle ## _args >() ) );  \
-   }
-
-#define JSON_RPC_API_METHOD( r, api_name, method ) \
-   jsonrpc.add_api_method( api_name, std::string( BOOST_PP_STRINGIZE(method) ), JSON_RPC_API_METHOD_HELPER( method ) );
-
-
-#define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                                       \
+#define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                              \
 {                                                                                               \
-   auto& jsonrpc = appbase::app().get_plugin< steem::plugins::json_rpc::json_rpc_plugin >();  \
-   BOOST_PP_SEQ_FOR_EACH( JSON_RPC_API_METHOD, API_NAME, METHODS )                              \
+   steem::plugins::json_rpc::detail::register_api_method_visitor vtor( API_NAME );              \
+   for_each_api( vtor );                                                                        \
 }
 
 namespace steem { namespace plugins { namespace json_rpc {
@@ -100,5 +90,37 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
    private:
       std::unique_ptr< detail::json_rpc_plugin_impl > my;
 };
+
+namespace detail {
+
+   class register_api_method_visitor
+   {
+      public:
+         register_api_method_visitor( const std::string& api_name )
+            : _api_name( api_name ),
+              _json_rpc_plugin( appbase::app().get_plugin< steem::plugins::json_rpc::json_rpc_plugin >() )
+         {}
+
+         template< typename Plugin, typename Method, typename Args, typename Ret >
+         void operator()(
+            Plugin& plugin,
+            const std::string& method_name,
+            Method method,
+            Args* args,
+            Ret* ret )
+         {
+            _json_rpc_plugin.add_api_method( _api_name, method_name,
+            [&plugin,method]( const fc::variant& args ) -> fc::variant
+            {
+               return fc::variant( (plugin.*method)( args.as< Args >() ) );
+            } );
+         }
+
+      private:
+         std::string _api_name;
+         steem::plugins::json_rpc::json_rpc_plugin& _json_rpc_plugin;
+   };
+
+}
 
 } } } // steem::plugins::json_rpc
