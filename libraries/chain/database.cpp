@@ -2789,11 +2789,11 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         size_t steemit_feed_history_window = STEEM_FEED_HISTORY_WINDOW_PRE_HF_16;
+         size_t steem_feed_history_window = STEEM_FEED_HISTORY_WINDOW_PRE_HF_16;
          if( has_hardfork( STEEM_HARDFORK_0_16__551) )
-            steemit_feed_history_window = STEEM_FEED_HISTORY_WINDOW;
+            steem_feed_history_window = STEEM_FEED_HISTORY_WINDOW;
 
-         if( fho.price_history.size() > steemit_feed_history_window )
+         if( fho.price_history.size() > steem_feed_history_window )
             fho.price_history.pop_front();
 
          if( fho.price_history.size() )
