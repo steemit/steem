@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/test_api_plugin/*.hpp")
+file(GLOB HEADERS "include/steem/test_api_plugin/*.hpp")
 add_library( test_api_plugin
              test_api_plugin.cpp
              ${HEADERS} )
@@ -13,4 +13,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/steemit/test_api_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/steem/test_api_plugin" )

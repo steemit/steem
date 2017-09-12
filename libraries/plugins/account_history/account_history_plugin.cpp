@@ -1,13 +1,13 @@
-#include <steemit/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
 
-#include <steemit/chain/util/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/history_object.hpp>
 
-#include <steemit/utilities/plugin_utilities.hpp>
+#include <steem/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -15,11 +15,11 @@
 #include <boost/algorithm/string.hpp>
 
 
-#define STEEM_NAMESPACE_PREFIX "steemit::protocol::"
+#define STEEM_NAMESPACE_PREFIX "steem::protocol::"
 
-namespace steemit { namespace plugins { namespace account_history {
+namespace steem { namespace plugins { namespace account_history {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 using chain::database;
 using chain::operation_notification;
@@ -31,7 +31,7 @@ class account_history_plugin_impl
 {
    public:
       account_history_plugin_impl() :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       virtual ~account_history_plugin_impl() {}
 
@@ -243,4 +243,4 @@ flat_map< account_name_type, account_name_type > account_history_plugin::tracked
    return my->_tracked_accounts;
 }
 
-} } } // steemit::plugins::account_history
+} } } // steem::plugins::account_history

@@ -1,17 +1,17 @@
-#include <steemit/chain/database_exceptions.hpp>
+#include <steem/chain/database_exceptions.hpp>
 
-#include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/string.hpp>
 
 #include <iostream>
 
-namespace steemit { namespace plugins { namespace chain {
+namespace steem { namespace plugins { namespace chain {
 
-using namespace steemit;
+using namespace steem;
 using fc::flat_map;
-using steemit::chain::block_id_type;
+using steem::chain::block_id_type;
 
 namespace detail {
 
@@ -38,7 +38,7 @@ chain_plugin::chain_plugin() : my( new detail::chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
 
 database& chain_plugin::db() { return my->db; }
-const steemit::chain::database& chain_plugin::db() const { return my->db; }
+const steem::chain::database& chain_plugin::db() const { return my->db; }
 
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
@@ -123,7 +123,7 @@ void chain_plugin::plugin_startup()
          {
             my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
          }
-         catch( steemit::chain::block_log_exception& )
+         catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
             my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
@@ -142,7 +142,7 @@ void chain_plugin::plugin_shutdown()
    ilog("database closed successfully");
 }
 
-bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool currently_syncing, uint32_t skip )
+bool chain_plugin::accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip )
 {
    if (currently_syncing && block.block_num() % 10000 == 0) {
       ilog("Syncing Blockchain --- Got block: #${n} time: ${t} producer: ${p}",
@@ -156,22 +156,22 @@ bool chain_plugin::accept_block( const steemit::chain::signed_block& block, bool
    return db().push_block(block, skip);
 }
 
-void chain_plugin::accept_transaction( const steemit::chain::signed_transaction& trx )
+void chain_plugin::accept_transaction( const steem::chain::signed_transaction& trx )
 {
    db().push_transaction(trx);
 }
 
-bool chain_plugin::block_is_on_preferred_chain(const steemit::chain::block_id_type& block_id )
+bool chain_plugin::block_is_on_preferred_chain(const steem::chain::block_id_type& block_id )
 {
    // If it's not known, it's not preferred.
    if( !db().is_known_block(block_id) ) return false;
 
    // Extract the block number from block_id, and fetch that block number's ID from the database.
    // If the database's block ID matches block_id, then block_id is on the preferred chain. Otherwise, it's on a fork.
-   return db().get_block_id_for_num( steemit::chain::block_header::num_from_id( block_id ) ) == block_id;
+   return db().get_block_id_for_num( steem::chain::block_header::num_from_id( block_id ) ) == block_id;
 }
 
-void chain_plugin::check_time_in_block( const steemit::chain::signed_block& block )
+void chain_plugin::check_time_in_block( const steem::chain::signed_block& block )
 {
    time_point_sec now = fc::time_point::now();
 
@@ -180,4 +180,4 @@ void chain_plugin::check_time_in_block( const steemit::chain::signed_block& bloc
    FC_ASSERT( block.timestamp.sec_since_epoch() <= max_accept_time );
 }
 
-} } } // namespace steemit::plugis::chain::chain_apis
+} } } // namespace steem::plugis::chain::chain_apis

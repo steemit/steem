@@ -1,17 +1,17 @@
-#include <steemit/plugins/condenser_api/condenser_api.hpp>
-#include <steemit/plugins/condenser_api/condenser_api_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api.hpp>
+#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
-#include <steemit/plugins/block_api/block_api_plugin.hpp>
-#include <steemit/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
-#include <steemit/plugins/witness_api/witness_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
+#include <steem/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <steem/plugins/witness_api/witness_api_plugin.hpp>
 
-#include <steemit/utilities/git_revision.hpp>
+#include <steem/utilities/git_revision.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -21,7 +21,7 @@
 #define CHECK_ARG_SIZE( s ) \
    FC_ASSERT( args.size() == s, "Expected #s argument(s), was ${n}", ("n", args.size()) );
 
-namespace steemit { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 namespace detail
 {
@@ -954,7 +954,7 @@ DEFINE_API( condenser_api, get_version )
    return get_version_return
    (
       fc::string( STEEM_BLOCKCHAIN_VERSION ),
-      fc::string( steemit::utilities::git_revision_sha ),
+      fc::string( steem::utilities::git_revision_sha ),
       fc::string( fc::git_revision_sha )
    );
 }
@@ -1686,4 +1686,4 @@ DEFINE_API( condenser_api, get_market_history_buckets )
    return my->_market_history_api->get_market_history_buckets( {} ).bucket_sizes;
 }
 
-} } } // steemit::plugins::condenser_api
+} } } // steem::plugins::condenser_api

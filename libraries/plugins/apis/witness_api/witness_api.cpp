@@ -1,14 +1,14 @@
-#include <steemit/plugins/witness_api/witness_api_plugin.hpp>
-#include <steemit/plugins/witness_api/witness_api.hpp>
+#include <steem/plugins/witness_api/witness_api_plugin.hpp>
+#include <steem/plugins/witness_api/witness_api.hpp>
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 namespace detail {
 
 class witness_api_impl
 {
    public:
-      witness_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      witness_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       get_account_bandwidth_return get_account_bandwidth( const get_account_bandwidth_args& args );
 
@@ -43,4 +43,4 @@ get_account_bandwidth_return witness_api::get_account_bandwidth( const get_accou
    });
 }
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness

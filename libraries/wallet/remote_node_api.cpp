@@ -1,6 +1,6 @@
-#include<steemit/wallet/remote_node_api.hpp>
+#include<steem/wallet/remote_node_api.hpp>
 
-namespace steemit{ namespace wallet{
+namespace steem { namespace wallet{
 
 // This class exists only to provide method signature information to fc::api, not to execute calls.
 

@@ -1,21 +1,21 @@
 
-add_library( steemit_plugins
+add_library( steem_plugins
    mf_plugins.cpp
-   ${CMAKE_CURRENT_SOURCE_DIR}/include/steemit/manifest/plugins.hpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/include/steem/manifest/plugins.hpp
 )
 
-target_link_libraries( steemit_plugins appbase fc
+target_link_libraries( steem_plugins appbase fc
 {% for plugin in plugins %}
    {{ plugin["plugin_project"] }}
 {% endfor %}
 )
 
-target_include_directories( steemit_plugins
+target_include_directories( steem_plugins
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
    )
 
 INSTALL( TARGETS
-   steemit_plugins
+   steem_plugins
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

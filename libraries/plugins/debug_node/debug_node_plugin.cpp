@@ -1,6 +1,6 @@
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
-#include <steemit/chain/witness_objects.hpp>
+#include <steem/chain/witness_objects.hpp>
 
 #include <fc/io/buffered_iostream.hpp>
 #include <fc/io/fstream.hpp>
@@ -10,12 +10,12 @@
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>
 
-namespace steemit { namespace plugins { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 namespace detail {
 class debug_node_plugin_impl
@@ -174,7 +174,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    chain::public_key_type debug_public_key;
    if( debug_key != "" )
    {
-      debug_private_key = steemit::utilities::wif_to_key( debug_key );
+      debug_private_key = steem::utilities::wif_to_key( debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
@@ -318,4 +318,4 @@ void debug_node_plugin::plugin_shutdown()
    return;
 }
 
-} } } // steemit::plugins::debug_node
+} } } // steem::plugins::debug_node

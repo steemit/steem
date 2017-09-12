@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/network_broadcast_api_plugin/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/network_broadcast_api_plugin/*.hpp")
 add_library( network_broadcast_api_plugin
              network_broadcast_api.cpp
              network_broadcast_api_plugin.cpp
@@ -21,4 +21,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/steemit/network_broadcast_api_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/steem/network_broadcast_api_plugin" )

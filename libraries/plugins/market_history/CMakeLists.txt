@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/market_history/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/market_history/*.hpp")
 
 add_library( market_history_plugin
              market_history_plugin.cpp

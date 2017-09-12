@@ -1,9 +1,9 @@
-#include <steemit/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/p2p/p2p_plugin.hpp>
 
 #include <graphene/net/node.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
+#include <steem/chain/database_exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/network/resolve.hpp>
@@ -17,7 +17,7 @@
 using std::string;
 using std::vector;
 
-namespace steemit { namespace plugins { namespace p2p {
+namespace steem { namespace plugins { namespace p2p {
 
 using appbase::app;
 
@@ -27,10 +27,10 @@ using graphene::net::message;
 using graphene::net::block_message;
 using graphene::net::trx_message;
 
-using steemit::protocol::block_header;
-using steemit::protocol::signed_block_header;
-using steemit::protocol::signed_block;
-using steemit::protocol::block_id_type;
+using steem::protocol::block_header;
+using steem::protocol::signed_block_header;
+using steem::protocol::signed_block;
+using steem::protocol::block_id_type;
 
 namespace detail {
 
@@ -565,13 +565,13 @@ void p2p_plugin::plugin_shutdown() {
    my->node.reset();
 }
 
-void p2p_plugin::broadcast_block( const steemit::protocol::signed_block& block )
+void p2p_plugin::broadcast_block( const steem::protocol::signed_block& block )
 {
    ulog("Broadcasting block #${n}", ("n", block.block_num()));
    my->node->broadcast( graphene::net::block_message( block ) );
 }
 
-void p2p_plugin::broadcast_transaction( const steemit::protocol::signed_transaction& tx )
+void p2p_plugin::broadcast_transaction( const steem::protocol::signed_transaction& tx )
 {
    ulog("Broadcasting tx #${n}", ("id", tx.id()));
    my->node->broadcast( graphene::net::trx_message( tx ) );
@@ -582,4 +582,4 @@ void p2p_plugin::set_block_production( bool producing_blocks )
    my->block_producer = producing_blocks;
 }
 
-} } } // namespace steemit::plugins::p2p
+} } } // namespace steem::plugins::p2p

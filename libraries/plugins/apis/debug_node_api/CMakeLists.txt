@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/debug_node_api/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/debug_node_api/*.hpp")
 add_library( debug_node_api_plugin
              debug_node_api_plugin.cpp
              debug_node_api.cpp

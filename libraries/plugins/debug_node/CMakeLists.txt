@@ -1,11 +1,11 @@
-file(GLOB HEADERS "include/steemit/plugins/debug_node/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/debug_node/*.hpp")
 
 add_library( debug_node_plugin
              ${HEADERS}
              debug_node_plugin.cpp
            )
 
-target_link_libraries( debug_node_plugin chain_plugin steemit_utilities )
+target_link_libraries( debug_node_plugin chain_plugin steem_utilities )
 target_include_directories( debug_node_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

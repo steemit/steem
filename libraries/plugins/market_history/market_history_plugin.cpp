@@ -1,22 +1,22 @@
-#include <steemit/plugins/market_history/market_history_plugin.hpp>
+#include <steem/plugins/market_history/market_history_plugin.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
 namespace detail {
 
-using steemit::protocol::fill_order_operation;
+using steem::protocol::fill_order_operation;
 
 class market_history_plugin_impl
 {
    public:
       market_history_plugin_impl() :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
       virtual ~market_history_plugin_impl() {}
 
       /**
@@ -213,4 +213,4 @@ uint32_t market_history_plugin::get_max_history_per_bucket() const
    return my->_maximum_history_per_bucket_size;
 }
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history

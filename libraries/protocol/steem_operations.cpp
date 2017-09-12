@@ -1,9 +1,9 @@
-#include <steemit/protocol/steem_operations.hpp>
+#include <steem/protocol/steem_operations.hpp>
 #include <fc/io/json.hpp>
 
 #include <locale>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    void account_create_operation::validate() const
    {
@@ -177,7 +177,7 @@ namespace steemit { namespace protocol {
    {
       validate_account_name( from_account );
       validate_account_name( to_account );
-      FC_ASSERT( 0 <= percent && percent <= STEEM_100_PERCENT, "Percent must be valid steemit percent" );
+      FC_ASSERT( 0 <= percent && percent <= STEEM_100_PERCENT, "Percent must be valid steem percent" );
    }
 
    void witness_update_operation::validate() const
@@ -544,4 +544,4 @@ namespace steemit { namespace protocol {
       FC_ASSERT( vesting_shares >= asset( 0, VESTS_SYMBOL ), "Delegation cannot be negative" );
    }
 
-} } // steemit::protocol
+} } // steem::protocol

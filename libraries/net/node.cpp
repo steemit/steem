@@ -78,7 +78,7 @@
 #include <graphene/net/config.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -1901,7 +1901,7 @@ namespace graphene { namespace net { namespace detail {
       if (user_data.contains("last_known_fork_block_number"))
         originating_peer->last_known_fork_block_number = user_data["last_known_fork_block_number"].as<uint32_t>();
       if (user_data.contains("chain_id"))
-        originating_peer->chain_id = user_data["chain_id"].as<steemit::protocol::chain_id_type>();
+        originating_peer->chain_id = user_data["chain_id"].as<steem::protocol::chain_id_type>();
     }
 
     void node_impl::on_hello_message( peer_connection* originating_peer, const hello_message& hello_message_received )

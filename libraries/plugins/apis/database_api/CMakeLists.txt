@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/database_api/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/database_api/*.hpp")
 
 add_library( database_api_plugin
              database_api.cpp

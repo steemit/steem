@@ -1,8 +1,8 @@
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api.hpp>
 
 
-namespace steemit { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 tags_api_plugin::tags_api_plugin() {}
 tags_api_plugin::~tags_api_plugin() {}
@@ -17,4 +17,4 @@ void tags_api_plugin::plugin_initialize( const variables_map& options )
 void tags_api_plugin::plugin_startup() { api->api_startup(); }
 void tags_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::tags
+} } } // steem::plugins::tags

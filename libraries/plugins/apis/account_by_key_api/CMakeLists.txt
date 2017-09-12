@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/account_by_key_api/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/account_by_key_api/*.hpp")
 add_library( account_by_key_api_plugin
              account_by_key_api_plugin.cpp
              account_by_key_api.cpp
