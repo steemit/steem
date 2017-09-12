@@ -47,7 +47,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
             "the location of the chain shared memory files (absolute path or relative to application data dir)")
          ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("flush-state-interval", bpo::value<uint32_t>()->default_value(0),
+         ("flush-state-interval", bpo::value<uint32_t>(),
             "flush shared memory changes to disk every N blocks")
          ;
    cli.add_options()
@@ -71,10 +71,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
 
-   my->replay           = options.at( "replay-blockchain").as<bool>();
+   my->replay            = options.at( "replay-blockchain").as<bool>();
    my->resync            = options.at( "resync-blockchain").as<bool>();
-   my->check_locks      = options.at( "check-locks" ).as< bool >();
-   my->flush_interval   = options.at( "flush-state-interval" ).as<uint32_t>();
+   my->check_locks       = options.at( "check-locks" ).as< bool >();
+   if( options.count( "flush-state-interval" ) )
+      my->flush_interval = options.at( "flush-state-interval" ).as<uint32_t>();
+   else
+      my->flush_interval = 10000;
 
    if(options.count("checkpoint"))
    {
