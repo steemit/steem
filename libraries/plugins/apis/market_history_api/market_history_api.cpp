@@ -189,16 +189,7 @@ DEFINE_API( market_history_api_impl, get_market_history_buckets )
 
 market_history_api::market_history_api(): my( new detail::market_history_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_MARKET_HISTORY_API_PLUGIN_NAME,
-      (get_ticker)
-      (get_volume)
-      (get_order_book)
-      (get_trade_history)
-      (get_recent_trades)
-      (get_market_history)
-      (get_market_history_buckets)
-   );
+   JSON_RPC_REGISTER_API( STEEM_MARKET_HISTORY_API_PLUGIN_NAME );
 }
 
 market_history_api::~market_history_api() {}

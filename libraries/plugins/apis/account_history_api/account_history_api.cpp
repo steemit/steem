@@ -78,12 +78,7 @@ DEFINE_API( account_history_api_impl, get_account_history )
 
 account_history_api::account_history_api(): my( new detail::account_history_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME,
-      (get_ops_in_block)
-      (get_transaction)
-      (get_account_history)
-   );
+   JSON_RPC_REGISTER_API( STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME );
 }
 
 account_history_api::~account_history_api() {}

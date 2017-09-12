@@ -12,12 +12,7 @@ network_broadcast_api::network_broadcast_api() :
    _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
    _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME,
-      (broadcast_transaction)
-      (broadcast_transaction_synchronous)
-      (broadcast_block)
-   );
+   JSON_RPC_REGISTER_API( STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME );
 }
 
 network_broadcast_api::~network_broadcast_api() {}

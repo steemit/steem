@@ -2,6 +2,7 @@
 #include <appbase/application.hpp>
 
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/utility.hpp>
 
 #define STEEM_TEST_API_PLUGIN_NAME "test_api"
 
@@ -13,6 +14,9 @@ using namespace appbase;
 
 struct test_api_a_args {};
 struct test_api_b_args {};
+
+struct test_api_a_return { std::string value; };
+struct test_api_b_return { std::string value; };
 
 class test_api_plugin : public appbase::plugin< test_api_plugin >
 {
@@ -31,11 +35,15 @@ class test_api_plugin : public appbase::plugin< test_api_plugin >
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
-      string test_api_a( const test_api_a_args& args ) { return "A"; }
-      string test_api_b( const test_api_b_args& args ) { return "B"; }
+      DECLARE_API(
+         (test_api_a)
+         (test_api_b)
+      )
 };
 
 } } } // steem::plugins::test_api
 
 FC_REFLECT( steem::plugins::test_api::test_api_a_args, )
 FC_REFLECT( steem::plugins::test_api::test_api_b_args, )
+FC_REFLECT( steem::plugins::test_api::test_api_a_return, (value) )
+FC_REFLECT( steem::plugins::test_api::test_api_b_return, (value) )
