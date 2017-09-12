@@ -167,17 +167,17 @@ struct smt_refund_operation : public base_operation
    { a.insert( contributor ); }
 };
 
-struct smt_inflation_unit
+struct smt_emissions_unit
 {
    flat_map< account_name_type, uint16_t >        token_unit;
 };
 
-struct smt_setup_inflation_operation : public base_operation
+struct smt_setup_emissions_operation : public base_operation
 {
    account_name_type   control_account;
 
    time_point_sec      schedule_time;
-   smt_inflation_unit  inflation_unit;
+   smt_emissions_unit  emissions_unit;
 
    int32_t             interval_seconds = 0;
    uint32_t            interval_count = 0;
@@ -343,15 +343,15 @@ FC_REFLECT(
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_inflation_unit,
+   steemit::protocol::smt_emissions_unit,
    (token_unit)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_setup_inflation_operation,
+   steemit::protocol::smt_setup_emissions_operation,
    (control_account)
    (schedule_time)
-   (inflation_unit)
+   (emissions_unit)
    (interval_seconds)
    (interval_count)
    (lep_time)

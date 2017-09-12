@@ -190,7 +190,7 @@ void smt_setup_operation::validate()const
 // TODO: These validators
 void smt_cap_reveal_operation::validate()const {}
 void smt_refund_operation::validate()const {}
-void smt_setup_inflation_operation::validate()const {}
+void smt_setup_emissions_operation::validate()const {}
 void smt_set_setup_parameters_operation::validate()const {}
 void smt_set_runtime_parameters_operation::validate()const {}
 
