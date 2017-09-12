@@ -27,8 +27,8 @@
 
 #include <fc/filesystem.hpp>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
 fc::path temp_directory_path();
 
-} } // steemit::utilities
+} } // steem::utilities

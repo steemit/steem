@@ -49,11 +49,11 @@
 
 #define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                                       \
 {                                                                                               \
-   auto& jsonrpc = appbase::app().get_plugin< steemit::plugins::json_rpc::json_rpc_plugin >();  \
+   auto& jsonrpc = appbase::app().get_plugin< steem::plugins::json_rpc::json_rpc_plugin >();  \
    BOOST_PP_SEQ_FOR_EACH( JSON_RPC_API_METHOD, API_NAME, METHODS )                              \
 }
 
-namespace steemit { namespace plugins { namespace json_rpc {
+namespace steem { namespace plugins { namespace json_rpc {
 
 using namespace appbase;
 
@@ -101,4 +101,4 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
       std::unique_ptr< detail::json_rpc_plugin_impl > my;
 };
 
-} } } // steemit::plugins::json_rpc
+} } } // steem::plugins::json_rpc

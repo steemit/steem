@@ -26,7 +26,7 @@
 
 #include <cstdlib>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
 fc::path temp_directory_path()
 {
@@ -36,4 +36,4 @@ fc::path temp_directory_path()
    return fc::temp_directory_path() / "steemit-tmp";
 }
 
-} } // steemit::utilities
+} } // steem::utilities

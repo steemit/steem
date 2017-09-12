@@ -31,7 +31,7 @@
 
 #include <fc/exception/exception.hpp>
 
-namespace steemit { namespace wallet {
+namespace steem { namespace wallet {
 
    struct method_description
    {
@@ -74,4 +74,4 @@ namespace steemit { namespace wallet {
       }
    };
 
-} } // end namespace steemit::wallet
+} } // end namespace steem::wallet

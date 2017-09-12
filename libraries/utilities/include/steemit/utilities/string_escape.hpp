@@ -25,8 +25,8 @@
 
 #include <string>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input);
 
-} } // end namespace steemit::utilities
+} } // end namespace steem::utilities

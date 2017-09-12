@@ -5,10 +5,10 @@
 
 #include <steemit/protocol/asset.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
-   using steemit::protocol::asset;
-   using steemit::protocol::price;
+   using steem::protocol::asset;
+   using steem::protocol::price;
 
    /**
     * @class dynamic_global_property_object
@@ -126,9 +126,9 @@ namespace steemit { namespace chain {
       allocator< dynamic_global_property_object >
    > dynamic_global_property_index;
 
-} } // steemit::chain
+} } // steem::chain
 
-FC_REFLECT( steemit::chain::dynamic_global_property_object,
+FC_REFLECT( steem::chain::dynamic_global_property_object,
              (id)
              (head_block_number)
              (head_block_id)
@@ -157,4 +157,4 @@ FC_REFLECT( steemit::chain::dynamic_global_property_object,
              (vote_power_reserve_rate)
              (smt_creation_fee)
           )
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::dynamic_global_property_object, steemit::chain::dynamic_global_property_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::dynamic_global_property_object, steem::chain::dynamic_global_property_index )

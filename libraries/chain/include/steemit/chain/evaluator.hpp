@@ -2,11 +2,11 @@
 #include <steemit/protocol/exceptions.hpp>
 #include <steemit/protocol/operations.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 class database;
 
-template< typename OperationType=steemit::protocol::operation >
+template< typename OperationType=steem::protocol::operation >
 class evaluator
 {
    public:
@@ -14,7 +14,7 @@ class evaluator
       virtual int get_type()const = 0;
 };
 
-template< typename EvaluatorType, typename OperationType=steemit::protocol::operation >
+template< typename EvaluatorType, typename OperationType=steem::protocol::operation >
 class evaluator_impl : public evaluator<OperationType>
 {
    public:
@@ -42,26 +42,26 @@ class evaluator_impl : public evaluator<OperationType>
 } }
 
 #define STEEM_DEFINE_EVALUATOR( X ) \
-class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator > \
+class X ## _evaluator : public steem::chain::evaluator_impl< X ## _evaluator > \
 {                                                                           \
    public:                                                                  \
       typedef X ## _operation operation_type;                               \
                                                                             \
       X ## _evaluator( database& db )                                       \
-         : steemit::chain::evaluator_impl< X ## _evaluator >( db )          \
+         : steem::chain::evaluator_impl< X ## _evaluator >( db )          \
       {}                                                                    \
                                                                             \
       void do_apply( const X ## _operation& o );                            \
 };
 
 #define STEEM_DEFINE_PLUGIN_EVALUATOR( PLUGIN, OPERATION, X )               \
-class X ## _evaluator : public steemit::chain::evaluator_impl< X ## _evaluator, OPERATION > \
+class X ## _evaluator : public steem::chain::evaluator_impl< X ## _evaluator, OPERATION > \
 {                                                                           \
    public:                                                                  \
       typedef X ## _operation operation_type;                               \
                                                                             \
-      X ## _evaluator( steemit::chain::database& db, PLUGIN* plugin )       \
-         : steemit::chain::evaluator_impl< X ## _evaluator, OPERATION >( db ), \
+      X ## _evaluator( steem::chain::database& db, PLUGIN* plugin )       \
+         : steem::chain::evaluator_impl< X ## _evaluator, OPERATION >( db ), \
            _plugin( plugin )                                                \
       {}                                                                    \
                                                                             \

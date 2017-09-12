@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace steemit { namespace plugins {
+namespace steem { namespace plugins {
 
 void register_plugins();
 

@@ -3,7 +3,7 @@
 
 #include <steemit/plugins/chain/chain_plugin.hpp>
 
-namespace steemit { namespace plugins { namespace smt_test {
+namespace steem { namespace plugins { namespace smt_test {
 
 using namespace appbase;
 
@@ -15,7 +15,7 @@ class smt_test_plugin : public appbase::plugin< smt_test_plugin >
       smt_test_plugin();
       virtual ~smt_test_plugin();
 
-      APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
+      APPBASE_PLUGIN_REQUIRES( (steem::plugins::chain::chain_plugin) )
 
       static const std::string& name() { static std::string name = STEEM_SMT_TEST_PLUGIN_NAME; return name; }
 
@@ -28,4 +28,4 @@ class smt_test_plugin : public appbase::plugin< smt_test_plugin >
       std::unique_ptr< class smt_test_plugin_impl > my;
 };
 
-} } } // steemit::plugins::smt_test
+} } } // steem::plugins::smt_test

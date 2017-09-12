@@ -7,7 +7,7 @@
 
 #define STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME "network_broadcast_api"
 
-namespace steemit { namespace plugins { namespace network_broadcast_api {
+namespace steem { namespace plugins { namespace network_broadcast_api {
 
 using namespace appbase;
 
@@ -15,9 +15,9 @@ class network_broadcast_api_plugin : public appbase::plugin< network_broadcast_a
 {
 public:
    APPBASE_PLUGIN_REQUIRES(
-      (steemit::plugins::json_rpc::json_rpc_plugin)
-      (steemit::plugins::chain::chain_plugin)
-      (steemit::plugins::p2p::p2p_plugin)
+      (steem::plugins::json_rpc::json_rpc_plugin)
+      (steem::plugins::chain::chain_plugin)
+      (steem::plugins::p2p::p2p_plugin)
    )
 
    network_broadcast_api_plugin();
@@ -33,4 +33,4 @@ public:
    std::shared_ptr< class network_broadcast_api > api;
 };
 
-} } } // steemit::plugins::network_broadcast_api
+} } } // steem::plugins::network_broadcast_api

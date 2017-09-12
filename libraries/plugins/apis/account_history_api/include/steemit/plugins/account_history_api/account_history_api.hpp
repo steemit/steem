@@ -10,7 +10,7 @@
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
 
-namespace steemit { namespace plugins { namespace account_history {
+namespace steem { namespace plugins { namespace account_history {
 
 
 namespace detail { class account_history_api_impl; }
@@ -18,23 +18,23 @@ namespace detail { class account_history_api_impl; }
 struct api_operation_object
 {
    api_operation_object() {}
-   api_operation_object( const steemit::chain::operation_object& op_obj ) :
+   api_operation_object( const steem::chain::operation_object& op_obj ) :
       trx_id( op_obj.trx_id ),
       block( op_obj.block ),
       trx_in_block( op_obj.trx_in_block ),
       virtual_op( op_obj.virtual_op ),
       timestamp( op_obj.timestamp )
    {
-      op = fc::raw::unpack< steemit::protocol::operation >( op_obj.serialized_op );
+      op = fc::raw::unpack< steem::protocol::operation >( op_obj.serialized_op );
    }
 
-   steemit::protocol::transaction_id_type trx_id;
+   steem::protocol::transaction_id_type trx_id;
    uint32_t                               block = 0;
    uint32_t                               trx_in_block = 0;
    uint16_t                               op_in_trx = 0;
    uint64_t                               virtual_op = 0;
    fc::time_point_sec                     timestamp;
-   steemit::protocol::operation           op;
+   steem::protocol::operation           op;
 };
 
 
@@ -52,15 +52,15 @@ struct get_ops_in_block_return
 
 struct get_transaction_args
 {
-   steemit::protocol::transaction_id_type id;
+   steem::protocol::transaction_id_type id;
 };
 
-typedef steemit::protocol::annotated_signed_transaction get_transaction_return;
+typedef steem::protocol::annotated_signed_transaction get_transaction_return;
 
 
 struct get_account_history_args
 {
-   steemit::protocol::account_name_type   account;
+   steem::protocol::account_name_type   account;
    uint64_t                               start = -1;
    uint32_t                               limit = 1000;
 };
@@ -87,22 +87,22 @@ class account_history_api
       std::unique_ptr< detail::account_history_api_impl > my;
 };
 
-} } } // steemit::plugins::account_history
+} } } // steem::plugins::account_history
 
-FC_REFLECT( steemit::plugins::account_history::api_operation_object,
+FC_REFLECT( steem::plugins::account_history::api_operation_object,
    (trx_id)(block)(trx_in_block)(op_in_trx)(virtual_op)(timestamp)(op) )
 
-FC_REFLECT( steemit::plugins::account_history::get_ops_in_block_args,
+FC_REFLECT( steem::plugins::account_history::get_ops_in_block_args,
    (block_num)(only_virtual) )
 
-FC_REFLECT( steemit::plugins::account_history::get_ops_in_block_return,
+FC_REFLECT( steem::plugins::account_history::get_ops_in_block_return,
    (ops) )
 
-FC_REFLECT( steemit::plugins::account_history::get_transaction_args,
+FC_REFLECT( steem::plugins::account_history::get_transaction_args,
    (id) )
 
-FC_REFLECT( steemit::plugins::account_history::get_account_history_args,
+FC_REFLECT( steem::plugins::account_history::get_account_history_args,
    (account)(start)(limit) )
 
-FC_REFLECT( steemit::plugins::account_history::get_account_history_return,
+FC_REFLECT( steem::plugins::account_history::get_account_history_return,
    (history) )

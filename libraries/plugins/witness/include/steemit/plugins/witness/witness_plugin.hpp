@@ -10,7 +10,7 @@
 #define RESERVE_RATIO_PRECISION ((int64_t)10000)
 #define RESERVE_RATIO_MIN_INCREMENT ((int64_t)5000)
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 namespace detail { class witness_plugin_impl; }
 
@@ -34,7 +34,7 @@ namespace block_production_condition
 class witness_plugin : public appbase::plugin< witness_plugin >
 {
 public:
-   APPBASE_PLUGIN_REQUIRES((steemit::plugins::chain::chain_plugin)(steemit::plugins::p2p::p2p_plugin))
+   APPBASE_PLUGIN_REQUIRES((steem::plugins::chain::chain_plugin)(steem::plugins::p2p::p2p_plugin))
 
    witness_plugin();
    virtual ~witness_plugin();
@@ -54,4 +54,4 @@ private:
    std::unique_ptr< detail::witness_plugin_impl > my;
 };
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness

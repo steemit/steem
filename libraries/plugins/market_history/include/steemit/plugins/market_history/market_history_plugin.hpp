@@ -24,9 +24,9 @@
 #endif
 
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
-using namespace steemit::chain;
+using namespace steem::chain;
 using namespace appbase;
 
 enum market_history_object_types
@@ -43,7 +43,7 @@ class market_history_plugin : public plugin< market_history_plugin >
       market_history_plugin();
       virtual ~market_history_plugin();
 
-      APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
+      APPBASE_PLUGIN_REQUIRES( (steem::plugins::chain::chain_plugin) )
 
       static const std::string& name() { static std::string name = STEEM_MARKET_HISTORY_PLUGIN_NAME; return name; }
 
@@ -139,9 +139,9 @@ typedef multi_index_container<
    allocator< order_history_object >
 > order_history_index;
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history
 
-FC_REFLECT( steemit::plugins::market_history::bucket_object,
+FC_REFLECT( steem::plugins::market_history::bucket_object,
                      (id)
                      (open)(seconds)
                      (high_steem)(high_sbd)
@@ -149,10 +149,10 @@ FC_REFLECT( steemit::plugins::market_history::bucket_object,
                      (open_steem)(open_sbd)
                      (close_steem)(close_sbd)
                      (steem_volume)(sbd_volume) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::market_history::bucket_object, steemit::plugins::market_history::bucket_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::market_history::bucket_object, steem::plugins::market_history::bucket_index )
 
-FC_REFLECT( steemit::plugins::market_history::order_history_object,
+FC_REFLECT( steem::plugins::market_history::order_history_object,
                      (id)
                      (time)
                      (op) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::market_history::order_history_object, steemit::plugins::market_history::order_history_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::market_history::order_history_object, steem::plugins::market_history::order_history_index )

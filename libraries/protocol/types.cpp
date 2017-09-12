@@ -6,7 +6,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/io/raw.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
     public_key_type::public_key_type():key_data(){};
 
@@ -174,38 +174,38 @@ namespace steemit { namespace protocol {
        return p1.key_data != p2.key_data;
     }
 
-} } // steemit::protocol
+} } // steem::protocol
 
 namespace fc
 {
     using namespace std;
-    void to_variant( const steemit::protocol::public_key_type& var,  fc::variant& vo )
+    void to_variant( const steem::protocol::public_key_type& var,  fc::variant& vo )
     {
         vo = std::string( var );
     }
 
-    void from_variant( const fc::variant& var,  steemit::protocol::public_key_type& vo )
+    void from_variant( const fc::variant& var,  steem::protocol::public_key_type& vo )
     {
-        vo = steemit::protocol::public_key_type( var.as_string() );
+        vo = steem::protocol::public_key_type( var.as_string() );
     }
 
-    void to_variant( const steemit::protocol::extended_public_key_type& var, fc::variant& vo )
+    void to_variant( const steem::protocol::extended_public_key_type& var, fc::variant& vo )
     {
        vo = std::string( var );
     }
 
-    void from_variant( const fc::variant& var, steemit::protocol::extended_public_key_type& vo )
+    void from_variant( const fc::variant& var, steem::protocol::extended_public_key_type& vo )
     {
-       vo = steemit::protocol::extended_public_key_type( var.as_string() );
+       vo = steem::protocol::extended_public_key_type( var.as_string() );
     }
 
-    void to_variant( const steemit::protocol::extended_private_key_type& var, fc::variant& vo )
+    void to_variant( const steem::protocol::extended_private_key_type& var, fc::variant& vo )
     {
        vo = std::string( var );
     }
 
-    void from_variant( const fc::variant& var, steemit::protocol::extended_private_key_type& vo )
+    void from_variant( const fc::variant& var, steem::protocol::extended_private_key_type& vo )
     {
-       vo = steemit::protocol::extended_private_key_type( var.as_string() );
+       vo = steem::protocol::extended_private_key_type( var.as_string() );
     }
 } // fc

@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace steemit { namespace plugin { namespace raw_block {
+namespace steem { namespace plugin { namespace raw_block {
 
 raw_block_plugin::raw_block_plugin( application* app ) : plugin( app ) {}
 raw_block_plugin::~raw_block_plugin() {}
@@ -28,6 +28,6 @@ void raw_block_plugin::plugin_shutdown()
 {
 }
 
-} } } // steemit::plugin::raw_block
+} } } // steem::plugin::raw_block
 
-STEEM_DEFINE_PLUGIN( raw_block, steemit::plugin::raw_block::raw_block_plugin )
+STEEM_DEFINE_PLUGIN( raw_block, steem::plugin::raw_block::raw_block_plugin )

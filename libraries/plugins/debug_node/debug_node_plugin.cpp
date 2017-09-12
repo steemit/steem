@@ -15,7 +15,7 @@
 #include <sstream>
 #include <string>
 
-namespace steemit { namespace plugins { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 namespace detail {
 class debug_node_plugin_impl
@@ -174,7 +174,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    chain::public_key_type debug_public_key;
    if( debug_key != "" )
    {
-      debug_private_key = steemit::utilities::wif_to_key( debug_key );
+      debug_private_key = steem::utilities::wif_to_key( debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
@@ -318,4 +318,4 @@ void debug_node_plugin::plugin_shutdown()
    return;
 }
 
-} } } // steemit::plugins::debug_node
+} } } // steem::plugins::debug_node

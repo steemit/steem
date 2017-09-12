@@ -2,7 +2,7 @@
 #include <steemit/protocol/block_header.hpp>
 #include <steemit/protocol/transaction.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    struct signed_block : public signed_block_header
    {
@@ -10,6 +10,6 @@ namespace steemit { namespace protocol {
       vector<signed_transaction> transactions;
    };
 
-} } // steemit::protocol
+} } // steem::protocol
 
-FC_REFLECT_DERIVED( steemit::protocol::signed_block, (steemit::protocol::signed_block_header), (transactions) )
+FC_REFLECT_DERIVED( steem::protocol::signed_block, (steem::protocol::signed_block_header), (transactions) )

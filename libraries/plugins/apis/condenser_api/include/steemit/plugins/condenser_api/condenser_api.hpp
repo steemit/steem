@@ -15,7 +15,7 @@
 #include <fc/vector.hpp>
 #include <fc/api.hpp>
 
-namespace steemit { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 using std::vector;
 using fc::variant;
@@ -345,29 +345,29 @@ public:
       std::unique_ptr< detail::condenser_api_impl > my;
 };
 
-} } } // steemit::plugins::condenser_api
+} } } // steem::plugins::condenser_api
 
-FC_REFLECT( steemit::plugins::condenser_api::discussion_index,
+FC_REFLECT( steem::plugins::condenser_api::discussion_index,
             (category)(trending)(payout)(payout_comments)(trending30)(updated)(created)(responses)(active)(votes)(maturing)(best)(hot)(promoted)(cashout) )
 
-FC_REFLECT( steemit::plugins::condenser_api::state,
+FC_REFLECT( steem::plugins::condenser_api::state,
             (current_route)(props)(tag_idx)(tags)(content)(accounts)(witnesses)(discussion_idx)(witness_schedule)(feed_price)(error) )
 
-FC_REFLECT_DERIVED( steemit::plugins::condenser_api::extended_limit_order, (steemit::plugins::database_api::api_limit_order_object),
+FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_limit_order, (steem::plugins::database_api::api_limit_order_object),
             (real_price)(rewarded) )
 
-FC_REFLECT_DERIVED( steemit::plugins::condenser_api::extended_account, (steemit::plugins::database_api::api_account_object),
+FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plugins::database_api::api_account_object),
             (vesting_balance)(reputation)(transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(recommended) )
 
-FC_REFLECT( steemit::plugins::condenser_api::scheduled_hardfork,
+FC_REFLECT( steem::plugins::condenser_api::scheduled_hardfork,
             (hf_version)(live_time) )
 
-FC_REFLECT( steemit::plugins::condenser_api::account_vote,
+FC_REFLECT( steem::plugins::condenser_api::account_vote,
             (authorperm)(weight)(rshares)(percent)(time) )
 
-FC_REFLECT( steemit::plugins::condenser_api::tag_index, (trending) )
+FC_REFLECT( steem::plugins::condenser_api::tag_index, (trending) )
 
-FC_REFLECT_ENUM( steemit::plugins::condenser_api::withdraw_route_type, (incoming)(outgoing)(all) )
+FC_REFLECT_ENUM( steem::plugins::condenser_api::withdraw_route_type, (incoming)(outgoing)(all) )
 
-FC_REFLECT( steemit::plugins::condenser_api::get_version_return,
+FC_REFLECT( steem::plugins::condenser_api::get_version_return,
             (blockchain_version)(steem_revision)(fc_revision) )

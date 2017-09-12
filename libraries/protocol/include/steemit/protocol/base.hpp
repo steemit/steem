@@ -6,7 +6,7 @@
 
 #include <fc/time.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    struct base_operation
    {
@@ -39,7 +39,7 @@ namespace steemit { namespace protocol {
    typedef flat_set<future_extensions> extensions_type;
 
 
-} } // steemit::protocol
+} } // steem::protocol
 
-FC_REFLECT_TYPENAME( steemit::protocol::block_header_extensions )
-FC_REFLECT_TYPENAME( steemit::protocol::future_extensions )
+FC_REFLECT_TYPENAME( steem::protocol::block_header_extensions )
+FC_REFLECT_TYPENAME( steem::protocol::future_extensions )

@@ -3,7 +3,7 @@
 #include <steemit/protocol/base.hpp>
 #include <steemit/protocol/asset.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 /**
  * This operation elevates given steem account to SMT control account on conditions that:
@@ -26,7 +26,7 @@ struct smt_elevate_account_operation : public base_operation
 };
 
 // TODO:  Rename these curves to match naming in manual.md
-// TODO:  Remove duplicate definition in steemit::chain
+// TODO:  Remove duplicate definition in steem::chain
 enum curve_id
 {
    quadratic,
@@ -269,14 +269,14 @@ struct smt_set_runtime_parameters_operation : public base_operation
 } }
 
 FC_REFLECT(
-   steemit::protocol::smt_elevate_account_operation,
+   steem::protocol::smt_elevate_account_operation,
    (account)
    (fee)
    (extensions)
 )
 
 FC_REFLECT_ENUM(
-   steemit::protocol::curve_id,
+   steem::protocol::curve_id,
    (quadratic)
    (quadratic_curation)
    (linear)
@@ -284,7 +284,7 @@ FC_REFLECT_ENUM(
 )
 
 FC_REFLECT(
-   steemit::protocol::smt_setup_operation,
+   steem::protocol::smt_setup_operation,
    (control_account)
    (decimal_places)
    (max_supply)
@@ -297,33 +297,33 @@ FC_REFLECT(
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_generation_unit,
+   steem::protocol::smt_generation_unit,
    (steem_unit)
    (token_unit)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_cap_commitment,
+   steem::protocol::smt_cap_commitment,
    (lower_bound)
    (upper_bound)
    (hash)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_revealed_cap,
+   steem::protocol::smt_revealed_cap,
    (amount)
    (nonce)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_cap_reveal_operation,
+   steem::protocol::smt_cap_reveal_operation,
    (control_account)
    (cap)
    (extensions)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_capped_generation_policy,
+   steem::protocol::smt_capped_generation_policy,
    (pre_soft_cap_unit)
    (post_soft_cap_unit)
    (min_steem_units_commitment)
@@ -335,7 +335,7 @@ FC_REFLECT(
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_refund_operation,
+   steem::protocol::smt_refund_operation,
    (contributor)
    (control_account)
    (amount)
@@ -343,12 +343,12 @@ FC_REFLECT(
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_inflation_unit,
+   steem::protocol::smt_inflation_unit,
    (token_unit)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_setup_inflation_operation,
+   steem::protocol::smt_setup_inflation_operation,
    (control_account)
    (schedule_time)
    (inflation_unit)
@@ -365,31 +365,31 @@ FC_REFLECT(
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_param_allow_vesting,
+   steem::protocol::smt_param_allow_vesting,
    (value)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_param_allow_voting,
+   steem::protocol::smt_param_allow_voting,
    (value)
    )
 
-FC_REFLECT_TYPENAME( steemit::protocol::smt_setup_parameter )
+FC_REFLECT_TYPENAME( steem::protocol::smt_setup_parameter )
 
 FC_REFLECT(
-   steemit::protocol::smt_param_windows_v1,
+   steem::protocol::smt_param_windows_v1,
    (cashout_window_seconds)
    (reverse_auction_window_seconds)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_param_vote_regeneration_period_seconds_v1,
+   steem::protocol::smt_param_vote_regeneration_period_seconds_v1,
    (vote_regeneration_period_seconds)
    (votes_per_regeneration_period)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_param_rewards_v1,
+   steem::protocol::smt_param_rewards_v1,
    (content_constant)
    (percent_curation_rewards)
    (percent_content_rewards)
@@ -398,18 +398,18 @@ FC_REFLECT(
    )
 
 FC_REFLECT_TYPENAME(
-   steemit::protocol::smt_runtime_parameter
+   steem::protocol::smt_runtime_parameter
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_set_setup_parameters_operation,
+   steem::protocol::smt_set_setup_parameters_operation,
    (control_account)
    (setup_parameters)
    (extensions)
    )
 
 FC_REFLECT(
-   steemit::protocol::smt_set_runtime_parameters_operation,
+   steem::protocol::smt_set_runtime_parameters_operation,
    (control_account)
    (runtime_parameters)
    (extensions)

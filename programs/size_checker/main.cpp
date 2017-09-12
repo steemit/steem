@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 std::vector< fc::variant_object > g_op_types;
 
@@ -68,7 +68,7 @@ int main( int argc, char** argv )
 {
    try
    {
-      steemit::protocol::operation op;
+      steem::protocol::operation op;
 
 
       std::vector<uint64_t> witnesses; witnesses.resize(50);

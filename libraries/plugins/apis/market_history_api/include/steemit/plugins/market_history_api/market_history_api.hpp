@@ -9,11 +9,11 @@
 #include <fc/vector.hpp>
 
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
 
-using steemit::chain::share_type;
-using steemit::chain::asset;
+using steem::chain::share_type;
+using steem::chain::asset;
 using fc::time_point_sec;
 using json_rpc::void_type;
 
@@ -127,40 +127,40 @@ class market_history_api
       std::unique_ptr< detail::market_history_api_impl > my;
 };
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history
 
-FC_REFLECT( steemit::plugins::market_history::get_ticker_return,
+FC_REFLECT( steem::plugins::market_history::get_ticker_return,
             (latest)(lowest_ask)(highest_bid)(percent_change)(steem_volume)(sbd_volume) )
 
-FC_REFLECT( steemit::plugins::market_history::get_volume_return,
+FC_REFLECT( steem::plugins::market_history::get_volume_return,
             (steem_volume)(sbd_volume) )
 
-FC_REFLECT( steemit::plugins::market_history::order,
+FC_REFLECT( steem::plugins::market_history::order,
             (order_price)(real_price)(steem)(sbd)(created) )
 
-FC_REFLECT( steemit::plugins::market_history::get_order_book_args,
+FC_REFLECT( steem::plugins::market_history::get_order_book_args,
             (limit) )
 
-FC_REFLECT( steemit::plugins::market_history::get_order_book_return,
+FC_REFLECT( steem::plugins::market_history::get_order_book_return,
             (bids)(asks) )
 
-FC_REFLECT( steemit::plugins::market_history::market_trade,
+FC_REFLECT( steem::plugins::market_history::market_trade,
             (date)(current_pays)(open_pays) )
 
-FC_REFLECT( steemit::plugins::market_history::get_trade_history_args,
+FC_REFLECT( steem::plugins::market_history::get_trade_history_args,
             (start)(end)(limit) )
 
-FC_REFLECT( steemit::plugins::market_history::get_trade_history_return,
+FC_REFLECT( steem::plugins::market_history::get_trade_history_return,
             (trades) )
 
-FC_REFLECT( steemit::plugins::market_history::get_recent_trades_args,
+FC_REFLECT( steem::plugins::market_history::get_recent_trades_args,
             (limit) )
 
-FC_REFLECT( steemit::plugins::market_history::get_market_history_args,
+FC_REFLECT( steem::plugins::market_history::get_market_history_args,
             (bucket_seconds)(start)(end) )
 
-FC_REFLECT( steemit::plugins::market_history::get_market_history_return,
+FC_REFLECT( steem::plugins::market_history::get_market_history_return,
             (buckets) )
 
-FC_REFLECT( steemit::plugins::market_history::get_market_history_buckets_return,
+FC_REFLECT( steem::plugins::market_history::get_market_history_buckets_return,
             (bucket_sizes) )

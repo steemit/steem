@@ -4,7 +4,7 @@
 
 #include <appbase/application.hpp>
 
-namespace steemit { namespace plugins { namespace database_api {
+namespace steem { namespace plugins { namespace database_api {
 
 using namespace appbase;
 
@@ -17,8 +17,8 @@ class database_api_plugin : public plugin< database_api_plugin >
       virtual ~database_api_plugin();
 
       APPBASE_PLUGIN_REQUIRES(
-         (steemit::plugins::json_rpc::json_rpc_plugin)
-         (steemit::plugins::chain::chain_plugin)
+         (steem::plugins::json_rpc::json_rpc_plugin)
+         (steem::plugins::chain::chain_plugin)
       )
 
       static const std::string& name() { static std::string name = STEEM_DATABASE_API_PLUGIN_NAME; return name; }
@@ -33,4 +33,4 @@ class database_api_plugin : public plugin< database_api_plugin >
       std::shared_ptr< class database_api > api;
 };
 
-} } } // steemit::plugins::database_api
+} } } // steem::plugins::database_api

@@ -6,11 +6,11 @@
 #include <boost/thread/future.hpp>
 #include <boost/thread/lock_guard.hpp>
 
-namespace steemit { namespace plugins { namespace network_broadcast_api {
+namespace steem { namespace plugins { namespace network_broadcast_api {
 
 network_broadcast_api::network_broadcast_api() :
-   _p2p( appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >() ),
-   _chain( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >() )
+   _p2p( appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >() ),
+   _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
 {
    JSON_RPC_REGISTER_API(
       STEEM_NETWORK_BROADCAST_API_PLUGIN_NAME,
@@ -115,4 +115,4 @@ void network_broadcast_api::on_applied_block( const signed_block& b )
    }
 }
 
-} } } // steemit::plugins::network_broadcast_api
+} } } // steem::plugins::network_broadcast_api

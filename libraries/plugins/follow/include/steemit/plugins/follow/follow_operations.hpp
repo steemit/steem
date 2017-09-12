@@ -4,11 +4,11 @@
 #include <steemit/chain/evaluator.hpp>
 
 
-namespace steemit { namespace plugins { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
 using namespace std;
-using steemit::protocol::account_name_type;
-using steemit::protocol::base_operation;
+using steem::protocol::account_name_type;
+using steem::protocol::base_operation;
 
 class follow_plugin;
 
@@ -42,11 +42,11 @@ typedef fc::static_variant<
 STEEM_DEFINE_PLUGIN_EVALUATOR( follow_plugin, follow_plugin_operation, follow );
 STEEM_DEFINE_PLUGIN_EVALUATOR( follow_plugin, follow_plugin_operation, reblog );
 
-} } } // steemit::plugins::follow
+} } } // steem::plugins::follow
 
-FC_REFLECT( steemit::plugins::follow::follow_operation, (follower)(following)(what) )
-FC_REFLECT( steemit::plugins::follow::reblog_operation, (account)(author)(permlink) )
+FC_REFLECT( steem::plugins::follow::follow_operation, (follower)(following)(what) )
+FC_REFLECT( steem::plugins::follow::reblog_operation, (account)(author)(permlink) )
 
-STEEM_DECLARE_OPERATION_TYPE( steemit::plugins::follow::follow_plugin_operation )
+STEEM_DECLARE_OPERATION_TYPE( steem::plugins::follow::follow_plugin_operation )
 
-FC_REFLECT_TYPENAME( steemit::plugins::follow::follow_plugin_operation )
+FC_REFLECT_TYPENAME( steem::plugins::follow::follow_plugin_operation )

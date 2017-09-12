@@ -1,7 +1,7 @@
 
 #include <steemit/protocol/sign_state.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 bool sign_state::signed_by( const public_key_type& k )
 {
@@ -82,4 +82,4 @@ sign_state::sign_state(
    approved_by.insert( "temp"  );
 }
 
-} } // steemit::protocol
+} } // steem::protocol

@@ -9,7 +9,7 @@
 #include <boost/multi_index/composite_key.hpp>
 
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
    using protocol::beneficiary_route_type;
 
@@ -261,9 +261,9 @@ namespace steemit { namespace chain {
       allocator< comment_content_object >
    > comment_content_index;
 
-} } // steemit::chain
+} } // steem::chain
 
-FC_REFLECT( steemit::chain::comment_object,
+FC_REFLECT( steem::chain::comment_object,
              (id)(author)(permlink)
              (category)(parent_author)(parent_permlink)
              (last_update)(created)(active)(last_payout)
@@ -274,13 +274,13 @@ FC_REFLECT( steemit::chain::comment_object,
              (max_accepted_payout)(percent_steem_dollars)(allow_replies)(allow_votes)(allow_curation_rewards)
              (beneficiaries)
           )
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_object, steemit::chain::comment_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_object, steem::chain::comment_index )
 
-FC_REFLECT( steemit::chain::comment_content_object,
+FC_REFLECT( steem::chain::comment_content_object,
             (id)(comment)(title)(body)(json_metadata) )
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_content_object, steemit::chain::comment_content_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_content_object, steem::chain::comment_content_index )
 
-FC_REFLECT( steemit::chain::comment_vote_object,
+FC_REFLECT( steem::chain::comment_vote_object,
              (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::comment_vote_object, steemit::chain::comment_vote_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comment_vote_index )

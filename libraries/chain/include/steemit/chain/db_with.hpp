@@ -13,7 +13,7 @@
  * and put the finally block in a destructor.  Aagh!
  */
 
-namespace steemit { namespace chain { namespace detail {
+namespace steem { namespace chain { namespace detail {
 /**
  * Class used to help the with_skip_flags implementation.
  * It must be defined in this header because it must be
@@ -134,4 +134,4 @@ void without_pending_transactions(
     return;
 }
 
-} } } // steemit::chain::detail
+} } } // steem::chain::detail

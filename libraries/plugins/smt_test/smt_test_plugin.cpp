@@ -11,15 +11,15 @@
 
 #include <steemit/protocol/smt_operations.hpp>
 
-namespace steemit { namespace plugins { namespace smt_test {
+namespace steem { namespace plugins { namespace smt_test {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 class smt_test_plugin_impl
 {
    public:
       smt_test_plugin_impl( smt_test_plugin& _plugin ) :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ),
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
       void pre_operation( const operation_notification& op_obj );
@@ -263,7 +263,7 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
    try
    {
       ilog( "Initializing smt_test plugin" );
-      chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
       db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
       db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
@@ -277,4 +277,4 @@ void smt_test_plugin::plugin_startup() {}
 
 void smt_test_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::smt_test
+} } } // steem::plugins::smt_test

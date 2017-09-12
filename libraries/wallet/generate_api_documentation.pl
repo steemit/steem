@@ -16,7 +16,7 @@ my $fileHeader = <<'END';
 #include <steemit/wallet/api_documentation.hpp>
 #include <steemit/wallet/wallet.hpp>
 
-namespace steemit { namespace wallet {
+namespace steem { namespace wallet {
    namespace detail
    {
       struct api_method_name_collector_visitor

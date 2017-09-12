@@ -11,11 +11,11 @@
 
 #include <fc/uint128.hpp>
 
-namespace steemit { namespace chain { namespace util {
+namespace steem { namespace chain { namespace util {
 
-using steemit::protocol::asset;
-using steemit::protocol::price;
-using steemit::protocol::share_type;
+using steem::protocol::asset;
+using steem::protocol::price;
+using steem::protocol::share_type;
 
 using fc::uint128_t;
 
@@ -45,9 +45,9 @@ inline bool is_comment_payout_dust( const price& p, uint64_t steem_payout )
    return to_sbd( p, asset( steem_payout, STEEM_SYMBOL ) ) < STEEM_MIN_PAYOUT_SBD;
 }
 
-} } } // steemit::chain::util
+} } } // steem::chain::util
 
-FC_REFLECT( steemit::chain::util::comment_reward_context,
+FC_REFLECT( steem::chain::util::comment_reward_context,
    (rshares)
    (reward_weight)
    (max_sbd)

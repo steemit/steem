@@ -7,7 +7,7 @@
 #define STEEM_TAGS_API_PLUGIN_NAME "tags_api"
 
 
-namespace steemit { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 using namespace appbase;
 
@@ -15,8 +15,8 @@ class tags_api_plugin : public appbase::plugin< tags_api_plugin >
 {
 public:
    APPBASE_PLUGIN_REQUIRES(
-      (steemit::plugins::tags::tags_plugin)
-      (steemit::plugins::json_rpc::json_rpc_plugin)
+      (steem::plugins::tags::tags_plugin)
+      (steem::plugins::json_rpc::json_rpc_plugin)
    )
 
    tags_api_plugin();
@@ -33,4 +33,4 @@ public:
    std::shared_ptr< class tags_api > api;
 };
 
-} } } // steemit::plugins::tags
+} } } // steem::plugins::tags

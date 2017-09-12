@@ -23,13 +23,13 @@ else()
                       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/api_documentation_standin.cpp )
 endif()
 
-add_library( steemit_wallet wallet.cpp remote_node_api.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS} )
-target_link_libraries( steemit_wallet PRIVATE graphene_net steemit_chain steemit_protocol steemit_utilities fc condenser_api_plugin ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
-target_include_directories( steemit_wallet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+add_library( steem_wallet wallet.cpp remote_node_api.cpp ${CMAKE_CURRENT_BINARY_DIR}/api_documentation.cpp ${HEADERS} )
+target_link_libraries( steem_wallet PRIVATE graphene_net steem_chain steem_protocol steem_utilities fc condenser_api_plugin ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+target_include_directories( steem_wallet PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 if( CLANG_TIDY_EXE )
    set_target_properties(
-      steemit_wallet PROPERTIES
+      steem_wallet PROPERTIES
       CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
    )
 endif( CLANG_TIDY_EXE )
@@ -39,7 +39,7 @@ if(MSVC)
 endif(MSVC)
 
 install( TARGETS
-   steemit_wallet
+   steem_wallet
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

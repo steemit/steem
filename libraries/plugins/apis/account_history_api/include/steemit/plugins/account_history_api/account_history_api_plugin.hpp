@@ -7,7 +7,7 @@
 #define STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME "account_history_api"
 
 
-namespace steemit { namespace plugins { namespace account_history {
+namespace steem { namespace plugins { namespace account_history {
 
 using namespace appbase;
 
@@ -15,8 +15,8 @@ class account_history_api_plugin : public plugin< account_history_api_plugin >
 {
 public:
    APPBASE_PLUGIN_REQUIRES(
-      (steemit::plugins::account_history::account_history_plugin)
-      (steemit::plugins::json_rpc::json_rpc_plugin)
+      (steem::plugins::account_history::account_history_plugin)
+      (steem::plugins::json_rpc::json_rpc_plugin)
    )
 
    account_history_api_plugin();
@@ -33,4 +33,4 @@ public:
    std::shared_ptr< class account_history_api > api;
 };
 
-} } } // steemit::plugins::account_history
+} } } // steem::plugins::account_history

@@ -2,7 +2,7 @@
 #include <steemit/plugins/market_history_api/market_history_api.hpp>
 
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
 market_history_api_plugin::market_history_api_plugin() {}
 market_history_api_plugin::~market_history_api_plugin() {}
@@ -17,4 +17,4 @@ void market_history_api_plugin::plugin_initialize( const variables_map& options 
 void market_history_api_plugin::plugin_startup() {}
 void market_history_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history

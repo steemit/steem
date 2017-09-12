@@ -5,11 +5,11 @@
 
 #include <steemit/chain/evaluator.hpp>
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 using namespace std;
-using steemit::protocol::base_operation;
-using steemit::chain::database;
+using steem::protocol::base_operation;
+using steem::chain::database;
 
 class witness_plugin;
 
@@ -29,10 +29,10 @@ typedef fc::static_variant<
 
 STEEM_DEFINE_PLUGIN_EVALUATOR( witness_plugin, witness_plugin_operation, enable_content_editing );
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness
 
-FC_REFLECT( steemit::plugins::witness::enable_content_editing_operation, (account)(relock_time) )
+FC_REFLECT( steem::plugins::witness::enable_content_editing_operation, (account)(relock_time) )
 
-FC_REFLECT_TYPENAME( steemit::plugins::witness::witness_plugin_operation )
+FC_REFLECT_TYPENAME( steem::plugins::witness::witness_plugin_operation )
 
-STEEM_DECLARE_OPERATION_TYPE( steemit::plugins::witness::witness_plugin_operation )
+STEEM_DECLARE_OPERATION_TYPE( steem::plugins::witness::witness_plugin_operation )

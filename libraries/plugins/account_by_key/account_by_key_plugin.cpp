@@ -9,7 +9,7 @@
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>
 
-namespace steemit { namespace plugins { namespace account_by_key {
+namespace steem { namespace plugins { namespace account_by_key {
 
 namespace detail {
 
@@ -17,7 +17,7 @@ class account_by_key_plugin_impl
 {
    public:
       account_by_key_plugin_impl( account_by_key_plugin& _plugin ) :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ),
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
       void pre_operation( const operation_notification& op_obj );
@@ -250,7 +250,7 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "Initializing account_by_key plugin" );
-      chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
       my->pre_apply_connection = db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
       my->post_apply_connection = db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
@@ -268,4 +268,4 @@ void account_by_key_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->post_apply_connection );
 }
 
-} } } // steemit::plugins::account_by_key
+} } } // steem::plugins::account_by_key

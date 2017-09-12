@@ -6,7 +6,7 @@
 
 #include <fc/crypto/equihash.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    struct account_create_operation : public base_operation
    {
@@ -928,31 +928,31 @@ namespace steemit { namespace protocol {
       void get_required_active_authorities( flat_set< account_name_type >& a ) const { a.insert( delegator ); }
       void validate() const;
    };
-} } // steemit::protocol
+} } // steem::protocol
 
 
-FC_REFLECT( steemit::protocol::transfer_to_savings_operation, (from)(to)(amount)(memo) )
-FC_REFLECT( steemit::protocol::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
-FC_REFLECT( steemit::protocol::cancel_transfer_from_savings_operation, (from)(request_id) )
+FC_REFLECT( steem::protocol::transfer_to_savings_operation, (from)(to)(amount)(memo) )
+FC_REFLECT( steem::protocol::transfer_from_savings_operation, (from)(request_id)(to)(amount)(memo) )
+FC_REFLECT( steem::protocol::cancel_transfer_from_savings_operation, (from)(request_id) )
 
-FC_REFLECT( steemit::protocol::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
-FC_REFLECT( steemit::protocol::set_reset_account_operation, (account)(current_reset_account)(reset_account) )
+FC_REFLECT( steem::protocol::reset_account_operation, (reset_account)(account_to_reset)(new_owner_authority) )
+FC_REFLECT( steem::protocol::set_reset_account_operation, (account)(current_reset_account)(reset_account) )
 
 
-FC_REFLECT( steemit::protocol::report_over_production_operation, (reporter)(first_block)(second_block) )
-FC_REFLECT( steemit::protocol::convert_operation, (owner)(requestid)(amount) )
-FC_REFLECT( steemit::protocol::feed_publish_operation, (publisher)(exchange_rate) )
-FC_REFLECT( steemit::protocol::pow, (worker)(input)(signature)(work) )
-FC_REFLECT( steemit::protocol::pow2, (input)(pow_summary) )
-FC_REFLECT( steemit::protocol::pow2_input, (worker_account)(prev_block)(nonce) )
-FC_REFLECT( steemit::protocol::equihash_pow, (input)(proof)(prev_block)(pow_summary) )
-FC_REFLECT( steemit::protocol::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
+FC_REFLECT( steem::protocol::report_over_production_operation, (reporter)(first_block)(second_block) )
+FC_REFLECT( steem::protocol::convert_operation, (owner)(requestid)(amount) )
+FC_REFLECT( steem::protocol::feed_publish_operation, (publisher)(exchange_rate) )
+FC_REFLECT( steem::protocol::pow, (worker)(input)(signature)(work) )
+FC_REFLECT( steem::protocol::pow2, (input)(pow_summary) )
+FC_REFLECT( steem::protocol::pow2_input, (worker_account)(prev_block)(nonce) )
+FC_REFLECT( steem::protocol::equihash_pow, (input)(proof)(prev_block)(pow_summary) )
+FC_REFLECT( steem::protocol::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
 
-FC_REFLECT_TYPENAME( steemit::protocol::pow2_work )
-FC_REFLECT( steemit::protocol::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )
-FC_REFLECT( steemit::protocol::pow2_operation, (work)(new_owner_key)(props) )
+FC_REFLECT_TYPENAME( steem::protocol::pow2_work )
+FC_REFLECT( steem::protocol::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )
+FC_REFLECT( steem::protocol::pow2_operation, (work)(new_owner_key)(props) )
 
-FC_REFLECT( steemit::protocol::account_create_operation,
+FC_REFLECT( steem::protocol::account_create_operation,
             (fee)
             (creator)
             (new_account_name)
@@ -962,7 +962,7 @@ FC_REFLECT( steemit::protocol::account_create_operation,
             (memo_key)
             (json_metadata) )
 
-FC_REFLECT( steemit::protocol::account_create_with_delegation_operation,
+FC_REFLECT( steem::protocol::account_create_with_delegation_operation,
             (fee)
             (delegation)
             (creator)
@@ -974,7 +974,7 @@ FC_REFLECT( steemit::protocol::account_create_with_delegation_operation,
             (json_metadata)
             (extensions) )
 
-FC_REFLECT( steemit::protocol::account_update_operation,
+FC_REFLECT( steem::protocol::account_update_operation,
             (account)
             (owner)
             (active)
@@ -982,38 +982,38 @@ FC_REFLECT( steemit::protocol::account_update_operation,
             (memo_key)
             (json_metadata) )
 
-FC_REFLECT( steemit::protocol::transfer_operation, (from)(to)(amount)(memo) )
-FC_REFLECT( steemit::protocol::transfer_to_vesting_operation, (from)(to)(amount) )
-FC_REFLECT( steemit::protocol::withdraw_vesting_operation, (account)(vesting_shares) )
-FC_REFLECT( steemit::protocol::set_withdraw_vesting_route_operation, (from_account)(to_account)(percent)(auto_vest) )
-FC_REFLECT( steemit::protocol::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
-FC_REFLECT( steemit::protocol::account_witness_vote_operation, (account)(witness)(approve) )
-FC_REFLECT( steemit::protocol::account_witness_proxy_operation, (account)(proxy) )
-FC_REFLECT( steemit::protocol::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
-FC_REFLECT( steemit::protocol::vote_operation, (voter)(author)(permlink)(weight) )
-FC_REFLECT( steemit::protocol::custom_operation, (required_auths)(id)(data) )
-FC_REFLECT( steemit::protocol::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
-FC_REFLECT( steemit::protocol::custom_binary_operation, (required_owner_auths)(required_active_auths)(required_posting_auths)(required_auths)(id)(data) )
-FC_REFLECT( steemit::protocol::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
-FC_REFLECT( steemit::protocol::limit_order_create2_operation, (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration) )
-FC_REFLECT( steemit::protocol::limit_order_cancel_operation, (owner)(orderid) )
+FC_REFLECT( steem::protocol::transfer_operation, (from)(to)(amount)(memo) )
+FC_REFLECT( steem::protocol::transfer_to_vesting_operation, (from)(to)(amount) )
+FC_REFLECT( steem::protocol::withdraw_vesting_operation, (account)(vesting_shares) )
+FC_REFLECT( steem::protocol::set_withdraw_vesting_route_operation, (from_account)(to_account)(percent)(auto_vest) )
+FC_REFLECT( steem::protocol::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
+FC_REFLECT( steem::protocol::account_witness_vote_operation, (account)(witness)(approve) )
+FC_REFLECT( steem::protocol::account_witness_proxy_operation, (account)(proxy) )
+FC_REFLECT( steem::protocol::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
+FC_REFLECT( steem::protocol::vote_operation, (voter)(author)(permlink)(weight) )
+FC_REFLECT( steem::protocol::custom_operation, (required_auths)(id)(data) )
+FC_REFLECT( steem::protocol::custom_json_operation, (required_auths)(required_posting_auths)(id)(json) )
+FC_REFLECT( steem::protocol::custom_binary_operation, (required_owner_auths)(required_active_auths)(required_posting_auths)(required_auths)(id)(data) )
+FC_REFLECT( steem::protocol::limit_order_create_operation, (owner)(orderid)(amount_to_sell)(min_to_receive)(fill_or_kill)(expiration) )
+FC_REFLECT( steem::protocol::limit_order_create2_operation, (owner)(orderid)(amount_to_sell)(exchange_rate)(fill_or_kill)(expiration) )
+FC_REFLECT( steem::protocol::limit_order_cancel_operation, (owner)(orderid) )
 
-FC_REFLECT( steemit::protocol::delete_comment_operation, (author)(permlink) );
+FC_REFLECT( steem::protocol::delete_comment_operation, (author)(permlink) );
 
-FC_REFLECT( steemit::protocol::beneficiary_route_type, (account)(weight) )
-FC_REFLECT( steemit::protocol::comment_payout_beneficiaries, (beneficiaries) )
-FC_REFLECT_TYPENAME( steemit::protocol::comment_options_extension )
-FC_REFLECT( steemit::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
+FC_REFLECT( steem::protocol::beneficiary_route_type, (account)(weight) )
+FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
+FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
+FC_REFLECT( steem::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
-FC_REFLECT( steemit::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );
-FC_REFLECT( steemit::protocol::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
-FC_REFLECT( steemit::protocol::escrow_dispute_operation, (from)(to)(agent)(who)(escrow_id) );
-FC_REFLECT( steemit::protocol::escrow_release_operation, (from)(to)(agent)(who)(receiver)(escrow_id)(sbd_amount)(steem_amount) );
-FC_REFLECT( steemit::protocol::challenge_authority_operation, (challenger)(challenged)(require_owner) );
-FC_REFLECT( steemit::protocol::prove_authority_operation, (challenged)(require_owner) );
-FC_REFLECT( steemit::protocol::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
-FC_REFLECT( steemit::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
-FC_REFLECT( steemit::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
-FC_REFLECT( steemit::protocol::decline_voting_rights_operation, (account)(decline) );
-FC_REFLECT( steemit::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
-FC_REFLECT( steemit::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );
+FC_REFLECT( steem::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(steem_amount)(escrow_id)(agent)(fee)(json_meta)(ratification_deadline)(escrow_expiration) );
+FC_REFLECT( steem::protocol::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
+FC_REFLECT( steem::protocol::escrow_dispute_operation, (from)(to)(agent)(who)(escrow_id) );
+FC_REFLECT( steem::protocol::escrow_release_operation, (from)(to)(agent)(who)(receiver)(escrow_id)(sbd_amount)(steem_amount) );
+FC_REFLECT( steem::protocol::challenge_authority_operation, (challenger)(challenged)(require_owner) );
+FC_REFLECT( steem::protocol::prove_authority_operation, (challenged)(require_owner) );
+FC_REFLECT( steem::protocol::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
+FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
+FC_REFLECT( steem::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );
+FC_REFLECT( steem::protocol::decline_voting_rights_operation, (account)(decline) );
+FC_REFLECT( steem::protocol::claim_reward_balance_operation, (account)(reward_steem)(reward_sbd)(reward_vests) )
+FC_REFLECT( steem::protocol::delegate_vesting_shares_operation, (delegator)(delegatee)(vesting_shares) );

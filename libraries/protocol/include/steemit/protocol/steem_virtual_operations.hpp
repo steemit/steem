@@ -5,7 +5,7 @@
 
 #include <fc/utf8.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    struct author_reward_operation : public virtual_operation {
       author_reward_operation(){}
@@ -176,20 +176,20 @@ namespace steemit { namespace protocol {
 
    };
 
-} } //steemit::protocol
+} } //steem::protocol
 
-FC_REFLECT( steemit::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
-FC_REFLECT( steemit::protocol::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
-FC_REFLECT( steemit::protocol::comment_reward_operation, (author)(permlink)(payout) )
-FC_REFLECT( steemit::protocol::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
-FC_REFLECT( steemit::protocol::liquidity_reward_operation, (owner)(payout) )
-FC_REFLECT( steemit::protocol::interest_operation, (owner)(interest) )
-FC_REFLECT( steemit::protocol::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
-FC_REFLECT( steemit::protocol::shutdown_witness_operation, (owner) )
-FC_REFLECT( steemit::protocol::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) )
-FC_REFLECT( steemit::protocol::fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )
-FC_REFLECT( steemit::protocol::hardfork_operation, (hardfork_id) )
-FC_REFLECT( steemit::protocol::comment_payout_update_operation, (author)(permlink) )
-FC_REFLECT( steemit::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
-FC_REFLECT( steemit::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
-FC_REFLECT( steemit::protocol::producer_reward_operation, (producer)(vesting_shares) )
+FC_REFLECT( steem::protocol::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout) )
+FC_REFLECT( steem::protocol::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink) )
+FC_REFLECT( steem::protocol::comment_reward_operation, (author)(permlink)(payout) )
+FC_REFLECT( steem::protocol::fill_convert_request_operation, (owner)(requestid)(amount_in)(amount_out) )
+FC_REFLECT( steem::protocol::liquidity_reward_operation, (owner)(payout) )
+FC_REFLECT( steem::protocol::interest_operation, (owner)(interest) )
+FC_REFLECT( steem::protocol::fill_vesting_withdraw_operation, (from_account)(to_account)(withdrawn)(deposited) )
+FC_REFLECT( steem::protocol::shutdown_witness_operation, (owner) )
+FC_REFLECT( steem::protocol::fill_order_operation, (current_owner)(current_orderid)(current_pays)(open_owner)(open_orderid)(open_pays) )
+FC_REFLECT( steem::protocol::fill_transfer_from_savings_operation, (from)(to)(amount)(request_id)(memo) )
+FC_REFLECT( steem::protocol::hardfork_operation, (hardfork_id) )
+FC_REFLECT( steem::protocol::comment_payout_update_operation, (author)(permlink) )
+FC_REFLECT( steem::protocol::return_vesting_delegation_operation, (account)(vesting_shares) )
+FC_REFLECT( steem::protocol::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward) )
+FC_REFLECT( steem::protocol::producer_reward_operation, (producer)(vesting_shares) )

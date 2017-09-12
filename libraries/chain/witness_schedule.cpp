@@ -5,7 +5,7 @@
 
 #include <steemit/protocol/config.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 void reset_virtual_schedule_time( database& db )
 {

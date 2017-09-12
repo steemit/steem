@@ -5,7 +5,7 @@
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
    namespace detail {
       class block_log_impl {
@@ -304,4 +304,4 @@ namespace steemit { namespace chain {
       }
       FC_LOG_AND_RETHROW()
    }
-} } // steemit::chain
+} } // steem::chain

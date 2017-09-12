@@ -20,26 +20,26 @@ set(sources
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
 list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 
-add_library( steemit_utilities
+add_library( steem_utilities
              ${sources}
              ${HEADERS} )
-target_link_libraries( steemit_utilities fc )
-target_include_directories( steemit_utilities
+target_link_libraries( steem_utilities fc )
+target_include_directories( steem_utilities
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 if (USE_PCH)
-  set_target_properties(steemit_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
-  cotire(steemit_utilities)
+  set_target_properties(steem_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
+  cotire(steem_utilities)
 endif(USE_PCH)
 
 if( CLANG_TIDY_EXE )
    set_target_properties(
-      steemit_utilities PROPERTIES
+      steem_utilities PROPERTIES
       CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
    )
 endif( CLANG_TIDY_EXE )
 
 install( TARGETS
-   steemit_utilities
+   steem_utilities
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

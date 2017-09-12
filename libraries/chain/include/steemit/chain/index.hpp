@@ -2,7 +2,7 @@
 
 #include <steemit/chain/database.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 template< typename MultiIndexType >
 void _add_index_impl( database& db )

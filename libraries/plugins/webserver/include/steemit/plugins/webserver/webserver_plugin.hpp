@@ -8,7 +8,7 @@
 
 #define STEEM_WEBSERVER_PLUGIN_NAME "webserver"
 
-namespace steemit { namespace plugins { namespace webserver {
+namespace steem { namespace plugins { namespace webserver {
 
 namespace detail { class webserver_plugin_impl; }
 
@@ -48,4 +48,4 @@ class webserver_plugin : public appbase::plugin< webserver_plugin >
       std::unique_ptr< detail::webserver_plugin_impl > my;
 };
 
-} } } // steemit::plugins::webserver
+} } } // steem::plugins::webserver

@@ -6,13 +6,13 @@
 
 #define STEEM_CHAIN_PLUGIN_NAME "chain"
 
-namespace steemit { namespace plugins { namespace chain {
+namespace steem { namespace plugins { namespace chain {
 
 namespace detail { class chain_plugin_impl; }
 
 using std::unique_ptr;
 using namespace appbase;
-using namespace steemit::chain;
+using namespace steem::chain;
 
 class chain_plugin : public plugin< chain_plugin >
 {
@@ -29,12 +29,12 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
-   bool accept_block( const steemit::chain::signed_block& block, bool currently_syncing, uint32_t skip );
-   void accept_transaction( const steemit::chain::signed_transaction& trx );
+   bool accept_block( const steem::chain::signed_block& block, bool currently_syncing, uint32_t skip );
+   void accept_transaction( const steem::chain::signed_transaction& trx );
 
-   bool block_is_on_preferred_chain( const steemit::chain::block_id_type& block_id );
+   bool block_is_on_preferred_chain( const steem::chain::block_id_type& block_id );
 
-   void check_time_in_block( const steemit::chain::signed_block& block );
+   void check_time_in_block( const steem::chain::signed_block& block );
 
    template< typename MultiIndexType >
    bool has_index() const
@@ -84,4 +84,4 @@ private:
    std::unique_ptr< detail::chain_plugin_impl > my;
 };
 
-} } } // steemit::plugins::chain
+} } } // steem::plugins::chain

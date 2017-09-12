@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 using protocol::operation;
 using protocol::authority;

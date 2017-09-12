@@ -2,7 +2,7 @@
 #include <steemit/protocol/types.hpp>
 #include <steemit/protocol/config.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    typedef uint64_t asset_symbol_type;
 
@@ -148,13 +148,13 @@ namespace steemit { namespace protocol {
    asset operator *  ( const asset& a, const price& b );
 
 
-} } // steemit::protocol
+} } // steem::protocol
 
 namespace fc {
-    inline void to_variant( const steemit::protocol::asset& var,  fc::variant& vo ) { vo = var.to_string(); }
-    inline void from_variant( const fc::variant& var,  steemit::protocol::asset& vo ) { vo = steemit::protocol::asset::from_string( var.as_string() ); }
+    inline void to_variant( const steem::protocol::asset& var,  fc::variant& vo ) { vo = var.to_string(); }
+    inline void from_variant( const fc::variant& var,  steem::protocol::asset& vo ) { vo = steem::protocol::asset::from_string( var.as_string() ); }
 }
 
-FC_REFLECT( steemit::protocol::asset, (amount)(symbol) )
-FC_REFLECT( steemit::protocol::price, (base)(quote) )
+FC_REFLECT( steem::protocol::asset, (amount)(symbol) )
+FC_REFLECT( steem::protocol::price, (base)(quote) )
 

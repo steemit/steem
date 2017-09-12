@@ -6,7 +6,7 @@
 
 #define BLOCK_API_SINGLE_QUERY_LIMIT 1000
 
-namespace steemit { namespace plugins { namespace block_api {
+namespace steem { namespace plugins { namespace block_api {
 
 class block_api_impl;
 
@@ -41,5 +41,5 @@ class block_api
       std::unique_ptr< block_api_impl > my;
 };
 
-} } } //steemit::plugins::block_api
+} } } //steem::plugins::block_api
 

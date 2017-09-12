@@ -3,11 +3,11 @@
 
 #include <steemit/app/plugin.hpp>
 
-namespace steemit { namespace plugin { namespace auth_util {
+namespace steem { namespace plugin { namespace auth_util {
 
-using steemit::app::application;
+using steem::app::application;
 
-class auth_util_plugin : public steemit::app::plugin
+class auth_util_plugin : public steem::app::plugin
 {
    public:
       auth_util_plugin( application* app ) ;

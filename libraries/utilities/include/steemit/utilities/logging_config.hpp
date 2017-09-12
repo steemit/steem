@@ -10,7 +10,7 @@
 
 #include <boost/program_options.hpp>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
 struct console_appender_args
 {
@@ -35,8 +35,8 @@ void set_logging_program_options( boost::program_options::options_description& o
 
 fc::optional<fc::logging_config> load_logging_config( const boost::program_options::variables_map& args, const boost::filesystem::path& pwd );
 
-} } // steemit::utilities
+} } // steem::utilities
 
-FC_REFLECT( steemit::utilities::console_appender_args, (appender)(stream) )
-FC_REFLECT( steemit::utilities::file_appender_args, (appender)(file) )
-FC_REFLECT( steemit::utilities::logger_args, (name)(level)(appender) )
+FC_REFLECT( steem::utilities::console_appender_args, (appender)(stream) )
+FC_REFLECT( steem::utilities::file_appender_args, (appender)(file) )
+FC_REFLECT( steem::utilities::logger_args, (name)(level)(appender) )

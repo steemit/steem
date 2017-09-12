@@ -3,10 +3,10 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steemit { namespace plugins { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
 using namespace std;
-using namespace steemit::chain;
+using namespace steem::chain;
 using chainbase::shared_vector;
 
 #ifndef STEEM_FOLLOW_SPACE_ID
@@ -326,24 +326,24 @@ typedef multi_index_container<
    allocator< follow_count_object >
 > follow_count_index;
 
-} } } // steemit::plugins::follow
+} } } // steem::plugins::follow
 
-FC_REFLECT_ENUM( steemit::plugins::follow::follow_type, (undefined)(blog)(ignore) )
+FC_REFLECT_ENUM( steem::plugins::follow::follow_type, (undefined)(blog)(ignore) )
 
-FC_REFLECT( steemit::plugins::follow::follow_object, (id)(follower)(following)(what) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::follow::follow_object, steemit::plugins::follow::follow_index )
+FC_REFLECT( steem::plugins::follow::follow_object, (id)(follower)(following)(what) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_object, steem::plugins::follow::follow_index )
 
-FC_REFLECT( steemit::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::follow::feed_object, steemit::plugins::follow::feed_index )
+FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::feed_object, steem::plugins::follow::feed_index )
 
-FC_REFLECT( steemit::plugins::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::follow::blog_object, steemit::plugins::follow::blog_index )
+FC_REFLECT( steem::plugins::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::blog_object, steem::plugins::follow::blog_index )
 
-FC_REFLECT( steemit::plugins::follow::reputation_object, (id)(account)(reputation) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::follow::reputation_object, steemit::plugins::follow::reputation_index )
+FC_REFLECT( steem::plugins::follow::reputation_object, (id)(account)(reputation) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::reputation_object, steem::plugins::follow::reputation_index )
 
-FC_REFLECT( steemit::plugins::follow::follow_count_object, (id)(account)(follower_count)(following_count) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::follow::follow_count_object, steemit::plugins::follow::follow_count_index )
+FC_REFLECT( steem::plugins::follow::follow_count_object, (id)(account)(follower_count)(following_count) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_count_object, steem::plugins::follow::follow_count_index )
 
-FC_REFLECT( steemit::plugins::follow::blog_author_stats_object, (id)(blogger)(guest)(count) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::follow::blog_author_stats_object, steemit::plugins::follow::blog_author_stats_index );
+FC_REFLECT( steem::plugins::follow::blog_author_stats_object, (id)(blogger)(guest)(count) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::blog_author_stats_object, steem::plugins::follow::blog_author_stats_index );

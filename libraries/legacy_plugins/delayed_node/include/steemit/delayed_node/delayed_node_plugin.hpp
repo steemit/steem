@@ -26,12 +26,12 @@
 #include <steemit/app/plugin.hpp>
 #include <steemit/chain/steem_objects.hpp>
 
-namespace steemit { namespace delayed_node {
+namespace steem { namespace delayed_node {
 namespace detail { struct delayed_node_plugin_impl; }
 
 using app::application;
 
-class delayed_node_plugin : public steemit::app::plugin
+class delayed_node_plugin : public steem::app::plugin
 {
    std::unique_ptr<detail::delayed_node_plugin_impl> my;
 public:
@@ -51,5 +51,5 @@ protected:
    void sync_with_trusted_node();
 };
 
-} } //steemit::account_history
+} } //steem::account_history
 

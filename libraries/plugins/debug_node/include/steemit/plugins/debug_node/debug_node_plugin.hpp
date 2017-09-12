@@ -9,13 +9,13 @@
 
 #define STEEM_DEBUG_NODE_PLUGIN_NAME "debug_node"
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
    struct chain_properties;
    struct pow2;
    struct signed_block;
 } }
 
-namespace steemit { namespace plugins { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 using namespace appbase;
 
@@ -41,7 +41,7 @@ class debug_node_plugin : public plugin< debug_node_plugin >
       chain::database& database();
 
       template< typename Lambda >
-      void debug_update( Lambda&& callback, uint32_t skip = steemit::chain::database::skip_nothing )
+      void debug_update( Lambda&& callback, uint32_t skip = steem::chain::database::skip_nothing )
       {
          // this was a method on database in Graphene
          chain::database& db = database();
@@ -63,14 +63,14 @@ class debug_node_plugin : public plugin< debug_node_plugin >
       uint32_t debug_generate_blocks(
          const std::string& debug_key,
          uint32_t count,
-         uint32_t skip = steemit::chain::database::skip_nothing,
+         uint32_t skip = steem::chain::database::skip_nothing,
          uint32_t miss_blocks = 0
          );
       uint32_t debug_generate_blocks_until(
          const std::string& debug_key,
          const fc::time_point_sec& head_block_time,
          bool generate_sparsely,
-         uint32_t skip = steemit::chain::database::skip_nothing
+         uint32_t skip = steem::chain::database::skip_nothing
          );
 
       void set_json_object_stream( const std::string& filename );

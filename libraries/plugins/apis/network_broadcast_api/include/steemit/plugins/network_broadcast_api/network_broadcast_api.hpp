@@ -11,16 +11,16 @@
 
 #include <boost/thread/mutex.hpp>
 
-namespace steemit { namespace plugins { namespace network_broadcast_api {
+namespace steem { namespace plugins { namespace network_broadcast_api {
 
 using std::vector;
 using fc::variant;
 using fc::optional;
-using steemit::plugins::json_rpc::void_type;
+using steem::plugins::json_rpc::void_type;
 
-using steemit::protocol::signed_transaction;
-using steemit::protocol::transaction_id_type;
-using steemit::protocol::signed_block;
+using steem::protocol::signed_transaction;
+using steem::protocol::transaction_id_type;
+using steem::protocol::signed_block;
 
 struct broadcast_transaction_args
 {
@@ -71,21 +71,21 @@ public:
 
 
 private:
-   steemit::plugins::p2p::p2p_plugin&                    _p2p;
-   steemit::plugins::chain::chain_plugin&                _chain;
+   steem::plugins::p2p::p2p_plugin&                    _p2p;
+   steem::plugins::chain::chain_plugin&                _chain;
    map< transaction_id_type, confirmation_callback >     _callbacks;
    map< time_point_sec, vector< transaction_id_type > >  _callback_expirations;
 
    boost::mutex                                          _mtx;
 };
 
-} } } // steemit::plugins::network_broadcast_api
+} } } // steem::plugins::network_broadcast_api
 
-FC_REFLECT( steemit::plugins::network_broadcast_api::broadcast_transaction_args,
+FC_REFLECT( steem::plugins::network_broadcast_api::broadcast_transaction_args,
    (trx)(max_block_age) )
 
-FC_REFLECT( steemit::plugins::network_broadcast_api::broadcast_block_args,
+FC_REFLECT( steem::plugins::network_broadcast_api::broadcast_block_args,
    (block) )
 
-FC_REFLECT( steemit::plugins::network_broadcast_api::broadcast_transaction_synchronous_return,
+FC_REFLECT( steem::plugins::network_broadcast_api::broadcast_transaction_synchronous_return,
    (id)(block_num)(trx_num)(expired) )

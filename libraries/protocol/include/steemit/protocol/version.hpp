@@ -3,7 +3,7 @@
 #include <fc/string.hpp>
 #include <fc/time.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 /*
  * This class represents the basic versioning scheme of the Steem blockchain.
@@ -66,20 +66,20 @@ struct hardfork_version_vote
    fc::time_point_sec hf_time;
 };
 
-} } // steemit::protocol
+} } // steem::protocol
 
 namespace fc
 {
    class variant;
-   void to_variant( const steemit::protocol::version& v, variant& var );
-   void from_variant( const variant& var, steemit::protocol::version& v );
+   void to_variant( const steem::protocol::version& v, variant& var );
+   void from_variant( const variant& var, steem::protocol::version& v );
 
-   void to_variant( const steemit::protocol::hardfork_version& hv, variant& var );
-   void from_variant( const variant& var, steemit::protocol::hardfork_version& hv );
+   void to_variant( const steem::protocol::hardfork_version& hv, variant& var );
+   void from_variant( const variant& var, steem::protocol::hardfork_version& hv );
 } // fc
 
 #include <fc/reflect/reflect.hpp>
-FC_REFLECT( steemit::protocol::version, (v_num) )
-FC_REFLECT_DERIVED( steemit::protocol::hardfork_version, (steemit::protocol::version), )
+FC_REFLECT( steem::protocol::version, (v_num) )
+FC_REFLECT_DERIVED( steem::protocol::hardfork_version, (steem::protocol::version), )
 
-FC_REFLECT( steemit::protocol::hardfork_version_vote, (hf_version)(hf_time) )
+FC_REFLECT( steem::protocol::hardfork_version_vote, (hf_version)(hf_time) )

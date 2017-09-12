@@ -21,7 +21,7 @@
 #define CHECK_ARG_SIZE( s ) \
    FC_ASSERT( args.size() == s, "Expected #s argument(s), was ${n}", ("n", args.size()) );
 
-namespace steemit { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 namespace detail
 {
@@ -954,7 +954,7 @@ DEFINE_API( condenser_api, get_version )
    return get_version_return
    (
       fc::string( STEEM_BLOCKCHAIN_VERSION ),
-      fc::string( steemit::utilities::git_revision_sha ),
+      fc::string( steem::utilities::git_revision_sha ),
       fc::string( fc::git_revision_sha )
    );
 }
@@ -1686,4 +1686,4 @@ DEFINE_API( condenser_api, get_market_history_buckets )
    return my->_market_history_api->get_market_history_buckets( {} ).bucket_sizes;
 }
 
-} } } // steemit::plugins::condenser_api
+} } } // steem::plugins::condenser_api

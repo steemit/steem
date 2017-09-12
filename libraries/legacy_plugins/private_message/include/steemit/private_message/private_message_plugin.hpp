@@ -31,7 +31,7 @@
 #include <fc/thread/future.hpp>
 #include <fc/api.hpp>
 
-namespace steemit { namespace private_message {
+namespace steem { namespace private_message {
 using namespace chain;
 using app::application;
 
@@ -167,7 +167,7 @@ typedef multi_index_container<
  *   by the posting key.
  *
  */
-class private_message_plugin : public steemit::app::plugin
+class private_message_plugin : public steem::app::plugin
 {
    public:
       private_message_plugin( application* app );
@@ -206,15 +206,15 @@ class private_message_api : public std::enable_shared_from_this<private_message_
       app::application* _app = nullptr;
 };
 
-} } //steemit::private_message
+} } //steem::private_message
 
-FC_API( steemit::private_message::private_message_api, (get_inbox)(get_outbox) );
+FC_API( steem::private_message::private_message_api, (get_inbox)(get_outbox) );
 
-FC_REFLECT( steemit::private_message::message_body, (thread_start)(subject)(body)(json_meta)(cc) );
+FC_REFLECT( steem::private_message::message_body, (thread_start)(subject)(body)(json_meta)(cc) );
 
-FC_REFLECT( steemit::private_message::message_object, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
-CHAINBASE_SET_INDEX_TYPE( steemit::private_message::message_object, steemit::private_message::message_index );
+FC_REFLECT( steem::private_message::message_object, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
+CHAINBASE_SET_INDEX_TYPE( steem::private_message::message_object, steem::private_message::message_index );
 
-FC_REFLECT( steemit::private_message::message_api_obj, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
+FC_REFLECT( steem::private_message::message_api_obj, (id)(from)(to)(from_memo_key)(to_memo_key)(sent_time)(receive_time)(checksum)(encrypted_message) );
 
-FC_REFLECT_DERIVED( steemit::private_message::extended_message_object, (steemit::private_message::message_api_obj), (message) );
+FC_REFLECT_DERIVED( steem::private_message::extended_message_object, (steem::private_message::message_api_obj), (message) );

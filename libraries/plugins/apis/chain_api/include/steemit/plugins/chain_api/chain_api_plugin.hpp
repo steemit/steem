@@ -7,7 +7,7 @@
 #define STEEM_CHAIN_API_PLUGIN_NAME "chain_api"
 
 
-namespace steemit { namespace plugins { namespace chain {
+namespace steem { namespace plugins { namespace chain {
 
 using namespace appbase;
 
@@ -15,8 +15,8 @@ class chain_api_plugin : public plugin< chain_api_plugin >
 {
 public:
    APPBASE_PLUGIN_REQUIRES(
-      (steemit::plugins::chain::chain_plugin)
-      (steemit::plugins::json_rpc::json_rpc_plugin)
+      (steem::plugins::chain::chain_plugin)
+      (steem::plugins::json_rpc::json_rpc_plugin)
    )
 
    chain_api_plugin();
@@ -35,4 +35,4 @@ public:
    std::shared_ptr< class chain_api > api;
 };
 
-} } } // steemit::plugins::chain
+} } } // steem::plugins::chain

@@ -5,13 +5,13 @@
 
 #include <fc/optional.hpp>
 
-namespace steemit { namespace plugins { namespace chain {
+namespace steem { namespace plugins { namespace chain {
 
 namespace detail { class chain_api_impl; }
 
 struct push_block_args
 {
-   steemit::chain::signed_block block;
+   steem::chain::signed_block block;
    bool                         currently_syncing = false;
 };
 
@@ -22,7 +22,7 @@ struct push_block_return
    optional<string>  error;
 };
 
-typedef steemit::chain::signed_transaction push_transaction_args;
+typedef steem::chain::signed_transaction push_transaction_args;
 
 struct push_transaction_return
 {
@@ -45,8 +45,8 @@ class chain_api
       std::unique_ptr< detail::chain_api_impl > my;
 };
 
-} } } // steemit::plugins::chain
+} } } // steem::plugins::chain
 
-FC_REFLECT( steemit::plugins::chain::push_block_args, (block)(currently_syncing) )
-FC_REFLECT( steemit::plugins::chain::push_block_return, (success)(error) )
-FC_REFLECT( steemit::plugins::chain::push_transaction_return, (success)(error) )
+FC_REFLECT( steem::plugins::chain::push_block_args, (block)(currently_syncing) )
+FC_REFLECT( steem::plugins::chain::push_block_return, (success)(error) )
+FC_REFLECT( steem::plugins::chain::push_transaction_return, (success)(error) )

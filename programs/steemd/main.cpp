@@ -25,7 +25,7 @@
 #include <vector>
 
 namespace bpo = boost::program_options;
-using steemit::protocol::version;
+using steem::protocol::version;
 using std::string;
 using std::vector;
 
@@ -33,7 +33,7 @@ string& version_string()
 {
    static string v_str =
       "steem_blockchain_version: " + fc::string( STEEM_BLOCKCHAIN_VERSION ) + "\n" +
-      "steem_git_revision:       " + fc::string( steemit::utilities::git_revision_sha ) + "\n" +
+      "steem_git_revision:       " + fc::string( steem::utilities::git_revision_sha ) + "\n" +
       "fc_git_revision:          " + fc::string( fc::git_revision_sha ) + "\n";
    return v_str;
 }
@@ -46,7 +46,7 @@ int main( int argc, char** argv )
       std::cerr << "------------------------------------------------------\n\n";
       std::cerr << "            STARTING TEST NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
-      auto initminer_private_key = steemit::utilities::key_to_wif( STEEM_INIT_PRIVATE_KEY );
+      auto initminer_private_key = steem::utilities::key_to_wif( STEEM_INIT_PRIVATE_KEY );
       std::cerr << "initminer public key: " << STEEM_INIT_PUBLIC_KEY_STR << "\n";
       std::cerr << "initminer private key: " << initminer_private_key << "\n";
       std::cerr << "chain id: " << std::string( STEEM_CHAIN_ID ) << "\n";
@@ -65,22 +65,22 @@ int main( int argc, char** argv )
       // Setup logging config
       bpo::options_description options;
 
-      steemit::utilities::set_logging_program_options( options );
+      steem::utilities::set_logging_program_options( options );
       appbase::app().add_program_options( bpo::options_description(), options );
 
-      steemit::plugins::register_plugins();
+      steem::plugins::register_plugins();
       appbase::app().set_version_string( version_string() );
 
       if( !appbase::app().initialize<
-            steemit::plugins::chain::chain_plugin,
-            steemit::plugins::p2p::p2p_plugin,
-            steemit::plugins::webserver::webserver_plugin >
+            steem::plugins::chain::chain_plugin,
+            steem::plugins::p2p::p2p_plugin,
+            steem::plugins::webserver::webserver_plugin >
             ( argc, argv ) )
          return 0;
 
       try
       {
-         fc::optional< fc::logging_config > logging_config = steemit::utilities::load_logging_config( appbase::app().get_args(), appbase::app().data_dir() );
+         fc::optional< fc::logging_config > logging_config = steem::utilities::load_logging_config( appbase::app().get_args(), appbase::app().data_dir() );
          if( logging_config )
             fc::configure_logging( *logging_config );
       }

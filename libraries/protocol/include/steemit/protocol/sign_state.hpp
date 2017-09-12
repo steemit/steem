@@ -3,7 +3,7 @@
 #include <steemit/protocol/authority.hpp>
 #include <steemit/protocol/types.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 typedef std::function<authority(const string&)> authority_getter;
 
@@ -35,4 +35,4 @@ struct sign_state
       uint32_t                         max_recursion = STEEM_MAX_SIG_CHECK_DEPTH;
 };
 
-} } // steemit::protocol
+} } // steem::protocol

@@ -24,7 +24,7 @@
 #include <memory>
 #include <iostream>
 
-namespace steemit { namespace plugins { namespace webserver {
+namespace steem { namespace plugins { namespace webserver {
 
 namespace asio = boost::asio;
 
@@ -345,4 +345,4 @@ void webserver_plugin::plugin_shutdown()
    my->stop_webserver();
 }
 
-} } } // steemit::plugins::webserver
+} } } // steem::plugins::webserver

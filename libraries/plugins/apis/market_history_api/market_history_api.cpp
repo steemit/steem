@@ -3,16 +3,16 @@
 
 #include <steemit/chain/steem_objects.hpp>
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
 namespace detail {
 
-using namespace steemit::plugins::market_history;
+using namespace steem::plugins::market_history;
 
 class market_history_api_impl
 {
    public:
-      market_history_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      market_history_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API(
          (get_ticker)
@@ -180,7 +180,7 @@ DEFINE_API( market_history_api_impl, get_market_history )
 DEFINE_API( market_history_api_impl, get_market_history_buckets )
 {
    get_market_history_buckets_return result;
-   result.bucket_sizes = appbase::app().get_plugin< steemit::plugins::market_history::market_history_plugin >().get_tracked_buckets();
+   result.bucket_sizes = appbase::app().get_plugin< steem::plugins::market_history::market_history_plugin >().get_tracked_buckets();
    return result;
 }
 
@@ -259,4 +259,4 @@ DEFINE_API( market_history_api, get_market_history_buckets )
    });
 }
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history

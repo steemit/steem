@@ -5,7 +5,7 @@
 #include <steemit/protocol/steem_virtual_operations.hpp>
 #include <steemit/protocol/smt_operations.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
    /** NOTE: do not change the order of any operations prior to the virtual operations
     * or it will trigger a hardfork.
@@ -102,12 +102,12 @@ namespace steemit { namespace protocol {
 
    bool is_virtual_operation( const operation& op );
 
-} } // steemit::protocol
+} } // steem::protocol
 
 /*namespace fc {
-    void to_variant( const steemit::protocol::operation& var,  fc::variant& vo );
-    void from_variant( const fc::variant& var,  steemit::protocol::operation& vo );
+    void to_variant( const steem::protocol::operation& var,  fc::variant& vo );
+    void from_variant( const fc::variant& var,  steem::protocol::operation& vo );
 }*/
 
-STEEM_DECLARE_OPERATION_TYPE( steemit::protocol::operation )
-FC_REFLECT_TYPENAME( steemit::protocol::operation )
+STEEM_DECLARE_OPERATION_TYPE( steem::protocol::operation )
+FC_REFLECT_TYPENAME( steem::protocol::operation )

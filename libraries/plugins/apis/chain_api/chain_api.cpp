@@ -1,7 +1,7 @@
 #include <steemit/plugins/chain_api/chain_api_plugin.hpp>
 #include <steemit/plugins/chain_api/chain_api.hpp>
 
-namespace steemit { namespace plugins { namespace chain {
+namespace steem { namespace plugins { namespace chain {
 
 namespace detail {
 
@@ -94,4 +94,4 @@ DEFINE_API( chain_api, push_transaction )
    return my->push_transaction( args );
 }
 
-} } } //steemit::plugins::chain
+} } } //steem::plugins::chain

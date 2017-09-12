@@ -16,11 +16,11 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace steemit { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 namespace detail {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 class tags_plugin_impl
 {
@@ -37,7 +37,7 @@ class tags_plugin_impl
 };
 
 tags_plugin_impl::tags_plugin_impl() :
-   _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+   _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 tags_plugin_impl::~tags_plugin_impl() {}
 
@@ -499,4 +499,4 @@ void tags_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->post_apply_connection );
 }
 
-} } } /// steemit::plugins::tags
+} } } /// steem::plugins::tags

@@ -7,7 +7,7 @@
 
 #define DATABASE_API_SINGLE_QUERY_LIMIT 1000
 
-namespace steemit { namespace plugins { namespace database_api {
+namespace steem { namespace plugins { namespace database_api {
 
 class database_api_impl;
 
@@ -131,5 +131,5 @@ class database_api
       std::unique_ptr< database_api_impl > my;
 };
 
-} } } //steemit::plugins::database_api
+} } } //steem::plugins::database_api
 

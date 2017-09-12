@@ -5,7 +5,7 @@
 
 #include <steemit/protocol/get_config.hpp>
 
-namespace steemit { namespace plugins { namespace database_api {
+namespace steem { namespace plugins { namespace database_api {
 
 class database_api_impl
 {
@@ -144,7 +144,7 @@ database_api::database_api()
 database_api::~database_api() {}
 
 database_api_impl::database_api_impl()
-   : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+   : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 database_api_impl::~database_api_impl() {}
 
@@ -164,7 +164,7 @@ DEFINE_API( database_api, get_config )
 
 DEFINE_API( database_api_impl, get_config )
 {
-   return steemit::protocol::get_config();
+   return steem::protocol::get_config();
 }
 
 
@@ -1862,4 +1862,4 @@ DEFINE_API( database_api_impl, verify_account_authority )
    return verify_authority( vap );
 }
 
-} } } // steemit::plugins::database_api
+} } } // steem::plugins::database_api

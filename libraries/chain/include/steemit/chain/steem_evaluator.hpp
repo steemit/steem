@@ -4,9 +4,9 @@
 
 #include <steemit/chain/evaluator.hpp>
 
-namespace steemit{ namespace chain {
+namespace steem { namespace chain {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 STEEM_DEFINE_EVALUATOR( account_create )
 STEEM_DEFINE_EVALUATOR( account_create_with_delegation )
@@ -58,4 +58,4 @@ STEEM_DEFINE_EVALUATOR( smt_set_setup_parameters )
 STEEM_DEFINE_EVALUATOR( smt_set_runtime_parameters )
 STEEM_DEFINE_EVALUATOR( smt_elevate_account )
 
-} } // steemit::chain
+} } // steem::chain

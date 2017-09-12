@@ -24,10 +24,10 @@
 #pragma once
 #include <stdint.h>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
 extern const char* const git_revision_sha;
 extern const uint32_t git_revision_unix_timestamp;
 extern const char* const git_revision_description;
 
-} } // end namespace steemit::utilities
+} } // end namespace steem::utilities

@@ -24,7 +24,7 @@
 #define DISTANCE_CALC_PRECISION (10000)
 
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 using chain::plugin_exception;
 using std::string;
@@ -53,9 +53,9 @@ namespace detail {
    public:
       witness_plugin_impl( boost::asio::io_service& io ) :
          _timer(io),
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      void pre_transaction( const steemit::protocol::signed_transaction& trx );
+      void pre_transaction( const steem::protocol::signed_transaction& trx );
       void pre_operation( const chain::operation_notification& note );
       void on_block( const signed_block& b );
 
@@ -69,8 +69,8 @@ namespace detail {
       uint32_t _required_witness_participation = 33 * STEEM_1_PERCENT;
       uint32_t _production_skip_flags = chain::database::skip_nothing;
 
-      std::map< steemit::protocol::public_key_type, fc::ecc::private_key > _private_keys;
-      std::set< steemit::protocol::account_name_type >                     _witnesses;
+      std::map< steem::protocol::public_key_type, fc::ecc::private_key > _private_keys;
+      std::set< steem::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                          _timer;
 
       std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
@@ -222,7 +222,7 @@ namespace detail {
       }
    };
 
-   void witness_plugin_impl::pre_transaction( const steemit::protocol::signed_transaction& trx )
+   void witness_plugin_impl::pre_transaction( const steem::protocol::signed_transaction& trx )
    {
       flat_set< account_name_type > required; vector<authority> other;
       trx.get_required_authorities( required, required, required, other );
@@ -467,7 +467,7 @@ namespace detail {
 
    block_production_condition::block_production_condition_enum witness_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture)
    {
-      chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       fc::time_point now_fine = fc::time_point::now();
       fc::time_point_sec now = now_fine + fc::microseconds( 500000 );
 
@@ -538,7 +538,7 @@ namespace detail {
          );
       capture("n", block.block_num())("t", block.timestamp)("c", now);
 
-      appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >().broadcast_block( block );
+      appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().broadcast_block( block );
       return block_production_condition::produced;
    }
 
@@ -566,14 +566,14 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 { try {
    my = std::make_unique< detail::witness_plugin_impl >( appbase::app().get_io_service() );
 
-   STEEM_LOAD_VALUE_SET( options, "witness", my->_witnesses, steemit::protocol::account_name_type )
+   STEEM_LOAD_VALUE_SET( options, "witness", my->_witnesses, steem::protocol::account_name_type )
 
    if( options.count("private-key") )
    {
       const std::vector<std::string> keys = options["private-key"].as<std::vector<std::string>>();
       for (const std::string& wif_key : keys )
       {
-         fc::optional<fc::ecc::private_key> private_key = steemit::utilities::wif_to_key(wif_key);
+         fc::optional<fc::ecc::private_key> private_key = steem::utilities::wif_to_key(wif_key);
          FC_ASSERT( private_key.valid(), "unable to parse private key" );
          my->_private_keys[private_key->get_public_key()] = *private_key;
       }
@@ -588,7 +588,7 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
 
    my->_custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< witness_plugin_operation > >( my->_db );
    my->_custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( this );
-   appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db().set_custom_operation_interpreter( name(), my->_custom_operation_interpreter );
+   appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db().set_custom_operation_interpreter( name(), my->_custom_operation_interpreter );
 
    my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
    my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->pre_operation( note ); } );
@@ -598,13 +598,13 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    add_plugin_index< content_edit_lock_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
 
-   appbase::app().get_plugin< steemit::plugins::p2p::p2p_plugin >().set_block_production( true );
+   appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
 } FC_LOG_AND_RETHROW() }
 
 void witness_plugin::plugin_startup()
 { try {
    ilog("witness plugin:  plugin_startup() begin");
-   chain::database& d = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+   chain::database& d = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
    if( !my->_witnesses.empty() )
    {
@@ -637,4 +637,4 @@ void witness_plugin::plugin_shutdown()
    }
 }
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness

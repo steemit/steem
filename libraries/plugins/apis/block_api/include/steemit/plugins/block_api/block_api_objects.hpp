@@ -9,9 +9,9 @@
 #include <steemit/chain/witness_objects.hpp>
 #include <steemit/chain/database.hpp>
 
-namespace steemit { namespace plugins { namespace block_api {
+namespace steem { namespace plugins { namespace block_api {
 
-using namespace steemit::chain;
+using namespace steem::chain;
 
 struct api_signed_block_object : public signed_block
 {
@@ -30,9 +30,9 @@ struct api_signed_block_object : public signed_block
    vector< transaction_id_type > transaction_ids;
 };
 
-} } } // steemit::plugins::database_api
+} } } // steem::plugins::database_api
 
-FC_REFLECT_DERIVED( steemit::plugins::block_api::api_signed_block_object, (steemit::protocol::signed_block),
+FC_REFLECT_DERIVED( steem::plugins::block_api::api_signed_block_object, (steem::protocol::signed_block),
                      (block_id)
                      (signing_key)
                      (transaction_ids)

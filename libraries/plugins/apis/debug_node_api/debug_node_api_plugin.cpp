@@ -2,7 +2,7 @@
 #include <steemit/plugins/debug_node_api/debug_node_api.hpp>
 
 
-namespace steemit { namespace plugins { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 debug_node_api_plugin::debug_node_api_plugin() {}
 debug_node_api_plugin::~debug_node_api_plugin() {}
@@ -17,4 +17,4 @@ void debug_node_api_plugin::plugin_initialize( const variables_map& options )
 void debug_node_api_plugin::plugin_startup() {}
 void debug_node_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::debug_node
+} } } // steem::plugins::debug_node

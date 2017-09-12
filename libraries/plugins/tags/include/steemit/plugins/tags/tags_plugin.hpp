@@ -7,9 +7,9 @@
 #include <boost/multi_index/composite_key.hpp>
 
 
-namespace steemit { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
-using namespace steemit::chain;
+using namespace steem::chain;
 using namespace boost::multi_index;
 
 using namespace appbase;
@@ -345,7 +345,7 @@ class tags_plugin : public plugin< tags_plugin >
       tags_plugin();
       virtual ~tags_plugin();
 
-      APPBASE_PLUGIN_REQUIRES( (steemit::plugins::chain::chain_plugin) )
+      APPBASE_PLUGIN_REQUIRES( (steem::plugins::chain::chain_plugin) )
 
       static const std::string& name() { static std::string name = STEEM_TAGS_PLUGIN_NAME; return name; }
 
@@ -382,17 +382,17 @@ class tag_api : public std::enable_shared_from_this<tag_api> {
 */
 
 
-} } } //steemit::plugins::tags
+} } } //steem::plugins::tags
 
-FC_REFLECT( steemit::plugins::tags::tag_object,
+FC_REFLECT( steem::plugins::tags::tag_object,
    (id)(tag)(created)(active)(cashout)(net_rshares)(net_votes)(hot)(trending)(promoted_balance)(children)(author)(parent)(comment) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::tags::tag_object, steemit::plugins::tags::tag_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::tags::tag_object, steem::plugins::tags::tag_index )
 
-FC_REFLECT( steemit::plugins::tags::tag_stats_object,
+FC_REFLECT( steem::plugins::tags::tag_stats_object,
    (id)(tag)(total_payout)(net_votes)(top_posts)(comments)(total_trending) );
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::tags::tag_stats_object, steemit::plugins::tags::tag_stats_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::tags::tag_stats_object, steem::plugins::tags::tag_stats_index )
 
-FC_REFLECT( steemit::plugins::tags::comment_metadata, (tags) );
+FC_REFLECT( steem::plugins::tags::comment_metadata, (tags) );
 
-FC_REFLECT( steemit::plugins::tags::author_tag_stats_object, (id)(author)(tag)(total_posts)(total_rewards) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::tags::author_tag_stats_object, steemit::plugins::tags::author_tag_stats_index )
+FC_REFLECT( steem::plugins::tags::author_tag_stats_object, (id)(author)(tag)(total_posts)(total_rewards) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::tags::author_tag_stats_object, steem::plugins::tags::author_tag_stats_index )

@@ -11,8 +11,8 @@
 
 #include "../db_fixture/database_fixture.hpp"
 
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem::chain;
+using namespace steem::protocol;
 using fc::string;
 using boost::container::flat_set;
 

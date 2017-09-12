@@ -14,7 +14,7 @@ endif( MSVC )
 set_source_files_properties( "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/protocol/hardfork.hpp" PROPERTIES GENERATED TRUE )
 
 ## SORT .cpp by most likely to change / break compile
-add_library( steemit_protocol
+add_library( steem_protocol
 
              smt_operations.cpp
              steem_operations.cpp
@@ -34,20 +34,20 @@ add_library( steemit_protocol
              "${CMAKE_CURRENT_BINARY_DIR}/include/steemit/protocol/hardfork.hpp"
            )
 
-add_dependencies( steemit_protocol build_hardfork_hpp )
-target_link_libraries( steemit_protocol fc )
-target_include_directories( steemit_protocol
+add_dependencies( steem_protocol build_hardfork_hpp )
+target_link_libraries( steem_protocol fc )
+target_include_directories( steem_protocol
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
 if( CLANG_TIDY_EXE )
    set_target_properties(
-      steemit_protocol PROPERTIES
+      steem_protocol PROPERTIES
       CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
    )
 endif( CLANG_TIDY_EXE )
 
 INSTALL( TARGETS
-   steemit_protocol
+   steem_protocol
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

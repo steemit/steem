@@ -2,7 +2,7 @@
 #include <steemit/chain/util/reward.hpp>
 #include <steemit/chain/util/uint256.hpp>
 
-namespace steemit { namespace chain { namespace util {
+namespace steem { namespace chain { namespace util {
 
 uint8_t find_msb( const uint128_t& u )
 {
@@ -94,4 +94,4 @@ uint128_t evaluate_reward_curve( const uint128_t& rshares, const curve_id& curve
    return result;
 }
 
-} } } // steemit::chain::util
+} } } // steem::chain::util

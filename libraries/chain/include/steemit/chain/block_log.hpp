@@ -2,9 +2,9 @@
 #include <fc/filesystem.hpp>
 #include <steemit/protocol/block.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
-   using namespace steemit::protocol;
+   using namespace steem::protocol;
 
    namespace detail { class block_log_impl; }
 

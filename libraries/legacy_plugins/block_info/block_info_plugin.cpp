@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace steemit { namespace plugin { namespace block_info {
+namespace steem { namespace plugin { namespace block_info {
 
 block_info_plugin::block_info_plugin( application* app ) : plugin( app ) {}
 block_info_plugin::~block_info_plugin() {}
@@ -53,6 +53,6 @@ void block_info_plugin::on_applied_block( const chain::signed_block& b )
    return;
 }
 
-} } } // steemit::plugin::block_info
+} } } // steem::plugin::block_info
 
-STEEM_DEFINE_PLUGIN( block_info, steemit::plugin::block_info::block_info_plugin )
+STEEM_DEFINE_PLUGIN( block_info, steem::plugin::block_info::block_info_plugin )

@@ -8,7 +8,7 @@
 
 #include <steemit/protocol/smt_operations.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operation& o )
 {

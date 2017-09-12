@@ -11,10 +11,10 @@ BOOST_PP_CAT( method, _return ) method( const BOOST_PP_CAT( method, _args )& );
 #define DEFINE_API( class, api_name )                                   \
 api_name ## _return class :: api_name ( const api_name ## _args& args )
 
-namespace steemit { namespace plugins { namespace json_rpc {
+namespace steem { namespace plugins { namespace json_rpc {
 
 struct void_type {};
 
-} } } // steemit::plugins::json_rpc
+} } } // steem::plugins::json_rpc
 
-FC_REFLECT( steemit::plugins::json_rpc::void_type, )
+FC_REFLECT( steem::plugins::json_rpc::void_type, )

@@ -12,7 +12,7 @@
 
 #include <steemit/utilities/key_conversion.hpp>
 
-namespace steemit { namespace plugins { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 namespace detail {
 
@@ -216,4 +216,4 @@ DEFINE_API( debug_node_api, debug_get_json_schema )
    return { result };
 }
 
-} } } // steemit::plugins::debug_node
+} } } // steem::plugins::debug_node

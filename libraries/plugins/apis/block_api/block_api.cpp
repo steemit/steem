@@ -5,7 +5,7 @@
 
 #include <steemit/protocol/get_config.hpp>
 
-namespace steemit { namespace plugins { namespace block_api {
+namespace steem { namespace plugins { namespace block_api {
 
 class block_api_impl
 {
@@ -41,7 +41,7 @@ block_api::block_api()
 block_api::~block_api() {}
 
 block_api_impl::block_api_impl()
-   : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+   : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 block_api_impl::~block_api_impl() {}
 
@@ -89,4 +89,4 @@ DEFINE_API( block_api_impl, get_block )
    return result;
 }
 
-} } } // steemit::plugins::block_api
+} } } // steem::plugins::block_api

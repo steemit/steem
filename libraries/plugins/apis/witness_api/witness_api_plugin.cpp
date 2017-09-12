@@ -2,7 +2,7 @@
 #include <steemit/plugins/witness_api/witness_api.hpp>
 
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 witness_api_plugin::witness_api_plugin() {}
 witness_api_plugin::~witness_api_plugin() {}
@@ -17,4 +17,4 @@ void witness_api_plugin::plugin_initialize( const variables_map& options )
 void witness_api_plugin::plugin_startup() {}
 void witness_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness

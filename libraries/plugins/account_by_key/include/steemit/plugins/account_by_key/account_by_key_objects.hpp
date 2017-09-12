@@ -3,10 +3,10 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steemit { namespace plugins { namespace account_by_key {
+namespace steem { namespace plugins { namespace account_by_key {
 
 using namespace std;
-using namespace steemit::chain;
+using namespace steem::chain;
 
 #ifndef STEEM_ACCOUNT_BY_KEY_SPACE_ID
 #define STEEM_ACCOUNT_BY_KEY_SPACE_ID 11
@@ -53,8 +53,8 @@ typedef multi_index_container<
    allocator< key_lookup_object >
 > key_lookup_index;
 
-} } } // steemit::plugins::account_by_key
+} } } // steem::plugins::account_by_key
 
 
-FC_REFLECT( steemit::plugins::account_by_key::key_lookup_object, (id)(key)(account) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::account_by_key::key_lookup_object, steemit::plugins::account_by_key::key_lookup_index )
+FC_REFLECT( steem::plugins::account_by_key::key_lookup_object, (id)(key)(account) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::account_by_key::key_lookup_object, steem::plugins::account_by_key::key_lookup_index )

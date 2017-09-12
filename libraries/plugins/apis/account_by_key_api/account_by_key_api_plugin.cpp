@@ -2,7 +2,7 @@
 #include <steemit/plugins/account_by_key_api/account_by_key_api.hpp>
 
 
-namespace steemit { namespace plugins { namespace account_by_key {
+namespace steem { namespace plugins { namespace account_by_key {
 
 account_by_key_api_plugin::account_by_key_api_plugin() {}
 account_by_key_api_plugin::~account_by_key_api_plugin() {}
@@ -17,4 +17,4 @@ void account_by_key_api_plugin::plugin_initialize( const variables_map& options 
 void account_by_key_api_plugin::plugin_startup() {}
 void account_by_key_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::account_by_key
+} } } // steem::plugins::account_by_key

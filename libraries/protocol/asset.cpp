@@ -12,7 +12,7 @@ index : field
    7  : \0
 */
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
       typedef boost::multiprecision::int128_t  int128_t;
 
       uint8_t asset::decimals()const
@@ -195,4 +195,4 @@ namespace steemit { namespace protocol {
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
 
-} } // steemit::protocol
+} } // steem::protocol

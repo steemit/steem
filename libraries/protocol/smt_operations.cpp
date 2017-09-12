@@ -4,7 +4,7 @@
 
 #define SMT_MAX_UNIT_ROUTES       10
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 void smt_elevate_account_operation::validate()const
 {

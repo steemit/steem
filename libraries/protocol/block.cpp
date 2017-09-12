@@ -3,7 +3,7 @@
 #include <fc/bitutil.hpp>
 #include <algorithm>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
    digest_type block_header::digest()const
    {
       return digest_type::hash(*this);
@@ -66,4 +66,4 @@ namespace steemit { namespace protocol {
       return checksum_type::hash( ids[0] );
    }
 
-} } // steemit::protocol
+} } // steem::protocol

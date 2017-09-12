@@ -4,10 +4,10 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steemit { namespace plugins{ namespace witness {
+namespace steem { namespace plugins{ namespace witness {
 
 using namespace std;
-using namespace steemit::chain;
+using namespace steem::chain;
 
 #ifndef STEEM_WITNESS_SPACE_ID
 #define STEEM_WITNESS_SPACE_ID 12
@@ -154,18 +154,18 @@ typedef multi_index_container <
    allocator< reserve_ratio_object >
 > reserve_ratio_index;
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness
 
-FC_REFLECT_ENUM( steemit::plugins::witness::bandwidth_type, (post)(forum)(market) )
+FC_REFLECT_ENUM( steem::plugins::witness::bandwidth_type, (post)(forum)(market) )
 
-FC_REFLECT( steemit::plugins::witness::account_bandwidth_object,
+FC_REFLECT( steem::plugins::witness::account_bandwidth_object,
             (id)(account)(type)(average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::witness::account_bandwidth_object, steemit::plugins::witness::account_bandwidth_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::account_bandwidth_object, steem::plugins::witness::account_bandwidth_index )
 
-FC_REFLECT( steemit::plugins::witness::content_edit_lock_object,
+FC_REFLECT( steem::plugins::witness::content_edit_lock_object,
             (id)(account)(lock_time) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::witness::content_edit_lock_object, steemit::plugins::witness::content_edit_lock_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::content_edit_lock_object, steem::plugins::witness::content_edit_lock_index )
 
-FC_REFLECT( steemit::plugins::witness::reserve_ratio_object,
+FC_REFLECT( steem::plugins::witness::reserve_ratio_object,
             (id)(average_block_size)(current_reserve_ratio)(max_virtual_bandwidth) )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::witness::reserve_ratio_object, steemit::plugins::witness::reserve_ratio_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::reserve_ratio_object, steem::plugins::witness::reserve_ratio_index )

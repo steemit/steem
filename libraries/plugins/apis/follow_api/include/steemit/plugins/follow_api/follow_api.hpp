@@ -9,9 +9,9 @@
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
 
-namespace steemit { namespace plugins { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
-using steemit::protocol::account_name_type;
+using steem::protocol::account_name_type;
 
 namespace detail
 {
@@ -55,7 +55,7 @@ struct comment_blog_entry
 struct account_reputation
 {
    account_name_type             account;
-   steemit::protocol::share_type reputation;
+   steem::protocol::share_type reputation;
 };
 
 struct api_follow_object
@@ -199,73 +199,73 @@ class follow_api
       std::unique_ptr< detail::follow_api_impl > my;
 };
 
-} } } // steemit::plugins::follow
+} } } // steem::plugins::follow
 
-FC_REFLECT( steemit::plugins::follow::feed_entry,
+FC_REFLECT( steem::plugins::follow::feed_entry,
             (author)(permlink)(reblog_by)(reblog_on)(entry_id) );
 
-FC_REFLECT( steemit::plugins::follow::comment_feed_entry,
+FC_REFLECT( steem::plugins::follow::comment_feed_entry,
             (comment)(reblog_by)(reblog_on)(entry_id) );
 
-FC_REFLECT( steemit::plugins::follow::blog_entry,
+FC_REFLECT( steem::plugins::follow::blog_entry,
             (author)(permlink)(blog)(reblog_on)(entry_id) );
 
-FC_REFLECT( steemit::plugins::follow::comment_blog_entry,
+FC_REFLECT( steem::plugins::follow::comment_blog_entry,
             (comment)(blog)(reblog_on)(entry_id) );
 
-FC_REFLECT( steemit::plugins::follow::account_reputation,
+FC_REFLECT( steem::plugins::follow::account_reputation,
             (account)(reputation) );
 
-FC_REFLECT( steemit::plugins::follow::api_follow_object,
+FC_REFLECT( steem::plugins::follow::api_follow_object,
             (follower)(following)(what) );
 
-FC_REFLECT( steemit::plugins::follow::reblog_count,
+FC_REFLECT( steem::plugins::follow::reblog_count,
             (author)(count) );
 
-FC_REFLECT( steemit::plugins::follow::get_followers_args,
+FC_REFLECT( steem::plugins::follow::get_followers_args,
             (account)(start)(type)(limit) );
 
-FC_REFLECT( steemit::plugins::follow::get_followers_return,
+FC_REFLECT( steem::plugins::follow::get_followers_return,
             (followers) );
 
-FC_REFLECT( steemit::plugins::follow::get_following_return,
+FC_REFLECT( steem::plugins::follow::get_following_return,
             (following) );
 
-FC_REFLECT( steemit::plugins::follow::get_follow_count_args,
+FC_REFLECT( steem::plugins::follow::get_follow_count_args,
             (account) );
 
-FC_REFLECT( steemit::plugins::follow::get_follow_count_return,
+FC_REFLECT( steem::plugins::follow::get_follow_count_return,
             (account)(follower_count)(following_count) );
 
-FC_REFLECT( steemit::plugins::follow::get_feed_entries_args,
+FC_REFLECT( steem::plugins::follow::get_feed_entries_args,
             (account)(start_entry_id)(limit) );
 
-FC_REFLECT( steemit::plugins::follow::get_feed_entries_return,
+FC_REFLECT( steem::plugins::follow::get_feed_entries_return,
             (feed) );
 
-FC_REFLECT( steemit::plugins::follow::get_feed_return,
+FC_REFLECT( steem::plugins::follow::get_feed_return,
             (feed) );
 
-FC_REFLECT( steemit::plugins::follow::get_blog_entries_return,
+FC_REFLECT( steem::plugins::follow::get_blog_entries_return,
             (blog) );
 
-FC_REFLECT( steemit::plugins::follow::get_blog_return,
+FC_REFLECT( steem::plugins::follow::get_blog_return,
             (blog) );
 
-FC_REFLECT( steemit::plugins::follow::get_account_reputations_args,
+FC_REFLECT( steem::plugins::follow::get_account_reputations_args,
             (account_lower_bound)(limit) );
 
-FC_REFLECT( steemit::plugins::follow::get_account_reputations_return,
+FC_REFLECT( steem::plugins::follow::get_account_reputations_return,
             (reputations) );
 
-FC_REFLECT( steemit::plugins::follow::get_reblogged_by_args,
+FC_REFLECT( steem::plugins::follow::get_reblogged_by_args,
             (author)(permlink) );
 
-FC_REFLECT( steemit::plugins::follow::get_reblogged_by_return,
+FC_REFLECT( steem::plugins::follow::get_reblogged_by_return,
             (accounts) );
 
-FC_REFLECT( steemit::plugins::follow::get_blog_authors_args,
+FC_REFLECT( steem::plugins::follow::get_blog_authors_args,
             (blog_account) );
 
-FC_REFLECT( steemit::plugins::follow::get_blog_authors_return,
+FC_REFLECT( steem::plugins::follow::get_blog_authors_return,
             (blog_authors) );

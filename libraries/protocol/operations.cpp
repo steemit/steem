@@ -2,7 +2,7 @@
 
 #include <steemit/protocol/operation_util_impl.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 struct is_market_op_visitor {
    typedef bool result_type;
@@ -32,6 +32,6 @@ bool is_virtual_operation( const operation& op )
    return op.visit( is_vop_visitor() );
 }
 
-} } // steemit::protocol
+} } // steem::protocol
 
-STEEM_DEFINE_OPERATION_TYPE( steemit::protocol::operation )
+STEEM_DEFINE_OPERATION_TYPE( steem::protocol::operation )

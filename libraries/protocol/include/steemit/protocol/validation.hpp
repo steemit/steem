@@ -7,7 +7,7 @@
 
 #include <fc/utf8.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 inline bool is_asset_type( asset asset, asset_symbol_type symbol )
 {

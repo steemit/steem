@@ -54,7 +54,7 @@ namespace fc
    }
 }
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 /**
  * This class is an in-place memory allocation of a fixed length character string.
@@ -139,18 +139,18 @@ typedef fixed_string< fc::uint128_t >                               fixed_string
 typedef fixed_string< fc::erpair< fc::uint128_t, uint64_t > >       fixed_string_24;
 typedef fixed_string< fc::erpair< fc::uint128_t, fc::uint128_t > >  fixed_string_32;
 
-} } // steemit::protocol
+} } // steem::protocol
 
 namespace fc { namespace raw {
 
    template< typename Stream, typename Storage >
-   inline void pack( Stream& s, const steemit::protocol::fixed_string< Storage >& u )
+   inline void pack( Stream& s, const steem::protocol::fixed_string< Storage >& u )
    {
       pack( s, std::string( u ) );
    }
 
    template< typename Stream, typename Storage >
-   inline void unpack( Stream& s, steemit::protocol::fixed_string< Storage >& u )
+   inline void unpack( Stream& s, steem::protocol::fixed_string< Storage >& u )
    {
       std::string str;
       unpack( s, str );
@@ -159,8 +159,8 @@ namespace fc { namespace raw {
 
 } // raw
    template< typename Storage >
-   void to_variant(   const steemit::protocol::fixed_string< Storage >& s, variant& v ) { v = std::string( s ); }
+   void to_variant(   const steem::protocol::fixed_string< Storage >& s, variant& v ) { v = std::string( s ); }
 
    template< typename Storage >
-   void from_variant( const variant& v, steemit::protocol::fixed_string< Storage >& s ) { s = v.as_string(); }
+   void from_variant( const variant& v, steem::protocol::fixed_string< Storage >& s ) { s = v.as_string(); }
 } // fc

@@ -8,7 +8,7 @@
 #include <fc/variant.hpp>
 #include <fc/vector.hpp>
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 namespace detail
 {
@@ -40,10 +40,10 @@ class witness_api
       std::unique_ptr< detail::witness_api_impl > my;
 };
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness
 
-FC_REFLECT( steemit::plugins::witness::get_account_bandwidth_args,
+FC_REFLECT( steem::plugins::witness::get_account_bandwidth_args,
             (account)(type) )
 
-FC_REFLECT( steemit::plugins::witness::get_account_bandwidth_return,
+FC_REFLECT( steem::plugins::witness::get_account_bandwidth_return,
             (bandwidth) )

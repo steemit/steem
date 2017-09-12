@@ -2,13 +2,13 @@
 
 #include <steemit/protocol/operation_util_impl.hpp>
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 void enable_content_editing_operation::validate()const
 {
    protocol::validate_account_name( account );
 }
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness
 
-STEEM_DEFINE_OPERATION_TYPE( steemit::plugins::witness::witness_plugin_operation )
+STEEM_DEFINE_OPERATION_TYPE( steem::plugins::witness::witness_plugin_operation )

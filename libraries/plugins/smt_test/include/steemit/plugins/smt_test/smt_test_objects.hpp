@@ -3,10 +3,10 @@
 
 #include <boost/multi_index/composite_key.hpp>
 
-namespace steemit { namespace plugins { namespace smt_test {
+namespace steem { namespace plugins { namespace smt_test {
 
 using namespace std;
-using namespace steemit::chain;
+using namespace steem::chain;
 
 #ifndef STEEM_SMT_TEST_SPACE_ID
 #define STEEM_SMT_TEST_SPACE_ID 13
@@ -56,9 +56,9 @@ typedef multi_index_container<
    allocator< smt_token_object >
 > smt_token_index;
 
-} } } // steemit::plugins::smt_test
+} } } // steem::plugins::smt_test
 
-FC_REFLECT( steemit::plugins::smt_test::smt_token_object,
+FC_REFLECT( steem::plugins::smt_test::smt_token_object,
    (id)
    (control_account)
    (decimal_places)
@@ -67,4 +67,4 @@ FC_REFLECT( steemit::plugins::smt_test::smt_token_object,
    (generation_end_time)
    (announced_launch_time)
    )
-CHAINBASE_SET_INDEX_TYPE( steemit::plugins::smt_test::smt_token_object, steemit::plugins::smt_test::smt_token_index )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::smt_test::smt_token_object, steem::plugins::smt_test::smt_token_index )

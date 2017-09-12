@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
 using std::string;
 using std::vector;

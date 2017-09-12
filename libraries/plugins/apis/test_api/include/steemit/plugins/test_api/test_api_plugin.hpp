@@ -7,7 +7,7 @@
 
 #define REGISTER_API( api_name, ... )
 
-namespace steemit { namespace plugins { namespace test_api {
+namespace steem { namespace plugins { namespace test_api {
 
 using namespace appbase;
 
@@ -35,7 +35,7 @@ class test_api_plugin : public appbase::plugin< test_api_plugin >
       string test_api_b( const test_api_b_args& args ) { return "B"; }
 };
 
-} } } // steemit::plugins::test_api
+} } } // steem::plugins::test_api
 
-FC_REFLECT( steemit::plugins::test_api::test_api_a_args, )
-FC_REFLECT( steemit::plugins::test_api::test_api_b_args, )
+FC_REFLECT( steem::plugins::test_api::test_api_a_args, )
+FC_REFLECT( steem::plugins::test_api::test_api_b_args, )

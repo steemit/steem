@@ -3,7 +3,7 @@
 
 #include <steemit/plugins/follow/follow_objects.hpp>
 
-namespace steemit { namespace plugins { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
 namespace detail {
 
@@ -18,7 +18,7 @@ inline void set_what( vector< follow::follow_type >& what, uint16_t bitmask )
 class follow_api_impl
 {
    public:
-      follow_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      follow_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API(
          (get_followers)
@@ -393,4 +393,4 @@ DEFINE_API( follow_api, get_blog_authors )
    });
 }
 
-} } } // steemit::plugins::follow
+} } } // steem::plugins::follow

@@ -2,7 +2,7 @@
 
 #include <steemit/chain/steem_object_types.hpp>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
@@ -36,8 +36,8 @@ typedef multi_index_container <
 
 } }
 
-FC_REFLECT( steemit::chain::smt_token_object,
+FC_REFLECT( steem::chain::smt_token_object,
    (id)
    (control_account)
 )
-CHAINBASE_SET_INDEX_TYPE( steemit::chain::smt_token_object, steemit::chain::smt_token_index )
+CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )

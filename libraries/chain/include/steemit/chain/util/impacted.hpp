@@ -6,17 +6,17 @@
 
 #include <fc/string.hpp>
 
-namespace steemit { namespace app {
+namespace steem { namespace app {
 
 using namespace fc;
 
 void operation_get_impacted_accounts(
-   const steemit::protocol::operation& op,
+   const steem::protocol::operation& op,
    fc::flat_set<protocol::account_name_type>& result );
 
 void transaction_get_impacted_accounts(
-   const steemit::protocol::transaction& tx,
+   const steem::protocol::transaction& tx,
    fc::flat_set<protocol::account_name_type>& result
    );
 
-} } // steemit::app
+} } // steem::app

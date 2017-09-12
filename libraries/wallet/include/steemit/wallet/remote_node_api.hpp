@@ -1,7 +1,7 @@
 #pragma once
 #include <steemit/plugins/condenser_api/condenser_api.hpp>
 
-namespace steemit { namespace wallet {
+namespace steem { namespace wallet {
 
 using std::vector;
 using fc::variant;
@@ -111,7 +111,7 @@ struct remote_node_api
 
 } }
 
-FC_API( steemit::wallet::remote_node_api,
+FC_API( steem::wallet::remote_node_api,
         (get_version)
         (get_trending_tags)
         (get_state)

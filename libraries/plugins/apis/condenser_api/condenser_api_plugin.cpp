@@ -2,7 +2,7 @@
 #include <steemit/plugins/condenser_api/condenser_api.hpp>
 #include <steemit/plugins/chain/chain_plugin.hpp>
 
-namespace steemit { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 condenser_api_plugin::condenser_api_plugin() {}
 condenser_api_plugin::~condenser_api_plugin() {}
@@ -26,4 +26,4 @@ void condenser_api_plugin::plugin_startup()
 
 void condenser_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::condenser_api
+} } } // steem::plugins::condenser_api
