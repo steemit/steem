@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/chain_plugin/*.hpp")
+file(GLOB HEADERS "include/steem/chain_plugin/*.hpp")
 add_library( chain_plugin
              chain_plugin.cpp
              ${HEADERS} )
@@ -20,4 +20,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/steemit/chain_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/steem/chain_plugin" )

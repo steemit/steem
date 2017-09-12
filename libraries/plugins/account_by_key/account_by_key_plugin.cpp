@@ -1,10 +1,10 @@
-#include <steemit/plugins/account_by_key/account_by_key_plugin.hpp>
-#include <steemit/plugins/account_by_key/account_by_key_objects.hpp>
+#include <steem/plugins/account_by_key/account_by_key_plugin.hpp>
+#include <steem/plugins/account_by_key/account_by_key_objects.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>

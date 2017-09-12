@@ -1,13 +1,13 @@
 #pragma once
 
 #include <appbase/application.hpp>
-#include <steemit/chain/database.hpp>
+#include <steem/chain/database.hpp>
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 #include <iostream>
 

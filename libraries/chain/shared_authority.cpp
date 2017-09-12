@@ -1,4 +1,4 @@
-#include <steemit/chain/shared_authority.hpp>
+#include <steem/chain/shared_authority.hpp>
 
 namespace steem { namespace chain {
 

@@ -1,5 +1,5 @@
-#include <steemit/plugins/block_api/block_api.hpp>
-#include <steemit/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
 
 namespace steem { namespace plugins { namespace block_api {
 

@@ -1,9 +1,9 @@
 #include <appbase/application.hpp>
 
-#include <steemit/plugins/block_api/block_api.hpp>
-#include <steemit/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
 
-#include <steemit/protocol/get_config.hpp>
+#include <steem/protocol/get_config.hpp>
 
 namespace steem { namespace plugins { namespace block_api {
 

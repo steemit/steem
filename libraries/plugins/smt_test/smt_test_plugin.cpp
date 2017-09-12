@@ -1,15 +1,15 @@
-#include <steemit/plugins/smt_test/smt_test_plugin.hpp>
-#include <steemit/plugins/smt_test/smt_test_objects.hpp>
+#include <steem/plugins/smt_test/smt_test_plugin.hpp>
+#include <steem/plugins/smt_test/smt_test_objects.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>
 
-#include <steemit/protocol/smt_operations.hpp>
+#include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace plugins { namespace smt_test {
 

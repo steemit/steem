@@ -1,13 +1,13 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/program_options.hpp>
 
-#include <steemit/utilities/tempdir.hpp>
+#include <steem/utilities/tempdir.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/plugins/account_history/account_history_plugin.hpp>
-#include <steemit/plugins/witness/witness_plugin.hpp>
-#include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/history_object.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>

@@ -1,12 +1,12 @@
-#include <steemit/plugins/tags/tags_plugin.hpp>
+#include <steem/plugins/tags/tags_plugin.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>

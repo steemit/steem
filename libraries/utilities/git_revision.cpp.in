@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <steemit/utilities/git_revision.hpp>
+#include <steem/utilities/git_revision.hpp>
 
 #define STEEM_GIT_REVISION_SHA "@STEEM_GIT_REVISION_SHA@"
 #define STEEM_GIT_REVISION_UNIX_TIMESTAMP @STEEM_GIT_REVISION_UNIX_TIMESTAMP@

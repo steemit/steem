@@ -2,12 +2,12 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
-#include <steemit/protocol/hardfork.hpp>
+#include <steem/protocol/exceptions.hpp>
+#include <steem/protocol/hardfork.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/steem_objects.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 

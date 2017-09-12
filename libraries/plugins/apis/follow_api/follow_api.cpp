@@ -1,7 +1,7 @@
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api.hpp>
 
-#include <steemit/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/follow_objects.hpp>
 
 namespace steem { namespace plugins { namespace follow {
 

@@ -8,10 +8,10 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
-#include <steemit/protocol/transaction.hpp>
-#include <steemit/protocol/types.hpp>
+#include <steem/protocol/transaction.hpp>
+#include <steem/protocol/types.hpp>
 
 struct tx_signing_request
 {

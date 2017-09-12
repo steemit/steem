@@ -1,6 +1,6 @@
-#include <steemit/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/webserver/webserver_plugin.hpp>
 
-#include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>

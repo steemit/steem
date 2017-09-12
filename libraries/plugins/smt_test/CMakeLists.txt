@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/smt_test/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/smt_test/*.hpp")
 
 add_library( smt_test_plugin
              smt_test_plugin.cpp

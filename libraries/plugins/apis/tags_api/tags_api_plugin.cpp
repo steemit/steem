@@ -1,5 +1,5 @@
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api.hpp>
 
 
 namespace steem { namespace plugins { namespace tags {

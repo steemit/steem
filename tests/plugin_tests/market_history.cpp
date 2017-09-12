@@ -1,11 +1,11 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/protocol/steem_operations.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
+#include <steem/protocol/steem_operations.hpp>
 
-#include <steemit/plugins/market_history/market_history_plugin.hpp>
+#include <steem/plugins/market_history/market_history_plugin.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 

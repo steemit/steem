@@ -1,16 +1,16 @@
 #include <appbase/application.hpp>
-#include <steemit/manifest/plugins.hpp>
+#include <steem/manifest/plugins.hpp>
 
-#include <steemit/protocol/types.hpp>
-#include <steemit/protocol/version.hpp>
+#include <steem/protocol/types.hpp>
+#include <steem/protocol/version.hpp>
 
-#include <steemit/utilities/logging_config.hpp>
-#include <steemit/utilities/key_conversion.hpp>
-#include <steemit/utilities/git_revision.hpp>
+#include <steem/utilities/logging_config.hpp>
+#include <steem/utilities/key_conversion.hpp>
+#include <steem/utilities/git_revision.hpp>
 
-#include <steemit/plugins/chain/chain_plugin.hpp>
-#include <steemit/plugins/p2p/p2p_plugin.hpp>
-#include <steemit/plugins/webserver/webserver_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/webserver/webserver_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>

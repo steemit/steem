@@ -1,6 +1,6 @@
-#include <steemit/protocol/authority.hpp>
+#include <steem/protocol/authority.hpp>
 
-#include <steemit/chain/util/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
 #include <fc/utility.hpp>
 

@@ -24,10 +24,10 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/protocol/protocol.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/protocol/protocol.hpp>
 
-#include <steemit/protocol/steem_operations.hpp>
+#include <steem/protocol/steem_operations.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/hex.hpp>

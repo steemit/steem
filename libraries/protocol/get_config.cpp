@@ -1,8 +1,8 @@
-#include <steemit/protocol/get_config.hpp>
-#include <steemit/protocol/config.hpp>
-#include <steemit/protocol/asset.hpp>
-#include <steemit/protocol/types.hpp>
-#include <steemit/protocol/version.hpp>
+#include <steem/protocol/get_config.hpp>
+#include <steem/protocol/config.hpp>
+#include <steem/protocol/asset.hpp>
+#include <steem/protocol/types.hpp>
+#include <steem/protocol/version.hpp>
 
 namespace steem { namespace protocol {
 

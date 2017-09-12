@@ -73,7 +73,7 @@ The API's configured with `public-api` are assigned numbers starting at zero.  S
 API number 2 (TODO:  Explain about resolving names to API's and get it working).
 
 The API provides the following methods
-(see `libraries/plugins/debug_node/include/steemit/plugins/debug_node/debug_node_api.hpp`
+(see `libraries/plugins/debug_node/include/steem/plugins/debug_node/debug_node_api.hpp`
 for these definitions):
 
     void debug_push_blocks( std::string src_filename, uint32_t count );

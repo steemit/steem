@@ -1,4 +1,4 @@
-#include <steemit/account_statistics/account_statistics_api.hpp>
+#include <steem/account_statistics/account_statistics_api.hpp>
 
 namespace steem { namespace account_statistics {
 

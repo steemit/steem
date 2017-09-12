@@ -1,17 +1,17 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
-#include <steemit/protocol/hardfork.hpp>
+#include <steem/protocol/exceptions.hpp>
+#include <steem/protocol/hardfork.hpp>
 
-#include <steemit/chain/block_summary_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/block_summary_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/history_object.hpp>
+#include <steem/chain/steem_objects.hpp>
 
-#include <steemit/chain/util/reward.hpp>
+#include <steem/chain/util/reward.hpp>
 
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 

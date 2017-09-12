@@ -1,5 +1,5 @@
-#include <steemit/plugins/debug_node_api/debug_node_api_plugin.hpp>
-#include <steemit/plugins/debug_node_api/debug_node_api.hpp>
+#include <steem/plugins/debug_node_api/debug_node_api_plugin.hpp>
+#include <steem/plugins/debug_node_api/debug_node_api.hpp>
 
 
 namespace steem { namespace plugins { namespace debug_node {

@@ -1,5 +1,5 @@
 
-#include <steemit/protocol/sign_state.hpp>
+#include <steem/protocol/sign_state.hpp>
 
 namespace steem { namespace protocol {
 

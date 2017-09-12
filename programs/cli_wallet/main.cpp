@@ -36,11 +36,11 @@
 #include <fc/rpc/websocket_api.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
-#include <steemit/protocol/protocol.hpp>
-#include <steemit/wallet/remote_node_api.hpp>
-#include <steemit/wallet/wallet.hpp>
+#include <steem/protocol/protocol.hpp>
+#include <steem/wallet/remote_node_api.hpp>
+#include <steem/wallet/wallet.hpp>
 
 #include <fc/interprocess/signals.hpp>
 #include <boost/program_options.hpp>

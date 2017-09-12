@@ -7,7 +7,7 @@ if(NOT STEEM_GIT_REVISION_DESCRIPTION)
     set(STEEM_GIT_REVISION_DESCRIPTION "unknown")
 endif(NOT STEEM_GIT_REVISION_DESCRIPTION)
 
-file(GLOB HEADERS "include/steemit/utilities/*.hpp")
+file(GLOB HEADERS "include/steem/utilities/*.hpp")
 
 set(sources
    key_conversion.cpp
@@ -45,4 +45,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/steemit/utilities" )
+install( FILES ${HEADERS} DESTINATION "include/steem/utilities" )

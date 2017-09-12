@@ -1,16 +1,16 @@
-#include <steemit/plugins/follow/follow_plugin.hpp>
-#include <steemit/plugins/follow/follow_objects.hpp>
-#include <steemit/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/follow/follow_plugin.hpp>
+#include <steem/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/follow_operations.hpp>
 
-#include <steemit/chain/util/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>

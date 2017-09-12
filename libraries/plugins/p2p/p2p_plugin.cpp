@@ -1,9 +1,9 @@
-#include <steemit/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/p2p/p2p_plugin.hpp>
 
 #include <graphene/net/node.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
+#include <steem/chain/database_exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/network/resolve.hpp>

@@ -1,6 +1,6 @@
 
-#include <steemit/app/application.hpp>
-#include <steemit/app/plugin.hpp>
+#include <steem/app/application.hpp>
+#include <steem/app/plugin.hpp>
 
 #include <sstream>
 #include <string>

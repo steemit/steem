@@ -1,4 +1,4 @@
-#include <steemit/protocol/authority.hpp>
+#include <steem/protocol/authority.hpp>
 
 namespace steem { namespace protocol {
 

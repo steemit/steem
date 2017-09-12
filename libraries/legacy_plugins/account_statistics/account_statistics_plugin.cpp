@@ -1,9 +1,9 @@
-#include <steemit/account_statistics/account_statistics_api.hpp>
+#include <steem/account_statistics/account_statistics_api.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
-#include <steemit/chain/database.hpp>
+#include <steem/chain/database.hpp>
 
 namespace steem { namespace account_statistics {
 

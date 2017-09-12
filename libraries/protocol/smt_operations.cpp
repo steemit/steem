@@ -1,6 +1,6 @@
 
-#include <steemit/protocol/smt_operations.hpp>
-#include <steemit/protocol/validation.hpp>
+#include <steem/protocol/smt_operations.hpp>
+#include <steem/protocol/validation.hpp>
 
 #define SMT_MAX_UNIT_ROUTES       10
 

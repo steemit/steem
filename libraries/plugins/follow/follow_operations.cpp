@@ -1,6 +1,6 @@
-#include <steemit/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/follow/follow_operations.hpp>
 
-#include <steemit/protocol/operation_util_impl.hpp>
+#include <steem/protocol/operation_util_impl.hpp>
 
 namespace steem { namespace plugins{ namespace follow {
 

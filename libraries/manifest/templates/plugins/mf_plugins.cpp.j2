@@ -1,10 +1,10 @@
 #include <appbase/application.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 
-#include <steemit/manifest/plugins.hpp>
+#include <steem/manifest/plugins.hpp>
 
 {% for plugin in plugins %}
-#include <steemit/plugins/{{ plugin["plugin_name"] }}/{{ plugin["plugin_name"] }}_plugin.hpp>
+#include <steem/plugins/{{ plugin["plugin_name"] }}/{{ plugin["plugin_name"] }}_plugin.hpp>
 {% endfor %}
 
 namespace steem { namespace plugins {

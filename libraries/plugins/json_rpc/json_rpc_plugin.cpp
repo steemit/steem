@@ -1,4 +1,4 @@
-#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 
 #include <boost/algorithm/string.hpp>
 

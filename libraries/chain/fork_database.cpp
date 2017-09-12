@@ -1,6 +1,6 @@
-#include <steemit/chain/fork_database.hpp>
+#include <steem/chain/fork_database.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
+#include <steem/chain/database_exceptions.hpp>
 
 namespace steem { namespace chain {
 

@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-#include <steemit/utilities/tempdir.hpp>
+#include <steem/utilities/tempdir.hpp>
 
 #include <cstdlib>
 
@@ -33,7 +33,7 @@ fc::path temp_directory_path()
    const char* steemit_tempdir = getenv("STEEM_TEMPDIR");
    if( steemit_tempdir != nullptr )
       return fc::path( steemit_tempdir );
-   return fc::temp_directory_path() / "steemit-tmp";
+   return fc::temp_directory_path() / "steem-tmp";
 }
 
 } } // steem::utilities

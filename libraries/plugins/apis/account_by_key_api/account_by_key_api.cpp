@@ -1,7 +1,7 @@
-#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steemit/plugins/account_by_key_api/account_by_key_api.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api.hpp>
 
-#include <steemit/plugins/account_by_key/account_by_key_objects.hpp>
+#include <steem/plugins/account_by_key/account_by_key_objects.hpp>
 
 namespace steem { namespace plugins { namespace account_by_key {
 

@@ -13,8 +13,8 @@ my $outFile = new IO::File($outputFileName, "w")
 my $fileHeader = <<'END';
 /** GENERATED FILE **/
 #include <set>
-#include <steemit/wallet/api_documentation.hpp>
-#include <steemit/wallet/wallet.hpp>
+#include <steem/wallet/api_documentation.hpp>
+#include <steem/wallet/wallet.hpp>
 
 namespace steem { namespace wallet {
    namespace detail
@@ -38,7 +38,7 @@ $outFile->print($fileHeader);
 
 for my $class (@{$doxydocs->{classes}})
 {
-  if ($class->{name} eq 'steemit::wallet::wallet_api')
+  if ($class->{name} eq 'steem::wallet::wallet_api')
   {
     for my $member (@{$class->{public_methods}->{members}})
     {
@@ -84,7 +84,7 @@ my $fileFooter = <<'END';
           ++iter;
    }
 
-} } // end namespace steemit::wallet
+} } // end namespace steem::wallet
 END
 $outFile->print($fileFooter);
 $outFile->close();

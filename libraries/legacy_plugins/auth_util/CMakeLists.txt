@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/auth_util/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/auth_util/*.hpp")
 
 add_library( steem_auth_util
              ${HEADERS}

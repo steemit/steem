@@ -1,14 +1,14 @@
-#include <steemit/utilities/git_revision.hpp>
-#include <steemit/utilities/key_conversion.hpp>
-#include <steemit/utilities/words.hpp>
+#include <steem/utilities/git_revision.hpp>
+#include <steem/utilities/key_conversion.hpp>
+#include <steem/utilities/words.hpp>
 
-#include <steemit/protocol/base.hpp>
-#include <steemit/wallet/wallet.hpp>
-#include <steemit/wallet/api_documentation.hpp>
-#include <steemit/wallet/reflect_util.hpp>
-#include <steemit/wallet/remote_node_api.hpp>
+#include <steem/protocol/base.hpp>
+#include <steem/wallet/wallet.hpp>
+#include <steem/wallet/api_documentation.hpp>
+#include <steem/wallet/reflect_util.hpp>
+#include <steem/wallet/remote_node_api.hpp>
 
-#include <steemit/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/follow/follow_operations.hpp>
 
 #include <algorithm>
 #include <cctype>

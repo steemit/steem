@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/tags/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/tags/*.hpp")
 
 add_library( tags_plugin
              tags_plugin.cpp )

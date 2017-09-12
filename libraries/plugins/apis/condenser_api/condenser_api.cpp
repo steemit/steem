@@ -1,17 +1,17 @@
-#include <steemit/plugins/condenser_api/condenser_api.hpp>
-#include <steemit/plugins/condenser_api/condenser_api_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api.hpp>
+#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
-#include <steemit/plugins/block_api/block_api_plugin.hpp>
-#include <steemit/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
-#include <steemit/plugins/witness_api/witness_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
+#include <steem/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <steem/plugins/witness_api/witness_api_plugin.hpp>
 
-#include <steemit/utilities/git_revision.hpp>
+#include <steem/utilities/git_revision.hpp>
 
 #include <fc/git_revision.hpp>
 

@@ -24,15 +24,15 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
+#include <steem/protocol/exceptions.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/history_object.hpp>
 
-#include <steemit/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
 
-#include <steemit/utilities/tempdir.hpp>
+#include <steem/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 

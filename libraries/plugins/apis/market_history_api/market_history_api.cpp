@@ -1,7 +1,7 @@
-#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
-#include <steemit/plugins/market_history_api/market_history_api.hpp>
+#include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <steem/plugins/market_history_api/market_history_api.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/steem_objects.hpp>
 
 namespace steem { namespace plugins { namespace market_history {
 

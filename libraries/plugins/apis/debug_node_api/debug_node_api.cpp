@@ -1,16 +1,16 @@
-#include <steemit/plugins/debug_node_api/debug_node_api_plugin.hpp>
-#include <steemit/plugins/debug_node_api/debug_node_api.hpp>
+#include <steem/plugins/debug_node_api/debug_node_api_plugin.hpp>
+#include <steem/plugins/debug_node_api/debug_node_api.hpp>
 
 #include <fc/filesystem.hpp>
 #include <fc/optional.hpp>
 #include <fc/variant_object.hpp>
 
-#include <steemit/chain/block_log.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/witness_objects.hpp>
+#include <steem/chain/block_log.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/witness_objects.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 namespace steem { namespace plugins { namespace debug_node {
 

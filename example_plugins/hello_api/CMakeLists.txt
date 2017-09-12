@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/hello_api/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/hello_api/*.hpp")
 
 add_library( hello_api
              ${HEADERS}

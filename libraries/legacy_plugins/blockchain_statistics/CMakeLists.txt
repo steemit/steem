@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/blockchain_statistics/*.hpp")
+file(GLOB HEADERS "include/steem/blockchain_statistics/*.hpp")
 
 add_library( steem_blockchain_statistics
              blockchain_statistics_plugin.cpp

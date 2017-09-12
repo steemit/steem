@@ -1,13 +1,13 @@
-#include <steemit/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
 
-#include <steemit/chain/util/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/history_object.hpp>
 
-#include <steemit/utilities/plugin_utilities.hpp>
+#include <steem/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>

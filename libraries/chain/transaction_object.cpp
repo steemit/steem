@@ -1,4 +1,4 @@
-#include <steemit/chain/transaction_object.hpp>
+#include <steem/chain/transaction_object.hpp>
 
 namespace steem { namespace chain {
 

@@ -1,6 +1,6 @@
-#include <steemit/protocol/operations.hpp>
+#include <steem/protocol/operations.hpp>
 
-#include <steemit/protocol/operation_util_impl.hpp>
+#include <steem/protocol/operation_util_impl.hpp>
 
 namespace steem { namespace protocol {
 

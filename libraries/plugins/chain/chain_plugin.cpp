@@ -1,6 +1,6 @@
-#include <steemit/chain/database_exceptions.hpp>
+#include <steem/chain/database_exceptions.hpp>
 
-#include <steemit/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/chain/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/string.hpp>

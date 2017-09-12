@@ -1,15 +1,15 @@
 
-#include <steemit/app/api_context.hpp>
-#include <steemit/app/application.hpp>
+#include <steem/app/api_context.hpp>
+#include <steem/app/application.hpp>
 
-#include <steemit/protocol/authority.hpp>
-#include <steemit/protocol/sign_state.hpp>
+#include <steem/protocol/authority.hpp>
+#include <steem/protocol/sign_state.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
 
-#include <steemit/plugins/auth_util/auth_util_api.hpp>
-#include <steemit/plugins/auth_util/auth_util_plugin.hpp>
+#include <steem/plugins/auth_util/auth_util_api.hpp>
+#include <steem/plugins/auth_util/auth_util_plugin.hpp>
 
 #include <fc/container/flat.hpp>
 

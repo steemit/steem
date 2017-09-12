@@ -1,9 +1,9 @@
 #include <appbase/application.hpp>
 
-#include <steemit/plugins/database_api/database_api.hpp>
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
 
-#include <steemit/protocol/get_config.hpp>
+#include <steem/protocol/get_config.hpp>
 
 namespace steem { namespace plugins { namespace database_api {
 

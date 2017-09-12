@@ -1,12 +1,12 @@
 
-#include <steemit/chain/steem_evaluator.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/smt_objects.hpp>
+#include <steem/chain/steem_evaluator.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/smt_objects.hpp>
 
-#include <steemit/chain/util/reward.hpp>
+#include <steem/chain/util/reward.hpp>
 
-#include <steemit/protocol/smt_operations.hpp>
+#include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace chain {
 

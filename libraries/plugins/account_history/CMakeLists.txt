@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/plugins/account_history/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/account_history/*.hpp")
 
 add_library( account_history_plugin
              account_history_plugin.cpp

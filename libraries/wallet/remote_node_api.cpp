@@ -1,4 +1,4 @@
-#include<steemit/wallet/remote_node_api.hpp>
+#include<steem/wallet/remote_node_api.hpp>
 
 namespace steem { namespace wallet{
 

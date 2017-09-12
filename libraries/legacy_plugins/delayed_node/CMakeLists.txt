@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/delayed_node/*.hpp")
+file(GLOB HEADERS "include/steem/delayed_node/*.hpp")
 
 add_library( steem_delayed_node
              delayed_node_plugin.cpp

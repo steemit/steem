@@ -1,6 +1,6 @@
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
-#include <steemit/chain/witness_objects.hpp>
+#include <steem/chain/witness_objects.hpp>
 
 #include <fc/io/buffered_iostream.hpp>
 #include <fc/io/fstream.hpp>
@@ -10,7 +10,7 @@
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>

@@ -1,16 +1,16 @@
-#include <steemit/plugins/witness/witness_plugin.hpp>
-#include <steemit/plugins/witness/witness_objects.hpp>
-#include <steemit/plugins/witness/witness_operations.hpp>
+#include <steem/plugins/witness/witness_plugin.hpp>
+#include <steem/plugins/witness/witness_objects.hpp>
+#include <steem/plugins/witness/witness_operations.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/witness_objects.hpp>
-#include <steemit/chain/generic_custom_operation_interpreter.hpp>
-#include <steemit/chain/index.hpp>
+#include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
+#include <steem/chain/witness_objects.hpp>
+#include <steem/chain/generic_custom_operation_interpreter.hpp>
+#include <steem/chain/index.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
-#include <steemit/utilities/plugin_utilities.hpp>
+#include <steem/utilities/key_conversion.hpp>
+#include <steem/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>

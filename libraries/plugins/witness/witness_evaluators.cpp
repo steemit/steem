@@ -1,7 +1,7 @@
-#include <steemit/plugins/witness/witness_operations.hpp>
-#include <steemit/plugins/witness/witness_objects.hpp>
+#include <steem/plugins/witness/witness_operations.hpp>
+#include <steem/plugins/witness/witness_objects.hpp>
 
-#include <steemit/chain/database.hpp>
+#include <steem/chain/database.hpp>
 
 namespace steem { namespace plugins { namespace witness {
 

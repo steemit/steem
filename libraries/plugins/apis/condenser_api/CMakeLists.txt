@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/condenser_api_plugin/*.hpp")
+file(GLOB HEADERS "include/steem/condenser_api_plugin/*.hpp")
 add_library( condenser_api_plugin
              condenser_api.cpp
              condenser_api_plugin.cpp
@@ -31,4 +31,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/steemit/condenser_api_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/steem/condenser_api_plugin" )

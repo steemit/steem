@@ -1,8 +1,8 @@
-#include <steemit/plugins/market_history/market_history_plugin.hpp>
+#include <steem/plugins/market_history/market_history_plugin.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <fc/io/json.hpp>
 

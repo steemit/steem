@@ -1,12 +1,12 @@
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api.hpp>
-#include <steemit/plugins/tags/tags_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api.hpp>
+#include <steem/plugins/tags/tags_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api.hpp>
 
-#include <steemit/chain/steem_object_types.hpp>
-#include <steemit/chain/util/reward.hpp>
-#include <steemit/chain/util/uint256.hpp>
+#include <steem/chain/steem_object_types.hpp>
+#include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/uint256.hpp>
 
 namespace steem { namespace plugins { namespace tags {
 

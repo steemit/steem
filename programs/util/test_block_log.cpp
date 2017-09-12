@@ -1,5 +1,5 @@
-#include <steemit/chain/database.hpp>
-#include <steemit/protocol/block.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/protocol/block.hpp>
 #include <fc/io/raw.hpp>
 
 int main( int argc, char** argv, char** envp )

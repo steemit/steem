@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/account_statistics/*.hpp")
+file(GLOB HEADERS "include/steem/account_statistics/*.hpp")
 
 add_library( steem_account_statistics
              account_statistics_plugin.cpp

@@ -1,5 +1,5 @@
-#include <steemit/plugins/database_api/database_api.hpp>
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
 
 namespace steem { namespace plugins { namespace database_api {
 

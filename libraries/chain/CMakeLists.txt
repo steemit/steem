@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/steemit/chain/*.hpp" "include/steemit/chain/util/*.hpp")
+file(GLOB HEADERS "include/steem/chain/*.hpp" "include/steem/chain/util/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( steem_chain
@@ -44,4 +44,4 @@ INSTALL( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-INSTALL( FILES ${HEADERS} DESTINATION "include/steemit/chain" )
+INSTALL( FILES ${HEADERS} DESTINATION "include/steem/chain" )
