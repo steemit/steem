@@ -153,18 +153,7 @@ void debug_node_api_impl::debug_get_json_schema( std::string& schema )
 
 debug_node_api::debug_node_api(): my( new detail::debug_node_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_DEBUG_NODE_API_PLUGIN_NAME,
-      (debug_push_blocks)
-      (debug_generate_blocks)
-      (debug_generate_blocks_until)
-      (debug_pop_block)
-      (debug_get_witness_schedule)
-      (debug_get_hardfork_property_object)
-      (debug_set_hardfork)
-      (debug_has_hardfork)
-      (debug_get_json_schema)
-   );
+   JSON_RPC_REGISTER_API( STEEM_DEBUG_NODE_API_PLUGIN_NAME );
 }
 
 debug_node_api::~debug_node_api() {}

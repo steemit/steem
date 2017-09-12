@@ -9,7 +9,7 @@ test_api_plugin::~test_api_plugin() {}
 
 void test_api_plugin::plugin_initialize( const variables_map& options )
 {
-   JSON_RPC_REGISTER_API( name(), (test_api_a)(test_api_b) );
+   JSON_RPC_REGISTER_API( name() );
 }
 
 void test_api_plugin::plugin_startup() {}

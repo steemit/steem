@@ -37,7 +37,7 @@
 
 #define STEEM_JSON_RPC_PLUGIN_NAME "json_rpc"
 
-#define JSON_RPC_REGISTER_API( API_NAME, METHODS )                                              \
+#define JSON_RPC_REGISTER_API( API_NAME )                                                       \
 {                                                                                               \
    steem::plugins::json_rpc::detail::register_api_method_visitor vtor( API_NAME );              \
    for_each_api( vtor );                                                                        \
