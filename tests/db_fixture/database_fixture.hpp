@@ -167,7 +167,7 @@ struct database_fixture {
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
    static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
    string generate_anon_acct_name();
-   void open_database( bool apply_all_hardforks = false );
+   void open_database();
    void generate_block(uint32_t skip = 0,
                                const fc::ecc::private_key& key = generate_private_key("init_key"),
                                int miss_blocks = 0);

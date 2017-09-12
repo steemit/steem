@@ -64,10 +64,9 @@ clean_database_fixture::clean_database_fixture()
 
    init_account_pub_key = init_account_priv_key.get_public_key();
 
+   db->before_applying_all_hardforks = std::bind( &clean_database_fixture::generate_block, this, 0, generate_private_key("init_key"), 0 );
    open_database();
 
-   generate_block();
-   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
    generate_block();
 
    vest( "initminer", 10000 );
@@ -215,12 +214,12 @@ string database_fixture::generate_anon_acct_name()
    return "anon-acct-x" + std::to_string( anon_acct_count++ );
 }
 
-void database_fixture::open_database( bool apply_all_hardforks )
+void database_fixture::open_database()
 {
    if( !data_dir ) {
       data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );
       db->_log_hardforks = false;
-      db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 ); // 8 MB file for testing
+      db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 );
    }
 }
 

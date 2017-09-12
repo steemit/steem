@@ -375,7 +375,7 @@ namespace steem { namespace chain {
          /// Reset the object graph in-memory
          void initialize_indexes();
          void init_schema();
-         void init_genesis( bool apply_all_hardforks, uint64_t initial_supply = STEEM_INIT_SUPPLY );
+         void init_genesis( uint64_t initial_supply = STEEM_INIT_SUPPLY );
 
          /**
           *  This method validates transactions without adding it to the pending state.
@@ -421,6 +421,8 @@ namespace steem { namespace chain {
          bool skip_price_feed_limit_check = true;
          bool skip_transaction_delta_check = true;
          bool disable_low_mem_warning = true;
+
+         std::function< void () > before_applying_all_hardforks;
 #endif
 
    protected:
