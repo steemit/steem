@@ -2,6 +2,8 @@
 
 #include <steem/chain/steem_object_types.hpp>
 
+#ifdef STEEM_ENABLE_SMT
+
 namespace steem { namespace chain {
 
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
@@ -41,3 +43,5 @@ FC_REFLECT( steem::chain::smt_token_object,
    (control_account)
 )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
+
+#endif

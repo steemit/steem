@@ -62,7 +62,7 @@ namespace steem { namespace protocol {
             claim_reward_balance_operation,
             delegate_vesting_shares_operation,
             account_create_with_delegation_operation,
-
+#ifdef STEEM_ENABLE_SMT
             /// SMT operations
             smt_setup_operation,
             smt_cap_reveal_operation,
@@ -71,7 +71,7 @@ namespace steem { namespace protocol {
             smt_set_setup_parameters_operation,
             smt_set_runtime_parameters_operation,
             smt_elevate_account_operation,
-
+#endif
             /// virtual operations below this point
             fill_convert_request_operation,
             author_reward_operation,

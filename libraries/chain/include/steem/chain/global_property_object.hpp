@@ -113,8 +113,9 @@ namespace steem { namespace chain {
           * their votes reduced.
           */
          uint32_t vote_power_reserve_rate = STEEM_INITIAL_VOTE_POWER_RATE;
-
+#ifdef STEEM_ENABLE_SMT
          asset smt_creation_fee = asset( 1000000, SBD_SYMBOL );
+#endif
    };
 
    typedef multi_index_container<
@@ -155,6 +156,8 @@ FC_REFLECT( steem::chain::dynamic_global_property_object,
              (participation_count)
              (last_irreversible_block_num)
              (vote_power_reserve_rate)
+#ifdef STEEM_ENABLE_SMT
              (smt_creation_fee)
+#endif
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::dynamic_global_property_object, steem::chain::dynamic_global_property_index )
