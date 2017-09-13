@@ -24,6 +24,7 @@ class chain_plugin_impl
       bool                             resync   = false;
       bool                             readonly = false;
       bool                             check_locks = false;
+      bool                             validate_invariants = false;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -54,6 +55,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
+         ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
          ;
 }
 
@@ -71,9 +73,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
 
-   my->replay            = options.at( "replay-blockchain").as<bool>();
-   my->resync            = options.at( "resync-blockchain").as<bool>();
-   my->check_locks       = options.at( "check-locks" ).as< bool >();
+   my->replay              = options.at( "replay-blockchain").as<bool>();
+   my->resync              = options.at( "resync-blockchain").as<bool>();
+   my->check_locks         = options.at( "check-locks" ).as< bool >();
+   my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
       my->flush_interval = options.at( "flush-state-interval" ).as<uint32_t>();
    else
@@ -105,7 +108,6 @@ void chain_plugin::plugin_startup()
    my->db.add_checkpoints( my->loaded_checkpoints );
    my->db.set_require_locking( my->check_locks );
 
-
    if(my->replay)
    {
       ilog("Replaying blockchain on user request.");
@@ -116,7 +118,7 @@ void chain_plugin::plugin_startup()
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
+         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write, my->validate_invariants );
       }
       catch( const fc::exception& e )
       {
@@ -129,7 +131,7 @@ void chain_plugin::plugin_startup()
          catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write );
+            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write, my->validate_invariants );
          }
       }
    }
