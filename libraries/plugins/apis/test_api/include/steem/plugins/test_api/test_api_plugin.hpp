@@ -6,8 +6,6 @@
 
 #define STEEM_TEST_API_PLUGIN_NAME "test_api"
 
-#define REGISTER_API( api_name, ... )
-
 namespace steem { namespace plugins { namespace test_api {
 
 using namespace appbase;
