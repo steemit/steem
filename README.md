@@ -73,6 +73,10 @@ Steemd now supports a PaaS mode (platform as a service) that currently works wit
 * `S3_BUCKET` - set this to the name of the S3 bucket where you will store shared memory files for steemd in Amazon S3. They will be stored compressed in bz2 format with the file name `blockchain-$VERSION-latest.tar.bz2`, where $VERSION is the release number followed by the git short commit hash stored in each docker image at `/etc/steemdversion`.
 * `SYNC_TO_S3` - if set to true, the node will function to only generate shared memory files and upload them to the specified S3 bucket. This makes fast deployments and autoscaling for steemd possible.
 
+# Config File
+
+Run `steemd` once to generate a data directory and config file. The default location is `witness_node_data_dir`. Kill `steemd`. It won't do anything without seed nodes. If you want to modify the config to your liking, we have two example configs used in the docker images. ( [consensus node](contrib/config-for-docker.ini), [full node](contrib/fullnode.config.ini) ) All options will be present in the default config file and there may be more options needing to be changed from the docker configs (some of the options actually used in images are configured via command line).
+
 # Seed Nodes
 
 A list of some seed nodes to get you started can be found in
@@ -81,6 +85,10 @@ A list of some seed nodes to get you started can be found in
 This same file is baked into the docker images and can be overridden by
 setting `STEEMD_SEED_NODES` in the container environment at `docker run`
 time to a whitespace delimited list of seed nodes (with port).
+
+# CLI Wallet
+
+We provide a basic cli wallet for interfacing with `steemd`. The wallet is self documented via command line help. The node you connect to via the cli wallet needs to be running the `account_by_key_api`, `condenser_api`, and needs to be configured to accept websocket connections via `webserver-ws-endpoint`.
 
 # Building
 
