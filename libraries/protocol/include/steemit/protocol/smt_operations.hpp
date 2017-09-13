@@ -179,7 +179,7 @@ struct smt_setup_emissions_operation : public base_operation
    time_point_sec      schedule_time;
    smt_emissions_unit  emissions_unit;
 
-   int32_t             interval_seconds = 0;
+   uint32_t            interval_seconds = 0;
    uint32_t            interval_count = 0;
 
    time_point_sec      lep_time;
