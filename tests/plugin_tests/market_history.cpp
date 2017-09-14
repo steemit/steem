@@ -44,9 +44,10 @@ BOOST_AUTO_TEST_CASE( mh_test )
       db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
-      db->before_applying_all_hardforks = std::bind( &clean_database_fixture::generate_block, this, 0, generate_private_key("init_key"), 0 );
       open_database();
 
+      generate_block();
+      db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
       generate_block();
 
       vest( "initminer", 10000 );
