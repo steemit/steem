@@ -11,6 +11,13 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    smt_token_object() = delete;
 
    public:
+      enum class smt_phase
+      {
+         account_elevated,
+         setup_completed,
+      };
+
+   public:
       template< typename Constructor, typename Allocator >
       smt_token_object( Constructor&& c, allocator< Allocator > a )
       {
@@ -21,7 +28,12 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
       id_type           id;
 
       account_name_type control_account;
-};
+      smt_phase         phase = smt_phase::account_elevated;
+
+      /// set_setup_parameters
+      bool              allow_voting = false;
+      bool              allow_vesting = false;
+   };
 
 struct by_control_account;
 
