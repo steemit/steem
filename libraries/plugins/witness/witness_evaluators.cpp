@@ -1,9 +1,9 @@
-#include <steemit/plugins/witness/witness_operations.hpp>
-#include <steemit/plugins/witness/witness_objects.hpp>
+#include <steem/plugins/witness/witness_operations.hpp>
+#include <steem/plugins/witness/witness_objects.hpp>
 
-#include <steemit/chain/database.hpp>
+#include <steem/chain/database.hpp>
 
-namespace steemit { namespace plugins { namespace witness {
+namespace steem { namespace plugins { namespace witness {
 
 void enable_content_editing_evaluator::do_apply( const enable_content_editing_operation& o )
 {
@@ -30,4 +30,4 @@ void enable_content_editing_evaluator::do_apply( const enable_content_editing_op
    FC_CAPTURE_AND_RETHROW( (o) )
 }
 
-} } } // steemit::plugins::witness
+} } } // steem::plugins::witness

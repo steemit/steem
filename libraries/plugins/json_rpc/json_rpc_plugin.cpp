@@ -1,4 +1,4 @@
-#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -12,7 +12,7 @@
 #define JSON_RPC_INTERNAL_ERROR     (-32603)
 #define JSON_RPC_SERVER_ERROR       (-32000)
 
-namespace steemit { namespace plugins { namespace json_rpc {
+namespace steem { namespace plugins { namespace json_rpc {
 
 namespace detail
 {
@@ -61,6 +61,8 @@ namespace detail
    {
       json_rpc_response response;
 
+      ddump( (message) );
+
       try
       {
          const auto request = message.get_object();
@@ -89,7 +91,7 @@ namespace detail
                {
                   string method = request[ "method" ].as_string();
 
-                  api_method* call;
+                  api_method* call = nullptr;
                   fc::variant params;
 
                   // This is to maintain backwards compatibility with existing call structure.
@@ -130,30 +132,11 @@ namespace detail
                      FC_ASSERT( method_itr != api_itr->second.end(), "Could not find method ${method}", ("method", v[1]) );
 
                      call = &(method_itr->second);
-
-                     try
-                     {
-                        params = request.contains( "params" ) ? request[ "params" ] : fc::json::from_string( "{}" );
-                     }
-                     catch( fc::parse_error_exception& e )
-                     {
-                        response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
-                     }
-                     catch( fc::bad_cast_exception& e )
-                     {
-                        response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
-                     }
+                     params = request.contains( "params" ) ? request[ "params" ] : fc::json::from_string( "{}" );
                   }
-
-                  try
-                  {
-                     response.result = (*call)( params );
-                  }
-                  catch( fc::exception& e )
-                  {
-                     response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
-                  }
-
+                  if( !call )
+                     FC_THROW( "Api method is null" );
+                  response.result = (*call)( params );
                }
                catch( fc::assert_exception& e )
                {
@@ -178,6 +161,10 @@ namespace detail
       {
          response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
       }
+      catch( ... )
+      {
+         response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed" );
+      }
 
       return response;
    }
@@ -186,7 +173,7 @@ namespace detail
 using detail::json_rpc_error;
 using detail::json_rpc_response;
 
-json_rpc_plugin::json_rpc_plugin() : _my( new detail::json_rpc_plugin_impl() ) {}
+json_rpc_plugin::json_rpc_plugin() : my( new detail::json_rpc_plugin_impl() ) {}
 json_rpc_plugin::~json_rpc_plugin() {}
 
 void json_rpc_plugin::plugin_initialize( const variables_map& options ) {}
@@ -195,13 +182,11 @@ void json_rpc_plugin::plugin_shutdown() {}
 
 void json_rpc_plugin::add_api_method( const string& api_name, const string& method_name, const api_method& api )
 {
-   _my->add_api_method( api_name, method_name, api );
+   my->add_api_method( api_name, method_name, api );
 }
 
 string json_rpc_plugin::call( const string& message )
 {
-   wdump( (message) );
-
    try
    {
       fc::variant v = fc::json::from_string( message );
@@ -213,13 +198,13 @@ string json_rpc_plugin::call( const string& message )
          responses.reserve( messages.size() );
 
          for( auto& m : messages )
-            responses.push_back( _my->rpc( m ) );
+            responses.push_back( my->rpc( m ) );
 
          return fc::json::to_string( responses );
       }
       else
       {
-         return fc::json::to_string( _my->rpc( v ) );
+         return fc::json::to_string( my->rpc( v ) );
       }
    }
    catch( fc::exception& e )
@@ -231,7 +216,7 @@ string json_rpc_plugin::call( const string& message )
 
 }
 
-} } } // steemit::plugins::json_rpc
+} } } // steem::plugins::json_rpc
 
-FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
-FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
+FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )

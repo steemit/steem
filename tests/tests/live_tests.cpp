@@ -1,20 +1,20 @@
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
+#include <steem/protocol/exceptions.hpp>
+#include <steem/protocol/hardfork.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 #include <iostream>
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem;
+using namespace steem::chain;
+using namespace steem::protocol;
 
 #ifndef IS_TEST_NET
 
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE( retally_votes )
 
       const auto& by_account_witness_idx = db->get_index< witness_vote_index >().indices();
 
-      for( auto vote: by_account_witness_idx )
+      for( const auto& vote: by_account_witness_idx )
       {
          if( expected_votes.find( vote.witness ) == expected_votes.end() )
             expected_votes[ vote.witness ] = db->get< account_object, by_name >( vote.account ).witness_vote_weight();
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE( retally_votes )
 
       const auto& witness_idx = db->get_index< witness_index, by_name >();
 
-      for( auto witness: witness_idx )
+      for( const auto& witness : witness_idx )
       {
          BOOST_REQUIRE_EQUAL( witness.votes.value, expected_votes[ witness.owner ].value );
       }

@@ -34,7 +34,7 @@ application::application()
 application::~application() { }
 
 void application::startup() {
-   for (auto plugin : initialized_plugins)
+   for (const auto& plugin : initialized_plugins)
       plugin->startup();
 }
 
@@ -83,62 +83,69 @@ void application::set_program_options()
 
 bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins)
 {
-   set_program_options();
-
-   bpo::store( bpo::parse_command_line( argc, argv, my->_app_options ), my->_args );
-
-   if( my->_args.count( "help" ) ) {
-      cout << my->_app_options << "\n";
-      return false;
-   }
-
-   if( my->_args.count( "version" ) )
+   try
    {
-      cout << version_info << "\n";
-      return false;
-   }
+      set_program_options();
+      bpo::store( bpo::parse_command_line( argc, argv, my->_app_options ), my->_args );
 
-   bfs::path data_dir = "data-dir";
-   if( my->_args.count("data-dir") )
-   {
-      data_dir = my->_args["data-dir"].as<bfs::path>();
-      if( data_dir.is_relative() )
-         data_dir = bfs::current_path() / data_dir;
-   }
-   my->_data_dir = data_dir;
-
-   bfs::path config_file_name = data_dir / "config.ini";
-   if( my->_args.count( "config" ) ) {
-      auto config_file_name = my->_args["config"].as<bfs::path>();
-      if( config_file_name.is_relative() )
-         config_file_name = data_dir / config_file_name;
-   }
-
-   if(!bfs::exists(config_file_name)) {
-      write_default_config(config_file_name);
-   }
-
-   bpo::store(bpo::parse_config_file< char >( config_file_name.make_preferred().string().c_str(),
-                                              my->_cfg_options, true ), my->_args );
-
-   if(my->_args.count("plugin") > 0)
-   {
-      auto plugins = my->_args.at("plugin").as<std::vector<std::string>>();
-      for(auto& arg : plugins)
-      {
-         vector<string> names;
-         boost::split(names, arg, boost::is_any_of(" \t,"));
-         for(const std::string& name : names)
-            get_plugin(name).initialize(my->_args);
+      if( my->_args.count( "help" ) ) {
+         cout << my->_app_options << "\n";
+         return false;
       }
+
+      if( my->_args.count( "version" ) )
+      {
+         cout << version_info << "\n";
+         return false;
+      }
+
+      bfs::path data_dir = "data-dir";
+      if( my->_args.count("data-dir") )
+      {
+         data_dir = my->_args["data-dir"].as<bfs::path>();
+         if( data_dir.is_relative() )
+            data_dir = bfs::current_path() / data_dir;
+      }
+      my->_data_dir = data_dir;
+
+      bfs::path config_file_name = data_dir / "config.ini";
+      if( my->_args.count( "config" ) ) {
+         auto config_file_name = my->_args["config"].as<bfs::path>();
+         if( config_file_name.is_relative() )
+            config_file_name = data_dir / config_file_name;
+      }
+
+      if(!bfs::exists(config_file_name)) {
+         write_default_config(config_file_name);
+      }
+
+      bpo::store(bpo::parse_config_file< char >( config_file_name.make_preferred().string().c_str(),
+                                             my->_cfg_options, true ), my->_args );
+
+      if(my->_args.count("plugin") > 0)
+      {
+         auto plugins = my->_args.at("plugin").as<std::vector<std::string>>();
+         for(auto& arg : plugins)
+         {
+            vector<string> names;
+            boost::split(names, arg, boost::is_any_of(" \t,"));
+            for(const std::string& name : names)
+               get_plugin(name).initialize(my->_args);
+         }
+      }
+      for (const auto& plugin : autostart_plugins)
+         if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
+            plugin->initialize(my->_args);
+
+      bpo::notify(my->_args);
+
+      return true;
    }
-   for (auto plugin : autostart_plugins)
-      if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
-         plugin->initialize(my->_args);
-
-   bpo::notify(my->_args);
-
-   return true;
+   catch (const boost::program_options::error& e)
+   {
+      std::cerr << "Error parsing command line: " << e.what() << "\n";
+      return false;
+   }
 }
 
 void application::shutdown() {
@@ -206,12 +213,15 @@ void application::write_default_config(const bfs::path& cfg_file) {
    out_cfg.close();
 }
 
-abstract_plugin* application::find_plugin(const string& name)const
+abstract_plugin* application::find_plugin( const string& name )const
 {
-   auto itr = plugins.find(name);
-   if(itr == plugins.end()) {
+   auto itr = plugins.find( name );
+
+   if( itr == plugins.end() )
+   {
       return nullptr;
    }
+
    return itr->second.get();
 }
 

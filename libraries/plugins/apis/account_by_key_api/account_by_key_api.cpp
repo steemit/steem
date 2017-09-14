@@ -1,20 +1,20 @@
-#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steemit/plugins/account_by_key_api/account_by_key_api.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api.hpp>
 
-#include <steemit/plugins/account_by_key/account_by_key_objects.hpp>
+#include <steem/plugins/account_by_key/account_by_key_objects.hpp>
 
-namespace steemit { namespace plugins { namespace account_by_key {
+namespace steem { namespace plugins { namespace account_by_key {
 
 namespace detail {
 
 class account_by_key_api_impl
 {
    public:
-      account_by_key_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      account_by_key_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       get_key_references_return get_key_references( const get_key_references_args& args )const;
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 get_key_references_return account_by_key_api_impl::get_key_references( const get_key_references_args& args )const
@@ -26,7 +26,7 @@ get_key_references_return account_by_key_api_impl::get_key_references( const get
 
    for( auto& key : args.keys )
    {
-      std::vector< steemit::protocol::account_name_type > result;
+      std::vector< steem::protocol::account_name_type > result;
       auto lookup_itr = key_idx.lower_bound( key );
 
       while( lookup_itr != key_idx.end() && lookup_itr->key == key )
@@ -43,12 +43,12 @@ get_key_references_return account_by_key_api_impl::get_key_references( const get
 
 } // detail
 
-account_by_key_api::account_by_key_api()
+account_by_key_api::account_by_key_api(): my( new detail::account_by_key_api_impl() )
 {
-   my = std::make_shared< detail::account_by_key_api_impl >();
-
-   JSON_RPC_REGISTER_API( STEEM_ACCOUNT_BY_KEY_API_PLUGIN_NAME, (get_key_references) );
+   JSON_RPC_REGISTER_API( STEEM_ACCOUNT_BY_KEY_API_PLUGIN_NAME );
 }
+
+account_by_key_api::~account_by_key_api() {}
 
 get_key_references_return account_by_key_api::get_key_references( const get_key_references_args& args )
 {
@@ -58,4 +58,4 @@ get_key_references_return account_by_key_api::get_key_references( const get_key_
    });
 }
 
-} } } // steemit::plugins::account_by_key
+} } } // steem::plugins::account_by_key

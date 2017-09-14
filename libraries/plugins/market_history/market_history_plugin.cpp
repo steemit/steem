@@ -1,22 +1,22 @@
-#include <steemit/plugins/market_history/market_history_plugin.hpp>
+#include <steem/plugins/market_history/market_history_plugin.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
 namespace detail {
 
-using steemit::protocol::fill_order_operation;
+using steem::protocol::fill_order_operation;
 
 class market_history_plugin_impl
 {
    public:
       market_history_plugin_impl() :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
       virtual ~market_history_plugin_impl() {}
 
       /**
@@ -25,9 +25,10 @@ class market_history_plugin_impl
        */
       void update_market_histories( const operation_notification& o );
 
-      steemit::chain::database&  _db;
-      flat_set<uint32_t>         _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
-      int32_t                    _maximum_history_per_bucket_size = 1000;
+      chain::database&     _db;
+      flat_set<uint32_t>            _tracked_buckets = flat_set<uint32_t>  { 15, 60, 300, 3600, 86400 };
+      int32_t                       _maximum_history_per_bucket_size = 1000;
+      boost::signals2::connection   post_apply_connection;
 };
 
 void market_history_plugin_impl::update_market_histories( const operation_notification& o )
@@ -47,7 +48,7 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
       if( !_maximum_history_per_bucket_size ) return;
       if( !_tracked_buckets.size() ) return;
 
-      for( auto bucket : _tracked_buckets )
+      for( const auto& bucket : _tracked_buckets )
       {
          auto cutoff = _db.head_block_time() - fc::seconds( bucket * _maximum_history_per_bucket_size );
 
@@ -174,22 +175,22 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "market_history: plugin_initialize() begin" );
-      _my = std::make_unique< detail::market_history_plugin_impl >();
+      my = std::make_unique< detail::market_history_plugin_impl >();
 
-      _my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ _my->update_market_histories( o ); } );
-      add_plugin_index< bucket_index        >( _my->_db );
-      add_plugin_index< order_history_index >( _my->_db );
+      my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->update_market_histories( o ); } );
+      add_plugin_index< bucket_index        >( my->_db );
+      add_plugin_index< order_history_index >( my->_db );
 
       if( options.count("bucket-size" ) )
       {
          std::string buckets = options["bucket-size"].as< string >();
-         _my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
+         my->_tracked_buckets = fc::json::from_string( buckets ).as< flat_set< uint32_t > >();
       }
       if( options.count("history-per-size" ) )
-         _my->_maximum_history_per_bucket_size = options["history-per-size"].as< uint32_t >();
+         my->_maximum_history_per_bucket_size = options["history-per-size"].as< uint32_t >();
 
-      wlog( "bucket-size ${b}", ("b", _my->_tracked_buckets) );
-      wlog( "history-per-size ${h}", ("h", _my->_maximum_history_per_bucket_size) );
+      wlog( "bucket-size ${b}", ("b", my->_tracked_buckets) );
+      wlog( "history-per-size ${h}", ("h", my->_maximum_history_per_bucket_size) );
 
       ilog( "market_history: plugin_initialize() end" );
    } FC_CAPTURE_AND_RETHROW()
@@ -197,16 +198,19 @@ void market_history_plugin::plugin_initialize( const boost::program_options::var
 
 void market_history_plugin::plugin_startup() {}
 
-void market_history_plugin::plugin_shutdown() {}
+void market_history_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->post_apply_connection );
+}
 
 flat_set< uint32_t > market_history_plugin::get_tracked_buckets() const
 {
-   return _my->_tracked_buckets;
+   return my->_tracked_buckets;
 }
 
 uint32_t market_history_plugin::get_max_history_per_bucket() const
 {
-   return _my->_maximum_history_per_bucket_size;
+   return my->_maximum_history_per_bucket_size;
 }
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history

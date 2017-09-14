@@ -78,7 +78,7 @@
 #include <graphene/net/config.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -798,7 +798,7 @@ namespace graphene { namespace net { namespace detail {
       _suspend_fetching_sync_blocks(false),
       _items_to_fetch_updated(false),
       _items_to_fetch_sequence_counter(0),
-      _recent_block_interval_in_seconds(STEEMIT_BLOCK_INTERVAL),
+      _recent_block_interval_in_seconds(STEEM_BLOCK_INTERVAL),
       _user_agent_string(user_agent),
       _desired_number_of_connections(GRAPHENE_NET_DEFAULT_DESIRED_CONNECTIONS),
       _maximum_number_of_connections(GRAPHENE_NET_DEFAULT_MAX_CONNECTIONS),
@@ -1067,7 +1067,7 @@ namespace graphene { namespace net { namespace detail {
           } // end non-preemptable section
 
           // make all the requests we scheduled in the loop above
-          for( auto sync_item_request : sync_item_requests_to_send )
+          for( const auto& sync_item_request : sync_item_requests_to_send )
             request_sync_items_from_peer( sync_item_request.first, sync_item_request.second );
           sync_item_requests_to_send.clear();
         }
@@ -1287,7 +1287,7 @@ namespace graphene { namespace net { namespace detail {
                    ("count", total_items_to_send_to_this_peer)
                    ("types", items_to_advertise_by_type.size())
                    ("endpoint", peer->get_remote_endpoint()));
-            for (auto items_group : items_to_advertise_by_type)
+            for (const auto& items_group : items_to_advertise_by_type)
               inventory_messages_to_send.push_back(std::make_pair(peer, item_ids_inventory_message(items_group.first, items_group.second)));
           }
           peer->clear_old_inventory();
@@ -1876,7 +1876,7 @@ namespace graphene { namespace net { namespace detail {
       if (!_hard_fork_block_numbers.empty())
         user_data["last_known_fork_block_number"] = _hard_fork_block_numbers.back();
 
-      user_data["chain_id"] = STEEMIT_CHAIN_ID;
+      user_data["chain_id"] = STEEM_CHAIN_ID;
 
       return user_data;
     }
@@ -1901,7 +1901,7 @@ namespace graphene { namespace net { namespace detail {
       if (user_data.contains("last_known_fork_block_number"))
         originating_peer->last_known_fork_block_number = user_data["last_known_fork_block_number"].as<uint32_t>();
       if (user_data.contains("chain_id"))
-        originating_peer->chain_id = user_data["chain_id"].as<steemit::protocol::chain_id_type>();
+        originating_peer->chain_id = user_data["chain_id"].as<steem::protocol::chain_id_type>();
     }
 
     void node_impl::on_hello_message( peer_connection* originating_peer, const hello_message& hello_message_received )
@@ -1994,10 +1994,10 @@ namespace graphene { namespace net { namespace detail {
             }
           }
         }
-        if ( !originating_peer->chain_id || *originating_peer->chain_id != STEEMIT_CHAIN_ID )
+        if ( !originating_peer->chain_id || *originating_peer->chain_id != STEEM_CHAIN_ID )
         {
             wlog("Received hello message from peer running a node for different blockchain.",
-               ("my_chain_id", STEEMIT_CHAIN_ID)("their_chain_id", originating_peer->chain_id) );
+               ("my_chain_id", STEEM_CHAIN_ID)("their_chain_id", originating_peer->chain_id) );
 
             std::ostringstream rejection_message;
             rejection_message << "Your client is running a different chain id";
@@ -2671,7 +2671,7 @@ namespace graphene { namespace net { namespace detail {
           // they must be an attacker or have a buggy client.
           fc::time_point_sec minimum_time_of_last_offered_block =
               originating_peer->last_block_time_delegate_has_seen + // timestamp of the block immediately before the first unfetched block
-              originating_peer->number_of_unfetched_item_ids * STEEMIT_BLOCK_INTERVAL;
+              originating_peer->number_of_unfetched_item_ids * STEEM_BLOCK_INTERVAL;
           if (minimum_time_of_last_offered_block > _delegate->get_blockchain_now() + GRAPHENE_NET_FUTURE_SYNC_BLOCKS_GRACE_PERIOD_SEC)
           {
             wlog("Disconnecting from peer ${peer} who offered us an implausible number of blocks, their last block would be in the future (${timestamp})",
@@ -3048,14 +3048,14 @@ namespace graphene { namespace net { namespace detail {
       // received yet, reschedule them to be fetched from another peer
       if (!originating_peer->sync_items_requested_from_peer.empty())
       {
-        for (auto sync_item : originating_peer->sync_items_requested_from_peer)
+        for (const auto& sync_item : originating_peer->sync_items_requested_from_peer)
           _active_sync_requests.erase(sync_item);
         trigger_fetch_sync_items_loop();
       }
 
       if (!originating_peer->items_requested_from_peer.empty())
       {
-        for (auto item_and_time : originating_peer->items_requested_from_peer)
+        for (const auto& item_and_time : originating_peer->items_requested_from_peer)
         {
           if (is_item_in_any_peers_inventory(item_and_time.first))
             _items_to_fetch.insert(prioritized_item_id(item_and_time.first, _items_to_fetch_sequence_counter++));

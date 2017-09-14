@@ -1,20 +1,20 @@
-#include <steemit/blockchain_statistics/blockchain_statistics_api.hpp>
+#include <steem/blockchain_statistics/blockchain_statistics_api.hpp>
 
-#include <steemit/app/impacted.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steem/app/impacted.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
+#include <steem/chain/history_object.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
-namespace steemit { namespace blockchain_statistics {
+namespace steem { namespace blockchain_statistics {
 
 namespace detail
 {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 class blockchain_statistics_plugin_impl
 {
@@ -273,13 +273,13 @@ void blockchain_statistics_plugin_impl::on_block( const signed_block& b )
    uint32_t trx_size = 0;
    uint32_t num_trx =b.transactions.size();
 
-   for( auto trx : b.transactions )
+   for( const auto& trx : b.transactions )
    {
       trx_size += fc::raw::pack_size( trx );
    }
 
 
-   for( auto bucket : _tracked_buckets )
+   for( const auto& bucket : _tracked_buckets )
    {
       auto open = fc::time_point_sec( ( db.head_block_time().sec_since_epoch() / bucket ) * bucket );
       auto itr = bucket_idx.find( boost::make_tuple( bucket, open ) );
@@ -335,7 +335,7 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
 {
    auto& db = _self.database();
 
-   for( auto bucket_id : _current_buckets )
+   for( const auto& bucket_id : _current_buckets )
    {
       if( o.op.which() == operation::tag< delete_comment_operation >::value )
       {
@@ -357,11 +357,11 @@ void blockchain_statistics_plugin_impl::pre_operation( const operation_notificat
          auto& account = db.get_account( op.account );
          const auto& bucket = db.get(bucket_id);
 
-         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEMIT_VESTING_WITHDRAW_INTERVALS;
+         auto new_vesting_withdrawal_rate = op.vesting_shares.amount / STEEM_VESTING_WITHDRAW_INTERVALS;
          if( op.vesting_shares.amount > 0 && new_vesting_withdrawal_rate == 0 )
             new_vesting_withdrawal_rate = 1;
 
-         if( !db.has_hardfork( STEEMIT_HARDFORK_0_1 ) )
+         if( !db.has_hardfork( STEEM_HARDFORK_0_1 ) )
             new_vesting_withdrawal_rate *= 1000000;
 
          db.modify( bucket, [&]( bucket_object& b )
@@ -384,7 +384,7 @@ void blockchain_statistics_plugin_impl::post_operation( const operation_notifica
    {
    auto& db = _self.database();
 
-   for( auto bucket_id : _current_buckets )
+   for( const auto& bucket_id : _current_buckets )
    {
       const auto& bucket = db.get(bucket_id);
 
@@ -468,6 +468,6 @@ uint32_t blockchain_statistics_plugin::get_max_history_per_bucket() const
    return _my->_maximum_history_per_bucket_size;
 }
 
-} } // steemit::blockchain_statistics
+} } // steem::blockchain_statistics
 
-STEEMIT_DEFINE_PLUGIN( blockchain_statistics, steemit::blockchain_statistics::blockchain_statistics_plugin );
+STEEM_DEFINE_PLUGIN( blockchain_statistics, steem::blockchain_statistics::blockchain_statistics_plugin );

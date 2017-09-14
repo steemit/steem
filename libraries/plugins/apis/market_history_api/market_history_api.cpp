@@ -1,18 +1,18 @@
-#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
-#include <steemit/plugins/market_history_api/market_history_api.hpp>
+#include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <steem/plugins/market_history_api/market_history_api.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/steem_objects.hpp>
 
-namespace steemit { namespace plugins { namespace market_history {
+namespace steem { namespace plugins { namespace market_history {
 
 namespace detail {
 
-using namespace steemit::plugins::market_history;
+using namespace steem::plugins::market_history;
 
 class market_history_api_impl
 {
    public:
-      market_history_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      market_history_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API(
          (get_ticker)
@@ -24,7 +24,7 @@ class market_history_api_impl
          (get_market_history_buckets)
       )
 
-      steemit::chain::database& _db;
+      chain::database& _db;
 };
 
 DEFINE_API( market_history_api_impl, get_ticker )
@@ -84,7 +84,7 @@ DEFINE_API( market_history_api_impl, get_order_book )
 {
    FC_ASSERT( args.limit <= 500 );
 
-   const auto& order_idx = _db.get_index< steemit::chain::limit_order_index, steemit::chain::by_price >();
+   const auto& order_idx = _db.get_index< chain::limit_order_index, chain::by_price >();
    auto itr = order_idx.lower_bound( price::max( SBD_SYMBOL, STEEM_SYMBOL ) );
 
    get_order_book_return result;
@@ -180,28 +180,19 @@ DEFINE_API( market_history_api_impl, get_market_history )
 DEFINE_API( market_history_api_impl, get_market_history_buckets )
 {
    get_market_history_buckets_return result;
-   result.bucket_sizes = appbase::app().get_plugin< steemit::plugins::market_history::market_history_plugin >().get_tracked_buckets();
+   result.bucket_sizes = appbase::app().get_plugin< steem::plugins::market_history::market_history_plugin >().get_tracked_buckets();
    return result;
 }
 
 
 } // detail
 
-market_history_api::market_history_api()
+market_history_api::market_history_api(): my( new detail::market_history_api_impl() )
 {
-   my = std::make_shared< detail::market_history_api_impl >();
-
-   JSON_RPC_REGISTER_API(
-      STEEM_MARKET_HISTORY_API_PLUGIN_NAME,
-      (get_ticker)
-      (get_volume)
-      (get_order_book)
-      (get_trade_history)
-      (get_recent_trades)
-      (get_market_history)
-      (get_market_history_buckets)
-   );
+   JSON_RPC_REGISTER_API( STEEM_MARKET_HISTORY_API_PLUGIN_NAME );
 }
+
+market_history_api::~market_history_api() {}
 
 DEFINE_API( market_history_api, get_ticker )
 {
@@ -259,4 +250,4 @@ DEFINE_API( market_history_api, get_market_history_buckets )
    });
 }
 
-} } } // steemit::plugins::market_history
+} } } // steem::plugins::market_history

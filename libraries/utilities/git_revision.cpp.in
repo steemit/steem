@@ -1,14 +1,14 @@
 #include <stdint.h>
-#include <steemit/utilities/git_revision.hpp>
+#include <steem/utilities/git_revision.hpp>
 
-#define STEEMIT_GIT_REVISION_SHA "@STEEMIT_GIT_REVISION_SHA@"
-#define STEEMIT_GIT_REVISION_UNIX_TIMESTAMP @STEEMIT_GIT_REVISION_UNIX_TIMESTAMP@
-#define STEEMIT_GIT_REVISION_DESCRIPTION "@STEEMIT_GIT_REVISION_DESCRIPTION@"
+#define STEEM_GIT_REVISION_SHA "@STEEM_GIT_REVISION_SHA@"
+#define STEEM_GIT_REVISION_UNIX_TIMESTAMP @STEEM_GIT_REVISION_UNIX_TIMESTAMP@
+#define STEEM_GIT_REVISION_DESCRIPTION "@STEEM_GIT_REVISION_DESCRIPTION@"
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
-const char* const git_revision_sha = STEEMIT_GIT_REVISION_SHA;
-const uint32_t git_revision_unix_timestamp = STEEMIT_GIT_REVISION_UNIX_TIMESTAMP;
-const char* const git_revision_description = STEEMIT_GIT_REVISION_DESCRIPTION;
+const char* const git_revision_sha = STEEM_GIT_REVISION_SHA;
+const uint32_t git_revision_unix_timestamp = STEEM_GIT_REVISION_UNIX_TIMESTAMP;
+const char* const git_revision_description = STEEM_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace steemit::utilities
+} } // end namespace steem::utilities

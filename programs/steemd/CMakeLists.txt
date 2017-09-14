@@ -11,11 +11,18 @@ endif()
 
 target_link_libraries( steemd PRIVATE
    appbase
-   steemit_utilities
-   steemit_plugins
+   steem_utilities
+   steem_plugins
    ${CMAKE_DL_LIBS}
    ${PLATFORM_SPECIFIC_LIBS}
 )
+
+if( CLANG_TIDY_EXE )
+   set_target_properties(
+      steemd PROPERTIES
+      CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+   )
+endif( CLANG_TIDY_EXE )
 
 install( TARGETS
    steemd

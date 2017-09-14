@@ -24,20 +24,20 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/database.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/elliptic.hpp>
 #include <fc/reflect/variant.hpp>
 
-#include "../common/database_fixture.hpp"
+#include "../db_fixture/database_fixture.hpp"
 
 #include <cmath>
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem;
+using namespace steem::chain;
+using namespace steem::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( serialization_tests, clean_database_fixture )
 
@@ -261,19 +261,19 @@ BOOST_AUTO_TEST_CASE( version_test )
       BOOST_REQUIRE( ver == version( 12, 34, 56 ) );
 
       ver_str = fc::variant( "256.0.0" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "0.256.0" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "0.0.65536" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "1.0" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "1.0.0.1" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
    }
    FC_LOG_AND_RETHROW();
 }
@@ -306,20 +306,20 @@ BOOST_AUTO_TEST_CASE( hardfork_version_test )
       BOOST_REQUIRE( ver == hardfork_version( 12, 34 ) );
 
       ver_str = fc::variant( "256.0.0" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "0.256.0" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "0.0.1" );
       fc::from_variant( ver_str, ver );
       BOOST_REQUIRE( ver == hardfork_version( 0, 0 ) );
 
       ver_str = fc::variant( "1.0" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
 
       ver_str = fc::variant( "1.0.0.1" );
-      STEEMIT_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
+      STEEM_REQUIRE_THROW( fc::from_variant( ver_str, ver ), fc::exception );
    }
    FC_LOG_AND_RETHROW();
 }

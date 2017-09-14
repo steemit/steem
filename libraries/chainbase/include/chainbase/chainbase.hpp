@@ -318,7 +318,7 @@ namespace chainbase {
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
 
-            for( auto id : head.new_ids )
+            for( const auto& id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
             }
@@ -411,7 +411,7 @@ namespace chainbase {
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
-            for( auto id : state.new_ids )
+            for( const auto& id : state.new_ids )
                prev_state.new_ids.insert(id);
 
             // *+del
@@ -739,7 +739,7 @@ namespace chainbase {
          void set_revision( int64_t revision )
          {
              CHAINBASE_REQUIRE_WRITE_LOCK( "set_revision", int64_t );
-             for( auto i : _index_list ) i->set_revision( revision );
+             for( const auto& i : _index_list ) i->set_revision( revision );
          }
 
 

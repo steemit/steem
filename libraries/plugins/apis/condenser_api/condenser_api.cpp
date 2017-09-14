@@ -1,16 +1,17 @@
-#include <steemit/plugins/condenser_api/condenser_api.hpp>
-#include <steemit/plugins/condenser_api/condenser_api_plugin.hpp>
+#include <steem/plugins/condenser_api/condenser_api.hpp>
+#include <steem/plugins/condenser_api/condenser_api_plugin.hpp>
 
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
-#include <steemit/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <steemit/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
-#include <steemit/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/market_history_api/market_history_api_plugin.hpp>
-#include <steemit/plugins/witness_api/witness_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
+#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <steem/plugins/account_by_key_api/account_by_key_api_plugin.hpp>
+#include <steem/plugins/network_broadcast_api/network_broadcast_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/market_history_api/market_history_api_plugin.hpp>
+#include <steem/plugins/witness_api/witness_api_plugin.hpp>
 
-#include <steemit/utilities/git_revision.hpp>
+#include <steem/utilities/git_revision.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -20,7 +21,7 @@
 #define CHECK_ARG_SIZE( s ) \
    FC_ASSERT( args.size() == s, "Expected #s argument(s), was ${n}", ("n", args.size()) );
 
-namespace steemit { namespace plugins { namespace condenser_api {
+namespace steem { namespace plugins { namespace condenser_api {
 
 namespace detail
 {
@@ -47,9 +48,10 @@ namespace detail
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
 
-         steemit::chain::database& _db;
+         chain::database& _db;
 
          std::shared_ptr< database_api::database_api > _database_api;
+         std::shared_ptr< block_api::block_api > _block_api;
          std::shared_ptr< account_history::account_history_api > _account_history_api;
          std::shared_ptr< account_by_key::account_by_key_api > _account_by_key_api;
          std::shared_ptr< network_broadcast_api::network_broadcast_api > _network_broadcast_api;
@@ -61,7 +63,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_state )
    {
-      CHECK_ARG_SIZE( 1 )
       string path = args[0].as< string >();
 
       state _state;
@@ -80,7 +81,7 @@ namespace detail
          /// FETCH CATEGORY STATE
          if( _tags_api )
          {
-            auto trending_tags = _tags_api->get_trending_tags( tags::get_trending_tags_args( { std::string(), 50 } ) ).tags;
+            auto trending_tags = _tags_api->get_trending_tags( { std::string(), 50 } ).tags;
             for( const auto& t : trending_tags )
             {
                _state.tag_idx.trending.push_back( t.name );
@@ -101,12 +102,12 @@ namespace detail
             _state.accounts[acnt] = extended_account( _db.get_account( acnt ), _db );
 
             if( _tags_api )
-               _state.accounts[acnt].tags_usage = _tags_api->get_tags_used_by_author( tags::get_tags_used_by_author_args( { acnt } ) ).tags;
+               _state.accounts[acnt].tags_usage = _tags_api->get_tags_used_by_author( { acnt } ).tags;
 
             if( _follow_api )
             {
-               _state.accounts[acnt].guest_bloggers = _follow_api->get_blog_authors( follow::get_blog_authors_args( { acnt } ) ).blog_authors;
-               _state.accounts[acnt].reputation     = _follow_api->get_account_reputations( follow::get_account_reputations_args( { acnt, 1 } ) ).reputations[0].reputation;
+               _state.accounts[acnt].guest_bloggers = _follow_api->get_blog_authors( { acnt } ).blog_authors;
+               _state.accounts[acnt].reputation     = _follow_api->get_account_reputations( { acnt, 1 } ).reputations[0].reputation;
             }
 
             auto& eacnt = _state.accounts[acnt];
@@ -114,7 +115,7 @@ namespace detail
             {
                if( _account_history_api )
                {
-                  auto history = _account_history_api->get_account_history( account_history::get_account_history_args( { acnt, uint64_t(-1), 1000 } ) ).history;
+                  auto history = _account_history_api->get_account_history( { acnt, uint64_t(-1), 1000 } ).history;
                   for( auto& item : history )
                   {
                      switch( item.second.op.which() ) {
@@ -166,7 +167,7 @@ namespace detail
             {
                if( _tags_api )
                {
-                  auto replies = _tags_api->get_replies_by_last_update( tags::get_replies_by_last_update_args( { acnt, "", 50 } ) ).discussions;
+                  auto replies = _tags_api->get_replies_by_last_update( { acnt, "", 50 } ).discussions;
                   eacnt.recent_replies = vector< string >();
 
                   for( const auto& reply : replies )
@@ -176,7 +177,7 @@ namespace detail
 
                      if( _follow_api )
                      {
-                        _state.accounts[ reply_ref ].reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { reply.author, 1 } ) ).reputations[0].reputation;
+                        _state.accounts[ reply_ref ].reputation = _follow_api->get_account_reputations( { reply.author, 1 } ).reputations[0].reputation;
                      }
 
                      eacnt.recent_replies->push_back( reply_ref );
@@ -213,10 +214,11 @@ namespace detail
             {
                if( _follow_api )
                {
-                  auto blog = _follow_api->get_blog_entries( follow::get_blog_entries_args( { eacnt.name, 0, 20 } ) ).blog;
-                  eacnt.blog = vector< string >();
+                  auto blog = _follow_api->get_blog_entries( { eacnt.name, 0, 20 } ).blog;
+                  eacnt.blog = vector<string>();
+                  eacnt.blog->reserve(blog.size());
 
-                  for( auto b: blog )
+                  for( const auto& b: blog )
                   {
                      const auto link = b.author + "/" + b.permlink;
                      eacnt.blog->push_back( link );
@@ -236,10 +238,11 @@ namespace detail
             {
                if( _follow_api )
                {
-                  auto feed = _follow_api->get_feed_entries( follow::get_feed_entries_args( { eacnt.name, 0, 20 } ) ).feed;
+                  auto feed = _follow_api->get_feed_entries( { eacnt.name, 0, 20 } ).feed;
                   eacnt.feed = vector<string>();
+                  eacnt.feed->reserve( feed.size());
 
-                  for( auto f: feed )
+                  for( const auto& f: feed )
                   {
                      const auto link = f.author + "/" + f.permlink;
                      eacnt.feed->push_back( link );
@@ -248,10 +251,9 @@ namespace detail
                      if( _tags_api )
                         _tags_api->set_pending_payout( _state.content[ link ] );
 
-                     if( f.reblog_by.size() )
+                     if( f.reblog_by.empty() == false)
                      {
-                        if( f.reblog_by.size() )
-                           _state.content[link].first_reblogged_by = f.reblog_by[0];
+                        _state.content[link].first_reblogged_by = f.reblog_by[0];
                         _state.content[link].reblogged_by = f.reblog_by;
                         _state.content[link].first_reblogged_on = f.reblog_on;
                      }
@@ -268,7 +270,7 @@ namespace detail
             auto key = account + "/" + slug;
             if( _tags_api )
             {
-               auto dis = _tags_api->get_discussion( tags::get_discussion_args( { account, slug } ) );
+               auto dis = _tags_api->get_discussion( { account, slug } );
 
                recursively_fetch_content( _state, dis, accounts );
                _state.content[key] = std::move(dis);
@@ -276,8 +278,7 @@ namespace detail
          }
          else if( part[0] == "witnesses" || part[0] == "~witnesses")
          {
-            auto start = _database_api->list_witnesses(
-               database_api::list_witnesses_args( { { "" }, 1, database_api::by_name } ) );
+            auto start = _database_api->list_witnesses( { { "" }, 1, database_api::by_name } );
 
             if( BOOST_LIKELY( start.witnesses.size() ) )
             {
@@ -286,7 +287,7 @@ namespace detail
                start_key.push_back( fc::variant( start.witnesses[0].owner ) );
 
                auto wits = _database_api->list_witnesses(
-                  database_api::list_witnesses_args( { fc::variant( start_key ), 50, database_api::by_vote_name } ) ).witnesses;
+                  { fc::variant( start_key ), 50, database_api::by_vote_name } ).witnesses;
 
                //auto wits = get_witnesses_by_vote( "", 50 );
                for( const auto& w : wits )
@@ -540,7 +541,7 @@ namespace detail
             if( _tags_api )
             {
                _state.tag_idx.trending.clear();
-               auto trending_tags = _tags_api->get_trending_tags( tags::get_trending_tags_args( { std::string(), 250 } ) ).tags;
+               auto trending_tags = _tags_api->get_trending_tags( { std::string(), 250 } ).tags;
                for( const auto& t : trending_tags )
                {
                   string name = t.name;
@@ -560,14 +561,14 @@ namespace detail
 
             if( _follow_api )
             {
-               _state.accounts[a].reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { a, 1 } ) ).reputations[0].reputation;
+               _state.accounts[a].reputation = _follow_api->get_account_reputations( { a, 1 } ).reputations[0].reputation;
             }
          }
          if( _tags_api )
          {
             for( auto& d : _state.content )
             {
-               d.second.active_votes = _tags_api->get_active_votes( tags::get_active_votes_args( { d.second.author, d.second.permlink } ) ).votes;
+               d.second.active_votes = _tags_api->get_active_votes( { d.second.author, d.second.permlink } ).votes;
             }
          }
 
@@ -593,7 +594,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_reward_fund )
    {
-      CHECK_ARG_SIZE( 1 )
       string name = args[0].as< string >();
 
       auto fund = _db.find< reward_fund_object, by_name >( name );
@@ -604,23 +604,23 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_accounts )
    {
-      CHECK_ARG_SIZE( 1 )
       vector< account_name_type > names = args[0].as< vector< account_name_type > >();
 
       const auto& idx  = _db.get_index< account_index >().indices().get< by_name >();
       const auto& vidx = _db.get_index< witness_vote_index >().indices().get< by_account_witness >();
       vector< extended_account > results;
+      results.reserve(names.size());
 
-      for( auto name: names )
+      for( const auto& name: names )
       {
          auto itr = idx.find( name );
          if ( itr != idx.end() )
          {
-            results.push_back( extended_account( *itr, _db ) );
+            results.emplace_back( extended_account( *itr, _db ) );
 
             if( _follow_api )
             {
-               results.back().reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { itr->name, 1 } ) ).reputations[0].reputation;
+               results.back().reputation = _follow_api->get_account_reputations( { itr->name, 1 } ).reputations[0].reputation;
             }
 
             auto vitr = vidx.lower_bound( boost::make_tuple( itr->name, account_name_type() ) );
@@ -636,7 +636,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, lookup_account_names )
    {
-      CHECK_ARG_SIZE( 1 )
       vector< account_name_type > account_names = args[0].as< vector< account_name_type > >();
 
       vector< optional< database_api::api_account_object > > result;
@@ -661,7 +660,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, lookup_accounts )
    {
-      CHECK_ARG_SIZE( 2 )
       account_name_type lower_bound_name = args[0].as< account_name_type >();
       uint32_t limit = args[1].as< uint32_t >();
 
@@ -704,7 +702,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_witnesses )
    {
-      CHECK_ARG_SIZE( 1 )
       vector< witness_id_type > witness_ids = args[0].as< vector< witness_id_type > >();
 
       vector< optional< database_api::api_witness_object > > result;
@@ -731,7 +728,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_open_orders )
    {
-      CHECK_ARG_SIZE( 1 )
       account_name_type owner = args[0].as< account_name_type >();
 
       vector< extended_limit_order > result;
@@ -754,7 +750,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, get_account_votes )
    {
-      CHECK_ARG_SIZE( 1 )
       account_name_type voter = args[0].as< account_name_type >();
 
       vector< account_vote > result;
@@ -783,8 +778,6 @@ namespace detail
 
    DEFINE_API( condenser_api_impl, lookup_witness_accounts )
    {
-      CHECK_ARG_SIZE( 2 )
-
       auto limit = args[1].as< uint32_t >();
 
       lookup_witness_accounts_return result;
@@ -815,7 +808,7 @@ namespace detail
 
          if( _tags_api )
          {
-            auto replies = _tags_api->get_content_replies( tags::get_content_replies_args( { root.author, root.permlink } ) ).discussions;
+            auto replies = _tags_api->get_content_replies( { root.author, root.permlink } ).discussions;
             for( auto& r : replies )
             {
                try
@@ -842,76 +835,7 @@ namespace detail
 condenser_api::condenser_api()
    : my( new detail::condenser_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_CONDENSER_API_PLUGIN_NAME,
-      (get_version)
-      (get_trending_tags)
-      (get_state)
-      (get_active_witnesses)
-      (get_block_header)
-      (get_block)
-      (get_ops_in_block)
-      (get_config)
-      (get_dynamic_global_properties)
-      (get_chain_properties)
-      (get_current_median_history_price)
-      (get_feed_history)
-      (get_witness_schedule)
-      (get_hardfork_version)
-      (get_next_scheduled_hardfork)
-      (get_reward_fund)
-      (get_key_references)
-      (get_accounts)
-      (get_account_references)
-      (lookup_account_names)
-      (lookup_accounts)
-      (get_account_count)
-      (get_owner_history)
-      (get_recovery_request)
-      (get_escrow)
-      (get_withdraw_routes)
-      (get_account_bandwidth)
-      (get_savings_withdraw_from)
-      (get_savings_withdraw_to)
-      (get_vesting_delegations)
-      (get_expiring_vesting_delegations)
-      (get_witnesses)
-      (get_conversion_requests)
-      (get_witness_by_account)
-      (get_witnesses_by_vote)
-      (lookup_witness_accounts)
-      (get_witness_count)
-      (get_order_book)
-      (get_open_orders)
-      (get_transaction_hex)
-      (get_transaction)
-      (get_required_signatures)
-      (get_potential_signatures)
-      (verify_authority)
-      (verify_account_authority)
-      (get_active_votes)
-      (get_account_votes)
-      (get_content)
-      (get_content_replies)
-      (get_tags_used_by_author)
-      (get_discussions_by_payout)
-      (get_post_discussions_by_payout)
-      (get_comment_discussions_by_payout)
-      (get_discussions_by_trending)
-      (get_discussions_by_created)
-      (get_discussions_by_active)
-      (get_discussions_by_cashout)
-      (get_discussions_by_votes)
-      (get_discussions_by_children)
-      (get_discussions_by_hot)
-      (get_discussions_by_feed)
-      (get_discussions_by_blog)
-      (get_discussions_by_comments)
-      (get_discussions_by_promoted)
-      (get_replies_by_last_update)
-      (get_discussions_by_author_before_date)
-      (get_account_history)
-   );
+   JSON_RPC_REGISTER_API( STEEM_CONDENSER_API_PLUGIN_NAME );
 }
 
 condenser_api::~condenser_api() {}
@@ -921,6 +845,10 @@ void condenser_api::api_startup()
    auto database = appbase::app().find_plugin< database_api::database_api_plugin >();
    if( database != nullptr )
       my->_database_api = database->api;
+
+   auto block = appbase::app().find_plugin< block_api::block_api_plugin >();
+   if( block != nullptr )
+      my->_block_api = block->api;
 
    auto account_by_key = appbase::app().find_plugin< account_by_key::account_by_key_api_plugin >();
    if( account_by_key != nullptr )
@@ -953,10 +881,11 @@ void condenser_api::api_startup()
 
 DEFINE_API( condenser_api, get_version )
 {
+   CHECK_ARG_SIZE( 0 )
    return get_version_return
    (
-      fc::string( STEEMIT_BLOCKCHAIN_VERSION ),
-      fc::string( steemit::utilities::git_revision_sha ),
+      fc::string( STEEM_BLOCKCHAIN_VERSION ),
+      fc::string( steem::utilities::git_revision_sha ),
       fc::string( fc::git_revision_sha )
    );
 }
@@ -971,6 +900,7 @@ DEFINE_API( condenser_api, get_trending_tags )
 
 DEFINE_API( condenser_api, get_state )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_state( args );
@@ -979,24 +909,27 @@ DEFINE_API( condenser_api, get_state )
 
 DEFINE_API( condenser_api, get_active_witnesses )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_active_witnesses( {} ).witnesses;
 }
 
 DEFINE_API( condenser_api, get_block_header )
 {
    CHECK_ARG_SIZE( 1 )
-   return my->_database_api->get_block_header( { args[0].as< uint32_t >() } ).header;
+   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
+   return my->_block_api->get_block_header( { args[0].as< uint32_t >() } ).header;
 }
 
 DEFINE_API( condenser_api, get_block )
 {
    CHECK_ARG_SIZE( 1 )
-   return my->_database_api->get_block( { args[0].as< uint32_t >() } ).block;
+   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
+   return my->_block_api->get_block( { args[0].as< uint32_t >() } ).block;
 }
 
 DEFINE_API( condenser_api, get_ops_in_block )
 {
-   CHECK_ARG_SIZE( 2 )
+   FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
    FC_ASSERT( my->_account_history_api, "account_history_api_plugin not enabled." );
 
    return my->_account_history_api->get_ops_in_block( { args[0].as< uint32_t >(), args[1].as< bool >() } ).ops;
@@ -1004,41 +937,49 @@ DEFINE_API( condenser_api, get_ops_in_block )
 
 DEFINE_API( condenser_api, get_config )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_config( {} );
 }
 
 DEFINE_API( condenser_api, get_dynamic_global_properties )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_dynamic_global_properties( {} );
 }
 
 DEFINE_API( condenser_api, get_chain_properties )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_witness_schedule( {} ).median_props;
 }
 
 DEFINE_API( condenser_api, get_current_median_history_price )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_current_price_feed( {} );
 }
 
 DEFINE_API( condenser_api, get_feed_history )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_feed_history( {} );
 }
 
 DEFINE_API( condenser_api, get_witness_schedule )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_witness_schedule( {} );
 }
 
 DEFINE_API( condenser_api, get_hardfork_version )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_database_api->get_hardfork_properties( {} ).current_hardfork_version;
 }
 
 DEFINE_API( condenser_api, get_next_scheduled_hardfork )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_next_scheduled_hardfork( args );
@@ -1047,6 +988,7 @@ DEFINE_API( condenser_api, get_next_scheduled_hardfork )
 
 DEFINE_API( condenser_api, get_reward_fund )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_reward_fund( args );
@@ -1063,6 +1005,7 @@ DEFINE_API( condenser_api, get_key_references )
 
 DEFINE_API( condenser_api, get_accounts )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_accounts( args );
@@ -1076,6 +1019,7 @@ DEFINE_API( condenser_api, get_account_references )
 
 DEFINE_API( condenser_api, lookup_account_names )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->lookup_account_names( args );
@@ -1084,6 +1028,7 @@ DEFINE_API( condenser_api, lookup_account_names )
 
 DEFINE_API( condenser_api, lookup_accounts )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->lookup_accounts( args );
@@ -1092,6 +1037,7 @@ DEFINE_API( condenser_api, lookup_accounts )
 
 DEFINE_API( condenser_api, get_account_count )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_account_count( args );
@@ -1163,23 +1109,24 @@ DEFINE_API( condenser_api, get_account_bandwidth )
    CHECK_ARG_SIZE( 2 )
    FC_ASSERT( my->_witness_api, "witness_api_plugin not enabled." );
    return my->_witness_api->get_account_bandwidth(
-      witness::get_account_bandwidth_args({
+      {
          args[0].as< string >(),
          args[1].as< witness::bandwidth_type >()
-      })).bandwidth;
+      }).bandwidth;
 }
 
 DEFINE_API( condenser_api, get_savings_withdraw_from )
 {
    CHECK_ARG_SIZE( 1 )
    return my->_database_api->find_savings_withdrawals(
-      database_api::find_savings_withdrawals_args({
+      {
          args[0].as< string >()
-      })).withdrawals;
+      }).withdrawals;
 }
 
 DEFINE_API( condenser_api, get_savings_withdraw_to )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_savings_withdraw_to( args );
@@ -1212,6 +1159,7 @@ DEFINE_API( condenser_api, get_expiring_vesting_delegations )
 
 DEFINE_API( condenser_api, get_witnesses )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_witnesses( args );
@@ -1222,18 +1170,18 @@ DEFINE_API( condenser_api, get_conversion_requests )
 {
    CHECK_ARG_SIZE( 1 )
    return my->_database_api->find_sbd_conversion_requests(
-      database_api::find_sbd_conversion_requests_args({
+      {
          args[0].as< account_name_type >()
-      })).requests;
+      }).requests;
 }
 
 DEFINE_API( condenser_api, get_witness_by_account )
 {
    CHECK_ARG_SIZE( 1 )
    auto witnesses = my->_database_api->find_witnesses(
-      database_api::find_witnesses_args({
+      {
          { args[0].as< account_name_type >() }
-      })).witnesses;
+      }).witnesses;
 
    get_witness_by_account_return result;
 
@@ -1261,6 +1209,7 @@ DEFINE_API( condenser_api, get_witnesses_by_vote )
 
 DEFINE_API( condenser_api, lookup_witness_accounts )
 {
+   CHECK_ARG_SIZE( 2 )
    return my->_db.with_read_lock( [&]()
    {
       return my->lookup_witness_accounts( args );
@@ -1269,6 +1218,7 @@ DEFINE_API( condenser_api, lookup_witness_accounts )
 
 DEFINE_API( condenser_api, get_witness_count )
 {
+   CHECK_ARG_SIZE( 0 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_witness_count( args );
@@ -1277,6 +1227,7 @@ DEFINE_API( condenser_api, get_witness_count )
 
 DEFINE_API( condenser_api, get_open_orders )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_open_orders( args );
@@ -1287,9 +1238,9 @@ DEFINE_API( condenser_api, get_transaction_hex )
 {
    CHECK_ARG_SIZE( 1 )
    return my->_database_api->get_transaction_hex(
-      database_api::get_transaction_hex_args({
+      {
          args[0].as< signed_transaction >()
-      })).hex;
+      }).hex;
 }
 
 DEFINE_API( condenser_api, get_transaction )
@@ -1334,6 +1285,7 @@ DEFINE_API( condenser_api, get_active_votes )
 
 DEFINE_API( condenser_api, get_account_votes )
 {
+   CHECK_ARG_SIZE( 1 )
    return my->_db.with_read_lock( [&]()
    {
       return my->get_account_votes( args );
@@ -1362,15 +1314,6 @@ DEFINE_API( condenser_api, get_tags_used_by_author )
    FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
 
    return my->_tags_api->get_tags_used_by_author( { args[0].as< account_name_type >() } ).tags;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_payout )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_payout(
-      args[0].as< tags::get_discussions_by_payout_args >() ).discussions;
 }
 
 DEFINE_API( condenser_api, get_post_discussions_by_payout )
@@ -1620,6 +1563,7 @@ DEFINE_API( condenser_api, get_blog_authors )
 
 DEFINE_API( condenser_api, get_ticker )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_ticker( {} );
@@ -1627,6 +1571,7 @@ DEFINE_API( condenser_api, get_ticker )
 
 DEFINE_API( condenser_api, get_volume )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_volume( {} );
@@ -1666,9 +1611,10 @@ DEFINE_API( condenser_api, get_market_history )
 
 DEFINE_API( condenser_api, get_market_history_buckets )
 {
+   CHECK_ARG_SIZE( 0 )
    FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
 
    return my->_market_history_api->get_market_history_buckets( {} ).bucket_sizes;
 }
 
-} } } // steemit::plugins::condenser_api
+} } } // steem::plugins::condenser_api

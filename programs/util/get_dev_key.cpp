@@ -28,8 +28,8 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/io/json.hpp>
 
-#include <steemit/protocol/types.hpp>
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/protocol/types.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 #ifndef WIN32
 #include <csignal>
@@ -72,8 +72,8 @@ int main( int argc, char** argv )
       auto show_key = [&]( const fc::ecc::private_key& priv_key )
       {
          fc::mutable_variant_object mvo;
-         steemit::protocol::public_key_type pub_key = priv_key.get_public_key();
-         mvo( "private_key", steemit::utilities::key_to_wif( priv_key ) )
+         steem::protocol::public_key_type pub_key = priv_key.get_public_key();
+         mvo( "private_key", steem::utilities::key_to_wif( priv_key ) )
             ( "public_key", std::string( pub_key ) )
             ;
          if( comma )

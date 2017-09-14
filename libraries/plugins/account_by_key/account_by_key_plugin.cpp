@@ -1,15 +1,15 @@
-#include <steemit/plugins/account_by_key/account_by_key_plugin.hpp>
-#include <steemit/plugins/account_by_key/account_by_key_objects.hpp>
+#include <steem/plugins/account_by_key/account_by_key_plugin.hpp>
+#include <steem/plugins/account_by_key/account_by_key_objects.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>
 
-namespace steemit { namespace plugins { namespace account_by_key {
+namespace steem { namespace plugins { namespace account_by_key {
 
 namespace detail {
 
@@ -17,7 +17,7 @@ class account_by_key_plugin_impl
 {
    public:
       account_by_key_plugin_impl( account_by_key_plugin& _plugin ) :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ),
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
       void pre_operation( const operation_notification& op_obj );
@@ -27,8 +27,10 @@ class account_by_key_plugin_impl
       void update_key_lookup( const account_authority_object& a );
 
       flat_set< public_key_type >   cached_keys;
-      steemit::chain::database&     _db;
+      database&                     _db;
       account_by_key_plugin&        _self;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
 
 struct pre_operation_visitor
@@ -140,7 +142,7 @@ struct post_operation_visitor
 
    void operator()( const hardfork_operation& op )const
    {
-      if( op.hardfork_id == STEEMIT_HARDFORK_0_9 )
+      if( op.hardfork_id == STEEM_HARDFORK_0_9 )
       {
          auto& db = _plugin._db;
 
@@ -248,10 +250,10 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
    try
    {
       ilog( "Initializing account_by_key plugin" );
-      chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      my->pre_apply_connection = db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      my->post_apply_connection = db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
 
       add_plugin_index< key_lookup_index >(db);
    }
@@ -260,6 +262,10 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
 
 void account_by_key_plugin::plugin_startup() {}
 
-void account_by_key_plugin::plugin_shutdown() {}
+void account_by_key_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
+}
 
-} } } // steemit::plugins::account_by_key
+} } } // steem::plugins::account_by_key

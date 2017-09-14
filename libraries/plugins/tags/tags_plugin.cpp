@@ -1,13 +1,12 @@
-#include <steemit/plugins/tags/tags_plugin.hpp>
+#include <steem/plugins/tags/tags_plugin.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -17,11 +16,11 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace steemit { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 namespace detail {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 class tags_plugin_impl
 {
@@ -32,11 +31,13 @@ class tags_plugin_impl
       void pre_operation( const operation_notification& note );
       void on_operation( const operation_notification& note );
 
-      steemit::chain::database& _db;
+      chain::database&     _db;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
 
 tags_plugin_impl::tags_plugin_impl() :
-   _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+   _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 tags_plugin_impl::~tags_plugin_impl() {}
 
@@ -358,70 +359,14 @@ struct operation_visitor
       } FC_CAPTURE_LOG_AND_RETHROW( (c) )
    }
 
-   const peer_stats_object& get_or_create_peer_stats( account_id_type voter, account_id_type peer )const
-   {
-      const auto& peeridx = _db.get_index<peer_stats_index>().indices().get<by_voter_peer>();
-      auto itr = peeridx.find( boost::make_tuple( voter, peer ) );
-      if( itr == peeridx.end() )
-      {
-         return _db.create<peer_stats_object>( [&]( peer_stats_object& obj ) {
-               obj.voter = voter;
-               obj.peer  = peer;
-         });
-      }
-      return *itr;
-   }
-
-   void update_indirect_vote( account_id_type a, account_id_type b, int positive )const
-   {
-      if( a == b )
-         return;
-      const auto& ab = get_or_create_peer_stats( a, b );
-      const auto& ba = get_or_create_peer_stats( b, a );
-      _db.modify( ab, [&]( peer_stats_object& o )
-      {
-         o.indirect_positive_votes += positive;
-         o.indirect_votes++;
-         o.update_rank();
-      });
-      _db.modify( ba, [&]( peer_stats_object& o )
-      {
-         o.indirect_positive_votes += positive;
-         o.indirect_votes++;
-         o.update_rank();
-      });
-   }
-
-   void update_peer_stats( const account_object& voter, const account_object& author, const comment_object& c, int vote )const
-   {
-      if( voter.id == author.id ) return; /// ignore votes for yourself
-      if( c.parent_author.size() ) return; /// only count top level posts
-
-      const auto& stat = get_or_create_peer_stats( voter.id, author.id );
-      _db.modify( stat, [&]( peer_stats_object& obj )
-      {
-         obj.direct_votes++;
-         obj.direct_positive_votes += vote > 0;
-         obj.update_rank();
-      });
-
-      const auto& voteidx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
-      auto itr = voteidx.lower_bound( boost::make_tuple( comment_id_type(c.id), account_id_type() ) );
-      while( itr != voteidx.end() && itr->comment == c.id )
-      {
-         update_indirect_vote( voter.id, itr->voter, (itr->vote_percent > 0)  == (vote > 0) );
-         ++itr;
-      }
-   }
-
    void operator()( const comment_operation& op )const
    {
-      update_tags( _db.get_comment( op.author, op.permlink ), true );
+      update_tags( _db.get_comment( op.author, op.permlink ), op.json_metadata.size() );
    }
 
    void operator()( const transfer_operation& op )const
    {
-      if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
+      if( op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;
@@ -457,12 +402,6 @@ struct operation_visitor
    void operator()( const vote_operation& op )const
    {
       update_tags( _db.get_comment( op.author, op.permlink ) );
-      /*
-      update_peer_stats( _db.get_account(op.voter),
-                         _db.get_account(op.author),
-                         _db.get_comment(op.author, op.permlink),
-                         op.weight );
-                         */
    }
 
    void operator()( const comment_reward_operation& op )const
@@ -543,18 +482,21 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
 
    add_plugin_index< tag_index               >( my->_db );
    add_plugin_index< tag_stats_index         >( my->_db );
-   add_plugin_index< peer_stats_index        >( my->_db );
    add_plugin_index< author_tag_stats_index  >( my->_db );
 
 }
 
 
 void tags_plugin::plugin_startup() {}
-void tags_plugin::plugin_shutdown() {}
+void tags_plugin::plugin_shutdown()
+{
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
+}
 
-} } } /// steemit::plugins::tags
+} } } /// steem::plugins::tags
