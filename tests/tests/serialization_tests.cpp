@@ -258,6 +258,9 @@ BOOST_AUTO_TEST_CASE( asset_raw_test )
 {
    try
    {
+      BOOST_CHECK( SBD_SYMBOL   < STEEM_SYMBOL );
+      BOOST_CHECK( STEEM_SYMBOL < VESTS_SYMBOL );
+
       // get a bunch of random bits
       fc::sha256 h = fc::sha256::hash("");
 
