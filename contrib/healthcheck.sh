@@ -12,7 +12,7 @@ fi
 
 BLOCKCHAIN_TIME=$(
     curl --silent --max-time 3 \
-        --data '{"id":39,"method":"get_dynamic_global_properties","params":[]}' \
+        --data '{"jsonrpc":"2.0","id":39,"method":"database_api.get_dynamic_global_properties"}' \
         localhost:8090 | jq -r .result.time
 )
 
