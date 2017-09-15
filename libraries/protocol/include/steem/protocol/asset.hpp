@@ -14,14 +14,7 @@ namespace steem { namespace protocol {
       share_type        amount;
       asset_symbol_type symbol;
 
-      double to_real()const {
-         return double(amount.value) / precision();
-      }
-
       uint8_t     decimals()const;
-      std::string symbol_name()const;
-      int64_t     precision()const;
-      void        set_decimals(uint8_t d);
 
       static asset from_string( const string& from );
       string       to_string()const;
@@ -78,12 +71,17 @@ namespace steem { namespace protocol {
          FC_ASSERT( a.symbol == b.symbol );
          return asset( a.amount + b.amount, a.symbol );
       }
-      
+
       friend asset operator * ( const asset& a, const asset& b )
       {
          FC_ASSERT( a.symbol == b.symbol );
          return asset( a.amount * b.amount, a.symbol );
       }
+
+      private:
+         std::string symbol_name()const;
+         void        set_decimals(uint8_t d);
+         int64_t     precision()const;
    };
 
    /** Represents quotation of the relative value of asset against another asset.
@@ -98,15 +96,15 @@ namespace steem { namespace protocol {
    */
    struct price
    {
-      /** Even non-single argument, lets make it an explicit one to avoid implicit calls for 
-          initialization lists. 
+      /** Even non-single argument, lets make it an explicit one to avoid implicit calls for
+          initialization lists.
 
           \param base  - represents a value of the price object to be expressed relatively to quote
                          asset. Cannot have amount == 0 if you want to build valid price.
           \param quote - represents an relative asset. Cannot have amount == 0, otherwise
                          asertion fail.
 
-        Both base and quote shall have different symbol defined, since it also results in 
+        Both base and quote shall have different symbol defined, since it also results in
         creation of invalid price object. \see validate() method.
       */
       explicit price(const asset& base, const asset& quote) : base(base),quote(quote)
@@ -128,10 +126,9 @@ namespace steem { namespace protocol {
       price max()const { return price::max( base.symbol, quote.symbol ); }
       price min()const { return price::min( base.symbol, quote.symbol ); }
 
-      double to_real()const { return base.to_real() / quote.to_real(); }
-
       bool is_null()const;
       void validate()const;
+
    }; /// price
 
    price operator / ( const asset& base, const asset& quote );
@@ -146,7 +143,6 @@ namespace steem { namespace protocol {
    bool  operator == ( const price& a, const price& b );
    bool  operator != ( const price& a, const price& b );
    asset operator *  ( const asset& a, const price& b );
-
 
 } } // steem::protocol
 

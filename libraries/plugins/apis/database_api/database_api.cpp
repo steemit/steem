@@ -1663,7 +1663,8 @@ DEFINE_API( database_api_impl, get_order_book )
       auto itr = sell_itr;
       order cur;
       cur.order_price = itr->sell_price;
-      cur.real_price  = (cur.order_price).to_real();
+      cur.real_price  = 0.0;
+      // cur.real_price  = (cur.order_price).to_real();
       cur.sbd = itr->for_sale;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;
@@ -1675,7 +1676,8 @@ DEFINE_API( database_api_impl, get_order_book )
       auto itr = buy_itr;
       order cur;
       cur.order_price = itr->sell_price;
-      cur.real_price  = (~cur.order_price).to_real();
+      cur.real_price = 0.0;
+      // cur.real_price  = (~cur.order_price).to_real();
       cur.steem   = itr->for_sale;
       cur.sbd     = ( asset( itr->for_sale, STEEM_SYMBOL ) * cur.order_price ).amount;
       cur.created = itr->created;

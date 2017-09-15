@@ -159,14 +159,14 @@ namespace steem { namespace protocol {
 
       asset operator * ( const asset& a, const price& b )
       {
-         if( a.symbol_name() == b.base.symbol_name() )
+         if( a.symbol == b.base.symbol )
          {
             FC_ASSERT( b.base.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.quote.amount.value)/b.base.amount.value;
             FC_ASSERT( result.hi == 0 );
             return asset( result.to_uint64(), b.quote.symbol );
          }
-         else if( a.symbol_name() == b.quote.symbol_name() )
+         else if( a.symbol == b.quote.symbol )
          {
             FC_ASSERT( b.quote.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.base.amount.value)/b.quote.amount.value;
@@ -178,7 +178,7 @@ namespace steem { namespace protocol {
 
       price operator / ( const asset& base, const asset& quote )
       { try {
-         FC_ASSERT( base.symbol_name() != quote.symbol_name() );
+         FC_ASSERT( base.symbol != quote.symbol );
          return price{ base, quote };
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
@@ -191,7 +191,7 @@ namespace steem { namespace protocol {
       { try {
          FC_ASSERT( base.amount > share_type(0) );
          FC_ASSERT( quote.amount > share_type(0) );
-         FC_ASSERT( base.symbol_name() != quote.symbol_name() );
+         FC_ASSERT( base.symbol != quote.symbol );
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
 
