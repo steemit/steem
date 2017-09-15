@@ -1,5 +1,8 @@
 #pragma once
+#include <steem/protocol/types_fwd.hpp>
 #include <steem/protocol/config.hpp>
+
+#include <steem/protocol/asset_symbol.hpp>
 #include <steem/protocol/fixed_string.hpp>
 
 #include <fc/container/flat_fwd.hpp>

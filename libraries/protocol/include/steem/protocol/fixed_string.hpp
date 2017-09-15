@@ -5,6 +5,8 @@
 
 #include <boost/endian/conversion.hpp>
 
+#include <steem/protocol/types_fwd.hpp>
+
 // These overloads need to be defined before the implementation in fixed_string
 namespace fc
 {
@@ -61,7 +63,7 @@ namespace steem { namespace protocol {
  *
  * The string will serialize the same way as std::string for variant and raw formats.
  */
-template< typename Storage = fc::uint128 >
+template< typename Storage >
 class fixed_string
 {
    public:
