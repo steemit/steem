@@ -65,6 +65,10 @@ void smt_refund_evaluator::do_apply( const smt_refund_operation& o )
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+
+   const auto* smt = _db.find< smt_token_object, by_control_account >( o.control_account );
+   FC_ASSERT( smt != nullptr, "SMT ${smt} not found", ("smt", o.control_account ) );
+   // ^ TODO: Replace SMT name with appropriate 'external' id in the assertion.
 }
 
 void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameters_operation& o )
