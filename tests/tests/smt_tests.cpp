@@ -42,7 +42,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_validate )
       ++op.fee.amount;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.fee = ASSET( "1.000 WRONG" );
+      op.fee = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
    }
    FC_LOG_AND_RETHROW()
