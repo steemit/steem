@@ -104,11 +104,11 @@ void smt_setup_inflation_evaluator::do_apply( const smt_setup_inflation_operatio
 void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameters_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   auto& smt_token_by_account = _db.get_index<smt_token_index>().indices().get<by_control_account>();
+   auto& smt_token_by_account = _db.get_index<smt_token_index, by_control_account>();
    auto it = smt_token_by_account.find(o.control_account);
    FC_ASSERT( it != smt_token_by_account.end(), "SMT ${ac} not elevated yet.", ("ac", o.control_account));
    const smt_token_object& smt_token = *it;
-   FC_ASSERT( smt_token.phase == smt_token_object::smt_phase::account_elevated, "SMT ${ac} setup already completed.", ("ac", o.control_account));
+   FC_ASSERT( smt_token.phase < smt_token_object::smt_phase::setup_completed, "SMT ${ac} setup already completed.", ("ac", o.control_account));
    
    _db.modify( smt_token, [&]( smt_token_object& token )
    {
