@@ -51,7 +51,7 @@ class asset_symbol_type
       static asset_symbol_type from_string( const char* buf, uint8_t decimal_places );
       static asset_symbol_type from_asset_num( uint32_t asset_num )
       {   asset_symbol_type result;   result.asset_num = asset_num;   return result;   }
-      void to_string( const char* buf )const;
+      void to_string( char* buf )const;
       std::string to_string()const
       {
          char buf[ STEEM_ASSET_SYMBOL_MAX_LENGTH+1 ];

@@ -14,7 +14,7 @@ index : field
 
 namespace steem { namespace protocol {
 
-void asset_symbol_type::to_string( const char* buf )const
+void asset_symbol_type::to_string( char* buf )const
 {
    uint64_t* p = (uint64_t*) buf;
    static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 7, "This code will overflow a short buffer" );
