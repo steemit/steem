@@ -1,7 +1,7 @@
-#include <steemit/plugins/database_api/database_api.hpp>
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
 
-namespace steemit { namespace plugins { namespace database_api {
+namespace steem { namespace plugins { namespace database_api {
 
 database_api_plugin::database_api_plugin() {}
 database_api_plugin::~database_api_plugin() {}
@@ -19,4 +19,4 @@ void database_api_plugin::plugin_startup() {}
 
 void database_api_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::database_api
+} } } // steem::plugins::database_api

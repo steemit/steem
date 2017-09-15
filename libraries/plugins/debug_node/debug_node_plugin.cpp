@@ -1,6 +1,6 @@
-#include <steemit/plugins/debug_node/debug_node_plugin.hpp>
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
-#include <steemit/chain/witness_objects.hpp>
+#include <steem/chain/witness_objects.hpp>
 
 #include <fc/io/buffered_iostream.hpp>
 #include <fc/io/fstream.hpp>
@@ -10,12 +10,12 @@
 #include <fc/thread/mutex.hpp>
 #include <fc/thread/scoped_lock.hpp>
 
-#include <steemit/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
 #include <sstream>
 #include <string>
 
-namespace steemit { namespace plugins { namespace debug_node {
+namespace steem { namespace plugins { namespace debug_node {
 
 namespace detail {
 class debug_node_plugin_impl
@@ -42,16 +42,24 @@ void debug_node_plugin::set_program_options(
    options_description& cfg )
 {
    cfg.add_options()
-      ("edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
+      ("debug-node-edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
+      ("edit-script", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.");
 }
 
 void debug_node_plugin::plugin_initialize( const variables_map& options )
 {
    my = std::make_shared< detail::debug_node_plugin_impl >();
 
+   if( options.count( "debug-node-edit-script" ) > 0 )
+   {
+      _edit_scripts = options.at( "debug-node-edit-script" ).as< std::vector< std::string > >();
+   }
+
    if( options.count("edit-script") > 0 )
    {
-      _edit_scripts = options.at("edit-script").as< std::vector< std::string > >();
+      wlog( "edit-scripts is deprecated in favor of debug-node-edit-script" );
+      auto scripts = options.at( "edit-script" ).as< std::vector< std::string > >();
+      _edit_scripts.insert( _edit_scripts.end(), scripts.begin(), scripts.end() );
    }
 
    // connect needed signals
@@ -174,7 +182,7 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    chain::public_key_type debug_public_key;
    if( debug_key != "" )
    {
-      debug_private_key = steemit::utilities::wif_to_key( debug_key );
+      debug_private_key = steem::utilities::wif_to_key( debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
@@ -318,4 +326,4 @@ void debug_node_plugin::plugin_shutdown()
    return;
 }
 
-} } } // steemit::plugins::debug_node
+} } } // steem::plugins::debug_node

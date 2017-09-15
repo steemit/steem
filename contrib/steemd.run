@@ -88,52 +88,7 @@ sleep 1
 mv /etc/nginx/nginx.conf /etc/nginx/nginx.original.conf
 cp /etc/nginx/steemd.nginx.conf /etc/nginx/nginx.conf
 
-#start multiple read-only instances based on the number of cores
-#attach to the local interface since a proxy will be used to loadbalance
-if [[ "$USE_MULTICORE_READONLY" ]]; then
-    exec chpst -usteemd \
-        $STEEMD \
-            --rpc-endpoint=127.0.0.1:8091 \
-            --p2p-endpoint=0.0.0.0:2001 \
-            --data-dir=$HOME \
-            $ARGS \
-            $STEEMD_EXTRA_OPTS \
-            2>&1 &
-    # sleep for a moment to allow the writer node to be ready to accept connections from the readers
-    sleep 30
-    PORT_NUM=8092
-    cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-    CORES=$(nproc)
-    PROCESSES=$((CORES * 4))
-    for (( i=2; i<=$PROCESSES; i++ ))
-      do
-        echo server 127.0.0.1:$PORT_NUM\; >> /etc/nginx/healthcheck.conf
-        ((PORT_NUM++))
-    done
-    echo } >> /etc/nginx/healthcheck.conf
-    PORT_NUM=8092
-    for (( i=2; i<=$PROCESSES; i++ ))
-      do
-        exec chpst -usteemd \
-        $STEEMD \
-          --webserver-ws-endpoint=127.0.0.1:$PORT_NUM \
-          --webserver-http-endpoint=127.0.0.1:$PORT_NUM \
-          --data-dir=$HOME \
-          --read-forward-rpc=127.0.0.1:8091 \
-          --read-only \
-          2>&1 &
-          ((PORT_NUM++))
-          sleep 1
-    done
-    # start nginx now that the config file is complete with all endpoints
-    # all of the read-only processes will connect to the write node onport 8091
-    # nginx will balance all incoming traffic on port 8090
-    rm /etc/nginx/sites-enabled/default
-    cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
-    /etc/init.d/fcgiwrap restart
-    echo daemon off\; >> /etc/nginx/nginx.conf
-    service nginx restart
-elif [[ "$USE_NGINX_FRONTEND" ]]; then
+if [[ "$USE_NGINX_FRONTEND" ]]; then
     cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
     echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
     echo } >> /etc/nginx/healthcheck.conf

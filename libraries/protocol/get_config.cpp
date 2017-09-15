@@ -1,10 +1,10 @@
-#include <steemit/protocol/get_config.hpp>
-#include <steemit/protocol/config.hpp>
-#include <steemit/protocol/asset.hpp>
-#include <steemit/protocol/types.hpp>
-#include <steemit/protocol/version.hpp>
+#include <steem/protocol/get_config.hpp>
+#include <steem/protocol/config.hpp>
+#include <steem/protocol/asset.hpp>
+#include <steem/protocol/types.hpp>
+#include <steem/protocol/version.hpp>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 fc::variant_object get_config()
 {
@@ -14,6 +14,11 @@ fc::variant_object get_config()
    result[ "IS_TEST_NET" ] = true;
 #else
    result[ "IS_TEST_NET" ] = false;
+#endif
+#ifdef STEEM_ENABLE_SMT
+   result[ "STEEM_ENABLE_SMT" ] = true;
+#else
+   result[ "STEEM_ENABLE_SMT" ] = false;
 #endif
 
    result["SBD_SYMBOL"] = SBD_SYMBOL;
@@ -179,4 +184,4 @@ fc::variant_object get_config()
    return result;
 }
 
-} } // steemit::protocol
+} } // steem::protocol

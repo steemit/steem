@@ -24,23 +24,23 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
+#include <steem/protocol/exceptions.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/history_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/history_object.hpp>
 
-#include <steemit/plugins/account_history/account_history_plugin.hpp>
+#include <steem/plugins/account_history/account_history_plugin.hpp>
 
-#include <steemit/utilities/tempdir.hpp>
+#include <steem/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem;
+using namespace steem::chain;
+using namespace steem::protocol;
 
 #define TEST_SHARED_MEM_SIZE (1024 * 1024 * 8)
 
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 {
    try {
       fc::time_point_sec now( STEEM_TESTING_GENESIS_TIMESTAMP );
-      fc::temp_directory data_dir( steemit::utilities::temp_directory_path() );
+      fc::temp_directory data_dir( steem::utilities::temp_directory_path() );
       signed_block b;
 
       // TODO:  Don't generate this here
@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
       {
          database db;
          db._log_hardforks = false;
-         db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+         db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
          b = db.generate_block(db.get_slot_time(1), db.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing);
 
          // TODO:  Change this test when we correct #406
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
       {
          database db;
          db._log_hardforks = false;
-         db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+         db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num() );
          b = cutoff_block;
          for( uint32_t i = 0; i < 200; ++i )
@@ -108,11 +108,11 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
 BOOST_AUTO_TEST_CASE( undo_block )
 {
    try {
-      fc::temp_directory data_dir( steemit::utilities::temp_directory_path() );
+      fc::temp_directory data_dir( steem::utilities::temp_directory_path() );
       {
          database db;
          db._log_hardforks = false;
-         db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+         db.open( data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
          fc::time_point_sec now( STEEM_TESTING_GENESIS_TIMESTAMP );
          std::vector< time_point_sec > time_stack;
 
@@ -157,17 +157,17 @@ BOOST_AUTO_TEST_CASE( undo_block )
 BOOST_AUTO_TEST_CASE( fork_blocks )
 {
    try {
-      fc::temp_directory data_dir1( steemit::utilities::temp_directory_path() );
-      fc::temp_directory data_dir2( steemit::utilities::temp_directory_path() );
+      fc::temp_directory data_dir1( steem::utilities::temp_directory_path() );
+      fc::temp_directory data_dir2( steem::utilities::temp_directory_path() );
 
       //TODO This test needs 6-7 ish witnesses prior to fork
 
       database db1;
       db1._log_hardforks = false;
-      db1.open( data_dir1.path(), data_dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db1.open( data_dir1.path(), data_dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
       database db2;
       db2._log_hardforks = false;
-      db2.open( data_dir2.path(), data_dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db2.open( data_dir2.path(), data_dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       for( uint32_t i = 0; i < 10; ++i )
@@ -224,14 +224,14 @@ BOOST_AUTO_TEST_CASE( fork_blocks )
 BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 {
    try {
-      fc::temp_directory dir1( steemit::utilities::temp_directory_path() ),
-                         dir2( steemit::utilities::temp_directory_path() );
+      fc::temp_directory dir1( steem::utilities::temp_directory_path() ),
+                         dir2( steem::utilities::temp_directory_path() );
       database db1,
                db2;
       db1._log_hardforks = false;
-      db1.open( dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db1.open( dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
       db2._log_hardforks = false;
-      db2.open( dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db2.open( dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       public_key_type init_account_pub_key  = init_account_priv_key.get_public_key();
@@ -283,14 +283,14 @@ BOOST_AUTO_TEST_CASE( switch_forks_undo_create )
 BOOST_AUTO_TEST_CASE( duplicate_transactions )
 {
    try {
-      fc::temp_directory dir1( steemit::utilities::temp_directory_path() ),
-                         dir2( steemit::utilities::temp_directory_path() );
+      fc::temp_directory dir1( steem::utilities::temp_directory_path() ),
+                         dir2( steem::utilities::temp_directory_path() );
       database db1,
                db2;
       db1._log_hardforks = false;
-      db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
       db2._log_hardforks = false;
-      db2.open(dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db2.open(dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
       BOOST_CHECK( db1.get_chain_id() == db2.get_chain_id() );
 
       auto skip_sigs = database::skip_transaction_signatures | database::skip_authority_check;
@@ -337,10 +337,10 @@ BOOST_AUTO_TEST_CASE( duplicate_transactions )
 BOOST_AUTO_TEST_CASE( tapos )
 {
    try {
-      fc::temp_directory dir1( steemit::utilities::temp_directory_path() );
+      fc::temp_directory dir1( steem::utilities::temp_directory_path() );
       database db1;
       db1._log_hardforks = false;
-      db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
 
       auto init_account_priv_key  = fc::ecc::private_key::regenerate(fc::sha256::hash(string("init_key")) );
       public_key_type init_account_pub_key  = init_account_priv_key.get_public_key();
@@ -715,16 +715,16 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
          if( arg == "--show-test-names" )
             std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
       }
-      appbase::app().register_plugin< steemit::plugins::account_history::account_history_plugin >();
-      db_plugin = &appbase::app().register_plugin< steemit::plugins::debug_node::debug_node_plugin >();
+      appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
+      db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
       init_account_pub_key = init_account_priv_key.get_public_key();
 
       appbase::app().initialize<
-         steemit::plugins::account_history::account_history_plugin,
-         steemit::plugins::debug_node::debug_node_plugin
+         steem::plugins::account_history::account_history_plugin,
+         steem::plugins::debug_node::debug_node_plugin
       >( argc, argv );
 
-      db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
 

@@ -1,22 +1,22 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
-#include <steemit/protocol/steem_operations.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
+#include <steem/protocol/steem_operations.hpp>
 
-#include <steemit/plugins/market_history/market_history_plugin.hpp>
+#include <steem/plugins/market_history/market_history_plugin.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem::chain;
+using namespace steem::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( market_history, database_fixture )
 
 BOOST_AUTO_TEST_CASE( mh_test )
 {
-   using namespace steemit::plugins::market_history;
+   using namespace steem::plugins::market_history;
 
    try
    {
@@ -32,16 +32,16 @@ BOOST_AUTO_TEST_CASE( mh_test )
       }
 
       appbase::app().register_plugin< market_history_plugin >();
-      db_plugin = &appbase::app().register_plugin< steemit::plugins::debug_node::debug_node_plugin >();
+      db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
       init_account_pub_key = init_account_priv_key.get_public_key();
 
       db_plugin->logging = false;
       appbase::app().initialize<
-         steemit::plugins::market_history::market_history_plugin,
-         steemit::plugins::debug_node::debug_node_plugin
+         steem::plugins::market_history::market_history_plugin,
+         steem::plugins::debug_node::debug_node_plugin
       >( argc, argv );
 
-      db = &appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
       open_database();

@@ -1,9 +1,9 @@
-#include <steemit/plugins/p2p/p2p_plugin.hpp>
+#include <steem/plugins/p2p/p2p_plugin.hpp>
 
 #include <graphene/net/node.hpp>
 #include <graphene/net/exceptions.hpp>
 
-#include <steemit/chain/database_exceptions.hpp>
+#include <steem/chain/database_exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/network/resolve.hpp>
@@ -17,7 +17,7 @@
 using std::string;
 using std::vector;
 
-namespace steemit { namespace plugins { namespace p2p {
+namespace steem { namespace plugins { namespace p2p {
 
 using appbase::app;
 
@@ -27,10 +27,10 @@ using graphene::net::message;
 using graphene::net::block_message;
 using graphene::net::trx_message;
 
-using steemit::protocol::block_header;
-using steemit::protocol::signed_block_header;
-using steemit::protocol::signed_block;
-using steemit::protocol::block_id_type;
+using steem::protocol::block_header;
+using steem::protocol::signed_block_header;
+using steem::protocol::signed_block;
+using steem::protocol::block_id_type;
 
 namespace detail {
 
@@ -110,22 +110,26 @@ public:
 ////////////////////////////// Begin node_delegate Implementation //////////////////////////////
 bool p2p_plugin_impl::has_item( const graphene::net::item_id& id )
 {
-   try
+   return chain.db().with_read_lock( [&]()
    {
-      if( id.item_type == graphene::net::block_message_type )
-         return chain.db().is_known_block(id.item_hash);
-      else
-         return chain.db().is_known_transaction(id.item_hash);
-   }
-   FC_CAPTURE_LOG_AND_RETHROW( (id) )
+      try
+      {
+         if( id.item_type == graphene::net::block_message_type )
+            return chain.db().is_known_block(id.item_hash);
+         else
+            return chain.db().is_known_transaction(id.item_hash);
+      }
+      FC_CAPTURE_LOG_AND_RETHROW( (id) )
+   });
 }
 
 bool p2p_plugin_impl::handle_block( const graphene::net::block_message& blk_msg, bool sync_mode, std::vector<fc::uint160_t>& )
 { try {
    uint32_t head_block_num;
-
-   head_block_num = chain.db().head_block_num();
-
+   chain.db().with_read_lock( [&]()
+   {
+      head_block_num = chain.db().head_block_num();
+   });
    if (sync_mode)
       fc_ilog(fc::logger::get("sync"),
             "chain pushing sync block #${block_num} ${block_hash}, head is ${head}",
@@ -193,53 +197,56 @@ void p2p_plugin_impl::handle_message( const graphene::net::message& message_to_p
 
 std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_block_ids( const std::vector< graphene::net::item_hash_t >& blockchain_synopsis, uint32_t& remaining_item_count, uint32_t limit )
 { try {
-   vector<block_id_type> result;
-   remaining_item_count = 0;
-   if( chain.db().head_block_num() == 0 )
-      return result;
-
-   result.reserve( limit );
-   block_id_type last_known_block_id;
-
-   if( blockchain_synopsis.empty()
-         || ( blockchain_synopsis.size() == 1 && blockchain_synopsis[0] == block_id_type() ) )
+   return chain.db().with_read_lock( [&]()
    {
-      // peer has sent us an empty synopsis meaning they have no blocks.
-      // A bug in old versions would cause them to send a synopsis containing block 000000000
-      // when they had an empty blockchain, so pretend they sent the right thing here.
-      // do nothing, leave last_known_block_id set to zero
-   }
-   else
-   {
-      bool found_a_block_in_synopsis = false;
+      vector<block_id_type> result;
+      remaining_item_count = 0;
+      if( chain.db().head_block_num() == 0 )
+         return result;
 
-      for( const item_hash_t& block_id_in_synopsis : boost::adaptors::reverse(blockchain_synopsis) )
+      result.reserve( limit );
+      block_id_type last_known_block_id;
+
+      if( blockchain_synopsis.empty()
+            || ( blockchain_synopsis.size() == 1 && blockchain_synopsis[0] == block_id_type() ) )
       {
-         if (block_id_in_synopsis == block_id_type() ||
-            (chain.db().is_known_block(block_id_in_synopsis) && is_included_block(block_id_in_synopsis)))
+         // peer has sent us an empty synopsis meaning they have no blocks.
+         // A bug in old versions would cause them to send a synopsis containing block 000000000
+         // when they had an empty blockchain, so pretend they sent the right thing here.
+         // do nothing, leave last_known_block_id set to zero
+      }
+      else
+      {
+         bool found_a_block_in_synopsis = false;
+
+         for( const item_hash_t& block_id_in_synopsis : boost::adaptors::reverse(blockchain_synopsis) )
          {
-            last_known_block_id = block_id_in_synopsis;
-            found_a_block_in_synopsis = true;
-            break;
+            if (block_id_in_synopsis == block_id_type() ||
+               (chain.db().is_known_block(block_id_in_synopsis) && is_included_block(block_id_in_synopsis)))
+            {
+               last_known_block_id = block_id_in_synopsis;
+               found_a_block_in_synopsis = true;
+               break;
+            }
          }
+
+         if (!found_a_block_in_synopsis)
+            FC_THROW_EXCEPTION(graphene::net::peer_is_on_an_unreachable_fork, "Unable to provide a list of blocks starting at any of the blocks in peer's synopsis");
       }
 
-      if (!found_a_block_in_synopsis)
-         FC_THROW_EXCEPTION(graphene::net::peer_is_on_an_unreachable_fork, "Unable to provide a list of blocks starting at any of the blocks in peer's synopsis");
-   }
+      for( uint32_t num = block_header::num_from_id(last_known_block_id);
+            num <= chain.db().head_block_num() && result.size() < limit;
+            ++num )
+      {
+         if( num > 0 )
+            result.push_back(chain.db().get_block_id_for_num(num));
+      }
 
-   for( uint32_t num = block_header::num_from_id(last_known_block_id);
-         num <= chain.db().head_block_num() && result.size() < limit;
-         ++num )
-   {
-      if( num > 0 )
-         result.push_back(chain.db().get_block_id_for_num(num));
-   }
+      if( !result.empty() && block_header::num_from_id(result.back()) < chain.db().head_block_num() )
+         remaining_item_count = chain.db().head_block_num() - block_header::num_from_id(result.back());
 
-   if( !result.empty() && block_header::num_from_id(result.back()) < chain.db().head_block_num() )
-      remaining_item_count = chain.db().head_block_num() - block_header::num_from_id(result.back());
-
-   return result;
+      return result;
+   });
 } FC_CAPTURE_AND_RETHROW( (blockchain_synopsis)(remaining_item_count)(limit) ) }
 
 graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& id )
@@ -257,8 +264,10 @@ graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& 
          return block_message(std::move(*opt_block));
       });
    }
-
-   return trx_message( chain.db().get_recent_transaction( id.item_hash ) );
+   return chain.db().with_read_lock( [&]()
+   {
+      return trx_message( chain.db().get_recent_transaction( id.item_hash ) );
+   });
 } FC_CAPTURE_AND_RETHROW( (id) ) }
 
 chain::chain_id_type p2p_plugin_impl::get_chain_id() const
@@ -465,12 +474,13 @@ p2p_plugin::~p2p_plugin() {}
 void p2p_plugin::set_program_options( bpo::options_description& cli, bpo::options_description& cfg) {
    cfg.add_options()
       ("p2p-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:9876"), "The local IP address and port to listen for incoming connections.")
-      ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
+      ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint.")
       ("seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with. Deprecated in favor of p2p-seed-node.")
       ("p2p-seed-node", bpo::value<vector<string>>()->composing(), "The IP address and port of a remote peer to sync with.")
       ;
    cli.add_options()
-      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions" )
+      ("force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions. Deprecated in favor of p2p-force-validate" )
+      ("p2p-force-validate", bpo::bool_switch()->default_value(false), "Force validation of all transactions." )
       ;
 }
 
@@ -517,7 +527,13 @@ void p2p_plugin::plugin_initialize(const boost::program_options::variables_map& 
       }
    }
 
-   my->force_validate = options.at( "force-validate" ).as< bool >();
+   my->force_validate = options.at( "p2p-force-validate" ).as< bool >();
+
+   if( !my->force_validate && options.at( "force-validate" ).as< bool >() )
+   {
+      wlog( "Option force-validate is deprecated in favor of p2p-force-validate" );
+      my->force_validate = true;
+   }
 }
 
 void p2p_plugin::plugin_startup()
@@ -552,7 +568,12 @@ void p2p_plugin::plugin_startup()
 
       my->node->listen_to_p2p_network();
       my->node->connect_to_p2p_network();
-      my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, my->chain.db().head_block_id()), std::vector<uint32_t>());
+      block_id_type block_id;
+      my->chain.db().with_read_lock( [&]()
+      {
+         block_id = my->chain.db().head_block_id();
+      });
+      my->node->sync_from(graphene::net::item_id(graphene::net::block_message_type, block_id), std::vector<uint32_t>());
       ilog("P2P node listening at ${ep}", ("ep", my->node->get_actual_listening_endpoint()));
    }).wait();
    ilog( "P2P Plugin started" );
@@ -565,13 +586,13 @@ void p2p_plugin::plugin_shutdown() {
    my->node.reset();
 }
 
-void p2p_plugin::broadcast_block( const steemit::protocol::signed_block& block )
+void p2p_plugin::broadcast_block( const steem::protocol::signed_block& block )
 {
    ulog("Broadcasting block #${n}", ("n", block.block_num()));
    my->node->broadcast( graphene::net::block_message( block ) );
 }
 
-void p2p_plugin::broadcast_transaction( const steemit::protocol::signed_transaction& tx )
+void p2p_plugin::broadcast_transaction( const steem::protocol::signed_transaction& tx )
 {
    ulog("Broadcasting tx #${n}", ("id", tx.id()));
    my->node->broadcast( graphene::net::trx_message( tx ) );
@@ -582,4 +603,4 @@ void p2p_plugin::set_block_production( bool producing_blocks )
    my->block_producer = producing_blocks;
 }
 
-} } } // namespace steemit::plugins::p2p
+} } } // namespace steem::plugins::p2p

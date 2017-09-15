@@ -1,11 +1,11 @@
-#include <steemit/chain/steem_evaluator.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/custom_operation_interpreter.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/witness_objects.hpp>
-#include <steemit/chain/block_summary_object.hpp>
+#include <steem/chain/steem_evaluator.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/custom_operation_interpreter.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/witness_objects.hpp>
+#include <steem/chain/block_summary_object.hpp>
 
-#include <steemit/chain/util/reward.hpp>
+#include <steem/chain/util/reward.hpp>
 
 #ifndef IS_LOW_MEM
 #include <diff_match_patch.h>
@@ -30,7 +30,7 @@ std::string wstring_to_utf8(const std::wstring& str)
 
 #include <limits>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
    using fc::uint128_t;
 
 inline void validate_permlink_0_1( const string& permlink )
@@ -1751,16 +1751,16 @@ void convert_evaluator::do_apply( const convert_operation& o )
   const auto& fhistory = _db.get_feed_history();
   FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot convert SBD because there is no price feed." );
 
-  auto steemit_conversion_delay = STEEM_CONVERSION_DELAY_PRE_HF_16;
+  auto steem_conversion_delay = STEEM_CONVERSION_DELAY_PRE_HF_16;
   if( _db.has_hardfork( STEEM_HARDFORK_0_16__551) )
-     steemit_conversion_delay = STEEM_CONVERSION_DELAY;
+     steem_conversion_delay = STEEM_CONVERSION_DELAY;
 
   _db.create<convert_request_object>( [&]( convert_request_object& obj )
   {
       obj.owner           = o.owner;
       obj.requestid       = o.requestid;
       obj.amount          = o.amount;
-      obj.conversion_date = _db.head_block_time() + steemit_conversion_delay;
+      obj.conversion_date = _db.head_block_time() + steem_conversion_delay;
   });
 
 }
@@ -2250,4 +2250,4 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
    }
 }
 
-} } // steemit::chain
+} } // steem::chain

@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <steemit/protocol/version.hpp>
+#include <steem/protocol/version.hpp>
 #include <set>
 
 #ifdef IS_TEST_NET

@@ -1,21 +1,21 @@
-#include <steemit/plugins/tags_api/tags_api_plugin.hpp>
-#include <steemit/plugins/tags_api/tags_api.hpp>
-#include <steemit/plugins/tags/tags_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api.hpp>
+#include <steem/plugins/tags_api/tags_api_plugin.hpp>
+#include <steem/plugins/tags_api/tags_api.hpp>
+#include <steem/plugins/tags/tags_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api.hpp>
 
-#include <steemit/chain/steem_object_types.hpp>
-#include <steemit/chain/util/reward.hpp>
-#include <steemit/chain/util/uint256.hpp>
+#include <steem/chain/steem_object_types.hpp>
+#include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/uint256.hpp>
 
-namespace steemit { namespace plugins { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 namespace detail {
 
 class tags_api_impl
 {
    public:
-      tags_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      tags_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API(
          (get_trending_tags)
@@ -63,7 +63,7 @@ class tags_api_impl
       chain::comment_id_type get_parent( const discussion_query& q );
 
       chain::database& _db;
-      std::shared_ptr< steemit::plugins::follow::follow_api > _follow_api;
+      std::shared_ptr< steem::plugins::follow::follow_api > _follow_api;
 };
 
 DEFINE_API( tags_api_impl, get_trending_tags )
@@ -709,29 +709,7 @@ chain::comment_id_type tags_api_impl::get_parent( const discussion_query& query 
 
 tags_api::tags_api(): my( new detail::tags_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_TAGS_API_PLUGIN_NAME,
-      (get_trending_tags)
-      (get_tags_used_by_author)
-      (get_discussion)
-      (get_content_replies)
-      (get_post_discussions_by_payout)
-      (get_comment_discussions_by_payout)
-      (get_discussions_by_trending)
-      (get_discussions_by_created)
-      (get_discussions_by_active)
-      (get_discussions_by_cashout)
-      (get_discussions_by_votes)
-      (get_discussions_by_children)
-      (get_discussions_by_hot)
-      (get_discussions_by_feed)
-      (get_discussions_by_blog)
-      (get_discussions_by_comments)
-      (get_discussions_by_promoted)
-      (get_replies_by_last_update)
-      (get_discussions_by_author_before_date)
-      (get_active_votes)
-   );
+   JSON_RPC_REGISTER_API( STEEM_TAGS_API_PLUGIN_NAME );
 }
 
 tags_api::~tags_api() {}
@@ -903,10 +881,10 @@ void tags_api::set_pending_payout( discussion& d )
 
 void tags_api::api_startup()
 {
-   auto follow_api_plugin = appbase::app().find_plugin< steemit::plugins::follow::follow_api_plugin >();
+   auto follow_api_plugin = appbase::app().find_plugin< steem::plugins::follow::follow_api_plugin >();
 
    if( follow_api_plugin != nullptr )
       my->_follow_api = follow_api_plugin->api;
 }
 
-} } } // steemit::plugins::tags
+} } } // steem::plugins::tags

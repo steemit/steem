@@ -1,16 +1,16 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/protocol/exceptions.hpp>
-#include <steemit/protocol/hardfork.hpp>
+#include <steem/protocol/exceptions.hpp>
+#include <steem/protocol/hardfork.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/steem_objects.hpp>
 
-#include <steemit/chain/util/reward.hpp>
+#include <steem/chain/util/reward.hpp>
 
-#include <steemit/plugins/witness/witness_objects.hpp>
+#include <steem/plugins/witness/witness_objects.hpp>
 
 #include <fc/crypto/digest.hpp>
 
@@ -20,9 +20,9 @@
 #include <iostream>
 #include <stdexcept>
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem;
+using namespace steem::chain;
+using namespace steem::protocol;
 using fc::string;
 
 BOOST_FIXTURE_TEST_SUITE( operation_tests, clean_database_fixture )
@@ -543,7 +543,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
 
       db->modify( db->get_dynamic_global_properties(), [&]( dynamic_global_property_object& o)
       {
-         o.total_reward_shares2 = steemit::chain::util::evaluate_reward_curve( 10 );
+         o.total_reward_shares2 = steem::chain::util::evaluate_reward_curve( 10 );
       });
 
       tx.signatures.clear();

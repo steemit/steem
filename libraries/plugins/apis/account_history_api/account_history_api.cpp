@@ -1,14 +1,14 @@
-#include <steemit/plugins/account_history_api/account_history_api_plugin.hpp>
-#include <steemit/plugins/account_history_api/account_history_api.hpp>
+#include <steem/plugins/account_history_api/account_history_api_plugin.hpp>
+#include <steem/plugins/account_history_api/account_history_api.hpp>
 
-namespace steemit { namespace plugins { namespace account_history {
+namespace steem { namespace plugins { namespace account_history {
 
 namespace detail {
 
 class account_history_api_impl
 {
    public:
-      account_history_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      account_history_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API(
          (get_ops_in_block)
@@ -78,12 +78,7 @@ DEFINE_API( account_history_api_impl, get_account_history )
 
 account_history_api::account_history_api(): my( new detail::account_history_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME,
-      (get_ops_in_block)
-      (get_transaction)
-      (get_account_history)
-   );
+   JSON_RPC_REGISTER_API( STEEM_ACCOUNT_HISTORY_API_PLUGIN_NAME );
 }
 
 account_history_api::~account_history_api() {}
@@ -116,4 +111,4 @@ DEFINE_API( account_history_api, get_account_history )
    });
 }
 
-} } } // steemit::plugins::account_history
+} } } // steem::plugins::account_history

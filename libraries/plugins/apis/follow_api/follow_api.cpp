@@ -1,9 +1,9 @@
-#include <steemit/plugins/follow_api/follow_api_plugin.hpp>
-#include <steemit/plugins/follow_api/follow_api.hpp>
+#include <steem/plugins/follow_api/follow_api_plugin.hpp>
+#include <steem/plugins/follow_api/follow_api.hpp>
 
-#include <steemit/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/follow_objects.hpp>
 
-namespace steemit { namespace plugins { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
 namespace detail {
 
@@ -18,7 +18,7 @@ inline void set_what( vector< follow::follow_type >& what, uint16_t bitmask )
 class follow_api_impl
 {
    public:
-      follow_api_impl() : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+      follow_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
       DECLARE_API(
          (get_followers)
@@ -296,19 +296,7 @@ DEFINE_API( follow_api_impl, get_blog_authors )
 
 follow_api::follow_api(): my( new detail::follow_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_FOLLOW_API_PLUGIN_NAME,
-      (get_followers)
-      (get_following)
-      (get_follow_count)
-      (get_feed_entries)
-      (get_feed)
-      (get_blog_entries)
-      (get_blog)
-      (get_account_reputations)
-      (get_reblogged_by)
-      (get_blog_authors)
-   );
+   JSON_RPC_REGISTER_API( STEEM_FOLLOW_API_PLUGIN_NAME );
 }
 
 follow_api::~follow_api() {}
@@ -393,4 +381,4 @@ DEFINE_API( follow_api, get_blog_authors )
    });
 }
 
-} } } // steemit::plugins::follow
+} } } // steem::plugins::follow

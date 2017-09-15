@@ -1,25 +1,25 @@
-#include <steemit/plugins/smt_test/smt_test_plugin.hpp>
-#include <steemit/plugins/smt_test/smt_test_objects.hpp>
+#include <steem/plugins/smt_test/smt_test_plugin.hpp>
+#include <steem/plugins/smt_test/smt_test_objects.hpp>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>
 
-#include <steemit/protocol/smt_operations.hpp>
+#include <steem/protocol/smt_operations.hpp>
 
-namespace steemit { namespace plugins { namespace smt_test {
+namespace steem { namespace plugins { namespace smt_test {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 class smt_test_plugin_impl
 {
    public:
       smt_test_plugin_impl( smt_test_plugin& _plugin ) :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ),
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
 
       void pre_operation( const operation_notification& op_obj );
@@ -66,6 +66,8 @@ void smt_test_plugin_impl::post_operation( const operation_notification& note )
 {
    note.op.visit( post_operation_visitor( *this ) );
 }
+
+#ifdef STEEM_ENABLE_SMT
 
 void test_alpha()
 {
@@ -240,6 +242,11 @@ void dump_operation_json()
    test_beta();
    test_delta();
 }
+#else
+void dump_operation_json()
+{
+}
+#endif
 
 smt_test_plugin::smt_test_plugin()
 {
@@ -263,7 +270,7 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
    try
    {
       ilog( "Initializing smt_test plugin" );
-      chain::database& db = appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db();
+      chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
       db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
       db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
@@ -277,4 +284,4 @@ void smt_test_plugin::plugin_startup() {}
 
 void smt_test_plugin::plugin_shutdown() {}
 
-} } } // steemit::plugins::smt_test
+} } } // steem::plugins::smt_test

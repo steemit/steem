@@ -1,27 +1,27 @@
-#include <steemit/protocol/steem_operations.hpp>
+#include <steem/protocol/steem_operations.hpp>
 
-#include <steemit/chain/block_summary_object.hpp>
-#include <steemit/chain/compound.hpp>
-#include <steemit/chain/custom_operation_interpreter.hpp>
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/database_exceptions.hpp>
-#include <steemit/chain/db_with.hpp>
-#include <steemit/chain/evaluator_registry.hpp>
-#include <steemit/chain/global_property_object.hpp>
-#include <steemit/chain/history_object.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/smt_objects.hpp>
-#include <steemit/chain/steem_evaluator.hpp>
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/transaction_object.hpp>
-#include <steemit/chain/shared_db_merkle.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/witness_schedule.hpp>
+#include <steem/chain/block_summary_object.hpp>
+#include <steem/chain/compound.hpp>
+#include <steem/chain/custom_operation_interpreter.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/database_exceptions.hpp>
+#include <steem/chain/db_with.hpp>
+#include <steem/chain/evaluator_registry.hpp>
+#include <steem/chain/global_property_object.hpp>
+#include <steem/chain/history_object.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/smt_objects.hpp>
+#include <steem/chain/steem_evaluator.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/transaction_object.hpp>
+#include <steem/chain/shared_db_merkle.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/witness_schedule.hpp>
 
-#include <steemit/chain/util/asset.hpp>
-#include <steemit/chain/util/reward.hpp>
-#include <steemit/chain/util/uint256.hpp>
-#include <steemit/chain/util/reward.hpp>
+#include <steem/chain/util/asset.hpp>
+#include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/uint256.hpp>
+#include <steem/chain/util/reward.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -35,7 +35,7 @@
 #include <fstream>
 #include <functional>
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 //namespace db2 = graphene::db2;
 
@@ -61,11 +61,11 @@ struct db_schema
 
 } }
 
-FC_REFLECT( steemit::chain::object_schema_repr, (space_type)(type) )
-FC_REFLECT( steemit::chain::operation_schema_repr, (id)(type) )
-FC_REFLECT( steemit::chain::db_schema, (types)(object_types)(operation_type)(custom_operation_types) )
+FC_REFLECT( steem::chain::object_schema_repr, (space_type)(type) )
+FC_REFLECT( steem::chain::operation_schema_repr, (id)(type) )
+FC_REFLECT( steem::chain::db_schema, (types)(object_types)(operation_type)(custom_operation_types) )
 
-namespace steemit { namespace chain {
+namespace steem { namespace chain {
 
 using boost::container::flat_set;
 
@@ -96,7 +96,7 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags )
+void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags, bool do_validate_invariants )
 {
    try
    {
@@ -106,35 +106,33 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
       initialize_indexes();
       initialize_evaluators();
 
-      if( chainbase_flags & chainbase::database::read_write )
-      {
-         if( !find< dynamic_global_property_object >() )
-            with_write_lock( [&]()
-            {
-               init_genesis( initial_supply );
-            });
-
-         _block_log.open( data_dir / "block_log" );
-
-         auto log_head = _block_log.head();
-
-         // Rewind all undo state. This should return us to the state at the last irreversible block.
+      if( !find< dynamic_global_property_object >() )
          with_write_lock( [&]()
          {
-            undo_all();
-            FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
-               ("rev", revision())("head_block", head_block_num()) );
-            validate_invariants();
+            init_genesis( initial_supply );
          });
 
-         if( head_block_num() )
-         {
-            auto head_block = _block_log.read_block_by_num( head_block_num() );
-            // This assertion should be caught and a reindex should occur
-            FC_ASSERT( head_block.valid() && head_block->id() == head_block_id(), "Chain state does not match block log. Please reindex blockchain." );
+      _block_log.open( data_dir / "block_log" );
 
-            _fork_db.start_block( *head_block );
-         }
+      auto log_head = _block_log.head();
+
+      // Rewind all undo state. This should return us to the state at the last irreversible block.
+      with_write_lock( [&]()
+      {
+         undo_all();
+         FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
+            ("rev", revision())("head_block", head_block_num()) );
+         if (do_validate_invariants)
+            validate_invariants();
+      });
+
+      if( head_block_num() )
+      {
+         auto head_block = _block_log.read_block_by_num( head_block_num() );
+         // This assertion should be caught and a reindex should occur
+         FC_ASSERT( head_block.valid() && head_block->id() == head_block_id(), "Chain state does not match block log. Please reindex blockchain." );
+
+         _fork_db.start_block( *head_block );
       }
 
       with_read_lock( [&]()
@@ -151,7 +149,7 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
    {
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
-      open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size, chainbase::database::read_write );
+      open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -2220,6 +2218,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
 
+#ifdef STEEM_ENABLE_SMT
    _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
    _my->_evaluator_registry.register_evaluator< smt_cap_reveal_evaluator                 >();
    _my->_evaluator_registry.register_evaluator< smt_refund_evaluator                     >();
@@ -2227,6 +2226,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
    _my->_evaluator_registry.register_evaluator< smt_elevate_account_evaluator            >();
+#endif
 }
 
 
@@ -2275,7 +2275,9 @@ void database::initialize_indexes()
    add_core_index< reward_fund_index                       >(*this);
    add_core_index< vesting_delegation_index                >(*this);
    add_core_index< vesting_delegation_expiration_index     >(*this);
+#ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+#endif
 
    _plugin_index_signal();
 }
@@ -2789,11 +2791,11 @@ try {
       modify( get_feed_history(), [&]( feed_history_object& fho )
       {
          fho.price_history.push_back( median_feed );
-         size_t steemit_feed_history_window = STEEM_FEED_HISTORY_WINDOW_PRE_HF_16;
+         size_t steem_feed_history_window = STEEM_FEED_HISTORY_WINDOW_PRE_HF_16;
          if( has_hardfork( STEEM_HARDFORK_0_16__551) )
-            steemit_feed_history_window = STEEM_FEED_HISTORY_WINDOW;
+            steem_feed_history_window = STEEM_FEED_HISTORY_WINDOW;
 
-         if( fho.price_history.size() > steemit_feed_history_window )
+         if( fho.price_history.size() > steem_feed_history_window )
             fho.price_history.pop_front();
 
          if( fho.price_history.size() )
@@ -4207,4 +4209,4 @@ void database::retally_witness_vote_counts( bool force )
    }
 }
 
-} } //steemit::chain
+} } //steem::chain

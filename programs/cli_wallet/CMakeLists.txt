@@ -10,7 +10,7 @@ if( GPERFTOOLS_FOUND )
 endif()
 
 target_link_libraries( cli_wallet
-                       PRIVATE graphene_net steemit_chain steemit_protocol steemit_utilities steemit_wallet condenser_api_plugin fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                       PRIVATE graphene_net steem_chain steem_protocol steem_utilities steem_wallet condenser_api_plugin fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 if( CLANG_TIDY_EXE )
    set_target_properties(

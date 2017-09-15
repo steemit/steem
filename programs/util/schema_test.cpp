@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/steem_objects.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/steem_objects.hpp>
 
 using namespace graphene::db;
 
@@ -48,8 +48,8 @@ int main( int argc, char** argv, char** envp )
 {
    std::vector< std::shared_ptr< abstract_schema > > schemas;
 
-   schemas.push_back( get_schema_for_type< steemit::chain::account_object >() );
-   schemas.push_back( get_schema_for_type< steemit::chain::comment_object >() );
+   schemas.push_back( get_schema_for_type< steem::chain::account_object >() );
+   schemas.push_back( get_schema_for_type< steem::chain::comment_object >() );
    add_dependent_schemas( schemas );
 
    for( const std::shared_ptr< abstract_schema >& s : schemas )

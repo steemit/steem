@@ -1,7 +1,7 @@
-#include <steemit/plugins/chain_api/chain_api_plugin.hpp>
-#include <steemit/plugins/chain_api/chain_api.hpp>
+#include <steem/plugins/chain_api/chain_api_plugin.hpp>
+#include <steem/plugins/chain_api/chain_api.hpp>
 
-namespace steemit { namespace plugins { namespace chain {
+namespace steem { namespace plugins { namespace chain {
 
 namespace detail {
 
@@ -76,10 +76,7 @@ DEFINE_API( chain_api_impl, push_transaction )
 
 chain_api::chain_api(): my( new detail::chain_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_CHAIN_API_PLUGIN_NAME,
-      (push_block)
-      (push_transaction) );
+   JSON_RPC_REGISTER_API( STEEM_CHAIN_API_PLUGIN_NAME );
 }
 
 chain_api::~chain_api() {}
@@ -94,4 +91,4 @@ DEFINE_API( chain_api, push_transaction )
    return my->push_transaction( args );
 }
 
-} } } //steemit::plugins::chain
+} } } //steem::plugins::chain

@@ -1,10 +1,10 @@
-file(GLOB HEADERS "include/steemit/plugins/smt_test/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/smt_test/*.hpp")
 
 add_library( smt_test_plugin
              smt_test_plugin.cpp
            )
 
-target_link_libraries( smt_test_plugin chain_plugin steemit_chain steemit_protocol )
+target_link_libraries( smt_test_plugin chain_plugin steem_chain steem_protocol )
 target_include_directories( smt_test_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

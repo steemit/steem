@@ -1,4 +1,4 @@
-#include <steemit/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -12,7 +12,7 @@
 #define JSON_RPC_INTERNAL_ERROR     (-32603)
 #define JSON_RPC_SERVER_ERROR       (-32000)
 
-namespace steemit { namespace plugins { namespace json_rpc {
+namespace steem { namespace plugins { namespace json_rpc {
 
 namespace detail
 {
@@ -216,7 +216,7 @@ string json_rpc_plugin::call( const string& message )
 
 }
 
-} } } // steemit::plugins::json_rpc
+} } } // steem::plugins::json_rpc
 
-FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
-FC_REFLECT( steemit::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )
+FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_error, (code)(message)(data) )
+FC_REFLECT( steem::plugins::json_rpc::detail::json_rpc_response, (jsonrpc)(result)(error)(id) )

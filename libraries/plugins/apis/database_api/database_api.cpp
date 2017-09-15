@@ -1,11 +1,11 @@
 #include <appbase/application.hpp>
 
-#include <steemit/plugins/database_api/database_api.hpp>
-#include <steemit/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/database_api/database_api.hpp>
+#include <steem/plugins/database_api/database_api_plugin.hpp>
 
-#include <steemit/protocol/get_config.hpp>
+#include <steem/protocol/get_config.hpp>
 
-namespace steemit { namespace plugins { namespace database_api {
+namespace steem { namespace plugins { namespace database_api {
 
 class database_api_impl
 {
@@ -91,60 +91,13 @@ class database_api_impl
 database_api::database_api()
    : my( new database_api_impl() )
 {
-   JSON_RPC_REGISTER_API(
-      STEEM_DATABASE_API_PLUGIN_NAME,
-      (get_config)
-      (get_dynamic_global_properties)
-      (get_witness_schedule)
-      (get_hardfork_properties)
-      (get_reward_funds)
-      (get_current_price_feed)
-      (get_feed_history)
-      (list_witnesses)
-      (find_witnesses)
-      (list_witness_votes)
-      (get_active_witnesses)
-      (list_accounts)
-      (find_accounts)
-      (list_owner_histories)
-      (find_owner_histories)
-      (list_account_recovery_requests)
-      (find_account_recovery_requests)
-      (list_change_recovery_account_requests)
-      (find_change_recovery_account_requests)
-      (list_escrows)
-      (find_escrows)
-      (list_withdraw_vesting_routes)
-      (find_withdraw_vesting_routes)
-      (list_savings_withdrawals)
-      (find_savings_withdrawals)
-      (list_vesting_delegations)
-      (find_vesting_delegations)
-      (list_vesting_delegation_expirations)
-      (find_vesting_delegation_expirations)
-      (list_sbd_conversion_requests)
-      (find_sbd_conversion_requests)
-      (list_decline_voting_rights_requests)
-      (find_decline_voting_rights_requests)
-      (list_comments)
-      (find_comments)
-      (list_votes)
-      (find_votes)
-      (list_limit_orders)
-      (find_limit_orders)
-      (get_order_book)
-      (get_transaction_hex)
-      (get_required_signatures)
-      (get_potential_signatures)
-      (verify_authority)
-      (verify_account_authority)
-   );
+   JSON_RPC_REGISTER_API( STEEM_DATABASE_API_PLUGIN_NAME );
 }
 
 database_api::~database_api() {}
 
 database_api_impl::database_api_impl()
-   : _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ) {}
+   : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
 database_api_impl::~database_api_impl() {}
 
@@ -164,7 +117,7 @@ DEFINE_API( database_api, get_config )
 
 DEFINE_API( database_api_impl, get_config )
 {
-   return steemit::protocol::get_config();
+   return steem::protocol::get_config();
 }
 
 
@@ -1862,4 +1815,4 @@ DEFINE_API( database_api_impl, verify_account_authority )
    return verify_authority( vap );
 }
 
-} } } // steemit::plugins::database_api
+} } } // steem::plugins::database_api

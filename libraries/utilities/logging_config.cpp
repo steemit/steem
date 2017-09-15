@@ -1,4 +1,4 @@
-#include <steemit/utilities/logging_config.hpp>
+#include <steem/utilities/logging_config.hpp>
 
 #include <fc/exception/exception.hpp>
 
@@ -8,7 +8,7 @@
 
 #include <vector>
 
-namespace steemit { namespace utilities {
+namespace steem { namespace utilities {
 
 using std::string;
 using std::vector;
@@ -24,7 +24,7 @@ void set_logging_program_options( boost::program_options::options_description& o
    std::vector< std::string > default_logger(
       { "{\"name\":\"default\",\"level\":\"warn\",\"appender\":\"stderr\"}\n",
          "log-logger = {\"name\":\"p2p\",\"level\":\"warn\",\"appender\":\"p2p\"}" } );
-   std::string str_default_logger = boost::algorithm::join( default_logger, " " );
+   std::string str_default_logger = boost::algorithm::join( default_logger, "" );
 
    options.add_options()
       ("log-console-appender", boost::program_options::value< std::vector< std::string > >()->composing()->default_value( default_console_appender, str_default_console_appender ),

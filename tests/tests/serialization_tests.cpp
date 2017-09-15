@@ -24,8 +24,8 @@
 #ifdef IS_TEST_NET
 #include <boost/test/unit_test.hpp>
 
-#include <steemit/chain/steem_objects.hpp>
-#include <steemit/chain/database.hpp>
+#include <steem/chain/steem_objects.hpp>
+#include <steem/chain/database.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/elliptic.hpp>
@@ -35,9 +35,9 @@
 
 #include <cmath>
 
-using namespace steemit;
-using namespace steemit::chain;
-using namespace steemit::protocol;
+using namespace steem;
+using namespace steem::chain;
+using namespace steem::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( serialization_tests, clean_database_fixture )
 
@@ -181,6 +181,159 @@ BOOST_AUTO_TEST_CASE( asset_test )
       BOOST_CHECK_THROW( asset::from_string( "  " ), fc::exception );
 
       BOOST_CHECK_EQUAL( asset::from_string( "100 TESTS" ).amount.value, 100 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+template< typename T >
+std::string hex_bytes( const T& obj )
+{
+   std::vector<char> data = fc::raw::pack( obj );
+   std::ostringstream ss;
+   static const char hexdigits[] = "0123456789abcdef";
+
+   for( char c : data )
+   {
+      ss << hexdigits[((c >> 4) & 0x0F)] << hexdigits[c & 0x0F] << ' ';
+   }
+   return ss.str();
+}
+
+void old_pack_symbol(vector<char>& v, asset_symbol_type sym)
+{
+   switch(sym)
+   {
+      case STEEM_SYMBOL:
+         v.push_back('\x03'); v.push_back('T' ); v.push_back('E' ); v.push_back('S' );
+         v.push_back('T'   ); v.push_back('S' ); v.push_back('\0'); v.push_back('\0');
+         // 03 54 45 53 54 53 00 00
+         break;
+      case SBD_SYMBOL:
+         v.push_back('\x03'); v.push_back('T' ); v.push_back('B' ); v.push_back('D' );
+         v.push_back('\0'  ); v.push_back('\0'); v.push_back('\0'); v.push_back('\0');
+         // 03 54 42 44 00 00 00 00
+         break;
+      case VESTS_SYMBOL:
+         v.push_back('\x06'); v.push_back('V' ); v.push_back('E' ); v.push_back('S' );
+         v.push_back('T'   ); v.push_back('S' ); v.push_back('\0'); v.push_back('\0');
+         // 06 56 45 53 54 53 00 00
+         break;
+      default:
+         FC_ASSERT( false, "This method cannot serialize this symbol" );
+   }
+   return;
+}
+
+void old_pack_asset( vector<char>& v, const asset& a )
+{
+   uint64_t x = uint64_t( a.amount.value );
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );   x >>= 8;
+   v.push_back( char( x & 0xFF ) );
+   old_pack_symbol( v, a.symbol );
+   return;
+}
+
+std::string old_json_asset( const asset& a )
+{
+   size_t decimal_places = 0;
+   switch(a.symbol)
+   {
+      case STEEM_SYMBOL:
+      case SBD_SYMBOL:
+         decimal_places = 3;
+         break;
+      case VESTS_SYMBOL:
+         decimal_places = 6;
+         break;
+   }
+   std::ostringstream ss;
+   ss << std::setfill('0') << std::setw(decimal_places+1) << a.amount.value;
+   std::string result = ss.str();
+   result.insert( result.length() - decimal_places, 1, '.' );
+   switch(a.symbol)
+   {
+      case STEEM_SYMBOL:
+         result += " TESTS";
+         break;
+      case SBD_SYMBOL:
+         result += " TBD";
+         break;
+      case VESTS_SYMBOL:
+         result += " VESTS";
+         break;
+   }
+   result.insert(0, 1, '"');
+   result += '"';
+   return result;
+}
+
+BOOST_AUTO_TEST_CASE( asset_raw_test )
+{
+   try
+   {
+      // get a bunch of random bits
+      fc::sha256 h = fc::sha256::hash("");
+
+      std::vector< share_type > amounts;
+
+      for( int i=0; i<64; i++ )
+      {
+         uint64_t s = (uint64_t(1) << i);
+         uint64_t x = (h._hash[0] & (s-1)) | s;
+         if( x >= STEEM_MAX_SHARE_SUPPLY )
+            break;
+         amounts.push_back( share_type( x ) );
+      }
+      // ilog( "h0:${h0}", ("h0", h._hash[0]) );
+
+/*      asset steem = asset::from_string( "0.001 TESTS" );
+#define VESTS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< VESTS with 6 digits of precision
+#define STEEM_SYMBOL  (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< STEEM with 3 digits of precision
+#define SBD_SYMBOL    (uint64_t(3) | (uint64_t('T') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< Test Backed Dollars with 3 digits of precision
+*/
+      std::vector< asset_symbol_type > symbols;
+
+      symbols.push_back( STEEM_SYMBOL );
+      symbols.push_back( SBD_SYMBOL   );
+      symbols.push_back( VESTS_SYMBOL );
+
+      for( const share_type& amount : amounts )
+      {
+         for( const asset_symbol_type& symbol : symbols )
+         {
+            // check raw::pack() works
+            asset a = asset( amount, symbol );
+            vector<char> v_old;
+            old_pack_asset( v_old, a );
+            vector<char> v_cur = fc::raw::pack(a);
+            // ilog( "${a} : ${d}", ("a", a)("d", hex_bytes( v_old )) );
+            // ilog( "${a} : ${d}", ("a", a)("d", hex_bytes( v_cur )) );
+            BOOST_CHECK( v_cur == v_old );
+
+            // check raw::unpack() works
+            std::istringstream ss( string(v_cur.begin(), v_cur.end()) );
+            asset a2;
+            fc::raw::unpack( ss, a2 );
+            BOOST_CHECK( a == a2 );
+
+            // check conversion to JSON works
+            std::string json_old = old_json_asset(a);
+            std::string json_cur = fc::json::to_string(a);
+            // ilog( "json_old: ${j}", ("j", json_old) );
+            // ilog( "json_cur: ${j}", ("j", json_cur) );
+            BOOST_CHECK( json_cur == json_old );
+
+            // check conversion from JSON works
+            a2 = fc::json::from_string(json_cur).as< asset >();
+            BOOST_CHECK( a == a2 );
+         }
+      }
    }
    FC_LOG_AND_RETHROW()
 }

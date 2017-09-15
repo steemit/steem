@@ -1,10 +1,10 @@
-file(GLOB HEADERS "include/steemit/plugins/account_history/*.hpp")
+file(GLOB HEADERS "include/steem/plugins/account_history/*.hpp")
 
 add_library( account_history_plugin
              account_history_plugin.cpp
            )
 
-target_link_libraries( account_history_plugin chain_plugin steemit_chain steemit_protocol steemit_utilities )
+target_link_libraries( account_history_plugin chain_plugin steem_chain steem_protocol steem_utilities )
 target_include_directories( account_history_plugin
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 

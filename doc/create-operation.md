@@ -4,7 +4,7 @@ This is developer documentation for creating brand-new operations on the STEEM b
 - (1) Define `smt_elevate_account_operation` structure in `smt_operations.hpp`
 - (2) Create `FC_REFLECT` definition for the operation struct.
 - (3) Implement `validate()` for the operation struct.
-- (4) Add operation to `steemit::protocol::operation`
+- (4) Add operation to `steem::protocol::operation`
 - (5) Define evaluator for the operation.
 - (6) Define required authorities for the operation.
 - (7) Define unit tests for the operation.
@@ -68,7 +68,7 @@ checks must go in the evaluator.
 
 ## Step 4
 
-- (4a) The file `operations.hpp` defines the `steemit::protocol::operation`
+- (4a) The file `operations.hpp` defines the `steem::protocol::operation`
 type, which is an `fc::static_variant` with a lengthy parameter list.  (The
 `fc::static_variant` implements a
 [tagged union type](https://en.wikipedia.org/wiki/Tagged_union) which uses
@@ -158,7 +158,7 @@ to `FC_REFLECT_ENUM` bubble list at the bottom of that file
 - (9c) Define `typedef oid< smt_token_object > smt_token_id_type` in `steem_objects.hpp`
 - (9d) Create object header file (one header file per object) in `smt_objects` directory.
 Include the new header from `smt_objects.hpp`.
-- (9e) All SMT objects are consensus, and therefore should exist in `steemit::chain` namespace
+- (9e) All SMT objects are consensus, and therefore should exist in `steem::chain` namespace
 - (9f) The object class should subclass `object< smt_token_object_type, smt_token_object >`
 - (9g) The constructor should be defined the same as other object classes, with
 `Constructor` and `Allocator` template parameters.
@@ -181,7 +181,7 @@ will have access to necessary external information (from `database` and the oper
 and Boost `multi_index_container` docs for more information on the purpose and syntax of this
 definition.
 - (9n) Macro
-`CHAINBASE_SET_INDEX_TYPE( steemit::chain::smt_token_object, steemit::chain::smt_token_index )`
+`CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )`
 must be invoked.  It should be invoked at the global scope (outside any namespace).
 - (9o) Call `add_core_index< smt_token_index >(*this);` in `database::initialize_indexes()` to
 register the object type with the database.
@@ -230,7 +230,7 @@ created will be assigned the next sequentially available object ID.
 - (9l) Some functionality in `chainbase` requires the `by_id` field.  Since `chainbase`
 is designed as a reusable library, not tightly coupled to Steem, it contains no reference
 to any `steem` namespaces.  So the name `by_id` must refer to `chainbase::by_id`.  If you
-define a `struct by_id;` in the `steemit::chain` namespace, the result will be that every
+define a `struct by_id;` in the `steem::chain` namespace, the result will be that every
 index defined later in the compilation unit which references `by_id` without qualification
 will become an incorrect or ambiguous type reference.  The result likely will not
 function correctly, and may not compile.

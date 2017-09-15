@@ -1,16 +1,16 @@
-#include <steemit/plugins/follow/follow_plugin.hpp>
-#include <steemit/plugins/follow/follow_objects.hpp>
-#include <steemit/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/follow/follow_plugin.hpp>
+#include <steem/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/follow_operations.hpp>
 
-#include <steemit/chain/util/impacted.hpp>
+#include <steem/chain/util/impacted.hpp>
 
-#include <steemit/protocol/config.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <graphene/schema/schema.hpp>
 #include <graphene/schema/schema_impl.hpp>
@@ -20,9 +20,9 @@
 
 #include <memory>
 
-namespace steemit { namespace plugins { namespace follow {
+namespace steem { namespace plugins { namespace follow {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 namespace detail {
 
@@ -30,7 +30,7 @@ class follow_plugin_impl
 {
    public:
       follow_plugin_impl( follow_plugin& _plugin ) :
-         _db( appbase::app().get_plugin< steemit::plugins::chain::chain_plugin >().db() ),
+         _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ),
          _self( _plugin ) {}
       ~follow_plugin_impl() {}
 
@@ -345,7 +345,7 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       my = std::make_unique< detail::follow_plugin_impl >( *this );
 
       // Each plugin needs its own evaluator registry.
-      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steemit::plugins::follow::follow_plugin_operation > >( my->_db );
+      _custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< steem::plugins::follow::follow_plugin_operation > >( my->_db );
 
       // Add each operation evaluator to the registry
       _custom_operation_interpreter->register_evaluator< follow_evaluator >( this );
@@ -386,4 +386,4 @@ void follow_plugin::plugin_shutdown()
    chain::util::disconnect_signal( my->post_apply_connection );
 }
 
-} } } // steemit::plugins::follow
+} } } // steem::plugins::follow
