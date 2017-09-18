@@ -8,13 +8,20 @@
 #include <steem/chain/witness_objects.hpp>
 #include <steem/chain/shared_authority.hpp>
 
+#include <steem/chain/smt_objects/smt_token_object.hpp>
+
+#include <steem/chain/util/ptr_ref.hpp>
+
 #include <boost/multi_index/composite_key.hpp>
 
 #include <numeric>
 
 namespace steem { namespace chain {
+   class database;
 
    using steem::protocol::authority;
+
+   class smt_token_object;
 
    class account_object : public object< account_object_type, account_object >
    {
@@ -124,6 +131,21 @@ namespace steem { namespace chain {
          }
 
          asset effective_vesting_shares()const { return vesting_shares - delegated_vesting_shares + received_vesting_shares; }
+
+      #ifdef STEEM_ENABLE_SMT
+         /// Returns non-null value if this account has been already elevated (associated to SMT-token).
+         smt_token_object* is_elevated() const
+         {
+            return associatedToken;
+         }
+
+         /// Allows to create smt_token_object associated to given account.
+         void finalize_elevation(database& db) const;
+
+      private:
+         ptr_ref<smt_token_object> associatedToken;
+   
+      #endif /// STEEM_ENABLE_SMT
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >

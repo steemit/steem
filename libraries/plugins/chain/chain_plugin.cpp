@@ -15,12 +15,25 @@ using steem::chain::block_id_type;
 
 namespace detail {
 
+class main_database final : public steem::chain::database
+{
+   main_database()
+   {
+      install_main_db(this);
+   }
+
+   ~main_database()
+   {
+      uninstall_main_db();
+   }
+};
+
 class chain_plugin_impl
 {
    public:
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;
-      bool                             replay = false;
+      bool                              replay = false;
       bool                             resync   = false;
       bool                             readonly = false;
       bool                             check_locks = false;

@@ -39,6 +39,8 @@ namespace steem { namespace chain {
 
 //namespace db2 = graphene::db2;
 
+database* database::s_main_db = nullptr;
+
 struct object_schema_repr
 {
    std::pair< uint16_t, uint16_t > space_type;

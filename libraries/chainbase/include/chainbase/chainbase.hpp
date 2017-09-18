@@ -12,6 +12,11 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 
 #include <boost/multi_index_container.hpp>
+#include <boost/multi_index/random_access_index.hpp>
+#include <boost/multi_index/tag.hpp>
+
+#include <boost/mpl/find_if.hpp>
+#include <boost/mpl/placeholders.hpp>
 
 #include <boost/chrono.hpp>
 #include <boost/config.hpp>
@@ -170,6 +175,30 @@ namespace chainbase {
          int32_t& _target;
    };
 
+   /** A tag structure identifying special random_acces index, which allows fast (time constant)
+       access to objects by their id. 
+   */
+   struct MasterIndexTag {};
+   
+   using boost::multi_index::tag;
+   using boost::multi_index::random_access;
+
+   /** Helper trait useful to determine if specified boost::multi_index_container has defined
+         MasterIndexTag (pointing to random_access index holding objects uniquely identified by their
+         position in the sequence)
+   */
+   template<typename MultiIndexType>
+   struct has_master_index
+   {
+      typedef typename MultiIndexType::index_specifier_type_list index_specifier_type_list;
+      typedef typename boost::mpl::find_if<index_specifier_type_list,
+         std::is_same<boost::mpl::placeholders::_1, random_access<tag<MasterIndexTag>>>
+         >::type iter;
+         typedef typename std::integral_constant<bool,
+         !(std::is_same<iter,typename boost::mpl::end<index_specifier_type_list>::type >::value)>::type type;
+      enum { value = type::value};
+   };
+
    /**
     *  The value_type stored in the multiindex container must have a integer field with the name 'id'.  This will
     *  be the primary key and it will be assigned and managed by generic_index.
@@ -200,7 +229,9 @@ namespace chainbase {
           */
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
-            auto new_id = _next_id;
+            typename has_master_index<MultiIndexType>::type selector;
+
+            auto new_id = getNextObjectId(selector);
 
             auto constructor = [&]( value_type& v ) {
                v.id = new_id;
@@ -213,7 +244,8 @@ namespace chainbase {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             }
 
-            ++_next_id;
+            generateNextObjectId(selector);
+
             on_create( *insert_result.first );
             return *insert_result.first;
          }
@@ -235,6 +267,12 @@ namespace chainbase {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );
             if( itr != _indices.end() ) return &*itr;
             return nullptr;
+         }
+
+         const value_type* find_by_id(const oid<value_type>& id) const
+         {
+            typename has_master_index<MultiIndexType>::type selector;
+            return find_by_id(id, selector);
          }
 
          template<typename CompatibleKey>
@@ -469,12 +507,62 @@ namespace chainbase {
 
          void remove_object( int64_t id )
          {
-            const value_type* val = find( typename value_type::id_type(id) );
+            const value_type* val = find_by_id( typename value_type::id_type(id) );
             if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
             remove( *val );
          }
 
       private:
+         const value_type* find_by_id(const oid<value_type>& id, std::true_type /*isMasterIndex*/) const
+         {
+            if(id == 0)
+               return nullptr;
+            size_t index = id._id - 1;
+            const value_type& object = _indices[index];
+            return &object;
+         }
+
+         const value_type* find_by_id(const oid<value_type>& id, std::false_type /*isMasterIndex*/) const
+         {
+            auto itr = _indices.find(id);
+            if( itr != _indices.end() )
+               return &*itr;
+            return nullptr;
+         }
+         
+         /** Allows to retrieve UNIQUE identifier of the object to be stored inside _indices container.
+              \warning To be used BEFORE insertion.
+         */
+         typename value_type::id_type getNextObjectId(std::true_type /*isMasterIndex*/) const
+         {
+            /// \warning +1 because id == 0 is reserved for NULL represenation in the ptr_ref class.
+            return value_type::id_type(_indices.size() + 1);
+         }
+
+         /** Allows to retrieve UNIQUE identifier of the object to be stored inside _indices container.
+              \warning To be used BEFORE insertion.
+         */
+         typename value_type::id_type getNextObjectId(std::false_type /*isMasterIndex*/) const
+         {
+            return _next_id;
+         }
+
+         /** Allows to generate next UNIQUE identifier.
+              \warning To be used AFTER successfull insertion.
+         */
+         void generateNextObjectId(std::true_type /*isMasterIndex*/)
+         {
+            /// Nothing to do. Next index value is strictly associated to container size.
+         }
+
+         /** Allows to generate next UNIQUE identifier.
+              \warning To be used AFTER successfull insertion.
+         */
+         void generateNextObjectId(std::false_type /*isMasterIndex*/)
+         {
+            ++_next_id;
+         }
+
          bool enabled()const { return _stack.size(); }
 
          void on_modify( const value_type& v ) {
@@ -652,7 +740,6 @@ namespace chainbase {
          std::array< read_write_mutex, CHAINBASE_NUM_RW_LOCKS >     _locks;
          std::atomic< uint32_t >                                    _current_lock;
    };
-
 
    /**
     *  This class
@@ -873,10 +960,8 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("find", ObjectType);
              typedef typename get_index_type< ObjectType >::type index_type;
-             const auto& idx = get_index< index_type >().indices();
-             auto itr = idx.find( key );
-             if( itr == idx.end() ) return nullptr;
-             return &*itr;
+             const auto& idx = get_index< index_type >();
+             return idx.find_by_id( key );
          }
 
          template< typename ObjectType, typename IndexedByType, typename CompatibleKey >

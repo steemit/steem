@@ -19,19 +19,12 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
 
       // id_type is actually oid<smt_token_object>
       id_type           id;
-
-      account_name_type control_account;
 };
-
-struct by_control_account;
 
 typedef multi_index_container <
    smt_token_object,
    indexed_by <
-      ordered_unique< tag< by_id >,
-         member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
-      ordered_unique< tag< by_control_account >,
-         member< smt_token_object, account_name_type, &smt_token_object::control_account > >
+      random_access< tag< chainbase::MasterIndexTag >>
    >,
    allocator< smt_token_object >
 > smt_token_index;
@@ -40,7 +33,6 @@ typedef multi_index_container <
 
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
-   (control_account)
 )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
 

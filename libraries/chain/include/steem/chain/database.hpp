@@ -46,6 +46,12 @@ namespace steem { namespace chain {
          database();
          ~database();
 
+         static database& main_db()
+         {
+            FC_ASSERT(s_main_db != nullptr, "Main database must be initialized first !!!");
+            return *s_main_db;
+         }
+
          bool is_producing()const { return _is_producing; }
          void set_producing( bool p ) { _is_producing = p;  }
          bool _is_producing = false;
@@ -416,6 +422,18 @@ namespace steem { namespace chain {
 #endif
 
    protected:
+         void install_main_db(database* instance)
+         {
+            FC_ASSERT(s_main_db == nullptr, "Only one main-db is allowed");
+            FC_ASSERT(instance != nullptr, "Provided main-database instance cannot be null");
+            s_main_db = instance;
+         }
+
+         void uninstall_main_db()
+         {
+            s_main_db = nullptr;
+         }
+         
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          //void pop_undo() { object_database::pop_undo(); }
          void notify_changed_objects();
@@ -484,6 +502,7 @@ namespace steem { namespace chain {
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
+         static database*              s_main_db;
    };
 
 } }
