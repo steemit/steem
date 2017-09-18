@@ -64,9 +64,28 @@ typedef multi_index_container <
 
 } }
 
+FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
+                 (account_elevated)
+                 (setup_completed)
+)
+
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
    (control_account)
+   (phase)
+   (allow_voting)
+   (allow_vesting)
+   (schedule_time)
+   (emissions_unit)
+   (interval_seconds)
+   (interval_count)
+   (lep_time)
+   (rep_time)
+   (lep_abs_amount)
+   (rep_abs_amount)
+   (lep_rel_amount_numerator)
+   (rep_rel_amount_numerator)
+   (rel_amount_denom_bits)
 )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
 
