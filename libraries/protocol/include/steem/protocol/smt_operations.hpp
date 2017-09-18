@@ -343,20 +343,12 @@ FC_REFLECT(
    )
 
 FC_REFLECT(
-<<<<<<< HEAD:libraries/protocol/include/steemit/protocol/smt_operations.hpp
-   steemit::protocol::smt_emissions_unit,
-=======
-   steem::protocol::smt_inflation_unit,
->>>>>>> develop:libraries/protocol/include/steem/protocol/smt_operations.hpp
+   steem::protocol::smt_emissions_unit,
    (token_unit)
    )
 
 FC_REFLECT(
-<<<<<<< HEAD:libraries/protocol/include/steemit/protocol/smt_operations.hpp
-   steemit::protocol::smt_setup_emissions_operation,
-=======
-   steem::protocol::smt_setup_inflation_operation,
->>>>>>> develop:libraries/protocol/include/steem/protocol/smt_operations.hpp
+   steem::protocol::smt_setup_emissions_operation,
    (control_account)
    (schedule_time)
    (emissions_unit)
