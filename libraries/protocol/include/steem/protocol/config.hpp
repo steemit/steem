@@ -38,32 +38,35 @@
 #define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*10) /// 10 minutes per interval
 #define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::minutes(3))
 
-#define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
-#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
+#define STEEM_INITIAL_VOTE_POWER_RATE (240)
+#define STEEM_REDUCED_VOTE_POWER_RATE (60)
+#define STEEM_VOTE_REGENERATION_SECONDS       (20*60*60) // 20 hours
+#define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*10) /// 10 minutes
 
-#define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(60*5)) // 5 minutes
-#define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(20)) // 20 seconds
-#define STEEM_POST_AVERAGE_WINDOW             (60*60*24u) // 1 day
+#define STEEM_MIN_ROOT_COMMENT_INTERVAL       (fc::seconds(30)) // 30 seconds
+#define STEEM_MIN_REPLY_INTERVAL              (fc::seconds(10)) // 10 seconds
+#define STEEM_POST_AVERAGE_WINDOW             (60*2u) // 2 minutes
 
-#define STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*24*7) ///< 1 week
+#define STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS (60*60*2) ///< 2 hours
 
-#define STEEM_CREATE_ACCOUNT_DELEGATION_TIME     fc::days(30)
+#define STEEM_CREATE_ACCOUNT_DELEGATION_TIME     fc::hours(2)
 
-#define STEEM_LIQUIDITY_TIMEOUT_SEC           (fc::seconds(60*60*24*7)) // After one week volume is set to 0
+#define STEEM_LIQUIDITY_TIMEOUT_SEC           (fc::seconds(60*60*4)) // After 4 hours volume is set to 0
 #define STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC (fc::seconds(60)) // 1 minute required on books to receive volume
 #define STEEM_LIQUIDITY_REWARD_PERIOD_SEC     (60*60)
 
-#define STEEM_ACTIVE_CHALLENGE_COOLDOWN       fc::days(1)
-#define STEEM_OWNER_CHALLENGE_COOLDOWN        fc::days(1)
+#define STEEM_ACTIVE_CHALLENGE_COOLDOWN       fc::hours(1)
+#define STEEM_OWNER_CHALLENGE_COOLDOWN        fc::hours(1)
 
-#define STEEM_RECENT_RSHARES_DECAY_TIME_HF17    (fc::days(30))
-#define STEEM_RECENT_RSHARES_DECAY_TIME_HF19    (fc::days(15))
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF17    (fc::hours(2))
+#define STEEM_RECENT_RSHARES_DECAY_TIME_HF19    (fc::hours(1))
 
-#define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
-#define STEEM_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
-#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
-#define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
-#define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //3.5 day conversion
+#define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*2) /// 2 days * 24 hours per day
+#define STEEM_FEED_HISTORY_WINDOW             (12*2) // 1 day
+#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*2) // 2 days
+#define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(2))
+#define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //1 day conversion
+#define STEEM_FEED_INTERVAL_BLOCKS            (STEEM_BLOCKS_PER_HOUR)
 
 #else // IS LIVE STEEM NETWORK
 
@@ -94,6 +97,8 @@
 #define STEEM_VESTING_WITHDRAW_INTERVAL_SECONDS (60*60*24*7) /// 1 week per interval
 #define STEEM_SAVINGS_WITHDRAW_TIME        	(fc::days(3))
 
+#define STEEM_INITIAL_VOTE_POWER_RATE (40)
+#define STEEM_REDUCED_VOTE_POWER_RATE (10)
 #define STEEM_VOTE_REGENERATION_SECONDS       (5*60*60*24) // 5 day
 #define STEEM_REVERSE_AUCTION_WINDOW_SECONDS  (60*30) /// 30 minutes
 
@@ -120,6 +125,7 @@
 #define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
 #define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //3.5 day conversion
+#define STEEM_FEED_INTERVAL_BLOCKS            (STEEM_BLOCKS_PER_HOUR)
 
 #endif
 
@@ -267,7 +273,6 @@
 #define STEEM_MIN_BLOCK_SIZE_LIMIT            (STEEM_MAX_TRANSACTION_SIZE)
 #define STEEM_MAX_BLOCK_SIZE                  (STEEM_MAX_TRANSACTION_SIZE*STEEM_BLOCK_INTERVAL*2000)
 #define STEEM_BLOCKS_PER_HOUR                 (60*60/STEEM_BLOCK_INTERVAL)
-#define STEEM_FEED_INTERVAL_BLOCKS            (STEEM_BLOCKS_PER_HOUR)
 #define STEEM_MIN_FEEDS                       (STEEM_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
 
 #define STEEM_MIN_UNDO_HISTORY                10
@@ -287,9 +292,6 @@
 
 #define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH  ( fc::uint128(uint64_t(-1)) )
 #define STEEM_VIRTUAL_SCHEDULE_LAP_LENGTH2 ( fc::uint128::max_value() )
-
-#define STEEM_INITIAL_VOTE_POWER_RATE (40)
-#define STEEM_REDUCED_VOTE_POWER_RATE (10)
 
 /**
  *  Reserved Account IDs with special meaning

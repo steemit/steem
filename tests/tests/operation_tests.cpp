@@ -581,7 +581,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       tx.sign( sam_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
 
-      generate_blocks( 60 * 5 / STEEM_BLOCK_INTERVAL );
+      generate_blocks( 30 / STEEM_BLOCK_INTERVAL );
 
       op.permlink = "amet";
       tx.operations.clear();
