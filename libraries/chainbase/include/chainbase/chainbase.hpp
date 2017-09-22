@@ -12,11 +12,7 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 
 #include <boost/multi_index_container.hpp>
-#include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index/tag.hpp>
-
-#include <boost/mpl/find_if.hpp>
-#include <boost/mpl/placeholders.hpp>
 
 #include <boost/chrono.hpp>
 #include <boost/config.hpp>
@@ -174,31 +170,7 @@ namespace chainbase {
       private:
          int32_t& _target;
    };
-
-   /** A tag structure identifying special random_acces index, which allows fast (time constant)
-       access to objects by their id. 
-   */
-   struct MasterIndexTag {};
    
-   using boost::multi_index::tag;
-   using boost::multi_index::random_access;
-
-   /** Helper trait useful to determine if specified boost::multi_index_container has defined
-         MasterIndexTag (pointing to random_access index holding objects uniquely identified by their
-         position in the sequence)
-   */
-   template<typename MultiIndexType>
-   struct has_master_index
-   {
-      typedef typename MultiIndexType::index_specifier_type_list index_specifier_type_list;
-      typedef typename boost::mpl::find_if<index_specifier_type_list,
-         std::is_same<boost::mpl::placeholders::_1, random_access<tag<MasterIndexTag>>>
-         >::type iter;
-         typedef typename std::integral_constant<bool,
-         !(std::is_same<iter,typename boost::mpl::end<index_specifier_type_list>::type >::value)>::type type;
-      enum { value = type::value};
-   };
-
    /**
     *  The value_type stored in the multiindex container must have a integer field with the name 'id'.  This will
     *  be the primary key and it will be assigned and managed by generic_index.

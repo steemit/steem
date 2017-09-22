@@ -145,6 +145,20 @@ namespace steem
       RandomAccessContainer RandomAccessStorage = RandomAccessContainer(1);
     };
 
+   /** Helper trait useful to determine if specified boost::multi_index_container has defined
+         MasterIndexTag (pointing to random_access index holding objects uniquely identified by their
+         position in the sequence)
+   */
+   template<typename MultiIndexType>
+   struct has_master_index
+   {
+     typedef typename std::is_same<MultiIndexType, steem::chain::ra_indexed_container<
+       typename MultiIndexType::value_type,
+       typename MultiIndexType::index_specifier_type_list,
+       typename MultiIndexType::allocator_type>>::type type;
+     enum { value = type::value };
+   };
+    
   } /// namespace chain
 
 } /// namespace steem
