@@ -2998,7 +2998,7 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
 {
    try
    {
-      const uint32_t NUMBER_ACCOUNTS = 10000;
+      const uint32_t NUMBER_ACCOUNTS = 100000;
       const uint32_t NUMBER_COMMENTS = 100;
       const uint64_t GIGA = 1024*1024*1024;
       const uint64_t FILE_SIZE = GIGA*6;
@@ -3018,12 +3018,12 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
       p.init( names, comments );
 
       p.timestamp( "****review data ( start )", false/*total_time*/, false/*with_time*/, true/*range_time*/ );
-      for( uint32_t i = 1; i <= 100; ++i )
+      for( uint32_t i = 1; i <= 10; ++i )
       {
          p.get_accounts();
          p.get_comments< steem::chain::by_comment_account >();
          p.get_comments< by_comment >();
-         if( ( i % 10 ) == 0 )
+         if( ( i % 2 ) == 0 )
             p.timestamp( std::to_string( i ) );
       }
       p.timestamp( "****review data completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
@@ -3077,7 +3077,7 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
 {
    try
    {
-      const uint32_t NUMBER_ACCOUNTS = 10000;
+      const uint32_t NUMBER_ACCOUNTS = 100000;
       const uint32_t NUMBER_COMMENTS = 100;
 
       performance_std p( 0 );
@@ -3095,12 +3095,12 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
       p.init( names, comments );
 
       p.timestamp( "****review data ( start )", false/*total_time*/, false/*with_time*/, true/*range_time*/ );
-      for( uint32_t i = 1; i <= 100; ++i )
+      for( uint32_t i = 1; i <= 10; ++i )
       {
          p.get_accounts();
          p.get_comments< steem::chain::by_comment_account >();
          p.get_comments< by_comment >();
-         if( ( i % 10 ) == 0 )
+         if( ( i % 2 ) == 0 )
             p.timestamp( std::to_string( i ) );
       }
       p.timestamp( "****review data completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
