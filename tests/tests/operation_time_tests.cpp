@@ -16,6 +16,7 @@
 #include <fc/crypto/digest.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
+#include "../performance/data.hpp"
 
 #include <cmath>
 
@@ -2946,6 +2947,161 @@ BOOST_AUTO_TEST_CASE( clear_null_account )
       BOOST_REQUIRE( db->get_account( STEEM_NULL_ACCOUNT ).reward_vesting_steem == ASSET( "0.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( "alice" ).balance == ASSET( "2.000 TESTS" ) );
       BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance == ASSET( "3.000 TBD" ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( performance_account_interprocess )
+{
+   try
+   {
+      const uint32_t NUMBER_ACCOUNTS = 20;
+      const uint32_t NUMBER_COMMENTS = 300;
+      const uint32_t FILE_SIZE = 1024*1024*10;
+
+      performance_interprocess p( FILE_SIZE );
+
+      p.timestamp( "generating data" );
+
+      account_names_generator names( NUMBER_ACCOUNTS );
+      names.generate();
+
+      comments_generator comments( NUMBER_COMMENTS );
+      comments.generate();
+
+      p.timestamp( "init data in memory" );
+      p.init( names, comments );
+
+      p.timestamp( "dumping data" );
+      int idx = 0;
+      //Get accounts
+      types::p_dump_collection accounts = types::p_dump_collection( new std::list< std::string >() );
+      p.get_accounts( accounts );
+      p.dump( accounts, idx++ );
+      BOOST_REQUIRE( accounts->size() == NUMBER_ACCOUNTS );
+
+      //Get all comments
+      types::p_dump_collection comments_1 = types::p_dump_collection( new std::list< std::string >() );
+      p.get_comments< steem::chain::by_comment_account >( comments_1 );
+      BOOST_REQUIRE( comments_1->size() == NUMBER_ACCOUNTS * NUMBER_COMMENTS );
+      p.dump( comments_1, idx++ );
+
+      types::p_dump_collection comments_2 = types::p_dump_collection( new std::list< std::string >() );
+      p.get_comments< by_comment >( comments_2 );
+      BOOST_REQUIRE( comments_2->size() == NUMBER_ACCOUNTS * NUMBER_COMMENTS );
+      p.dump( comments_2, idx++ );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
+{
+   try
+   {
+      const uint32_t NUMBER_ACCOUNTS = 2000;
+      const uint32_t NUMBER_COMMENTS = 100;
+      const uint64_t GIGA = 1024*1024*1024;
+      const uint64_t FILE_SIZE = GIGA*6;
+
+      performance_interprocess p( FILE_SIZE );
+
+      p.timestamp( "----generating data----" );
+
+      account_names_generator names( NUMBER_ACCOUNTS );
+      names.generate();
+
+      comments_generator comments( NUMBER_COMMENTS );
+      comments.generate();
+
+      p.timestamp( "----init data in memory----" );
+      p.init( names, comments );
+
+      p.timestamp( "----review data----" );
+      for( uint32_t i = 1; i <= 100; ++i )
+      {
+         p.get_accounts();
+         p.get_comments< steem::chain::by_comment_account >();
+         p.get_comments< by_comment >();
+         if( ( i % 10 ) == 0 )
+            p.timestamp( std::to_string( i ) );
+      }
+      p.timestamp( "----end_data----" );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( performance_account_std )
+{
+   try
+   {
+      const uint32_t NUMBER_ACCOUNTS = 20;
+      const uint32_t NUMBER_COMMENTS = 300;
+
+      performance_std p( 0 );
+
+      p.timestamp( "generating data" );
+
+      account_names_generator names( NUMBER_ACCOUNTS );
+      names.generate();
+
+      comments_generator comments( NUMBER_COMMENTS );
+      comments.generate();
+
+      p.timestamp( "init data in memory" );
+      p.init( names, comments );
+
+      p.timestamp( "dumping data" );
+      int idx = 0;
+      //Get accounts
+      types::p_dump_collection accounts = types::p_dump_collection( new std::list< std::string >() );
+      p.get_accounts( accounts );
+      p.dump( accounts, idx++ );
+      BOOST_REQUIRE( accounts->size() == NUMBER_ACCOUNTS );
+
+      //Get all comments
+      types::p_dump_collection comments_1 = types::p_dump_collection( new std::list< std::string >() );
+      p.get_comments< steem::chain::by_comment_account >( comments_1 );
+      BOOST_REQUIRE( comments_1->size() == NUMBER_ACCOUNTS * NUMBER_COMMENTS );
+      p.dump( comments_1, idx++ );
+
+      types::p_dump_collection comments_2 = types::p_dump_collection( new std::list< std::string >() );
+      p.get_comments< by_comment >( comments_2 );
+      BOOST_REQUIRE( comments_2->size() == NUMBER_ACCOUNTS * NUMBER_COMMENTS );
+      p.dump( comments_2, idx++ );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( performance_account_std_stress )
+{
+   try
+   {
+      const uint32_t NUMBER_ACCOUNTS = 2000;
+      const uint32_t NUMBER_COMMENTS = 100;
+
+      performance_std p( 0 );
+
+      p.timestamp( "----generating data----" );
+
+      account_names_generator names( NUMBER_ACCOUNTS );
+      names.generate();
+
+      comments_generator comments( NUMBER_COMMENTS );
+      comments.generate();
+
+      p.timestamp( "----init data in memory----" );
+      p.init( names, comments );
+
+      p.timestamp( "----review data----" );
+      for( uint32_t i = 1; i <= 100; ++i )
+      {
+         p.get_accounts();
+         p.get_comments< steem::chain::by_comment_account >();
+         p.get_comments< by_comment >();
+         if( ( i % 10 ) == 0 )
+            p.timestamp( std::to_string( i ) );
+      }
+      p.timestamp( "----end_data----" );
    }
    FC_LOG_AND_RETHROW()
 }
