@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 namespace steem { namespace chain {
 
@@ -64,12 +65,15 @@ template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALL
 performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::performance( uint64_t _file_size )
             : file_size( _file_size )
 {
+   last_time_in_miliseconds = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+   start_time_in_miliseconds = last_time_in_miliseconds;
    stream_time.open( time_file_name );
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
 performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::~performance()
 {
+   timestamp( "total time", true/*total_time*/ );
    stream_time.close();
 }
 
@@ -78,30 +82,28 @@ void performance< shared_string, account_interprocess_allocator_type, comment_in
 {
    //bool removed = bip::shared_memory_object::remove( file_name.c_str() );
 
-   timestamp("creating file");
    seg.reset( new bip::managed_mapped_file( bip::open_or_create, file_name.c_str(), file_size ) );
+   timestamp("creating file");
 
-   timestamp("creating multi-index for accounts");
    acc_idx = seg->find_or_construct< account_container_template< account_interprocess_allocator_type > >("performance_accounts")( account_interprocess_allocator_type( seg->get_segment_manager() ) );
    FC_ASSERT( acc_idx );
+   timestamp("creating multi-index for accounts");
 
-   timestamp("creating multi-index for comments");
    comm_idx = seg->find_or_construct< comment_container_template< shared_string, comment_interprocess_allocator_type > >("performance_comments")( comment_interprocess_allocator_type( seg->get_segment_manager() ) );
    FC_ASSERT( comm_idx );
+   timestamp("creating multi-index for comments");
 }
 
 template<>
 void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::pre_init()
 {
-   timestamp("no file");
-
-   timestamp("creating multi-index for accounts");
    acc_idx = new account_container_template< account_std_allocator_type >( account_std_allocator_type() );
    FC_ASSERT( acc_idx );
+   timestamp("creating multi-index for accounts");
 
-   timestamp("creating multi-index for comments");
    comm_idx = new comment_container_template< std::string, comment_std_allocator_type >( comment_std_allocator_type() );
    FC_ASSERT( comm_idx );
+   timestamp("creating multi-index for comments");
 }
 
 template<>
@@ -149,7 +151,8 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::init( tex
    text_generator::Items& accounts = _accounts.getItems();
    text_generator::Items& comments = _comments.getItems();
 
-   timestamp("filling data");
+   timestamp( "***init data in memory ( start )***", false/*total_time*/, false/*with_time*/ );
+
    int32_t idx = 0;
    std::for_each( accounts.begin(), accounts.end(), [&]( const std::string& account )
       {
@@ -166,6 +169,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::init( tex
          );
       }
    );
+   timestamp( "***init data in memory ( end )***", false/*total_time*/, false/*with_time*/ );
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
@@ -220,12 +224,36 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::dump( con
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::timestamp( std::string description )
+void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::timestamp( std::string description, bool total_time, bool with_time )
 {
-   auto t = std::time(nullptr);
-   auto tm = *std::localtime(&t);
+   uint64_t actual = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
+   uint64_t tmp = total_time?start_time_in_miliseconds:last_time_in_miliseconds;
 
-   stream_time << description << ": " << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << "\n";
+    FILE* file = fopen("/proc/self/status", "r");
+    int result = -1;
+    char line[128];
+
+    while (fgets(line, 128, file) != NULL)
+    {
+        if (strncmp(line, "VmRSS:", 6) == 0)
+        {
+            int i = strlen(line);
+            const char* p = line;
+            while (*p <'0' || *p > '9') p++;
+            line[i-3] = '\0';
+            result = atoi(p);
+            break;
+        }
+    }
+    fclose(file);
+
+   if( with_time ) 
+      stream_time << description << ": " << actual - tmp << " ms " << result << " kB\n";
+   else
+      stream_time << description << "\n";
+
+   last_time_in_miliseconds = actual;
+
    stream_time.flush();
 }
 
@@ -234,7 +262,7 @@ template performance< shared_string, account_interprocess_allocator_type, commen
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::init( text_generator& _accounts, text_generator& _comments );
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_accounts( types::p_dump_collection data );
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::dump( const types::p_dump_collection& data, uint32_t idx );
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::timestamp( std::string description );
+template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::timestamp( std::string description, bool total_time, bool with_time );
 
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_comments< by_comment_account >( types::p_dump_collection data );
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_comments< by_comment >( types::p_dump_collection data );
@@ -245,7 +273,7 @@ template performance< std::string, account_std_allocator_type, comment_std_alloc
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::init( text_generator& _accounts, text_generator& _comments );
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_accounts( types::p_dump_collection data );
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::dump( const types::p_dump_collection& data, uint32_t idx );
-template void performance< std::string,account_std_allocator_type, comment_std_allocator_type >::timestamp( std::string description );
+template void performance< std::string,account_std_allocator_type, comment_std_allocator_type >::timestamp( std::string description, bool total_time, bool with_time );
 
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_comments< by_comment_account >( types::p_dump_collection data );
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_comments< by_comment >( types::p_dump_collection data );

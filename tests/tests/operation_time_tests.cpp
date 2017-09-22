@@ -2961,18 +2961,16 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess )
 
       performance_interprocess p( FILE_SIZE );
 
-      p.timestamp( "generating data" );
-
       account_names_generator names( NUMBER_ACCOUNTS );
       names.generate();
 
       comments_generator comments( NUMBER_COMMENTS );
       comments.generate();
 
-      p.timestamp( "init data in memory" );
+      p.timestamp( "generating test data" );
+
       p.init( names, comments );
 
-      p.timestamp( "dumping data" );
       int idx = 0;
       //Get accounts
       types::p_dump_collection accounts = types::p_dump_collection( new std::list< std::string >() );
@@ -2990,6 +2988,8 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess )
       p.get_comments< by_comment >( comments_2 );
       BOOST_REQUIRE( comments_2->size() == NUMBER_ACCOUNTS * NUMBER_COMMENTS );
       p.dump( comments_2, idx++ );
+
+      p.timestamp( "dumping data" );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -2998,14 +2998,14 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
 {
    try
    {
-      const uint32_t NUMBER_ACCOUNTS = 2000;
+      const uint32_t NUMBER_ACCOUNTS = 10000;
       const uint32_t NUMBER_COMMENTS = 100;
       const uint64_t GIGA = 1024*1024*1024;
       const uint64_t FILE_SIZE = GIGA*6;
 
       performance_interprocess p( FILE_SIZE );
 
-      p.timestamp( "----generating data----" );
+      p.timestamp( "***boost::interprocess::allocator***", false/*total_time*/, false/*with_time*/ );
 
       account_names_generator names( NUMBER_ACCOUNTS );
       names.generate();
@@ -3013,10 +3013,11 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
       comments_generator comments( NUMBER_COMMENTS );
       comments.generate();
 
-      p.timestamp( "----init data in memory----" );
+      p.timestamp( "generating test data" );
+
       p.init( names, comments );
 
-      p.timestamp( "----review data----" );
+      p.timestamp( "***review data ( start )***", false/*total_time*/, false/*with_time*/ );
       for( uint32_t i = 1; i <= 100; ++i )
       {
          p.get_accounts();
@@ -3025,7 +3026,7 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
          if( ( i % 10 ) == 0 )
             p.timestamp( std::to_string( i ) );
       }
-      p.timestamp( "----end_data----" );
+      p.timestamp( "***review data ( end )***", false/*total_time*/, false/*with_time*/ );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3039,18 +3040,16 @@ BOOST_AUTO_TEST_CASE( performance_account_std )
 
       performance_std p( 0 );
 
-      p.timestamp( "generating data" );
-
       account_names_generator names( NUMBER_ACCOUNTS );
       names.generate();
 
       comments_generator comments( NUMBER_COMMENTS );
       comments.generate();
 
-      p.timestamp( "init data in memory" );
+      p.timestamp( "generating test data" );
+
       p.init( names, comments );
 
-      p.timestamp( "dumping data" );
       int idx = 0;
       //Get accounts
       types::p_dump_collection accounts = types::p_dump_collection( new std::list< std::string >() );
@@ -3068,6 +3067,8 @@ BOOST_AUTO_TEST_CASE( performance_account_std )
       p.get_comments< by_comment >( comments_2 );
       BOOST_REQUIRE( comments_2->size() == NUMBER_ACCOUNTS * NUMBER_COMMENTS );
       p.dump( comments_2, idx++ );
+
+      p.timestamp( "dumping data" );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3076,12 +3077,12 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
 {
    try
    {
-      const uint32_t NUMBER_ACCOUNTS = 2000;
+      const uint32_t NUMBER_ACCOUNTS = 10000;
       const uint32_t NUMBER_COMMENTS = 100;
 
       performance_std p( 0 );
 
-      p.timestamp( "----generating data----" );
+      p.timestamp( "***std::allocator***", false/*total_time*/, false/*with_time*/ );
 
       account_names_generator names( NUMBER_ACCOUNTS );
       names.generate();
@@ -3089,10 +3090,11 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
       comments_generator comments( NUMBER_COMMENTS );
       comments.generate();
 
-      p.timestamp( "----init data in memory----" );
+      p.timestamp( "generating test data" );
+
       p.init( names, comments );
 
-      p.timestamp( "----review data----" );
+      p.timestamp( "***review data ( start )***", false/*total_time*/, false/*with_time*/ );
       for( uint32_t i = 1; i <= 100; ++i )
       {
          p.get_accounts();
@@ -3101,7 +3103,7 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
          if( ( i % 10 ) == 0 )
             p.timestamp( std::to_string( i ) );
       }
-      p.timestamp( "----end_data----" );
+      p.timestamp( "***review data ( end )***", false/*total_time*/, false/*with_time*/ );
    }
    FC_LOG_AND_RETHROW()
 }

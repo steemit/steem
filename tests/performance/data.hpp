@@ -151,6 +151,9 @@ class performance
       const std::string file_name = "performance_data.db";
       const std::string time_file_name = "timelines.txt";
 
+      uint64_t start_time_in_miliseconds;
+      uint64_t last_time_in_miliseconds;
+
       std::ofstream stream_time;
 
       std::shared_ptr< bip::managed_mapped_file > seg;
@@ -177,7 +180,7 @@ class performance
 
       void dump( const types::p_dump_collection& data, uint32_t idx ); 
 
-      void timestamp( std::string description );
+      void timestamp( std::string description, bool total_time = false, bool with_time = true );
 };
 
 using performance_interprocess = performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >;
