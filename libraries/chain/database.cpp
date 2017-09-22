@@ -108,36 +108,33 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
       initialize_indexes();
       initialize_evaluators();
 
-      if( chainbase_flags & chainbase::database::read_write )
-      {
-         if( !find< dynamic_global_property_object >() )
-            with_write_lock( [&]()
-            {
-               init_genesis( initial_supply );
-            });
-
-         _block_log.open( data_dir / "block_log" );
-
-         auto log_head = _block_log.head();
-
-         // Rewind all undo state. This should return us to the state at the last irreversible block.
+      if( !find< dynamic_global_property_object >() )
          with_write_lock( [&]()
          {
-            undo_all();
-            FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
-               ("rev", revision())("head_block", head_block_num()) );
-            if (do_validate_invariants)
-               validate_invariants();
+            init_genesis( initial_supply );
          });
 
-         if( head_block_num() )
-         {
-            auto head_block = _block_log.read_block_by_num( head_block_num() );
-            // This assertion should be caught and a reindex should occur
-            FC_ASSERT( head_block.valid() && head_block->id() == head_block_id(), "Chain state does not match block log. Please reindex blockchain." );
+      _block_log.open( data_dir / "block_log" );
 
-            _fork_db.start_block( *head_block );
-         }
+      auto log_head = _block_log.head();
+
+      // Rewind all undo state. This should return us to the state at the last irreversible block.
+      with_write_lock( [&]()
+      {
+         undo_all();
+         FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
+            ("rev", revision())("head_block", head_block_num()) );
+         if (do_validate_invariants)
+            validate_invariants();
+      });
+
+      if( head_block_num() )
+      {
+         auto head_block = _block_log.read_block_by_num( head_block_num() );
+         // This assertion should be caught and a reindex should occur
+         FC_ASSERT( head_block.valid() && head_block->id() == head_block_id(), "Chain state does not match block log. Please reindex blockchain." );
+
+         _fork_db.start_block( *head_block );
       }
 
       with_read_lock( [&]()
@@ -154,7 +151,7 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
    {
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
-      open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size, chainbase::database::read_write );
+      open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();

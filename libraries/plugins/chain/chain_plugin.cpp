@@ -131,7 +131,7 @@ void chain_plugin::plugin_startup()
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write, my->validate_invariants );
+         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, my->validate_invariants );
       }
       catch( const fc::exception& e )
       {
@@ -144,7 +144,7 @@ void chain_plugin::plugin_startup()
          catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, chainbase::database::read_write, my->validate_invariants );
+            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, my->validate_invariants );
          }
       }
    }

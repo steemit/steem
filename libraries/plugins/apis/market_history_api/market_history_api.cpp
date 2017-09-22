@@ -34,13 +34,13 @@ DEFINE_API( market_history_api_impl, get_ticker )
    const auto& bucket_idx = _db.get_index< bucket_index, by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( 86400, _db.head_block_time() - 86400 ) );
 
-   if( itr != bucket_idx.end() )
-   {
-      auto open = ( asset( itr->open_sbd, SBD_SYMBOL ) / asset( itr->open_steem, STEEM_SYMBOL ) ).to_real();
-      result.latest = ( asset( itr->close_sbd, SBD_SYMBOL ) / asset( itr->close_steem, STEEM_SYMBOL ) ).to_real();
-      result.percent_change = ( ( result.latest - open ) / open ) * 100;
-   }
-   else
+   // if( itr != bucket_idx.end() )
+   // {
+   //    auto open = ( asset( itr->open_sbd, SBD_SYMBOL ) / asset( itr->open_steem, STEEM_SYMBOL ) ).to_real();
+   //    result.latest = ( asset( itr->close_sbd, SBD_SYMBOL ) / asset( itr->close_steem, STEEM_SYMBOL ) ).to_real();
+   //    result.percent_change = ( ( result.latest - open ) / open ) * 100;
+   // }
+   // else
    {
       result.latest = 0;
       result.percent_change = 0;
@@ -93,7 +93,8 @@ DEFINE_API( market_history_api_impl, get_order_book )
    {
       order cur;
       cur.order_price = itr->sell_price;
-      cur.real_price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
+      // cur.real_price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
+      cur.real_price = 0.0;
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * itr->sell_price ).amount;
       cur.sbd = itr->for_sale;
       cur.created = itr->created;
@@ -107,7 +108,8 @@ DEFINE_API( market_history_api_impl, get_order_book )
    {
       order cur;
       cur.order_price = itr->sell_price;
-      cur.real_price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
+      // cur.real_price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
+      cur.real_price = 0.0;
       cur.steem = itr->for_sale;
       cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * itr->sell_price ).amount;
       cur.created = itr->created;

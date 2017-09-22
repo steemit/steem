@@ -81,7 +81,7 @@ namespace detail
          /// FETCH CATEGORY STATE
          if( _tags_api )
          {
-            auto trending_tags = _tags_api->get_trending_tags( tags::get_trending_tags_args( { std::string(), 50 } ) ).tags;
+            auto trending_tags = _tags_api->get_trending_tags( { std::string(), 50 } ).tags;
             for( const auto& t : trending_tags )
             {
                _state.tag_idx.trending.push_back( t.name );
@@ -102,12 +102,12 @@ namespace detail
             _state.accounts[acnt] = extended_account( _db.get_account( acnt ), _db );
 
             if( _tags_api )
-               _state.accounts[acnt].tags_usage = _tags_api->get_tags_used_by_author( tags::get_tags_used_by_author_args( { acnt } ) ).tags;
+               _state.accounts[acnt].tags_usage = _tags_api->get_tags_used_by_author( { acnt } ).tags;
 
             if( _follow_api )
             {
-               _state.accounts[acnt].guest_bloggers = _follow_api->get_blog_authors( follow::get_blog_authors_args( { acnt } ) ).blog_authors;
-               _state.accounts[acnt].reputation     = _follow_api->get_account_reputations( follow::get_account_reputations_args( { acnt, 1 } ) ).reputations[0].reputation;
+               _state.accounts[acnt].guest_bloggers = _follow_api->get_blog_authors( { acnt } ).blog_authors;
+               _state.accounts[acnt].reputation     = _follow_api->get_account_reputations( { acnt, 1 } ).reputations[0].reputation;
             }
 
             auto& eacnt = _state.accounts[acnt];
@@ -115,7 +115,7 @@ namespace detail
             {
                if( _account_history_api )
                {
-                  auto history = _account_history_api->get_account_history( account_history::get_account_history_args( { acnt, uint64_t(-1), 1000 } ) ).history;
+                  auto history = _account_history_api->get_account_history( { acnt, uint64_t(-1), 1000 } ).history;
                   for( auto& item : history )
                   {
                      switch( item.second.op.which() ) {
@@ -167,7 +167,7 @@ namespace detail
             {
                if( _tags_api )
                {
-                  auto replies = _tags_api->get_replies_by_last_update( tags::get_replies_by_last_update_args( { acnt, "", 50 } ) ).discussions;
+                  auto replies = _tags_api->get_replies_by_last_update( { acnt, "", 50 } ).discussions;
                   eacnt.recent_replies = vector< string >();
 
                   for( const auto& reply : replies )
@@ -177,7 +177,7 @@ namespace detail
 
                      if( _follow_api )
                      {
-                        _state.accounts[ reply_ref ].reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { reply.author, 1 } ) ).reputations[0].reputation;
+                        _state.accounts[ reply_ref ].reputation = _follow_api->get_account_reputations( { reply.author, 1 } ).reputations[0].reputation;
                      }
 
                      eacnt.recent_replies->push_back( reply_ref );
@@ -214,7 +214,7 @@ namespace detail
             {
                if( _follow_api )
                {
-                  auto blog = _follow_api->get_blog_entries( follow::get_blog_entries_args( { eacnt.name, 0, 20 } ) ).blog;
+                  auto blog = _follow_api->get_blog_entries( { eacnt.name, 0, 20 } ).blog;
                   eacnt.blog = vector<string>();
                   eacnt.blog->reserve(blog.size());
 
@@ -238,7 +238,7 @@ namespace detail
             {
                if( _follow_api )
                {
-                  auto feed = _follow_api->get_feed_entries( follow::get_feed_entries_args( { eacnt.name, 0, 20 } ) ).feed;
+                  auto feed = _follow_api->get_feed_entries( { eacnt.name, 0, 20 } ).feed;
                   eacnt.feed = vector<string>();
                   eacnt.feed->reserve( feed.size());
 
@@ -270,7 +270,7 @@ namespace detail
             auto key = account + "/" + slug;
             if( _tags_api )
             {
-               auto dis = _tags_api->get_discussion( tags::get_discussion_args( { account, slug } ) );
+               auto dis = _tags_api->get_discussion( { account, slug } );
 
                recursively_fetch_content( _state, dis, accounts );
                _state.content[key] = std::move(dis);
@@ -278,8 +278,7 @@ namespace detail
          }
          else if( part[0] == "witnesses" || part[0] == "~witnesses")
          {
-            auto start = _database_api->list_witnesses(
-               database_api::list_witnesses_args( { { "" }, 1, database_api::by_name } ) );
+            auto start = _database_api->list_witnesses( { { "" }, 1, database_api::by_name } );
 
             if( BOOST_LIKELY( start.witnesses.size() ) )
             {
@@ -288,7 +287,7 @@ namespace detail
                start_key.push_back( fc::variant( start.witnesses[0].owner ) );
 
                auto wits = _database_api->list_witnesses(
-                  database_api::list_witnesses_args( { fc::variant( start_key ), 50, database_api::by_vote_name } ) ).witnesses;
+                  { fc::variant( start_key ), 50, database_api::by_vote_name } ).witnesses;
 
                //auto wits = get_witnesses_by_vote( "", 50 );
                for( const auto& w : wits )
@@ -542,7 +541,7 @@ namespace detail
             if( _tags_api )
             {
                _state.tag_idx.trending.clear();
-               auto trending_tags = _tags_api->get_trending_tags( tags::get_trending_tags_args( { std::string(), 250 } ) ).tags;
+               auto trending_tags = _tags_api->get_trending_tags( { std::string(), 250 } ).tags;
                for( const auto& t : trending_tags )
                {
                   string name = t.name;
@@ -562,14 +561,14 @@ namespace detail
 
             if( _follow_api )
             {
-               _state.accounts[a].reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { a, 1 } ) ).reputations[0].reputation;
+               _state.accounts[a].reputation = _follow_api->get_account_reputations( { a, 1 } ).reputations[0].reputation;
             }
          }
          if( _tags_api )
          {
             for( auto& d : _state.content )
             {
-               d.second.active_votes = _tags_api->get_active_votes( tags::get_active_votes_args( { d.second.author, d.second.permlink } ) ).votes;
+               d.second.active_votes = _tags_api->get_active_votes( { d.second.author, d.second.permlink } ).votes;
             }
          }
 
@@ -621,7 +620,7 @@ namespace detail
 
             if( _follow_api )
             {
-               results.back().reputation = _follow_api->get_account_reputations( follow::get_account_reputations_args( { itr->name, 1 } ) ).reputations[0].reputation;
+               results.back().reputation = _follow_api->get_account_reputations( { itr->name, 1 } ).reputations[0].reputation;
             }
 
             auto vitr = vidx.lower_bound( boost::make_tuple( itr->name, account_name_type() ) );
@@ -739,10 +738,11 @@ namespace detail
       {
          result.push_back( *itr );
 
-         if( itr->sell_price.base.symbol == STEEM_SYMBOL )
-            result.back().real_price = (~result.back().sell_price).to_real();
-         else
-            result.back().real_price = (result.back().sell_price).to_real();
+         // if( itr->sell_price.base.symbol == STEEM_SYMBOL )
+         //    result.back().real_price = (~result.back().sell_price).to_real();
+         // else
+         //    result.back().real_price = (result.back().sell_price).to_real();
+         result.back().real_price = 0.0;
          ++itr;
       }
 
@@ -809,7 +809,7 @@ namespace detail
 
          if( _tags_api )
          {
-            auto replies = _tags_api->get_content_replies( tags::get_content_replies_args( { root.author, root.permlink } ) ).discussions;
+            auto replies = _tags_api->get_content_replies( { root.author, root.permlink } ).discussions;
             for( auto& r : replies )
             {
                try
@@ -1110,19 +1110,19 @@ DEFINE_API( condenser_api, get_account_bandwidth )
    CHECK_ARG_SIZE( 2 )
    FC_ASSERT( my->_witness_api, "witness_api_plugin not enabled." );
    return my->_witness_api->get_account_bandwidth(
-      witness::get_account_bandwidth_args({
+      {
          args[0].as< string >(),
          args[1].as< witness::bandwidth_type >()
-      })).bandwidth;
+      }).bandwidth;
 }
 
 DEFINE_API( condenser_api, get_savings_withdraw_from )
 {
    CHECK_ARG_SIZE( 1 )
    return my->_database_api->find_savings_withdrawals(
-      database_api::find_savings_withdrawals_args({
+      {
          args[0].as< string >()
-      })).withdrawals;
+      }).withdrawals;
 }
 
 DEFINE_API( condenser_api, get_savings_withdraw_to )
@@ -1171,18 +1171,18 @@ DEFINE_API( condenser_api, get_conversion_requests )
 {
    CHECK_ARG_SIZE( 1 )
    return my->_database_api->find_sbd_conversion_requests(
-      database_api::find_sbd_conversion_requests_args({
+      {
          args[0].as< account_name_type >()
-      })).requests;
+      }).requests;
 }
 
 DEFINE_API( condenser_api, get_witness_by_account )
 {
    CHECK_ARG_SIZE( 1 )
    auto witnesses = my->_database_api->find_witnesses(
-      database_api::find_witnesses_args({
+      {
          { args[0].as< account_name_type >() }
-      })).witnesses;
+      }).witnesses;
 
    get_witness_by_account_return result;
 
@@ -1239,9 +1239,9 @@ DEFINE_API( condenser_api, get_transaction_hex )
 {
    CHECK_ARG_SIZE( 1 )
    return my->_database_api->get_transaction_hex(
-      database_api::get_transaction_hex_args({
+      {
          args[0].as< signed_transaction >()
-      })).hex;
+      }).hex;
 }
 
 DEFINE_API( condenser_api, get_transaction )

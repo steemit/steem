@@ -42,7 +42,7 @@
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 0) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 3) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
 #define STEEM_CHAIN_ID                        (steem::protocol::chain_id_type())

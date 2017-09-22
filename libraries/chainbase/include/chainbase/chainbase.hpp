@@ -747,12 +747,7 @@ namespace chainbase {
    class database
    {
       public:
-         enum open_flags {
-            read_only     = 0,
-            read_write    = 1
-         };
-
-         void open( const bfs::path& dir, uint32_t write = read_only, uint64_t shared_file_size = 0 );
+         void open( const bfs::path& dir, uint32_t flags = 0, uint64_t shared_file_size = 0 );
          void close();
          void flush();
          void wipe( const bfs::path& dir );
@@ -763,7 +758,7 @@ namespace chainbase {
 
          void require_read_lock( const char* method, const char* tname )const
          {
-            if( BOOST_UNLIKELY( _enable_require_locking & _read_only & (_read_lock_count <= 0) ) )
+            if( BOOST_UNLIKELY( _enable_require_locking & (_read_lock_count <= 0) ) )
                require_lock_fail(method, "read", tname);
          }
 
@@ -848,13 +843,7 @@ namespace chainbase {
              }
 
              index_type* idx_ptr =  nullptr;
-             if( !_read_only ) {
-                idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
-             } else {
-                idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
-                if( !idx_ptr ) BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
-             }
-
+             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
              idx_ptr->validate();
 
              if( type_id >= _index_map.size() )
@@ -1031,9 +1020,6 @@ namespace chainbase {
          template< typename Lambda >
          auto with_write_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
-            if( _read_only )
-               BOOST_THROW_EXCEPTION( std::logic_error( "cannot acquire write lock on read-only process" ) );
-
             write_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
@@ -1076,7 +1062,6 @@ namespace chainbase {
          read_write_mutex_manager                                    _rw_manager;
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
-         bool                                                        _read_only = false;
          bip::file_lock                                              _flock;
 
          /**

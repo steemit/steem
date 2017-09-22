@@ -16,6 +16,7 @@
 #include <fc/thread/thread.hpp>
 #include <fc/interprocess/signals.hpp>
 #include <fc/git_revision.hpp>
+#include <fc/stacktrace.hpp>
 
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/program_options.hpp>
@@ -66,6 +67,9 @@ int main( int argc, char** argv )
       bpo::options_description options;
 
       steem::utilities::set_logging_program_options( options );
+      options.add_options()
+         ("backtrace", bpo::value< string >()->default_value( "yes" ), "Whether to print backtrace on SIGSEGV" );
+
       appbase::app().add_program_options( bpo::options_description(), options );
 
       steem::plugins::register_plugins();
@@ -78,15 +82,23 @@ int main( int argc, char** argv )
             ( argc, argv ) )
          return 0;
 
+      auto& args = appbase::app().get_args();
+
       try
       {
-         fc::optional< fc::logging_config > logging_config = steem::utilities::load_logging_config( appbase::app().get_args(), appbase::app().data_dir() );
+         fc::optional< fc::logging_config > logging_config = steem::utilities::load_logging_config( args, appbase::app().data_dir() );
          if( logging_config )
             fc::configure_logging( *logging_config );
       }
       catch( const fc::exception& )
       {
          wlog( "Error parsing logging config" );
+      }
+
+      if( args.at( "backtrace" ).as< string >() == "yes" )
+      {
+         fc::print_stacktrace_on_segfault();
+         ilog( "Backtrace on segfault is enabled." );
       }
 
       appbase::app().startup();
