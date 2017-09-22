@@ -3017,7 +3017,7 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
 
       p.init( names, comments );
 
-      p.timestamp( "***review data ( start )***", false/*total_time*/, false/*with_time*/ );
+      p.timestamp( "****review data ( start )", false/*total_time*/, false/*with_time*/, true/*range_time*/ );
       for( uint32_t i = 1; i <= 100; ++i )
       {
          p.get_accounts();
@@ -3026,7 +3026,7 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
          if( ( i % 10 ) == 0 )
             p.timestamp( std::to_string( i ) );
       }
-      p.timestamp( "***review data ( end )***", false/*total_time*/, false/*with_time*/ );
+      p.timestamp( "****review data completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -3094,7 +3094,7 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
 
       p.init( names, comments );
 
-      p.timestamp( "***review data ( start )***", false/*total_time*/, false/*with_time*/ );
+      p.timestamp( "****review data ( start )", false/*total_time*/, false/*with_time*/, true/*range_time*/ );
       for( uint32_t i = 1; i <= 100; ++i )
       {
          p.get_accounts();
@@ -3103,7 +3103,7 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
          if( ( i % 10 ) == 0 )
             p.timestamp( std::to_string( i ) );
       }
-      p.timestamp( "***review data ( end )***", false/*total_time*/, false/*with_time*/ );
+      p.timestamp( "****review data completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
    }
    FC_LOG_AND_RETHROW()
 }

@@ -67,6 +67,7 @@ performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::performance( u
 {
    last_time_in_miliseconds = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
    start_time_in_miliseconds = last_time_in_miliseconds;
+   range_time_in_miliseconds = last_time_in_miliseconds;
    stream_time.open( time_file_name );
 }
 
@@ -151,7 +152,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::init( tex
    text_generator::Items& accounts = _accounts.getItems();
    text_generator::Items& comments = _comments.getItems();
 
-   timestamp( "***init data in memory ( start )***", false/*total_time*/, false/*with_time*/ );
+   timestamp( "****init data in memory ( start )", false/*total_time*/, false/*with_time*/, true/*range_time*/ );
 
    int32_t idx = 0;
    std::for_each( accounts.begin(), accounts.end(), [&]( const std::string& account )
@@ -169,7 +170,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::init( tex
          );
       }
    );
-   timestamp( "***init data in memory ( end )***", false/*total_time*/, false/*with_time*/ );
+   timestamp( "****init data in memory completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
@@ -224,35 +225,42 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::dump( con
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::timestamp( std::string description, bool total_time, bool with_time )
+void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::timestamp( std::string description, bool total_time, bool with_time, bool range_time )
 {
    uint64_t actual = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
-   uint64_t tmp = total_time?start_time_in_miliseconds:last_time_in_miliseconds;
-
-    FILE* file = fopen("/proc/self/status", "r");
-    int result = -1;
-    char line[128];
-
-    while (fgets(line, 128, file) != NULL)
-    {
-        if (strncmp(line, "VmRSS:", 6) == 0)
-        {
-            int i = strlen(line);
-            const char* p = line;
-            while (*p <'0' || *p > '9') p++;
-            line[i-3] = '\0';
-            result = atoi(p);
-            break;
-        }
-    }
-    fclose(file);
+   uint64_t tmp = total_time?start_time_in_miliseconds:( ( range_time && with_time )?range_time_in_miliseconds:last_time_in_miliseconds);
 
    if( with_time ) 
-      stream_time << description << ": " << actual - tmp << " ms " << result << " kB\n";
+   {
+      FILE* file = fopen("/proc/self/status", "r");
+      int result = -1;
+      char line[128];
+
+      while (fgets(line, 128, file) != NULL)
+      {
+         if (strncmp(line, "VmRSS:", 6) == 0)
+         {
+               int i = strlen(line);
+               const char* p = line;
+               while (*p <'0' || *p > '9') p++;
+               line[i-3] = '\0';
+               result = atoi(p);
+               break;
+         }
+      }
+      fclose(file);
+
+      if( range_time )
+         stream_time << description << ": " << actual - tmp << " ms\n";
+      else
+         stream_time << description << ": " << actual - tmp << " ms " << result << " kB\n";
+   }
    else
       stream_time << description << "\n";
 
    last_time_in_miliseconds = actual;
+   if( range_time )
+      range_time_in_miliseconds = actual;
 
    stream_time.flush();
 }
@@ -262,7 +270,7 @@ template performance< shared_string, account_interprocess_allocator_type, commen
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::init( text_generator& _accounts, text_generator& _comments );
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_accounts( types::p_dump_collection data );
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::dump( const types::p_dump_collection& data, uint32_t idx );
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::timestamp( std::string description, bool total_time, bool with_time );
+template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::timestamp( std::string description, bool total_time, bool with_time, bool range_time );
 
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_comments< by_comment_account >( types::p_dump_collection data );
 template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_comments< by_comment >( types::p_dump_collection data );
@@ -273,7 +281,7 @@ template performance< std::string, account_std_allocator_type, comment_std_alloc
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::init( text_generator& _accounts, text_generator& _comments );
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_accounts( types::p_dump_collection data );
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::dump( const types::p_dump_collection& data, uint32_t idx );
-template void performance< std::string,account_std_allocator_type, comment_std_allocator_type >::timestamp( std::string description, bool total_time, bool with_time );
+template void performance< std::string,account_std_allocator_type, comment_std_allocator_type >::timestamp( std::string description, bool total_time, bool with_time, bool range_time );
 
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_comments< by_comment_account >( types::p_dump_collection data );
 template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_comments< by_comment >( types::p_dump_collection data );
