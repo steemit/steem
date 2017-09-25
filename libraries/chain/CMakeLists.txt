@@ -8,6 +8,7 @@ add_library( steem_chain
 
              smt_evaluator.cpp
              steem_evaluator.cpp
+             account_object.cpp
              steem_objects.cpp
 
              witness_schedule.cpp

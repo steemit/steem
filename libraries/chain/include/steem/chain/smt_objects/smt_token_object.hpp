@@ -8,11 +8,9 @@ namespace steem { namespace chain {
 
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
-   smt_token_object() = delete;
-
    public:
       template< typename Constructor, typename Allocator >
-      smt_token_object( Constructor&& c, size_t assignedId, allocator< Allocator > a ) :
+      smt_token_object( Constructor&& c, size_t assignedId, allocator<Allocator> a ) :
          id(assignedId)
       {
          c( *this );

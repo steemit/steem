@@ -11,6 +11,8 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 
+#include <boost/throw_exception.hpp>
+
 #include <cstddef>
 #include <vector>
 
@@ -110,37 +112,61 @@ public:
 
       if(result)
       {
-         
+         const value_type& changedObject = *position;
+
+         const auto newRAIdentifier = getIndex(changedObject);
+
+         if(newRAIdentifier != cachedRAIdentifier)
+         {
+            /// Changing object identifier is disallowed !!!
+            BOOST_THROW_EXCEPTION(std::runtime_error("Cannot change persistent object id"));
+         }
       }
+
+      return result;
    }
 
    template <typename Constructor>
-   std::pair<iterator, bool> emplace(Constructor &&c)
+   std::pair<iterator, bool> emplace(Constructor &&c, allocator_type allocator)
    {
       std::size_t index = retrieveNextId();
-      auto allocator = this->get_allocator();
 
-      auto ii = base_class::emplace(c, index, allocator);
+      auto node_ii = base_class::emplace_(c, index, allocator);
 
-      if (ii.second)
+      std::pair<iterator, bool> ii = std::make_pair(const_iterator(node_ii.first), node_ii.second);
+
+      if (node_ii.second)
       {
          assert(index == getIndex(*ii.first) && "Built object must have assigned actual id");
 
          if (RandomAccessStorage.size() == index)
-         RandomAccessStorage.push_back(ii.first);
+            RandomAccessStorage.push_back(ii.first);
          else
-         RandomAccessStorage[index] = ii.first;
+            RandomAccessStorage[index] = ii.first;
 
          if (FreeIndices.empty() == false)
          {
-         assert(FreeIndices.back() == index);
-         FreeIndices.pop_back();
+            assert(FreeIndices.back() == index);
+            FreeIndices.pop_back();
          }
       }
 
       return std::move(ii);
    }
 
+   std::pair<iterator, bool> emplace(value_type&& source)
+   {
+      auto actualId = retrieveNextId();
+      
+      auto constructor = [&source, actualId](value_type& newObject)
+      {
+         newObject = std::move(source);
+         newObject.id._id = actualId;
+      };
+
+      return emplace(std::move(constructor), this->get_allocator());
+   }
+   
    iterator erase(iterator position)
    {
       const value_type &object = *position;

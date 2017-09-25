@@ -1,5 +1,7 @@
 #include <steem/chain/account_object.hpp>
 
+#include <steem/chain/database.hpp>
+
 namespace steem
 {
 namespace chain
@@ -13,7 +15,7 @@ namespace chain
          [&]( smt_token_object& token )
          {
          });
-         
+
       db.modify(*this, [&newToken](account_object& account)
       {
          account.associatedToken = newToken;

@@ -65,7 +65,7 @@ void verifyContainer(const TContainer &x)
    std::cout << "Performing lookup test..." << std::endl;
    for (const auto &a : x)
    {
-      auto foundI = x.find(a.name);
+      auto foundI = orderedIdx.find(a.name);
       BOOST_REQUIRE(foundI != x.end());
       std::cout << "Name: `" << a.name << "' points to object: " << *foundI << std::endl;
    }
@@ -73,7 +73,7 @@ void verifyContainer(const TContainer &x)
    std::string brokenName = s_names.front();
    brokenName += "_broken";
 
-   auto foundI = x.find(brokenName);
+   auto foundI = orderedIdx.find(brokenName);
    BOOST_REQUIRE(foundI == x.end());
 
    std::vector<size_t> validRandomIds;
@@ -100,7 +100,7 @@ void fillContainer(TContainer * c)
          obj.name = name;
       };
 
-      c->emplace(constructor);
+      c->emplace(constructor, c->get_allocator());
    }
 }
 
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
    std::vector<test_object> sourceContainer;
    std::allocator<test_object> stringAlloc;
    /// tests for various constructors originally defined in multi_index_container
-   TContainer x, y(stringAlloc), z(sourceContainer.cbegin(), sourceContainer.cend());
+   TContainer x, y(stringAlloc);
 
    printTestTitle("Container initial test...");
 
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
       obj.name = newName;
    };
 
-   auto ii = x.emplace(constructor);
+   auto ii = x.emplace(constructor, x.get_allocator());
 
    BOOST_REQUIRE(ii.second);                 /// Element must be inserted
    BOOST_REQUIRE(ii.first->id == removedId); /// Id shall be reused

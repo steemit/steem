@@ -191,25 +191,7 @@ namespace chainbase {
           */
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
-            typename has_master_index<MultiIndexType>::type selector;
-
-            auto new_id = getNextObjectId(selector);
-
-            auto constructor = [&]( value_type& v ) {
-               v.id = new_id;
-               c( v );
-            };
-
-            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
-
-            if( !insert_result.second ) {
-               BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
-            }
-
-            generateNextObjectId(selector);
-
-            on_create( *insert_result.first );
-            return *insert_result.first;
+            return final_emplace(c, _indices);
          }
 
          template<typename Modifier>
@@ -309,7 +291,7 @@ namespace chainbase {
          void undo() {
             if( !enabled() ) return;
 
-            const auto& head = _stack.back();
+            auto& head = _stack.back();
 
             for( auto& item : head.old_values ) {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
@@ -475,13 +457,52 @@ namespace chainbase {
          }
 
       private:
+         template <typename Constructor, typename IndexSpecifierList>
+         const value_type& final_emplace(Constructor&& c,
+            indexed_container<value_type, IndexSpecifierList>& container)
+         {
+         auto insert_result = container.emplace( c, container.get_allocator() );
+            
+         if( !insert_result.second ) {
+            BOOST_THROW_EXCEPTION( std::logic_error(
+               "could not insert object, most likely a uniqueness constraint was violated") );
+         }
+            
+         on_create( *insert_result.first );
+         return *insert_result.first;
+         } 
+
+         template <typename Constructor, typename IndexSpecifierList, typename Allocator>
+         const value_type& final_emplace(Constructor&& c,
+            boost::multi_index::multi_index_container<value_type,
+               IndexSpecifierList, Allocator>& container)
+         {
+            auto new_id = this->_next_id;
+            
+            auto constructor = [&]( value_type& v ) {
+               v.id = new_id;
+               c( v );
+            };
+
+            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
+
+            if( !insert_result.second ) {
+               BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
+            }
+
+            ++_next_id;
+
+            on_create( *insert_result.first );
+            return *insert_result.first;
+         } 
+         
          const value_type* find_by_id(const oid<value_type>& id, std::true_type /*isMasterIndex*/) const
          {
-            if(id == 0)
+            if(id._id == 0)
                return nullptr;
             size_t index = id._id - 1;
-            const value_type& object = _indices[index];
-            return &object;
+            const value_type* object = _indices[index];
+            return object;
          }
 
          const value_type* find_by_id(const oid<value_type>& id, std::false_type /*isMasterIndex*/) const
@@ -490,39 +511,6 @@ namespace chainbase {
             if( itr != _indices.end() )
                return &*itr;
             return nullptr;
-         }
-         
-         /** Allows to retrieve UNIQUE identifier of the object to be stored inside _indices container.
-              \warning To be used BEFORE insertion.
-         */
-         typename value_type::id_type getNextObjectId(std::true_type /*isMasterIndex*/) const
-         {
-            /// \warning +1 because id == 0 is reserved for NULL represenation in the ptr_ref class.
-            return value_type::id_type(_indices.size() + 1);
-         }
-
-         /** Allows to retrieve UNIQUE identifier of the object to be stored inside _indices container.
-              \warning To be used BEFORE insertion.
-         */
-         typename value_type::id_type getNextObjectId(std::false_type /*isMasterIndex*/) const
-         {
-            return _next_id;
-         }
-
-         /** Allows to generate next UNIQUE identifier.
-              \warning To be used AFTER successfull insertion.
-         */
-         void generateNextObjectId(std::true_type /*isMasterIndex*/)
-         {
-            /// Nothing to do. Next index value is strictly associated to container size.
-         }
-
-         /** Allows to generate next UNIQUE identifier.
-              \warning To be used AFTER successfull insertion.
-         */
-         void generateNextObjectId(std::false_type /*isMasterIndex*/)
-         {
-            ++_next_id;
          }
 
          bool enabled()const { return _stack.size(); }
