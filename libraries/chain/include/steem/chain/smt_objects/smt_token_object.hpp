@@ -12,22 +12,17 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
 
    public:
       template< typename Constructor, typename Allocator >
-      smt_token_object( Constructor&& c, allocator< Allocator > a )
+      smt_token_object( Constructor&& c, size_t assignedId, allocator< Allocator > a ) :
+         id(assignedId)
       {
          c( *this );
       }
 
       // id_type is actually oid<smt_token_object>
-      id_type           id;
+      id_type id;
 };
 
-typedef multi_index_container <
-   smt_token_object,
-   indexed_by <
-      random_access< tag< chainbase::MasterIndexTag >>
-   >,
-   allocator< smt_token_object >
-> smt_token_index;
+typedef chainbase::indexed_container<smt_token_object> smt_token_index;
 
 } }
 

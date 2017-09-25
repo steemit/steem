@@ -5,6 +5,8 @@
 
 namespace chainbase {
 
+database* database::s_main_db = nullptr;
+
    struct environment_check {
       environment_check() {
          memset( &compiler_version, 0, sizeof( compiler_version ) );

@@ -10,7 +10,7 @@
 
 #include <steem/chain/smt_objects/smt_token_object.hpp>
 
-#include <steem/chain/util/ptr_ref.hpp>
+#include <chainbase/util/ptr_ref.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
 
@@ -143,7 +143,7 @@ namespace steem { namespace chain {
          void finalize_elevation(database& db) const;
 
       private:
-         ptr_ref<smt_token_object> associatedToken;
+         chainbase::ptr_ref<smt_token_object> associatedToken;
    
       #endif /// STEEM_ENABLE_SMT
    };

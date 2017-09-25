@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chainbase/util/ra_indexed_container.hpp>
+
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/set.hpp>
@@ -51,6 +53,11 @@ namespace chainbase {
    template<typename T>
    using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
 
+   template <typename ValueType,
+             typename IndexSpecifierList=boost::multi_index::indexed_by <boost::multi_index::sequenced<>>
+            >
+   using indexed_container = ra_indexed_container<ValueType, IndexSpecifierList, allocator<ValueType> >;
+
    typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
 
    template<typename T>
@@ -82,23 +89,6 @@ namespace chainbase {
    typedef boost::interprocess::interprocess_sharable_mutex read_write_mutex;
    typedef boost::interprocess::sharable_lock< read_write_mutex > read_lock;
    typedef boost::unique_lock< read_write_mutex > write_lock;
-
-   /**
-    *  Object ID type that includes the type of the object it references
-    */
-   template<typename T>
-   class oid {
-      public:
-         oid( int64_t i = 0 ):_id(i){}
-
-         oid& operator++() { ++_id; return *this; }
-
-         friend bool operator < ( const oid& a, const oid& b ) { return a._id < b._id; }
-         friend bool operator > ( const oid& a, const oid& b ) { return a._id > b._id; }
-         friend bool operator == ( const oid& a, const oid& b ) { return a._id == b._id; }
-         friend bool operator != ( const oid& a, const oid& b ) { return a._id != b._id; }
-         int64_t _id = 0;
-   };
 
    template<uint16_t TypeNumber, typename Derived>
    struct object
@@ -725,6 +715,12 @@ namespace chainbase {
          void wipe( const bfs::path& dir );
          void set_require_locking( bool enable_require_locking );
 
+         static database& main_db()
+         {
+            assert(s_main_db != nullptr && "Main database must be initialized first !!!");
+            return *s_main_db;
+         }
+
 #ifdef CHAINBASE_CHECK_LOCKING
          void require_lock_fail( const char* method, const char* lock_type, const char* tname )const;
 
@@ -1030,6 +1026,19 @@ namespace chainbase {
             }
          }
 
+         void install_main_db(database* instance)
+         {
+            assert(s_main_db == nullptr && "Only one main-db is allowed");
+            assert(instance != nullptr && "Provided main-database instance cannot be null");
+            s_main_db = instance;
+         }
+
+         void uninstall_main_db()
+         {
+            s_main_db = nullptr;
+         }
+         
+
       private:
          read_write_mutex_manager                                    _rw_manager;
          unique_ptr<bip::managed_mapped_file>                        _segment;
@@ -1051,6 +1060,7 @@ namespace chainbase {
          int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
+         static database*                                            s_main_db;
    };
 
    template<typename Object, typename... Args>

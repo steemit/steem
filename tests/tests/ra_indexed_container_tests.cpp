@@ -1,12 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
-#include <steem/chain/util/ra_indexed_container.hpp>
+#include <chainbase/util/ra_indexed_container.hpp>
 
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/random_access_index.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -44,7 +39,7 @@ std::ostream &operator<<(std::ostream &os, const test_object &a)
 
 struct OrderedIndex;
 
-typedef steem::chain::ra_indexed_container<test_object,
+typedef chainbase::ra_indexed_container<test_object,
    indexed_by<
       ordered_unique<
             tag<OrderedIndex>, member<test_object, std::string, &test_object::name>>>,

@@ -3,12 +3,10 @@
 
 #include <stdlib.h>
 
-#include <steem/chain/database.hpp>
+#include <chainbase/chainbase.hpp>
+#include <chainbase/util/ra_indexed_container.hpp>
 
-namespace steem
-{
-
-namespace chain
+namespace chainbase
 {
 
 struct main_db_accessor
@@ -60,7 +58,7 @@ private:
    {
       typedef typename chainbase::get_index_type<ObjectType>::type multi_index_type;
       static_assert(chainbase::has_master_index<multi_index_type>::value,
-         "ptr_ref usage needs defined random_access index tagged as MasterIndexTag");
+         "ptr_ref  needs ra_indexed_container to be used as this type storage");
 
       if(Id == NULL_ID)
          return nullptr;
@@ -69,10 +67,10 @@ private:
       database& actualDb = accessor();
 
       const multi_index_type& actualContainer = actualDb.get_index<multi_index_type>().indices();
-      const auto& masterIndex = actualContainer.template get<chainbase::MasterIndexTag>();
 
-      ObjectType& object = const_cast<ObjectType&>(masterIndex[Id]);
-      return &object;
+      ObjectType* object = const_cast<ObjectType*>(actualContainer[Id]);
+      assert(object != nullptr && "Attempting to reference deleted object");
+      return object;
    }
 
 /// Class attributes:
@@ -80,9 +78,7 @@ private:
    size_t Id = 0;
 };
 
-} /// namespace chain
-
-} /// namespace steem
+} /// namespace chainbase
 
 #endif /// __PTR_REF_HPP
 
