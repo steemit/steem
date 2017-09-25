@@ -184,7 +184,7 @@ void smt_setup_emissions_operation::validate()const
    FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time );
    // ^ lep_time is either later or non-important
 
-   FC_ASSERT( lep_abs_amount.symbol_name() == control_account );
+   //FC_ASSERT( lep_abs_amount.symbol_name() == control_account );
    // ^ TODO Replace with appropriate comparison between asset symbol and SMT symbol.
    FC_ASSERT( lep_abs_amount.symbol == rep_abs_amount.symbol );
    FC_ASSERT( lep_abs_amount.amount >= 0 && rep_abs_amount.amount >= 0 );
