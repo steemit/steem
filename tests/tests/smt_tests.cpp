@@ -8,6 +8,7 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/steem_objects.hpp>
+#include <steem/chain/smt_objects.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
@@ -105,6 +106,136 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
       // - Check that less than 1000 SBD throws
       // - Check that more than 1000 SBD succeeds
       //
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_emissions_validate )
+{
+   try
+   {
+      smt_setup_emissions_operation op;
+      op.control_account = "@@@@@";
+      // Invalid account name.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.control_account = "alice";
+      // schedule_time <= STEEM_GENESIS_TIME;
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      fc::time_point now = fc::time_point::now();
+      op.schedule_time = now;
+      // Empty emissions_unit.token_unit
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.emissions_unit.token_unit["alice"] = 10;
+      // Both absolute amount fields are zero.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.lep_abs_amount = ASSET( "0 TESTS" );
+      // Amount symbol does NOT match control account name.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.lep_abs_amount = ASSET( "0 alice" );
+      // Mismatch of absolute amount symbols.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.rep_abs_amount = ASSET( "-1 alice" );
+      // Negative absolute amount.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.rep_abs_amount = ASSET( "0 alice" );
+      // Both amounts are equal zero.
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+      
+      op.rep_abs_amount = ASSET( "1000 alice" );
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
+{
+   try
+   {
+      smt_setup_emissions_operation op;
+      op.control_account = "alice";
+      fc::time_point now = fc::time_point::now();
+      op.schedule_time = now;
+      op.emissions_unit.token_unit["alice"] = 10;
+      op.lep_abs_amount = op.rep_abs_amount = ASSET( "1000 alice" );
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( setup_emissions_apply )
+{
+   try
+   {
+      ACTORS( (alice)(bob) )
+      
+      smt_setup_emissions_operation op;
+      op.control_account = "alice";
+      fc::time_point now = fc::time_point::now();
+      op.schedule_time = now;
+      op.emissions_unit.token_unit["bob"] = 10;
+      op.lep_abs_amount = op.rep_abs_amount = ASSET( "1000 alice" );
+
+      signed_transaction tx;
+
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( alice_private_key, db->get_chain_id() );
+
+      // Throw due to non-elevated account (too early).
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+      // Elevate account.
+      {
+         set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+         fund( "alice", 10 * 1000 * 1000 );
+         
+         smt_elevate_account_operation op;
+   
+         op.fee = ASSET( "1000.000 TBD" );
+         op.account = "alice";
+
+         convert( "alice", ASSET( "5000.000 TESTS" ) );
+         
+         signed_transaction tx;
+   
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( alice_private_key, db->get_chain_id() );
+         db->push_transaction( tx, 0 );
+      }
+
+      // Throw due to non-elevated account (too early).
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
+      // TODO: Replace the code below with account setup operation execution once its implemented.
+      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_control_account >( "alice" );
+      FC_ASSERT( smt != nullptr, "The account has just been elevated!" );
+      FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
+      db->modify( *smt, [&]( steem::chain::smt_token_object& token )
+      {
+         token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
+      });
+      // Throw due to closed setup phase (too late).
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
