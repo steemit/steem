@@ -17,6 +17,7 @@ namespace detail {
 
 class main_database final : public steem::chain::database
 {
+public:
    main_database()
    {
       install_main_db(this);
@@ -33,7 +34,7 @@ class chain_plugin_impl
    public:
       uint64_t                         shared_memory_size = 0;
       bfs::path                        shared_memory_dir;
-      bool                              replay = false;
+      bool                             replay = false;
       bool                             resync   = false;
       bool                             readonly = false;
       bool                             check_locks = false;
@@ -43,7 +44,7 @@ class chain_plugin_impl
 
       uint32_t allow_future_time = 5;
 
-      database  db;
+      main_database db;
 };
 
 } // detail
