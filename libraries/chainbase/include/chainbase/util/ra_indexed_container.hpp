@@ -127,11 +127,11 @@ public:
    }
 
    template <typename Constructor>
-   std::pair<iterator, bool> emplace(Constructor &&c, allocator_type allocator)
+   std::pair<iterator, bool> emplace(Constructor &&c)
    {
       std::size_t index = retrieveNextId();
 
-      auto node_ii = base_class::emplace_(c, index, allocator);
+      auto node_ii = base_class::emplace_(c, index, this->get_allocator());
 
       std::pair<iterator, bool> ii = std::make_pair(const_iterator(node_ii.first), node_ii.second);
 
@@ -158,13 +158,14 @@ public:
    {
       auto actualId = retrieveNextId();
       
+      /// Be sure that object moved to the container storage has set correct id
       auto constructor = [&source, actualId](value_type& newObject)
       {
          newObject = std::move(source);
          newObject.id._id = actualId;
       };
 
-      return emplace(std::move(constructor), this->get_allocator());
+      return emplace(std::move(constructor));
    }
    
    iterator erase(iterator position)

@@ -461,7 +461,7 @@ namespace chainbase {
          const value_type& final_emplace(Constructor&& c,
             indexed_container<value_type, IndexSpecifierList>& container)
          {
-         auto insert_result = container.emplace( c, container.get_allocator() );
+         auto insert_result = container.emplace(c);
             
          if( !insert_result.second ) {
             BOOST_THROW_EXCEPTION( std::logic_error(

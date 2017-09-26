@@ -100,7 +100,7 @@ void fillContainer(TContainer * c)
          obj.name = name;
       };
 
-      c->emplace(constructor, c->get_allocator());
+      c->emplace(constructor);
    }
 }
 
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
       obj.name = newName;
    };
 
-   auto ii = x.emplace(constructor, x.get_allocator());
+   auto ii = x.emplace(constructor);
 
    BOOST_REQUIRE(ii.second);                 /// Element must be inserted
    BOOST_REQUIRE(ii.first->id == removedId); /// Id shall be reused
