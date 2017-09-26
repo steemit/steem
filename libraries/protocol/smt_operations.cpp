@@ -191,7 +191,12 @@ void smt_setup_operation::validate()const
 void smt_cap_reveal_operation::validate()const {}
 void smt_refund_operation::validate()const {}
 void smt_setup_inflation_operation::validate()const {}
-void smt_set_setup_parameters_operation::validate()const {}
+
+void smt_set_setup_parameters_operation::validate() const
+{
+   FC_ASSERT( is_valid_account_name( control_account ) );
+}
+
 void smt_set_runtime_parameters_operation::validate()const {}
 
 } }
