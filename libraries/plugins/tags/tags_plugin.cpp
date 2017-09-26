@@ -32,6 +32,7 @@ class tags_plugin_impl
       void on_operation( const operation_notification& note );
 
       chain::database&     _db;
+      fc::time_point_sec   _trending_start_time;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   post_apply_connection;
 };
@@ -79,10 +80,13 @@ struct pre_apply_operation_visitor
 
 struct operation_visitor
 {
-   operation_visitor( database& db ):_db(db){};
-   typedef void result_type;
+   operation_visitor( database& db, fc::time_point_sec trending_start_time )
+      : _db( db ), _trending_start_time( trending_start_time ) {};
+
+      typedef void result_type;
 
    database& _db;
+   fc::time_point_sec _trending_start_time;
 
    void remove_stats( const tag_object& tag, const tag_stats_object& stats )const
    {
@@ -361,12 +365,15 @@ struct operation_visitor
 
    void operator()( const comment_operation& op )const
    {
-      update_tags( _db.get_comment( op.author, op.permlink ), op.json_metadata.size() );
+      if( _db.head_block_time() > _trending_start_time || op.json_metadata.size() )
+      {
+         update_tags( _db.get_comment( op.author, op.permlink ), op.json_metadata.size() );
+      }
    }
 
    void operator()( const transfer_operation& op )const
    {
-      if( op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
+      if( _db.head_block_time() > _trending_start_time && op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;
@@ -401,24 +408,27 @@ struct operation_visitor
 
    void operator()( const vote_operation& op )const
    {
-      update_tags( _db.get_comment( op.author, op.permlink ) );
+      if( _db.head_block_time() > _trending_start_time )
+      {
+         update_tags( _db.get_comment( op.author, op.permlink ) );
+      }
    }
 
    void operator()( const comment_reward_operation& op )const
    {
-      const auto& c = _db.get_comment( op.author, op.permlink );
-      update_tags( c );
+         const auto& c = _db.get_comment( op.author, op.permlink );
+         update_tags( c );
 
 #ifndef IS_LOW_MEM
-      comment_metadata meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
+         comment_metadata meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
 
-      for( const string& tag : meta.tags )
-      {
-         _db.modify( get_stats( tag ), [&]( tag_stats_object& ts )
+         for( const string& tag : meta.tags )
          {
-            ts.total_payout += op.payout;
-         });
-      }
+            _db.modify( get_stats( tag ), [&]( tag_stats_object& ts )
+            {
+               ts.total_payout += op.payout;
+            });
+         }
 #endif
    }
 
@@ -454,7 +464,7 @@ void tags_plugin_impl::on_operation( const operation_notification& note )
    try
    {
       /// plugins shouldn't ever throw
-      note.op.visit( operation_visitor( _db ) );
+      note.op.visit( operation_visitor( _db, _trending_start_time ) );
    }
    catch ( const fc::exception& e )
    {
@@ -475,7 +485,11 @@ void tags_plugin::set_program_options(
    boost::program_options::options_description& cli,
    boost::program_options::options_description& cfg
    )
-{}
+{
+   cfg.add_options()
+      ("tags-start-trending", boost::program_options::value< uint32_t >()->default_value( 0 ), "Block time (in epoch seconds) when to start calculating trending and promoted content. Should be 1 week prior to current time." )
+      ;
+}
 
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
@@ -489,6 +503,11 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    add_plugin_index< tag_stats_index         >( my->_db );
    add_plugin_index< author_tag_stats_index  >( my->_db );
 
+   if( options.count( "tags-start-trending" ) )
+   {
+      my->_trending_start_time = fc::time_point_sec( options[ "tags-start-trending" ].as< uint32_t >() );
+      idump( (my->_trending_start_time) );
+   }
 }
 
 
