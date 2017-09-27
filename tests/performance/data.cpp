@@ -9,9 +9,6 @@ namespace steem { namespace chain {
 
 uint32_t performance_account::cnt = 0;
 
-template < typename STRING_TYPE >
-uint32_t performance_comment< STRING_TYPE >::cnt = 0;
-
 std::string text_generator::create_text( uint32_t idx, uint32_t repeat, const std::string& basic_str, const std::string& data )
 {
    std::string ret = basic_str;
@@ -44,21 +41,21 @@ void account_names_generator::generate()
       items.push_back( create_text( i, 0/*repeat*/, "a:", "xyz" ) );
 }
 
-comments_generator::comments_generator( uint32_t _number_comments )
-                  : text_generator( _number_comments )
+permlink_generator::permlink_generator( uint32_t _number_permlinks )
+                  : text_generator( _number_permlinks )
 {
 
 }
 
-comments_generator::~comments_generator()
+permlink_generator::~permlink_generator()
 {
 
 }
 
-void comments_generator::generate()
+void permlink_generator::generate()
 {
    for( uint32_t i = 0; i<number_items; i++ )
-      items.push_back( create_text( i, i % 20/*repeat*/, "comment:", "This is comment" ) );
+      items.push_back( create_text( i, i % 10/*repeat*/, "lnk:", "abc" ) );
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
@@ -86,11 +83,11 @@ void performance< shared_string, account_interprocess_allocator_type, comment_in
    seg.reset( new bip::managed_mapped_file( bip::open_or_create, file_name.c_str(), file_size ) );
    timestamp("creating file");
 
-   acc_idx = seg->find_or_construct< account_container_template< account_interprocess_allocator_type > >("performance_accounts")( account_interprocess_allocator_type( seg->get_segment_manager() ) );
+   acc_idx = seg->find_or_construct< account_container_template >("performance_accounts")( account_interprocess_allocator_type( seg->get_segment_manager() ) );
    FC_ASSERT( acc_idx );
    timestamp("creating multi-index for accounts");
 
-   comm_idx = seg->find_or_construct< comment_container_template< shared_string, comment_interprocess_allocator_type > >("performance_comments")( comment_interprocess_allocator_type( seg->get_segment_manager() ) );
+   comm_idx = seg->find_or_construct< comment_container_template >("performance_comments")( comment_interprocess_allocator_type( seg->get_segment_manager() ) );
    FC_ASSERT( comm_idx );
    timestamp("creating multi-index for comments");
 }
@@ -98,11 +95,11 @@ void performance< shared_string, account_interprocess_allocator_type, comment_in
 template<>
 void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::pre_init()
 {
-   acc_idx = new account_container_template< account_std_allocator_type >( account_std_allocator_type() );
+   acc_idx = new account_container_template( account_std_allocator_type() );
    FC_ASSERT( acc_idx );
    timestamp("creating multi-index for accounts");
 
-   comm_idx = new comment_container_template< std::string, comment_std_allocator_type >( comment_std_allocator_type() );
+   comm_idx = new comment_container_template( comment_std_allocator_type() );
    FC_ASSERT( comm_idx );
    timestamp("creating multi-index for comments");
 }
@@ -165,7 +162,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::init( tex
 
          std::for_each( comments.begin(), comments.end(), [&]( const std::string& comment )
             {
-               comm_idx->insert( performance_comment< STRING_TYPE >( account, getString( comment ), getCommentAllocator() ) );
+               comm_idx->insert( performance_comment< STRING_TYPE >( account, account, getString( comment ), getString( comment ), getCommentAllocator() ) );
             }
          );
       }
@@ -189,20 +186,34 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::get_accou
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
 template< typename ORDERED_TYPE >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::get_comments( types::p_dump_collection data )
+void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::get_comments_internal( types::p_dump_collection data )
 {
    FC_ASSERT( comm_idx );
 
    const auto& comments = comm_idx->get< ORDERED_TYPE >();
    std::for_each( comments.begin(), comments.end(), [&]( const performance_comment< STRING_TYPE >& obj )
       {
-         std::string tmp = obj.account_name + ":";
-         tmp += obj.comment.c_str();
+         std::string tmp = obj.author + ":" + obj.parent_author + ":";
+         tmp += obj.permlink.c_str();
+         tmp += ":";
+         tmp += obj.parent_permlink.c_str();
 
          if( data )
             data->push_back( tmp );
       }
    );
+}
+
+template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
+void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::get_comments_pl( types::p_dump_collection data )
+{
+   get_comments_internal< by_permlink >( data );
+}
+
+template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
+void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::get_comments_p( types::p_dump_collection data )
+{
+   get_comments_internal< by_parent >( data );
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR >
@@ -265,26 +276,90 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR >::timestamp
    stream_time.flush();
 }
 
-template performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::performance( uint64_t _file_size );
-template performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::~performance();
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::init( text_generator& _accounts, text_generator& _comments );
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_accounts( types::p_dump_collection data );
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::dump( const types::p_dump_collection& data, uint32_t idx );
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::timestamp( std::string description, bool total_time, bool with_time, bool range_time );
+template< bool IS_STD >
+performance_checker< IS_STD >::performance_checker( uint32_t _number_accounts, uint32_t _number_permlinks, uint64_t _file_size )
+                              :  number_accounts( _number_accounts ), number_permlinks( _number_permlinks ), file_size( _file_size ),
+                                 p( _file_size )
+{
 
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_comments< by_comment_account >( types::p_dump_collection data );
-template void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type >::get_comments< by_comment >( types::p_dump_collection data );
+}
 
+template< bool IS_STD >
+performance_checker< IS_STD >::~performance_checker()
+{
 
-template performance< std::string, account_std_allocator_type, comment_std_allocator_type >::performance( uint64_t _file_size );
-template performance< std::string, account_std_allocator_type, comment_std_allocator_type >::~performance();
-template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::init( text_generator& _accounts, text_generator& _comments );
-template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_accounts( types::p_dump_collection data );
-template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::dump( const types::p_dump_collection& data, uint32_t idx );
-template void performance< std::string,account_std_allocator_type, comment_std_allocator_type >::timestamp( std::string description, bool total_time, bool with_time, bool range_time );
+}
 
-template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_comments< by_comment_account >( types::p_dump_collection data );
-template void performance< std::string, account_std_allocator_type, comment_std_allocator_type >::get_comments< by_comment >( types::p_dump_collection data );
+template< bool IS_STD >
+void performance_checker< IS_STD >::run()
+{
+   account_names_generator names( number_accounts );
+   names.generate();
+
+   permlink_generator permlinks( number_permlinks );
+   permlinks.generate();
+
+   p.timestamp( "generating test data" );
+
+   p.init( names, permlinks );
+
+   int idx = 0;
+   //Get accounts
+   types::p_dump_collection accounts = types::p_dump_collection( new std::list< std::string >() );
+   p.get_accounts( accounts );
+   p.dump( accounts, idx++ );
+   FC_ASSERT( accounts->size() == number_accounts );
+
+   //Get all comments
+   types::p_dump_collection comments_1 = types::p_dump_collection( new std::list< std::string >() );
+   p.get_comments_pl( comments_1 );
+   FC_ASSERT( comments_1->size() == number_accounts * number_permlinks );
+   p.dump( comments_1, idx++ );
+
+   types::p_dump_collection comments_2 = types::p_dump_collection( new std::list< std::string >() );
+   p.get_comments_p( comments_2 );
+   FC_ASSERT( comments_2->size() == number_accounts * number_permlinks );
+   p.dump( comments_2, idx++ );
+
+   p.timestamp( "dumping data" );
+}
+
+template< bool IS_STD >
+void performance_checker< IS_STD >::run_stress()
+{
+   p.timestamp( title, false/*total_time*/, false/*with_time*/ );
+
+   account_names_generator names( number_accounts );
+   names.generate();
+
+   permlink_generator permlinks( number_permlinks );
+   permlinks.generate();
+
+   p.timestamp( "generating test data" );
+
+   p.init( names, permlinks );
+
+   p.timestamp( "****review data ( start )", false/*total_time*/, false/*with_time*/, true/*range_time*/ );
+   for( uint32_t i = 1; i <= 10; ++i )
+   {
+      p.get_accounts();
+      p.get_comments_pl();
+      p.get_comments_p();
+      if( ( i % 2 ) == 0 )
+         p.timestamp( std::to_string( i ) );
+   }
+   p.timestamp( "****review data completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
+}
+
+template performance_checker< true >::performance_checker( uint32_t _number_accounts, uint32_t _number_permlinks, uint64_t _file_size );
+template performance_checker< true >::~performance_checker();
+template void performance_checker< true >::run();
+template void performance_checker< true >::run_stress();
+
+template performance_checker< false >::performance_checker( uint32_t _number_accounts, uint32_t _number_permlinks, uint64_t _file_size );
+template performance_checker< false >::~performance_checker();
+template void performance_checker< false >::run();
+template void performance_checker< false >::run_stress();
 
 } }
 
