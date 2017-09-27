@@ -2955,7 +2955,7 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess )
 {
    try
    {
-      performance_checker< false/*IS_STD*/ > pc( 20/*_number_accounts*/, 300/*_number_permlinks*/, 1024*1024*10/*_file_size*/ );
+      performance_checker< false/*IS_STD*/ > pc( 20/*_number_accounts*/, 30/*_number_permlinks*/, 1024*1024*10/*_file_size*/ );
       pc.run();
    }
    FC_LOG_AND_RETHROW()
@@ -2968,7 +2968,7 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
       const uint64_t GIGA = 1024*1024*1024;
       const uint64_t FILE_SIZE = GIGA*6;
 
-      performance_checker< false/*IS_STD*/ > pc( 3000/*_number_accounts*/, 200/*_number_permlinks*/, FILE_SIZE );
+      performance_checker< false/*IS_STD*/ > pc( 1000/*_number_accounts*/, 100/*_number_permlinks*/, FILE_SIZE );
       pc.run_stress();
    }
    FC_LOG_AND_RETHROW()
@@ -2978,7 +2978,7 @@ BOOST_AUTO_TEST_CASE( performance_account_std )
 {
    try
    {
-      performance_checker< true/*IS_STD*/ > pc( 20/*_number_accounts*/, 300/*_number_permlinks*/, 0/*_file_size*/ );
+      performance_checker< true/*IS_STD*/ > pc( 20/*_number_accounts*/, 30/*_number_permlinks*/, 0/*_file_size*/ );
       pc.run();
    }
    FC_LOG_AND_RETHROW()
@@ -2988,7 +2988,7 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
 {
    try
    {
-      performance_checker< true/*IS_STD*/ > pc( 3000/*_number_accounts*/, 200/*_number_permlinks*/, 0/*_file_size*/ );
+      performance_checker< true/*IS_STD*/ > pc( 1000/*_number_accounts*/, 100/*_number_permlinks*/, 0/*_file_size*/ );
       pc.run_stress();
    }
    FC_LOG_AND_RETHROW()
