@@ -365,7 +365,7 @@ struct operation_visitor
 
    void operator()( const comment_operation& op )const
    {
-      if( _db.head_block_time() > _trending_start_time || op.json_metadata.size() )
+      if( _db.head_block_time() >= _trending_start_time )
       {
          update_tags( _db.get_comment( op.author, op.permlink ), op.json_metadata.size() );
       }
@@ -373,7 +373,7 @@ struct operation_visitor
 
    void operator()( const transfer_operation& op )const
    {
-      if( _db.head_block_time() > _trending_start_time && op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
+      if( _db.head_block_time() >= _trending_start_time && op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;
@@ -408,7 +408,7 @@ struct operation_visitor
 
    void operator()( const vote_operation& op )const
    {
-      if( _db.head_block_time() > _trending_start_time )
+      if( _db.head_block_time() >= _trending_start_time )
       {
          update_tags( _db.get_comment( op.author, op.permlink ) );
       }
@@ -435,7 +435,7 @@ struct operation_visitor
    void operator()( const comment_payout_update_operation& op )const
    {
       const auto& c = _db.get_comment( op.author, op.permlink );
-      update_tags( c );
+      update_tags( c, _db.head_block_time() < _trending_start_time );
    }
 
    template<typename Op>
