@@ -33,6 +33,8 @@ class text_generator
 {
    public:
 
+      static std::string basic_link;
+
       using Items = std::list< std::string >;
 
    protected:

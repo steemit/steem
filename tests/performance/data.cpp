@@ -7,6 +7,8 @@
 
 namespace steem { namespace chain {
 
+std::string text_generator::basic_link = "01234567890ABCDEF";
+
 uint64_t performance_account::cnt = 0;
 template< typename STRING_TYPE >
 uint64_t performance_comment< STRING_TYPE >::cnt = 0;
@@ -14,13 +16,10 @@ uint64_t performance_vote::cnt = 0;
 
 std::string text_generator::create_text( uint32_t idx, uint32_t repeat, const std::string& basic_str, const std::string& data )
 {
-   std::string ret = basic_str;
+   std::string ret = basic_str + std::to_string( idx );
 
    for( uint32_t i = 0; i<= repeat; ++i )
    {
-      ret += "-";
-      ret += std::to_string( idx );
-      ret += "-";
       ret += data;
    }
 
@@ -58,7 +57,7 @@ permlink_generator::~permlink_generator()
 void permlink_generator::generate()
 {
    for( uint32_t i = 0; i<number_items; i++ )
-      items.push_back( create_text( i, i % 5/*repeat*/, "lnk:", "$" ) );
+      items.push_back( create_text( i, i % 10/*repeat*/, "", basic_link ) );
 }
 
 template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
@@ -178,7 +177,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    std::for_each( accounts.begin(), accounts.end(), [&]( const std::string& account )
       {
          performance_account _p_account( account, getAccountAllocator() );
-         acc_idx->insert( _p_account );
+         acc_idx->emplace( std::move( _p_account ) );
 
          ++idx;
          if( ( idx % 1000 ) == 0 )
@@ -187,9 +186,9 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
          std::for_each( comments.begin(), comments.end(), [&]( const std::string& comment )
             {
                performance_comment< STRING_TYPE > _p_comment( account, account, getString( comment ), getString( comment ), getCommentAllocator() );
-               comm_idx->insert( _p_comment );
+               comm_idx->emplace( std::move( _p_comment ) );
 
-               vote_idx->insert( performance_vote( _p_account.id, _p_comment.id, getVoteAllocator() ) );
+               vote_idx->emplace( _p_account.id, _p_comment.id, getVoteAllocator() );
             }
          );
       }
@@ -286,7 +285,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
 
    const auto& accounts = acc_idx->get<by_account>();
 
-   STRING_TYPE link = getString("lnk:-0-$");
+   STRING_TYPE link = getString( "0" + text_generator::basic_link );
    std::for_each( accounts.begin(), accounts.end(), [&]( const performance_account& account )
       {
          auto comment = comm_idx->get<by_permlink>().find( boost::make_tuple( account.account_name, link ) );
