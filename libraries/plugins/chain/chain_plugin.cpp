@@ -55,7 +55,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
-         ("stop-replay-at-block", bpo::value<uint32_t>( 0 ), "Stop and exit after reaching given block number")
+         ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
          ;
@@ -77,7 +77,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
-   my->stop_replay_at      = options.at( "stop-replay-at-block" ).as<uint32_t>();
+   my->stop_replay_at      = 
+      options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
    my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
