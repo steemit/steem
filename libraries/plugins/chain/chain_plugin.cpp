@@ -25,6 +25,7 @@ class chain_plugin_impl
       bool                             readonly = false;
       bool                             check_locks = false;
       bool                             validate_invariants = false;
+      uint32_t                         stop_replay_at = 0;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -54,6 +55,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
+         ("stop-replay-at-block", bpo::value<uint32_t>( 0 ), "Stop and exit after reaching given block number")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
          ;
@@ -75,6 +77,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
+   my->stop_replay_at      = options.at( "stop-replay-at-block" ).as<uint32_t>();
    my->check_locks         = options.at( "check-locks" ).as< bool >();
    my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
@@ -111,7 +114,15 @@ void chain_plugin::plugin_startup()
    if(my->replay)
    {
       ilog("Replaying blockchain on user request.");
-      my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
+      uint32_t last_block_number = 0;
+      my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->stop_replay_at, my->shared_memory_size, &last_block_number );
+
+      if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
+      {
+         ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
+         appbase::app().quit();
+         return;
+      }
    }
    else
    {
@@ -126,7 +137,7 @@ void chain_plugin::plugin_startup()
 
          try
          {
-            my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
+            my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->stop_replay_at, my->shared_memory_size );
          }
          catch( steem::chain::block_log_exception& )
          {

@@ -143,7 +143,8 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
 }
 
-void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size )
+void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint32_t stop_replay_at, 
+                        uint64_t shared_file_size, uint32_t* last_block_number /*= nullptr*/ )
 {
    try
    {
@@ -174,6 +175,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
       {
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
+         if( stop_replay_at > 0 && stop_replay_at < last_block_num )
+            last_block_num = stop_replay_at;
 
          while( itr.first.block_num() != last_block_num )
          {
@@ -187,6 +190,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
          apply_block( itr.first, skip_flags );
          set_revision( head_block_num() );
+         if( last_block_number != nullptr )
+            *last_block_number = itr.first.block_num();
       });
 
       if( _block_log.head()->block_num() )
