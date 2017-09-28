@@ -9,10 +9,12 @@ namespace steem { namespace chain {
 
 std::string text_generator::basic_link = "01234567890ABCDEF";
 
-uint64_t performance_account::cnt = 0;
-template< typename STRING_TYPE >
-uint64_t performance_comment< STRING_TYPE >::cnt = 0;
-uint64_t performance_vote::cnt = 0;
+template< bool IS_STD >
+uint64_t performance_checker< IS_STD >::performance_account::cnt = 0;
+template< bool IS_STD >
+uint64_t performance_checker< IS_STD >::performance_comment::cnt = 0;
+template< bool IS_STD >
+uint64_t performance_checker< IS_STD >::performance_vote::cnt = 0;
 
 std::string text_generator::create_text( uint32_t idx, uint32_t repeat, const std::string& basic_str, const std::string& data )
 {
@@ -60,8 +62,9 @@ void permlink_generator::generate()
       items.push_back( create_text( i, i % 10/*repeat*/, "", basic_link ) );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::performance( uint64_t _file_size )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::performance( uint64_t _file_size )
             : file_size( _file_size )
 {
    last_time_in_miliseconds = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
@@ -70,102 +73,113 @@ performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >
    stream_time.open( time_file_name );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::~performance()
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::~performance()
 {
    timestamp( "total time", true/*total_time*/ );
    stream_time.close();
 }
 
 template<>
-void performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type, vote_interprocess_allocator_type >::pre_init()
+template<>
+void performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::pre_init()
 {
    //bool removed = bip::shared_memory_object::remove( file_name.c_str() );
 
    seg.reset( new bip::managed_mapped_file( bip::open_or_create, file_name.c_str(), file_size ) );
    timestamp("creating file");
 
-   acc_idx = seg->find_or_construct< account_container_template >("performance_accounts")( account_interprocess_allocator_type( seg->get_segment_manager() ) );
+   acc_idx = seg->find_or_construct< account_container_template >("performance_accounts")( ACCOUNT_ALLOCATOR( seg->get_segment_manager() ) );
    FC_ASSERT( acc_idx );
    timestamp("creating multi-index for accounts");
 
-   comm_idx = seg->find_or_construct< comment_container_template >("performance_comments")( comment_interprocess_allocator_type( seg->get_segment_manager() ) );
+   comm_idx = seg->find_or_construct< comment_container_template >("performance_comments")( COMMENT_ALLOCATOR( seg->get_segment_manager() ) );
    FC_ASSERT( comm_idx );
    timestamp("creating multi-index for comments");
 
-   vote_idx = seg->find_or_construct< vote_container_template >("performance_votes")( vote_interprocess_allocator_type( seg->get_segment_manager() ) );
+   vote_idx = seg->find_or_construct< vote_container_template >("performance_votes")( VOTE_ALLOCATOR( seg->get_segment_manager() ) );
    FC_ASSERT( vote_idx );
    timestamp("creating multi-index for votes");
 }
 
 template<>
-void performance< std::string, account_std_allocator_type, comment_std_allocator_type, vote_std_allocator_type >::pre_init()
+template<>
+void performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::pre_init()
 {
-   acc_idx = new account_container_template( account_std_allocator_type() );
+   acc_idx = new account_container_template( ACCOUNT_ALLOCATOR() );
    FC_ASSERT( acc_idx );
    timestamp("creating multi-index for accounts");
 
-   comm_idx = new comment_container_template( comment_std_allocator_type() );
+   comm_idx = new comment_container_template( COMMENT_ALLOCATOR() );
    FC_ASSERT( comm_idx );
    timestamp("creating multi-index for comments");
 
-   vote_idx = new vote_container_template( vote_std_allocator_type() );
+   vote_idx = new vote_container_template( VOTE_ALLOCATOR() );
    FC_ASSERT( vote_idx );
    timestamp("creating multi-index for votes");
 }
 
 template<>
-account_interprocess_allocator_type performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type, vote_interprocess_allocator_type >::getAccountAllocator()
+template<>
+performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::ACCOUNT_ALLOCATOR performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::getAccountAllocator()
 {
-   return account_interprocess_allocator_type( seg->get_segment_manager() );
+   return ACCOUNT_ALLOCATOR();
 }
 
 template<>
-account_std_allocator_type performance< std::string, account_std_allocator_type, comment_std_allocator_type, vote_std_allocator_type >::getAccountAllocator()
+template<>
+performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::COMMENT_ALLOCATOR performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::getCommentAllocator()
 {
-   return account_std_allocator_type();
+   return COMMENT_ALLOCATOR();
 }
 
 template<>
-comment_interprocess_allocator_type performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type, vote_interprocess_allocator_type >::getCommentAllocator()
+template<>
+performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::VOTE_ALLOCATOR performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::getVoteAllocator()
 {
-   return comment_interprocess_allocator_type( seg->get_segment_manager() );
+   return VOTE_ALLOCATOR();
 }
 
 template<>
-comment_std_allocator_type performance< std::string, account_std_allocator_type, comment_std_allocator_type, vote_std_allocator_type >::getCommentAllocator()
+template<>
+performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::_STRING_TYPE performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::getString( const std::string& str )
 {
-   return comment_std_allocator_type();
+   return _STRING_TYPE( str );
 }
 
 template<>
-vote_interprocess_allocator_type performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type, vote_interprocess_allocator_type >::getVoteAllocator()
+template<>
+performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::ACCOUNT_ALLOCATOR performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::getAccountAllocator()
 {
-   return vote_interprocess_allocator_type( seg->get_segment_manager() );
+   return ACCOUNT_ALLOCATOR( seg->get_segment_manager() );
 }
 
 template<>
-vote_std_allocator_type performance< std::string, account_std_allocator_type, comment_std_allocator_type, vote_std_allocator_type >::getVoteAllocator()
+template<>
+performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::COMMENT_ALLOCATOR performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::getCommentAllocator()
 {
-   return vote_std_allocator_type();
+   return COMMENT_ALLOCATOR( seg->get_segment_manager() );
 }
 
 template<>
-shared_string performance< shared_string, account_interprocess_allocator_type, comment_interprocess_allocator_type, vote_interprocess_allocator_type >::getString( const std::string& str )
+template<>
+performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::VOTE_ALLOCATOR performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::getVoteAllocator()
 {
-   return shared_string( str.c_str(), seg->get_segment_manager() );
+   return VOTE_ALLOCATOR( seg->get_segment_manager() );
 }
 
 template<>
-std::string performance< std::string, account_std_allocator_type, comment_std_allocator_type, vote_std_allocator_type >::getString( const std::string& str )
+template<>
+performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::_STRING_TYPE performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::getString( const std::string& str )
 {
-   return str;
+   return _STRING_TYPE( str.c_str(), seg->get_segment_manager() );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::init( text_generator& _accounts, text_generator& _comments )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::init( text_generator& _accounts, text_generator& _comments )
 {
-
    pre_init();
 
    text_generator::Items& accounts = _accounts.getItems();
@@ -185,7 +199,7 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
 
          std::for_each( comments.begin(), comments.end(), [&]( const std::string& comment )
             {
-               performance_comment< STRING_TYPE > _p_comment( account, account, getString( comment ), getString( comment ), getCommentAllocator() );
+               performance_comment _p_comment( account, account, getString( comment ), getString( comment ), getCommentAllocator() );
                comm_idx->emplace( std::move( _p_comment ) );
 
                vote_idx->emplace( _p_account.id, _p_comment.id, getVoteAllocator() );
@@ -196,8 +210,9 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    timestamp( "****init data in memory completed in time", false/*total_time*/, true/*with_time*/, true/*range_time*/ );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_accounts( types::p_dump_collection data )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_accounts( types::p_dump_collection data )
 {
    FC_ASSERT( acc_idx );
 
@@ -210,8 +225,9 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-std::string performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::display_comment( const performance_comment< STRING_TYPE >& comment )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+std::string performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::display_comment( const performance_comment& comment )
 {
    std::string ret = "author: " + comment.author + " parent_author: " + comment.parent_author + " permlink: ";
    ret += comment.permlink.c_str();
@@ -221,14 +237,15 @@ std::string performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE
    return ret;
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
 template< typename ORDERED_TYPE >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_comments_internal( types::p_dump_collection data )
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_comments_internal( types::p_dump_collection data )
 {
    FC_ASSERT( comm_idx );
 
    const auto& comments = comm_idx->get< ORDERED_TYPE >();
-   std::for_each( comments.begin(), comments.end(), [&]( const performance_comment< STRING_TYPE >& obj )
+   std::for_each( comments.begin(), comments.end(), [&]( const performance_comment& obj )
       {
          if( data )
             data->push_back( display_comment( obj ) );
@@ -236,9 +253,10 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
 template< typename ORDERED_TYPE >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_votes_internal( types::p_dump_collection data )
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_votes_internal( types::p_dump_collection data )
 {
    FC_ASSERT( vote_idx );
 
@@ -254,32 +272,37 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_comments_pl( types::p_dump_collection data )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_comments_pl( types::p_dump_collection data )
 {
    get_comments_internal< by_permlink >( data );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_comments_p( types::p_dump_collection data )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_comments_p( types::p_dump_collection data )
 {
    get_comments_internal< by_parent >( data );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_votes_cv( types::p_dump_collection data )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_votes_cv( types::p_dump_collection data )
 {
    get_votes_internal< by_comment_voter >( data );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_votes_vc( types::p_dump_collection data )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_votes_vc( types::p_dump_collection data )
 {
    get_votes_internal< by_voter_comment >( data );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::get_mixed_data( types::p_dump_collection data )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::get_mixed_data( types::p_dump_collection data )
 {
    FC_ASSERT( acc_idx && comm_idx && vote_idx );
 
@@ -302,8 +325,9 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    );
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::dump( const types::p_dump_collection& data, uint32_t idx )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::dump( const types::p_dump_collection& data, uint32_t idx )
 {
    std::ofstream stream;
 
@@ -321,8 +345,9 @@ void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCA
    stream.close();
 }
 
-template< typename STRING_TYPE, typename ACCOUNT_ALLOCATOR, typename COMMENT_ALLOCATOR, typename VOTE_ALLOCATOR >
-void performance< STRING_TYPE, ACCOUNT_ALLOCATOR, COMMENT_ALLOCATOR, VOTE_ALLOCATOR >::timestamp( std::string description, bool total_time, bool with_time, bool range_time )
+template< bool IS_STD >
+template< typename STRING_TYPE, template <typename> class ALLOCATOR >
+void performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::timestamp( std::string description, bool total_time, bool with_time, bool range_time )
 {
    uint64_t actual = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
    uint64_t tmp = total_time?start_time_in_miliseconds:( ( range_time && with_time )?range_time_in_miliseconds:last_time_in_miliseconds);
