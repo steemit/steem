@@ -250,6 +250,9 @@ class performance_checker
             template< typename ORDERED_TYPE >
             void get_votes_internal( types::p_dump_collection data = types::p_dump_collection() );
 
+            template< typename T >
+            void delete_idx( T*& obj );
+           
          public:
 
             performance( uint64_t _file_size );

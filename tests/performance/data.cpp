@@ -79,13 +79,35 @@ performance_checker< IS_STD >::performance< STRING_TYPE, ALLOCATOR >::~performan
 {
    timestamp( "total time", true/*total_time*/ );
    stream_time.close();
+
+   delete_idx( acc_idx );
+   delete_idx( comm_idx );
+   delete_idx( vote_idx );
+}
+
+template<>
+template<>
+template< typename T >
+void performance_checker< true >::performance< performance_checker< true >::actual_string_type, performance_checker< true >::actual_allocator >::delete_idx( T*& obj )
+{
+   if( obj )
+      delete obj;
+}
+
+template<>
+template<>
+template< typename T >
+void performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::delete_idx( T*& obj )
+{
+   if( obj )
+      seg->destroy_ptr( obj );
 }
 
 template<>
 template<>
 void performance_checker< false >::performance< performance_checker< false >::actual_string_type, performance_checker< false >::actual_allocator >::pre_init()
 {
-   //bool removed = bip::shared_memory_object::remove( file_name.c_str() );
+   std::remove( file_name.c_str() );
 
    seg.reset( new bip::managed_mapped_file( bip::open_or_create, file_name.c_str(), file_size ) );
    timestamp("creating file");
