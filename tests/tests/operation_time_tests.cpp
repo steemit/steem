@@ -24,6 +24,9 @@ using namespace steem;
 using namespace steem::chain;
 using namespace steem::protocol;
 
+const size_t stress_account_number = 100000;
+const size_t stress_comment_number = 100;
+
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
 BOOST_AUTO_TEST_CASE( comment_payout_equalize )
@@ -2966,9 +2969,10 @@ BOOST_AUTO_TEST_CASE( performance_account_interprocess_stress )
    try
    {
       const uint64_t GIGA = 1024*1024*1024;
-      const uint64_t FILE_SIZE = GIGA*6;
+      const uint64_t FILE_SIZE = GIGA*10;
 
-      performance_checker< false/*IS_STD*/ > pc( 1000/*_number_accounts*/, 100/*_number_permlinks*/, FILE_SIZE );
+      performance_checker< false/*IS_STD*/ > pc(stress_account_number/*_number_accounts*/,
+         stress_comment_number, FILE_SIZE );
       pc.run_stress();
    }
    FC_LOG_AND_RETHROW()
@@ -2988,7 +2992,8 @@ BOOST_AUTO_TEST_CASE( performance_account_std_stress )
 {
    try
    {
-      performance_checker< true/*IS_STD*/ > pc( 1000/*_number_accounts*/, 100/*_number_permlinks*/, 0/*_file_size*/ );
+      performance_checker< true/*IS_STD*/ > pc( stress_account_number/*_number_accounts*/,
+         stress_comment_number/*_number_permlinks*/, 0/*_file_size*/ );
       pc.run_stress();
    }
    FC_LOG_AND_RETHROW()
