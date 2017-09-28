@@ -64,12 +64,11 @@ void permlink_generator::generate()
 
 template< bool IS_STD >
 performance_checker< IS_STD >::performance::performance( uint64_t _file_size )
-            : file_size( _file_size )
+            : file_size( _file_size ), stream_time(time_file_name.c_str())
 {
    last_time_in_miliseconds = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() ).count();
    start_time_in_miliseconds = last_time_in_miliseconds;
    range_time_in_miliseconds = last_time_in_miliseconds;
-   stream_time.open( time_file_name );
 }
 
 template< bool IS_STD >

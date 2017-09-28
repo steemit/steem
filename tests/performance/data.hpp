@@ -28,6 +28,51 @@ namespace types
    using p_dump_collection = std::shared_ptr< dump_collection >;
 };
 
+class redirecting_ostream
+{
+public:
+   explicit redirecting_ostream(const char* outFileName)
+   {
+      logFile.open(outFileName);
+      if(!logFile)
+         std::cerr << "Cannot open `" << outFileName << "' for write!" << std::endl;
+   }
+
+   void close()
+   {
+      logFile.close();
+   }
+
+   void flush()
+   {
+      std::cout.flush();
+      logFile.flush();
+   }
+
+   // for regular output of variables and stuff
+   template<typename T>
+   redirecting_ostream& operator<<(const T& something)
+   {
+      std::cout << something;
+      if(logFile)
+         logFile << something;
+
+      return *this;
+   }
+   /// for manipulators
+   typedef std::ostream& (*stream_function)(std::ostream&);
+
+   redirecting_ostream& operator<<(stream_function func)
+   {
+      func(std::cout);
+      func(logFile);
+      return *this;
+   }
+
+private:
+   std::ofstream logFile;
+};
+
 class text_generator
 {
    public:
@@ -344,13 +389,13 @@ class performance_checker
 
             const uint64_t file_size;
             const std::string file_name = "performance_data.db";
-            const std::string time_file_name = "timelines.txt";
+            const std::string time_file_name = IS_STD ? "std_timelines.txt" : "bip_timelines.txt";
 
             uint64_t start_time_in_miliseconds;
             uint64_t last_time_in_miliseconds;
             uint64_t range_time_in_miliseconds;
 
-            std::ofstream stream_time;
+            redirecting_ostream stream_time;
 
             std::shared_ptr< bip::managed_mapped_file > seg;
 
