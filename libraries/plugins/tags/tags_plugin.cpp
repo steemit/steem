@@ -64,6 +64,7 @@ class tags_plugin_impl
       bool                 _started = false;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   post_apply_connection;
+      boost::signals2::connection   on_sync_connection;
 
       void remove_stats( const tag_object& tag, const tag_stats_object& stats )const;
       void add_stats( const tag_object& tag, const tag_stats_object& stats )const;
@@ -506,6 +507,18 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 
    my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
    my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+   my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( [&]()
+   {
+      my->_db.with_write_lock( [&]()
+      {
+         // for each comment that has not been paid, update tags
+         const auto& comment_idx = my->_db.get_index< comment_index, by_cashout_time >();
+         for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time != fc::time_point_sec::maximum(); ++itr )
+         {
+            my->update_tags( *itr, true );
+         }
+      });
+   });
 
    add_plugin_index< tag_index               >( my->_db );
    add_plugin_index< tag_stats_index         >( my->_db );
@@ -522,13 +535,6 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 void tags_plugin::plugin_startup()
 {
    my->_started = true;
-
-   // for each comment that has not been paid, update tags
-   const auto& comment_idx = my->_db.get_index< comment_index, by_cashout_time >();
-   for( auto itr = comment_idx.begin(); itr != comment_idx.end() && itr->cashout_time != fc::time_point_sec::maximum(); ++itr )
-   {
-      my->update_tags( *itr, true );
-   }
 }
 
    void tags_plugin::plugin_shutdown()
