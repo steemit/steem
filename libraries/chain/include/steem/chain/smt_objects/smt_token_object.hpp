@@ -76,11 +76,6 @@ FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
                  (setup_completed)
 )
 
-FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
-                 (account_elevated)
-                 (setup_completed)
-)
-
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
    (control_account)
