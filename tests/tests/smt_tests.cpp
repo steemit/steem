@@ -103,8 +103,8 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
 
       // TODO:
       // - Check that 1000 TESTS throws
-      // - Check that less than 1000 SBD throws
-      // - Check that more than 1000 SBD succeeds
+      // - Check that less than 1000 TBD throws
+      // - Check that more than 1000 TBD succeeds
       //
    }
    FC_LOG_AND_RETHROW()
@@ -154,6 +154,28 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
+{
+   try
+   {
+      smt_set_setup_parameters_operation op;
+      op.control_account = "####";
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception ); // invalid account name
+
+      op.control_account = "dany";
+      op.validate();
+
+      op.setup_parameters.emplace(smt_param_allow_vesting());
+      op.setup_parameters.emplace(smt_param_allow_voting());
+      op.validate();
+
+      op.setup_parameters.emplace(smt_param_allow_vesting({false}));
+      op.setup_parameters.emplace(smt_param_allow_voting({false}));
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
 {
    try
@@ -173,8 +195,30 @@ BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
 
       op.get_required_posting_authorities( auths );
       BOOST_REQUIRE( auths == expected );
-
       expected.insert( "alice" );
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
+{
+   try
+   {
+      smt_set_setup_parameters_operation op;
+      op.control_account = "dany";
+
+      flat_set<account_name_type> auths;
+      flat_set<account_name_type> expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected.insert( "dany" );
       op.get_required_active_authorities( auths );
       BOOST_REQUIRE( auths == expected );
    }
@@ -236,6 +280,81 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       });
       // Throw due to closed setup phase (too late).
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
+{
+   try
+   {
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      ACTORS( (dany)(eddy) )
+
+      fund( "dany", 5000 );
+      convert( "dany", ASSET( "5000.000 TESTS" ) );
+      
+      smt_set_setup_parameters_operation op;
+      op.control_account = "dany";
+
+      signed_transaction tx;
+
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( dany_private_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception ); // account not elevated
+
+      // elevate account
+      {
+         smt_elevate_account_operation op;
+         op.fee = ASSET( "1000.000 TBD" );
+         op.account = "dany";
+
+         signed_transaction tx;
+         tx.operations.push_back( op );
+         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+         tx.sign( dany_private_key, db->get_chain_id() );
+         db->push_transaction( tx, 0 );
+      }
+
+      db->push_transaction( tx, 0 );
+
+      db->push_transaction( tx, database::skip_transaction_dupe_check );
+
+      signed_transaction tx1;
+
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_vesting() );
+      op.setup_parameters.emplace( smt_param_allow_voting() );
+      tx1.operations.push_back( op );
+      tx1.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx1.sign( eddy_private_key, db->get_chain_id() );
+      
+      STEEM_REQUIRE_THROW( db->push_transaction( tx1, 0 ), fc::exception ); // wrong private key
+      
+      signed_transaction tx2;
+
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_vesting({false}) );
+      op.setup_parameters.emplace( smt_param_allow_voting({false}) );
+      tx2.operations.push_back( op );
+      tx2.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx2.sign( dany_private_key, db->get_chain_id() );
+
+      db->push_transaction( tx2, 0 );
+      
+      signed_transaction tx3;
+
+      op.setup_parameters.clear();
+      op.setup_parameters.emplace( smt_param_allow_vesting() );
+      tx3.operations.push_back( op );
+      tx3.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx3.sign( dany_private_key, db->get_chain_id() );
+
+      db->push_transaction( tx3, 0 );
+      
+      // TODO:
+      // - check applying smt_set_setup_parameters_operation after setup completed
    }
    FC_LOG_AND_RETHROW()
 }

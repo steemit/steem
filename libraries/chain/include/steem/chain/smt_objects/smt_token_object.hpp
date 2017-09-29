@@ -12,11 +12,18 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    smt_token_object() = delete;
 
    public:
-   enum class smt_phase : unsigned char
-   {
-      account_elevated,
-      setup_completed,
-   };
+      enum class smt_phase : unsigned char
+      {
+         account_elevated,
+         setup_completed,
+      };
+
+   public:
+      template< typename Constructor, typename Allocator >
+      smt_token_object( Constructor&& c, allocator< Allocator > a )
+      {
+         c( *this );
+      }
 
    public:
    template< typename Constructor, typename Allocator >
@@ -62,7 +69,12 @@ typedef multi_index_container <
    allocator< smt_token_object >
 > smt_token_index;
 
-} }
+} } // namespace steem::chain
+
+FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
+                 (account_elevated)
+                 (setup_completed)
+)
 
 FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
                  (account_elevated)
@@ -87,6 +99,7 @@ FC_REFLECT( steem::chain::smt_token_object,
    (rep_rel_amount_numerator)
    (rel_amount_denom_bits)
 )
+
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )
 
 #endif
