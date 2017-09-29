@@ -382,7 +382,7 @@ void performance_checker< IS_STD >::run()
    types::p_dump_collection mixed = types::p_dump_collection( new std::list< std::string >() );
    p.get_mixed_data(names.getItems(), permlinks.getItems(), mixed );
    size_t _size = mixed->size();
-   FC_ASSERT( _size == number_accounts );
+   FC_ASSERT( _size == number_accounts * number_permlinks );
    p.dump( mixed, idx++ );
 
    p.timestamp( "dumping data" );

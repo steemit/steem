@@ -109,10 +109,6 @@ class account_names_generator: public text_generator
 
 class permlink_generator: public text_generator
 {
-   private:
-
-      uint32_t number_permlinks;
-
    public:
 
       permlink_generator( uint32_t _number_permlinks );
