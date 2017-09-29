@@ -25,13 +25,6 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
          c( *this );
       }
 
-   public:
-   template< typename Constructor, typename Allocator >
-   smt_token_object( Constructor&& c, allocator< Allocator > a )
-   {
-      c( *this );
-   }
-
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
