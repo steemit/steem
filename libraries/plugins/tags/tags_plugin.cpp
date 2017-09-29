@@ -507,9 +507,9 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
 
    my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
    my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
-   my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( [&]()
+   my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( [this]()
    {
-      my->_db.with_write_lock( [&]()
+      my->_db.with_write_lock( [this]()
       {
          // for each comment that has not been paid, update tags
          const auto& comment_idx = my->_db.get_index< comment_index, by_cashout_time >();
