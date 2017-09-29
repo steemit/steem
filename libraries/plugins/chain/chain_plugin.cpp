@@ -26,6 +26,7 @@ class chain_plugin_impl
       bool                             check_locks = false;
       bool                             validate_invariants = false;
       uint32_t                         stop_replay_at = 0;
+      uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -56,6 +57,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
+         ("collect-benchmark-results", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
          ;
@@ -79,6 +81,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->resync              = options.at( "resync-blockchain").as<bool>();
    my->stop_replay_at      = 
       options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
+   my->benchmark_interval  =
+      options.count( "collect-benchmark-results" ) ? options.at( "collect-benchmark-results" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
    my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
@@ -98,6 +102,48 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 }
 
+class TBenchmarkReporter
+{
+public:
+   void print_report(uint32_t block_number, bool is_initial_call)
+   {
+      if( is_initial_call )
+      {
+         _init_sys_time = _last_sys_time = fc::time_point::now();
+         _init_cpu_time = _last_cpu_time = clock();
+         return;
+      }
+
+      time_point current_sys_time = fc::time_point::now();
+      fc::microseconds sys_us = current_sys_time - _last_sys_time;
+      clock_t current_cpu_time = clock();
+      int cpu_ms = int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC);
+
+      ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu).",
+            ("n", block_number)
+            ("rt", sys_us.count()/1000)
+            ("ct", cpu_ms) );
+
+      _last_sys_time = current_sys_time;
+      _last_cpu_time = current_cpu_time;
+   }
+
+   void print_final_report()
+   {
+      fc::microseconds sys_us = _last_sys_time - _init_sys_time;
+      int cpu_ms = int((_last_cpu_time - _init_cpu_time) * 1000 / CLOCKS_PER_SEC);
+      ilog( "Performance report (total). Elapsed time: ${rt} ms (real), ${ct} ms (cpu).",
+            ("rt", sys_us.count()/1000)
+            ("ct", cpu_ms) );
+   }
+
+private:
+   time_point _init_sys_time;
+   time_point _last_sys_time;
+   clock_t    _init_cpu_time = 0;
+   clock_t    _last_cpu_time = 0;
+};
+
 void chain_plugin::plugin_startup()
 {
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
@@ -116,7 +162,16 @@ void chain_plugin::plugin_startup()
    {
       ilog("Replaying blockchain on user request.");
       uint32_t last_block_number = 0;
-      my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->stop_replay_at, my->shared_memory_size, &last_block_number );
+      TBenchmarkReporter benchmark_reporter;
+      auto benchmark_lambda = [&benchmark_reporter]( uint32_t current_block_number, bool is_initial_call )
+      {
+         benchmark_reporter.print_report(current_block_number, is_initial_call);
+      };
+      steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
+      my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->stop_replay_at, benchmark,
+                      my->shared_memory_size, &last_block_number );
+      if( my->benchmark_interval > 0 )
+         benchmark_reporter.print_final_report();
 
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
@@ -138,7 +193,9 @@ void chain_plugin::plugin_startup()
 
          try
          {
-            my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->stop_replay_at, my->shared_memory_size );
+            steem::chain::database::TBenchmark benchmark(0, [](uint32_t current_block_number,bool is_initial_call){;} ); // No benchmarking outside replaying.
+            my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, 0 /*no replay, no replay stop*/, benchmark,
+                            my->shared_memory_size );
          }
          catch( steem::chain::block_log_exception& )
          {
