@@ -5,6 +5,9 @@
 #include <fc/io/json.hpp>
 #include <fc/string.hpp>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include <iostream>
 
 namespace steem { namespace plugins { namespace chain {
@@ -111,6 +114,7 @@ public:
       {
          _init_sys_time = _last_sys_time = fc::time_point::now();
          _init_cpu_time = _last_cpu_time = clock();
+         _peak_mem = read_mem();
          return;
       }
 
@@ -118,11 +122,16 @@ public:
       fc::microseconds sys_us = current_sys_time - _last_sys_time;
       clock_t current_cpu_time = clock();
       int cpu_ms = int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC);
+      auto current_mem = read_mem();
+      if( current_mem > _peak_mem )
+        _peak_mem = current_mem;
 
-      ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu).",
+      ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
             ("n", block_number)
             ("rt", sys_us.count()/1000)
-            ("ct", cpu_ms) );
+            ("ct", cpu_ms)
+            ("cm", current_mem)
+            ("pm", _peak_mem) );
 
       _last_sys_time = current_sys_time;
       _last_cpu_time = current_cpu_time;
@@ -132,9 +141,21 @@ public:
    {
       fc::microseconds sys_us = _last_sys_time - _init_sys_time;
       int cpu_ms = int((_last_cpu_time - _init_cpu_time) * 1000 / CLOCKS_PER_SEC);
-      ilog( "Performance report (total). Elapsed time: ${rt} ms (real), ${ct} ms (cpu).",
+      auto current_mem = read_mem();
+      ilog( "Performance report (total). Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
             ("rt", sys_us.count()/1000)
-            ("ct", cpu_ms) );
+            ("ct", cpu_ms)
+            ("cm", current_mem)
+            ("pm", _peak_mem) );
+   }
+
+private:
+   long read_mem()
+   {
+      int who = RUSAGE_SELF;
+      struct rusage usage; 
+      int ret = getrusage(who,&usage);
+      return usage.ru_maxrss;
    }
 
 private:
@@ -142,6 +163,7 @@ private:
    time_point _last_sys_time;
    clock_t    _init_cpu_time = 0;
    clock_t    _last_cpu_time = 0;
+   long       _peak_mem = 0;
 };
 
 void chain_plugin::plugin_startup()
