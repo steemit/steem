@@ -2484,14 +2484,17 @@ void database::init_genesis( uint64_t init_supply )
       } );
 
 #ifdef IS_TEST_NET
-      // For every existing before the head_block_time (genesis time), apply the hardfork
-      // This allows the test net to launch with past hardforks and apply the next harfork when running
-      auto now = head_block_time();
-      for( size_t i = 0;
-           i <= STEEM_BLOCKCHAIN_VERSION.minor() && _hardfork_times[i] < now;
-           i++ )
+      if( init_genesis_hardforks )
       {
-         set_hardfork( i, true );
+         // For every existing before the head_block_time (genesis time), apply the hardfork
+         // This allows the test net to launch with past hardforks and apply the next harfork when running
+         auto now = head_block_time();
+         for( size_t i = 0;
+            i <= STEEM_BLOCKCHAIN_VERSION.minor() && _hardfork_times[i] <= now;
+            i++ )
+         {
+            set_hardfork( i, true );
+         }
       }
 #endif
    }

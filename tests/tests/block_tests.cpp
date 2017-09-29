@@ -727,6 +727,7 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
       db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
+      db->init_genesis_hardforks = false;
 
       open_database();
 

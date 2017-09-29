@@ -421,6 +421,7 @@ namespace steem { namespace chain {
          bool skip_price_feed_limit_check = true;
          bool skip_transaction_delta_check = true;
          bool disable_low_mem_warning = true;
+         bool init_genesis_hardforks = true;
 #endif
 
    protected:
