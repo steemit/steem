@@ -1,15 +1,12 @@
-#include <steemit/tags/tags_plugin.hpp>
+#include <steem/plugins/tags/tags_plugin.hpp>
 
-#include <steemit/app/impacted.hpp>
+#include <steem/protocol/config.hpp>
 
-#include <steemit/protocol/config.hpp>
-
-#include <steemit/chain/database.hpp>
-#include <steemit/chain/hardfork.hpp>
-#include <steemit/chain/index.hpp>
-#include <steemit/chain/operation_notification.hpp>
-#include <steemit/chain/account_object.hpp>
-#include <steemit/chain/comment_object.hpp>
+#include <steem/chain/database.hpp>
+#include <steem/chain/index.hpp>
+#include <steem/chain/operation_notification.hpp>
+#include <steem/chain/account_object.hpp>
+#include <steem/chain/comment_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
@@ -19,34 +16,66 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace steemit { namespace tags {
+namespace steem { namespace plugins { namespace tags {
 
 namespace detail {
 
-using namespace steemit::protocol;
+using namespace steem::protocol;
 
 class tags_plugin_impl
 {
    public:
-      tags_plugin_impl(tags_plugin& _plugin)
-         : _self( _plugin )
-      { }
+      tags_plugin_impl();
       virtual ~tags_plugin_impl();
 
-      steemit::chain::database& database()
-      {
-         return _self.database();
-      }
-
+      void pre_operation( const operation_notification& note );
       void on_operation( const operation_notification& note );
 
-      tags_plugin& _self;
+      chain::database&     _db;
+      boost::signals2::connection   pre_apply_connection;
+      boost::signals2::connection   post_apply_connection;
 };
 
-tags_plugin_impl::~tags_plugin_impl()
+tags_plugin_impl::tags_plugin_impl() :
+   _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
+
+tags_plugin_impl::~tags_plugin_impl() {}
+
+struct pre_apply_operation_visitor
 {
-   return;
-}
+   pre_apply_operation_visitor( database& db ) : _db( db ) {};
+   typedef void result_type;
+
+   database& _db;
+
+   void operator()( const delete_comment_operation& op )const
+   {
+      const auto& comment = _db.find< comment_object, chain::by_permlink >( boost::make_tuple( op.author, op.permlink ) );
+
+      if( comment == nullptr )
+         return;
+
+      const auto& idx = _db.get_index< tag_index, by_author_comment >();
+      const auto& auth = _db.get_account( op.author );
+
+      auto tag_itr = idx.lower_bound( boost::make_tuple( auth.id, comment->id ) );
+      vector< const tag_object* > to_remove;
+
+      while( tag_itr != idx.end() && tag_itr->author == auth.id && tag_itr->comment == comment->id )
+      {
+         to_remove.push_back( &(*tag_itr) );
+         ++tag_itr;
+      }
+
+      for( const auto* tag_ptr : to_remove )
+      {
+         _db.remove( *tag_ptr );
+      }
+   }
+
+   template<typename Op>
+   void operator()( Op&& )const{} /// ignore all other ops
+};
 
 struct operation_visitor
 {
@@ -118,15 +147,15 @@ struct operation_visitor
       });
    }
 
-   comment_metadata filter_tags( const comment_object& c ) const
+   comment_metadata filter_tags( const comment_object& c, const comment_content_object& con ) const
    {
       comment_metadata meta;
 
-      if( c.json_metadata.size() )
+      if( con.json_metadata.size() )
       {
          try
          {
-            meta = fc::json::from_string( to_string( c.json_metadata ) ).as< comment_metadata >();
+            meta = fc::json::from_string( to_string( con.json_metadata ) ).as< comment_metadata >();
          }
          catch( const fc::exception& e )
          {
@@ -270,9 +299,10 @@ struct operation_visitor
 
       const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
 
+#ifndef IS_LOW_MEM
       if( parse_tags )
       {
-         auto meta = filter_tags( c );
+         auto meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
          auto citr = comment_idx.lower_bound( c.id );
 
          map< string, const tag_object* > existing_tags;
@@ -311,6 +341,7 @@ struct operation_visitor
             remove_tag(*item);
       }
       else
+#endif
       {
          auto citr = comment_idx.lower_bound( c.id );
 
@@ -328,75 +359,19 @@ struct operation_visitor
       } FC_CAPTURE_LOG_AND_RETHROW( (c) )
    }
 
-   const peer_stats_object& get_or_create_peer_stats( account_id_type voter, account_id_type peer )const
-   {
-      const auto& peeridx = _db.get_index<peer_stats_index>().indices().get<by_voter_peer>();
-      auto itr = peeridx.find( boost::make_tuple( voter, peer ) );
-      if( itr == peeridx.end() )
-      {
-         return _db.create<peer_stats_object>( [&]( peer_stats_object& obj ) {
-               obj.voter = voter;
-               obj.peer  = peer;
-         });
-      }
-      return *itr;
-   }
-
-   void update_indirect_vote( account_id_type a, account_id_type b, int positive )const
-   {
-      if( a == b )
-         return;
-      const auto& ab = get_or_create_peer_stats( a, b );
-      const auto& ba = get_or_create_peer_stats( b, a );
-      _db.modify( ab, [&]( peer_stats_object& o )
-      {
-         o.indirect_positive_votes += positive;
-         o.indirect_votes++;
-         o.update_rank();
-      });
-      _db.modify( ba, [&]( peer_stats_object& o )
-      {
-         o.indirect_positive_votes += positive;
-         o.indirect_votes++;
-         o.update_rank();
-      });
-   }
-
-   void update_peer_stats( const account_object& voter, const account_object& author, const comment_object& c, int vote )const
-   {
-      if( voter.id == author.id ) return; /// ignore votes for yourself
-      if( c.parent_author.size() ) return; /// only count top level posts
-
-      const auto& stat = get_or_create_peer_stats( voter.id, author.id );
-      _db.modify( stat, [&]( peer_stats_object& obj )
-      {
-         obj.direct_votes++;
-         obj.direct_positive_votes += vote > 0;
-         obj.update_rank();
-      });
-
-      const auto& voteidx = _db.get_index<comment_vote_index>().indices().get<by_comment_voter>();
-      auto itr = voteidx.lower_bound( boost::make_tuple( comment_id_type(c.id), account_id_type() ) );
-      while( itr != voteidx.end() && itr->comment == c.id )
-      {
-         update_indirect_vote( voter.id, itr->voter, (itr->vote_percent > 0)  == (vote > 0) );
-         ++itr;
-      }
-   }
-
    void operator()( const comment_operation& op )const
    {
-      update_tags( _db.get_comment( op.author, op.permlink ), true );
+      update_tags( _db.get_comment( op.author, op.permlink ), op.json_metadata.size() );
    }
 
    void operator()( const transfer_operation& op )const
    {
-      if( op.to == STEEMIT_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
+      if( op.to == STEEM_NULL_ACCOUNT && op.amount.symbol == SBD_SYMBOL )
       {
          vector<string> part; part.reserve(4);
          auto path = op.memo;
          boost::split( part, path, boost::is_any_of("/") );
-         if( part[0].size() && part[0][0] == '@' )
+         if( part.size() > 1 && part[0].size() && part[0][0] == '@' )
          {
             auto acnt = part[0].substr(1);
             auto perm = part[1];
@@ -427,30 +402,6 @@ struct operation_visitor
    void operator()( const vote_operation& op )const
    {
       update_tags( _db.get_comment( op.author, op.permlink ) );
-      /*
-      update_peer_stats( _db.get_account(op.voter),
-                         _db.get_account(op.author),
-                         _db.get_comment(op.author, op.permlink),
-                         op.weight );
-                         */
-   }
-
-   void operator()( const delete_comment_operation& op )const
-   {
-      const auto& idx = _db.get_index<tag_index>().indices().get<by_author_comment>();
-
-      const auto& auth = _db.get_account(op.author);
-      auto itr = idx.lower_bound( boost::make_tuple( auth.id ) );
-      while( itr != idx.end() && itr->author == auth.id )
-      {
-         const auto& tobj = *itr;
-         const auto* obj = _db.find< comment_object >( itr->comment );
-         ++itr;
-         if( !obj )
-         {
-            _db.remove( tobj );
-         }
-      }
    }
 
    void operator()( const comment_reward_operation& op )const
@@ -458,7 +409,8 @@ struct operation_visitor
       const auto& c = _db.get_comment( op.author, op.permlink );
       update_tags( c );
 
-      comment_metadata meta = filter_tags( c );
+#ifndef IS_LOW_MEM
+      comment_metadata meta = filter_tags( c, _db.get< comment_content_object, chain::by_comment >( c.id ) );
 
       for( const string& tag : meta.tags )
       {
@@ -467,6 +419,7 @@ struct operation_visitor
             ts.total_payout += op.payout;
          });
       }
+#endif
    }
 
    void operator()( const comment_payout_update_operation& op )const
@@ -479,13 +432,29 @@ struct operation_visitor
    void operator()( Op&& )const{} /// ignore all other ops
 };
 
-
-
-void tags_plugin_impl::on_operation( const operation_notification& note ) {
+void tags_plugin_impl::pre_operation( const operation_notification& note )
+{
    try
    {
       /// plugins shouldn't ever throw
-      note.op.visit( operation_visitor( database() ) );
+      note.op.visit( pre_apply_operation_visitor( _db ) );
+   }
+   catch ( const fc::exception& e )
+   {
+      edump( (e.to_detail_string()) );
+   }
+   catch ( ... )
+   {
+      elog( "unhandled exception" );
+   }
+}
+
+void tags_plugin_impl::on_operation( const operation_notification& note )
+{
+   try
+   {
+      /// plugins shouldn't ever throw
+      note.op.visit( operation_visitor( _db ) );
    }
    catch ( const fc::exception& e )
    {
@@ -499,40 +468,35 @@ void tags_plugin_impl::on_operation( const operation_notification& note ) {
 
 } /// end detail namespace
 
-tags_plugin::tags_plugin( application* app )
-   : plugin( app ), my( new detail::tags_plugin_impl(*this) )
-{
-   chain::database& db = database();
-   add_plugin_index< tag_index        >(db);
-   add_plugin_index< tag_stats_index  >(db);
-   add_plugin_index< peer_stats_index >(db);
-   add_plugin_index< author_tag_stats_index >(db);
-}
+tags_plugin::tags_plugin() {}
+tags_plugin::~tags_plugin() {}
 
-tags_plugin::~tags_plugin()
-{
-}
-
-void tags_plugin::plugin_set_program_options(
+void tags_plugin::set_program_options(
    boost::program_options::options_description& cli,
    boost::program_options::options_description& cfg
    )
-{
-}
+{}
 
 void tags_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 {
    ilog("Intializing tags plugin" );
-   database().post_apply_operation.connect( [&]( const operation_notification& note){ my->on_operation(note); } );
+   my = std::make_unique< detail::tags_plugin_impl >();
 
-   app().register_api_factory<tag_api>("tag_api");
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+
+   add_plugin_index< tag_index               >( my->_db );
+   add_plugin_index< tag_stats_index         >( my->_db );
+   add_plugin_index< author_tag_stats_index  >( my->_db );
+
 }
 
 
-void tags_plugin::plugin_startup()
+void tags_plugin::plugin_startup() {}
+void tags_plugin::plugin_shutdown()
 {
+   chain::util::disconnect_signal( my->pre_apply_connection );
+   chain::util::disconnect_signal( my->post_apply_connection );
 }
 
-} } /// steemit::tags
-
-STEEMIT_DEFINE_PLUGIN( tags, steemit::tags::tags_plugin )
+} } } /// steem::plugins::tags

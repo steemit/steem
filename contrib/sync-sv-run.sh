@@ -11,7 +11,12 @@ if [[ ! $? -eq 0 ]]; then
   if [[ -e /tmp/core.$SAVED_PID ]]; then
     gdb --batch --quiet -ex "thread apply all bt full" -ex "quit" /usr/local/steemd-full/bin/steemd /tmp/core.$SAVED_PID >> /tmp/stacktrace
     STACKTRACE=`cat /tmp/stacktrace`
-    echo NOTIFYALERT! steemdsync stacktrace from coredump: $STACKTRACE
+    echo NOTIFYALERT! steemdsync stacktrace from coredump:
+    for ((i=0;i<${#STACKTRACE};i+=120)); do
+      echo "${STACKTRACE:i:120}"
+    done
+    CORE_FILE_NAME=coredump-`date '+%Y%m%d-%H%M%S'`.$SAVED_PID
+    aws s3 cp /tmp/core.$SAVED_PID s3://$S3_BUCKET/$CORE_FILE_NAME
   fi
   RUN_SV_PID=`pgrep -f /etc/service/steemd`
   kill -9 $RUN_SV_PID
@@ -22,7 +27,7 @@ fi
 # and ecs-agent will start a new container starting the process over
 BLOCKCHAIN_TIME=$(
     curl --silent --max-time 20 \
-        --data '{"id":39,"method":"get_dynamic_global_properties","params":[]}' \
+        --data '{"jsonrpc":"2.0","id":39,"method":"database_api.get_dynamic_global_properties"}' \
         localhost:8090 | jq -r .result.time
 )
 
@@ -54,7 +59,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     fi
     echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
     aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
-    aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read 
+    aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1

@@ -19,7 +19,7 @@ ARGS=""
 # seed nodes, use the ones above:
 if [[ -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -27,7 +27,7 @@ fi
 # the ones the user specified:
 if [[ ! -z "$STEEMD_SEED_NODES" ]]; then
     for NODE in $STEEMD_SEED_NODES ; do
-        ARGS+=" --seed-node=$NODE"
+        ARGS+=" --p2p-seed-node=$NODE"
     done
 fi
 
@@ -35,8 +35,6 @@ NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
 
 ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
-
-ARGS+=" --disable-get-block"
 
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
@@ -85,79 +83,29 @@ fi
 
 chown -R steemd:steemd $HOME/*
 
-# start multiple read-only instances based on the number of cores
-# attach to the local interface since a proxy will be used to loadbalance
-if [[ "$USE_MULTICORE_READONLY" ]]; then
-    exec chpst -usteemd \
-        $STEEMD \
-            --rpc-endpoint=127.0.0.1:8091 \
-            --p2p-endpoint=0.0.0.0:2001 \
-            --data-dir=$HOME \
-            $ARGS \
-            $STEEMD_EXTRA_OPTS \
-            2>&1 &
-    # sleep for a moment to allow the writer node to be ready to accept connections from the readers
-    sleep 30
-    PORT_NUM=8092
-    cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-    CORES=$(nproc)
-    PROCESSES=$((CORES * 4))
-    for (( i=2; i<=$PROCESSES; i++ ))
-      do
-        echo server 127.0.0.1:$PORT_NUM\; >> /etc/nginx/healthcheck.conf
-        ((PORT_NUM++))
-    done
-    echo } >> /etc/nginx/healthcheck.conf
-    PORT_NUM=8092
-    for (( i=2; i<=$PROCESSES; i++ ))
-      do
-        exec chpst -usteemd \
-        $STEEMD \
-          --rpc-endpoint=127.0.0.1:$PORT_NUM \
-          --data-dir=$HOME \
-          $ARGS \
-          --read-forward-rpc=127.0.0.1:8091 \
-          --read-only \
-          2>&1 &
-          ((PORT_NUM++))
-          sleep 1
-    done
-    # start nginx now that the config file is complete with all endpoints
-    # all of the read-only processes will connect to the write node onport 8091
-    # nginx will balance all incoming traffic on port 8090
-    rm /etc/nginx/sites-enabled/default
-    cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
-    /etc/init.d/fcgiwrap restart
-    service nginx restart
-    # start runsv script that kills containers if they die
-    mkdir -p /etc/service/steemd
-    cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run
-    chmod +x /etc/service/steemd/run
-    runsv /etc/service/steemd
+cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
+echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
+echo } >> /etc/nginx/healthcheck.conf
+rm /etc/nginx/sites-enabled/default
+cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
+/etc/init.d/fcgiwrap restart
+service nginx restart
+exec chpst -usteemd \
+    $STEEMD \
+        --webserver-ws-endpoint=127.0.0.1:8091 \
+        --webserver-http-endpoint=127.0.0.1:8091 \
+        --p2p-endpoint=0.0.0.0:2001 \
+        --data-dir=$HOME \
+        $ARGS \
+        $STEEMD_EXTRA_OPTS \
+        2>&1&
+SAVED_PID=`pgrep -f p2p-endpoint`
+echo $SAVED_PID >> /tmp/steemdpid
+mkdir -p /etc/service/steemd
+if [[ ! "$SYNC_TO_S3" ]]; then
+  cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run
 else
-    cp /etc/nginx/healthcheck.conf.template /etc/nginx/healthcheck.conf
-    echo server 127.0.0.1:8091\; >> /etc/nginx/healthcheck.conf
-    echo } >> /etc/nginx/healthcheck.conf
-    rm /etc/nginx/sites-enabled/default
-    cp /etc/nginx/healthcheck.conf /etc/nginx/sites-enabled/default
-    /etc/init.d/fcgiwrap restart
-    service nginx restart
-    exec chpst -usteemd \
-        $STEEMD \
-            --rpc-endpoint=0.0.0.0:8091 \
-            --p2p-endpoint=0.0.0.0:2001 \
-            --data-dir=$HOME \
-            $ARGS \
-            $STEEMD_EXTRA_OPTS \
-            2>&1&
-    SAVED_PID=`pgrep -f p2p-endpoint`
-    echo $SAVED_PID >> /tmp/steemdpid
-    mkdir -p /etc/service/steemd
-    if [[ ! "$SYNC_TO_S3" ]]; then
-      cp /usr/local/bin/paas-sv-run.sh /etc/service/steemd/run
-    else
-      cp /usr/local/bin/sync-sv-run.sh /etc/service/steemd/run
-    fi
-    chmod +x /etc/service/steemd/run
-    runsv /etc/service/steemd
+  cp /usr/local/bin/sync-sv-run.sh /etc/service/steemd/run
 fi
+chmod +x /etc/service/steemd/run
+runsv /etc/service/steemd

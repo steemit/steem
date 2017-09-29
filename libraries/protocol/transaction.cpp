@@ -1,6 +1,6 @@
 
-#include <steemit/protocol/transaction.hpp>
-#include <steemit/protocol/exceptions.hpp>
+#include <steem/protocol/transaction.hpp>
+#include <steem/protocol/exceptions.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
 
 digest_type signed_transaction::merkle_digest()const
 {
@@ -39,7 +39,7 @@ void transaction::validate() const
       operation_validate(op);
 }
 
-steemit::protocol::transaction_id_type steemit::protocol::transaction::id() const
+steem::protocol::transaction_id_type steem::protocol::transaction::id() const
 {
    auto h = digest();
    transaction_id_type result;
@@ -47,14 +47,14 @@ steemit::protocol::transaction_id_type steemit::protocol::transaction::id() cons
    return result;
 }
 
-const signature_type& steemit::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)
+const signature_type& steem::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)
 {
    digest_type h = sig_digest( chain_id );
    signatures.push_back(key.sign_compact(h));
    return signatures.back();
 }
 
-signature_type steemit::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const
+signature_type steem::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const
 {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
@@ -117,9 +117,9 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
       s.max_recursion = max_recursion_depth;
       for( auto& id : posting_approvals )
          s.approved_by.insert( id );
-      for( auto id : required_posting )
+      for( const auto& id : required_posting )
       {
-         STEEMIT_ASSERT( s.check_authority(id) ||
+         STEEM_ASSERT( s.check_authority(id) ||
                           s.check_authority(get_active(id)) ||
                           s.check_authority(get_owner(id)),
                           tx_missing_posting_auth, "Missing Posting Authority ${id}",
@@ -128,7 +128,7 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
                           ("active",get_active(id))
                           ("owner",get_owner(id)) );
       }
-      STEEMIT_ASSERT(
+      STEEM_ASSERT(
          !s.remove_unused_signatures(),
          tx_irrelevant_sig,
          "Unnecessary signature(s) detected"
@@ -146,25 +146,25 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
 
    for( const auto& auth : other )
    {
-      STEEMIT_ASSERT( s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
+      STEEM_ASSERT( s.check_authority(auth), tx_missing_other_auth, "Missing Authority", ("auth",auth)("sigs",sigs) );
    }
 
    // fetch all of the top level authorities
-   for( auto id : required_active )
+   for( const auto& id : required_active )
    {
-      STEEMIT_ASSERT( s.check_authority(id) ||
+      STEEM_ASSERT( s.check_authority(id) ||
                        s.check_authority(get_owner(id)),
                        tx_missing_active_auth, "Missing Active Authority ${id}", ("id",id)("auth",get_active(id))("owner",get_owner(id)) );
    }
 
-   for( auto id : required_owner )
+   for( const auto& id : required_owner )
    {
-      STEEMIT_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
+      STEEM_ASSERT( owner_approvals.find(id) != owner_approvals.end() ||
                        s.check_authority(get_owner(id)),
                        tx_missing_owner_auth, "Missing Owner Authority ${id}", ("id",id)("auth",get_owner(id)) );
    }
 
-   STEEMIT_ASSERT(
+   STEEM_ASSERT(
       !s.remove_unused_signatures(),
       tx_irrelevant_sig,
       "Unnecessary signature(s) detected"
@@ -178,7 +178,7 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    flat_set<public_key_type> result;
    for( const auto&  sig : signatures )
    {
-      STEEMIT_ASSERT(
+      STEEM_ASSERT(
          result.insert( fc::ecc::public_key(sig,d) ).second,
          tx_duplicate_sig,
          "Duplicate Signature detected" );
@@ -262,7 +262,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       result.erase( k );
       try
       {
-         steemit::protocol::verify_authority( operations, result, get_active, get_owner, get_posting, max_recursion );
+         steem::protocol::verify_authority( operations, result, get_active, get_owner, get_posting, max_recursion );
          continue;  // element stays erased if verify_authority is ok
       }
       catch( const tx_missing_owner_auth& e ) {}
@@ -281,7 +281,7 @@ void signed_transaction::verify_authority(
    const authority_getter& get_posting,
    uint32_t max_recursion )const
 { try {
-   steemit::protocol::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
+   steem::protocol::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
-} } // steemit::protocol
+} } // steem::protocol

@@ -1,4 +1,4 @@
-#include <steemit/protocol/asset.hpp>
+#include <steem/protocol/asset.hpp>
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
@@ -12,7 +12,7 @@ index : field
    7  : \0
 */
 
-namespace steemit { namespace protocol {
+namespace steem { namespace protocol {
       typedef boost::multiprecision::int128_t  int128_t;
 
       uint8_t asset::decimals()const
@@ -159,14 +159,14 @@ namespace steemit { namespace protocol {
 
       asset operator * ( const asset& a, const price& b )
       {
-         if( a.symbol_name() == b.base.symbol_name() )
+         if( a.symbol == b.base.symbol )
          {
             FC_ASSERT( b.base.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.quote.amount.value)/b.base.amount.value;
             FC_ASSERT( result.hi == 0 );
             return asset( result.to_uint64(), b.quote.symbol );
          }
-         else if( a.symbol_name() == b.quote.symbol_name() )
+         else if( a.symbol == b.quote.symbol )
          {
             FC_ASSERT( b.quote.amount.value > 0 );
             uint128_t result = (uint128_t(a.amount.value) * b.base.amount.value)/b.quote.amount.value;
@@ -178,12 +178,12 @@ namespace steemit { namespace protocol {
 
       price operator / ( const asset& base, const asset& quote )
       { try {
-         FC_ASSERT( base.symbol_name() != quote.symbol_name() );
+         FC_ASSERT( base.symbol != quote.symbol );
          return price{ base, quote };
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
-      price price::max( asset_symbol_type base, asset_symbol_type quote ) { return asset( share_type(STEEMIT_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
-      price price::min( asset_symbol_type base, asset_symbol_type quote ) { return asset( 1, base ) / asset( STEEMIT_MAX_SHARE_SUPPLY, quote); }
+      price price::max( asset_symbol_type base, asset_symbol_type quote ) { return asset( share_type(STEEM_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
+      price price::min( asset_symbol_type base, asset_symbol_type quote ) { return asset( 1, base ) / asset( STEEM_MAX_SHARE_SUPPLY, quote); }
 
       bool price::is_null() const { return *this == price(); }
 
@@ -191,8 +191,8 @@ namespace steemit { namespace protocol {
       { try {
          FC_ASSERT( base.amount > share_type(0) );
          FC_ASSERT( quote.amount > share_type(0) );
-         FC_ASSERT( base.symbol_name() != quote.symbol_name() );
+         FC_ASSERT( base.symbol != quote.symbol );
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
 
-} } // steemit::protocol
+} } // steem::protocol

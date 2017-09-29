@@ -1,8 +1,0 @@
-#ifndef STEEMIT_HARDFORK_0_18
-#define STEEMIT_HARDFORK_0_18 18
-
-#define STEEMIT_HARDFORK_0_18_TIME  1490886000 // Thu, 30 March 2017 15:00:00 UTC (11:00:00 EDT)
-
-#define STEEMIT_HARDFORK_0_18_VERSION hardfork_version( 0, 18 )
-
-#endif
