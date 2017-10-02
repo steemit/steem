@@ -218,6 +218,12 @@ struct database_fixture {
    vector< operation > get_last_operations( uint32_t ops );
 
    void validate_database( void );
+
+#ifdef STEEM_ENABLE_SMT
+
+   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
+
+#endif
 };
 
 struct clean_database_fixture : public database_fixture

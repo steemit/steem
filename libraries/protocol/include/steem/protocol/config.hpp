@@ -271,3 +271,10 @@
 /// Represents the canonical root post parent account
 #define STEEM_ROOT_POST_PARENT                (account_name_type())
 ///@}
+
+#ifdef STEEM_ENABLE_SMT
+
+#define SMT_VESTING_WITHDRAW_INTERVAL_SECONDS   (60*60*24*7) /// 1 week per interval
+#define SMT_UPVOTE_LOCKOUT                      (60*60*12)  /// 12 hours
+
+#endif
