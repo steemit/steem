@@ -8,6 +8,7 @@
 #include <steem/plugins/account_history/account_history_plugin.hpp>
 #include <steem/plugins/witness/witness_plugin.hpp>
 #include <steem/plugins/chain/chain_plugin.hpp>
+#include <steem/plugins/webserver/webserver_plugin.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -21,6 +22,9 @@
 //using namespace steem::chain::test;
 
 uint32_t STEEM_TESTING_GENESIS_TIMESTAMP = 1431700000;
+
+using namespace steem::plugins::webserver;
+using namespace steem::plugins::database_api;
 
 namespace steem { namespace chain {
 
@@ -569,6 +573,109 @@ void database_fixture::elevate( signed_transaction& tx, const string& account_na
 }
 
 #endif
+
+json_rpc_database_fixture::json_rpc_database_fixture()
+                        : t( "json_rpc_test_server" )
+{
+   url = "127.0.0.1";
+   port = "9876";
+}
+
+json_rpc_database_fixture::~json_rpc_database_fixture()
+{
+   appbase::app().quit();
+}
+
+void json_rpc_database_fixture::launch_server( int initial_argc, char** initial_argv )
+{
+   t.async
+   (
+      [&]()
+      {
+         BOOST_CHECK( initial_argc >= 1 );
+
+         std::string url_param = "--webserver-http-endpoint=" + url + ":" + port;
+
+         char* argv[] = {  initial_argv[0],
+                           ( char* )( "-d" ),
+                           ( char* )( "testnet" ),
+                           ( char* )( url_param.c_str() ),
+                           nullptr
+                        };
+         int argc = sizeof(argv) / sizeof(char*) - 1;
+
+         appbase::app().register_plugin< database_api_plugin >();
+         appbase::app().register_plugin< webserver_plugin >();
+
+         appbase::app().initialize<
+            database_api_plugin,
+            webserver_plugin
+         >( argc, argv );
+
+         appbase::app().startup();
+         appbase::app().exec();
+      }
+   );
+
+   fc::usleep( fc::seconds( delay ) );
+}
+
+fc::variant json_rpc_database_fixture::get_answer( std::string& request )
+{
+   const std::string method = "POST";
+   const std::string http = "http://" + url;
+
+   std::string body;
+   fc::http::reply reply;
+
+   connection.connect_to( fc::ip::endpoint( fc::ip::endpoint::from_string( url + ":" + port ) ) );
+   reply = connection.request( method, http, request );
+   BOOST_REQUIRE( reply.status == 200 );
+   body = std::string( reply.body.begin(), reply.body.end() );
+
+   return fc::json::from_string( body );
+}
+
+void json_rpc_database_fixture::review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail )
+{
+   fc::variant_object error;
+   int64_t answer_code;
+
+   if( is_fail )
+   {
+      BOOST_REQUIRE( answer.get_object().contains( "error" ) );
+      BOOST_REQUIRE( answer["error"].is_object() );
+      error = answer["error"].get_object();
+      BOOST_REQUIRE( error.contains( "code" ) );
+      BOOST_REQUIRE( error["code"].is_int64() );
+      answer_code = error["code"].as_int64();
+      BOOST_REQUIRE( answer_code == code );
+      if( is_warning )
+         BOOST_TEST_MESSAGE( error["message"].as_string() );
+   }
+   else
+      BOOST_REQUIRE( answer.get_object().contains( "result" ) );
+}
+
+void json_rpc_database_fixture::make_array_request( std::string& request, int64_t code, bool is_warning, bool is_fail )
+{
+   fc::variant answer = get_answer( request );
+   BOOST_REQUIRE( answer.is_array() );
+
+   fc::variants array = answer.get_array();
+   for( fc::variant obj : array )
+   {
+      review_answer( obj, code, is_warning, is_fail );
+   }
+}
+
+void json_rpc_database_fixture::make_request( std::string& request, int64_t code, bool is_warning, bool is_fail )
+{
+   fc::variant answer = get_answer( request );
+   BOOST_REQUIRE( answer.is_object() );
+
+   review_answer( answer, code, is_warning, is_fail );
+}
 
 namespace test {
 
