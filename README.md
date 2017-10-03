@@ -1,6 +1,6 @@
 # Introducing Steem (beta)
 
-Steem is a Delegated Proof of Stake blockchain that uses a "Proof of Brain" social consnensus algorithm for token allocation.
+Steem is a Delegated Proof of Stake blockchain that uses a "Proof of Brain" social consensus algorithm for token allocation.
 
   - Currency symbol STEEM.
   - 10% APR inflation narrowing to 1% APR over 20 years.
@@ -30,7 +30,7 @@ You can read the Steem Whitepaper at [Steem.io/SteemWhitePaper.pdf](https://stee
 
 # Quickstart
 
-Just want to get up and running quickly? We have pre-build docker images for your convenience. More details are in our [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
+Just want to get up and running quickly? We have pre-built docker images for your convenience. More details are in our [quickstart guide](https://github.com/steemit/steem/blob/master/doc/exchangequickstart.md).
 
 # Building
 
