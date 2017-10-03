@@ -1639,7 +1639,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.url = "foo.bar";
       op.fee = ASSET( "1.000 TESTS" );
       op.block_signing_key = signing_key.get_public_key();
-      op.props.account_creation_fee = asset( STEEM_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL);
+      op.props.account_creation_fee = legacy_steem_asset::from_asset( asset(STEEM_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL) );
       op.props.maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT + 100;
 
       signed_transaction tx;
@@ -1655,7 +1655,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       BOOST_REQUIRE( alice_witness.created == db->head_block_time() );
       BOOST_REQUIRE( to_string( alice_witness.url ) == op.url );
       BOOST_REQUIRE( alice_witness.signing_key == op.block_signing_key );
-      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee );
+      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee.to_asset<true>() );
       BOOST_REQUIRE( alice_witness.props.maximum_block_size == op.props.maximum_block_size );
       BOOST_REQUIRE( alice_witness.total_missed == 0 );
       BOOST_REQUIRE( alice_witness.last_aslot == 0 );
@@ -1682,7 +1682,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       BOOST_REQUIRE( alice_witness.created == db->head_block_time() );
       BOOST_REQUIRE( to_string( alice_witness.url ) == "bar.foo" );
       BOOST_REQUIRE( alice_witness.signing_key == op.block_signing_key );
-      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee );
+      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee.to_asset<true>() );
       BOOST_REQUIRE( alice_witness.props.maximum_block_size == op.props.maximum_block_size );
       BOOST_REQUIRE( alice_witness.total_missed == 0 );
       BOOST_REQUIRE( alice_witness.last_aslot == 0 );

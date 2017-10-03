@@ -122,6 +122,8 @@ inline void unpack( Stream& s, steem::protocol::asset_symbol_type& sym )
       case VESTS_SYMBOL_SER:
          sym.asset_num = STEEM_ASSET_NUM_VESTS;
          break;
+      default:
+         FC_ASSERT( false, "Cannot deserialize unknown asset symbol" );
    }
 }
 

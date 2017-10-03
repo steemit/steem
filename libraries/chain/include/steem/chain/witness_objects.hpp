@@ -9,7 +9,6 @@
 
 namespace steem { namespace chain {
 
-   using steem::protocol::chain_properties;
    using steem::protocol::digest_type;
    using steem::protocol::public_key_type;
    using steem::protocol::version;
@@ -17,6 +16,30 @@ namespace steem { namespace chain {
    using steem::protocol::price;
    using steem::protocol::asset;
    using steem::protocol::asset_symbol_type;
+
+   /**
+    * Witnesses must vote on how to set certain chain properties to ensure a smooth
+    * and well functioning network.  Any time @owner is in the active set of witnesses these
+    * properties will be used to control the blockchain configuration.
+    */
+   struct chain_properties
+   {
+      /**
+       *  This fee, paid in STEEM, is converted into VESTING SHARES for the new account. Accounts
+       *  without vesting shares cannot earn usage rations and therefore are powerless. This minimum
+       *  fee requires all accounts to have some kind of commitment to the network that includes the
+       *  ability to vote and make transactions.
+       */
+      asset             account_creation_fee =
+         asset( STEEM_MIN_ACCOUNT_CREATION_FEE, STEEM_SYMBOL );
+
+      /**
+       *  This witnesses vote for the maximum_block_size which is used by the network
+       *  to tune rate limiting and capacity
+       */
+      uint32_t          maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
+      uint16_t          sbd_interest_rate  = STEEM_DEFAULT_SBD_INTEREST_RATE;
+   };
 
    /**
     *  All witnesses with at least 1% net positive approval and
@@ -235,6 +258,12 @@ namespace steem { namespace chain {
 } }
 
 FC_REFLECT_ENUM( steem::chain::witness_object::witness_schedule_type, (top19)(timeshare)(miner)(none) )
+
+FC_REFLECT( steem::chain::chain_properties,
+             (account_creation_fee)
+             (maximum_block_size)
+             (sbd_interest_rate)
+          )
 
 FC_REFLECT( steem::chain::witness_object,
              (id)
