@@ -11,6 +11,7 @@
 #define JSON_RPC_INVALID_PARAMS     (-32602)
 #define JSON_RPC_INTERNAL_ERROR     (-32603)
 #define JSON_RPC_SERVER_ERROR       (-32000)
+#define JSON_RPC_NO_PARAMS          (-32001)
 
 namespace steem { namespace plugins { namespace json_rpc {
 
@@ -44,6 +45,10 @@ namespace detail
          ~json_rpc_plugin_impl();
 
          void add_api_method( const string& api_name, const string& method_name, const api_method& api );
+
+         void read_params( std::vector< fc::variant >& v, const fc::variant_object& request );
+         void rpc_id( const fc::variant_object& request, json_rpc_response& response );
+         void rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response );
          json_rpc_response rpc( const fc::variant& message );
 
          map< string, api_description > _registered_apis;
@@ -57,17 +62,33 @@ namespace detail
       _registered_apis[ api_name ][ method_name ] = api;
    }
 
-   json_rpc_response json_rpc_plugin_impl::rpc( const fc::variant& message )
+   void json_rpc_plugin_impl::read_params( std::vector< fc::variant >& v, const fc::variant_object& request )
    {
-      json_rpc_response response;
+      FC_ASSERT( request.contains( "params" ) );
 
-      ddump( (message) );
-
-      try
+      if( request[ "params" ].is_array() )
+         v = request[ "params" ].as< std::vector< fc::variant > >();
+      else if( request[ "params" ].is_object() )
       {
-         const auto request = message.get_object();
+         fc::variant_object _params = request[ "params" ].get_object();
+         if( _params.contains("api") )
+            v.push_back( _params["api"] );
+         if( _params.contains("method") )
+            v.push_back( _params["method"] );
+         if( _params.contains("args") )
+            v.push_back( _params["args"] );
+      }
 
-         if( request.contains( "id" ) )
+      FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
+   }
+
+   void json_rpc_plugin_impl::rpc_id( const fc::variant_object& request, json_rpc_response& response )
+   {
+      if( request.contains( "id" ) )
+      {
+         if( request[ "id" ].is_null() || request[ "id" ].is_double() )
+            response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
+         else
          {
             try
             {
@@ -79,26 +100,39 @@ namespace detail
                {
                   response.id = request[ "id" ].as_string();
                }
-               catch( fc::exception& ) {}
+               catch( fc::exception& )
+               {
+                  response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
+               }
+            }
+            catch(...)
+            {
+                  response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
             }
          }
+      }
+   }
 
-         if( request.contains( "jsonrpc" ) && request[ "jsonrpc" ].as_string() == "2.0" )
+   void json_rpc_plugin_impl::rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response )
+   {
+      if( request.contains( "jsonrpc" ) && request[ "jsonrpc" ].as_string() == "2.0" )
+      {
+         if( request.contains( "method" ) )
          {
-            if( request.contains( "method" ) )
+            try
             {
-               try
+               string method = request[ "method" ].as_string();
+
+               api_method* call = nullptr;
+               fc::variant params;
+
+               // This is to maintain backwards compatibility with existing call structure.
+               if( ( method == "call" && request.contains( "params" ) ) || method != "call" )
                {
-                  string method = request[ "method" ].as_string();
-
-                  api_method* call = nullptr;
-                  fc::variant params;
-
-                  // This is to maintain backwards compatibility with existing call structure.
                   if( method == "call" )
                   {
-                     std::vector< fc::variant > v = request[ "params" ].as< std::vector< fc::variant > >();
-                     FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
+                     std::vector< fc::variant > v;
+                     read_params( v, request );
 
                      auto api_itr = _registered_apis.find( v[0].as_string() );
                      FC_ASSERT( api_itr != _registered_apis.end(), "Could not find API ${api}", ("api", v[0]) );
@@ -138,16 +172,40 @@ namespace detail
                      FC_THROW( "Api method is null" );
                   response.result = (*call)( params );
                }
-               catch( fc::assert_exception& e )
+               else
                {
-                  response.error = json_rpc_error( JSON_RPC_METHOD_NOT_FOUND, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+                  response.error = json_rpc_error( JSON_RPC_NO_PARAMS, "A member \"params\" does not exist" );
                }
+            }
+            catch( fc::assert_exception& e )
+            {
+               response.error = json_rpc_error( JSON_RPC_METHOD_NOT_FOUND, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
             }
          }
          else
          {
-            response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "jsonrpc value is not \"2.0\"" );
+            response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "A member \"method\" does not exist" );
          }
+      }
+      else
+      {
+         response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "jsonrpc value is not \"2.0\"" );
+      }
+   }
+
+   json_rpc_response json_rpc_plugin_impl::rpc( const fc::variant& message )
+   {
+      json_rpc_response response;
+
+      ddump( (message) );
+
+      try
+      {
+         const auto request = message.get_object();
+
+         rpc_id( request, response );
+         if( !response.error.valid() )
+            rpc_jsonrpc( request, response );
       }
       catch( fc::parse_error_exception& e )
       {
@@ -195,12 +253,23 @@ string json_rpc_plugin::call( const string& message )
       {
          vector< fc::variant > messages = v.as< vector< fc::variant > >();
          vector< json_rpc_response > responses;
-         responses.reserve( messages.size() );
 
-         for( auto& m : messages )
-            responses.push_back( my->rpc( m ) );
+         if( messages.size() )
+         {
+            responses.reserve( messages.size() );
 
-         return fc::json::to_string( responses );
+            for( auto& m : messages )
+               responses.push_back( my->rpc( m ) );
+
+            return fc::json::to_string( responses );
+         }
+         else
+         {
+            //For example: message == "[]"
+            json_rpc_response response;
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Array is invalid" );
+            return fc::json::to_string( response );
+         }
       }
       else
       {
