@@ -39,6 +39,10 @@ ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
 STEEMD_PROMOTED_START_TIME=`expr $NOW - 604800`
 ARGS+=" --tags-start-promoted=$STEEMD_PROMOTED_START_TIME"
 
+if [[ ! "$DISABLE_BLOCK_API" ]]; then
+   ARGS+=" --plugin=block_api"
+fi
+
 # overwrite local config with image one
 cp /etc/steemd/fullnode.config.ini $HOME/config.ini
 
