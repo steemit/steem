@@ -242,51 +242,27 @@ void asset::fill_from_string( const char* p )
    return;
 }
 
-      typedef boost::multiprecision::int128_t  int128_t;
+#define BQ(a) \
+   std::tie( a.base.symbol, a.quote.symbol )
 
-      bool operator == ( const price& a, const price& b )
-      {
-         if( std::tie( a.base.symbol, a.quote.symbol ) != std::tie( b.base.symbol, b.quote.symbol ) )
-             return false;
+#define DEFINE_PRICE_COMPARISON_OPERATOR( op ) \
+bool operator op ( const price& a, const price& b ) \
+{ \
+   if( BQ(a) != BQ(b) ) \
+      return BQ(a) op BQ(b); \
+   \
+   const uint128_t amult = uint128_t( b.quote.amount.value ) * a.base.amount.value; \
+   const uint128_t bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value; \
+   \
+   return amult op bmult;  \
+}
 
-         const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
-         const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
-
-         return amult == bmult;
-      }
-
-      bool operator < ( const price& a, const price& b )
-      {
-         if( a.base.symbol < b.base.symbol ) return true;
-         if( a.base.symbol > b.base.symbol ) return false;
-         if( a.quote.symbol < b.quote.symbol ) return true;
-         if( a.quote.symbol > b.quote.symbol ) return false;
-
-         const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
-         const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
-
-         return amult < bmult;
-      }
-
-      bool operator <= ( const price& a, const price& b )
-      {
-         return (a == b) || (a < b);
-      }
-
-      bool operator != ( const price& a, const price& b )
-      {
-         return !(a == b);
-      }
-
-      bool operator > ( const price& a, const price& b )
-      {
-         return !(a <= b);
-      }
-
-      bool operator >= ( const price& a, const price& b )
-      {
-         return !(a < b);
-      }
+DEFINE_PRICE_COMPARISON_OPERATOR( == )
+DEFINE_PRICE_COMPARISON_OPERATOR( != )
+DEFINE_PRICE_COMPARISON_OPERATOR( <  )
+DEFINE_PRICE_COMPARISON_OPERATOR( <= )
+DEFINE_PRICE_COMPARISON_OPERATOR( >  )
+DEFINE_PRICE_COMPARISON_OPERATOR( >= )
 
       asset operator * ( const asset& a, const price& b )
       {

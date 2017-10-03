@@ -49,22 +49,29 @@ namespace steem { namespace protocol {
          FC_ASSERT( a.symbol == b.symbol );
          return a.amount < b.amount;
       }
+
       friend bool operator <= ( const asset& a, const asset& b )
       {
-         return (a == b) || (a < b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount <= b.amount;
       }
 
       friend bool operator != ( const asset& a, const asset& b )
       {
-         return !(a == b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount != b.amount;
       }
+
       friend bool operator > ( const asset& a, const asset& b )
       {
-         return !(a <= b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount > b.amount;
       }
+
       friend bool operator >= ( const asset& a, const asset& b )
       {
-         return !(a < b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount >= b.amount;
       }
 
       friend asset operator - ( const asset& a, const asset& b )
