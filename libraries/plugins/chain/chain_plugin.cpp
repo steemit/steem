@@ -105,9 +105,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 }
 
-class TBenchmarkReporter
+#define BENCHMARK_FILE_NAME "replay_benchmark.json"
+
+class TReplayBenchmarkReporter
 {
 public:
+   TReplayBenchmarkReporter(uint32_t block_interval) : _block_interval(block_interval) {}
+
    void print_report(uint32_t block_number, bool is_initial_call)
    {
       if( is_initial_call )
@@ -115,11 +119,17 @@ public:
          _init_sys_time = _last_sys_time = fc::time_point::now();
          _init_cpu_time = _last_cpu_time = clock();
          _peak_mem = read_mem();
+
+         _json_log_file.open(BENCHMARK_FILE_NAME);
+         _json_log_file << '{' << std::endl;
+         _json_log_file << "\"block_interval\": " << _block_interval << ',' << std::endl;
+         _json_log_file << "\"data\": [" << std::endl;
          return;
       }
 
       time_point current_sys_time = fc::time_point::now();
       fc::microseconds sys_us = current_sys_time - _last_sys_time;
+      int64_t real_ms = sys_us.count()/1000;
       clock_t current_cpu_time = clock();
       int cpu_ms = int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC);
       auto current_mem = read_mem();
@@ -128,13 +138,26 @@ public:
 
       ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
             ("n", block_number)
-            ("rt", sys_us.count()/1000)
+            ("rt", real_ms)
             ("ct", cpu_ms)
             ("cm", current_mem)
             ("pm", _peak_mem) );
 
       _last_sys_time = current_sys_time;
       _last_cpu_time = current_cpu_time;
+
+      if( _printed )
+         _json_log_file << ',' << std::endl;
+      else
+         _printed = true;
+
+      _json_log_file << '{' << std::endl;
+      _json_log_file << "\"block_number\": " << block_number << std::endl;
+      _json_log_file << "\"real_time_ms\": " << real_ms << std::endl;
+      _json_log_file << "\"cpu_time_ms\": " << cpu_ms << std::endl;
+      _json_log_file << "\"current_mem\": " << current_mem << std::endl;
+      _json_log_file << "\"peak_mem\": " << _peak_mem << std::endl;
+      _json_log_file << '}';
    }
 
    void print_final_report()
@@ -147,6 +170,12 @@ public:
             ("ct", cpu_ms)
             ("cm", current_mem)
             ("pm", _peak_mem) );
+
+      if( _printed )
+         _json_log_file << std::endl;
+      _json_log_file << ']' << std::endl;
+      _json_log_file << '}' << std::endl;
+      _json_log_file.close();
    }
 
 private:
@@ -159,11 +188,14 @@ private:
    }
 
 private:
-   time_point _init_sys_time;
-   time_point _last_sys_time;
-   clock_t    _init_cpu_time = 0;
-   clock_t    _last_cpu_time = 0;
-   long       _peak_mem = 0;
+   uint32_t       _block_interval = 0;
+   bool           _printed = false;
+   time_point     _init_sys_time;
+   time_point     _last_sys_time;
+   clock_t        _init_cpu_time = 0;
+   clock_t        _last_cpu_time = 0;
+   long           _peak_mem = 0;
+   std::ofstream  _json_log_file;
 };
 
 void chain_plugin::plugin_startup()
@@ -184,7 +216,7 @@ void chain_plugin::plugin_startup()
    {
       ilog("Replaying blockchain on user request.");
       uint32_t last_block_number = 0;
-      TBenchmarkReporter benchmark_reporter;
+      TReplayBenchmarkReporter benchmark_reporter(my->benchmark_interval);
       auto benchmark_lambda = [&benchmark_reporter]( uint32_t current_block_number, bool is_initial_call )
       {
          benchmark_reporter.print_report(current_block_number, is_initial_call);
