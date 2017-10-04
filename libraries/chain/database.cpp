@@ -3340,12 +3340,12 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 {
    modify( a, [&]( account_object& acnt )
    {
-      switch( delta.symbol )
+      switch( delta.symbol.asset_num )
       {
-         case STEEM_SYMBOL:
+         case STEEM_ASSET_NUM_STEEM:
             acnt.balance += delta;
             break;
-         case SBD_SYMBOL:
+         case STEEM_ASSET_NUM_SBD:
             if( a.sbd_seconds_last_update != head_block_time() )
             {
                acnt.sbd_seconds += fc::uint128_t(a.sbd_balance.amount.value) * (head_block_time() - a.sbd_seconds_last_update).to_seconds();
@@ -3385,12 +3385,12 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 {
    modify( a, [&]( account_object& acnt )
    {
-      switch( delta.symbol )
+      switch( delta.symbol.asset_num )
       {
-         case STEEM_SYMBOL:
+         case STEEM_ASSET_NUM_STEEM:
             acnt.savings_balance += delta;
             break;
-         case SBD_SYMBOL:
+         case STEEM_ASSET_NUM_SBD:
             if( a.savings_sbd_seconds_last_update != head_block_time() )
             {
                acnt.savings_sbd_seconds += fc::uint128_t(a.savings_sbd_balance.amount.value) * (head_block_time() - a.savings_sbd_seconds_last_update).to_seconds();
@@ -3430,12 +3430,12 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 {
    modify( a, [&]( account_object& acnt )
    {
-      switch( delta.symbol )
+      switch( delta.symbol.asset_num )
       {
-         case STEEM_SYMBOL:
+         case STEEM_ASSET_NUM_STEEM:
             acnt.reward_steem_balance += delta;
             break;
-         case SBD_SYMBOL:
+         case STEEM_ASSET_NUM_SBD:
             acnt.reward_sbd_balance += delta;
             break;
          default:
@@ -3454,9 +3454,9 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
 
    modify( props, [&]( dynamic_global_property_object& props )
    {
-      switch( delta.symbol )
+      switch( delta.symbol.asset_num )
       {
-         case STEEM_SYMBOL:
+         case STEEM_ASSET_NUM_STEEM:
          {
             asset new_vesting( (adjust_vesting && delta.amount > 0) ? delta.amount * 9 : 0, STEEM_SYMBOL );
             props.current_supply += delta + new_vesting;
@@ -3465,7 +3465,7 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
             assert( props.current_supply.amount.value >= 0 );
             break;
          }
-         case SBD_SYMBOL:
+         case STEEM_ASSET_NUM_SBD:
             props.current_sbd_supply += delta;
             props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
             assert( props.current_sbd_supply.amount.value >= 0 );
@@ -3479,11 +3479,11 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
 
 asset database::get_balance( const account_object& a, asset_symbol_type symbol )const
 {
-   switch( symbol )
+   switch( symbol.asset_num )
    {
-      case STEEM_SYMBOL:
+      case STEEM_ASSET_NUM_STEEM:
          return a.balance;
-      case SBD_SYMBOL:
+      case STEEM_ASSET_NUM_SBD:
          return a.sbd_balance;
       default:
          FC_ASSERT( false, "invalid symbol" );
@@ -3492,11 +3492,11 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 
 asset database::get_savings_balance( const account_object& a, asset_symbol_type symbol )const
 {
-   switch( symbol )
+   switch( symbol.asset_num )
    {
-      case STEEM_SYMBOL:
+      case STEEM_ASSET_NUM_STEEM:
          return a.savings_balance;
-      case SBD_SYMBOL:
+      case STEEM_ASSET_NUM_SBD:
          return a.savings_sbd_balance;
       default:
          FC_ASSERT( !"invalid symbol" );

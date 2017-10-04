@@ -1,5 +1,7 @@
 #pragma once
 
+#include <steem/protocol/types.hpp>
+
 #include <steem/protocol/operation_util.hpp>
 #include <steem/protocol/steem_operations.hpp>
 #include <steem/protocol/steem_virtual_operations.hpp>

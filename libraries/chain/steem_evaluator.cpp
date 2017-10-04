@@ -61,15 +61,23 @@ struct strcmp_equal
    }
 };
 
+template< bool force_canon >
+void copy_legacy_chain_properties( chain_properties& dest, const legacy_chain_properties& src )
+{
+   dest.account_creation_fee = src.account_creation_fee.to_asset< force_canon >();
+   dest.maximum_block_size = src.maximum_block_size;
+   dest.sbd_interest_rate = src.sbd_interest_rate;
+}
+
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
    _db.get_account( o.owner ); // verify owner exists
 
    if ( _db.has_hardfork( STEEM_HARDFORK_0_14__410 ) )
    {
-      FC_ASSERT( o.props.account_creation_fee.symbol == STEEM_SYMBOL );
+      FC_ASSERT( o.props.account_creation_fee.symbol.is_canon() );
    }
-   else if( o.props.account_creation_fee.symbol != STEEM_SYMBOL )
+   else if( !o.props.account_creation_fee.symbol.is_canon() )
    {
       // after HF, above check can be moved to validate() if reindex doesn't show this warning
       wlog( "Wrong fee symbol in block ${b}", ("b", _db.head_block_num()+1) );
@@ -82,7 +90,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
       _db.modify( *wit_itr, [&]( witness_object& w ) {
          from_string( w.url, o.url );
          w.signing_key        = o.block_signing_key;
-         w.props              = o.props;
+         copy_legacy_chain_properties< false >( w.props, o.props );
       });
    }
    else
@@ -92,7 +100,7 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
          from_string( w.url, o.url );
          w.signing_key        = o.block_signing_key;
          w.created            = _db.head_block_time();
-         w.props              = o.props;
+         copy_legacy_chain_properties< false >( w.props, o.props );
       });
    }
 }
@@ -1609,7 +1617,7 @@ void pow_apply( database& db, Operation o )
    if( cur_witness ) {
       FC_ASSERT( cur_witness->pow_worker == 0, "This account is already scheduled for pow block production." );
       db.modify(*cur_witness, [&]( witness_object& w ){
-          w.props             = o.props;
+          copy_legacy_chain_properties< true >( w.props, o.props );
           w.pow_worker        = dgp.total_pow;
           w.last_work         = o.work.work;
       });
@@ -1617,7 +1625,7 @@ void pow_apply( database& db, Operation o )
       db.create<witness_object>( [&]( witness_object& w )
       {
           w.owner             = o.get_worker_account();
-          w.props             = o.props;
+          copy_legacy_chain_properties< true >( w.props, o.props );
           w.signing_key       = o.work.worker;
           w.pow_worker        = dgp.total_pow;
           w.last_work         = o.work.work;
@@ -1703,7 +1711,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       db.create<witness_object>( [&]( witness_object& w )
       {
           w.owner             = worker_account;
-          w.props             = o.props;
+          copy_legacy_chain_properties< true >( w.props, o.props );
           w.signing_key       = *o.new_owner_key;
           w.pow_worker        = dgp.total_pow;
       });
@@ -1716,7 +1724,7 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       FC_ASSERT( cur_witness->pow_worker == 0, "This account is already scheduled for pow block production." );
       db.modify(*cur_witness, [&]( witness_object& w )
       {
-          w.props             = o.props;
+          copy_legacy_chain_properties< true >( w.props, o.props );
           w.pow_worker        = dgp.total_pow;
       });
    }

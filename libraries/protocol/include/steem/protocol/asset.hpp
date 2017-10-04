@@ -1,10 +1,9 @@
 #pragma once
 #include <steem/protocol/types.hpp>
 #include <steem/protocol/config.hpp>
+#include <steem/protocol/asset_symbol.hpp>
 
 namespace steem { namespace protocol {
-
-   typedef uint64_t asset_symbol_type;
 
    struct asset
    {
@@ -15,8 +14,15 @@ namespace steem { namespace protocol {
       asset_symbol_type symbol;
 
       uint8_t     decimals()const;
+      void validate()const;
 
-      static asset from_string( const string& from );
+      void fill_from_string( const char* p );
+      static asset from_string( const string& from )
+      {
+         asset result;
+         result.fill_from_string( from.c_str() );
+         return result;
+      }
       string       to_string()const;
 
       asset& operator += ( const asset& o )
@@ -41,24 +47,31 @@ namespace steem { namespace protocol {
       friend bool operator < ( const asset& a, const asset& b )
       {
          FC_ASSERT( a.symbol == b.symbol );
-         return std::tie(a.amount,a.symbol) < std::tie(b.amount,b.symbol);
+         return a.amount < b.amount;
       }
+
       friend bool operator <= ( const asset& a, const asset& b )
       {
-         return (a == b) || (a < b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount <= b.amount;
       }
 
       friend bool operator != ( const asset& a, const asset& b )
       {
-         return !(a == b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount != b.amount;
       }
+
       friend bool operator > ( const asset& a, const asset& b )
       {
-         return !(a <= b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount > b.amount;
       }
+
       friend bool operator >= ( const asset& a, const asset& b )
       {
-         return !(a < b);
+         FC_ASSERT( a.symbol == b.symbol );
+         return a.amount >= b.amount;
       }
 
       friend asset operator - ( const asset& a, const asset& b )
@@ -77,11 +90,6 @@ namespace steem { namespace protocol {
          FC_ASSERT( a.symbol == b.symbol );
          return asset( a.amount * b.amount, a.symbol );
       }
-
-      private:
-         std::string symbol_name()const;
-         void        set_decimals(uint8_t d);
-         int64_t     precision()const;
    };
 
    /** Represents quotation of the relative value of asset against another asset.
@@ -148,9 +156,8 @@ namespace steem { namespace protocol {
 
 namespace fc {
     inline void to_variant( const steem::protocol::asset& var,  fc::variant& vo ) { vo = var.to_string(); }
-    inline void from_variant( const fc::variant& var,  steem::protocol::asset& vo ) { vo = steem::protocol::asset::from_string( var.as_string() ); }
+    inline void from_variant( const fc::variant& var,  steem::protocol::asset& vo ) { vo.fill_from_string( var.as_string().c_str() ); }
 }
 
 FC_REFLECT( steem::protocol::asset, (amount)(symbol) )
 FC_REFLECT( steem::protocol::price, (base)(quote) )
-
