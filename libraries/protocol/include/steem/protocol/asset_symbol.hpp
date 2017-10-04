@@ -42,7 +42,8 @@ class asset_symbol_type
    public:
       enum asset_symbol_space
       {
-         legacy_space = 1
+         legacy_space = 1,
+         smt_nai_space = 2
       };
 
       asset_symbol_type() {}
@@ -51,6 +52,10 @@ class asset_symbol_type
       static asset_symbol_type from_string( const char* buf, uint8_t decimal_places );
       static asset_symbol_type from_asset_num( uint32_t asset_num )
       {   asset_symbol_type result;   result.asset_num = asset_num;   return result;   }
+      static uint32_t asset_num_from_nai( uint32_t nai, uint8_t decimal_places );
+      static asset_symbol_type from_nai( uint32_t nai, uint8_t decimal_places )
+      {   return from_asset_num( asset_num_from_nai( nai, decimal_places ) );          }
+
       void to_string( char* buf )const;
       std::string to_string()const
       {
@@ -58,6 +63,7 @@ class asset_symbol_type
          to_string( buf );
          return std::string(buf);
       }
+      uint32_t to_nai()const;
 
       asset_symbol_space space()const;
       uint8_t decimals()const
@@ -84,47 +90,76 @@ class asset_symbol_type
 
 namespace fc { namespace raw {
 
+// Legacy serialization of assets
+// 0000pppp aaaaaaaa bbbbbbbb cccccccc dddddddd eeeeeeee ffffffff 00000000
+// Symbol = abcdef
+//
+// NAI serialization of assets
+// aaa1pppp bbbbbbbb cccccccc dddddddd
+// NAI = (MSB to LSB) dddddddd cccccccc bbbbbbbb aaa
+//
+// NAI internal storage of legacy assets
+
 template< typename Stream >
 inline void pack( Stream& s, const steem::protocol::asset_symbol_type& sym )
 {
-   uint64_t ser = 0;
-
-   switch( sym.asset_num )
+   switch( sym.space() )
    {
-      case STEEM_ASSET_NUM_STEEM:
-         ser = STEEM_SYMBOL_SER;
+      case steem::protocol::asset_symbol_type::legacy_space:
+      {
+         uint64_t ser = 0;
+         switch( sym.asset_num )
+         {
+            case STEEM_ASSET_NUM_STEEM:
+               ser = STEEM_SYMBOL_SER;
+               break;
+            case STEEM_ASSET_NUM_SBD:
+               ser = SBD_SYMBOL_SER;
+               break;
+            case STEEM_ASSET_NUM_VESTS:
+               ser = VESTS_SYMBOL_SER;
+               break;
+            default:
+               FC_ASSERT( false, "Cannot serialize unknown asset symbol" );
+         }
+         pack( s, ser );
          break;
-      case STEEM_ASSET_NUM_SBD:
-         ser = SBD_SYMBOL_SER;
-         break;
-      case STEEM_ASSET_NUM_VESTS:
-         ser = VESTS_SYMBOL_SER;
+      }
+      case steem::protocol::asset_symbol_type::smt_nai_space:
+         pack( s, sym.asset_num );
          break;
       default:
          FC_ASSERT( false, "Cannot serialize unknown asset symbol" );
    }
-   pack( s, ser );
 }
 
 template< typename Stream >
 inline void unpack( Stream& s, steem::protocol::asset_symbol_type& sym )
 {
    uint64_t ser = 0;
-   fc::raw::unpack( s, ser );
+   s.read( (char*) &ser, 4 );
+
    switch( ser )
    {
-      case STEEM_SYMBOL_SER:
+      case STEEM_SYMBOL_SER & 0xFFFFFFFF:
+         s.read( ((char*) &ser)+4, 4 );
+         FC_ASSERT( ser == STEEM_SYMBOL_SER, "invalid asset bits" );
          sym.asset_num = STEEM_ASSET_NUM_STEEM;
          break;
-      case SBD_SYMBOL_SER:
+      case SBD_SYMBOL_SER & 0xFFFFFFFF:
+         s.read( ((char*) &ser)+4, 4 );
+         FC_ASSERT( ser == SBD_SYMBOL_SER, "invalid asset bits" );
          sym.asset_num = STEEM_ASSET_NUM_SBD;
          break;
-      case VESTS_SYMBOL_SER:
+      case VESTS_SYMBOL_SER & 0xFFFFFFFF:
+         s.read( ((char*) &ser)+4, 4 );
+         FC_ASSERT( ser == VESTS_SYMBOL_SER, "invalid asset bits" );
          sym.asset_num = STEEM_ASSET_NUM_VESTS;
          break;
       default:
-         FC_ASSERT( false, "Cannot deserialize unknown asset symbol" );
+         sym.asset_num = uint32_t( ser );
    }
+   sym.validate();
 }
 
 } // fc::raw
