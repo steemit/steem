@@ -252,34 +252,55 @@ BOOST_AUTO_TEST_CASE( positive_validation )
 
       std::string request;
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\", []], \"id\":1}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":1}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\", {}], \"id\":2}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\", {}], \"id\":3}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\",\"id\":3}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\",\"id\":4}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\", \"params\":{}, \"id\":4}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\", \"params\":{}, \"id\":5}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\", \"params\":[], \"id\":5}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"condenser_api\", \"get_dynamic_global_properties\", []], \"id\":8}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\", {\"accounts\":[\"init_miner\"]}], \"id\":6}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"condenser_api.get_dynamic_global_properties\", \"params\":[], \"id\":12}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{\"accounts\":[\"init_miner\"]}, \"id\":7}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\", {\"accounts\":[\"init_miner\"]}], \"id\":13}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\", {}], \"id\":8}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{\"accounts\":[\"init_miner\"]}, \"id\":14}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{}, \"id\":9}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\", {}], \"id\":15}";
       make_positive_request( request );
 
-      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"id\":3}";
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\"], \"id\":15}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{\"accounts\":[\"init_miner\"]}, \"id\":17}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{}, \"id\":16}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"id\":18}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"condenser_api\", \"get_accounts\", [[\"init_miner\"]]], \"id\":6}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"condenser_api.get_accounts\", \"params\":[[\"init_miner\"]], \"id\":7}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"condenser_api\", \"get_accounts\", [[]]], \"id\":8}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"condenser_api.get_accounts\", \"params\":[[]], \"id\":9}";
       make_positive_request( request );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [\"block_api\",\"get_block\", {\"block_num\":23} ], \"id\": 10}";
@@ -291,5 +312,5 @@ BOOST_AUTO_TEST_CASE( positive_validation )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_SUITE_END()   
+BOOST_AUTO_TEST_SUITE_END()
 #endif

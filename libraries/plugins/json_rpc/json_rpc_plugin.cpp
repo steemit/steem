@@ -87,22 +87,12 @@ namespace detail
 
          if( request[ "params" ].is_array() )
             v = request[ "params" ].as< std::vector< fc::variant > >();
-         else if( request[ "params" ].is_object() )
-         {
-            fc::variant_object _params = request[ "params" ].get_object();
-            if( _params.contains("api") )
-               v.push_back( _params["api"] );
-            if( _params.contains("method") )
-               v.push_back( _params["method"] );
-            if( _params.contains("args") )
-               v.push_back( _params["args"] );
-         }
 
          FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
 
          ret = find_api_method( v[0].as_string(), v[1].as_string() );
 
-         func_args = ( v.size() == 3 )?v[2]:fc::json::from_string( "{}" );
+         func_args = ( v.size() == 3 ) ? v[2] : fc::json::from_string( "{}" );
       }
       else
       {
@@ -115,18 +105,6 @@ namespace detail
 
          func_args = request.contains( "params" ) ? request[ "params" ] : fc::json::from_string( "{}" );
       }
-
-      //Switch empty array to empty object, i.e. : [] -> {}
-      if( func_args.is_array() )
-      {
-         size_t _size = func_args.as< std::vector< fc::variant > >().size();
-         if( _size == 0 )
-            func_args = fc::json::from_string( "{}" );
-      }
-
-#ifdef IS_TEST_NET
-      std::string str_func_params = fc::json::to_string( func_args );
-#endif
 
       return ret;
    }
