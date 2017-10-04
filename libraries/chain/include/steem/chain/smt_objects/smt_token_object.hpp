@@ -34,6 +34,20 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    /// set_setup_parameters
    bool                 allow_voting = false;
    bool                 allow_vesting = false;
+
+   /// set_runtime_parameters
+   uint32_t cashout_window_seconds = 0;
+   uint32_t reverse_auction_window_seconds = 0;
+
+   uint32_t vote_regeneration_period_seconds = 0;
+   uint32_t votes_per_regeneration_period = 0;
+
+   uint128_t content_constant = 0;
+   uint16_t percent_curation_rewards = 0;
+   uint16_t percent_content_rewards = 0;
+   protocol::curve_id author_reward_curve;
+   protocol::curve_id curation_reward_curve;
+
    /// smt_setup_emissions
    time_point_sec       schedule_time = STEEM_GENESIS_TIME;
    steem::protocol::

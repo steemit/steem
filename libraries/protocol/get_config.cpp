@@ -17,6 +17,8 @@ fc::variant_object get_config()
 #endif
 #ifdef STEEM_ENABLE_SMT
    result[ "STEEM_ENABLE_SMT" ] = true;
+   result["SMT_VESTING_WITHDRAW_INTERVAL_SECONDS"] = SMT_VESTING_WITHDRAW_INTERVAL_SECONDS;
+   result["SMT_UPVOTE_LOCKOUT"] = SMT_UPVOTE_LOCKOUT;
 #else
    result[ "STEEM_ENABLE_SMT" ] = false;
 #endif
