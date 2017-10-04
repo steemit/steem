@@ -48,6 +48,10 @@ if [[ ! -z "$TRACK_ACCOUNT" ]]; then
     ARGS+=" --account-history-track-account-range=[\"$TRACK_ACCOUNT\",\"$TRACK_ACCOUNT\"]"
 fi
 
+if [[ ! "$DISABLE_BLOCK_API" ]]; then
+   ARGS+=" --plugin=block_api"
+fi
+
 NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
 

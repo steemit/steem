@@ -170,6 +170,33 @@ struct validate_visitor
    }
 };
 
+void smt_setup_emissions_operation::validate()const
+{
+   FC_ASSERT( is_valid_account_name( control_account ) );
+   
+   FC_ASSERT( schedule_time > STEEM_GENESIS_TIME );
+   FC_ASSERT( emissions_unit.token_unit.empty() == false );
+   
+   //interval_seconds <- any value of unsigned int is OK
+   //interval_count <- any value of unsigned int is OK
+   
+   FC_ASSERT( lep_time <= rep_time );
+   FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time );
+   // ^ lep_time is either later or non-important
+
+   //FC_ASSERT( lep_abs_amount.symbol_name() == control_account );
+   // ^ TODO Replace with appropriate comparison between asset symbol and SMT symbol.
+   FC_ASSERT( lep_abs_amount.symbol == rep_abs_amount.symbol );
+   FC_ASSERT( lep_abs_amount.amount >= 0 && rep_abs_amount.amount >= 0 );
+   FC_ASSERT( lep_abs_amount.amount != rep_abs_amount.amount || lep_abs_amount.amount > 0 );
+   // ^ constant amount must be positive value
+
+   // lep_rel_amount_numerator <- any value of unsigned int is OK
+   // rep_rel_amount_numerator <- any value of unsigned int is OK
+
+   // rel_amount_denom_bits <- any value of unsigned int is OK
+}
+
 void smt_setup_operation::validate()const
 {
    FC_ASSERT( is_valid_account_name( control_account ) );
@@ -233,8 +260,6 @@ void smt_set_runtime_parameters_operation::validate()const
 // TODO: These validators
 void smt_cap_reveal_operation::validate()const {}
 void smt_refund_operation::validate()const {}
-void smt_setup_inflation_operation::validate()const {}
-
 void smt_set_setup_parameters_operation::validate() const
 {
    FC_ASSERT( is_valid_account_name( control_account ) );

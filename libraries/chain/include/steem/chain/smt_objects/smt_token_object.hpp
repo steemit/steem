@@ -1,6 +1,7 @@
 #pragma once
 
 #include <steem/chain/steem_object_types.hpp>
+#include <steem/protocol/smt_operations.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
@@ -24,28 +25,43 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
          c( *this );
       }
 
-      // id_type is actually oid<smt_token_object>
-      id_type           id;
+   // id_type is actually oid<smt_token_object>
+   id_type           id;
 
-      account_name_type control_account;
-      smt_phase         phase = smt_phase::account_elevated;
+   account_name_type control_account;
+   smt_phase         phase = smt_phase::account_elevated;
 
-      uint32_t cashout_window_seconds = 0;
-      uint32_t reverse_auction_window_seconds = 0;
+   /// set_setup_parameters
+   bool                 allow_voting = false;
+   bool                 allow_vesting = false;
 
-      uint32_t vote_regeneration_period_seconds = 0;
-      uint32_t votes_per_regeneration_period = 0;
+   /// set_runtime_parameters
+   uint32_t cashout_window_seconds = 0;
+   uint32_t reverse_auction_window_seconds = 0;
 
-      uint128_t content_constant = 0;
-      uint16_t percent_curation_rewards = 0;
-      uint16_t percent_content_rewards = 0;
-      protocol::curve_id author_reward_curve;
-      protocol::curve_id curation_reward_curve;
+   uint32_t vote_regeneration_period_seconds = 0;
+   uint32_t votes_per_regeneration_period = 0;
 
-      /// set_setup_parameters
-      bool              allow_voting = false;
-      bool              allow_vesting = false;
-   };
+   uint128_t content_constant = 0;
+   uint16_t percent_curation_rewards = 0;
+   uint16_t percent_content_rewards = 0;
+   protocol::curve_id author_reward_curve;
+   protocol::curve_id curation_reward_curve;
+
+   /// smt_setup_emissions
+   time_point_sec       schedule_time = STEEM_GENESIS_TIME;
+   steem::protocol::
+   smt_emissions_unit   emissions_unit;
+   uint32_t             interval_seconds = 0;
+   uint32_t             interval_count = 0;
+   time_point_sec       lep_time = STEEM_GENESIS_TIME;
+   time_point_sec       rep_time = STEEM_GENESIS_TIME;
+   asset                lep_abs_amount = asset( 0, STEEM_SYMBOL );
+   asset                rep_abs_amount = asset( 0, STEEM_SYMBOL );
+   uint32_t             lep_rel_amount_numerator = 0;
+   uint32_t             rep_rel_amount_numerator = 0;
+   uint8_t              rel_amount_denom_bits = 0;
+};
 
 struct by_control_account;
 
@@ -73,6 +89,17 @@ FC_REFLECT( steem::chain::smt_token_object,
    (phase)
    (allow_voting)
    (allow_vesting)
+   (schedule_time)
+   (emissions_unit)
+   (interval_seconds)
+   (interval_count)
+   (lep_time)
+   (rep_time)
+   (lep_abs_amount)
+   (rep_abs_amount)
+   (lep_rel_amount_numerator)
+   (rep_rel_amount_numerator)
+   (rel_amount_denom_bits)
 )
 
 CHAINBASE_SET_INDEX_TYPE( steem::chain::smt_token_object, steem::chain::smt_token_index )

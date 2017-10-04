@@ -82,13 +82,7 @@ class fixed_string
       operator std::string()const
       {
          Storage d = boost::endian::native_to_big( data );
-         size_t s;
-
-         if( *(((const char*)&d) + sizeof(d) - 1) )
-            s = sizeof(d);
-         else
-            s = strnlen( (const char*)&d, sizeof(d) );
-
+         size_t s = strnlen( (const char*)&d, sizeof(d) );
          const char* self = (const char*)&d;
 
          return std::string( self, self + s );
@@ -97,8 +91,7 @@ class fixed_string
       uint32_t size()const
       {
          Storage d = boost::endian::native_to_big( data );
-         if( *(((const char*)&d) + sizeof(d) - 1) )
-            return sizeof(d);
+
          return strnlen( (const char*)&d, sizeof(d) );
       }
 

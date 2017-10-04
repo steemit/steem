@@ -96,9 +96,30 @@ void smt_refund_evaluator::do_apply( const smt_refund_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 }
 
-void smt_setup_inflation_evaluator::do_apply( const smt_setup_inflation_operation& o )
+void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+
+   const smt_token_object* smt = _db.find< smt_token_object, by_control_account >( o.control_account );
+   // Check whether it's not too early or too late to setup emissions operation.
+   FC_ASSERT( smt != nullptr, "SMT ${smt} not found", ("smt", o.control_account ) );
+   // ^ TODO: Replace SMT name with appropriate id in the assertion.
+   FC_ASSERT( smt->phase < smt_token_object::smt_phase::setup_completed, "SMT emission operation no longer allowed after setup phase is over" );
+
+   _db.modify( *smt, [&]( smt_token_object& token )
+   {
+      token.schedule_time = o.schedule_time;
+      token.emissions_unit = o.emissions_unit;
+      token.interval_seconds = o.interval_seconds;
+      token.interval_count = o.interval_count;
+      token.lep_time = o.lep_time;
+      token.rep_time = o.rep_time;
+      token.lep_abs_amount = o.lep_abs_amount;
+      token.rep_abs_amount = o.rep_abs_amount;
+      token.lep_rel_amount_numerator = o.lep_rel_amount_numerator;
+      token.rep_rel_amount_numerator = o.rep_rel_amount_numerator;
+      token.rel_amount_denom_bits = o.rel_amount_denom_bits;
+   });
 }
 
 void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameters_operation& o )
