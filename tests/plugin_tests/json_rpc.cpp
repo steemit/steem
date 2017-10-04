@@ -241,5 +241,55 @@ BOOST_AUTO_TEST_CASE( misc_validation )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( positive_validation )
+{
+   try
+   {
+      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
+      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
+
+      launch_server( initial_argc, initial_argv );
+
+      std::string request;
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\", []], \"id\":1}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\", {}], \"id\":2}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\",\"id\":3}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\", \"params\":{}, \"id\":4}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.get_dynamic_global_properties\", \"params\":[], \"id\":5}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\", {\"accounts\":[\"init_miner\"]}], \"id\":6}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{\"accounts\":[\"init_miner\"]}, \"id\":7}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"find_accounts\", {}], \"id\":8}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"params\":{}, \"id\":9}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"database_api.find_accounts\", \"id\":3}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [\"block_api\",\"get_block\", {\"block_num\":23} ], \"id\": 10}";
+      make_positive_request( request );
+
+      request = "{\"jsonrpc\": \"2.0\", \"method\": \"block_api.get_block\", \"params\": {\"block_num\":0}, \"id\": 11}";
+      make_positive_request( request );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()   
 #endif
