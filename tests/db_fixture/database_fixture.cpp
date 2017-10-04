@@ -25,6 +25,7 @@ uint32_t STEEM_TESTING_GENESIS_TIMESTAMP = 1431700000;
 
 using namespace steem::plugins::webserver;
 using namespace steem::plugins::database_api;
+using namespace steem::plugins::block_api;
 
 namespace steem { namespace chain {
 
@@ -604,10 +605,12 @@ void json_rpc_database_fixture::launch_server( int initial_argc, char** initial_
                         };
          int argc = sizeof(argv) / sizeof(char*) - 1;
 
+         appbase::app().register_plugin< block_api_plugin >();
          appbase::app().register_plugin< database_api_plugin >();
          appbase::app().register_plugin< webserver_plugin >();
 
          appbase::app().initialize<
+            block_api_plugin,
             database_api_plugin,
             webserver_plugin
          >( argc, argv );
@@ -675,6 +678,11 @@ void json_rpc_database_fixture::make_request( std::string& request, int64_t code
    BOOST_REQUIRE( answer.is_object() );
 
    review_answer( answer, code, is_warning, is_fail );
+}
+
+void json_rpc_database_fixture::make_positive_request( std::string& request )
+{
+   make_request( request, 0/*code*/, false/*is_warning*/, false/*is_fail*/);
 }
 
 namespace test {

@@ -16,6 +16,7 @@ target_link_libraries(db_fixture
                       steem_protocol
                       account_history_plugin
                       market_history_plugin
+                      block_api_plugin
                       database_api_plugin
                       webserver_plugin
                       witness_plugin

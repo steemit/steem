@@ -10,6 +10,7 @@
 #include <steem/utilities/key_conversion.hpp>
 
 #include <steem/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
 
 #include <fc/network/http/connection.hpp>
 #include <fc/network/ip.hpp>
@@ -271,6 +272,7 @@ struct json_rpc_database_fixture : public database_fixture
       void launch_server( int initial_argc, char** initial_argv );
       void make_array_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
       void make_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
+      void make_positive_request( std::string& request );
 };
 
 namespace test

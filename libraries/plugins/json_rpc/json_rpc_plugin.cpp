@@ -46,7 +46,8 @@ namespace detail
 
          void add_api_method( const string& api_name, const string& method_name, const api_method& api );
 
-         void read_params( std::vector< fc::variant >& v, const fc::variant_object& request );
+         api_method* find_api_method( std::string api, std::string method );
+         api_method* process_params( string method, const fc::variant_object& request, fc::variant& func_args );
          void rpc_id( const fc::variant_object& request, json_rpc_response& response );
          void rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response );
          json_rpc_response rpc( const fc::variant& message );
@@ -62,24 +63,72 @@ namespace detail
       _registered_apis[ api_name ][ method_name ] = api;
    }
 
-   void json_rpc_plugin_impl::read_params( std::vector< fc::variant >& v, const fc::variant_object& request )
+   api_method* json_rpc_plugin_impl::find_api_method( std::string api, std::string method )
    {
-      FC_ASSERT( request.contains( "params" ) );
+      auto api_itr = _registered_apis.find( api );
+      FC_ASSERT( api_itr != _registered_apis.end(), "Could not find API ${api}", ("api", api) );
 
-      if( request[ "params" ].is_array() )
-         v = request[ "params" ].as< std::vector< fc::variant > >();
-      else if( request[ "params" ].is_object() )
+      auto method_itr = api_itr->second.find( method );
+      FC_ASSERT( method_itr != api_itr->second.end(), "Could not find method ${method}", ("method", method) );
+
+      return &(method_itr->second);
+   }
+
+   api_method* json_rpc_plugin_impl::process_params( string method, const fc::variant_object& request, fc::variant& func_args )
+   {
+      api_method* ret = nullptr;
+      bool call_mode = method == "call";
+
+      FC_ASSERT( ( call_mode && request.contains( "params" ) ) || !call_mode );
+
+      if( call_mode )
       {
-         fc::variant_object _params = request[ "params" ].get_object();
-         if( _params.contains("api") )
-            v.push_back( _params["api"] );
-         if( _params.contains("method") )
-            v.push_back( _params["method"] );
-         if( _params.contains("args") )
-            v.push_back( _params["args"] );
+         std::vector< fc::variant > v;
+
+         if( request[ "params" ].is_array() )
+            v = request[ "params" ].as< std::vector< fc::variant > >();
+         else if( request[ "params" ].is_object() )
+         {
+            fc::variant_object _params = request[ "params" ].get_object();
+            if( _params.contains("api") )
+               v.push_back( _params["api"] );
+            if( _params.contains("method") )
+               v.push_back( _params["method"] );
+            if( _params.contains("args") )
+               v.push_back( _params["args"] );
+         }
+
+         FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
+
+         ret = find_api_method( v[0].as_string(), v[1].as_string() );
+
+         func_args = ( v.size() == 3 )?v[2]:fc::json::from_string( "{}" );
+      }
+      else
+      {
+         vector< std::string > v;
+         boost::split( v, method, boost::is_any_of( "." ) );
+
+         FC_ASSERT( v.size() == 2, "method specification invalid. Should be api.method" );
+
+         ret = find_api_method( v[0], v[1] );
+
+         func_args = request.contains( "params" ) ? request[ "params" ] : fc::json::from_string( "{}" );
       }
 
-      FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
+      //Switch empty array to empty object, i.e. : [] -> {}
+      if( func_args.is_array() )
+      {
+         size_t _size = func_args.as< std::vector< fc::variant > >().size();
+         if( _size == 0 )
+            func_args = fc::json::from_string( "{}" );
+      }
+
+#ifdef IS_TEST_NET
+      std::string str_func_params = fc::json::to_string( func_args );
+#endif
+
+      return ret;
    }
 
    void json_rpc_plugin_impl::rpc_id( const fc::variant_object& request, json_rpc_response& response )
@@ -123,52 +172,15 @@ namespace detail
             {
                string method = request[ "method" ].as_string();
 
-               api_method* call = nullptr;
-               fc::variant params;
-
                // This is to maintain backwards compatibility with existing call structure.
                if( ( method == "call" && request.contains( "params" ) ) || method != "call" )
                {
-                  if( method == "call" )
-                  {
-                     std::vector< fc::variant > v;
-                     read_params( v, request );
+                  fc::variant func_args;
 
-                     auto api_itr = _registered_apis.find( v[0].as_string() );
-                     FC_ASSERT( api_itr != _registered_apis.end(), "Could not find API ${api}", ("api", v[0]) );
-
-                     auto method_itr = api_itr->second.find( v[1].as_string() );
-                     FC_ASSERT( method_itr != api_itr->second.end(), "Could not find method ${method}", ("method", v[1]) );
-
-                     call = &(method_itr->second);
-
-                     if( v.size() == 3 )
-                     {
-                        params = v[2];
-                     }
-                     else
-                        params = fc::json::from_string( "{}" );
-                  }
-                  else
-                  {
-                     vector< std::string > v;
-                     boost::split( v, method, boost::is_any_of( "." ) );
-
-                     FC_ASSERT( v.size() == 2, "method specification invalid. Should be api.method" );
-
-                     auto api_itr = _registered_apis.find( v[0] );
-                     FC_ASSERT( api_itr != _registered_apis.end(), "Could not find API ${api}", ("api", v[0]) );
-
-                     auto method_itr = api_itr->second.find( v[1] );
-                     FC_ASSERT( method_itr != api_itr->second.end(), "Could not find method ${method}", ("method", v[1]) );
-
-                     call = &(method_itr->second);
-                     params = request.contains( "params" ) ? request[ "params" ] : fc::json::from_string( "{}" );
-                  }
-
+                  api_method* call = process_params( method, request, func_args );
                   if( !call )
                      FC_THROW( "Api method is null" );
-                  response.result = (*call)( params );
+                  response.result = (*call)( func_args );
                }
                else
                {
