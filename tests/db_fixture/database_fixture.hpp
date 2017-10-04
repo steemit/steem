@@ -126,6 +126,9 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names) \
    validate_database();
 
+#define SMT_SYMBOL( name, decimal_places ) \
+   asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
+
 #define ASSET( s ) \
    asset::from_string( s )
 
@@ -156,6 +159,7 @@ struct database_fixture {
    virtual ~database_fixture() { appbase::reset(); }
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
+   static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
    string generate_anon_acct_name();
    void open_database();
    void generate_block(uint32_t skip = 0,
