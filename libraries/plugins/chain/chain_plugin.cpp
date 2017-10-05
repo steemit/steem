@@ -2,11 +2,9 @@
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 
-#include <fc/io/json.hpp>
-#include <fc/string.hpp>
+#include <steem/utilities/benchmark_dumper.hpp>
 
-#include <sys/time.h>
-#include <sys/resource.h>
+#include <fc/string.hpp>
 
 #include <iostream>
 
@@ -107,97 +105,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
 #define BENCHMARK_FILE_NAME "replay_benchmark.json"
 
-class TReplayBenchmarkReporter
-{
-public:
-   TReplayBenchmarkReporter(uint32_t block_interval) : _block_interval(block_interval) {}
-
-   void print_report(uint32_t block_number, bool is_initial_call)
-   {
-      if( is_initial_call )
-      {
-         _init_sys_time = _last_sys_time = fc::time_point::now();
-         _init_cpu_time = _last_cpu_time = clock();
-         _peak_mem = read_mem();
-
-         _json_log_file.open(BENCHMARK_FILE_NAME);
-         _json_log_file << '{' << std::endl;
-         _json_log_file << "\"block_interval\": " << _block_interval << ',' << std::endl;
-         _json_log_file << "\"data\": [" << std::endl;
-         return;
-      }
-
-      time_point current_sys_time = fc::time_point::now();
-      fc::microseconds sys_us = current_sys_time - _last_sys_time;
-      int64_t real_ms = sys_us.count()/1000;
-      clock_t current_cpu_time = clock();
-      int cpu_ms = int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC);
-      auto current_mem = read_mem();
-      if( current_mem > _peak_mem )
-        _peak_mem = current_mem;
-
-      ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
-            ("n", block_number)
-            ("rt", real_ms)
-            ("ct", cpu_ms)
-            ("cm", current_mem)
-            ("pm", _peak_mem) );
-
-      _last_sys_time = current_sys_time;
-      _last_cpu_time = current_cpu_time;
-
-      if( _printed )
-         _json_log_file << ',' << std::endl;
-      else
-         _printed = true;
-
-      _json_log_file << '{' << std::endl;
-      _json_log_file << "\"block_number\": " << block_number << std::endl;
-      _json_log_file << "\"real_time_ms\": " << real_ms << std::endl;
-      _json_log_file << "\"cpu_time_ms\": " << cpu_ms << std::endl;
-      _json_log_file << "\"current_mem\": " << current_mem << std::endl;
-      _json_log_file << "\"peak_mem\": " << _peak_mem << std::endl;
-      _json_log_file << '}';
-   }
-
-   void print_final_report()
-   {
-      fc::microseconds sys_us = _last_sys_time - _init_sys_time;
-      int cpu_ms = int((_last_cpu_time - _init_cpu_time) * 1000 / CLOCKS_PER_SEC);
-      auto current_mem = read_mem();
-      ilog( "Performance report (total). Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
-            ("rt", sys_us.count()/1000)
-            ("ct", cpu_ms)
-            ("cm", current_mem)
-            ("pm", _peak_mem) );
-
-      if( _printed )
-         _json_log_file << std::endl;
-      _json_log_file << ']' << std::endl;
-      _json_log_file << '}' << std::endl;
-      _json_log_file.close();
-   }
-
-private:
-   long read_mem()
-   {
-      int who = RUSAGE_SELF;
-      struct rusage usage; 
-      int ret = getrusage(who,&usage);
-      return usage.ru_maxrss;
-   }
-
-private:
-   uint32_t       _block_interval = 0;
-   bool           _printed = false;
-   time_point     _init_sys_time;
-   time_point     _last_sys_time;
-   clock_t        _init_cpu_time = 0;
-   clock_t        _last_cpu_time = 0;
-   long           _peak_mem = 0;
-   std::ofstream  _json_log_file;
-};
-
 void chain_plugin::plugin_startup()
 {
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
@@ -216,16 +123,40 @@ void chain_plugin::plugin_startup()
    {
       ilog("Replaying blockchain on user request.");
       uint32_t last_block_number = 0;
-      TReplayBenchmarkReporter benchmark_reporter(my->benchmark_interval);
-      auto benchmark_lambda = [&benchmark_reporter]( uint32_t current_block_number, bool is_initial_call )
+      steem::utilities::benchmark_dumper dumper;
+      auto benchmark_lambda = [&dumper]( uint32_t current_block_number, bool is_initial_call )
       {
-         benchmark_reporter.print_report(current_block_number, is_initial_call);
+         if( is_initial_call )
+         {
+            dumper.initialize();
+            return;
+         }
+
+         const fc::variant& measure = dumper.measure(current_block_number);
+         const variant_object& vo = measure.get_object();
+         FC_ASSERT( vo.contains("real_ms") && vo.contains("cpu_ms") && vo.contains("current_mem") && vo.contains("peak_mem"),
+                    "Missing member(s) of benchmark_dumper::measurement class!");
+         ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+            ("n", current_block_number)
+            ("rt", vo[ "real_ms" ])
+            ("ct", vo[ "cpu_ms" ])
+            ("cm", vo[ "current_mem" ])
+            ("pm", vo[ "peak_mem" ]) );   
       };
       steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
       my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->stop_replay_at, benchmark,
                       my->shared_memory_size, &last_block_number );
       if( my->benchmark_interval > 0 )
-         benchmark_reporter.print_final_report();
+      {
+         steem::utilities::benchmark_dumper::measurement total_data;
+         dumper.dump( BENCHMARK_FILE_NAME, &total_data );
+         ilog( "Performance report (total). Blocks: ${b}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+               ("b", total_data.block_number)
+               ("rt", total_data.real_ms)
+               ("ct", total_data.cpu_ms)
+               ("cm", total_data.current_mem)
+               ("pm", total_data.peak_mem) );   
+      }
 
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
       {
