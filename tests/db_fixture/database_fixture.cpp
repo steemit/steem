@@ -558,7 +558,17 @@ void database_fixture::validate_database( void )
 
 #ifdef STEEM_ENABLE_SMT
 
-void database_fixture::elevate( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key )
+smt_database_fixture::smt_database_fixture()
+{
+
+}
+
+smt_database_fixture::~smt_database_fixture()
+{
+
+}
+
+void smt_database_fixture::elevate( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key )
 {
    try
    {
