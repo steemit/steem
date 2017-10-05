@@ -87,16 +87,16 @@ BOOST_AUTO_TEST_CASE( basic_validation )
       make_request( request, -32600 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"xyz\", \"params\": [], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": 123, \"params\": [], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": false, \"params\": [], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": null, \"params\": [], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": {}, \"params\": [], \"id\": 1}";
       make_request( request, -32602 );
@@ -221,22 +221,22 @@ BOOST_AUTO_TEST_CASE( misc_validation )
       std::string request;
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"a.b.c\", \"params\": [\"a\",\"b\", {} ], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"a..c\", \"params\": [\"a\",\"b\", {} ], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"fake_api.fake_method\", \"params\": [\"a\",\"b\", {} ], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [\"fake_api\",\"fake_method\", {} ], \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": {}, \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": { \"fake_api\":\"database_api\", \"fake_method\":\"get_dynamic_global_properties\", \"fake_args\":{} }, \"id\": 1}";
-      make_request( request, -32601 );
+      make_request( request, -32002 );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -308,6 +308,32 @@ BOOST_AUTO_TEST_CASE( positive_validation )
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"block_api.get_block\", \"params\": {\"block_num\":0}, \"id\": 11}";
       make_positive_request( request );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( semantics_validation )
+{
+   try
+   {
+      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
+      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
+
+      launch_server( initial_argc, initial_argv );
+
+      std::string request;
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":20 }";
+      make_positive_request_with_id_analysis( request, false/*treat_id_as_string*/ );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":\"20\" }";
+      make_positive_request_with_id_analysis( request, true/*treat_id_as_string*/ );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":-20 }";
+      make_positive_request_with_id_analysis( request, false/*treat_id_as_string*/ );
+
+      request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":\"-20\" }";
+      make_positive_request_with_id_analysis( request, true/*treat_id_as_string*/ );
    }
    FC_LOG_AND_RETHROW()
 }

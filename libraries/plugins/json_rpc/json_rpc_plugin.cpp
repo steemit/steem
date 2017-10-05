@@ -12,6 +12,8 @@
 #define JSON_RPC_INTERNAL_ERROR     (-32603)
 #define JSON_RPC_SERVER_ERROR       (-32000)
 #define JSON_RPC_NO_PARAMS          (-32001)
+#define JSON_RPC_PARSE_PARAMS_ERROR (-32002)
+#define JSON_RPC_INVALID_CALL       (-32003)
 
 namespace steem { namespace plugins { namespace json_rpc {
 
@@ -77,12 +79,11 @@ namespace detail
    api_method* json_rpc_plugin_impl::process_params( string method, const fc::variant_object& request, fc::variant& func_args )
    {
       api_method* ret = nullptr;
-      bool call_mode = method == "call";
 
-      FC_ASSERT( ( call_mode && request.contains( "params" ) ) || !call_mode );
-
-      if( call_mode )
+      if( method == "call" )
       {
+         FC_ASSERT( request.contains( "params" ) );
+
          std::vector< fc::variant > v;
 
          if( request[ "params" ].is_array() )
@@ -113,29 +114,18 @@ namespace detail
    {
       if( request.contains( "id" ) )
       {
-         if( request[ "id" ].is_null() || request[ "id" ].is_double() )
-            response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
-         else
+         const fc::variant& _id = request[ "id" ];
+         int _type = _id.get_type();
+         switch( _type )
          {
-            try
-            {
-               response.id = request[ "id" ].as_int64();
-            }
-            catch( fc::exception& )
-            {
-               try
-               {
-                  response.id = request[ "id" ].as_string();
-               }
-               catch( fc::exception& )
-               {
-                  response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
-               }
-            }
-            catch(...)
-            {
-                  response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
-            }
+            case fc::variant::int64_type:
+            case fc::variant::uint64_type:
+            case fc::variant::string_type:
+               response.id = request[ "id" ];
+            break;
+
+            default:
+               response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "Only integer value or string is allowed for member \"id\"" );
          }
       }
    }
@@ -154,11 +144,26 @@ namespace detail
                if( ( method == "call" && request.contains( "params" ) ) || method != "call" )
                {
                   fc::variant func_args;
+                  api_method* call = nullptr;
 
-                  api_method* call = process_params( method, request, func_args );
-                  if( !call )
-                     FC_THROW( "Api method is null" );
-                  response.result = (*call)( func_args );
+                  try
+                  {
+                     call = process_params( method, request, func_args );
+                  }
+                  catch( fc::assert_exception& e )
+                  {
+                     response.error = json_rpc_error( JSON_RPC_PARSE_PARAMS_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+                  }
+
+                  try
+                  {
+                     if( call )
+                        response.result = (*call)( func_args );
+                  }
+                  catch( fc::assert_exception& e )
+                  {
+                     response.error = json_rpc_error( JSON_RPC_INVALID_CALL, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+                  }
                }
                else
                {
@@ -189,7 +194,7 @@ namespace detail
 
       try
       {
-         const auto request = message.get_object();
+         const auto& request = message.get_object();
 
          rpc_id( request, response );
          if( !response.error.valid() )
