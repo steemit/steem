@@ -218,12 +218,6 @@ struct database_fixture {
    vector< operation > get_last_operations( uint32_t ops );
 
    void validate_database( void );
-
-#ifdef STEEM_ENABLE_SMT
-
-   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
-
-#endif
 };
 
 struct clean_database_fixture : public database_fixture
@@ -241,6 +235,16 @@ struct live_database_fixture : public database_fixture
 
    fc::path _chain_dir;
 };
+
+#ifdef STEEM_ENABLE_SMT
+struct smt_database_fixture : public clean_database_fixture
+{
+   smt_database_fixture();
+   virtual ~smt_database_fixture();
+
+   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
+};
+#endif
 
 namespace test
 {

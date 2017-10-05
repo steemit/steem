@@ -17,7 +17,7 @@ using namespace steem::protocol;
 using fc::string;
 using boost::container::flat_set;
 
-BOOST_FIXTURE_TEST_SUITE( smt_tests, clean_database_fixture )
+BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
 BOOST_AUTO_TEST_CASE( elevate_account_validate )
 {
