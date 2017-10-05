@@ -74,6 +74,12 @@ typedef std::function< fc::variant(const fc::variant&) > api_method;
  */
 typedef std::map< string, api_method > api_description;
 
+struct api_method_signature
+{
+   fc::variant args;
+   fc::variant ret;
+};
+
 namespace detail
 {
    class json_rpc_plugin_impl;
@@ -94,7 +100,7 @@ class json_rpc_plugin : public appbase::plugin< json_rpc_plugin >
       virtual void plugin_startup() override;
       virtual void plugin_shutdown() override;
 
-      void add_api_method( const string& api_name, const string& method_name, const api_method& api );
+      void add_api_method( const string& api_name, const string& method_name, const api_method& api, const api_method_signature& sig );
       string call( const string& body );
 
    private:
@@ -120,10 +126,11 @@ namespace detail {
             Ret* ret )
          {
             _json_rpc_plugin.add_api_method( _api_name, method_name,
-            [&plugin,method]( const fc::variant& args ) -> fc::variant
-            {
-               return fc::variant( (plugin.*method)( args.as< Args >() ) );
-            } );
+               [&plugin,method]( const fc::variant& args ) -> fc::variant
+               {
+                  return fc::variant( (plugin.*method)( args.as< Args >() ) );
+               },
+               api_method_signature{ fc::variant( Args() ), fc::variant( Ret() ) } );
          }
 
       private:
@@ -134,3 +141,5 @@ namespace detail {
 }
 
 } } } // steem::plugins::json_rpc
+
+FC_REFLECT( steem::plugins::json_rpc::api_method_signature, (args)(ret) )
