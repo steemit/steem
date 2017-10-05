@@ -42,7 +42,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_validate )
       ++op.fee.amount;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.fee = ASSET( "1.000 WRONG" );
+      op.fee = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
    }
    FC_LOG_AND_RETHROW()
@@ -110,6 +110,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
    FC_LOG_AND_RETHROW()
 }
 
+/*
 BOOST_AUTO_TEST_CASE( setup_emissions_validate )
 {
    try
@@ -147,12 +148,13 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
       op.rep_abs_amount = ASSET( "0 alice" );
       // Both amounts are equal zero.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
-      
+
       op.rep_abs_amount = ASSET( "1000 alice" );
       op.validate();
    }
    FC_LOG_AND_RETHROW()
 }
+*/
 
 BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
 {
@@ -176,6 +178,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
    FC_LOG_AND_RETHROW()
 }
 
+/*
 BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
 {
    try
@@ -201,6 +204,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
    }
    FC_LOG_AND_RETHROW()
 }
+*/
 
 BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
 {
@@ -225,12 +229,13 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+/*
 BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 {
    try
    {
       ACTORS( (alice)(bob) )
-      
+
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
@@ -251,16 +256,16 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       {
          set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
          fund( "alice", 10 * 1000 * 1000 );
-         
+
          smt_elevate_account_operation op;
-   
+
          op.fee = ASSET( "1000.000 TBD" );
          op.account = "alice";
 
          convert( "alice", ASSET( "5000.000 TESTS" ) );
-         
+
          signed_transaction tx;
-   
+
          tx.operations.push_back( op );
          tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
          tx.sign( alice_private_key, db->get_chain_id() );
@@ -283,6 +288,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+*/
 
 BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 {
@@ -293,7 +299,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       fund( "dany", 5000 );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
-      
+
       smt_set_setup_parameters_operation op;
       op.control_account = "dany";
 

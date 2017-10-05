@@ -3,6 +3,7 @@
 #include <steem/protocol/block_header.hpp>
 #include <steem/protocol/asset.hpp>
 #include <steem/protocol/validation.hpp>
+#include <steem/protocol/legacy_asset.hpp>
 
 #include <fc/crypto/equihash.hpp>
 
@@ -362,7 +363,7 @@ namespace steem { namespace protocol {
     * and well functioning network.  Any time @owner is in the active set of witnesses these
     * properties will be used to control the blockchain configuration.
     */
-   struct chain_properties
+   struct legacy_chain_properties
    {
       /**
        *  This fee, paid in STEEM, is converted into VESTING SHARES for the new account. Accounts
@@ -370,8 +371,7 @@ namespace steem { namespace protocol {
        *  fee requires all accounts to have some kind of commitment to the network that includes the
        *  ability to vote and make transactions.
        */
-      asset             account_creation_fee =
-         asset( STEEM_MIN_ACCOUNT_CREATION_FEE, STEEM_SYMBOL );
+      legacy_steem_asset account_creation_fee = legacy_steem_asset::from_amount( STEEM_MIN_ACCOUNT_CREATION_FEE );
 
       /**
        *  This witnesses vote for the maximum_block_size which is used by the network
@@ -380,8 +380,13 @@ namespace steem { namespace protocol {
       uint32_t          maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT * 2;
       uint16_t          sbd_interest_rate  = STEEM_DEFAULT_SBD_INTEREST_RATE;
 
+      template< bool force_canon >
       void validate()const
       {
+         if( force_canon )
+         {
+            FC_ASSERT( account_creation_fee.symbol.is_canon() );
+         }
          FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE);
          FC_ASSERT( maximum_block_size >= STEEM_MIN_BLOCK_SIZE_LIMIT);
          FC_ASSERT( sbd_interest_rate >= 0 );
@@ -409,7 +414,7 @@ namespace steem { namespace protocol {
       account_name_type owner;
       string            url;
       public_key_type   block_signing_key;
-      chain_properties  props;
+      legacy_chain_properties  props;
       asset             fee; ///< the fee paid to register a new witness, should be 10x current block production pay
 
       void validate()const;
@@ -607,7 +612,7 @@ namespace steem { namespace protocol {
       block_id_type     block_id;
       uint64_t          nonce = 0;
       pow               work;
-      chain_properties  props;
+      legacy_chain_properties  props;
 
       void validate()const;
       fc::sha256 work_input()const;
@@ -653,7 +658,7 @@ namespace steem { namespace protocol {
    {
       pow2_work                     work;
       optional< public_key_type >   new_owner_key;
-      chain_properties              props;
+      legacy_chain_properties       props;
 
       void validate()const;
 
@@ -946,7 +951,11 @@ FC_REFLECT( steem::protocol::pow, (worker)(input)(signature)(work) )
 FC_REFLECT( steem::protocol::pow2, (input)(pow_summary) )
 FC_REFLECT( steem::protocol::pow2_input, (worker_account)(prev_block)(nonce) )
 FC_REFLECT( steem::protocol::equihash_pow, (input)(proof)(prev_block)(pow_summary) )
-FC_REFLECT( steem::protocol::chain_properties, (account_creation_fee)(maximum_block_size)(sbd_interest_rate) );
+FC_REFLECT( steem::protocol::legacy_chain_properties,
+            (account_creation_fee)
+            (maximum_block_size)
+            (sbd_interest_rate)
+          )
 
 FC_REFLECT_TYPENAME( steem::protocol::pow2_work )
 FC_REFLECT( steem::protocol::pow_operation, (worker_account)(block_id)(nonce)(work)(props) )

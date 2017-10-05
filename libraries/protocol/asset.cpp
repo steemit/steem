@@ -13,149 +13,256 @@ index : field
 */
 
 namespace steem { namespace protocol {
-      typedef boost::multiprecision::int128_t  int128_t;
 
-      uint8_t asset::decimals()const
+void asset_symbol_type::to_string( char* buf )const
+{
+   uint64_t* p = (uint64_t*) buf;
+   static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 7, "This code will overflow a short buffer" );
+
+   switch( asset_num )
+   {
+      case STEEM_ASSET_NUM_STEEM:
+         (*p) = STEEM_SYMBOL_U64;
+         break;
+      case STEEM_ASSET_NUM_SBD:
+         (*p) = SBD_SYMBOL_U64;
+         break;
+      case STEEM_ASSET_NUM_VESTS:
+         (*p) = VESTS_SYMBOL_U64;
+         break;
+      default:
+         FC_ASSERT( false, "Cannot convert unknown asset symbol ${n} to string", ("n", asset_num) );
+   }
+}
+
+asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal_places )
+{
+   // \s*
+   while( true )
+   {
+      switch( *p )
       {
-         auto a = (const char*)&symbol;
-         uint8_t result = uint8_t( a[0] );
-         FC_ASSERT( result < 15 );
-         return result;
+         case ' ':  case '\t':  case '\n':  case '\r':
+            ++p;
+            continue;
+         default:
+            break;
       }
+      break;
+   }
 
-      void asset::set_decimals(uint8_t d)
+   // [A-Z]{1,6}
+   uint32_t asset_num = 0;
+   switch( *p )
+   {
+      case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I':
+      case 'J': case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
+      case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
       {
-         FC_ASSERT( d < 15 );
-         auto a = (char*)&symbol;
-         a[0] = d;
-      }
-
-      std::string asset::symbol_name()const
-      {
-         auto a = (const char*)&symbol;
-         FC_ASSERT( a[7] == 0 );
-         return &a[1];
-      }
-
-      int64_t asset::precision()const
-      {
-         static int64_t table[] = {
-                           1, 10, 100, 1000, 10000,
-                           100000, 1000000, 10000000, 100000000ll,
-                           1000000000ll, 10000000000ll,
-                           100000000000ll, 1000000000000ll,
-                           10000000000000ll, 100000000000000ll
-                         };
-         uint8_t d = decimals();
-         return table[ d ];
-      }
-
-      string asset::to_string()const
-      {
-         int64_t prec = precision();
-         string result = fc::to_string(amount.value / prec);
-         if( prec > 1 )
+         // [A-Z]{1,6}
+         int shift = 0;
+         uint64_t name_u64 = 0;
+         while( true )
          {
-            auto fract = amount.value % prec;
-            // prec is a power of ten, so for example when working with
-            // 7.005 we have fract = 5, prec = 1000.  So prec+fract=1005
-            // has the correct number of zeros and we can simply trim the
-            // leading 1.
-            result += "." + fc::to_string(prec + fract).erase(0,1);
+            if( ((*p) >= 'A') && ((*p) <= 'Z') )
+            {
+               FC_ASSERT( shift < 64, "Cannot parse asset symbol" );
+               name_u64 |= uint64_t(*p) << shift;
+               shift += 8;
+               ++p;
+               continue;
+            }
+            break;
          }
-         return result + " " + symbol_name();
-      }
-
-      asset asset::from_string( const string& from )
-      {
-         try
+         switch( name_u64 )
          {
-            string s = fc::trim( from );
-            auto space_pos = s.find( " " );
-            auto dot_pos = s.find( "." );
-
-            FC_ASSERT( space_pos != std::string::npos );
-
-            asset result;
-            result.symbol = uint64_t(0);
-            auto sy = (char*)&result.symbol;
-
-            if( dot_pos != std::string::npos )
-            {
-               FC_ASSERT( space_pos > dot_pos );
-
-               auto intpart = s.substr( 0, dot_pos );
-               auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
-               result.set_decimals( fractpart.size() - 1 );
-
-               result.amount = fc::to_int64( intpart );
-               result.amount.value *= result.precision();
-               result.amount.value += fc::to_int64( fractpart );
-               result.amount.value -= result.precision();
-            }
-            else
-            {
-               auto intpart = s.substr( 0, space_pos );
-               result.amount = fc::to_int64( intpart );
-               result.set_decimals( 0 );
-            }
-            auto symbol = s.substr( space_pos + 1 );
-            size_t symbol_size = symbol.size();
-
-            if( symbol_size > 0 )
-            {
-               FC_ASSERT( symbol_size <= 6 );
-               memcpy( sy+1, symbol.c_str(), symbol_size );
-            }
-
-            return result;
+            case STEEM_SYMBOL_U64:
+               FC_ASSERT( decimal_places == 3, "Incorrect decimal places" );
+               asset_num = STEEM_ASSET_NUM_STEEM;
+               break;
+            case SBD_SYMBOL_U64:
+               FC_ASSERT( decimal_places == 3, "Incorrect decimal places" );
+               asset_num = STEEM_ASSET_NUM_SBD;
+               break;
+            case VESTS_SYMBOL_U64:
+               FC_ASSERT( decimal_places == 6, "Incorrect decimal places" );
+               asset_num = STEEM_ASSET_NUM_VESTS;
+               break;
+            default:
+               FC_ASSERT( false, "Cannot parse asset symbol" );
          }
-         FC_CAPTURE_AND_RETHROW( (from) )
+         break;
       }
+      default:
+         FC_ASSERT( false, "Cannot parse asset symbol" );
+   }
 
-      bool operator == ( const price& a, const price& b )
+   // \s*\0
+   while( true )
+   {
+      switch( *p )
       {
-         if( std::tie( a.base.symbol, a.quote.symbol ) != std::tie( b.base.symbol, b.quote.symbol ) )
-             return false;
-
-         const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
-         const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
-
-         return amult == bmult;
+         case ' ':  case '\t':  case '\n':  case '\r':
+            ++p;
+            continue;
+         case '\0':
+            break;
+         default:
+            FC_ASSERT( false, "Cannot parse asset symbol" );
       }
+      break;
+   }
 
-      bool operator < ( const price& a, const price& b )
+   asset_symbol_type sym;
+   sym.asset_num = asset_num;
+   return sym;
+}
+
+asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
+{
+   asset_symbol_type::asset_symbol_space s = legacy_space;
+   switch( asset_num )
+   {
+      case STEEM_ASSET_NUM_STEEM:
+      case STEEM_ASSET_NUM_SBD:
+      case STEEM_ASSET_NUM_VESTS:
+         s = legacy_space;
+         break;
+      default:
+         FC_ASSERT( false, "Cannot determine space for asset ${n}", ("n", asset_num) );
+   }
+   return s;
+}
+
+void asset_symbol_type::validate()const
+{
+   switch( asset_num )
+   {
+      case STEEM_ASSET_NUM_STEEM:
+      case STEEM_ASSET_NUM_SBD:
+      case STEEM_ASSET_NUM_VESTS:
+         break;
+      default:
+         FC_ASSERT( false, "Cannot determine space for asset ${n}", ("n", asset_num) );
+   }
+   FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
+}
+
+void asset::validate()const
+{
+   symbol.validate();
+   FC_ASSERT( amount.value >= 0 );
+   FC_ASSERT( amount.value <= STEEM_MAX_SHARE_SUPPLY );
+}
+
+std::string asset::to_string()const
+{
+   validate();
+
+   static_assert( STEEM_MAX_SHARE_SUPPLY <= int64_t(9999999999999999ll), "BEGIN_OFFSET needs to be adjusted if MAX_SHARE_SUPPLY is increased" );
+   static const int BEGIN_OFFSET = 17;
+   //       amount string  space   symbol string                   null terminator
+   char buf[BEGIN_OFFSET + 1     + STEEM_ASSET_SYMBOL_MAX_LENGTH + 1];
+   char* p = buf+BEGIN_OFFSET-1;
+   uint64_t v = uint64_t( amount.value );
+   int decimal_places = int(symbol.decimals());
+
+   p[1] = ' ';
+   symbol.to_string( p+2 );
+
+   for( int i=0; i<decimal_places; i++ )
+   {
+      char d = char( v%10 );
+      v /= 10;
+      (*p) = '0' + d;
+      --p;
+   }
+
+   (*p) = '.';
+
+   do
+   {
+      --p;
+      char d = char( v%10 );
+      v /= 10;
+      (*p) = '0' + d;
+   } while( v != 0 );
+
+   return std::string(p);
+}
+
+void asset::fill_from_string( const char* p )
+{
+   while( true )
+   {
+      switch( *p )
       {
-         if( a.base.symbol < b.base.symbol ) return true;
-         if( a.base.symbol > b.base.symbol ) return false;
-         if( a.quote.symbol < b.quote.symbol ) return true;
-         if( a.quote.symbol > b.quote.symbol ) return false;
-
-         const auto amult = uint128_t( b.quote.amount.value ) * a.base.amount.value;
-         const auto bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value;
-
-         return amult < bmult;
+         case ' ':  case '\t':  case '\n':  case '\r':
+            ++p;
+            continue;
+         default:
+            break;
       }
+      break;
+   }
 
-      bool operator <= ( const price& a, const price& b )
+   int decimal_places = 0;
+   int decimal_places_inc = 0;
+   uint64_t value = 0;
+
+   // [0-9]+([.][0-9]*)?\s
+   while( true )
+   {
+      switch( *p )
       {
-         return (a == b) || (a < b);
+         case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+            value = value*10 + uint64_t((*p) - '0');
+            FC_ASSERT( value <= STEEM_MAX_SHARE_SUPPLY, "Cannot parse asset amount" );
+            ++p;
+            decimal_places += decimal_places_inc;
+            continue;
+         case '.':
+            FC_ASSERT( decimal_places_inc == 0, "Cannot parse asset amount" );
+            decimal_places_inc = 1;
+            ++p;
+            continue;
+         case ' ':  case '\t':  case '\n':  case '\r':
+            ++p;
+            break;
+         default:
+            FC_ASSERT( false, "Cannot parse asset amount" );
       }
+      break;
+   }
 
-      bool operator != ( const price& a, const price& b )
-      {
-         return !(a == b);
-      }
+   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Cannot parse asset amount" );
 
-      bool operator > ( const price& a, const price& b )
-      {
-         return !(a <= b);
-      }
+   symbol = asset_symbol_type::from_string( p, uint8_t(decimal_places) );
+   amount.value = int64_t( value );
+   return;
+}
 
-      bool operator >= ( const price& a, const price& b )
-      {
-         return !(a < b);
-      }
+#define BQ(a) \
+   std::tie( a.base.symbol, a.quote.symbol )
+
+#define DEFINE_PRICE_COMPARISON_OPERATOR( op ) \
+bool operator op ( const price& a, const price& b ) \
+{ \
+   if( BQ(a) != BQ(b) ) \
+      return BQ(a) op BQ(b); \
+   \
+   const uint128_t amult = uint128_t( b.quote.amount.value ) * a.base.amount.value; \
+   const uint128_t bmult = uint128_t( a.quote.amount.value ) * b.base.amount.value; \
+   \
+   return amult op bmult;  \
+}
+
+DEFINE_PRICE_COMPARISON_OPERATOR( == )
+DEFINE_PRICE_COMPARISON_OPERATOR( != )
+DEFINE_PRICE_COMPARISON_OPERATOR( <  )
+DEFINE_PRICE_COMPARISON_OPERATOR( <= )
+DEFINE_PRICE_COMPARISON_OPERATOR( >  )
+DEFINE_PRICE_COMPARISON_OPERATOR( >= )
 
       asset operator * ( const asset& a, const price& b )
       {

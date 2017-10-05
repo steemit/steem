@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
       BOOST_REQUIRE( acct.memo_key == priv_key.get_public_key() );
       BOOST_REQUIRE( acct.proxy == "" );
       BOOST_REQUIRE( acct.created == db->head_block_time() );
-      BOOST_REQUIRE( acct.balance.amount.value == ASSET( "0.000 STEEM " ).amount.value );
+      BOOST_REQUIRE( acct.balance.amount.value == ASSET( "0.000 TESTS " ).amount.value );
       BOOST_REQUIRE( acct.sbd_balance.amount.value == ASSET( "0.000 TBD" ).amount.value );
       BOOST_REQUIRE( acct.vesting_shares.amount.value == ( op.fee * ( vest_shares / vests ) ).amount.value );
       BOOST_REQUIRE( acct.vesting_withdraw_rate.amount.value == ASSET( "0.000000 VESTS" ).amount.value );
@@ -1639,7 +1639,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       op.url = "foo.bar";
       op.fee = ASSET( "1.000 TESTS" );
       op.block_signing_key = signing_key.get_public_key();
-      op.props.account_creation_fee = asset( STEEM_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL);
+      op.props.account_creation_fee = legacy_steem_asset::from_asset( asset(STEEM_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL) );
       op.props.maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT + 100;
 
       signed_transaction tx;
@@ -1655,7 +1655,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       BOOST_REQUIRE( alice_witness.created == db->head_block_time() );
       BOOST_REQUIRE( to_string( alice_witness.url ) == op.url );
       BOOST_REQUIRE( alice_witness.signing_key == op.block_signing_key );
-      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee );
+      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee.to_asset<true>() );
       BOOST_REQUIRE( alice_witness.props.maximum_block_size == op.props.maximum_block_size );
       BOOST_REQUIRE( alice_witness.total_missed == 0 );
       BOOST_REQUIRE( alice_witness.last_aslot == 0 );
@@ -1682,7 +1682,7 @@ BOOST_AUTO_TEST_CASE( witness_update_apply )
       BOOST_REQUIRE( alice_witness.created == db->head_block_time() );
       BOOST_REQUIRE( to_string( alice_witness.url ) == "bar.foo" );
       BOOST_REQUIRE( alice_witness.signing_key == op.block_signing_key );
-      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee );
+      BOOST_REQUIRE( alice_witness.props.account_creation_fee == op.props.account_creation_fee.to_asset<true>() );
       BOOST_REQUIRE( alice_witness.props.maximum_block_size == op.props.maximum_block_size );
       BOOST_REQUIRE( alice_witness.total_missed == 0 );
       BOOST_REQUIRE( alice_witness.last_aslot == 0 );
@@ -2556,7 +2556,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "100.0000 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "1000.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when amount to receive is 0" );
@@ -2890,7 +2890,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "0.000 TESTS" ).amount.value );
-      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "100.0000 TBD" ).amount.value );
+      BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "1000.000 TBD" ).amount.value );
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test failure when price is 0" );
@@ -5029,7 +5029,7 @@ BOOST_AUTO_TEST_CASE( transfer_to_savings_validate )
 
       BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
       op.to = "alice";
-      op.amount = ASSET( "1.000 VESTS" );
+      op.amount = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
 
@@ -5206,7 +5206,7 @@ BOOST_AUTO_TEST_CASE( transfer_from_savings_validate )
 
       BOOST_TEST_MESSAGE( "failure when amount is VESTS" );
       op.to = "alice";
-      op.amount = ASSET( "1.000 VESTS" );
+      op.amount = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
 
@@ -5829,19 +5829,19 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_validate )
 
 
       BOOST_TEST_MESSAGE( "Testing wrong STEEM symbol" );
-      op.reward_steem = ASSET( "1.000 WRONG" );
+      op.reward_steem = ASSET( "1.000 TBD" );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "Testing wrong SBD symbol" );
       op.reward_steem = ASSET( "1.000 TESTS" );
-      op.reward_sbd = ASSET( "1.000 WRONG" );
+      op.reward_sbd = ASSET( "1.000 TESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
       BOOST_TEST_MESSAGE( "Testing wrong VESTS symbol" );
       op.reward_sbd = ASSET( "1.000 TBD" );
-      op.reward_vests = ASSET( "1.000000 WRONG" );
+      op.reward_vests = ASSET( "1.000 TESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
 
 
