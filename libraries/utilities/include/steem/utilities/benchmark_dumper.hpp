@@ -18,21 +18,21 @@ public:
    class measurement
    {
    public:
-      void set(uint32_t bn, int64_t rm, int cs, long cm, long pm)
+      void set(uint32_t bn, int64_t rm, int32_t cs, int64_t cm, int64_t pm)
       {
          block_number = bn;
          real_ms = rm;
          cpu_ms = cs;
          current_mem = cm;
          peak_mem = pm;
-      }         
-   
+      }
+
    public:
       uint32_t block_number = 0;
       int64_t  real_ms = 0;
-      int      cpu_ms = 0;
-      long     current_mem = 0;
-      long     peak_mem = 0;
+      int32_t  cpu_ms = 0;
+      int64_t  current_mem = 0;
+      int64_t  peak_mem = 0;
    };
 
    void initialize()
@@ -94,7 +94,7 @@ private:
    long read_mem()
    {
       int who = RUSAGE_SELF;
-      struct rusage usage; 
+      struct rusage usage;
       int ret = getrusage(who,&usage);
       return usage.ru_maxrss;
    }
@@ -104,7 +104,7 @@ private:
    time_point     _last_sys_time;
    clock_t        _init_cpu_time = 0;
    clock_t        _last_cpu_time = 0;
-   long           _peak_mem = 0;
+   int64_t        _peak_mem = 0;
    uint64_t       _total_blocks = 0;
    fc::variants   _measurements;
 };
