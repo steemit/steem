@@ -3411,6 +3411,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.balance += delta;
+            FC_ASSERT( acnt.balance.amount.value >= 0, "Insufficient STEEM funds" );
             break;
          case STEEM_ASSET_NUM_SBD:
             if( a.sbd_seconds_last_update != head_block_time() )
@@ -3440,6 +3441,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                }
             }
             acnt.sbd_balance += delta;
+            FC_ASSERT( acnt.sbd_balance.amount.value >= 0, "Insufficient SBD funds" );
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
@@ -3456,6 +3458,7 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.savings_balance += delta;
+            FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings STEEM funds" );
             break;
          case STEEM_ASSET_NUM_SBD:
             if( a.savings_sbd_seconds_last_update != head_block_time() )
@@ -3485,6 +3488,7 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
                }
             }
             acnt.savings_sbd_balance += delta;
+            FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings SBD funds" );
             break;
          default:
             FC_ASSERT( !"invalid symbol" );
@@ -3501,9 +3505,11 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.reward_steem_balance += delta;
+            FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
             break;
          case STEEM_ASSET_NUM_SBD:
             acnt.reward_sbd_balance += delta;
+            FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
