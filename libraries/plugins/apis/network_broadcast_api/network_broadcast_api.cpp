@@ -69,7 +69,8 @@ bool network_broadcast_api::check_max_block_age( int32_t max_block_age ) const
 }
 
 void network_broadcast_api::on_applied_block( const signed_block& b )
-{
+{ try {
+   boost::lock_guard< boost::mutex > guard( _mtx );
    int32_t block_num = int32_t(b.block_num());
    if( _callbacks.size() )
    {
@@ -79,9 +80,8 @@ void network_broadcast_api::on_applied_block( const signed_block& b )
          auto id = trx.id();
          auto itr = _callbacks.find( id );
          if( itr == _callbacks.end() ) continue;
-         confirmation_callback callback = itr->second;
+         itr->second( broadcast_transaction_synchronous_return( id, block_num, int32_t( trx_num ), false ) );
          _callbacks.erase( itr );
-         callback( broadcast_transaction_synchronous_return( id, block_num, int32_t( trx_num ), false ) );
       }
    }
 
@@ -108,6 +108,7 @@ void network_broadcast_api::on_applied_block( const signed_block& b )
       }
       _callback_expirations.erase( exp_it );
    }
-}
+} FC_LOG_AND_RETHROW() }
+#pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
 
 } } } // steem::plugins::network_broadcast_api
