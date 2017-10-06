@@ -9,6 +9,12 @@
 
 #include <steem/utilities/key_conversion.hpp>
 
+#include <steem/plugins/database_api/database_api_plugin.hpp>
+#include <steem/plugins/block_api/block_api_plugin.hpp>
+
+#include <fc/network/http/connection.hpp>
+#include <fc/network/ip.hpp>
+
 #include <iostream>
 
 #define INITIAL_TEST_SUPPLY (10000000000ll)
@@ -249,6 +255,34 @@ struct smt_database_fixture : public clean_database_fixture
    void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
 };
 #endif
+
+struct json_rpc_database_fixture : public database_fixture
+{
+   private:
+
+      const uint32_t delay = 2;
+
+      std::string url;
+      std::string port;
+
+      fc::http::connection connection;
+
+      fc::thread t;
+
+      fc::variant get_answer( std::string& request );
+      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail );
+
+   public:
+
+      json_rpc_database_fixture();
+      virtual ~json_rpc_database_fixture();
+
+      void launch_server( int initial_argc, char** initial_argv );
+      void make_array_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
+      fc::variant make_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
+      void make_positive_request( std::string& request );
+      void make_positive_request_with_id_analysis( std::string& request, bool treat_id_as_string );
+};
 
 namespace test
 {
