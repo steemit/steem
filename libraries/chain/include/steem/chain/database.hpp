@@ -89,9 +89,11 @@ namespace steem { namespace chain {
           *
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
+          * 
+          * @return the last replayed block number.
           */
-         void reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint32_t stop_replay_at, TBenchmark benchmark,
-                       uint64_t shared_file_size = (1024l*1024l*1024l*8l), uint32_t* last_block_number = nullptr );
+          uint32_t reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l),
+                            uint32_t stop_replay_at = 0, TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;}) );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.

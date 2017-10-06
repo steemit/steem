@@ -143,11 +143,12 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
 }
 
-void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint32_t stop_replay_at, TBenchmark benchmark,
-                        uint64_t shared_file_size, uint32_t* last_block_number /*= nullptr*/ )
+uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size,
+   uint32_t stop_replay_at /*=0*/, TBenchmark benchmark /*=TBenchmark(0, [](uint32_t,bool){;})*/)
 {
    try
    {
+      uint32_t last_block_number = 0; // result
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
       open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size );
@@ -197,14 +198,12 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
          }
 
          apply_block( itr.first, skip_flags );
-         auto last_applied_block_num = itr.first.block_num();
-         if( benchmark.first > 0 && last_applied_block_num % benchmark.first == 0 )
+         last_block_number = itr.first.block_num();
+         if( benchmark.first > 0 && last_block_number % benchmark.first == 0 )
          {
-            benchmark.second( last_applied_block_num, false /*is_initial_call*/ );
+            benchmark.second( last_block_number, false /*is_initial_call*/ );
          }
          set_revision( head_block_num() );
-         if( last_block_number != nullptr )
-            *last_block_number = last_applied_block_num;
       });
 
       if( _block_log.head()->block_num() )
@@ -212,6 +211,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      return last_block_number;
    }
    FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
 
