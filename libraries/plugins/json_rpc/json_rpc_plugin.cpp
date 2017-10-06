@@ -5,16 +5,6 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
 
-#define JSON_RPC_PARSE_ERROR        (-32700)
-#define JSON_RPC_INVALID_REQUEST    (-32600)
-#define JSON_RPC_METHOD_NOT_FOUND   (-32601)
-#define JSON_RPC_INVALID_PARAMS     (-32602)
-#define JSON_RPC_INTERNAL_ERROR     (-32603)
-#define JSON_RPC_SERVER_ERROR       (-32000)
-#define JSON_RPC_NO_PARAMS          (-32001)
-#define JSON_RPC_PARSE_PARAMS_ERROR (-32002)
-#define JSON_RPC_INVALID_CALL       (-32003)
-
 namespace steem { namespace plugins { namespace json_rpc {
 
 namespace detail
@@ -162,7 +152,7 @@ namespace detail
                   }
                   catch( fc::assert_exception& e )
                   {
-                     response.error = json_rpc_error( JSON_RPC_INVALID_CALL, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+                     response.error = json_rpc_error( JSON_RPC_ERROR_DURING_CALL, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
                   }
                }
                else
