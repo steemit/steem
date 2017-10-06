@@ -196,6 +196,18 @@ fc::ecc::private_key database_fixture::generate_private_key(string seed)
    return fc::ecc::private_key::regenerate( fc::sha256::hash( seed ) );
 }
 
+asset_symbol_type database_fixture::name_to_asset_symbol( const std::string& name, uint8_t decimal_places )
+{
+   // Deterministically turn a name into an asset symbol
+   // Example:
+   // alice -> sha256(alice) -> 2bd806c9... -> 2bd806c9 -> low 27 bits is 64489161 -> add check digit -> @@644891612
+
+   uint32_t h0 = (boost::endian::native_to_big( fc::sha256::hash( name )._hash[0] ) >> 32) & 0x7FFFFFF;
+   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
+   uint32_t asset_num = (h0 << 5) | 0x10 | decimal_places;
+   return asset_symbol_type::from_asset_num( asset_num );
+}
+
 string database_fixture::generate_anon_acct_name()
 {
    // names of the form "anon-acct-x123" ; the "x" is necessary
@@ -553,7 +565,17 @@ void database_fixture::validate_database( void )
 
 #ifdef STEEM_ENABLE_SMT
 
-void database_fixture::elevate( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key )
+smt_database_fixture::smt_database_fixture()
+{
+
+}
+
+smt_database_fixture::~smt_database_fixture()
+{
+
+}
+
+void smt_database_fixture::elevate( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key )
 {
    try
    {

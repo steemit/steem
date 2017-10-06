@@ -132,6 +132,9 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
 #define ACTORS(names) BOOST_PP_SEQ_FOR_EACH(ACTORS_IMPL, ~, names) \
    validate_database();
 
+#define SMT_SYMBOL( name, decimal_places ) \
+   asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
+
 #define ASSET( s ) \
    asset::from_string( s )
 
@@ -162,6 +165,7 @@ struct database_fixture {
    virtual ~database_fixture() { appbase::reset(); }
 
    static fc::ecc::private_key generate_private_key( string seed = "init_key" );
+   static asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places );
    string generate_anon_acct_name();
    void open_database();
    void generate_block(uint32_t skip = 0,
@@ -224,12 +228,6 @@ struct database_fixture {
    vector< operation > get_last_operations( uint32_t ops );
 
    void validate_database( void );
-
-#ifdef STEEM_ENABLE_SMT
-
-   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
-
-#endif
 };
 
 struct clean_database_fixture : public database_fixture
@@ -247,6 +245,16 @@ struct live_database_fixture : public database_fixture
 
    fc::path _chain_dir;
 };
+
+#ifdef STEEM_ENABLE_SMT
+struct smt_database_fixture : public clean_database_fixture
+{
+   smt_database_fixture();
+   virtual ~smt_database_fixture();
+
+   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
+};
+#endif
 
 struct json_rpc_database_fixture : public database_fixture
 {

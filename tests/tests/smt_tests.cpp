@@ -17,7 +17,7 @@ using namespace steem::protocol;
 using fc::string;
 using boost::container::flat_set;
 
-BOOST_FIXTURE_TEST_SUITE( smt_tests, clean_database_fixture )
+BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
 BOOST_AUTO_TEST_CASE( elevate_account_validate )
 {
@@ -110,11 +110,18 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
    FC_LOG_AND_RETHROW()
 }
 
-/*
 BOOST_AUTO_TEST_CASE( setup_emissions_validate )
 {
    try
    {
+      SMT_SYMBOL( alice, 3 );
+
+      uint64_t h0 = fc::sha256::hash( "alice" )._hash[0];
+      uint32_t h0lo = uint32_t( h0 & 0x7FFFFFF );
+      uint32_t an = h0lo % (SMT_MAX_NAI+1);
+
+      ilog( "alice_symbol: ${s}", ("s", alice_symbol) );
+
       smt_setup_emissions_operation op;
       op.control_account = "@@@@@";
       // Invalid account name.
@@ -133,28 +140,27 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
       // Both absolute amount fields are zero.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.lep_abs_amount = ASSET( "0 TESTS" );
+      op.lep_abs_amount = ASSET( "0.000 TESTS" );
       // Amount symbol does NOT match control account name.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.lep_abs_amount = ASSET( "0 alice" );
+      op.lep_abs_amount = asset( 0, alice_symbol );
       // Mismatch of absolute amount symbols.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.rep_abs_amount = ASSET( "-1 alice" );
+      op.rep_abs_amount = asset( -1, alice_symbol );
       // Negative absolute amount.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.rep_abs_amount = ASSET( "0 alice" );
+      op.rep_abs_amount = asset( 0, alice_symbol );
       // Both amounts are equal zero.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.rep_abs_amount = ASSET( "1000 alice" );
+      op.rep_abs_amount = asset( 1000, alice_symbol );
       op.validate();
    }
    FC_LOG_AND_RETHROW()
 }
-*/
 
 BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
 {
@@ -178,17 +184,18 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_validate )
    FC_LOG_AND_RETHROW()
 }
 
-/*
 BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
 {
    try
    {
+      SMT_SYMBOL( alice, 3 );
+
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
       op.emissions_unit.token_unit["alice"] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = ASSET( "1000 alice" );
+      op.lep_abs_amount = op.rep_abs_amount = asset(1000, alice_symbol);
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -204,7 +211,6 @@ BOOST_AUTO_TEST_CASE( setup_emissions_authorities )
    }
    FC_LOG_AND_RETHROW()
 }
-*/
 
 BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
 {
@@ -229,19 +235,19 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-/*
 BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 {
    try
    {
       ACTORS( (alice)(bob) )
+      SMT_SYMBOL( alice, 3 );
 
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
       op.emissions_unit.token_unit["bob"] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = ASSET( "1000 alice" );
+      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, alice_symbol );
 
       signed_transaction tx;
 
@@ -288,7 +294,6 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
    }
    FC_LOG_AND_RETHROW()
 }
-*/
 
 BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 {

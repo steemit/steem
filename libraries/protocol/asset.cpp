@@ -31,7 +31,22 @@ void asset_symbol_type::to_string( char* buf )const
          (*p) = VESTS_SYMBOL_U64;
          break;
       default:
-         FC_ASSERT( false, "Cannot convert unknown asset symbol ${n} to string", ("n", asset_num) );
+      {
+         static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 10, "This code will overflow a short buffer" );
+         uint32_t x = to_nai();
+         buf[11] = '\0';
+         buf[10] = ((x%10)+'0');  x /= 10;
+         buf[ 9] = ((x%10)+'0');  x /= 10;
+         buf[ 8] = ((x%10)+'0');  x /= 10;
+         buf[ 7] = ((x%10)+'0');  x /= 10;
+         buf[ 6] = ((x%10)+'0');  x /= 10;
+         buf[ 5] = ((x%10)+'0');  x /= 10;
+         buf[ 4] = ((x%10)+'0');  x /= 10;
+         buf[ 3] = ((x%10)+'0');  x /= 10;
+         buf[ 2] = ((x   )+'0');
+         buf[ 1] = '@';
+         buf[ 0] = '@';
+      }
    }
 }
 
@@ -55,6 +70,37 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
    uint32_t asset_num = 0;
    switch( *p )
    {
+      case '@':
+      {
+         ++p;
+         FC_ASSERT( (*p) == '@', "Cannot parse asset symbol" );
+         ++p;
+
+         uint64_t nai = 0;
+         int digit_count = 0;
+         while( true )
+         {
+            switch( *p )
+            {
+               case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+               {
+                  uint64_t new_nai = nai*10 + ((*p) - '0');
+                  FC_ASSERT( new_nai > nai, "Cannot parse asset amount" );
+                  FC_ASSERT( new_nai <= SMT_MAX_NAI, "Cannot parse asset amount" );
+                  nai = new_nai;
+                  ++p;
+                  ++digit_count;
+                  continue;
+               }
+               default:
+                  break;
+            }
+            break;
+         }
+         FC_ASSERT( digit_count == 9 );
+         asset_num = asset_num_from_nai( nai, uint8_t( decimal_places ) );
+         break;
+      }
       case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I':
       case 'J': case 'K': case 'L': case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
       case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
@@ -118,6 +164,69 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
    return sym;
 }
 
+// Highly optimized implementation of Damm algorithm
+// https://en.wikipedia.org/wiki/Damm_algorithm
+uint8_t damm_checksum_8digit(uint32_t value)
+{
+   FC_ASSERT( value < 100000000 );
+
+   const uint8_t t[] = {
+       0, 30, 10, 70, 50, 90, 80, 60, 40, 20,
+      70,  0, 90, 20, 10, 50, 40, 80, 60, 30,
+      40, 20,  0, 60, 80, 70, 10, 30, 50, 90,
+      10, 70, 50,  0, 90, 80, 30, 40, 20, 60,
+      60, 10, 20, 30,  0, 40, 50, 90, 70, 80,
+      30, 60, 70, 40, 20,  0, 90, 50, 80, 10,
+      50, 80, 60, 90, 70, 20,  0, 10, 30, 40,
+      80, 90, 40, 50, 30, 60, 20,  0, 10, 70,
+      90, 40, 30, 80, 60, 10, 70, 20,  0, 50,
+      20, 50, 80, 10, 40, 30, 60, 70, 90, 0
+   };
+
+   uint32_t q0 = value/10;
+   uint32_t d0 = value%10;
+   uint32_t q1 = q0/10;
+   uint32_t d1 = q0%10;
+   uint32_t q2 = q1/10;
+   uint32_t d2 = q1%10;
+   uint32_t q3 = q2/10;
+   uint32_t d3 = q2%10;
+   uint32_t q4 = q3/10;
+   uint32_t d4 = q3%10;
+   uint32_t q5 = q4/10;
+   uint32_t d5 = q4%10;
+   uint32_t d6 = q5%10;
+   uint32_t d7 = q5/10;
+
+   uint8_t x = t[d7];
+   x = t[x+d6];
+   x = t[x+d5];
+   x = t[x+d4];
+   x = t[x+d3];
+   x = t[x+d2];
+   x = t[x+d1];
+   x = t[x+d0];
+   return x/10;
+}
+
+uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_places )
+{
+   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
+   uint32_t nai_check_digit = nai % 10;
+   uint32_t nai_data_digits = nai / 10;
+   FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) & (nai_data_digits <= SMT_MAX_NAI), "NAI out of range" );
+   FC_ASSERT( nai_check_digit == damm_checksum_8digit(nai_data_digits), "Invalid check digit" );
+   return (nai_data_digits << 5) | 0x10 | decimal_places;
+}
+
+uint32_t asset_symbol_type::to_nai()const
+{
+   FC_ASSERT( space() == smt_nai_space );
+   uint32_t nai_data_digits = (asset_num >> 5);
+   uint32_t nai_check_digit = damm_checksum_8digit(nai_data_digits);
+   return nai_data_digits * 10 + nai_check_digit;
+}
+
 asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
 {
    asset_symbol_type::asset_symbol_space s = legacy_space;
@@ -129,7 +238,7 @@ asset_symbol_type::asset_symbol_space asset_symbol_type::space()const
          s = legacy_space;
          break;
       default:
-         FC_ASSERT( false, "Cannot determine space for asset ${n}", ("n", asset_num) );
+         s = smt_nai_space;
    }
    return s;
 }
@@ -143,9 +252,19 @@ void asset_symbol_type::validate()const
       case STEEM_ASSET_NUM_VESTS:
          break;
       default:
-         FC_ASSERT( false, "Cannot determine space for asset ${n}", ("n", asset_num) );
+      {
+         uint32_t nai_data_digits = (asset_num >> 5);
+         uint32_t nai_1bit = (asset_num & 0x10);
+         uint32_t nai_decimal_places = (asset_num & 0x0F);
+         FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) &
+                    (nai_data_digits <= SMT_MAX_NAI) &
+                    (nai_1bit == 0x10) &
+                    (nai_decimal_places <= STEEM_ASSET_MAX_DECIMALS),
+                    "Cannot determine space for asset ${n}", ("n", asset_num) );
+      }
    }
-   FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
+   // this assert is duplicated by above code in all cases
+   // FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
 }
 
 void asset::validate()const
