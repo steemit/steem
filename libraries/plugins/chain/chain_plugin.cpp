@@ -2,7 +2,8 @@
 
 #include <steem/plugins/chain/chain_plugin.hpp>
 
-#include <fc/io/json.hpp>
+#include <steem/utilities/benchmark_dumper.hpp>
+
 #include <fc/string.hpp>
 
 #include <iostream>
@@ -25,6 +26,8 @@ class chain_plugin_impl
       bool                             readonly = false;
       bool                             check_locks = false;
       bool                             validate_invariants = false;
+      uint32_t                         stop_replay_at = 0;
+      uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
       flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
@@ -54,6 +57,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and replay all blocks" )
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
+         ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
+         ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
          ;
@@ -75,6 +80,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
+   my->stop_replay_at      = 
+      options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
+   my->benchmark_interval  =
+      options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
    my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
@@ -94,6 +103,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 }
 
+#define BENCHMARK_FILE_NAME "replay_benchmark.json"
+
 void chain_plugin::plugin_startup()
 {
    ilog( "Starting chain with shared_file_size: ${n} bytes", ("n", my->shared_memory_size) );
@@ -111,7 +122,48 @@ void chain_plugin::plugin_startup()
    if(my->replay)
    {
       ilog("Replaying blockchain on user request.");
-      my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
+      uint32_t last_block_number = 0;
+      steem::utilities::benchmark_dumper dumper;
+      auto benchmark_lambda = [&dumper]( uint32_t current_block_number, bool is_initial_call )
+      {
+         if( is_initial_call )
+         {
+            dumper.initialize();
+            return;
+         }
+
+         const fc::variant& measure = dumper.measure(current_block_number);
+         const variant_object& vo = measure.get_object();
+         FC_ASSERT( vo.contains("real_ms") && vo.contains("cpu_ms") && vo.contains("current_mem") && vo.contains("peak_mem"),
+                    "Missing member(s) of benchmark_dumper::measurement class!");
+         ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+            ("n", current_block_number)
+            ("rt", vo[ "real_ms" ])
+            ("ct", vo[ "cpu_ms" ])
+            ("cm", vo[ "current_mem" ])
+            ("pm", vo[ "peak_mem" ]) );   
+      };
+      steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
+      last_block_number = my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size,
+                                          my->stop_replay_at, benchmark );
+      if( my->benchmark_interval > 0 )
+      {
+         steem::utilities::benchmark_dumper::measurement total_data;
+         dumper.dump( BENCHMARK_FILE_NAME, &total_data );
+         ilog( "Performance report (total). Blocks: ${b}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+               ("b", total_data.block_number)
+               ("rt", total_data.real_ms)
+               ("ct", total_data.cpu_ms)
+               ("cm", total_data.current_mem)
+               ("pm", total_data.peak_mem) );   
+      }
+
+      if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
+      {
+         ilog("Stopped blockchain replaying on user request. Last applied block number: ${n}.", ("n", last_block_number));
+         appbase::app().quit();
+         return;
+      }
    }
    else
    {
