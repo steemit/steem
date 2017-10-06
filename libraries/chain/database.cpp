@@ -498,7 +498,6 @@ void database::pay_fee( const account_object& account, asset fee )
    if( fee.amount == 0 )
       return;
 
-   FC_ASSERT( account.balance >= fee );
    adjust_balance( account, -fee );
    adjust_supply( -fee );
 }

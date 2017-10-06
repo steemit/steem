@@ -688,9 +688,6 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       else
          sbd_spent += o.fee;
 
-      FC_ASSERT( from_account.balance >= steem_spent, "Account cannot cover STEEM costs of escrow. Required: ${r} Available: ${a}", ("r",steem_spent)("a",from_account.balance) );
-      FC_ASSERT( from_account.sbd_balance >= sbd_spent, "Account cannot cover SBD costs of escrow. Required: ${r} Available: ${a}", ("r",sbd_spent)("a",from_account.sbd_balance) );
-
       _db.adjust_balance( from_account, -steem_spent );
       _db.adjust_balance( from_account, -sbd_spent );
 
@@ -862,7 +859,6 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
       });
    }
 
-   FC_ASSERT( _db.get_balance( from_account, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
    _db.adjust_balance( from_account, -o.amount );
    _db.adjust_balance( to_account, o.amount );
 }
@@ -872,7 +868,6 @@ void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operatio
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = o.to.size() ? _db.get_account(o.to) : from_account;
 
-   FC_ASSERT( _db.get_balance( from_account, STEEM_SYMBOL) >= o.amount, "Account does not have sufficient STEEM for transfer." );
    _db.adjust_balance( from_account, -o.amount );
    _db.create_vesting( to_account, o.amount );
 }
@@ -1743,8 +1738,6 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 void convert_evaluator::do_apply( const convert_operation& o )
 {
   const auto& owner = _db.get_account( o.owner );
-  FC_ASSERT( _db.get_balance( owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
-
   _db.adjust_balance( owner, -o.amount );
 
   const auto& fhistory = _db.get_feed_history();
@@ -1769,9 +1762,6 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    const auto& owner = _db.get_account( o.owner );
-
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
    _db.adjust_balance( owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
@@ -1794,9 +1784,6 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    const auto& owner = _db.get_account( o.owner );
-
-   FC_ASSERT( _db.get_balance( owner, o.amount_to_sell.symbol ) >= o.amount_to_sell, "Account does not have sufficient funds for limit order." );
-
    _db.adjust_balance( owner, -o.amount_to_sell );
 
    const auto& order = _db.create<limit_order_object>( [&]( limit_order_object& obj )
@@ -1833,7 +1820,6 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
    if( o.require_owner )
    {
       FC_ASSERT( challenged.reset_account == o.challenger, "Owner authority can only be challenged by its reset account." );
-      FC_ASSERT( challenger.balance >= STEEM_OWNER_CHALLENGE_FEE );
       FC_ASSERT( !challenged.owner_challenged );
       FC_ASSERT( _db.head_block_time() - challenged.last_owner_proved > STEEM_OWNER_CHALLENGE_COOLDOWN );
 
@@ -1847,7 +1833,6 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
   }
   else
   {
-      FC_ASSERT( challenger.balance >= STEEM_ACTIVE_CHALLENGE_FEE, "Account does not have sufficient funds to pay challenge fee." );
       FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "Account is already challenged." );
       FC_ASSERT( _db.head_block_time() - challenged.last_active_proved > STEEM_ACTIVE_CHALLENGE_COOLDOWN, "Account cannot be challenged because it was recently challenged." );
 
@@ -2005,7 +1990,6 @@ void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operatio
 {
    const auto& from = _db.get_account( op.from );
    const auto& to   = _db.get_account(op.to);
-   FC_ASSERT( _db.get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
 
    _db.adjust_balance( from, -op.amount );
    _db.adjust_savings_balance( to, op.amount );
