@@ -85,7 +85,7 @@ int main( int argc, char** argv )
             ( argc, argv );
 
 #ifdef IS_TEST_NET
-      steem::protocol::set_chain_id( appbase::app().get_chain_id() );
+      steem::protocol::chain_id = steem::protocol::set_chain_id( appbase::app().get_chain_id() );
 #endif
       info();
 

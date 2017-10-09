@@ -181,11 +181,14 @@ namespace steem { namespace protocol {
       "";
    #endif
 
-   chain_id_type chain_id = fc::sha256::hash( chain_id_name );
+   chain_id_type chain_id = set_chain_id( chain_id_name );
 
-   void set_chain_id( const std::string& _chain_id_name )
+   chain_id_type set_chain_id( const std::string& _chain_id_name )
    {
-      chain_id = ( fc::sha256::hash( _chain_id_name ) );
+      if( _chain_id_name.size() )
+         return fc::sha256::hash( _chain_id_name.c_str() );
+      else
+         return fc::sha256();
    }
 
 } } // steem::protocol

@@ -151,7 +151,7 @@ namespace steem {
 
       extern std::string chain_id_name;
       extern chain_id_type chain_id;
-      void set_chain_id( const std::string& _chain_id_name );
+      chain_id_type set_chain_id( const std::string& _chain_id_name );
 
 } }  // steem::protocol
 

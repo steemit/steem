@@ -102,7 +102,7 @@ int main( int argc, char** argv )
 
 #ifdef IS_TEST_NET
       if( options.count("chain-id") )
-         steem::protocol::set_chain_id( options["chain-id"].as< std::string >() );
+         steem::protocol::chain_id = steem::protocol::set_chain_id( options["chain-id"].as< std::string >() );
 #endif
 
       fc::path data_dir;
