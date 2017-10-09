@@ -49,7 +49,7 @@ int main(int argc, char** argv, char** envp)
       tx_signing_result sres;
       sres.tx = sreq.tx;
       sres.digest = sreq.tx.digest();
-      sres.sig_digest = sreq.tx.sig_digest(STEEM_CHAIN_ID);
+      sres.sig_digest = sreq.tx.sig_digest(steem::protocol::chain_id);
 
       fc::ecc::private_key priv_key = *steem::utilities::wif_to_key( sreq.wif );
       sres.sig = priv_key.sign_compact( sres.sig_digest );

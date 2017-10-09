@@ -148,6 +148,11 @@ namespace steem {
          friend bool operator == ( const extended_private_key_type& p1, const extended_private_key_type& p2);
          friend bool operator != ( const extended_private_key_type& p1, const extended_private_key_type& p2);
       };
+
+      extern std::string chain_id_name;
+      extern chain_id_type chain_id;
+      void set_chain_id( const std::string& _chain_id_name );
+
 } }  // steem::protocol
 
 namespace fc

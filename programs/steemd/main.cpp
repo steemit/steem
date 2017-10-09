@@ -39,10 +39,8 @@ string& version_string()
    return v_str;
 }
 
-int main( int argc, char** argv )
+void info()
 {
-   try
-   {
 #ifdef IS_TEST_NET
       std::cerr << "------------------------------------------------------\n\n";
       std::cerr << "            STARTING TEST NETWORK\n\n";
@@ -50,7 +48,7 @@ int main( int argc, char** argv )
       auto initminer_private_key = steem::utilities::key_to_wif( STEEM_INIT_PRIVATE_KEY );
       std::cerr << "initminer public key: " << STEEM_INIT_PUBLIC_KEY_STR << "\n";
       std::cerr << "initminer private key: " << initminer_private_key << "\n";
-      std::cerr << "chain id: " << std::string( STEEM_CHAIN_ID ) << "\n";
+      std::cerr << "chain id: " << std::string( steem::protocol::chain_id ) << "\n";
       std::cerr << "blockchain version: " << fc::string( STEEM_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #else
@@ -58,11 +56,16 @@ int main( int argc, char** argv )
       std::cerr << "            STARTING STEEM NETWORK\n\n";
       std::cerr << "------------------------------------------------------\n";
       std::cerr << "initminer public key: " << STEEM_INIT_PUBLIC_KEY_STR << "\n";
-      std::cerr << "chain id: " << std::string( STEEM_CHAIN_ID ) << "\n";
+      std::cerr << "chain id: " << std::string( steem::protocol::chain_id ) << "\n";
       std::cerr << "blockchain version: " << fc::string( STEEM_BLOCKCHAIN_VERSION ) << "\n";
       std::cerr << "------------------------------------------------------\n";
 #endif
+}
 
+int main( int argc, char** argv )
+{
+   try
+   {
       // Setup logging config
       bpo::options_description options;
 
@@ -75,11 +78,18 @@ int main( int argc, char** argv )
       steem::plugins::register_plugins();
       appbase::app().set_version_string( version_string() );
 
-      if( !appbase::app().initialize<
+      bool initialized = appbase::app().initialize<
             steem::plugins::chain::chain_plugin,
             steem::plugins::p2p::p2p_plugin,
             steem::plugins::webserver::webserver_plugin >
-            ( argc, argv ) )
+            ( argc, argv );
+
+#ifdef IS_TEST_NET
+      steem::protocol::set_chain_id( appbase::app().get_chain_id() );
+#endif
+      info();
+
+      if( !initialized )
          return 0;
 
       auto& args = appbase::app().get_args();

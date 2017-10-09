@@ -345,7 +345,7 @@ std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head
 
 chain_id_type database::get_chain_id() const
 {
-   return STEEM_CHAIN_ID;
+   return steem::protocol::chain_id;
 }
 
 const witness_object& database::get_witness( const account_name_type& name ) const
@@ -2842,7 +2842,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       trx.validate();
 
    auto& trx_idx = get_index<transaction_index>();
-   const chain_id_type& chain_id = STEEM_CHAIN_ID;
+   const chain_id_type& chain_id = steem::protocol::chain_id;
    auto trx_id = trx.id();
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||

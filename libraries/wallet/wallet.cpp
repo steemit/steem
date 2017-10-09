@@ -668,7 +668,7 @@ public:
       }
 
       auto minimal_signing_keys = tx.minimize_required_signatures(
-         STEEM_CHAIN_ID,
+         steem::protocol::chain_id,
          available_keys,
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).active); },
@@ -683,7 +683,7 @@ public:
       {
          auto it = available_private_keys.find(k);
          FC_ASSERT( it != available_private_keys.end() );
-         tx.sign( it->second, STEEM_CHAIN_ID );
+         tx.sign( it->second, steem::protocol::chain_id );
       }
 
       if( broadcast ) {

@@ -1876,7 +1876,7 @@ namespace graphene { namespace net { namespace detail {
       if (!_hard_fork_block_numbers.empty())
         user_data["last_known_fork_block_number"] = _hard_fork_block_numbers.back();
 
-      user_data["chain_id"] = STEEM_CHAIN_ID;
+      user_data["chain_id"] = steem::protocol::chain_id;
 
       return user_data;
     }
@@ -1994,10 +1994,10 @@ namespace graphene { namespace net { namespace detail {
             }
           }
         }
-        if ( !originating_peer->chain_id || *originating_peer->chain_id != STEEM_CHAIN_ID )
+        if ( !originating_peer->chain_id || *originating_peer->chain_id != steem::protocol::chain_id )
         {
             wlog("Received hello message from peer running a node for different blockchain.",
-               ("my_chain_id", STEEM_CHAIN_ID)("their_chain_id", originating_peer->chain_id) );
+               ("my_chain_id", steem::protocol::chain_id)("their_chain_id", originating_peer->chain_id) );
 
             std::ostringstream rejection_message;
             rejection_message << "Your client is running a different chain id";

@@ -42,7 +42,7 @@ add_library( appbase
              application.cpp
            )
 
-target_link_libraries( appbase ${Boost_LIBRARIES})
+target_link_libraries( appbase steem_protocol ${Boost_LIBRARIES})
 
 target_include_directories( appbase
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" ${Boost_INCLUDE_DIR})

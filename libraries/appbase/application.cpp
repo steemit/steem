@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <steem/protocol/types.hpp>
 namespace appbase {
 
 namespace bpo = boost::program_options;
@@ -62,7 +63,11 @@ void application::set_program_options()
          ("help,h", "Print this help message and exit.")
          ("version,v", "Print version information.")
          ("data-dir,d", bpo::value<bfs::path>()->default_value( "witness_node_data_dir" ), "Directory containing configuration file config.ini")
-         ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to data-dir");
+         ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to data-dir")
+#ifdef IS_TEST_NET
+         ("chain-id", bpo::value< std::string >()->default_value( steem::protocol::chain_id_name ), "chain ID to connect to")
+#endif
+         ;
 
    my->_cfg_options.add(app_cfg_opts);
    my->_app_options.add(app_cfg_opts);
@@ -118,6 +123,13 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
       if(!bfs::exists(config_file_name)) {
          write_default_config(config_file_name);
       }
+
+#ifdef IS_TEST_NET
+      if( my->_args.count( "chain-id" ) )
+      {
+         chain_id = my->_args["chain-id"].as< std::string >();
+      }
+#endif
 
       bpo::store(bpo::parse_config_file< char >( config_file_name.make_preferred().string().c_str(),
                                              my->_cfg_options, true ), my->_args );

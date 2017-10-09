@@ -174,6 +174,20 @@ namespace steem { namespace protocol {
        return p1.key_data != p2.key_data;
     }
 
+    std::string chain_id_name = 
+   #ifdef IS_TEST_NET
+      "testnet";
+   #else
+      "";
+   #endif
+
+   chain_id_type chain_id = fc::sha256::hash( chain_id_name );
+
+   void set_chain_id( const std::string& _chain_id_name )
+   {
+      chain_id = ( fc::sha256::hash( _chain_id_name ) );
+   }
+
 } } // steem::protocol
 
 namespace fc
