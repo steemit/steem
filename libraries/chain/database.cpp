@@ -11,6 +11,7 @@
 #include <steem/chain/history_object.hpp>
 #include <steem/chain/index.hpp>
 #include <steem/chain/smt_objects.hpp>
+#include <steem/chain/smt_per_block.hpp>
 #include <steem/chain/steem_evaluator.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/transaction_object.hpp>
@@ -2296,6 +2297,8 @@ void database::initialize_indexes()
    add_core_index< vesting_delegation_expiration_index     >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+   add_core_index< smt_allowed_symbol_index                >(*this);
+   add_core_index< smt_allowed_symbol_qitem_index          >(*this);
 #endif
 
    _plugin_index_signal();
@@ -2693,6 +2696,10 @@ void database::_apply_block( const signed_block& next_block )
    clear_expired_orders();
    clear_expired_delegations();
    update_witness_schedule(*this);
+
+#ifdef STEEM_ENABLE_SMT
+   update_smt_allowed_symbols(*this);
+#endif
 
    update_median_feed();
    update_virtual_supply();

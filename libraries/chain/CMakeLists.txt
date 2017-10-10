@@ -6,9 +6,10 @@ add_library( steem_chain
              # As database takes the longest to compile, start it first
              database.cpp
 
-             smt_evaluator.cpp
              steem_evaluator.cpp
              steem_objects.cpp
+             smt_evaluator.cpp
+             smt_per_block.cpp
 
              witness_schedule.cpp
              fork_database.cpp

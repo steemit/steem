@@ -69,7 +69,9 @@ enum object_type
    vesting_delegation_expiration_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
-   smt_token_object_type
+   smt_token_object_type,
+   smt_allowed_symbol_object_type,
+   smt_allowed_symbol_qitem_object_type
 #endif
 };
 
@@ -105,6 +107,8 @@ class vesting_delegation_expiration_object;
 
 #ifdef STEEM_ENABLE_SMT
 class smt_token_object;
+class smt_allowed_symbol_object;
+class smt_allowed_symbol_qitem_object;
 #endif
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
@@ -139,6 +143,8 @@ typedef oid< vesting_delegation_expiration_object   > vesting_delegation_expirat
 
 #ifdef STEEM_ENABLE_SMT
 typedef oid< smt_token_object                       > smt_token_id_type;
+typedef oid< smt_allowed_symbol_object              > smt_allowed_symbol_id_type;
+typedef oid< smt_allowed_symbol_qitem_object        > smt_allowed_symbol_qitem_id_type;
 #endif
 
 enum bandwidth_type
@@ -254,6 +260,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)
+                 (smt_allowed_symbol_object_type)
+                 (smt_allowed_symbol_qitem_object_type)
 #endif
                )
 

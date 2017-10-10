@@ -1,4 +1,5 @@
 #include <steem/protocol/asset.hpp>
+#include <steem/protocol/nai_data.hpp>
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
@@ -217,6 +218,19 @@ uint32_t asset_symbol_type::asset_num_from_nai( uint32_t nai, uint8_t decimal_pl
    FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) & (nai_data_digits <= SMT_MAX_NAI), "NAI out of range" );
    FC_ASSERT( nai_check_digit == damm_checksum_8digit(nai_data_digits), "Invalid check digit" );
    return (nai_data_digits << 5) | 0x10 | decimal_places;
+}
+
+asset_symbol_type asset_symbol_from_nai_data( uint32_t nai_data_digits, uint8_t decimal_places )
+{
+   FC_ASSERT( (nai_data_digits >= SMT_MIN_NAI) && (nai_data_digits <= SMT_MAX_NAI) );
+   return asset_symbol_type::from_asset_num( (nai_data_digits << 5) | 0x10 | decimal_places );
+}
+
+uint32_t asset_symbol_to_nai_data( asset_symbol_type sym )
+{
+   FC_ASSERT( sym.space() == asset_symbol_type::smt_nai_space );
+   uint32_t nai_data_digits = (sym.asset_num >> 5);
+   return nai_data_digits;
 }
 
 uint32_t asset_symbol_type::to_nai()const
