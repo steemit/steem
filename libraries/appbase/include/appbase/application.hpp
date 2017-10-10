@@ -81,10 +81,6 @@ namespace appbase {
 
          bfs::path data_dir()const;
 
-#ifdef IS_TEST_NET
-         std::string get_chain_id() const { return chain_id; };
-#endif
-
          void add_program_options( const bpo::options_description& cli, const bpo::options_description& cfg );
          const bpo::variables_map& get_args() const;
 
@@ -116,9 +112,6 @@ namespace appbase {
          vector< abstract_plugin* >                         running_plugins; ///< stored in the order they were started running
          std::shared_ptr< boost::asio::io_service >         io_serv;
          std::string                                        version_info;
-#ifdef IS_TEST_NET
-         std::string                                        chain_id;
-#endif         
 
          void set_program_options();
          void write_default_config( const bfs::path& cfg_file );
