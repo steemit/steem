@@ -42,18 +42,26 @@
       msg                                                             \
       )
 
-#define STEEM_TRY_NOTIFY( signal, ... )                                     \
+#define STEEM_TRY_NOTIFY( signal, ... )                                       \
    try                                                                        \
    {                                                                          \
       signal( __VA_ARGS__ );                                                  \
    }                                                                          \
-   catch( const steem::chain::plugin_exception& e )                         \
+   catch( const steem::chain::plugin_exception& e )                           \
    {                                                                          \
       throw;                                                                  \
    }                                                                          \
    catch( const fc::exception& e )                                            \
    {                                                                          \
       elog( "Caught exception in plugin: ${e}", ("e", e.to_detail_string() ) ); \
+   }                                                                          \
+   catch( const boost::exception& e )                                         \
+   {                                                                          \
+      elog( "Caught unexpected exception in plugin: ${e}", ("e", boost::diagnostic_information(e)) ); \
+   }                                                                          \
+   catch( const std::exception& e )                                           \
+   {                                                                          \
+      elog( "Caught unexpected exception in plugin: ${e}", ("e", e.what()));  \
    }                                                                          \
    catch( ... )                                                               \
    {                                                                          \

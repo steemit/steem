@@ -255,7 +255,7 @@ namespace detail {
    }
 
    void witness_plugin_impl::on_block( const signed_block& b )
-   {
+   { try {
       int64_t max_block_size = _db.get_dynamic_global_properties().maximum_block_size;
 
       auto reserve_ratio_ptr = _db.find( reserve_ratio_id_type() );
@@ -327,7 +327,8 @@ namespace detail {
             }
          });
       }
-   }
+   } FC_LOG_AND_RETHROW() }
+   #pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
 
    void witness_plugin_impl::update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type )
    {
