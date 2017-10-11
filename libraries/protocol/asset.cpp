@@ -267,98 +267,96 @@ void asset_symbol_type::validate()const
    // FC_ASSERT( decimals() <= STEEM_ASSET_MAX_DECIMALS );
 }
 
+uint8_t asset::decimals()const
+{
+   return symbol.decimals();
+}
+
+uint64_t asset::precision()const
+{
+   static uint64_t table[] =
+   {
+      1, 10, 100, 1000, 10000, 100000, 1000000,
+      10000000, 100000000ll, 1000000000ll,
+      10000000000ll, 100000000000ll, 1000000000000ll
+   };
+
+   static_assert( sizeof( table ) == sizeof( uint64_t ) * ( STEEM_ASSET_MAX_DECIMALS + 1 ),
+      "Decimal to precision table must support all asset symbol type decimal places." );
+
+   return table[ decimals() ];
+}
+
 void asset::validate()const
 {
    symbol.validate();
    FC_ASSERT( amount.value >= 0 );
-   FC_ASSERT( amount.value <= STEEM_MAX_SHARE_SUPPLY );
+   //FC_ASSERT( amount.value <= STEEM_MAX_SHARE_SUPPLY, "", ("amount", amount)("STEEM_MAX_SHARE_SUPPLY", STEEM_MAX_SHARE_SUPPLY) );
 }
 
 std::string asset::to_string()const
 {
    validate();
 
-   static_assert( STEEM_MAX_SHARE_SUPPLY <= int64_t(9999999999999999ll), "BEGIN_OFFSET needs to be adjusted if MAX_SHARE_SUPPLY is increased" );
-   static const int BEGIN_OFFSET = 17;
-   //       amount string  space   symbol string                   null terminator
-   char buf[BEGIN_OFFSET + 1     + STEEM_ASSET_SYMBOL_MAX_LENGTH + 1];
-   char* p = buf+BEGIN_OFFSET-1;
-   uint64_t v = uint64_t( amount.value );
-   int decimal_places = int(symbol.decimals());
+   uint64_t prec = precision();
+   uint64_t whole = amount.value / prec;
+   std::stringstream ss;
 
-   p[1] = ' ';
-   symbol.to_string( p+2 );
+   ss << whole;
 
-   for( int i=0; i<decimal_places; i++ )
+   if( prec > 1 )
    {
-      char d = char( v%10 );
-      v /= 10;
-      (*p) = '0' + d;
-      --p;
+      uint64_t fract = amount.value % prec;
+
+      // prec is a power of ten, so for example when working with
+      // 7.005 we have fract = 5, prec = 1000.  So prec+fract=1005
+      // has the correct number of zeros and we can simply trim the
+      // leading 1.
+      ss << '.' << fc::to_string( prec + fract ).erase( 0, 1 );
    }
 
-   (*p) = '.';
-
-   do
-   {
-      --p;
-      char d = char( v%10 );
-      v /= 10;
-      (*p) = '0' + d;
-   } while( v != 0 );
-
-   return std::string(p);
+   ss << ' ' << symbol.to_string();
+   return ss.str();
 }
 
-void asset::fill_from_string( const char* p )
+void asset::fill_from_string( const string& from )
 {
-   while( true )
+   try
    {
-      switch( *p )
+      string s = fc::trim( from );
+      auto space_pos = s.find( " " );
+      auto dot_pos = s.find( "." );
+
+      FC_ASSERT( space_pos != std::string::npos );
+      uint8_t decimals;
+
+      auto symbol_str = s.substr( space_pos + 1 );
+
+      if( dot_pos != std::string::npos )
       {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         default:
-            break;
+         FC_ASSERT( space_pos > dot_pos );
+
+         auto intpart = s.substr( 0, dot_pos );
+         auto fractpart = "1" + s.substr( dot_pos + 1, space_pos - dot_pos - 1 );
+         FC_ASSERT( fractpart.size() <= STEEM_ASSET_MAX_DECIMALS + 1 );
+
+         decimals = uint8_t( fractpart.size() - 1 );
+         symbol = asset_symbol_type::from_string( symbol_str.c_str(), decimals );
+
+         amount = fc::to_int64( intpart );
+         amount.value *= precision();
+         amount.value += fc::to_int64( fractpart );
+         amount.value -= precision();
       }
-      break;
-   }
-
-   int decimal_places = 0;
-   int decimal_places_inc = 0;
-   uint64_t value = 0;
-
-   // [0-9]+([.][0-9]*)?\s
-   while( true )
-   {
-      switch( *p )
+      else
       {
-         case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-            value = value*10 + uint64_t((*p) - '0');
-            FC_ASSERT( value <= STEEM_MAX_SHARE_SUPPLY, "Cannot parse asset amount" );
-            ++p;
-            decimal_places += decimal_places_inc;
-            continue;
-         case '.':
-            FC_ASSERT( decimal_places_inc == 0, "Cannot parse asset amount" );
-            decimal_places_inc = 1;
-            ++p;
-            continue;
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            break;
-         default:
-            FC_ASSERT( false, "Cannot parse asset amount" );
+         symbol = asset_symbol_type::from_string( symbol_str.c_str(), 0 );
+
+         auto intpart = s.substr( 0, space_pos );
+         amount = fc::to_int64( intpart );
       }
-      break;
    }
-
-   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Cannot parse asset amount" );
-
-   symbol = asset_symbol_type::from_string( p, uint8_t(decimal_places) );
-   amount.value = int64_t( value );
-   return;
+   FC_CAPTURE_AND_RETHROW( (from) )
 }
 
 #define BQ(a) \
