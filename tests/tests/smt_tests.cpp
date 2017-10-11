@@ -296,11 +296,6 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       signed_transaction tx;
 
-      // elevate account
-      elevate(tx, "dany", dany_private_key, "DANY_COIN", 3);
-      tx.operations.clear();
-      tx.signatures.clear();
-
       smt_set_setup_parameters_operation op;
       op.control_account = "dany";
 
@@ -309,9 +304,18 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       tx.sign( dany_private_key, db->get_chain_id() );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception ); // account not elevated
 
-      db->push_transaction( tx, 0 );
+      // elevate account
+      signed_transaction ty;
+      elevate(ty, "dany", dany_private_key, "DANY_COIN", 3);
 
-      db->push_transaction( tx, database::skip_transaction_dupe_check );
+      signed_transaction tz;
+      tz.operations.push_back( op );
+      tz.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tz.sign( dany_private_key, db->get_chain_id() );
+
+      db->push_transaction( tz, 0 );
+
+      db->push_transaction( tz, database::skip_transaction_dupe_check );
 
       signed_transaction tx1;
 
