@@ -14,13 +14,14 @@ namespace steem { namespace protocol {
       asset_symbol_type symbol;
 
       uint8_t     decimals()const;
+      uint64_t    precision()const;
       void validate()const;
 
-      void fill_from_string( const char* p );
+      void fill_from_string( const string& from );
       static asset from_string( const string& from )
       {
          asset result;
-         result.fill_from_string( from.c_str() );
+         result.fill_from_string( from );
          return result;
       }
       string       to_string()const;
@@ -156,7 +157,7 @@ namespace steem { namespace protocol {
 
 namespace fc {
     inline void to_variant( const steem::protocol::asset& var,  fc::variant& vo ) { vo = var.to_string(); }
-    inline void from_variant( const fc::variant& var,  steem::protocol::asset& vo ) { vo.fill_from_string( var.as_string().c_str() ); }
+    inline void from_variant( const fc::variant& var,  steem::protocol::asset& vo ) { vo.fill_from_string( var.as_string() ); }
 }
 
 FC_REFLECT( steem::protocol::asset, (amount)(symbol) )
