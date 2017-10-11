@@ -77,6 +77,7 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
 
    _db.create< smt_token_object >( [&]( smt_token_object& token )
    {
+      token.symbol = o.symbol;
       token.control_account = o.account;
    });
 }
@@ -105,6 +106,9 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
    FC_ASSERT( smt != nullptr, "SMT ${smt} not found", ("smt", o.control_account ) );
    // ^ TODO: Replace SMT name with appropriate id in the assertion.
    FC_ASSERT( smt->phase < smt_token_object::smt_phase::setup_completed, "SMT emission operation no longer allowed after setup phase is over" );
+
+   FC_ASSERT( o.lep_abs_amount.symbol == smt->symbol );
+   // ^ Note that rep_abs_amount.symbol has been matched to lep's in validate().
 
    _db.modify( *smt, [&]( smt_token_object& token )
    {

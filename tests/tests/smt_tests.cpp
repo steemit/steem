@@ -29,6 +29,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.account = "alice";
+      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
       op.validate();
 
       op.fee.amount = -op.fee.amount;
@@ -54,6 +55,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_authorities )
    {
       smt_elevate_account_operation op;
       op.account = "alice";
+      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
       op.fee = ASSET( "1.000 TESTS" );
 
       flat_set< account_name_type > auths;
@@ -86,6 +88,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
 
       op.fee = ASSET( "1000.000 TBD" );
       op.account = "alice";
+      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
 
       signed_transaction tx;
 
@@ -256,30 +259,11 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       tx.sign( alice_private_key, db->get_chain_id() );
 
       // Throw due to non-elevated account (too early).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
       // Elevate account.
-      {
-         set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
-         fund( "alice", 10 * 1000 * 1000 );
-
-         smt_elevate_account_operation op;
-
-         op.fee = ASSET( "1000.000 TBD" );
-         op.account = "alice";
-
-         convert( "alice", ASSET( "5000.000 TESTS" ) );
-
-         signed_transaction tx;
-
-         tx.operations.push_back( op );
-         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( alice_private_key, db->get_chain_id() );
-         db->push_transaction( tx, 0 );
-      }
-
-      // Throw due to non-elevated account (too early).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      signed_transaction ty;
+      elevate(ty, "alice", alice_private_key, "ALICE_COIN", 3);
 
       // TODO: Replace the code below with account setup operation execution once its implemented.
       const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_control_account >( "alice" );
@@ -289,8 +273,13 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       {
          token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
       });
+
+      signed_transaction tz;
+      tz.operations.push_back( op );
+      tz.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tz.sign( alice_private_key, db->get_chain_id() );
       // Throw due to closed setup phase (too late).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      STEEM_REQUIRE_THROW( db->push_transaction( tz, database::skip_transaction_dupe_check ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -305,28 +294,20 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       fund( "dany", 5000 );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
 
+      signed_transaction tx;
+
+      // elevate account
+      elevate(tx, "dany", dany_private_key, "DANY_COIN", 3);
+      tx.operations.clear();
+      tx.signatures.clear();
+
       smt_set_setup_parameters_operation op;
       op.control_account = "dany";
-
-      signed_transaction tx;
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( dany_private_key, db->get_chain_id() );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception ); // account not elevated
-
-      // elevate account
-      {
-         smt_elevate_account_operation op;
-         op.fee = ASSET( "1000.000 TBD" );
-         op.account = "dany";
-
-         signed_transaction tx;
-         tx.operations.push_back( op );
-         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( dany_private_key, db->get_chain_id() );
-         db->push_transaction( tx, 0 );
-      }
 
       db->push_transaction( tx, 0 );
 
@@ -519,7 +500,7 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       tx.signatures.clear();
 
       //Try to elevate account
-      elevate( tx, "alice", alice_private_key );
+      elevate( tx, "alice", alice_private_key, "ALICE_COIN", 3 );
       tx.operations.clear();
       tx.signatures.clear();
 

@@ -568,7 +568,8 @@ smt_database_fixture::~smt_database_fixture()
 
 }
 
-void smt_database_fixture::elevate( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key )
+void smt_database_fixture::elevate( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key,
+   const std::string& token_name, uint8_t token_decimal_places )
 {
    try
    {
@@ -578,6 +579,7 @@ void smt_database_fixture::elevate( signed_transaction& tx, const string& accoun
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
       smt_elevate_account_operation op;
+      op.symbol = database_fixture::name_to_asset_symbol(token_name, token_decimal_places);
       op.fee = ASSET( "1000.000 TBD" );
       op.account = account_name;
 

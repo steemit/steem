@@ -246,7 +246,8 @@ struct smt_database_fixture : public clean_database_fixture
    smt_database_fixture();
    virtual ~smt_database_fixture();
 
-   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
+   void elevate( signed_transaction& tr, const string& account_name, const fc::ecc::private_key& key,
+                 const std::string& token_name, uint8_t token_decimal_places );
 };
 #endif
 
