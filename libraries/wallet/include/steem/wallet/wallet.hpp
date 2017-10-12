@@ -60,8 +60,6 @@ struct wallet_data
    string                           ws_server = "ws://localhost:8090";
    string                           ws_user;
    string                           ws_password;
-
-   steem::protocol::chain_id_type   steem_chain_id;
 };
 
 enum authority_type
@@ -82,7 +80,7 @@ class wallet_api_impl;
 class wallet_api
 {
    public:
-      wallet_api( const wallet_data& initial_data, fc::api< remote_node_api > rapi );
+      wallet_api( const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi );
       virtual ~wallet_api();
 
       bool copy_wallet_file( string destination_filename );

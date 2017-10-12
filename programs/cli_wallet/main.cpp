@@ -100,11 +100,11 @@ int main( int argc, char** argv )
          wdump((allowed_ips));
       }
 
-      wallet_data wdata;
+      steem::protocol::chain_id_type _steem_chain_id;
 
 #ifdef IS_TEST_NET
       if( options.count("chain-id") )
-            wdata.steem_chain_id = generate_chain_id( options["chain-id"].as< std::string >() );
+            _steem_chain_id = generate_chain_id( options["chain-id"].as< std::string >() );
 #endif
 
       fc::path data_dir;
@@ -136,6 +136,7 @@ int main( int argc, char** argv )
       //    load_wallet_file().  Seems like this could be better
       //    designed.
       //
+      wallet_data wdata;
 
       fc::path wallet_file( options.count("wallet-file") ? options.at("wallet-file").as<string>() : "wallet.json");
       if( fc::exists( wallet_file ) )
@@ -158,7 +159,7 @@ int main( int argc, char** argv )
 
       auto remote_api = apic->get_remote_api< steem::wallet::remote_node_api >( 0, "condenser_api" );
 
-      auto wapiptr = std::make_shared<wallet_api>( wdata, remote_api );
+      auto wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, remote_api );
       wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
 

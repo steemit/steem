@@ -216,14 +216,14 @@ class wallet_api_impl
 
 public:
    wallet_api& self;
-   wallet_api_impl( wallet_api& s, const wallet_data& initial_data, fc::api< remote_node_api > rapi )
+   wallet_api_impl( wallet_api& s, const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi )
       : self( s ),
         _remote_api( rapi )
    {
       init_prototype_ops();
 
       _wallet.ws_server = initial_data.ws_server;
-      _wallet.steem_chain_id = initial_data.steem_chain_id;
+      steem_chain_id = _steem_chain_id;
    }
    virtual ~wallet_api_impl()
    {}
@@ -669,7 +669,7 @@ public:
       }
 
       auto minimal_signing_keys = tx.minimize_required_signatures(
-         _wallet.steem_chain_id,
+         steem_chain_id,
          available_keys,
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).active); },
@@ -684,7 +684,7 @@ public:
       {
          auto it = available_private_keys.find(k);
          FC_ASSERT( it != available_private_keys.end() );
-         tx.sign( it->second, _wallet.steem_chain_id );
+         tx.sign( it->second, steem_chain_id );
       }
 
       if( broadcast ) {
@@ -872,6 +872,7 @@ public:
 
    string                                  _wallet_filename;
    wallet_data                             _wallet;
+   steem::protocol::chain_id_type          steem_chain_id;
 
    map<public_key_type,string>             _keys;
    fc::sha512                              _checksum;
@@ -894,8 +895,8 @@ public:
 
 namespace steem { namespace wallet {
 
-wallet_api::wallet_api(const wallet_data& initial_data, fc::api< remote_node_api > rapi)
-   : my(new detail::wallet_api_impl(*this, initial_data, rapi))
+wallet_api::wallet_api(const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi)
+   : my(new detail::wallet_api_impl(*this, initial_data, _steem_chain_id, rapi))
 {}
 
 wallet_api::~wallet_api(){}
