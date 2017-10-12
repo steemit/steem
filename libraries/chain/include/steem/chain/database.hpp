@@ -208,6 +208,12 @@ namespace steem { namespace chain {
          void notify_on_pre_apply_transaction( const signed_transaction& tx );
          void notify_on_applied_transaction( const signed_transaction& tx );
 
+
+         /**
+          *  This method is used to processing SMT operations.
+          */
+         void process_smt_operations( const signed_block& block );
+
          /**
           *  This signal is emitted for plugins to process every operation after it has been fully applied.
           */

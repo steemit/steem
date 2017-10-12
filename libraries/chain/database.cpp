@@ -926,6 +926,24 @@ inline const void database::push_virtual_operation( const operation& op, bool fo
    notify_post_apply_operation( note );
 }
 
+void database::process_smt_operations( const signed_block& block )
+{
+   fc::time_point_sec timestamp = block.timestamp;
+   auto& all_tokens = get_index<smt_token_index, by_control_account>();
+   for( const auto& token: all_tokens )
+   {
+      if( timestamp >= token.generation_begin_time )
+      {
+         if( timestamp >= token.generation_end_time )
+         {
+            if( timestamp >= token.announced_launch_time )
+            {            
+            }
+         }
+      }
+   }
+}
+
 void database::notify_applied_block( const signed_block& block )
 {
    STEEM_TRY_NOTIFY( applied_block, block )
@@ -2726,6 +2744,9 @@ void database::_apply_block( const signed_block& next_block )
    notify_applied_block( next_block );
 
    notify_changed_objects();
+
+   process_smt_operations( next_block );
+
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
 }

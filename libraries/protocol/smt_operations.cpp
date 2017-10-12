@@ -202,7 +202,7 @@ void smt_setup_emissions_operation::validate()const
 void smt_setup_operation::validate()const
 {
    FC_ASSERT( is_valid_account_name( control_account ) );
-   FC_ASSERT( decimal_places <= SMT_MAX_DECIMAL_PLACES );
+   FC_ASSERT( smt_name.decimals() <= SMT_MAX_DECIMAL_PLACES );
    FC_ASSERT( max_supply > 0 );
    FC_ASSERT( max_supply <= STEEM_MAX_SHARE_SUPPLY );
    validate_visitor vtor;
@@ -210,10 +210,6 @@ void smt_setup_operation::validate()const
    FC_ASSERT( generation_begin_time > STEEM_GENESIS_TIME );
    FC_ASSERT( generation_end_time > generation_begin_time );
    FC_ASSERT( announced_launch_time >= generation_end_time );
-
-   // TODO:  Support using STEEM as well
-   // TODO:  Move amount check to evaluator, symbol check should remain here
-   FC_ASSERT( smt_creation_fee == asset( 1000000, SBD_SYMBOL ) );
 }  
 
 struct smt_set_runtime_parameters_operation_visitor

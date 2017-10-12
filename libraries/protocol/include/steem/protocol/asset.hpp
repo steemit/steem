@@ -7,13 +7,16 @@ namespace steem { namespace protocol {
 
    struct asset
    {
+      asset( const asset& _asset, asset_symbol_type id )
+      :amount( _asset.amount ),symbol(id){}
+
       asset( share_type a = 0, asset_symbol_type id = STEEM_SYMBOL )
       :amount(a),symbol(id){}
 
       share_type        amount;
       asset_symbol_type symbol;
 
-      uint8_t     decimals()const;
+      uint8_t decimals()const;
       void validate()const;
 
       void fill_from_string( const char* p );

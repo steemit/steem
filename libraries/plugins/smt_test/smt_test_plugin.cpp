@@ -69,6 +69,19 @@ void smt_test_plugin_impl::post_operation( const operation_notification& note )
 
 #ifdef STEEM_ENABLE_SMT
 
+//This is temporary function, which will be exchanged by method from 'asset_symbol_type' class.
+asset_symbol_type name_to_asset_symbol( const std::string& name, uint8_t decimal_places )
+{
+   // Deterministically turn a name into an asset symbol
+   // Example:
+   // alice -> sha256(alice) -> 2bd806c9... -> 2bd806c9 -> low 27 bits is 64489161 -> add check digit -> @@644891612
+
+   uint32_t h0 = (boost::endian::native_to_big( fc::sha256::hash( name )._hash[0] ) >> 32) & 0x7FFFFFF;
+   FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
+   uint32_t asset_num = (h0 << 5) | 0x10 | decimal_places;
+   return asset_symbol_type::from_asset_num( asset_num );
+}
+
 void test_alpha()
 {
    vector<operation>  operations;
@@ -101,15 +114,13 @@ void test_alpha()
 
    smt_setup_operation setup_op;
    setup_op.control_account = "alpha";
-   setup_op.decimal_places = 4;
+   setup_op.smt_name = name_to_asset_symbol( setup_op.control_account, 4 );
 
    setup_op.initial_generation_policy = gpolicy;
 
    setup_op.generation_begin_time = fc::variant( "2017-08-10T00:00:00" ).as< fc::time_point_sec >();
    setup_op.generation_end_time   = fc::variant( "2017-08-17T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-08-21T00:00:00" ).as< fc::time_point_sec >();
-
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 
    setup_op.validate();
 
@@ -157,15 +168,13 @@ void test_beta()
 
    smt_setup_operation setup_op;
    setup_op.control_account = "beta";
-   setup_op.decimal_places = 4;
+   setup_op.smt_name = name_to_asset_symbol( setup_op.control_account, 4 );
 
    setup_op.initial_generation_policy = gpolicy;
 
    setup_op.generation_begin_time = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
    setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
-
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 
    setup_op.validate();
 
@@ -210,15 +219,13 @@ void test_delta()
 
    smt_setup_operation setup_op;
    setup_op.control_account = "delta";
-   setup_op.decimal_places = 5;
+   setup_op.smt_name = name_to_asset_symbol( setup_op.control_account, 5 );
 
    setup_op.initial_generation_policy = gpolicy;
 
    setup_op.generation_begin_time = fc::variant( "2017-06-01T00:00:00" ).as< fc::time_point_sec >();
    setup_op.generation_end_time   = fc::variant( "2017-06-30T00:00:00" ).as< fc::time_point_sec >();
    setup_op.announced_launch_time = fc::variant( "2017-07-01T00:00:00" ).as< fc::time_point_sec >();
-
-   setup_op.smt_creation_fee = asset( 1000000, SBD_SYMBOL );
 
    setup_op.validate();
 

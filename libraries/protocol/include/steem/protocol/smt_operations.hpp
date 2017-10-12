@@ -96,7 +96,7 @@ typedef static_variant<
 struct smt_setup_operation : public base_operation
 {
    account_name_type       control_account;
-   uint8_t                 decimal_places = 0;
+   asset_symbol_type       smt_name;
    int64_t                 max_supply = STEEM_MAX_SHARE_SUPPLY;
 
    smt_generation_policy   initial_generation_policy;
@@ -104,8 +104,6 @@ struct smt_setup_operation : public base_operation
    time_point_sec          generation_begin_time;
    time_point_sec          generation_end_time;
    time_point_sec          announced_launch_time;
-
-   asset                   smt_creation_fee;
 
    extensions_type         extensions;
 
@@ -281,13 +279,12 @@ FC_REFLECT(
 FC_REFLECT(
    steem::protocol::smt_setup_operation,
    (control_account)
-   (decimal_places)
+   (smt_name)
    (max_supply)
    (initial_generation_policy)
    (generation_begin_time)
    (generation_end_time)
    (announced_launch_time)
-   (smt_creation_fee)
    (extensions)
    )
 
