@@ -32,6 +32,9 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::seconds(0)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
+
+#define STEEM_CHAIN_ID_NAME "testnet"
+
 #else // IS LIVE STEEM NETWORK
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 3) )
@@ -55,6 +58,8 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::minutes(60)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
+
+#define STEEM_CHAIN_ID_NAME ""
 
 #endif
 

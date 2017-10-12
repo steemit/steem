@@ -63,6 +63,9 @@ namespace graphene { namespace net {
       public:
          virtual ~node_delegate(){}
 
+
+         virtual steem::protocol::chain_id_type get_chain_id() const = 0;
+
          /**
           *  If delegate has the item, the network has no need to fetch it.
           */

@@ -223,6 +223,7 @@ public:
       init_prototype_ops();
 
       _wallet.ws_server = initial_data.ws_server;
+      _wallet.steem_chain_id = initial_data.steem_chain_id;
    }
    virtual ~wallet_api_impl()
    {}
@@ -668,7 +669,7 @@ public:
       }
 
       auto minimal_signing_keys = tx.minimize_required_signatures(
-         steem::protocol::chain_id,
+         _wallet.steem_chain_id,
          available_keys,
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).active); },
@@ -683,7 +684,7 @@ public:
       {
          auto it = available_private_keys.find(k);
          FC_ASSERT( it != available_private_keys.end() );
-         tx.sign( it->second, steem::protocol::chain_id );
+         tx.sign( it->second, _wallet.steem_chain_id );
       }
 
       if( broadcast ) {

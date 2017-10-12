@@ -89,7 +89,10 @@ database_impl::database_impl( database& self )
    : _self(self), _evaluator_registry(self) {}
 
 database::database()
-   : _my( new database_impl(*this) ) {}
+   : _my( new database_impl(*this) )
+{
+   set_chain_id( STEEM_CHAIN_ID_NAME );
+}
 
 database::~database()
 {
@@ -364,7 +367,12 @@ std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head
 
 chain_id_type database::get_chain_id() const
 {
-   return steem::protocol::chain_id;
+   return STEEM_CHAIN_ID;
+}
+
+void database::set_chain_id( const std::string& _chain_id_name )
+{
+   STEEM_CHAIN_ID = generate_chain_id( _chain_id_name );
 }
 
 const witness_object& database::get_witness( const account_name_type& name ) const
@@ -2861,7 +2869,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       trx.validate();
 
    auto& trx_idx = get_index<transaction_index>();
-   const chain_id_type& chain_id = steem::protocol::chain_id;
+   const chain_id_type& chain_id = get_chain_id();
    auto trx_id = trx.id();
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||

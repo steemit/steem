@@ -55,11 +55,13 @@ struct brain_key_info
 
 struct wallet_data
 {
-   vector<char>              cipher_keys; /** encrypted keys */
+   vector<char>                     cipher_keys; /** encrypted keys */
 
-   string                    ws_server = "ws://localhost:8090";
-   string                    ws_user;
-   string                    ws_password;
+   string                           ws_server = "ws://localhost:8090";
+   string                           ws_user;
+   string                           ws_password;
+
+   steem::protocol::chain_id_type   steem_chain_id;
 };
 
 enum authority_type

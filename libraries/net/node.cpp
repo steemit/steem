@@ -297,7 +297,8 @@ namespace graphene { namespace net { namespace detail {
                                    (get_block_time) \
                                    (get_head_block_id) \
                                    (estimate_last_known_fork_from_git_revision_timestamp) \
-                                   (error_encountered)
+                                   (error_encountered) \
+                                   (get_chain_id)
 
 
 #define DECLARE_ACCUMULATOR(r, data, method_name) \
@@ -378,6 +379,7 @@ namespace graphene { namespace net { namespace detail {
 
       fc::variant_object get_call_statistics();
 
+      steem::protocol::chain_id_type get_chain_id() const override;
       bool has_item( const net::item_id& id ) override;
       void handle_message( const message& ) override;
       bool handle_block( const graphene::net::block_message& block_message, bool sync_mode, std::vector<fc::uint160_t>& contained_transaction_message_ids ) override;
@@ -1876,7 +1878,7 @@ namespace graphene { namespace net { namespace detail {
       if (!_hard_fork_block_numbers.empty())
         user_data["last_known_fork_block_number"] = _hard_fork_block_numbers.back();
 
-      user_data["chain_id"] = steem::protocol::chain_id;
+      user_data["chain_id"] = _delegate->get_chain_id();
 
       return user_data;
     }
@@ -1994,10 +1996,10 @@ namespace graphene { namespace net { namespace detail {
             }
           }
         }
-        if ( !originating_peer->chain_id || *originating_peer->chain_id != steem::protocol::chain_id )
+        if ( !originating_peer->chain_id || *originating_peer->chain_id != _delegate->get_chain_id() )
         {
             wlog("Received hello message from peer running a node for different blockchain.",
-               ("my_chain_id", steem::protocol::chain_id)("their_chain_id", originating_peer->chain_id) );
+               ("my_chain_id", _delegate->get_chain_id())("their_chain_id", originating_peer->chain_id) );
 
             std::ostringstream rejection_message;
             rejection_message << "Your client is running a different chain id";
@@ -5521,6 +5523,11 @@ namespace graphene { namespace net { namespace detail {
         return _node_delegate->method_name(__VA_ARGS__); \
       }, "invoke " BOOST_STRINGIZE(method_name)).wait()
 #endif
+
+    steem::protocol::chain_id_type statistics_gathering_node_delegate_wrapper::get_chain_id() const
+    {
+      INVOKE_AND_COLLECT_STATISTICS(get_chain_id);
+    }
 
     bool statistics_gathering_node_delegate_wrapper::has_item( const net::item_id& id )
     {

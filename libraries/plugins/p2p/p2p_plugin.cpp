@@ -74,7 +74,7 @@ public:
    virtual ~p2p_plugin_impl() {}
 
    bool is_included_block(const block_id_type& block_id);
-   chain::chain_id_type get_chain_id()const;
+   virtual steem::protocol::chain_id_type get_chain_id() const override;
 
    // node_delegate interface
    virtual bool has_item( const graphene::net::item_id& ) override;
@@ -270,9 +270,9 @@ graphene::net::message p2p_plugin_impl::get_item( const graphene::net::item_id& 
    });
 } FC_CAPTURE_AND_RETHROW( (id) ) }
 
-chain::chain_id_type p2p_plugin_impl::get_chain_id() const
+steem::protocol::chain_id_type p2p_plugin_impl::get_chain_id() const
 {
-   return steem::protocol::chain_id;
+   return chain.db().get_chain_id();
 }
 
 std::vector< graphene::net::item_hash_t > p2p_plugin_impl::get_blockchain_synopsis( const graphene::net::item_hash_t& reference_point, uint32_t number_of_blocks_after_reference_point )

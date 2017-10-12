@@ -81,7 +81,7 @@ int main( int argc, char** argv )
          ("rpc-http-allowip", bpo::value<vector<string>>()->multitoken(), "Allows only specified IPs to connect to the HTTP endpoint" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
 #ifdef IS_TEST_NET
-         ("chain-id", bpo::value< std::string >()->default_value( steem::protocol::chain_id_name ), "chain ID to connect to")
+         ("chain-id", bpo::value< std::string >()->implicit_value( STEEM_CHAIN_ID_NAME ), "chain ID to connect to")
 #endif
          ;
       vector<string> allowed_ips;
@@ -100,9 +100,11 @@ int main( int argc, char** argv )
          wdump((allowed_ips));
       }
 
+      wallet_data wdata;
+
 #ifdef IS_TEST_NET
       if( options.count("chain-id") )
-         steem::protocol::chain_id = steem::protocol::set_chain_id( options["chain-id"].as< std::string >() );
+            wdata.steem_chain_id = generate_chain_id( options["chain-id"].as< std::string >() );
 #endif
 
       fc::path data_dir;
@@ -134,7 +136,6 @@ int main( int argc, char** argv )
       //    load_wallet_file().  Seems like this could be better
       //    designed.
       //
-      wallet_data wdata;
 
       fc::path wallet_file( options.count("wallet-file") ? options.at("wallet-file").as<string>() : "wallet.json");
       if( fc::exists( wallet_file ) )
