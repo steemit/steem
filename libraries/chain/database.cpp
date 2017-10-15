@@ -215,10 +215,13 @@ void database::close(bool rewind)
 {
    try
    {
-      // Since pop_block() will move tx's in the popped blocks into pending,
-      // we have to clear_pending() after we're done popping to get a clean
-      // DB state (issue #336).
       clear_pending();
+
+      const auto& mem_pool_idx = get_index< mem_pool_entry_index, by_id >();
+      while( mem_pool_idx.begin() != mem_pool_idx.end() )
+      {
+         remove( *(mem_pool_idx.begin()) );
+      }
 
       chainbase::database::flush();
       chainbase::database::close();
@@ -506,7 +509,7 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
    {
       with_write_lock( [&]()
       {
-         detail::without_pending_transactions( *this, std::move(_pending_tx), [&]()
+         detail::without_pending_transactions( *this, [&]()
          {
             try
             {
@@ -674,7 +677,16 @@ void database::_push_transaction( const signed_transaction& trx )
 
    auto temp_session = start_undo_session( true );
    _apply_transaction( trx );
-   _pending_tx.push_back( trx );
+
+   auto trx_id = trx.id();
+   if( find< mem_pool_entry_object, by_trx_id >( trx_id ) == nullptr ) // Do not add duplicates to mem pool
+   {
+      create< mem_pool_entry_object >( [&]( mem_pool_entry_object& m )
+      {
+         m.trx_id = trx_id;
+         fc::raw::pack( m.packed_trx, trx );
+      });
+   }
 
    notify_changed_objects();
    // The transaction applied successfully. Merge its changes into the pending block session.
@@ -744,16 +756,22 @@ signed_block database::_generate_block(
       _pending_tx_session = start_undo_session( true );
 
       uint64_t postponed_tx_count = 0;
-      // pop pending state (reset to head block state)
-      for( const signed_transaction& tx : _pending_tx )
+      const auto& mem_pool_idx = get_index< mem_pool_entry_index, by_id >();
+      signed_transaction tx;
+
+      for( auto trx_itr = mem_pool_idx.begin();
+           trx_itr != mem_pool_idx.end();
+           ++trx_itr )
       {
+         fc::raw::unpack( trx_itr->packed_trx, tx );
+
          // Only include transactions that have not expired yet for currently generating block,
          // this should clear problem transactions and allow block production to continue
-
          if( tx.expiration < when )
             continue;
 
-         uint64_t new_total_size = total_block_size + fc::raw::pack_size( tx );
+         // packed_trx is a vector< char >, so size() is equal to byte size of transaction
+         uint64_t new_total_size = total_block_size + trx_itr->packed_trx.size();
 
          // postpone transaction if it would make block too big
          if( new_total_size >= maximum_block_size )
@@ -768,7 +786,7 @@ signed_block database::_generate_block(
             _apply_transaction( tx );
             temp_session.squash();
 
-            total_block_size += fc::raw::pack_size( tx );
+            total_block_size += trx_itr->packed_trx.size();
             pending_block.transactions.push_back( tx );
          }
          catch ( const fc::exception& e )
@@ -787,8 +805,8 @@ signed_block database::_generate_block(
    });
 
    // We have temporarily broken the invariant that
-   // _pending_tx_session is the result of applying _pending_tx, as
-   // _pending_tx now consists of the set of postponed transactions.
+   // _pending_tx_session is the result of applying the mem pool, as
+   // the mem pool now consists of the set of postponed transactions.
    // However, the push_block() call below will re-create the
    // _pending_tx_session.
 
@@ -861,9 +879,8 @@ void database::clear_pending()
 {
    try
    {
-      assert( (_pending_tx.size() == 0) || _pending_tx_session.valid() );
-      _pending_tx.clear();
-      _pending_tx_session.reset();
+      if( _pending_tx_session.valid() )
+         _pending_tx_session.reset();
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -2264,6 +2281,7 @@ void database::initialize_indexes()
    add_core_index< reward_fund_index                       >(*this);
    add_core_index< vesting_delegation_index                >(*this);
    add_core_index< vesting_delegation_expiration_index     >(*this);
+   add_core_index< mem_pool_entry_index                    >(*this);
 
    _plugin_index_signal();
 }

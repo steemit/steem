@@ -45,8 +45,8 @@ struct skip_flags_restorer
  */
 struct pending_transactions_restorer
 {
-   pending_transactions_restorer( database& db, std::vector<signed_transaction>&& pending_transactions )
-      : _db(db), _pending_transactions( std::move(pending_transactions) )
+   pending_transactions_restorer( database& db )
+      : _db(db)
    {
       _db.clear_pending();
    }
@@ -65,14 +65,24 @@ struct pending_transactions_restorer
          }
       }
       _db._popped_tx.clear();
-      for( const signed_transaction& tx : _pending_transactions )
+
+      vector< const mem_pool_entry_object* > to_remove;
+      const auto& mem_pool_idx = _db.get_index< mem_pool_entry_index, by_id >();
+      signed_transaction trx;
+
+      for( auto trx_itr = mem_pool_idx.begin();
+           trx_itr != mem_pool_idx.end();
+           ++trx_itr )
       {
+         fc::raw::unpack( trx_itr->packed_trx, trx );
+         to_remove.push_back( &(*trx_itr) );
+
          try
          {
-            if( !_db.is_known_transaction( tx.id() ) ) {
-               // since push_transaction() takes a signed_transaction,
-               // the operation_results field will be ignored.
-               _db._push_transaction( tx );
+            if( !_db.is_known_transaction( trx_itr->trx_id ) )
+            {
+               _db.push_transaction( trx );
+               to_remove.pop_back();
             }
          }
          catch( const transaction_exception& e )
@@ -80,11 +90,10 @@ struct pending_transactions_restorer
             dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
                ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
             dlog( "The invalid transaction caused exception ${e}", ("e", e.to_detail_string()) );
-            dlog( "${t}", ("t", tx) );
+            dlog( "${t}", ("t", trx) );
          }
          catch( const fc::exception& e )
          {
-
             /*
             dlog( "Pending transaction became invalid after switching to block ${b} ${n} ${t}",
                ("b", _db.head_block_id())("n", _db.head_block_num())("t", _db.head_block_time()) );
@@ -93,10 +102,16 @@ struct pending_transactions_restorer
             */
          }
       }
+
+
+      // Clean up the mem pool of trxs that are either included or invalid.
+      for( const auto* mem_pool_entry : to_remove )
+      {
+         _db.remove( *mem_pool_entry );
+      }
    }
 
    database& _db;
-   std::vector< signed_transaction > _pending_transactions;
 };
 
 /**
@@ -126,10 +141,9 @@ void with_skip_flags(
 template< typename Lambda >
 void without_pending_transactions(
    database& db,
-   std::vector<signed_transaction>&& pending_transactions,
    Lambda callback )
 {
-    pending_transactions_restorer restorer( db, std::move(pending_transactions) );
+    pending_transactions_restorer restorer( db );
     callback();
     return;
 }

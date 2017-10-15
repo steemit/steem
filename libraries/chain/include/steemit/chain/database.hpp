@@ -2,6 +2,7 @@
  * Copyright (c) 2015 Cryptonomex, Inc., and contributors.
  */
 #pragma once
+#include <steemit/chain/mem_pool.hpp>
 #include <steemit/chain/global_property_object.hpp>
 #include <steemit/chain/hardfork.hpp>
 #include <steemit/chain/node_property_object.hpp>
@@ -450,7 +451,6 @@ namespace steemit { namespace chain {
 
          std::unique_ptr< database_impl > _my;
 
-         vector< signed_transaction >  _pending_tx;
          fork_database                 _fork_db;
          fc::time_point_sec            _hardfork_times[ STEEMIT_NUM_HARDFORKS + 1 ];
          protocol::hardfork_version    _hardfork_versions[ STEEMIT_NUM_HARDFORKS + 1 ];
