@@ -1370,7 +1370,9 @@ namespace graphene { namespace net { namespace detail {
         // 1 second seems reasonable.  When we get closer to our eventual target of 1 second
         // blocks, this will need to be re-evaluated (i.e., can we set the timeout to 500ms
         // and still handle normal network & processing delays without excessive disconnects)
-        fc::microseconds active_ignored_request_timeout = fc::seconds(1);
+
+        // Increased to 6 in #1660 due to heavy load. May need to adjust further
+        fc::microseconds active_ignored_request_timeout = fc::seconds(6);
 
         fc::time_point active_disconnect_threshold = fc::time_point::now() - fc::seconds(active_disconnect_timeout);
         fc::time_point active_send_keepalive_threshold = fc::time_point::now() - fc::seconds(active_send_keepalive_timeout);
