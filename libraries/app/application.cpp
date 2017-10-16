@@ -83,6 +83,8 @@ namespace detail {
    class application_impl : public graphene::net::node_delegate
    {
    public:
+      uint32_t _next_rebroadcast = -1;
+      boost::signals2::connection _rebroadcast_con;
       fc::optional<fc::temp_file> _lock_file;
       bool _is_block_producer = false;
       bool _force_validate = false;
@@ -234,6 +236,18 @@ namespace detail {
          c->set_session_data( session );
       }
 
+      void rebroadcast_pending_tx()
+      {
+         if( _chain_db->head_block_num() >= _next_rebroadcast )
+         {
+            _next_rebroadcast += 3 + ( rand() % 4 ); // Every 3-6 blocks, rebroadcast. Do this randomly to prevent simultaneous p2p spam.
+            for( const auto& trx : _chain_db->_pending_tx )
+            {
+                  _p2p_network->broadcast( graphene::net::trx_message( trx ) );
+            }
+         }
+      }
+
       application_impl(application* self)
          : _self(self),
            //_pending_trx_db(std::make_shared<graphene::db::object_database>()),
@@ -350,6 +364,9 @@ namespace detail {
             }
          }
          _chain_db->show_free_memory( true );
+
+         _next_rebroadcast = _chain_db->head_block_num() + 3 + rand() % 4;
+         _rebroadcast_con = _chain_db->applied_block.connect( [&]( const signed_block& b ){ rebroadcast_pending_tx(); } );
 
          if( _options->count("api-user") )
          {
