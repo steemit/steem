@@ -174,6 +174,10 @@ namespace steemit { namespace app {
                 confirmation_callback callback = itr->second;
                 itr->second = [](variant){};
                 callback( fc::variant(transaction_confirmation( id, block_num, int32_t(trx_num), false )) );
+                _callbacks.erase( itr );
+                auto tx_itr = _pending_tx.find( id );
+                if( tx_itr != _pending_tx.end() )
+                  _pending_tx.erase( tx_itr );
              }
           }
 
@@ -197,9 +201,20 @@ namespace steemit { namespace app {
                 callback( fc::variant(transaction_confirmation{ txid_byval, block_num, -1, true}) );
 
                 _callbacks.erase( cb_it );
+
+                auto tx_itr = _pending_tx.find( txid_byval );
+                if( tx_itr != _pending_tx.end() )
+                  _pending_tx.erase( tx_itr );
              }
              _callbacks_expirations.erase( exp_it );
           }
+
+          for( auto tx_itr = _pending_tx.begin();
+               tx_itr != _pending_tx.end();
+               ++tx_itr )
+         {
+            _app.p2p_node()->broadcast_transaction(tx_itr->second);
+         }
        }); /// fc::async
 
     }
@@ -289,6 +304,7 @@ namespace steemit { namespace app {
           trx.validate();
           _callbacks[trx.id()] = cb;
           _callbacks_expirations[trx.expiration].push_back(trx.id());
+          _pending_tx[trx.id()] = trx;
 
           _app.chain_database()->push_transaction(trx);
           _app.p2p_node()->broadcast_transaction(trx);

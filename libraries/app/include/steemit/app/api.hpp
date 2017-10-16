@@ -115,6 +115,7 @@ namespace steemit { namespace app {
 
          map<transaction_id_type,confirmation_callback>     _callbacks;
          map<time_point_sec, vector<transaction_id_type> >  _callbacks_expirations;
+         map<transaction_id_type,signed_transaction>        _pending_tx;
 
          int32_t                                        _max_block_age = -1;
 
