@@ -48,5 +48,5 @@ namespace steemit { namespace chain {
 
 } } // steemit::chain
 
-FC_REFLECT( steemit::chain::transaction_object, (id)(packed_trx)(trx_id)(expiration) )
+FC_REFLECT( steemit::chain::transaction_object, (id)(packed_trx)(trx_id)(expiration)(block_num) )
 CHAINBASE_SET_INDEX_TYPE( steemit::chain::transaction_object, steemit::chain::transaction_index )
