@@ -47,7 +47,7 @@ public:
       _pid = getpid();
    }
 
-   const fc::variant& measure(uint32_t block_number)
+   const measurement& measure(uint32_t block_number)
    {
       uint64_t current_virtual = 0;
       uint64_t peak_virtual = 0;
@@ -62,8 +62,7 @@ public:
                 int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC), // cpu_ms
                 current_virtual,
                 peak_virtual );
-      fc::variant v( data );
-      _measurements.push_back( v );
+      _measurements.push_back( data );
    
       _last_sys_time = current_sys_time;
       _last_cpu_time = current_cpu_time;
@@ -109,7 +108,8 @@ private:
    clock_t        _last_cpu_time = 0;
    uint64_t       _total_blocks = 0;
    pid_t          _pid = 0;
-   fc::variants   _measurements;
+   typedef std::vector<measurement> TMeasurements;   
+   TMeasurements  _measurements;
 };
 
 } } // steem::utilities
