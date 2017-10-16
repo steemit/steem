@@ -1,4 +1,8 @@
+#pragma once
+
 #include <fc/io/json.hpp>
+
+#include <fc/macros.hpp>
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -94,8 +98,10 @@ private:
    long read_mem()
    {
       int who = RUSAGE_SELF;
-      struct rusage usage;
+      struct rusage usage = {{0}};
       int ret = getrusage(who,&usage);
+      /// Not sure, probably better return some meaningfull value when getrusage fails
+      FC_UNUSED(ret);
       return usage.ru_maxrss;
    }
 

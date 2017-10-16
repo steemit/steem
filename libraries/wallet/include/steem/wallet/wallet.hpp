@@ -194,7 +194,10 @@ class wallet_api
       string                            get_private_key( public_key_type pubkey )const;
 
       /**
-       *  @param role - active | owner | posting | memo
+       *  @param account  - the name of the account to retrieve key for
+       *  @param role     - active | owner | posting | memo
+       *  @param password - the password to be used at key generation
+       *  @return public key corresponding to generated private key, and private key in WIF format.
        */
       pair<public_key_type,string>  get_private_key_from_password( string account, string role, string password )const;
 
@@ -714,13 +717,19 @@ class wallet_api
       annotated_signed_transaction transfer_to_savings( string from, string to, asset amount, string memo, bool broadcast = false );
 
       /**
-       * @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+       *  @param from       - the account that initiated the transfer
+       *  @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
+       *  @param to         - the account getting the transfer
+       *  @param amount     - the amount of assets to be transfered 
+       *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction transfer_from_savings( string from, uint32_t request_id, string to, asset amount, string memo, bool broadcast = false );
 
       /**
-       *  @param request_id the id used in transfer_from_savings
        *  @param from the account that initiated the transfer
+       *  @param request_id the id used in transfer_from_savings
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction cancel_transfer_from_savings( string from, uint32_t request_id, bool broadcast = false );
 

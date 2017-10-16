@@ -42,6 +42,7 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/stdio.hpp>
+#include <fc/macros.hpp>
 #include <fc/network/http/websocket.hpp>
 #include <fc/rpc/cli.hpp>
 #include <fc/rpc/websocket_api.hpp>
@@ -513,6 +514,7 @@ public:
          {
             //_remote_api->broadcast_transaction( tx );
             auto result = _remote_api->broadcast_transaction_synchronous( tx );
+            FC_UNUSED(result);
          }
          return tx;
    } FC_CAPTURE_AND_RETHROW( (account_name)(creator_account_name)(broadcast) ) }

@@ -12,6 +12,7 @@
 
 #include <steem/plugins/witness/witness_objects.hpp>
 
+#include <fc/macros.hpp>
 #include <fc/crypto/digest.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
@@ -533,6 +534,9 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       const auto& mod_sam_comment = db->get_comment( "sam", string( "dolor" ) );
       const auto& mod_bob_comment = db->get_comment( "bob", string( "ipsum" ) );
       const auto& mod_alice_comment = db->get_comment( "alice", string( "lorem" ) );
+
+      FC_UNUSED(mod_bob_comment, mod_alice_comment);
+
       fc::time_point_sec created = mod_sam_comment.created;
 
       db->modify( mod_sam_comment, [&]( comment_object& com )

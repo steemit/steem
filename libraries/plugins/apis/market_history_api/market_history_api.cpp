@@ -31,25 +31,13 @@ DEFINE_API( market_history_api_impl, get_ticker )
 {
    get_ticker_return result;
 
-   const auto& bucket_idx = _db.get_index< bucket_index, by_bucket >();
-   auto itr = bucket_idx.lower_bound( boost::make_tuple( 86400, _db.head_block_time() - 86400 ) );
-
-   // if( itr != bucket_idx.end() )
-   // {
-   //    auto open = ( asset( itr->open_sbd, SBD_SYMBOL ) / asset( itr->open_steem, STEEM_SYMBOL ) ).to_real();
-   //    result.latest = ( asset( itr->close_sbd, SBD_SYMBOL ) / asset( itr->close_steem, STEEM_SYMBOL ) ).to_real();
-   //    result.percent_change = ( ( result.latest - open ) / open ) * 100;
-   // }
-   // else
-   {
-      result.latest = 0;
-      result.percent_change = 0;
-   }
+   result.latest = 0;
+   result.percent_change = 0;
 
    auto orders = get_order_book( get_order_book_args{ 1 } );
-   if( orders.bids.size() )
+   if( orders.bids.empty() == false)
       result.highest_bid = orders.bids[0].real_price;
-   if( orders.asks.size() )
+   if( orders.asks.empty() == false)
       result.lowest_ask = orders.asks[0].real_price;
 
    auto volume = get_volume( get_volume_args() );
