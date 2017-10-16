@@ -31,6 +31,7 @@ namespace steemit { namespace chain {
          bip::vector< char, allocator< char > > packed_trx;
          transaction_id_type  trx_id;
          time_point_sec       expiration;
+         uint32_t             block_num = 0;
    };
 
    struct by_expiration;

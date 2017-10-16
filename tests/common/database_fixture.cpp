@@ -484,12 +484,14 @@ void database_fixture::set_price_feed( const price& new_price )
          op.exchange_rate = new_price;
          trx.operations.push_back( op );
          trx.set_expiration( db.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
-         db.push_transaction( trx, ~0 );
-         trx.operations.clear();
+         trx.sign( init_account_priv_key, db.get_chain_id() );
+         db.push_transaction( trx );
+         trx.clear();
       }
    } FC_CAPTURE_AND_RETHROW( (new_price) )
 
    generate_blocks( STEEMIT_BLOCKS_PER_HOUR );
+   idump( (db.get(feed_history_id_type()).current_median_history)(new_price) );
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
       !db.skip_price_feed_limit_check ||

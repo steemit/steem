@@ -303,6 +303,15 @@ class database_api
       std::string                   get_transaction_hex(const signed_transaction& trx)const;
       annotated_signed_transaction  get_transaction( transaction_id_type trx_id )const;
 
+      /// @brief returns true if the transaction is known by this node (in a block or pending state)
+      bool is_known_transaction( transaction_id_type trx_id )const;
+
+      /// @brief returns true if the transaction is included in a block
+      bool is_confirmed_transaction( transaction_id_type trx_id )const;
+
+      /// @breif returns true if the transaction is included in an irreversible block
+      bool is_irreversible_transaction( transaction_id_type trx_id )const;
+
       /**
        *  This API will take a partially signed transaction and a set of public keys that the owner has the ability to sign for
        *  and return the minimal subset of public keys that should add signatures to the transaction.
@@ -515,6 +524,9 @@ FC_API(steemit::app::database_api,
    // Authority / validation
    (get_transaction_hex)
    (get_transaction)
+   (is_known_transaction)
+   (is_confirmed_transaction)
+   (is_irreversible_transaction)
    (get_required_signatures)
    (get_potential_signatures)
    (verify_authority)

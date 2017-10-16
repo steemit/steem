@@ -66,7 +66,8 @@ namespace steemit { namespace chain {
             skip_validate               = 1 << 10, ///< used prior to checkpoint, skips validate() call on transaction
             skip_validate_invariants    = 1 << 11, ///< used to skip database invariant check on block application
             skip_undo_block             = 1 << 12, ///< used to skip undo db on reindex
-            skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
+            skip_block_log              = 1 << 13, ///< used to skip block logging on reindex
+            skip_tx_in_block            = 1 << 14  ///< used for recording block in which tx is included
          };
 
          /**

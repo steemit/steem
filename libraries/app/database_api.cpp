@@ -66,6 +66,9 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
 
       // Authority / validation
       std::string get_transaction_hex(const signed_transaction& trx)const;
+      bool is_known_transaction( transaction_id_type trx_id )const;
+      bool is_confirmed_transaction( transaction_id_type trx_id )const;
+      bool is_irreversible_transaction( transaction_id_type trx_id )const;
       set<public_key_type> get_required_signatures( const signed_transaction& trx, const flat_set<public_key_type>& available_keys )const;
       set<public_key_type> get_potential_signatures( const signed_transaction& trx )const;
       bool verify_authority( const signed_transaction& trx )const;
@@ -857,6 +860,58 @@ std::string database_api::get_transaction_hex(const signed_transaction& trx)cons
 std::string database_api_impl::get_transaction_hex(const signed_transaction& trx)const
 {
    return fc::to_hex(fc::raw::pack(trx));
+}
+
+bool database_api::is_known_transaction( transaction_id_type trx_id )const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->is_known_transaction( trx_id );
+   });
+}
+
+bool database_api_impl::is_known_transaction( transaction_id_type trx_id )const
+{
+   auto trx = _db.find< transaction_object, by_trx_id >( trx_id );
+   return trx != nullptr;
+}
+
+bool database_api::is_confirmed_transaction( transaction_id_type trx_id )const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->is_confirmed_transaction( trx_id );
+   });
+}
+
+bool database_api_impl::is_confirmed_transaction( transaction_id_type trx_id )const
+{
+   auto trx = _db.find< transaction_object, by_trx_id >( trx_id );
+   if( trx != nullptr )
+   {
+      return trx->block_num != 0;
+   }
+
+   return false;
+}
+
+bool database_api::is_irreversible_transaction( transaction_id_type trx_id )const
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->is_irreversible_transaction( trx_id );
+   });
+}
+
+bool database_api_impl::is_irreversible_transaction( transaction_id_type trx_id )const
+{
+   auto trx = _db.find< transaction_object, by_trx_id >( trx_id );
+   if( trx != nullptr )
+   {
+      return ( trx->block_num != 0 ) && trx->block_num <= _db.get_dynamic_global_properties().last_irreversible_block_num;
+   }
+
+   return false;
 }
 
 set<public_key_type> database_api::get_required_signatures( const signed_transaction& trx, const flat_set<public_key_type>& available_keys )const

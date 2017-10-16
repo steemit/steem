@@ -784,5 +784,85 @@ BOOST_FIXTURE_TEST_CASE( hardfork_test, database_fixture )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_FIXTURE_TEST_CASE( fork_pending_tx, database_fixture )
+{
+   try
+   {
+      fc::temp_directory dir1( graphene::utilities::temp_directory_path() ),
+                         dir2( graphene::utilities::temp_directory_path() ),
+                         dir3( graphene::utilities::temp_directory_path() ),
+                         dir4( graphene::utilities::temp_directory_path() );
+      database db1,
+               db2,
+               db3,
+               db4;
+      db1._log_hardforks = false;
+      db1.open(dir1.path(), dir1.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db2._log_hardforks = false;
+      db2.open(dir2.path(), dir2.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db3._log_hardforks = false;
+      db3.open(dir3.path(), dir3.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+      db4._log_hardforks = false;
+      db4.open(dir4.path(), dir4.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE, chainbase::database::read_write );
+
+      auto a = db1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing );
+      db2.push_block( a );
+      db3.push_block( a );
+      db4.push_block( a );
+
+      signed_transaction trx;
+      account_create_operation cop;
+      cop.new_account_name = "alice";
+      cop.creator = STEEMIT_INIT_MINER_NAME;
+      cop.owner = authority(1, init_account_pub_key, 1);
+      cop.active = cop.owner;
+      trx.operations.push_back(cop);
+      trx.set_expiration( db1.head_block_time() + STEEMIT_MAX_TIME_UNTIL_EXPIRATION );
+      trx.sign( init_account_priv_key, db1.get_chain_id() );
+
+      db1.push_transaction( trx );
+      db3.push_transaction( trx );
+      db4.push_transaction( trx );
+
+      auto b = db2.generate_block( db2.get_slot_time(1), db2.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing );
+      auto c = db3.generate_block( db3.get_slot_time(1), db3.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing );
+
+      BOOST_REQUIRE( b.transactions.size() == 0 );
+      BOOST_REQUIRE( c.transactions.size() == 1 );
+
+      db1.push_block( b );
+      db1.push_block( c );
+      db4.push_block( c );
+      db4.push_block( b );
+
+      /*
+      d1 A B
+      d2 A B
+      d3 A C(trx)
+      d4 A C(trx)
+      */
+
+      auto e = db1.generate_block( db1.get_slot_time(1), db1.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing );
+      auto f = db4.generate_block( db4.get_slot_time(1), db4.get_scheduled_witness(1), init_account_priv_key, database::skip_nothing );
+
+      /*
+      d1 A B E(trx)
+      d2 A B
+      d3 A C(trx)
+      d4 A C(trx) F
+      */
+
+      BOOST_REQUIRE( e.transactions.size() == 1 );
+      BOOST_REQUIRE( f.transactions.size() == 0 );
+
+      auto id = trx.id();
+      BOOST_REQUIRE( db1.is_known_transaction( id ) );
+      BOOST_REQUIRE( !db2.is_known_transaction( id ) );
+      BOOST_REQUIRE( db3.is_known_transaction( id ) );
+      BOOST_REQUIRE( db4.is_known_transaction( id ) );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
