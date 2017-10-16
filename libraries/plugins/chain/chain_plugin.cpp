@@ -105,13 +105,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
-   app().set_chain_desc( std::string( my->db.get_chain_id() ) );
 #ifdef IS_TEST_NET
    if( options.count( "chain-id" ) )
-   {
       my->db.set_chain_id( options.at("chain-id").as< std::string >() );
-      app().set_chain_desc( std::string( my->db.get_chain_id() ) );
-   }
 #endif
 }
 

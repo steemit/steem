@@ -88,9 +88,6 @@ namespace appbase {
 
          boost::asio::io_service& get_io_service() { return *io_serv; }
 
-         const std::string& get_chain_desc() const{ return chain_desc; };
-         void set_chain_desc( const std::string& str ){ chain_desc = str; };
-
       protected:
          template< typename Impl >
          friend class plugin;
@@ -115,7 +112,6 @@ namespace appbase {
          vector< abstract_plugin* >                         running_plugins; ///< stored in the order they were started running
          std::shared_ptr< boost::asio::io_service >         io_serv;
          std::string                                        version_info;
-         std::string                                        chain_desc;
 
          void set_program_options();
          void write_default_config( const bfs::path& cfg_file );

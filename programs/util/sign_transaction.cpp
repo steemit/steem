@@ -33,8 +33,6 @@ FC_REFLECT( tx_signing_result, (digest)(sig_digest)(key)(sig) )
 
 int main(int argc, char** argv, char** envp)
 {
-   steem::protocol::chain_id_type _chain_id = steem::protocol::generate_chain_id( STEEM_CHAIN_ID_NAME );
-  
    // hash key pairs on stdin
    std::string chain_id, hash, wif;
    while( std::cin )
@@ -51,7 +49,7 @@ int main(int argc, char** argv, char** envp)
       tx_signing_result sres;
       sres.tx = sreq.tx;
       sres.digest = sreq.tx.digest();
-      sres.sig_digest = sreq.tx.sig_digest( _chain_id );
+      sres.sig_digest = sreq.tx.sig_digest(STEEM_CHAIN_ID);
 
       fc::ecc::private_key priv_key = *steem::utilities::wif_to_key( sreq.wif );
       sres.sig = priv_key.sign_compact( sres.sig_digest );

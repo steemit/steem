@@ -367,12 +367,12 @@ std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head
 
 chain_id_type database::get_chain_id() const
 {
-   return STEEM_CHAIN_ID;
+   return steem_chain_id;
 }
 
 void database::set_chain_id( const std::string& _chain_id_name )
 {
-   STEEM_CHAIN_ID = generate_chain_id( _chain_id_name );
+   steem_chain_id = generate_chain_id( _chain_id_name );
 }
 
 const witness_object& database::get_witness( const account_name_type& name ) const
