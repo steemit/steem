@@ -1,3 +1,5 @@
+  limit_req_zone $http_x_forwarded_for zone=steemd:32m rate=100r/m;
+
   server {
     listen 0.0.0.0:8090;
 
@@ -7,6 +9,7 @@
     }
 
     location / {
+      limit_req zone=steemd burst=50;
       access_log off;
       proxy_pass http://ws;
       proxy_set_header X-Real-IP $remote_addr;
