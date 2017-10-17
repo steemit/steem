@@ -1,0 +1,143 @@
+---
+- config:
+  - testset: "Database API Tests"
+  - variable_binds:
+    - api: "database_api"
+  - generators:
+    - test_id: {type: 'number_sequence', start: 1}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_dynamical_global_properties"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_dynamic_global_properties"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_config"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_config"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_witness_schedule"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_witness_schedule"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_hardfork_properties"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_hardfork_properties"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_reward_funds"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_reward_funds"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_current_price_feed"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_current_price_feed"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "get_feed_history"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "get_feed_history"
+    - args: {}
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+
+- test:
+  - generator_binds:
+    - test_id: test_id
+  - group: "database_api"
+  - name: "list_witnesses"
+  - url: "/rpc"
+  - method: "POST"
+  - variable_binds:
+    - method: "list_witnesses"
+    - args: '{ "start": 0, "limit": 1, "order": "by_name" }'
+  - body: {template: {file: "request_template.json"}}
+  - validators:
+    - extract_test: {jsonpath_mini: "error", test: "not_exists"}
+    - extract_test: {jsonpath_mini: "result", test: "exists"}
+    - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
+    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}

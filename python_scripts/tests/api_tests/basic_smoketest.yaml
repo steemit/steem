@@ -1,0 +1,9 @@
+- config:
+  - testset: "Basic steemd API Smoke Test"
+
+- test:
+  - name: "Test ip address"
+  - group: "basic_smoketest"
+  - url: "/rpc"
+  - method: "POST"
+  - body: '{}'

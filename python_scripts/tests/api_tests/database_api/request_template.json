@@ -1,0 +1,6 @@
+{
+    "jsonrpc": "2.0",
+    "id": $test_id,
+    "method": "call",
+    "params": ["$api", "$method", $args]
+}
