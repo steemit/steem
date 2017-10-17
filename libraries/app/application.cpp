@@ -59,6 +59,9 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
+// Every 3-6 blocks, rebroadcast. Do this randomly to prevent simultaneous p2p spam.
+#define REBROADCAST_RAND_INTERVAL() 3 + ( rand() % 4 )
+
 namespace steemit { namespace app {
 using graphene::net::item_hash_t;
 using graphene::net::item_id;
@@ -240,7 +243,7 @@ namespace detail {
       {
          if( _chain_db->head_block_num() >= _next_rebroadcast )
          {
-            _next_rebroadcast += 3 + ( rand() % 4 ); // Every 3-6 blocks, rebroadcast. Do this randomly to prevent simultaneous p2p spam.
+            _next_rebroadcast += REBROADCAST_RAND_INTERVAL();
             for( const auto& trx : _chain_db->_pending_tx )
             {
                   _p2p_network->broadcast( graphene::net::trx_message( trx ) );
@@ -365,8 +368,8 @@ namespace detail {
          }
          _chain_db->show_free_memory( true );
 
-         _next_rebroadcast = _chain_db->head_block_num() + 3 + rand() % 4;
-         _rebroadcast_con = _chain_db->applied_block.connect( [&]( const signed_block& b ){ rebroadcast_pending_tx(); } );
+         _next_rebroadcast = _chain_db->head_block_num() + REBROADCAST_RAND_INTERVAL();
+         _rebroadcast_con = _chain_db->applied_block.connect( [this]( const signed_block& b ){ rebroadcast_pending_tx(); } );
 
          if( _options->count("api-user") )
          {
