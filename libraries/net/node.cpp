@@ -1361,16 +1361,14 @@ namespace graphene { namespace net { namespace detail {
         uint32_t active_disconnect_timeout = 10 * _recent_block_interval_in_seconds;
         uint32_t active_send_keepalive_timeout = active_disconnect_timeout / 2;
 
-        // set the ignored request time out to 1 second.  When we request a block
+        // set the ignored request time out to 6 second.  When we request a block
         // or transaction from a peer, this timeout determines how long we wait for them
         // to reply before we give up and ask another peer for the item.
         // Ideally this should be significantly shorter than the block interval, because
         // we'd like to realize the block isn't coming and fetch it from a different
-        // peer before the next block comes in.  At the current target of 3 second blocks,
-        // 1 second seems reasonable.  When we get closer to our eventual target of 1 second
-        // blocks, this will need to be re-evaluated (i.e., can we set the timeout to 500ms
-        // and still handle normal network & processing delays without excessive disconnects)
-        fc::microseconds active_ignored_request_timeout = fc::seconds(1);
+        // peer before the next block comes in. 
+        // Increased to 6 from 1 in #1660 due to heavy load. May need to adjust further
+        fc::microseconds active_ignored_request_timeout = fc::seconds(6);
 
         fc::time_point active_disconnect_threshold = fc::time_point::now() - fc::seconds(active_disconnect_timeout);
         fc::time_point active_send_keepalive_threshold = fc::time_point::now() - fc::seconds(active_send_keepalive_timeout);
