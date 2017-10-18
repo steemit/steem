@@ -88,6 +88,8 @@ class asset_symbol_type
 
 } } // steem::protocol
 
+FC_REFLECT(steem::protocol::asset_symbol_type, (asset_num))
+
 namespace fc { namespace raw {
 
 // Legacy serialization of assets

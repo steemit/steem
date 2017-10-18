@@ -19,42 +19,44 @@ using boost::container::flat_set;
 
 BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
-BOOST_AUTO_TEST_CASE( elevate_account_validate )
+BOOST_AUTO_TEST_CASE( smt_create_validate )
 {
    try
    {
-      smt_elevate_account_operation op;
-      op.account = "@@@@@";
-      op.fee = ASSET( "1.000 TESTS" );
+      smt_create_operation op;
+      op.control_account = "@@@@@";
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.account = "alice";
+      op.control_account = "alice";
+      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
       op.validate();
 
-      op.fee.amount = -op.fee.amount;
+      op.smt_creation_fee.amount = -op.smt_creation_fee.amount;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       // passes with MAX_SHARE_SUPPLY
-      op.fee.amount = STEEM_MAX_SHARE_SUPPLY;
+      op.smt_creation_fee.amount = STEEM_MAX_SHARE_SUPPLY;
       op.validate();
 
       // fails with MAX_SHARE_SUPPLY+1
-      ++op.fee.amount;
+      ++op.smt_creation_fee.amount;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
-      op.fee = ASSET( "1.000000 VESTS" );
+      op.smt_creation_fee = ASSET( "1.000000 VESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
    }
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( elevate_account_authorities )
+BOOST_AUTO_TEST_CASE( smt_create_authorities )
 {
    try
    {
-      smt_elevate_account_operation op;
-      op.account = "alice";
-      op.fee = ASSET( "1.000 TESTS" );
+      smt_create_operation op;
+      op.control_account = "alice";
+      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -72,7 +74,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE( elevate_account_apply )
+BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try
    {
@@ -82,10 +84,11 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
 
       fund( "alice", 10 * 1000 * 1000 );
 
-      smt_elevate_account_operation op;
+      smt_create_operation op;
 
-      op.fee = ASSET( "1000.000 TBD" );
-      op.account = "alice";
+      op.smt_creation_fee = ASSET( "1000.000 TBD" );
+      op.control_account = "alice";
+      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
 
       signed_transaction tx;
 
@@ -98,7 +101,7 @@ BOOST_AUTO_TEST_CASE( elevate_account_apply )
       convert( "alice", ASSET( "5000.000 TESTS" ) );
       db->push_transaction( tx, 0 );
 
-      // Check the account cannot elevate itself twice
+      // Check the SMT cannot be created twice
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
       // TODO:
@@ -255,42 +258,27 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
 
-      // Throw due to non-elevated account (too early).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      // Throw due to non-existing SMT (too early).
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
-      // Elevate account.
-      {
-         set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
-         fund( "alice", 10 * 1000 * 1000 );
-
-         smt_elevate_account_operation op;
-
-         op.fee = ASSET( "1000.000 TBD" );
-         op.account = "alice";
-
-         convert( "alice", ASSET( "5000.000 TESTS" ) );
-
-         signed_transaction tx;
-
-         tx.operations.push_back( op );
-         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( alice_private_key, db->get_chain_id() );
-         db->push_transaction( tx, 0 );
-      }
-
-      // Throw due to non-elevated account (too early).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      // Create SMT.
+      signed_transaction ty;
+      create_smt(ty, "alice", alice_private_key, "ALICE_COIN", 3);
 
       // TODO: Replace the code below with account setup operation execution once its implemented.
-      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_control_account >( "alice" );
-      FC_ASSERT( smt != nullptr, "The account has just been elevated!" );
+      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( alice_symbol );
+      FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
       FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
       db->modify( *smt, [&]( steem::chain::smt_token_object& token )
       {
          token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
       });
+      signed_transaction tz;
+      tz.operations.push_back( op );
+      tz.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tz.sign( alice_private_key, db->get_chain_id() );
       // Throw due to closed setup phase (too late).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      STEEM_REQUIRE_THROW( db->push_transaction( tz, database::skip_transaction_dupe_check ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
@@ -305,32 +293,28 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       fund( "dany", 5000 );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
 
+      signed_transaction tx;
+      
       smt_set_setup_parameters_operation op;
       op.control_account = "dany";
-
-      signed_transaction tx;
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( dany_private_key, db->get_chain_id() );
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception ); // account not elevated
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception ); // no SMT
 
-      // elevate account
-      {
-         smt_elevate_account_operation op;
-         op.fee = ASSET( "1000.000 TBD" );
-         op.account = "dany";
+      // create SMT
+      signed_transaction ty;
+      create_smt(ty, "dany", dany_private_key, "DANY_COIN", 3);
 
-         signed_transaction tx;
-         tx.operations.push_back( op );
-         tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         tx.sign( dany_private_key, db->get_chain_id() );
-         db->push_transaction( tx, 0 );
-      }
+      signed_transaction tz;
+      tz.operations.push_back( op );
+      tz.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tz.sign( dany_private_key, db->get_chain_id() );
 
-      db->push_transaction( tx, 0 );
+      db->push_transaction( tz, 0 );
 
-      db->push_transaction( tx, database::skip_transaction_dupe_check );
+      db->push_transaction( tz, database::skip_transaction_dupe_check );
 
       signed_transaction tx1;
 
@@ -513,13 +497,13 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( alice_private_key, db->get_chain_id() );
 
-      //First we should elevate account.
+      //First we should create SMT
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       tx.operations.clear();
       tx.signatures.clear();
 
-      //Try to elevate account
-      elevate( tx, "alice", alice_private_key );
+      //Try to create SMT
+      create_smt( tx, "alice", alice_private_key, "ALICE_COIN", 3 );
       tx.operations.clear();
       tx.signatures.clear();
 

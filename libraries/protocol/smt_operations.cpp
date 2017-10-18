@@ -6,12 +6,14 @@
 
 namespace steem { namespace protocol {
 
-void smt_elevate_account_operation::validate()const
+void smt_create_operation::validate()const
 {
-   validate_account_name( account );
-   FC_ASSERT( fee.amount >= 0, "fee cannot be negative" );
-   FC_ASSERT( fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
-   FC_ASSERT( is_asset_type( fee, STEEM_SYMBOL ) || is_asset_type( fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
+   validate_account_name( control_account );
+   FC_ASSERT( smt_creation_fee.amount >= 0, "fee cannot be negative" );
+   FC_ASSERT( smt_creation_fee.amount <= STEEM_MAX_SHARE_SUPPLY, "Fee must be smaller than STEEM_MAX_SHARE_SUPPLY" );
+   FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
+   FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
+   symbol.validate();
 }
 
 bool is_valid_unit_target( const account_name_type& name )
@@ -184,8 +186,6 @@ void smt_setup_emissions_operation::validate()const
    FC_ASSERT( schedule_time <= lep_time || lep_time == rep_time );
    // ^ lep_time is either later or non-important
 
-   //FC_ASSERT( lep_abs_amount.symbol_name() == control_account );
-   // ^ TODO Replace with appropriate comparison between asset symbol and SMT symbol.
    FC_ASSERT( lep_abs_amount.symbol == rep_abs_amount.symbol );
    FC_ASSERT( lep_abs_amount.amount >= 0 && rep_abs_amount.amount >= 0 );
    FC_ASSERT( lep_abs_amount.amount != rep_abs_amount.amount || lep_abs_amount.amount > 0 );

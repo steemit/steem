@@ -2244,7 +2244,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_setup_emissions_evaluator            >();
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
-   _my->_evaluator_registry.register_evaluator< smt_elevate_account_evaluator            >();
+   _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
 }
 

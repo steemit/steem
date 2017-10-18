@@ -35,9 +35,23 @@ private:
    smt_token_object& _smt_token;
 };
 
+const smt_token_object& common_pre_setup_evaluation(
+   const database& _db, const asset_symbol_type& symbol, const account_name_type& control_account )
+{
+   const smt_token_object* smt = _db.find< smt_token_object, by_symbol >( symbol );
+   // Check whether it's not too early to setup operation.
+   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", symbol.to_nai() ) );
+   // Check whether some impostor tries to hijack SMT operation.
+   FC_ASSERT( smt->control_account == control_account );
+   // Check whether it's not too late to setup emissions operation.
+   FC_ASSERT( smt->phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
+
+   return *smt;
+}
+
 } // namespace
 
-void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operation& o )
+void smt_create_evaluator::do_apply( const smt_create_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
@@ -45,10 +59,10 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
    asset effective_elevation_fee;
 
    FC_ASSERT( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL || dgpo.smt_creation_fee.symbol == SBD_SYMBOL,
-      "Unexpected internal error - wrong symbol ${s} of account elevation fee.", ("s", dgpo.smt_creation_fee.symbol) );
-   FC_ASSERT( o.fee.symbol == STEEM_SYMBOL || o.fee.symbol == SBD_SYMBOL,
-      "Asset fee must be STEEM or SBD, was ${s}", ("s", o.fee.symbol) );
-   if( o.fee.symbol == dgpo.smt_creation_fee.symbol )
+      "Unexpected internal error - wrong symbol ${s} of SMT creation fee.", ("s", dgpo.smt_creation_fee.symbol) );
+   FC_ASSERT( o.smt_creation_fee.symbol == STEEM_SYMBOL || o.smt_creation_fee.symbol == SBD_SYMBOL,
+      "Asset fee must be STEEM or SBD, was ${s}", ("s", o.smt_creation_fee.symbol) );
+   if( o.smt_creation_fee.symbol == dgpo.smt_creation_fee.symbol )
    {
       effective_elevation_fee = dgpo.smt_creation_fee;
    }
@@ -56,57 +70,62 @@ void smt_elevate_account_evaluator::do_apply( const smt_elevate_account_operatio
    {
       const auto& fhistory = _db.get_feed_history();
       FC_ASSERT( !fhistory.current_median_history.is_null(), "Cannot pay the fee using SBD because there is no price feed." );
-      if( o.fee.symbol == STEEM_SYMBOL )
+      if( o.smt_creation_fee.symbol == STEEM_SYMBOL )
       {
-         effective_elevation_fee = _db.to_sbd( o.fee );
+         effective_elevation_fee = _db.to_sbd( o.smt_creation_fee );
       }
       else
       {
-         effective_elevation_fee = _db.to_steem( o.fee );         
+         effective_elevation_fee = _db.to_steem( o.smt_creation_fee );         
       }
    }
 
-   const account_object& acct = _db.get_account( o.account );
-   FC_ASSERT( o.fee >= effective_elevation_fee, "Fee of ${of} is too small, must be at least ${ef}", ("of", o.fee)("ef", effective_elevation_fee) );
-   FC_ASSERT( _db.get_balance( acct, o.fee.symbol ) >= o.fee, "Account does not have sufficient funds for specified fee of ${of}", ("of", o.fee) );
+   const account_object& acct = _db.get_account( o.control_account );
+   FC_ASSERT( o.smt_creation_fee >= effective_elevation_fee, 
+      "Fee of ${of} is too small, must be at least ${ef}", ("of", o.smt_creation_fee)("ef", effective_elevation_fee) );
+   FC_ASSERT( _db.get_balance( acct, o.smt_creation_fee.symbol ) >= o.smt_creation_fee,
+    "Account does not have sufficient funds for specified fee of ${of}", ("of", o.smt_creation_fee) );
 
    const account_object& null_account = _db.get_account( STEEM_NULL_ACCOUNT );
 
-   _db.adjust_balance( acct        , -o.fee );
-   _db.adjust_balance( null_account,  o.fee );
+   _db.adjust_balance( acct        , -o.smt_creation_fee );
+   _db.adjust_balance( null_account,  o.smt_creation_fee );
 
    _db.create< smt_token_object >( [&]( smt_token_object& token )
    {
-      token.control_account = o.account;
+      token.symbol = o.symbol;
+      token.control_account = o.control_account;
    });
 }
 
 void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+   // TODO: Check whether some impostor tries to hijack SMT operation.
 }
 
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+   // TODO: Check whether some impostor tries to hijack SMT operation.
 }
 
 void smt_refund_evaluator::do_apply( const smt_refund_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
+   // TODO: Check whether some impostor tries to hijack SMT operation.
 }
 
 void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object* smt = _db.find< smt_token_object, by_control_account >( o.control_account );
-   // Check whether it's not too early or too late to setup emissions operation.
-   FC_ASSERT( smt != nullptr, "SMT ${smt} not found", ("smt", o.control_account ) );
-   // ^ TODO: Replace SMT name with appropriate id in the assertion.
-   FC_ASSERT( smt->phase < smt_token_object::smt_phase::setup_completed, "SMT emission operation no longer allowed after setup phase is over" );
+   const smt_token_object& smt = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
 
-   _db.modify( *smt, [&]( smt_token_object& token )
+   FC_ASSERT( o.lep_abs_amount.symbol == smt.symbol );
+   // ^ Note that rep_abs_amount.symbol has been matched to lep's in validate().
+
+   _db.modify( smt, [&]( smt_token_object& token )
    {
       token.schedule_time = o.schedule_time;
       token.emissions_unit = o.emissions_unit;
@@ -125,11 +144,8 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameters_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
-   auto& smt_token_by_account = _db.get_index<smt_token_index, by_control_account>();
-   auto it = smt_token_by_account.find(o.control_account);
-   FC_ASSERT( it != smt_token_by_account.end(), "SMT ${ac} not elevated yet.", ("ac", o.control_account));
-   const smt_token_object& smt_token = *it;
-   FC_ASSERT( smt_token.phase < smt_token_object::smt_phase::setup_completed, "SMT ${ac} setup already completed.", ("ac", o.control_account));
+
+   const smt_token_object& smt_token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
    
    _db.modify( smt_token, [&]( smt_token_object& token )
    {
@@ -184,10 +200,9 @@ void smt_set_runtime_parameters_evaluator::do_apply( const smt_set_runtime_param
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const auto* _token = _db.find< smt_token_object, by_control_account >( o.control_account );
-   FC_ASSERT( _token, "SMT ${ac} not elevated yet.",("ac", o.control_account) );
+   const smt_token_object& _token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
 
-   smt_set_runtime_parameters_evaluator_visitor visitor( *_token, _db );
+   smt_set_runtime_parameters_evaluator_visitor visitor( _token, _db );
 
    for( auto& param: o.runtime_parameters )
       param.visit( visitor );
