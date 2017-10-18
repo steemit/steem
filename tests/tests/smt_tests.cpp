@@ -1,4 +1,8 @@
+#include <fc/macros.hpp>
+
 #if defined IS_TEST_NET && defined STEEM_ENABLE_SMT
+
+FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 
 #include <boost/test/unit_test.hpp>
 
@@ -119,6 +123,8 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
       uint64_t h0 = fc::sha256::hash( "alice" )._hash[0];
       uint32_t h0lo = uint32_t( h0 & 0x7FFFFFF );
       uint32_t an = h0lo % (SMT_MAX_NAI+1);
+
+      FC_UNUSED(an);
 
       ilog( "alice_symbol: ${s}", ("s", alice_symbol) );
 

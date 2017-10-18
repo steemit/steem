@@ -4,6 +4,7 @@
 
 #include <steem/utilities/key_conversion.hpp>
 
+#include <fc/macros.hpp>
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/api.hpp>
@@ -933,10 +934,14 @@ class wallet_api
       map< uint32_t, account_history::api_operation_object > get_account_history( string account, uint32_t from, uint32_t limit );
 
 
+      FC_TODO(Supplement API argument description)
       /**
        *  Marks one account as following another account.  Requires the posting authority of the follower.
        *
+       *  @param follower
+       *  @param following
        *  @param what - a set of things to follow: posts, comments, votes, ignore
+       *  @param broadcast true if you wish to broadcast the transaction
        */
       annotated_signed_transaction follow( string follower, string following, set<string> what, bool broadcast );
 

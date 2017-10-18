@@ -1488,7 +1488,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test withdrawing more vests than available" );
-      auto old_withdraw_amount = alice.to_withdraw;
+      //auto old_withdraw_amount = alice.to_withdraw;
       tx.operations.clear();
       tx.signatures.clear();
 
@@ -2040,7 +2040,8 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandchild proxy" );
-      // alice \
+      //       alice 
+      //         |
       // bob->  sam->dave
 
       tx.operations.clear();
@@ -2778,8 +2779,8 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
 
-      auto gpo = db->get_dynamic_global_properties();
-      auto start_sbd = gpo.current_sbd_supply;
+      //auto gpo = db->get_dynamic_global_properties();
+      //auto start_sbd = gpo.current_sbd_supply;
 
       op.owner = "alice";
       op.orderid = 5;
@@ -3132,8 +3133,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
 
-      auto gpo = db->get_dynamic_global_properties();
-      auto start_sbd = gpo.current_sbd_supply;
+      //auto gpo = db->get_dynamic_global_properties();
+      //auto start_sbd = gpo.current_sbd_supply;
+
 
       op.owner = "alice";
       op.orderid = 5;
@@ -5950,7 +5952,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       signed_transaction tx;
       ACTORS( (alice) );
       // 150 * fee = ( 5 * STEEM ) + SP
-      auto gpo = db->get_dynamic_global_properties();
+      //auto gpo = db->get_dynamic_global_properties();
       generate_blocks(1);
       fund( "alice", ASSET("1510.000 TESTS") );
       vest( "alice", ASSET("1000.000 TESTS") );
