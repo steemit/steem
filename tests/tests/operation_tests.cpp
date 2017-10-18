@@ -903,8 +903,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
                          = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEM_100_PERCENT ).to_uint64();
 
          BOOST_REQUIRE( new_sam.voting_power == STEEM_100_PERCENT - ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
-         BOOST_REQUIRE( new_bob_comment.net_rshares.value == old_abs_rshares - sam_weight );
-         BOOST_REQUIRE( new_bob_comment.abs_rshares.value == old_abs_rshares + sam_weight );
+         BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.net_rshares.value) == old_abs_rshares - sam_weight );
+         BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.abs_rshares.value) == old_abs_rshares + sam_weight );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
@@ -971,7 +971,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
+         BOOST_REQUIRE( static_cast<uint64_t>(alice_bob_vote->rshares) == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          BOOST_REQUIRE( db->get_account( "alice" ).voting_power == alice_voting_power );
@@ -1001,7 +1001,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( alice_bob_vote->rshares == -1 * new_rshares );
+         BOOST_REQUIRE( alice_bob_vote->rshares == -1 * static_cast<int64_t>(new_rshares) );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          BOOST_REQUIRE( db->get_account( "alice" ).voting_power == alice_voting_power );
