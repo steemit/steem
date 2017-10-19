@@ -86,10 +86,10 @@ struct operation_visitor
       }
 
       auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
-      uint32_t sequence = 0;
+      uint32_t sequence = 1;
       if( hist_itr != hist_idx.end() && hist_itr->account == item )
-         sequence = hist_itr->sequence + 1;   
-      
+         sequence = hist_itr->sequence + 1;
+
       _db.create<account_history_object>( [&]( account_history_object& ahist )
       {
          ahist.account  = item;
@@ -111,7 +111,7 @@ struct operation_visitor
          --seq_itr;
 
          while( seq_itr->account == item
-               && sequence - seq_itr->sequence > 30 
+               && sequence - seq_itr->sequence > 30
                && now - _db.get< operation_object >( seq_itr->op ).timestamp > fc::days(30) )
          {
             ilog( "Removing ${a}:${i}", ("a", item)("i", seq_itr->sequence) );
