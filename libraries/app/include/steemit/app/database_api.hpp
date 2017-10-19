@@ -98,6 +98,19 @@ struct discussion_query {
    optional<string> parent_permlink;
 };
 
+struct verify_signatures_args
+{
+   fc::sha256                       hash;
+   vector< signature_type >         signatures;
+   vector< account_name_type >      accounts;
+   authority::classification        auth_level;
+};
+
+struct verify_signatures_return
+{
+   bool valid;
+};
+
 /**
  * @brief The database_api class implements the RPC API for the chain database.
  *
@@ -326,6 +339,12 @@ class database_api
        */
       bool           verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
 
+      /*
+       * This is a general purpose API that checks signatures against accounts for an arbitrary sha256 hash
+       * using the existing authority structures in Steem
+       */
+      verify_signatures_return verify_signatures( const verify_signatures_args& args )const;
+
       /**
        *  if permlink is "" then it will return all votes for author
        */
@@ -447,6 +466,9 @@ FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(select_tags)(sele
 
 FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
 
+FC_REFLECT( steemit::app::verify_signatures_args, (hash)(signatures)(accounts)(auth_level) );
+FC_REFLECT( steemit::app::verify_signatures_return, (valid) );
+
 FC_API(steemit::app::database_api,
    // Subscriptions
    (set_block_applied_callback)
@@ -519,6 +541,7 @@ FC_API(steemit::app::database_api,
    (get_potential_signatures)
    (verify_authority)
    (verify_account_authority)
+   (verify_signatures)
 
    // votes
    (get_active_votes)
