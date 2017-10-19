@@ -23,13 +23,15 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
 {
    try
    {
+      SMT_SYMBOL( alice, 3 );
+
       smt_create_operation op;
       op.control_account = "@@@@@";
       op.smt_creation_fee = ASSET( "1.000 TESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.control_account = "alice";
-      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
+      op.symbol = alice_symbol;
       op.validate();
 
       op.smt_creation_fee.amount = -op.smt_creation_fee.amount;
@@ -53,9 +55,11 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
 {
    try
    {
+      SMT_SYMBOL( alice, 3 );
+
       smt_create_operation op;
       op.control_account = "alice";
-      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
+      op.symbol = alice_symbol;
       op.smt_creation_fee = ASSET( "1.000 TESTS" );
 
       flat_set< account_name_type > auths;
@@ -81,6 +85,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
 
       ACTORS( (alice)(bob) )
+      SMT_SYMBOL( alice, 3 );
 
       fund( "alice", 10 * 1000 * 1000 );
 
@@ -88,7 +93,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
 
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = "alice";
-      op.symbol = name_to_asset_symbol("ALICE_COIN", 3);
+      op.symbol = alice_symbol;
 
       signed_transaction tx;
 
@@ -263,7 +268,9 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 
       // Create SMT.
       signed_transaction ty;
-      create_smt(ty, "alice", alice_private_key, "ALICE_COIN", 3);
+      op.symbol = create_smt(ty, "alice", alice_private_key, 3);
+      FC_ASSERT( op.symbol == alice_symbol, "SMT symbol mismatch ${s1} vs ${s2}",
+         ("s1", op.symbol.to_string())("s2", alice_symbol.to_string()) );
 
       // TODO: Replace the code below with account setup operation execution once its implemented.
       const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( alice_symbol );
@@ -305,7 +312,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       // create SMT
       signed_transaction ty;
-      create_smt(ty, "dany", dany_private_key, "DANY_COIN", 3);
+      op.symbol = create_smt(ty, "dany", dany_private_key, 3);
 
       signed_transaction tz;
       tz.operations.push_back( op );
@@ -503,7 +510,7 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       tx.signatures.clear();
 
       //Try to create SMT
-      create_smt( tx, "alice", alice_private_key, "ALICE_COIN", 3 );
+      op.symbol = create_smt( tx, "alice", alice_private_key, 3 );
       tx.operations.clear();
       tx.signatures.clear();
 

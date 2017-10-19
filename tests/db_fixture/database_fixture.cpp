@@ -575,9 +575,11 @@ smt_database_fixture::~smt_database_fixture()
 
 }
 
-void smt_database_fixture::create_smt( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key,
-   const std::string& token_name, uint8_t token_decimal_places )
+asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key,
+   uint8_t token_decimal_places )
 {
+   smt_create_operation op;
+
    try
    {
       set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
@@ -585,8 +587,7 @@ void smt_database_fixture::create_smt( signed_transaction& tx, const string& acc
       fund( account_name, 10 * 1000 * 1000 );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
-      smt_create_operation op;
-      op.symbol = database_fixture::name_to_asset_symbol(token_name, token_decimal_places);
+      op.symbol = database_fixture::name_to_asset_symbol(account_name, token_decimal_places);
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = account_name;
 
@@ -597,6 +598,8 @@ void smt_database_fixture::create_smt( signed_transaction& tx, const string& acc
       db->push_transaction( tx, 0 );
    }
    FC_LOG_AND_RETHROW();
+
+   return op.symbol;
 }
 
 #endif

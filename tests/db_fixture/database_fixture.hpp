@@ -252,8 +252,8 @@ struct smt_database_fixture : public clean_database_fixture
    smt_database_fixture();
    virtual ~smt_database_fixture();
 
-   void create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
-      const std::string& token_name, uint8_t token_decimal_places );
+   asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
+      uint8_t token_decimal_places );
 };
 #endif
 
