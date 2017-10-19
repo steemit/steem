@@ -91,6 +91,7 @@ class catcher
 
       pcontents posts;
 
+      void summary( std::ofstream& f );
       void fill_dict( const std::string& line, content::pcontent& post );
 
    public:

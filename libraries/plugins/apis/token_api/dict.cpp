@@ -19,7 +19,7 @@ catcher::catcher()
 void catcher::fill_dict( const std::string& line, content::pcontent& post )
 {
    std::vector< std::string > words;
-   boost::split( words, line, boost::is_any_of(", .") );
+   boost::split( words, line, boost::is_any_of(", .\\/!?\"()#'$&%+-{}") );
 
    auto& vals_idx = dict.get<by_item_val>();
 
@@ -49,10 +49,8 @@ void catcher::scan()
    }
 }
 
-void catcher::summary()
+void catcher::summary( std::ofstream& f )
 {
-   std::ofstream f( "summary.txt" );
-
    types::key_type sum_key = sizeof( types::key_type ) * key_counter;
 
    f << " A:   Used memory( input content )           :"<< total_size << "\n\n";
@@ -62,6 +60,13 @@ void catcher::summary()
    f << " E:   Used memory( C + D )                   :"<< sum_key + val_counter << " \n";
    if( ( sum_key + val_counter) != 0 )
       f << " F:   Ratio( A / E  )                        :"<< (double)total_size / ( sum_key + val_counter ) << " \n";
+}
+
+void catcher::summary()
+{
+   std::ofstream f( "summary.txt" );
+
+   summary( f );
 
    f.flush();
    f.close();
@@ -145,9 +150,9 @@ void db_catcher::read_db()
 
    uint32_t idx = 0;
 
-   std::ofstream f( "comments.txt" );
-   f << items.size() <<"\n";
-   f.flush();
+   std::ofstream f_counter( "counter.txt" );
+   f_counter << items.size() <<"\n";
+   f_counter.flush();
 
    for( auto& item : items )
    {
@@ -155,33 +160,29 @@ void db_catcher::read_db()
       try
       {
          ++idx;
-         if( ( idx % 10000 ) == 0 )
+         if( ( idx % 100000 ) == 0 )
          {                                                                                                                                                                                                                                                                                                                                                                                                                 
-            f << idx <<"\n";
-            f.flush();
+            f_counter << idx <<"\n";
+            summary( f_counter );
+            f_counter.flush();
          }                                                                                                           
 
          content::pcontent post( new file_content() );
 
-         body = c.body.c_str();
+         total_size += strlen( c.body.c_str() );
 
-         f << body <<"\n";
-         f.flush();
-
-         fill_dict( body, post );
+         fill_dict( c.body.c_str(), post );
       }
       catch( fc::exception e )
       {
-         exc = e.what();
       }
       catch( std::exception e )
       {
-         exc = e.what();
       }
 
    }
 
-   f.close();
+   f_counter.close();
 }
 
 void db_catcher::get_content()
