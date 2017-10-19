@@ -271,15 +271,13 @@ void asset::validate()const
 {
    symbol.validate();
    FC_ASSERT( amount.value >= 0 );
-   FC_ASSERT( amount.value <= STEEM_MAX_SHARE_SUPPLY );
+   FC_ASSERT( amount.value <= STEEM_MAX_SATOSHIS );
 }
 
 std::string asset::to_string()const
 {
    validate();
-
-   static_assert( STEEM_MAX_SHARE_SUPPLY <= int64_t(9999999999999999ll), "BEGIN_OFFSET needs to be adjusted if MAX_SHARE_SUPPLY is increased" );
-   static const int BEGIN_OFFSET = 17;
+   static const int BEGIN_OFFSET = 21;
    //       amount string  space   symbol string                   null terminator
    char buf[BEGIN_OFFSET + 1     + STEEM_ASSET_SYMBOL_MAX_LENGTH + 1];
    char* p = buf+BEGIN_OFFSET-1;
@@ -328,6 +326,7 @@ void asset::fill_from_string( const char* p )
    int decimal_places = 0;
    int decimal_places_inc = 0;
    uint64_t value = 0;
+   int digits = 0;
 
    // [0-9]+([.][0-9]*)?\s
    while( true )
@@ -336,8 +335,10 @@ void asset::fill_from_string( const char* p )
       {
          case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
             value = value*10 + uint64_t((*p) - '0');
-            FC_ASSERT( value <= STEEM_MAX_SHARE_SUPPLY, "Cannot parse asset amount" );
+            FC_ASSERT( value <= STEEM_MAX_SATOSHIS, "Cannot parse asset amount" );
             ++p;
+            ++digits;
+            FC_ASSERT( digits <= 19, "Cannot parse asset amount" );
             decimal_places += decimal_places_inc;
             continue;
          case '.':
@@ -408,8 +409,8 @@ DEFINE_PRICE_COMPARISON_OPERATOR( >= )
          return price{ base, quote };
       } FC_CAPTURE_AND_RETHROW( (base)(quote) ) }
 
-      price price::max( asset_symbol_type base, asset_symbol_type quote ) { return asset( share_type(STEEM_MAX_SHARE_SUPPLY), base ) / asset( share_type(1), quote); }
-      price price::min( asset_symbol_type base, asset_symbol_type quote ) { return asset( 1, base ) / asset( STEEM_MAX_SHARE_SUPPLY, quote); }
+      price price::max( asset_symbol_type base, asset_symbol_type quote ) { return asset( share_type(STEEM_MAX_SATOSHIS), base ) / asset( share_type(1), quote); }
+      price price::min( asset_symbol_type base, asset_symbol_type quote ) { return asset( 1, base ) / asset( STEEM_MAX_SATOSHIS, quote); }
 
       bool price::is_null() const { return *this == price(); }
 
