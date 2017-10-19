@@ -268,12 +268,12 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 
       // Create SMT.
       signed_transaction ty;
-      op.symbol = create_smt(ty, "alice", alice_private_key, 3);
-      FC_ASSERT( op.symbol == alice_symbol, "SMT symbol mismatch ${s1} vs ${s2}",
-         ("s1", op.symbol.to_string())("s2", alice_symbol.to_string()) );
+      op.nai = create_smt(ty, "alice", alice_private_key, 3);
+      FC_ASSERT( op.nai == alice_symbol.to_nai(), "SMT symbol mismatch ${s1} vs ${s2}",
+         ("s1", op.nai)("s2", alice_symbol.to_nai()) );
 
       // TODO: Replace the code below with account setup operation execution once its implemented.
-      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( alice_symbol );
+      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_nai >( alice_symbol.to_nai() );
       FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
       FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
       db->modify( *smt, [&]( steem::chain::smt_token_object& token )
@@ -312,7 +312,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
       // create SMT
       signed_transaction ty;
-      op.symbol = create_smt(ty, "dany", dany_private_key, 3);
+      op.nai = create_smt(ty, "dany", dany_private_key, 3);
 
       signed_transaction tz;
       tz.operations.push_back( op );
@@ -510,7 +510,7 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       tx.signatures.clear();
 
       //Try to create SMT
-      op.symbol = create_smt( tx, "alice", alice_private_key, 3 );
+      op.nai = create_smt( tx, "alice", alice_private_key, 3 );
       tx.operations.clear();
       tx.signatures.clear();
 

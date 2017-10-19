@@ -28,8 +28,9 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
-   asset_symbol_type symbol;
+   uint32_t          nai;
    account_name_type control_account = "@@@@@";
+   uint8_t           decimal_places;
    smt_phase         phase = smt_phase::account_elevated;
 
    /// set_setup_parameters
@@ -64,7 +65,7 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    uint8_t              rel_amount_denom_bits = 0;
 };
 
-struct by_symbol;
+struct by_nai;
 struct by_control_account;
 
 typedef multi_index_container <
@@ -72,8 +73,8 @@ typedef multi_index_container <
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
-      ordered_unique< tag< by_symbol >,
-         member< smt_token_object, asset_symbol_type, &smt_token_object::symbol > >,
+      ordered_unique< tag< by_nai >,
+         member< smt_token_object, uint32_t, &smt_token_object::nai > >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
    >,
@@ -89,8 +90,9 @@ FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
 
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
-   (symbol)
+   (nai)
    (control_account)
+   (decimal_places)
    (phase)
    (allow_voting)
    (allow_vesting)

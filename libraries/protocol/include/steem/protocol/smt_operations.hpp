@@ -168,8 +168,8 @@ struct smt_emissions_unit
 
 struct smt_setup_emissions_operation : public base_operation
 {
-   /// Contains both Numerical Asset Identifier (NAI) and precision (decimal places) of the SMT.
-   asset_symbol_type   symbol;
+   /// Contains Numerical Asset Identifier (NAI) of the SMT.
+   uint32_t            nai;
    account_name_type   control_account;
 
    time_point_sec      schedule_time;
@@ -240,8 +240,8 @@ typedef static_variant<
 
 struct smt_set_setup_parameters_operation : public base_operation
 {
-   /// Contains both Numerical Asset Identifier (NAI) and precision (decimal places) of the SMT.
-   asset_symbol_type                                 symbol;
+   /// Contains Numerical Asset Identifier (NAI) of the SMT.
+   uint32_t                                          nai;
    account_name_type                                 control_account;
 
    flat_set< smt_setup_parameter >                   setup_parameters;
@@ -254,8 +254,8 @@ struct smt_set_setup_parameters_operation : public base_operation
 
 struct smt_set_runtime_parameters_operation : public base_operation
 {
-   /// Contains both Numerical Asset Identifier (NAI) and precision (decimal places) of the SMT.
-   asset_symbol_type                                 symbol;   
+   /// Contains Numerical Asset Identifier (NAI) of the SMT.
+   uint32_t                                          nai;
    account_name_type                                 control_account;
 
    flat_set< smt_runtime_parameter >                 runtime_parameters;
@@ -342,7 +342,7 @@ FC_REFLECT(
 
 FC_REFLECT(
    steem::protocol::smt_setup_emissions_operation,
-   (symbol)
+   (nai)
    (control_account)
    (schedule_time)
    (emissions_unit)
@@ -397,7 +397,7 @@ FC_REFLECT_TYPENAME(
 
 FC_REFLECT(
    steem::protocol::smt_set_setup_parameters_operation,
-   (symbol)
+   (nai)
    (control_account)
    (setup_parameters)
    (extensions)
@@ -405,7 +405,7 @@ FC_REFLECT(
 
 FC_REFLECT(
    steem::protocol::smt_set_runtime_parameters_operation,
-   (symbol)
+   (nai)
    (control_account)
    (runtime_parameters)
    (extensions)

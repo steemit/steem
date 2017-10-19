@@ -252,7 +252,7 @@ struct smt_database_fixture : public clean_database_fixture
    smt_database_fixture();
    virtual ~smt_database_fixture();
 
-   asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
+   uint32_t create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
 };
 #endif
