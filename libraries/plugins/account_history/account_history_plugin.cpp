@@ -100,16 +100,28 @@ struct operation_visitor
       if( _prune )
       {
          // Clean up accounts to last 30 days or 30 items, whichever is more.
-         const auto& seq_idx = _db.get_index< account_history_index, by_account_rev >();
-         auto seq_itr = seq_idx.lower_bound( boost::make_tuple( item ) );
+         const auto& seq_idx = _db.get_index< account_history_index, by_account >();
+         auto seq_itr = seq_idx.lower_bound( boost::make_tuple( item, 0 ) );
+         vector< const account_history_object* > to_remove;
          auto now = _db.head_block_time();
 
-         while( seq_itr != seq_idx.end() && seq_itr->account == item
+         if( seq_itr == seq_idx.begin() )
+            return;
+
+         --seq_itr;
+
+         while( seq_itr->account == item
                && sequence - seq_itr->sequence > 30 
                && now - _db.get< operation_object >( seq_itr->op ).timestamp > fc::days(30) )
          {
-            _db.remove( *seq_itr );
-            seq_itr = seq_idx.lower_bound( boost::make_tuple( item ) );
+            ilog( "Removing ${a}:${i}", ("a", item)("i", seq_itr->sequence) );
+            to_remove.push_back( &(*seq_itr) );
+            --seq_itr;
+         }
+
+         for( const auto* seq_ptr : to_remove )
+         {
+            _db.remove( *seq_ptr );
          }
       }
    }
