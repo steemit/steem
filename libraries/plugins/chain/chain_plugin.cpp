@@ -132,16 +132,14 @@ void chain_plugin::plugin_startup()
             return;
          }
 
-         const fc::variant& measure = dumper.measure(current_block_number);
-         const variant_object& vo = measure.get_object();
-         FC_ASSERT( vo.contains("real_ms") && vo.contains("cpu_ms") && vo.contains("current_mem") && vo.contains("peak_mem"),
-                    "Missing member(s) of benchmark_dumper::measurement class!");
+         const steem::utilities::benchmark_dumper::measurement& measure =
+           dumper.measure(current_block_number);
          ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
             ("n", current_block_number)
-            ("rt", vo[ "real_ms" ])
-            ("ct", vo[ "cpu_ms" ])
-            ("cm", vo[ "current_mem" ])
-            ("pm", vo[ "peak_mem" ]) );   
+            ("rt", measure.real_ms)
+            ("ct", measure.cpu_ms)
+            ("cm", measure.current_mem)
+            ("pm", measure.peak_mem) );   
       };
       steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
       last_block_number = my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size,

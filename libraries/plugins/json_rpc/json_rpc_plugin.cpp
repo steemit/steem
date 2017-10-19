@@ -1,4 +1,5 @@
 #include <steem/plugins/json_rpc/json_rpc_plugin.hpp>
+#include <steem/plugins/json_rpc/utility.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -30,13 +31,18 @@ namespace detail
       fc::variant                      id;
    };
 
+   typedef void_type             get_methods_args;
+   typedef vector< string >      get_methods_return;
+   typedef string                get_signature_args;
+   typedef api_method_signature  get_signature_return;
+
    class json_rpc_plugin_impl
    {
       public:
          json_rpc_plugin_impl();
          ~json_rpc_plugin_impl();
 
-         void add_api_method( const string& api_name, const string& method_name, const api_method& api );
+         void add_api_method( const string& api_name, const string& method_name, const api_method& api, const api_method_signature& sig );
 
          api_method* find_api_method( std::string api, std::string method );
          api_method* process_params( string method, const fc::variant_object& request, fc::variant& func_args );
@@ -44,15 +50,53 @@ namespace detail
          void rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response );
          json_rpc_response rpc( const fc::variant& message );
 
-         map< string, api_description > _registered_apis;
+         void initialize();
+
+         DECLARE_API(
+            (get_methods)
+            (get_signature) )
+
+         map< string, api_description >                     _registered_apis;
+         vector< string >                                   _methods;
+         map< string, map< string, api_method_signature > > _method_sigs;
    };
 
    json_rpc_plugin_impl::json_rpc_plugin_impl() {}
    json_rpc_plugin_impl::~json_rpc_plugin_impl() {}
 
-   void json_rpc_plugin_impl::add_api_method( const string& api_name, const string& method_name, const api_method& api )
+   void json_rpc_plugin_impl::add_api_method( const string& api_name, const string& method_name, const api_method& api, const api_method_signature& sig )
    {
       _registered_apis[ api_name ][ method_name ] = api;
+      _method_sigs[ api_name ][ method_name ] = sig;
+
+      std::stringstream canonical_name;
+      canonical_name << api_name << '.' << method_name;
+      _methods.push_back( canonical_name.str() );
+   }
+
+   void json_rpc_plugin_impl::initialize()
+   {
+      JSON_RPC_REGISTER_API( "jsonrpc" );
+   }
+
+   DEFINE_API( json_rpc_plugin_impl, get_methods )
+   {
+      return _methods;
+   }
+
+   DEFINE_API( json_rpc_plugin_impl, get_signature )
+   {
+      vector< string > v;
+      boost::split( v, args, boost::is_any_of( "." ) );
+      FC_ASSERT( v.size() == 2, "Invalid method name" );
+
+      auto api_itr = _method_sigs.find( v[0] );
+      FC_ASSERT( api_itr != _method_sigs.end(), "Method ${api}.${method} does not exist.", ("api", v[0])("method", v[1]) );
+
+      auto method_itr = api_itr->second.find( v[1] );
+      FC_ASSERT( method_itr != api_itr->second.end(), "Method ${api}.${method} does not exist", ("api", v[0])("method", v[1]) );
+
+      return method_itr->second;
    }
 
    api_method* json_rpc_plugin_impl::find_api_method( std::string api, std::string method )
@@ -217,13 +261,18 @@ using detail::json_rpc_response;
 json_rpc_plugin::json_rpc_plugin() : my( new detail::json_rpc_plugin_impl() ) {}
 json_rpc_plugin::~json_rpc_plugin() {}
 
-void json_rpc_plugin::plugin_initialize( const variables_map& options ) {}
-void json_rpc_plugin::plugin_startup() {}
+void json_rpc_plugin::plugin_initialize( const variables_map& options ) { my->initialize(); }
+
+void json_rpc_plugin::plugin_startup()
+{
+   std::sort( my->_methods.begin(), my->_methods.end() );
+}
+
 void json_rpc_plugin::plugin_shutdown() {}
 
-void json_rpc_plugin::add_api_method( const string& api_name, const string& method_name, const api_method& api )
+void json_rpc_plugin::add_api_method( const string& api_name, const string& method_name, const api_method& api, const api_method_signature& sig )
 {
-   my->add_api_method( api_name, method_name, api );
+   my->add_api_method( api_name, method_name, api, sig );
 }
 
 string json_rpc_plugin::call( const string& message )

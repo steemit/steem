@@ -1,11 +1,12 @@
 #pragma once
 
+#include <fc/time.hpp>
+#include <fc/variant.hpp>
+#include <fc/reflect/variant.hpp>
+#include <fc/exception/exception.hpp>
 #include <fc/io/json.hpp>
 
-#include <fc/macros.hpp>
-
 #include <sys/time.h>
-#include <sys/resource.h>
 
 namespace steem { namespace utilities {
 
@@ -22,7 +23,7 @@ public:
    class measurement
    {
    public:
-      void set(uint32_t bn, int64_t rm, int32_t cs, int64_t cm, int64_t pm)
+      void set(uint32_t bn, int64_t rm, int32_t cs, uint64_t cm, uint64_t pm)
       {
          block_number = bn;
          real_ms = rm;
@@ -35,39 +36,38 @@ public:
       uint32_t block_number = 0;
       int64_t  real_ms = 0;
       int32_t  cpu_ms = 0;
-      int64_t  current_mem = 0;
-      int64_t  peak_mem = 0;
+      uint64_t current_mem = 0;
+      uint64_t peak_mem = 0;
    };
 
    void initialize()
    {
       _init_sys_time = _last_sys_time = fc::time_point::now();
       _init_cpu_time = _last_cpu_time = clock();
-      _peak_mem = read_mem();
+      _pid = getpid();
    }
 
-   const fc::variant& measure(uint32_t block_number)
+   const measurement& measure(uint32_t block_number)
    {
-      auto current_mem = read_mem();
-      if( current_mem > _peak_mem )
-         _peak_mem = current_mem;
-
-      time_point current_sys_time = fc::time_point::now();
+      uint64_t current_virtual = 0;
+      uint64_t peak_virtual = 0;
+      read_mem(_pid, &current_virtual, &peak_virtual);
+   
+      fc::time_point current_sys_time = fc::time_point::now();
       clock_t current_cpu_time = clock();
-
+   
       measurement data;
       data.set( block_number,
                 (current_sys_time - _last_sys_time).count()/1000, // real_ms
                 int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC), // cpu_ms
-                current_mem,
-                _peak_mem );
-      fc::variant v( data );
-      _measurements.push_back( v );
-
+                current_virtual,
+                peak_virtual );
+      _measurements.push_back( data );
+   
       _last_sys_time = current_sys_time;
       _last_cpu_time = current_cpu_time;
       _total_blocks = block_number;
-
+   
       return _measurements.back();
    }
 
@@ -87,32 +87,29 @@ public:
       if( total_measurement == nullptr )
          return;
 
+      uint64_t current_virtual = 0;
+      uint64_t peak_virtual = 0;
+      read_mem(_pid, &current_virtual, &peak_virtual);
+   
       total_measurement->set(_total_blocks,
          (_last_sys_time - _init_sys_time).count()/1000,
          int((_last_cpu_time - _init_cpu_time) * 1000 / CLOCKS_PER_SEC),
-         read_mem(),
-         _peak_mem );
+         current_virtual,
+         peak_virtual );
    }
 
 private:
-   long read_mem()
-   {
-      int who = RUSAGE_SELF;
-      struct rusage usage = {{0}};
-      int ret = getrusage(who,&usage);
-      /// Not sure, probably better return some meaningfull value when getrusage fails
-      FC_UNUSED(ret);
-      return usage.ru_maxrss;
-   }
+   bool read_mem(pid_t pid, uint64_t* current_virtual, uint64_t* peak_virtual);
 
 private:
-   time_point     _init_sys_time;
-   time_point     _last_sys_time;
+   fc::time_point _init_sys_time;
+   fc::time_point _last_sys_time;
    clock_t        _init_cpu_time = 0;
    clock_t        _last_cpu_time = 0;
-   int64_t        _peak_mem = 0;
    uint64_t       _total_blocks = 0;
-   fc::variants   _measurements;
+   pid_t          _pid = 0;
+   typedef std::vector<measurement> TMeasurements;   
+   TMeasurements  _measurements;
 };
 
 } } // steem::utilities
