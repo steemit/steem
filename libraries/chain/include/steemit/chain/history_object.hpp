@@ -80,6 +80,7 @@ namespace steemit { namespace chain {
    };
 
    struct by_account;
+   struct by_account_rev;
    typedef multi_index_container<
       account_history_object,
       indexed_by<
@@ -90,6 +91,13 @@ namespace steemit { namespace chain {
                member< account_history_object, uint32_t, &account_history_object::sequence>
             >,
             composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
+         >,
+         ordered_unique< tag< by_account_rev >,
+            composite_key< account_history_object,
+               member< account_history_object, account_name_type, &account_history_object::account >,
+               member< account_history_object, uint32_t, &account_history_object::sequence >
+            >,
+            composite_key_compare< std::less< account_name_type >, std::less< uint32_t > >
          >
       >,
       allocator< account_history_object >
