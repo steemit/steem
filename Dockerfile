@@ -1,4 +1,4 @@
-FROM phusion/baseimage:0.9.19
+FROM phusion/baseimage:0.9.22
 
 #ARG STEEMD_BLOCKCHAIN=https://example.com/steemd-blockchain.tbz2
 
@@ -203,6 +203,10 @@ ADD contrib/fullnode.config.ini /etc/steemd/fullnode.config.ini
 # add normal startup script that starts via sv
 ADD contrib/steemd.run /usr/local/bin/steem-sv-run.sh
 RUN chmod +x /usr/local/bin/steem-sv-run.sh
+
+# add system configs
+ADD contrib/sysctl.conf /etc/sysctl.conf
+ADD contrib/limits.conf /etc/security/limits.conf
 
 # add nginx templates
 ADD contrib/steemd.nginx.conf /etc/nginx/steemd.nginx.conf
