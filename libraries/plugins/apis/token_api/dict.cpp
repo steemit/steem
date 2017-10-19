@@ -53,13 +53,15 @@ void catcher::summary( std::ofstream& f )
 {
    types::key_type sum_key = sizeof( types::key_type ) * key_counter;
 
+   uint64_t _tmp_sum = sum_key + val_counter;
+
    f << " A:   Used memory( input content )           :"<< total_size << "\n\n";
    f << " B:   Nr of elements in dict                 :"<< key_counter << " \n";
    f << " C:   Nr of elements in dict * sizeof( key ) :"<< sum_key << " \n";
    f << " D:   Size of elements in dict               :"<< val_counter << " \n";
-   f << " E:   Used memory( C + D )                   :"<< sum_key + val_counter << " \n";
-   if( ( sum_key + val_counter) != 0 )
-      f << " F:   Ratio( A / E  )                        :"<< (double)total_size / ( sum_key + val_counter ) << " \n";
+   f << " E:   Used memory( C + D )                   :"<< _tmp_sum << " \n";
+   if( _tmp_sum != 0 )
+      f << " F:   Ratio( A / E  )                        :"<< (double)total_size / _tmp_sum << " \n";
 }
 
 void catcher::summary()

@@ -84,8 +84,8 @@ class catcher
    protected:
 
       types::key_type key_counter;
-      types::key_type val_counter;
-      types::key_type total_size;
+      uint64_t val_counter;
+      uint64_t total_size;
 
       items dict;
 
