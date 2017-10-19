@@ -45,21 +45,21 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     echo steemdsync: starting a new blockchainstate upload operation
     cd ${COMPRESSPATH:-$HOME}
     echo steemdsync: compressing blockchainstate...
-    tar cf blockchain.tar.bz2 --use-compress-prog=pbzip2 -C $HOME blockchain
+    tar cf blockchain.tar -C $HOME blockchain
     if [[ ! $? -eq 0 ]]; then
       echo NOTIFYALERT! steemdsync was unable to compress shared memory file, check the logs.
       exit 1
     fi
-    FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar.bz2
+    FILE_NAME=blockchain-$VERSION-`date '+%Y%m%d-%H%M%S'`.tar
     echo steemdsync: uploading $FILE_NAME to $S3_BUCKET
-    aws s3 cp blockchain.tar.bz2 s3://$S3_BUCKET/$FILE_NAME
+    aws s3 cp blockchain.tar s3://$S3_BUCKET/$FILE_NAME
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to upload $FILE_NAME to s3://$S3_BUCKET
     	exit 1
     fi
-    echo steemdsync: replacing current version of blockchain-latest.tar.bz2 with $FILE_NAME
-    aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2
-    aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar.bz2 --acl public-read 
+    echo steemdsync: replacing current version of blockchain-latest.tar with $FILE_NAME
+    aws s3 cp s3://$S3_BUCKET/$FILE_NAME s3://$S3_BUCKET/blockchain-$VERSION-latest.tar
+    aws s3api put-object-acl --bucket $S3_BUCKET --key blockchain-$VERSION-latest.tar --acl public-read 
     if [[ ! $? -eq 0 ]]; then
     	echo NOTIFYALERT! steemdsync was unable to overwrite the current blockchainstate with $FILE_NAME
     	exit 1
@@ -71,7 +71,7 @@ if [[ ! -z "$BLOCKCHAIN_TIME" ]]; then
     # kill the container starting the process over again
     echo steemdsync: stopping the container after a sync operation
     if [[ -e /tmp/isnewsync ]]; then
-      echo notifysteemdsync: steemdsync: successfully generated and uploaded new blockchain-$VERSION-latest.tar.bz2 to s3://$S3_BUCKET
+      echo notifysteemdsync: steemdsync: successfully generated and uploaded new blockchain-$VERSION-latest.tar to s3://$S3_BUCKET
     fi
     RUN_SV_PID=`pgrep -f /etc/service/steemd`
     kill -9 $RUN_SV_PID

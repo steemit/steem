@@ -34,11 +34,11 @@ if [[ ! -z  "$BLOCKCHAIN_TIME" ]]; then
 
   # if we're within 60 seconds of current time, call it synced and report healthy
   BLOCK_AGE=$((${CURRENT_SECS} - ${BLOCKCHAIN_SECS}))
-  if [[ ${BLOCK_AGE} -le 60 ]]; then
+  if [[ ${BLOCK_AGE} -le 180 ]]; then
     echo Status: 200
     echo Content-type:text/plain
     echo
-    echo Block age is less than 60 seconds old, this node is considered healthy.
+    echo Block age is less than 180 seconds old, this node is considered healthy.
   else
     echo Status: 503
     echo Content-type:text/plain

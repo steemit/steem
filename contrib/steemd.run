@@ -82,8 +82,8 @@ fi
 cd $HOME
 
 if [[ "$USE_PUBLIC_SHARED_MEMORY" ]]; then
-  echo steemd: Downloading and uncompressing blockchain-$VERSION-latest.tar.bz2 - this may take awhile.
-  wget -qO- https://s3.amazonaws.com/steemit-dev-blockchainstate/blockchain-$VERSION-latest.tar.bz2 | pbzip2 -m2000dc | tar x
+  echo steemd: Downloading and uncompressing blockchain-$VERSION-latest.tar - this may take awhile.
+  wget -qO- https://s3.amazonaws.com/steemit-dev-blockchainstate/blockchain-$VERSION-latest.tar | tar x
 fi
 
 # slow down restart loop if flapping
