@@ -80,8 +80,10 @@ int main( int argc, char** argv )
          ("daemon,d", "Run the wallet in daemon mode" )
          ("rpc-http-allowip", bpo::value<vector<string>>()->multitoken(), "Allows only specified IPs to connect to the HTTP endpoint" )
          ("wallet-file,w", bpo::value<string>()->implicit_value("wallet.json"), "wallet to load")
-         ("chain-id", bpo::value<string>(), "chain ID to connect to");
-
+#ifdef IS_TEST_NET
+         ("chain-id", bpo::value< std::string >()->implicit_value( STEEM_CHAIN_ID_NAME ), "chain ID to connect to")
+#endif
+         ;
       vector<string> allowed_ips;
 
       bpo::variables_map options;
@@ -97,6 +99,13 @@ int main( int argc, char** argv )
          allowed_ips = options["rpc-http-allowip"].as<vector<string>>();
          wdump((allowed_ips));
       }
+
+      steem::protocol::chain_id_type _steem_chain_id;
+
+#ifdef IS_TEST_NET
+      if( options.count("chain-id") )
+            _steem_chain_id = generate_chain_id( options["chain-id"].as< std::string >() );
+#endif
 
       fc::path data_dir;
       fc::logging_config cfg;
@@ -150,7 +159,7 @@ int main( int argc, char** argv )
 
       auto remote_api = apic->get_remote_api< steem::wallet::remote_node_api >( 0, "condenser_api" );
 
-      auto wapiptr = std::make_shared<wallet_api>( wdata, remote_api );
+      auto wapiptr = std::make_shared<wallet_api>( wdata, _steem_chain_id, remote_api );
       wapiptr->set_wallet_filename( wallet_file.generic_string() );
       wapiptr->load_wallet_file();
 
