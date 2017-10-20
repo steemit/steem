@@ -14,6 +14,8 @@ void smt_create_operation::validate()const
    FC_ASSERT( is_asset_type( smt_creation_fee, STEEM_SYMBOL ) || is_asset_type( smt_creation_fee, SBD_SYMBOL ), "Fee must be STEEM or SBD" );
    FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "legacy symbol used instead of NAI" );
    symbol.validate();
+   FC_ASSERT( symbol.decimals() == precision, "Mismatch between redundantly provided precision ${prec1} vs ${prec2}",
+      ("prec1",symbol.decimals())("prec2",precision) );
 }
 
 bool is_valid_unit_target( const account_name_type& name )

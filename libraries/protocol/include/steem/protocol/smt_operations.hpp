@@ -20,6 +20,8 @@ struct smt_create_operation : public base_operation
    asset             smt_creation_fee;
    /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
    asset_symbol_type symbol;
+   /// Separately provided precision for clarity and redundancy.
+   uint8_t           precision;
 
    extensions_type   extensions;
 

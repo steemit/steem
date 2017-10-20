@@ -588,6 +588,7 @@ uint32_t smt_database_fixture::create_smt( signed_transaction& tx, const string&
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
       op.symbol = database_fixture::name_to_asset_symbol(account_name, token_decimal_places);
+      op.precision = op.symbol.decimals();
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = account_name;
 

@@ -32,6 +32,7 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
 
       op.control_account = "alice";
       op.symbol = alice_symbol;
+      op.precision = op.symbol.decimals();
       op.validate();
 
       op.smt_creation_fee.amount = -op.smt_creation_fee.amount;
@@ -46,6 +47,11 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
       op.smt_creation_fee = ASSET( "1.000000 VESTS" );
+      STEEM_REQUIRE_THROW( op.validate(), fc::exception );
+
+      op.smt_creation_fee = ASSET( "1.000 TESTS" );
+      // Valid, but doesn't match decimals stored in symbol.
+      op.precision = 0;
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
    }
    FC_LOG_AND_RETHROW()
@@ -94,6 +100,7 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = "alice";
       op.symbol = alice_symbol;
+      op.precision = op.symbol.decimals();
 
       signed_transaction tx;
 

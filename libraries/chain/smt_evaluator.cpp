@@ -93,8 +93,7 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 
    _db.create< smt_token_object >( [&]( smt_token_object& token )
    {
-      token.nai = o.symbol.to_nai();
-      token.decimal_places = o.symbol.decimals();
+      token.symbol = o.symbol;
       token.control_account = o.control_account;
    });
 }
@@ -123,7 +122,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 
    const smt_token_object& smt = common_pre_setup_evaluation(_db, o.nai, o.control_account);
 
-   FC_ASSERT( o.lep_abs_amount.symbol == asset_symbol_type::from_nai(smt.nai, smt.decimal_places) );
+   FC_ASSERT( o.lep_abs_amount.symbol == smt.symbol );
    // ^ Note that rep_abs_amount.symbol has been matched to lep's in validate().
 
    _db.modify( smt, [&]( smt_token_object& token )
