@@ -42,8 +42,12 @@ void debug_node_plugin::set_program_options(
    options_description& cfg )
 {
    cfg.add_options()
-      ("debug-node-edit-script,e", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times)");
-      ("edit-script", boost::program_options::value< std::vector< std::string > >()->composing(), "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.");
+      ("debug-node-edit-script,e",
+         boost::program_options::value< std::vector< std::string > >()->composing(),
+            "Database edits to apply on startup (may specify multiple times)")
+      ("edit-script", boost::program_options::value< std::vector< std::string > >()->composing(),
+          "Database edits to apply on startup (may specify multiple times). Deprecated in favor of debug-node-edit-script.")
+      ;
 }
 
 void debug_node_plugin::plugin_initialize( const variables_map& options )

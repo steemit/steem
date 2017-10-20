@@ -64,7 +64,7 @@ struct static_variant_map_visitor
    template< typename T >
    result_type operator()( const T& dummy )
    {
-      assert( which == m.which_to_name.size() );
+      assert( static_cast<size_t>(which) == m.which_to_name.size() );
       std::string name = clean_name( fc::get_typename<T>::name() );
       m.name_to_which[ name ] = which;
       m.which_to_name.push_back( name );

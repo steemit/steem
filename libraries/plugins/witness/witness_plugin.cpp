@@ -266,7 +266,7 @@ namespace detail {
          {
             r.average_block_size = 0;
             r.current_reserve_ratio = STEEM_MAX_RESERVE_RATIO * RESERVE_RATIO_PRECISION;
-            r.max_virtual_bandwidth = ( uint128_t( STEEM_MAX_BLOCK_SIZE * STEEM_MAX_RESERVE_RATIO )
+            r.max_virtual_bandwidth = ( static_cast<uint128_t>( STEEM_MAX_BLOCK_SIZE) * STEEM_MAX_RESERVE_RATIO
                                        * STEEM_BANDWIDTH_PRECISION * STEEM_BANDWIDTH_AVERAGE_WINDOW_SECONDS )
                                        / STEEM_BLOCK_INTERVAL;
          });
