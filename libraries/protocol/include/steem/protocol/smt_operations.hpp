@@ -8,23 +8,27 @@
 namespace steem { namespace protocol {
 
 /**
- * This operation elevates given steem account to SMT control account on conditions that:
- * a) the account is not SMT control account already and
- * b) successful fee transfer occurs.
+ * This operation introduces new SMT into blockchain as identified by
+ * Numerical Asset Identifier (NAI). Also the SMT precision (decimal points)
+ * is explicitly provided.
  */
-struct smt_elevate_account_operation : public base_operation
+struct smt_create_operation : public base_operation
 {
-   /// Account to be elevated.
-   account_name_type account;
+   /// Account that controls the SMT.
+   account_name_type control_account;
    /// The amount to be transfered from @account to null account as elevation fee.
-   asset             fee;
+   asset             smt_creation_fee;
+   /// The token's Numerical Asset Identifier (NAI) coupled with token's precision.
+   asset_symbol_type symbol;
+   /// Separately provided precision for clarity and redundancy.
+   uint8_t           precision;
 
    extensions_type   extensions;
 
    void validate()const;
 
    void get_required_active_authorities( flat_set<account_name_type>& a )const
-   { a.insert( account ); }
+   { a.insert( control_account ); }
 };
 
 struct smt_generation_unit
@@ -166,6 +170,8 @@ struct smt_emissions_unit
 
 struct smt_setup_emissions_operation : public base_operation
 {
+   /// Contains Numerical Asset Identifier (NAI) of the SMT.
+   uint32_t            nai;
    account_name_type   control_account;
 
    time_point_sec      schedule_time;
@@ -236,6 +242,8 @@ typedef static_variant<
 
 struct smt_set_setup_parameters_operation : public base_operation
 {
+   /// Contains Numerical Asset Identifier (NAI) of the SMT.
+   uint32_t                                          nai;
    account_name_type                                 control_account;
 
    flat_set< smt_setup_parameter >                   setup_parameters;
@@ -248,6 +256,8 @@ struct smt_set_setup_parameters_operation : public base_operation
 
 struct smt_set_runtime_parameters_operation : public base_operation
 {
+   /// Contains Numerical Asset Identifier (NAI) of the SMT.
+   uint32_t                                          nai;
    account_name_type                                 control_account;
 
    flat_set< smt_runtime_parameter >                 runtime_parameters;
@@ -261,9 +271,10 @@ struct smt_set_runtime_parameters_operation : public base_operation
 } }
 
 FC_REFLECT(
-   steem::protocol::smt_elevate_account_operation,
-   (account)
-   (fee)
+   steem::protocol::smt_create_operation,
+   (control_account)
+   (smt_creation_fee)
+   (symbol)
    (extensions)
 )
 
@@ -333,6 +344,7 @@ FC_REFLECT(
 
 FC_REFLECT(
    steem::protocol::smt_setup_emissions_operation,
+   (nai)
    (control_account)
    (schedule_time)
    (emissions_unit)
@@ -387,6 +399,7 @@ FC_REFLECT_TYPENAME(
 
 FC_REFLECT(
    steem::protocol::smt_set_setup_parameters_operation,
+   (nai)
    (control_account)
    (setup_parameters)
    (extensions)
@@ -394,6 +407,7 @@ FC_REFLECT(
 
 FC_REFLECT(
    steem::protocol::smt_set_runtime_parameters_operation,
+   (nai)
    (control_account)
    (runtime_parameters)
    (extensions)
