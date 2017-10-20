@@ -80,6 +80,7 @@ namespace steemit { namespace chain {
    };
 
    struct by_account;
+   struct by_account_rev;
    typedef multi_index_container<
       account_history_object,
       indexed_by<
