@@ -16,6 +16,8 @@ struct smt_elevate_account_operation : public base_operation
 {
    /// Account to be elevated.
    account_name_type account;
+   /// Contains both Numerical Asset Identifier (NAI) and precision (decimal places) of the SMT.
+   asset_symbol_type symbol;
    /// The amount to be transfered from @account to null account as elevation fee.
    asset             fee;
 
@@ -263,6 +265,7 @@ struct smt_set_runtime_parameters_operation : public base_operation
 FC_REFLECT(
    steem::protocol::smt_elevate_account_operation,
    (account)
+   (symbol)
    (fee)
    (extensions)
 )

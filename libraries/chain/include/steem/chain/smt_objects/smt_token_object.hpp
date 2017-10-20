@@ -28,7 +28,8 @@ class smt_token_object : public object< smt_token_object_type, smt_token_object 
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
-   account_name_type control_account;
+   asset_symbol_type symbol;
+   account_name_type control_account = "@@@@@";
    smt_phase         phase = smt_phase::account_elevated;
 
    /// set_setup_parameters
@@ -85,6 +86,7 @@ FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
 
 FC_REFLECT( steem::chain::smt_token_object,
    (id)
+   (symbol)
    (control_account)
    (phase)
    (allow_voting)
