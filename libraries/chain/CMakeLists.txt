@@ -15,6 +15,7 @@ add_library( steem_chain
 
              shared_authority.cpp
              block_log.cpp
+             account_object.cpp
 
              util/reward.cpp
              util/impacted.cpp
