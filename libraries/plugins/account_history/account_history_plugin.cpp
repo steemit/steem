@@ -314,7 +314,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
 
    if( options.count( "history-disable-pruning" ) )
    {
-      my->_prune = options[ "history-disable-pruning" ].as< bool >();
+      my->_prune = !options[ "history-disable-pruning" ].as< bool >();
    }
 }
 
