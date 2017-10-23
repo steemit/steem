@@ -86,7 +86,7 @@ namespace detail {
    class application_impl : public graphene::net::node_delegate
    {
    public:
-      uint32_t _next_rebroadcast = -1;
+      uint32_t _next_rebroadcast = 0;
       boost::signals2::connection _rebroadcast_con;
       fc::optional<fc::temp_file> _lock_file;
       bool _is_block_producer = false;
@@ -241,12 +241,19 @@ namespace detail {
 
       void rebroadcast_pending_tx()
       {
-         if( _chain_db->head_block_num() >= _next_rebroadcast )
+         uint32_t hbn = _chain_db->head_block_num();
+         if( (_next_rebroadcast > 0) && (hbn >= _next_rebroadcast) )
          {
-            _next_rebroadcast += REBROADCAST_RAND_INTERVAL();
+            _next_rebroadcast = hbn + REBROADCAST_RAND_INTERVAL();
+            uint32_t n = 0;
             for( const auto& trx : _chain_db->_pending_tx )
             {
-                  _p2p_network->broadcast( graphene::net::trx_message( trx ) );
+               _p2p_network->broadcast( graphene::net::trx_message( trx ) );
+               ++n;
+            }
+            if( n > 0 )
+            {
+               ilog( "Force rebroadcast ${n} transactions", ("n", n) );
             }
          }
       }
@@ -368,8 +375,12 @@ namespace detail {
          }
          _chain_db->show_free_memory( true );
 
-         _next_rebroadcast = _chain_db->head_block_num() + REBROADCAST_RAND_INTERVAL();
-         _rebroadcast_con = _chain_db->applied_block.connect( [this]( const signed_block& b ){ rebroadcast_pending_tx(); } );
+         if( _options->count( "force-tx-rebroadcast" ) )
+         {
+            ilog( "Force transaction rebroadcast" );
+            _next_rebroadcast = 1;
+            _rebroadcast_con = _chain_db->applied_block.connect( [this]( const signed_block& b ){ rebroadcast_pending_tx(); } );
+         }
 
          if( _options->count("api-user") )
          {
@@ -1021,6 +1032,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("read-only", "Node will not connect to p2p network and can only read from the chain state" )
          ("check-locks", "Check correctness of chainbase locking")
          ("disable-get-block", "Disable get_block API call" )
+         ("force-tx-rebroadcast", "Rebroadcast transactions every few seconds")
          ;
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);
