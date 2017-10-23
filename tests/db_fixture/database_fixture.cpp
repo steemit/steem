@@ -575,7 +575,7 @@ smt_database_fixture::~smt_database_fixture()
 
 }
 
-uint32_t smt_database_fixture::create_smt( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key,
+asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, const string& account_name, const fc::ecc::private_key& key,
    uint8_t token_decimal_places )
 {
    smt_create_operation op;
@@ -600,7 +600,7 @@ uint32_t smt_database_fixture::create_smt( signed_transaction& tx, const string&
    }
    FC_LOG_AND_RETHROW();
 
-   return op.symbol.to_nai();
+   return op.symbol;
 }
 
 #endif
