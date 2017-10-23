@@ -15,6 +15,8 @@
 namespace steem { namespace chain {
 
    using steem::protocol::authority;
+   class smt_token_object;
+   class database;
 
    class account_object : public object< account_object_type, account_object >
    {
@@ -124,6 +126,10 @@ namespace steem { namespace chain {
          }
 
          asset effective_vesting_shares()const { return vesting_shares - delegated_vesting_shares + received_vesting_shares; }
+#ifdef STEEM_ENABLE_SMT
+         /// Return SMT token object controlled by this account identified by its symbol. May return nullptr!
+         const smt_token_object* get_controlled_smt( const asset_symbol_type& smt_symbol, database& db ) const;
+#endif
    };
 
    class account_authority_object : public object< account_authority_object_type, account_authority_object >
