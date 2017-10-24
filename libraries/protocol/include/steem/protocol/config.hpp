@@ -15,8 +15,6 @@
 #define STEEM_INIT_PUBLIC_KEY_STR             (std::string( steem::protocol::public_key_type(STEEM_INIT_PRIVATE_KEY.get_public_key()) ))
 #define STEEM_CHAIN_ID_NAME "testnet"
 #define STEEM_CHAIN_ID (fc::sha256::hash(STEEM_CHAIN_ID_NAME))
-
-#define STEEM_SYMBOL_NAME                     "TEST"
 #define STEEM_ADDRESS_PREFIX                  "TST"
 
 #define STEEM_INIT_SUPPLY                     int64_t(1000000000)
@@ -80,8 +78,6 @@
 
 #define STEEM_CHAIN_ID_NAME ""
 #define STEEM_CHAIN_ID fc::sha256()
-
-#define STEEM_SYMBOL_NAME                     "STEEM"
 #define STEEM_ADDRESS_PREFIX                  "STM"
 
 #define STEEM_INIT_SUPPLY                     int64_t(0)
