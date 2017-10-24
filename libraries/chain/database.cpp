@@ -815,6 +815,21 @@ signed_block database::_generate_block(
       }
 
       _pending_tx_session.reset();
+
+#ifdef IS_TEST_NET
+      if( BOOST_UNLIKELY( head_block_id() == block_id_type() && init_genesis_hardforks ) )
+      {
+         // For every existing before the head_block_time (genesis time), apply the hardfork
+         // This allows the test net to launch with past hardforks and apply the next harfork when running
+         auto now = when;
+         for( size_t i = 0;
+            i <= STEEM_BLOCKCHAIN_VERSION.minor() && _hardfork_times[i] <= now;
+            i++ )
+         {
+            set_hardfork( i, true );
+         }
+      }
+#endif
    });
 
    // We have temporarily broken the invariant that
@@ -2482,21 +2497,7 @@ void database::init_genesis( uint64_t init_supply )
       {
          wso.current_shuffled_witnesses[0] = STEEM_INIT_MINER_NAME;
       } );
-
-#ifdef IS_TEST_NET
-      if( init_genesis_hardforks )
-      {
-         // For every existing before the head_block_time (genesis time), apply the hardfork
-         // This allows the test net to launch with past hardforks and apply the next harfork when running
-         auto now = head_block_time();
-         for( size_t i = 0;
-            i <= STEEM_BLOCKCHAIN_VERSION.minor() && _hardfork_times[i] <= now;
-            i++ )
-         {
-            set_hardfork( i, true );
-         }
-      }
-#endif
+      ilog("");
    }
    FC_CAPTURE_AND_RETHROW()
 }
@@ -2647,6 +2648,21 @@ void database::_apply_block( const signed_block& next_block )
 { try {
    uint32_t next_block_num = next_block.block_num();
    //block_id_type next_block_id = next_block.id();
+
+#ifdef IS_TEST_NET
+   if( BOOST_UNLIKELY( next_block_num == 1 && init_genesis_hardforks ) )
+   {
+      // For every existing before the head_block_time (genesis time), apply the hardfork
+      // This allows the test net to launch with past hardforks and apply the next harfork when running
+      auto now = next_block.timestamp;
+      for( size_t i = 0;
+         i <= STEEM_BLOCKCHAIN_VERSION.minor() && _hardfork_times[i] <= now;
+         i++ )
+      {
+         set_hardfork( i, true );
+      }
+   }
+#endif
 
    uint32_t skip = get_node_properties().skip_flags;
 
