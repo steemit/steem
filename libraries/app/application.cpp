@@ -138,6 +138,14 @@ namespace detail {
             ilog("Setting p2p max connections to ${n}", ("n", node_param["maximum_number_of_connections"]));
          }
 
+         if( _options->count("p2p-parameters") )
+         {
+            fc::variant var = fc::json::from_string( _options->at("p2p-parameters").as<string>(), fc::json::strict_parser );
+            const fc::variant_object& vo = var.get_object();
+            ilog( "Setting p2p advanced node parameters: ${vo}", ("vo", vo) );
+            _p2p_network->set_advanced_node_parameters( vo );
+         }
+
          _p2p_network->listen_to_p2p_network();
          ilog("Configured p2p node to listen on ${ip}", ("ip", _p2p_network->get_actual_listening_endpoint()));
 
@@ -1008,6 +1016,7 @@ void application::set_program_options(boost::program_options::options_descriptio
    configuration_file_options.add_options()
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
+         ("p2p-parameters", bpo::value<string>()->default_value("{}"), "P2P network parameters")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("shared-file-dir", bpo::value<string>(), "Location of the shared memory file. Defaults to data_dir/blockchain")
