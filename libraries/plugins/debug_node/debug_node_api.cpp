@@ -62,6 +62,8 @@ class debug_node_api_impl
       void debug_set_dev_key_prefix( std::string prefix );
       void debug_mine( debug_mine_result& result, const debug_mine_args& args );
       void debug_get_dev_key( get_dev_key_result& result, const get_dev_key_args& args );
+      void debug_busy_wait( debug_busy_wait_result& result, const debug_busy_wait_args& args );
+
       std::shared_ptr< steemit::plugin::debug_node::debug_node_plugin > get_plugin();
 
       steemit::app::application& app;
@@ -167,6 +169,25 @@ void debug_node_api_impl::debug_mine( debug_mine_result& result, const debug_min
 
    db->push_transaction( tx );
    return;
+}
+
+void debug_node_api_impl::debug_busy_wait( debug_busy_wait_result& result, const debug_busy_wait_args& args )
+{
+   fc::time_point bt = fc::time_point::now();
+   fc::time_point qt = bt + fc::microseconds( args.microseconds );
+   fc::time_point et = bt;
+   uint64_t i = 0;
+   while( et < qt )
+   {
+      for( int j=0; j<100; j++ )
+      {
+         std::string i_str = std::to_string( i );
+         fc::sha256::hash( i_str.c_str(), i_str.size() );
+         ++i;
+      }
+      et = fc::time_point::now();
+   }
+   result.hash_count = i;
 }
 
 uint32_t debug_node_api_impl::debug_push_blocks( const std::string& src_filename, uint32_t count, bool skip_validate_invariants )
@@ -423,6 +444,13 @@ std::string debug_node_api::debug_get_json_schema()
 {
    std::string result;
    my->debug_get_json_schema( result );
+   return result;
+}
+
+debug_busy_wait_result debug_node_api::debug_busy_wait( debug_busy_wait_args args )
+{
+   debug_busy_wait_result result;
+   my->debug_busy_wait( result, args );
    return result;
 }
 
