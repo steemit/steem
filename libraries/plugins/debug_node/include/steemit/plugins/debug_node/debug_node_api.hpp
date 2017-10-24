@@ -43,6 +43,16 @@ struct debug_mine_result
 {
 };
 
+struct debug_busy_wait_args
+{
+   uint64_t                                microseconds = 0;
+};
+
+struct debug_busy_wait_result
+{
+   uint64_t                                hash_count = 0;
+};
+
 class debug_node_api
 {
    public:
@@ -135,6 +145,8 @@ class debug_node_api
 
       std::string debug_get_json_schema();
 
+      debug_busy_wait_result debug_busy_wait( debug_busy_wait_args args );
+
       std::shared_ptr< detail::debug_node_api_impl > my;
 };
 
@@ -157,6 +169,14 @@ FC_REFLECT( steemit::plugin::debug_node::debug_mine_args,
 FC_REFLECT( steemit::plugin::debug_node::debug_mine_result,
    )
 
+FC_REFLECT( steemit::plugin::debug_node::debug_busy_wait_args,
+   (microseconds)
+   )
+
+FC_REFLECT( steemit::plugin::debug_node::debug_busy_wait_result,
+   (hash_count)
+   )
+
 FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_push_blocks)
        (debug_generate_blocks)
@@ -176,4 +196,5 @@ FC_API(steemit::plugin::debug_node::debug_node_api,
        (debug_set_dev_key_prefix)
        (debug_get_dev_key)
        (debug_mine)
+       (debug_busy_wait)
      )
