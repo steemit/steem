@@ -38,7 +38,7 @@ struct comment_feed_entry
 struct blog_entry
 {
    account_name_type author;
-   account_name_type permlink;
+   string            permlink;
    account_name_type blog;
    time_point_sec    reblog_on;
    uint32_t          entry_id = 0;
