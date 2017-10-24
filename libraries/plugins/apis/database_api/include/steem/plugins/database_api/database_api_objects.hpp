@@ -85,9 +85,9 @@ struct api_comment_object
 
    comment_id_type   id;
    string            category;
-   account_name_type parent_author;
+   string            parent_author;
    string            parent_permlink;
-   account_name_type author;
+   string            author;
    string            permlink;
 
    string            title;
@@ -459,7 +459,7 @@ struct api_witness_schedule_object
    }
 
    witness_schedule_id_type   id;
-   
+
    fc::uint128                current_virtual_time;
    uint32_t                   next_shuffle_block_num;
    vector<string>             current_shuffled_witnesses;   // fc::array<account_name_type,...> -> vector<string>
