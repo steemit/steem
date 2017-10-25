@@ -1,6 +1,6 @@
-seed-east.steemit.com          # steemit
-seed-central.steemit.com       # steemit
-seed-west.steemit.com          # steemit
+seed-east.steemit.com:2001          # steemit
+seed-central.steemit.com:2001       # steemit
+seed-west.steemit.com:2001          # steemit
 steem-seed1.abit-more.com:2001 # abit 
 52.74.152.79:2001              # smooth.witness
 seed.steemd.com:34191          # roadscape
