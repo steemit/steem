@@ -110,7 +110,6 @@ struct operation_visitor
                && sequence - seq_itr->sequence > 30
                && now - _db.get< chain::operation_object >( seq_itr->op ).timestamp > fc::days(30) )
          {
-            ilog( "Removing ${a}:${i}", ("a", item)("i", seq_itr->sequence) );
             to_remove.push_back( &(*seq_itr) );
             --seq_itr;
          }
