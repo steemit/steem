@@ -267,6 +267,11 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
 void account_by_key_plugin::plugin_startup()
 {
    app().register_api_factory< account_by_key_api >( "account_by_key_api" );
+
+   chain::database& db = database();
+
+   const auto& acct_itr = db.find< account_authority_object, by_account >( STEEMIT_INIT_MINER_NAME );
+   my->update_key_lookup( *acct_itr );
 }
 
 } } // steemit::account_by_key
