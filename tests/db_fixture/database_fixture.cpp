@@ -656,6 +656,47 @@ void smt_database_fixture::transfer_smt(
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
+void set_create_op(smt_create_operation* op, account_name_type control_acount, std::string token_name, uint8_t token_decimal_places)
+{
+   op->symbol = database_fixture::name_to_asset_symbol(token_name, token_decimal_places);
+   op->precision = op->symbol.decimals();
+   op->smt_creation_fee = ASSET( "1000.000 TBD" );
+   op->control_account = control_acount;
+}
+
+void smt_database_fixture::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key,
+   smt_database_fixture::TFollowUpOps followUpOps )
+{
+   smt_create_operation op0;
+   smt_create_operation op1;
+   smt_create_operation op2;
+   std::string token_name(control_account_name);
+   token_name.resize(2);
+
+   try
+   {
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      fund( control_account_name, 10 * 1000 * 1000 );
+      convert( control_account_name, ASSET( "5000.000 TESTS" ) );
+
+      set_create_op(&op0, control_account_name, token_name + "0", 0);
+      set_create_op(&op1, control_account_name, token_name + "1", 1);
+      set_create_op(&op2, control_account_name, token_name + "2", 1);
+
+      signed_transaction tx;
+      tx.operations.push_back( op0 );
+      tx.operations.push_back( op1 );
+      tx.operations.push_back( op2 );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      followUpOps(op0.symbol, op1.symbol, op2.symbol);
+   }
+   FC_LOG_AND_RETHROW();
+}
+
 #endif
 
 json_rpc_database_fixture::json_rpc_database_fixture()

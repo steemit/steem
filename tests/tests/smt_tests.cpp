@@ -272,46 +272,64 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+#define OP2TX(OP,TX,KEY) \
+   TX.operations.push_back( OP ); \
+   TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
+   TX.sign( KEY, db->get_chain_id() );
+
+#define PUSH_OP(OP,KEY) \
+   { \
+      signed_transaction tx; \
+      OP2TX(OP,tx,KEY) \
+      db->push_transaction( tx, 0 ); \
+   }
+
+#define FAIL_WITH_OP(OP,KEY) \
+   { \
+      signed_transaction tx; \
+      OP2TX(OP,tx,KEY) \
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception ); \
+   }
+
 BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 {
    try
    {
       ACTORS( (alice)(bob) )
 
-      smt_setup_emissions_operation op;
-      op.control_account = "alice";
+      smt_setup_emissions_operation fail_op;
+      fail_op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
-      op.schedule_time = now;
-      op.emissions_unit.token_unit["bob"] = 10;
+      fail_op.schedule_time = now;
+      fail_op.emissions_unit.token_unit["bob"] = 10;
+      fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, alice_symbol );
 
-      signed_transaction tx;
+      // Fail due to non-existing SMT (too early).
+      FAIL_WITH_OP(fail_op,alice_private_key)
 
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      // Create SMT(s) and continue.
+      create_smt_3("alice", alice_private_key, [&fail_op, this, alice_private_key]
+                                               (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+         // Do successful op with one smt.
+         smt_setup_emissions_operation valid_op = fail_op;
+         valid_op.symbol = smt1;
+         valid_op.lep_abs_amount = valid_op.rep_abs_amount = asset( 1000, valid_op.symbol );
+         PUSH_OP(valid_op,alice_private_key)
 
-      // Throw due to non-existing SMT (too early).
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
-
-      // Create SMT.
-      signed_transaction ty;
-      op.symbol = create_smt(ty, "alice", alice_private_key, 3);
-      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, op.symbol );
-
-      // TODO: Replace the code below with account setup operation execution once its implemented.
-      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( op.symbol );
-      FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
-      FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
-      db->modify( *smt, [&]( steem::chain::smt_token_object& token )
-      {
-         token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
+         // Fail with another smt.
+         fail_op.symbol = smt2;
+         fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, fail_op.symbol );
+         // TODO: Replace the code below with account setup operation execution once its implemented.
+         const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( fail_op.symbol );
+         FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
+         FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
+         db->modify( *smt, [&]( steem::chain::smt_token_object& token )
+         {
+            token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
+         });
+         // Fail due to closed setup phase (too late).
+         FAIL_WITH_OP(fail_op,alice_private_key)
       });
-      signed_transaction tz;
-      tz.operations.push_back( op );
-      tz.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tz.sign( alice_private_key, db->get_chain_id() );
-      // Throw due to closed setup phase (too late).
-      STEEM_REQUIRE_THROW( db->push_transaction( tz, database::skip_transaction_dupe_check ), fc::assert_exception );
    }
    FC_LOG_AND_RETHROW()
 }
