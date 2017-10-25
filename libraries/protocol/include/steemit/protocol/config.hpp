@@ -219,6 +219,9 @@
 #define STEEMIT_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define STEEMIT_MAX_SIG_CHECK_DEPTH             2
 
+// Hardfork to apply when creating a new chain
+#define STEEMIT_INIT_HARDFORK                   0
+
 #define STEEMIT_MIN_TRANSACTION_SIZE_LIMIT      1024
 #define STEEMIT_SECONDS_PER_YEAR                (uint64_t(60*60*24*365ll))
 

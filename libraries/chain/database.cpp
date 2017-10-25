@@ -2436,6 +2436,11 @@ void database::init_genesis( uint64_t init_supply )
       {
          wso.current_shuffled_witnesses[0] = STEEMIT_INIT_MINER_NAME;
       } );
+
+#if STEEMIT_INIT_HARDFORK != 0
+      set_hardfork( STEEMIT_INIT_HARDFORK, true );
+#endif
+
    }
    FC_CAPTURE_AND_RETHROW()
 }
