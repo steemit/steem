@@ -54,10 +54,10 @@ if [[ "$USE_RAMDISK" ]]; then
   mkdir -p /mnt/ramdisk
   mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
-  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
-  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
+  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
 fi
 if [[ $? -ne 0 ]]; then
   if [[ ! "$SYNC_TO_S3" ]]; then
