@@ -172,7 +172,7 @@ namespace detail
 
                   for( const auto& reply : replies )
                   {
-                     auto reply_ref = reply.author + "/" + reply.permlink;
+                     string reply_ref = reply.author + "/" + reply.permlink;
                      _state.content[ reply_ref ] = reply;
 
                      if( _follow_api )
