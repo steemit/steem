@@ -86,7 +86,7 @@ namespace detail {
    class application_impl : public graphene::net::node_delegate
    {
    public:
-      uint32_t _next_rebroadcast = -1;
+      uint32_t _next_rebroadcast = 0;
       boost::signals2::connection _rebroadcast_con;
       fc::optional<fc::temp_file> _lock_file;
       bool _is_block_producer = false;
@@ -136,6 +136,14 @@ namespace detail {
                fc::variant( _options->at("p2p-max-connections").as<uint32_t>() ) );
             _p2p_network->set_advanced_node_parameters( node_param );
             ilog("Setting p2p max connections to ${n}", ("n", node_param["maximum_number_of_connections"]));
+         }
+
+         if( _options->count("p2p-parameters") )
+         {
+            fc::variant var = fc::json::from_string( _options->at("p2p-parameters").as<string>(), fc::json::strict_parser );
+            const fc::variant_object& vo = var.get_object();
+            ilog( "Setting p2p advanced node parameters: ${vo}", ("vo", vo) );
+            _p2p_network->set_advanced_node_parameters( vo );
          }
 
          _p2p_network->listen_to_p2p_network();
@@ -241,12 +249,19 @@ namespace detail {
 
       void rebroadcast_pending_tx()
       {
-         if( _chain_db->head_block_num() >= _next_rebroadcast )
+         uint32_t hbn = _chain_db->head_block_num();
+         if( (_next_rebroadcast > 0) && (hbn >= _next_rebroadcast) )
          {
-            _next_rebroadcast += REBROADCAST_RAND_INTERVAL();
+            _next_rebroadcast = hbn + REBROADCAST_RAND_INTERVAL();
+            uint32_t n = 0;
             for( const auto& trx : _chain_db->_pending_tx )
             {
-                  _p2p_network->broadcast( graphene::net::trx_message( trx ) );
+               _p2p_network->broadcast( graphene::net::trx_message( trx ) );
+               ++n;
+            }
+            if( n > 0 )
+            {
+               ilog( "Force rebroadcast ${n} transactions", ("n", n) );
             }
          }
       }
@@ -368,8 +383,12 @@ namespace detail {
          }
          _chain_db->show_free_memory( true );
 
-         _next_rebroadcast = _chain_db->head_block_num() + REBROADCAST_RAND_INTERVAL();
-         _rebroadcast_con = _chain_db->applied_block.connect( [this]( const signed_block& b ){ rebroadcast_pending_tx(); } );
+         if( _options->count( "force-tx-rebroadcast" ) )
+         {
+            ilog( "Force transaction rebroadcast" );
+            _next_rebroadcast = 1;
+            _rebroadcast_con = _chain_db->applied_block.connect( [this]( const signed_block& b ){ rebroadcast_pending_tx(); } );
+         }
 
          if( _options->count("api-user") )
          {
@@ -997,6 +1016,7 @@ void application::set_program_options(boost::program_options::options_descriptio
    configuration_file_options.add_options()
          ("p2p-endpoint", bpo::value<string>(), "Endpoint for P2P node to listen on")
          ("p2p-max-connections", bpo::value<uint32_t>(), "Maxmimum number of incoming connections on P2P endpoint")
+         ("p2p-parameters", bpo::value<string>()->default_value(fc::json::to_string(graphene::net::node_configuration())), "P2P network parameters")
          ("seed-node,s", bpo::value<vector<string>>()->composing(), "P2P nodes to connect to on startup (may specify multiple times)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("shared-file-dir", bpo::value<string>(), "Location of the shared memory file. Defaults to data_dir/blockchain")
@@ -1021,6 +1041,7 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("read-only", "Node will not connect to p2p network and can only read from the chain state" )
          ("check-locks", "Check correctness of chainbase locking")
          ("disable-get-block", "Disable get_block API call" )
+         ("force-tx-rebroadcast", "Rebroadcast transactions every few seconds")
          ;
    command_line_options.add(_cli_options);
    configuration_file_options.add(_cfg_options);
