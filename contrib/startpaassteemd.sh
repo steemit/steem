@@ -2,7 +2,11 @@
 
 VERSION=`cat /etc/steemdversion`
 
-STEEMD="/usr/local/steemd-full/bin/steemd"
+if [[ "$IS_BROADCAST_NODE" ]]; then
+  STEEMD="/usr/local/steemd-full/bin/steemd"
+else
+  STEEMD="/usr/local/steemd-default/bin/steemd"
+fi
 
 chown -R steemd:steemd $HOME
 
@@ -34,12 +38,17 @@ fi
 NOW=`date +%s`
 STEEMD_FEED_START_TIME=`expr $NOW - 1209600`
 
-ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
-
-ARGS+=" --disable-get-block"
+if [[ ! "$IS_BROADCAST_NODE" ]]; then
+  ARGS+=" --follow-start-feeds=$STEEMD_FEED_START_TIME"
+  ARGS+=" --disable-get-block"
+fi
 
 # overwrite local config with image one
-cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+if [[ ! "$IS_BROADCAST_NODE" ]]; then
+  cp /etc/steemd/config.ini $HOME/config.ini
+else
+  cp /etc/steemd/fullnode.config.ini $HOME/config.ini
+fi
 
 chown steemd:steemd $HOME/config.ini
 
@@ -54,10 +63,18 @@ if [[ "$USE_RAMDISK" ]]; then
   mkdir -p /mnt/ramdisk
   mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
-  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  if [[ "$IS_BROADCAST_NODE" ]]; then
+    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  else
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+  fi
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
-  s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
+  if [[ "$IS_BROADCAST_NODE" ]]; then
+    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
+  else
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
+  fi
 fi
 if [[ $? -ne 0 ]]; then
   if [[ ! "$SYNC_TO_S3" ]]; then
