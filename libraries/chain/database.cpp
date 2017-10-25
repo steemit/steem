@@ -177,6 +177,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 
       with_write_lock( [&]()
       {
+         _block_log.set_locking( false );
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
          if( stop_replay_at > 0 && stop_replay_at < last_block_num )
@@ -207,6 +208,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
             benchmark.second( last_block_number, false /*is_initial_call*/ );
          }
          set_revision( head_block_num() );
+         _block_log.set_locking( true );
       });
 
       if( _block_log.head()->block_num() )

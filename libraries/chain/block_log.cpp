@@ -4,6 +4,7 @@
 
 #include <boost/thread/mutex.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
+#include <boost/interprocess/sync/lock_options.hpp>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
@@ -11,6 +12,8 @@
 namespace steem { namespace chain {
 
    typedef boost::interprocess::scoped_lock< boost::mutex > scoped_lock;
+
+   boost::interprocess::defer_lock_type defer_lock;
 
    namespace detail {
       class block_log_impl {
@@ -23,6 +26,8 @@ namespace steem { namespace chain {
             fc::path                 index_file;
             bool                     block_write;
             bool                     index_write;
+
+            bool                     use_locking = true;
 
             boost::mutex             read_mtx;
             boost::mutex             write_mtx;
@@ -194,8 +199,14 @@ namespace steem { namespace chain {
    {
       try
       {
-         scoped_lock w_lock( my->write_mtx );
-         scoped_lock r_lock( my->read_mtx );
+         scoped_lock w_lock( my->write_mtx, defer_lock );
+         scoped_lock r_lock( my->read_mtx, defer_lock );
+
+         if( my->use_locking )
+         {
+            w_lock.lock();
+            r_lock.lock();
+         }
 
          my->check_block_write();
          my->check_index_write();
@@ -218,8 +229,14 @@ namespace steem { namespace chain {
 
    void block_log::flush()
    {
-      scoped_lock w_lock( my->write_mtx );
-      scoped_lock r_lock( my->read_mtx );
+      scoped_lock w_lock( my->write_mtx, defer_lock );
+      scoped_lock r_lock( my->read_mtx, defer_lock );
+
+      if( my->use_locking )
+      {
+         w_lock.lock();
+         r_lock.lock();
+      }
 
       my->block_stream.flush();
       my->index_stream.flush();
@@ -227,9 +244,15 @@ namespace steem { namespace chain {
 
    std::pair< signed_block, uint64_t > block_log::read_block( uint64_t pos )const
    {
-      scoped_lock w_lock( my->write_mtx );
-      scoped_lock r_lock( my->read_mtx );
-      w_lock.unlock();
+      scoped_lock w_lock( my->write_mtx, defer_lock );
+      scoped_lock r_lock( my->read_mtx, defer_lock );
+
+      if( my->use_locking )
+      {
+         w_lock.lock();
+         r_lock.lock();
+         w_lock.unlock();
+      }
 
       return read_block_helper( pos );
    }
@@ -253,9 +276,15 @@ namespace steem { namespace chain {
    {
       try
       {
-         scoped_lock w_lock( my->write_mtx );
-         scoped_lock r_lock( my->read_mtx );
-         w_lock.unlock();
+         scoped_lock w_lock( my->write_mtx, defer_lock );
+         scoped_lock r_lock( my->read_mtx, defer_lock );
+
+         if( my->use_locking )
+         {
+            w_lock.lock();
+            r_lock.lock();
+            w_lock.unlock();
+         }
 
          optional< signed_block > b;
          uint64_t pos = get_block_pos_helper( block_num );
@@ -271,9 +300,15 @@ namespace steem { namespace chain {
 
    uint64_t block_log::get_block_pos( uint32_t block_num ) const
    {
-      scoped_lock w_lock( my->write_mtx );
-      scoped_lock r_lock( my->read_mtx );
-      w_lock.unlock();
+      scoped_lock w_lock( my->write_mtx, defer_lock );
+      scoped_lock r_lock( my->read_mtx, defer_lock );
+
+      if( my->use_locking )
+      {
+         w_lock.lock();
+         r_lock.lock();
+         w_lock.unlock();
+      }
 
       return get_block_pos_helper( block_num );
    }
@@ -298,9 +333,15 @@ namespace steem { namespace chain {
    {
       try
       {
-         scoped_lock w_lock( my->write_mtx );
-         scoped_lock r_lock( my->read_mtx );
-         w_lock.unlock();
+         scoped_lock w_lock( my->write_mtx, defer_lock );
+         scoped_lock r_lock( my->read_mtx, defer_lock );
+
+         if( my->use_locking )
+         {
+            w_lock.lock();
+            r_lock.lock();
+            w_lock.unlock();
+         }
 
          my->check_block_read();
 
@@ -314,9 +355,15 @@ namespace steem { namespace chain {
 
    const optional< signed_block >& block_log::head()const
    {
-      scoped_lock w_lock( my->write_mtx );
-      scoped_lock r_lock( my->read_mtx );
-      w_lock.unlock();
+      scoped_lock w_lock( my->write_mtx, defer_lock );
+      scoped_lock r_lock( my->read_mtx, defer_lock );
+
+      if( my->use_locking )
+      {
+         w_lock.lock();
+         r_lock.lock();
+         w_lock.unlock();
+      }
 
       return my->head;
    }
@@ -349,5 +396,10 @@ namespace steem { namespace chain {
          }
       }
       FC_LOG_AND_RETHROW()
+   }
+
+   void block_log::set_locking( bool use_locking )
+   {
+      my->use_locking = true;
    }
 } } // steem::chain
