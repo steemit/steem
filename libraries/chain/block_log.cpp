@@ -229,7 +229,7 @@ namespace steem { namespace chain {
    {
       scoped_lock w_lock( my->write_mtx );
       scoped_lock r_lock( my->read_mtx );
-      w_lock.release();
+      w_lock.unlock();
 
       return read_block_helper( pos );
    }
@@ -255,7 +255,7 @@ namespace steem { namespace chain {
       {
          scoped_lock w_lock( my->write_mtx );
          scoped_lock r_lock( my->read_mtx );
-         w_lock.release();
+         w_lock.unlock();
 
          optional< signed_block > b;
          uint64_t pos = get_block_pos_helper( block_num );
@@ -273,7 +273,7 @@ namespace steem { namespace chain {
    {
       scoped_lock w_lock( my->write_mtx );
       scoped_lock r_lock( my->read_mtx );
-      w_lock.release();
+      w_lock.unlock();
 
       return get_block_pos_helper( block_num );
    }
@@ -300,7 +300,7 @@ namespace steem { namespace chain {
       {
          scoped_lock w_lock( my->write_mtx );
          scoped_lock r_lock( my->read_mtx );
-         w_lock.release();
+         w_lock.unlock();
 
          my->check_block_read();
 
@@ -316,7 +316,7 @@ namespace steem { namespace chain {
    {
       scoped_lock w_lock( my->write_mtx );
       scoped_lock r_lock( my->read_mtx );
-      w_lock.release();
+      w_lock.unlock();
 
       return my->head;
    }
