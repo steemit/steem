@@ -45,7 +45,7 @@ fi
 
 # overwrite local config with image one
 if [[ "$IS_BROADCAST_NODE" ]]; then
-  cp /etc/steemd/config.ini $HOME/config.ini
+  cp /etc/steemd/config-for-broadcaster.ini $HOME/config.ini
 else
   cp /etc/steemd/fullnode.config.ini $HOME/config.ini
 fi
