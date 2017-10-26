@@ -83,7 +83,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
-   my->stop_replay_at      = 
+   my->stop_replay_at      =
       options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
    my->benchmark_interval  =
       options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
@@ -147,7 +147,7 @@ void chain_plugin::plugin_startup()
             ("rt", measure.real_ms)
             ("ct", measure.cpu_ms)
             ("cm", measure.current_mem)
-            ("pm", measure.peak_mem) );   
+            ("pm", measure.peak_mem) );
       };
       steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
       last_block_number = my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size,
@@ -161,7 +161,7 @@ void chain_plugin::plugin_startup()
                ("rt", total_data.real_ms)
                ("ct", total_data.cpu_ms)
                ("cm", total_data.current_mem)
-               ("pm", total_data.peak_mem) );   
+               ("pm", total_data.peak_mem) );
       }
 
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
@@ -176,7 +176,7 @@ void chain_plugin::plugin_startup()
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, my->validate_invariants );
+         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size, my->validate_invariants );
       }
       catch( const fc::exception& e )
       {
@@ -189,7 +189,7 @@ void chain_plugin::plugin_startup()
          catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, my->validate_invariants );
+            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size, my->validate_invariants );
          }
       }
    }
