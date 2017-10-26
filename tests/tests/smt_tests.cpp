@@ -137,6 +137,9 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       // Check the SMT cannot be created twice
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
 
+      // Check that invalid SMT can't be created
+      create_invalid_smt("alice", alice_private_key);
+
       // TODO:
       // - Check that 1000 TESTS throws
       // - Check that less than 1000 TBD throws

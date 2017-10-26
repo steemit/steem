@@ -697,6 +697,21 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
    FC_LOG_AND_RETHROW();
 }
 
+void smt_database_fixture::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key )
+{
+   // Fail due to precision too big.
+   smt_create_operation op_precision;
+   STEEM_REQUIRE_THROW( set_create_op(&op_precision, control_account_name, "smt", STEEM_ASSET_MAX_DECIMALS + 1), fc::assert_exception );
+   // Fail due to invalid token name.
+   smt_create_operation op_name;
+   set_create_op(&op_name, control_account_name, "alice1", 0);
+   signed_transaction tx;
+   tx.operations.push_back( op_name );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.sign( key, db->get_chain_id() );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+}
+
 #endif
 
 json_rpc_database_fixture::json_rpc_database_fixture()
