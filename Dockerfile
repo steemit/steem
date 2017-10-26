@@ -24,6 +24,7 @@ RUN \
         libtool \
         ncurses-dev \
         pbzip2 \
+        lbzip2 \
         pkg-config \
         python3 \
         python3-dev \
