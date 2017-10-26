@@ -2,7 +2,7 @@
 
 VERSION=`cat /etc/steemdversion`
 
-if [[ "$IS_BROADCAST_NODE" ]]; then
+if [[ ! "$IS_BROADCAST_NODE" ]]; then
   STEEMD="/usr/local/steemd-full/bin/steemd"
 else
   STEEMD="/usr/local/steemd-default/bin/steemd"
