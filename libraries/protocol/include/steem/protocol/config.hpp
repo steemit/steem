@@ -34,6 +34,9 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::seconds(0)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
+
+#define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
+
 #else // IS LIVE STEEM NETWORK
 
 #define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 4) )
@@ -59,6 +62,8 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::minutes(60)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
+
+#define STEEM_INIT_SUPPLY                     int64_t(0)
 
 #endif
 
@@ -209,7 +214,6 @@
 #define STEEM_MAX_PERMLINK_LENGTH             256
 #define STEEM_MAX_WITNESS_URL_LENGTH          2048
 
-#define STEEM_INIT_SUPPLY                     int64_t(0)
 #define STEEM_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define STEEM_MAX_SATOSHIS                    int64_t(4611686018427387903ll)
 #define STEEM_MAX_SIG_CHECK_DEPTH             2
