@@ -179,51 +179,80 @@ uint32_t debug_node_plugin::debug_generate_blocks(
    uint32_t miss_blocks
 )
 {
-   if( count == 0 )
-      return 0;
+   debug_generate_blocks_args args;
+   debug_generate_blocks_return ret;
+
+   args.debug_key = debug_key;
+   args.count = count;
+   args.skip = skip;
+   args.miss_blocks = miss_blocks;
+   debug_generate_blocks( ret, args );
+   return ret.blocks;
+}
+
+void debug_node_plugin::debug_generate_blocks(
+   debug_generate_blocks_return& ret,
+   const debug_generate_blocks_args& args )
+{
+   if( args.count == 0 )
+   {
+      ret.blocks = 0;
+      return;
+   }
 
    fc::optional<fc::ecc::private_key> debug_private_key;
    chain::public_key_type debug_public_key;
-   if( debug_key != "" )
+   if( args.debug_key != "" )
    {
-      debug_private_key = steem::utilities::wif_to_key( debug_key );
+      debug_private_key = steem::utilities::wif_to_key( args.debug_key );
       FC_ASSERT( debug_private_key.valid() );
       debug_public_key = debug_private_key->get_public_key();
    }
    else
    {
       if( logging ) elog( "Skipping generation because I don't know the private key");
-      return 0;
+      ret.blocks = 0;
+      return;
    }
 
    chain::database& db = database();
-   uint32_t slot = miss_blocks+1, produced = 0;
-   while( produced < count )
+   uint32_t slot = args.miss_blocks+1, produced = 0;
+   while( produced < args.count )
    {
-      uint32_t new_slot = miss_blocks+1;
+      uint32_t new_slot = args.miss_blocks+1;
       std::string scheduled_witness_name = db.get_scheduled_witness( slot );
       fc::time_point_sec scheduled_time = db.get_slot_time( slot );
       const chain::witness_object& scheduled_witness = db.get_witness( scheduled_witness_name );
       chain::public_key_type scheduled_key = scheduled_witness.signing_key;
-      if( logging ) wlog( "scheduled key is: ${sk}   dbg key is: ${dk}", ("sk", scheduled_key)("dk", debug_public_key) );
+      if( logging )
+      {
+         wlog( "slot: ${sl}   time: ${t}   scheduled key is: ${sk}   dbg key is: ${dk}",
+            ("sk", scheduled_key)("dk", debug_public_key)("sl", slot)("t", scheduled_time) );
+      }
       if( scheduled_key != debug_public_key )
       {
-         if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
-         debug_update( [=]( chain::database& db )
+         if( args.edit_if_needed )
          {
-            db.modify( db.get_witness( scheduled_witness_name ), [&]( chain::witness_object& w )
+            if( logging ) wlog( "Modified key for witness ${w}", ("w", scheduled_witness_name) );
+            debug_update( [=]( chain::database& db )
             {
-               w.signing_key = debug_public_key;
-            });
-         }, skip );
+               db.modify( db.get_witness( scheduled_witness_name ), [&]( chain::witness_object& w )
+               {
+                  w.signing_key = debug_public_key;
+               });
+            }, args.skip );
+         }
+         else
+            break;
       }
 
-      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, skip );
+      db.generate_block( scheduled_time, scheduled_witness_name, *debug_private_key, args.skip );
       ++produced;
       slot = new_slot;
    }
 
-   return count;
+   ret.blocks = produced;
+   return;
 }
 
 uint32_t debug_node_plugin::debug_generate_blocks_until(
