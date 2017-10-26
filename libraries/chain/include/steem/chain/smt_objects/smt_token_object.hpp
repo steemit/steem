@@ -25,11 +25,6 @@ public:
       c( *this );
    }
 
-   uint32_t get_nai() const
-   {
-      return symbol.to_nai();
-   }
-   
    // id_type is actually oid<smt_token_object>
    id_type           id;
 
@@ -69,7 +64,7 @@ public:
    uint8_t              rel_amount_denom_bits = 0;
 };
 
-struct by_nai;
+struct by_symbol;
 struct by_control_account;
 
 typedef multi_index_container <
@@ -77,8 +72,8 @@ typedef multi_index_container <
    indexed_by <
       ordered_unique< tag< by_id >,
          member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
-      ordered_unique< tag< by_nai >,
-         const_mem_fun< smt_token_object, uint32_t, &smt_token_object::get_nai > >,
+      ordered_unique< tag< by_symbol >,
+         member< smt_token_object, asset_symbol_type, &smt_token_object::symbol > >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
    >,

@@ -36,11 +36,11 @@ private:
 };
 
 const smt_token_object& common_pre_setup_evaluation(
-   const database& _db, const uint32_t& nai, const account_name_type& control_account )
+   const database& _db, const asset_symbol_type& symbol, const account_name_type& control_account )
 {
-   const smt_token_object* smt = _db.find< smt_token_object, by_nai >( nai );
+   const smt_token_object* smt = _db.find< smt_token_object, by_symbol >( symbol );
    // Check whether it's not too early to setup operation.
-   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", nai) );
+   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", symbol.to_nai()) );
    // Check whether some impostor tries to hijack SMT operation.
    FC_ASSERT( smt->control_account == control_account );
    // Check whether it's not too late to setup emissions operation.
@@ -120,7 +120,7 @@ void smt_setup_emissions_evaluator::do_apply( const smt_setup_emissions_operatio
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& smt = common_pre_setup_evaluation(_db, o.nai, o.control_account);
+   const smt_token_object& smt = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
 
    FC_ASSERT( o.lep_abs_amount.symbol == smt.symbol );
    // ^ Note that rep_abs_amount.symbol has been matched to lep's in validate().
@@ -145,7 +145,7 @@ void smt_set_setup_parameters_evaluator::do_apply( const smt_set_setup_parameter
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& smt_token = common_pre_setup_evaluation(_db, o.nai, o.control_account);
+   const smt_token_object& smt_token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
    
    _db.modify( smt_token, [&]( smt_token_object& token )
    {
@@ -200,7 +200,7 @@ void smt_set_runtime_parameters_evaluator::do_apply( const smt_set_runtime_param
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
 
-   const smt_token_object& _token = common_pre_setup_evaluation(_db, o.nai, o.control_account);
+   const smt_token_object& _token = common_pre_setup_evaluation(_db, o.symbol, o.control_account);
 
    smt_set_runtime_parameters_evaluator_visitor visitor( _token, _db );
 
