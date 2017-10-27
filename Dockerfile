@@ -23,7 +23,7 @@ RUN \
         libssl-dev \
         libtool \
         ncurses-dev \
-        lbzip2 \
+        pbzip2 \
         pkg-config \
         python3 \
         python3-dev \

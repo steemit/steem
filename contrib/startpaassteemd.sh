@@ -64,16 +64,16 @@ if [[ "$USE_RAMDISK" ]]; then
   mount -t ramfs -o size=${RAMDISK_SIZE_IN_MB:-51200}m ramfs /mnt/ramdisk
   ARGS+=" --shared-file-dir=/mnt/ramdisk/blockchain"
   if [[ "$IS_BROADCAST_NODE" ]]; then
-    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   else
-    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x --wildcards 'blockchain/block*' -C /mnt/ramdisk 'blockchain/shared*'
   fi
   chown -R steemd:steemd /mnt/ramdisk/blockchain
 else
   if [[ "$IS_BROADCAST_NODE" ]]; then
-    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
+    s3cmd get s3://$S3_BUCKET/broadcast-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
   else
-    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | lbzip2 -dc | tar x
+    s3cmd get s3://$S3_BUCKET/blockchain-$VERSION-latest.tar.bz2 - | pbzip2 -m2000dc | tar x
   fi
 fi
 if [[ $? -ne 0 ]]; then
