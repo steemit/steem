@@ -603,6 +603,51 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
    return op.symbol;
 }
 
+smt_generation_unit smt_database_fixture::fill_smt_generation_unit( const units& steem_unit, const units& token_unit )
+{
+   smt_generation_unit ret;
+
+   ret.steem_unit = steem_unit;
+   ret.token_unit = token_unit;
+
+   return ret;
+}
+
+smt_cap_commitment smt_database_fixture::fill_smt_cap_commitment( share_type amount )
+{
+   smt_cap_commitment ret;
+   ret.fillin_nonhidden_value( amount );
+
+   return ret;
+}
+
+smt_capped_generation_policy smt_database_fixture::fill_smt_capped_generation_policy
+(
+   const smt_generation_unit& pre_soft_cap_unit,
+   const smt_generation_unit& post_soft_cap_unit,
+   const smt_cap_commitment& min_steem_units_commitment,
+   const smt_cap_commitment& hard_cap_steem_units_commitment,
+   uint16_t soft_cap_percent,
+   uint32_t min_unit_ratio,
+   uint32_t max_unit_ratio
+)
+{
+   smt_capped_generation_policy ret;
+
+   ret.pre_soft_cap_unit = pre_soft_cap_unit;
+   ret.post_soft_cap_unit = post_soft_cap_unit;
+
+   ret.min_steem_units_commitment = min_steem_units_commitment;
+   ret.hard_cap_steem_units_commitment = hard_cap_steem_units_commitment;
+
+   ret.soft_cap_percent = soft_cap_percent;
+
+   ret.min_unit_ratio = min_unit_ratio;
+   ret.max_unit_ratio = max_unit_ratio;
+
+   return ret;
+}
+
 #endif
 
 json_rpc_database_fixture::json_rpc_database_fixture()

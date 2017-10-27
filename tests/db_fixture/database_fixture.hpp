@@ -249,11 +249,28 @@ struct live_database_fixture : public database_fixture
 #ifdef STEEM_ENABLE_SMT
 struct smt_database_fixture : public clean_database_fixture
 {
+   using units = flat_map< account_name_type, uint16_t >;
+
    smt_database_fixture();
    virtual ~smt_database_fixture();
 
    asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
+   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
+
+   //smt_setup_operation
+   smt_generation_unit fill_smt_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
+   smt_cap_commitment fill_smt_cap_commitment( share_type amount = 0 );
+   smt_capped_generation_policy fill_smt_capped_generation_policy
+   (
+      const smt_generation_unit& pre_soft_cap_unit = smt_generation_unit(),
+      const smt_generation_unit& post_soft_cap_unit = smt_generation_unit(),
+      const smt_cap_commitment& min_steem_units_commitment = smt_cap_commitment(),
+      const smt_cap_commitment& hard_cap_steem_units_commitment = smt_cap_commitment(),
+      uint16_t soft_cap_percent = 0,
+      uint32_t min_unit_ratio = 0,
+      uint32_t max_unit_ratio = 0
+   );
 };
 #endif
 
