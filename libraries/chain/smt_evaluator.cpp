@@ -42,14 +42,12 @@ const smt_token_object& common_pre_setup_evaluation(
    // Controlling account should definitely exist.
    FC_ASSERT( account != nullptr, "Control account ${name} not found", ("name", control_account));
 
-   const smt_token_object* smt = account->get_controlled_smt( symbol, _db );
-   // Check whether it's not too early to setup operation.
-   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", symbol.to_nai()) );
+   const smt_token_object& smt = account->get_controlled_smt( symbol, _db );
 
    // Check whether it's not too late to setup emissions operation.
-   FC_ASSERT( smt->phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
+   FC_ASSERT( smt.phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
 
-   return *smt;
+   return smt;
 }
 
 } // namespace

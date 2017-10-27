@@ -127,8 +127,8 @@ namespace steem { namespace chain {
 
          asset effective_vesting_shares()const { return vesting_shares - delegated_vesting_shares + received_vesting_shares; }
 #ifdef STEEM_ENABLE_SMT
-         /// Return SMT token object controlled by this account identified by its symbol. May return nullptr!
-         const smt_token_object* get_controlled_smt( const asset_symbol_type& smt_symbol, database& db ) const;
+         /// Return SMT token object controlled by this account identified by its symbol. Throws assert exception when not found!
+         const smt_token_object& get_controlled_smt( const asset_symbol_type& smt_symbol, database& db ) const;
 #endif
    };
 
