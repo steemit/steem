@@ -768,7 +768,7 @@ BOOST_AUTO_TEST_CASE( setup_apply )
       tx.signatures.clear();
 
       //Try to elevate account
-      elevate( tx, "alice", alice_private_key );
+      create_smt( tx, "alice", alice_private_key, 3 );
       tx.operations.clear();
       tx.signatures.clear();
 

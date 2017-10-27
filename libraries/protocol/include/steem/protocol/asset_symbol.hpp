@@ -179,6 +179,3 @@ inline void from_variant( const fc::variant& v,  steem::protocol::asset_symbol_t
 */
 
 } // fc
-
-
-FC_REFLECT( steem::protocol::asset_symbol_type, (asset_num) )

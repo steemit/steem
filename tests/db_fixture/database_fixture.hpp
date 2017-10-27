@@ -256,7 +256,6 @@ struct smt_database_fixture : public clean_database_fixture
 
    asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
-   void elevate( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key );
 
    //smt_setup_operation
    smt_generation_unit fill_smt_generation_unit ( const units& steem_unit = units(), const units& token_unit = units() );
