@@ -70,6 +70,10 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
 
+   // Check that SMT with given symbol has not been created already.
+   FC_ASSERT( (_db.find< smt_token_object, by_nai >( o.symbol.to_nai() ) == nullptr),
+      "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
+
    asset effective_elevation_fee;
 
    FC_ASSERT( dgpo.smt_creation_fee.symbol == STEEM_SYMBOL || dgpo.smt_creation_fee.symbol == SBD_SYMBOL,

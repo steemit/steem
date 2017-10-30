@@ -656,12 +656,23 @@ void smt_database_fixture::transfer_smt(
    } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
-void set_create_op(smt_create_operation* op, account_name_type control_acount, std::string token_name, uint8_t token_decimal_places)
+void sub_set_create_op(smt_create_operation* op, account_name_type control_acount)
 {
-   op->symbol = database_fixture::name_to_asset_symbol(token_name, token_decimal_places);
    op->precision = op->symbol.decimals();
    op->smt_creation_fee = ASSET( "1000.000 TBD" );
    op->control_account = control_acount;
+}
+
+void set_create_op(smt_create_operation* op, account_name_type control_account, std::string token_name, uint8_t token_decimal_places)
+{
+   op->symbol = database_fixture::name_to_asset_symbol(token_name, token_decimal_places);
+   sub_set_create_op(op, control_account);
+}
+
+void set_create_op(smt_create_operation* op, account_name_type control_account, uint32_t token_nai, uint8_t token_decimal_places)
+{
+   op->symbol = asset_symbol_type::from_nai(token_nai, token_decimal_places);
+   sub_set_create_op(op, control_account);
 }
 
 void smt_database_fixture::create_smt_3( const char* control_account_name, const fc::ecc::private_key& key,
@@ -697,6 +708,15 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
    FC_LOG_AND_RETHROW();
 }
 
+void push_invalid_operation(const operation& invalid_op, const fc::ecc::private_key& key, database* db)
+{
+   signed_transaction tx;
+   tx.operations.push_back( invalid_op );
+   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+   tx.sign( key, db->get_chain_id() );
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::assert_exception );
+}
+
 void smt_database_fixture::create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key )
 {
    // Fail due to precision too big.
@@ -705,11 +725,20 @@ void smt_database_fixture::create_invalid_smt( const char* control_account_name,
    // Fail due to invalid token name.
    smt_create_operation op_name;
    set_create_op(&op_name, control_account_name, "alice1", 0);
-   signed_transaction tx;
-   tx.operations.push_back( op_name );
-   tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-   tx.sign( key, db->get_chain_id() );
-   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+   push_invalid_operation(op_name, key, db);
+}
+
+void smt_database_fixture::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name,
+   const fc::ecc::private_key& key )
+{
+   // Fail due to the same nai & precision.
+   smt_create_operation op_same;
+   set_create_op(&op_same, control_account_name, existing_smt.to_nai(), existing_smt.decimals());
+   push_invalid_operation(op_same, key, db);
+   // Fail due to the same nai (though different precision).
+   smt_create_operation op_same_nai;
+   set_create_op(&op_same_nai, control_account_name, existing_smt.to_nai(), existing_smt.decimals() == 0 ? 1 : 0);
+   push_invalid_operation(op_same_nai, key, db);
 }
 
 #endif

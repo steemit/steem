@@ -262,6 +262,8 @@ struct smt_database_fixture : public clean_database_fixture
    void create_smt_3( const char* control_account_name, const fc::ecc::private_key& key, TFollowUpOps followUpOps );
    /// Tries to create SMTs with too big precision or invalid name.
    void create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
+   /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
+   void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 };
 #endif
 

@@ -134,8 +134,8 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       convert( "alice", ASSET( "5000.000 TESTS" ) );
       db->push_transaction( tx, 0 );
 
-      // Check the SMT cannot be created twice
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), fc::exception );
+      // Check the SMT cannot be created twice even with different precision.
+      create_conflicting_smt(op.symbol, "alice", alice_private_key);
 
       // Check that invalid SMT can't be created
       create_invalid_smt("alice", alice_private_key);
@@ -306,6 +306,9 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       fail_op.schedule_time = now;
       fail_op.emissions_unit.token_unit["bob"] = 10;
       fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, alice_symbol );
+
+      // Do invalid attempt at SMT creation.
+      create_invalid_smt("alice", alice_private_key);      
 
       // Fail due to non-existing SMT (too early).
       FAIL_WITH_OP(fail_op,alice_private_key)
