@@ -91,7 +91,7 @@ namespace steemit { namespace protocol {
       void clear() { operations.clear(); signatures.clear(); }
    };
 
-   void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
+   void verify_authority( const required_authority_getter& ops, const flat_set<public_key_type>& sigs,
                           const authority_getter& get_active,
                           const authority_getter& get_owner,
                           const authority_getter& get_posting,
@@ -100,7 +100,6 @@ namespace steemit { namespace protocol {
                           const flat_set< account_name_type >& active_aprovals = flat_set< account_name_type >(),
                           const flat_set< account_name_type >& owner_aprovals = flat_set< account_name_type >(),
                           const flat_set< account_name_type >& posting_approvals = flat_set< account_name_type >());
-
 
    struct annotated_signed_transaction : public signed_transaction {
       annotated_signed_transaction(){}
@@ -111,7 +110,6 @@ namespace steemit { namespace protocol {
       uint32_t            block_num = 0;
       uint32_t            transaction_num = 0;
    };
-
 
    /// @} transactions group
 
