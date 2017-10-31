@@ -137,6 +137,9 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       // Check the SMT cannot be created twice even with different precision.
       create_conflicting_smt(op.symbol, "alice", alice_private_key);
 
+      // Check that another user/account can't be used to create duplicating SMT even with different precision.
+      create_conflicting_smt(op.symbol, "bob", bob_private_key);
+
       // Check that invalid SMT can't be created
       create_invalid_smt("alice", alice_private_key);
 
