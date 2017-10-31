@@ -174,5 +174,5 @@ class JSONFileValidator(validators.AbstractValidator):
         return output
 
 VALIDATORS = {
-   'json_file_comparator': JSONFileValidator.parse,
-   'json_file_compare': JSONFileValidator.parse }
+   'json_file_validator': JSONFileValidator.parse,
+   'json_file_validate': JSONFileValidator.parse }

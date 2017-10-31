@@ -18,7 +18,7 @@
     - extract_test: {jsonpath_mini: "error", test: "not_exists"}
     - extract_test: {jsonpath_mini: "result", test: "exists"}
     - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: {template: $test_id}}
-    - json_file_compare: {jsonpath_mini: "result", comparator: "eq", expected: {template: '$api/$method'}}
+    - json_file_validator: {jsonpath_mini: "result", comparator: "json_compare", expected: {template: '$api/$method'}}
 
 - test:
   - name: "get_dynamic_global_properties"
