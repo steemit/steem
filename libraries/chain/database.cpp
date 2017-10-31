@@ -3631,11 +3631,26 @@ void database::process_hardforks()
       }
       else
       {
-         while( hardforks.last_hardfork < STEEM_NUM_HARDFORKS
-               && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time()
-               && hardforks.last_hardfork < STEEM_HARDFORK_0_5__54 )
+         if( head_block_num() == 1 )
          {
-            apply_hardfork( hardforks.last_hardfork + 1 );
+            ilog( "Start processing genesis hardforks" );
+            int n = 0;
+            while( hardforks.last_hardfork < STEEM_NUM_HARDFORKS
+               && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time() )
+            {
+               apply_hardfork( hardforks.last_hardfork + 1 );
+               ++n;
+            }
+            ilog( "Done processing ${n} genesis hardforks", ("n", n) );
+         }
+         else
+         {
+            while( hardforks.last_hardfork < STEEM_NUM_HARDFORKS
+                  && _hardfork_times[ hardforks.last_hardfork + 1 ] <= head_block_time()
+                  && hardforks.last_hardfork < STEEM_HARDFORK_0_5__54 )
+            {
+               apply_hardfork( hardforks.last_hardfork + 1 );
+            }
          }
       }
    }
