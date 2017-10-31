@@ -168,7 +168,7 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
 // https://en.wikipedia.org/wiki/Damm_algorithm
 uint8_t damm_checksum_8digit(uint32_t value)
 {
-   FC_ASSERT( value < 100000000 );
+   FC_ASSERT( value < 0x8000000 );
 
    const uint8_t t[] = {
        0, 30, 10, 70, 50, 90, 80, 60, 40, 20,

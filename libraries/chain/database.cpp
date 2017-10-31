@@ -21,7 +21,7 @@
 #include <steem/chain/util/asset.hpp>
 #include <steem/chain/util/reward.hpp>
 #include <steem/chain/util/uint256.hpp>
-#include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/scheduler.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -89,7 +89,7 @@ database_impl::database_impl( database& self )
    : _self(self), _evaluator_registry(self) {}
 
 database::database()
-   : _my( new database_impl(*this) )
+   : _my( new database_impl(*this) ), scheduler( new util::timed_event_scheduler( *this ) )
 {
    set_chain_id( STEEM_CHAIN_ID_NAME );
 }
@@ -242,6 +242,10 @@ void database::close(bool rewind)
       // we have to clear_pending() after we're done popping to get a clean
       // DB state (issue #336).
       clear_pending();
+
+      FC_ASSERT( scheduler );
+      scheduler->close();
+      scheduler.reset();
 
       chainbase::database::flush();
       chainbase::database::close();
@@ -2316,6 +2320,43 @@ const std::string& database::get_json_schema()const
    return _json_schema;
 }
 
+void database::scheduler_close()
+{
+   FC_ASSERT( scheduler );
+   scheduler->close();
+}
+
+void database::scheduler_add( const time_point_sec& key, const timed_event_object& value, bool buffered )
+{
+   FC_ASSERT( scheduler );
+   scheduler->add( key, value, buffered );
+}
+
+void database::scheduler_run( const time_point_sec& current_time )
+{
+   FC_ASSERT( scheduler );
+   scheduler->run( current_time );
+}
+
+#ifdef IS_TEST_NET
+size_t database::scheduler_size()
+{
+   FC_ASSERT( scheduler );
+   return scheduler->size();
+}
+
+size_t database::scheduler_size( const time_point_sec& head_block_time )
+{
+   FC_ASSERT( scheduler );
+   return scheduler->size( head_block_time );
+}
+#endif
+
+void database::process_smt_operations( const signed_block& block )
+{
+   scheduler_run( block.timestamp );
+}
+
 void database::init_schema()
 {
    /*done_adding_indexes();
@@ -2726,6 +2767,9 @@ void database::_apply_block( const signed_block& next_block )
    notify_applied_block( next_block );
 
    notify_changed_objects();
+
+   process_smt_operations( next_block );
+
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
 }

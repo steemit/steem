@@ -13,6 +13,7 @@ FC_TODO(Extend testing scenarios to support multiple NAIs per account)
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/steem_objects.hpp>
 #include <steem/chain/smt_objects.hpp>
+#include <steem/chain/util/scheduler.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
 
@@ -260,6 +261,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 {
    try
    {
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
       ACTORS( (alice)(bob) )
       SMT_SYMBOL( alice, 3 );
 
@@ -535,6 +537,217 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE( scheduler_basic )
+{
+   try
+   {
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      ACTORS( (aaa)(bbb)(ccc)(ddd)(eee)(fff) )
+
+      fc::time_point_sec t900( 900 );
+      fc::time_point_sec t1000( 1000 );
+      fc::time_point_sec t1500( 1500 );
+      fc::time_point_sec t1800( 1800 );
+      fc::time_point_sec t2000( 2000 );
+      fc::time_point_sec t2100( 2100 );
+      fc::time_point_sec tmilion( 1000000 );                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+
+      phase_times times = { phase_time( phase::contribution_end, tmilion ) };
+
+      asset_symbol_type a_symbol = prepare_scheduler_data( "aaa", aaa_private_key, 3, times );
+      asset_symbol_type b_symbol = prepare_scheduler_data( "bbb", bbb_private_key, 3, times );
+      asset_symbol_type c_symbol = prepare_scheduler_data( "ccc", ccc_private_key, 3, times );
+      asset_symbol_type d_symbol = prepare_scheduler_data( "ddd", ddd_private_key, 3, times );
+      asset_symbol_type e_symbol = prepare_scheduler_data( "eee", eee_private_key, 3, times );
+      asset_symbol_type f_symbol = prepare_scheduler_data( "fff", fff_private_key, 3, times );
+
+//==========================================================
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( a_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 1 );
+
+      db->scheduler_run( t2000 );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 1 );
+      db->scheduler_close();
+//==========================================================
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( a_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 0 );
+
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( b_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 0 );
+
+      db->scheduler_add( t1500, util::contribution_begin_scheduler_event( c_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t1500 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 0 );
+
+      db->scheduler_run( t900 );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t1500 ) == 1 );
+
+      db->scheduler_run( t1500 );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 3 );
+      db->scheduler_close();
+//==========================================================
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( a_symbol ) );
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( b_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1500 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 1 );
+
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( c_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 2 );
+
+      db->scheduler_run( t1000 );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 2 );
+
+      db->scheduler_run( t1500 );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 2 );
+
+      db->scheduler_run( t2000 );
+      BOOST_REQUIRE( db->scheduler_size() == 3 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 3 );
+      db->scheduler_close();
+//==========================================================
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( a_symbol ) );
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( b_symbol ) );
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( c_symbol ) );
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( d_symbol ) );
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( e_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 5 );
+
+      db->scheduler_run( t1500 );
+      BOOST_REQUIRE( db->scheduler_size() == 5 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 3 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 2 );
+
+      db->scheduler_run( t2000 );
+      BOOST_REQUIRE( db->scheduler_size() == 5 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 5 );
+      db->scheduler_close();
+//==========================================================
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( a_symbol ) );
+      db->scheduler_add( t1500, util::contribution_begin_scheduler_event( b_symbol ) );
+      db->scheduler_add( t1500, util::contribution_begin_scheduler_event( c_symbol ) );
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( d_symbol ) );
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( e_symbol ) );
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( f_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 6 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1500 ) == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 3 );
+
+      db->scheduler_run( t1500 );
+      BOOST_REQUIRE( db->scheduler_size() == 6 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 3 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 3 );
+
+      db->scheduler_run( t2100 );
+      BOOST_REQUIRE( db->scheduler_size() == 6 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 6 );
+      db->scheduler_close();
+//==========================================================
+      db->scheduler_add( t2000, util::contribution_begin_scheduler_event( a_symbol ) );
+      db->scheduler_add( t1000, util::contribution_begin_scheduler_event( b_symbol ) );
+      db->scheduler_add( t1800, util::contribution_begin_scheduler_event( c_symbol ) );
+      db->scheduler_add( t1500, util::contribution_begin_scheduler_event( d_symbol ) );
+      BOOST_REQUIRE( db->scheduler_size() == 4 );
+      BOOST_REQUIRE( db->scheduler_size( t2000 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1000 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1800 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t1500 ) == 1 );
+
+      db->scheduler_run( t2000 );
+      BOOST_REQUIRE( db->scheduler_size() == 4 );
+      BOOST_REQUIRE( db->scheduler_size( tmilion ) == 4 );
+      db->scheduler_close();
+//==========================================================
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( scheduler_cycle )
+{
+   try
+   {
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      ACTORS( (aaa) )
+
+      fc::time_point_sec t09( 9 );
+      fc::time_point_sec t10( 10 );
+      fc::time_point_sec t15( 15 );
+      fc::time_point_sec t20( 20 );
+      fc::time_point_sec t30( 30 );
+      fc::time_point_sec t40( 40 );
+      fc::time_point_sec t41( 41 );
+
+      phase_times times = {
+         phase_time( phase::contribution_end, t20 ),
+         phase_time( phase::launch, t30 ),
+         phase_time( phase::launch_expiration, t40 )
+         };
+
+      asset_symbol_type a_symbol = prepare_scheduler_data( "aaa", aaa_private_key, 3, times );
+
+      db->scheduler_add( t10, util::contribution_begin_scheduler_event( a_symbol ) );
+
+      db->scheduler_run( t09 );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t09 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t10 ) == 1 );
+
+      db->scheduler_run( t10 );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t10 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t20 ) == 1 );
+
+      db->scheduler_run( t15 );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t10 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t15 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t20 ) == 1 );
+
+      db->scheduler_run( t20 );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t10 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t20 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t30 ) == 1 );
+
+      db->scheduler_run( t30 );
+      BOOST_REQUIRE( db->scheduler_size() == 2 );
+      BOOST_REQUIRE( db->scheduler_size( t10 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t20 ) == 0 );
+      BOOST_REQUIRE( db->scheduler_size( t30 ) == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t40 ) == 1 );
+
+      db->scheduler_run( t40 );
+      BOOST_REQUIRE( db->scheduler_size() == 1 );
+      BOOST_REQUIRE( db->scheduler_size( t30 ) == 1 );
+
+      db->scheduler_run( t41 );
+      BOOST_REQUIRE( db->scheduler_size() == 0 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

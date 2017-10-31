@@ -582,8 +582,6 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
-
       fund( account_name, 10 * 1000 * 1000 );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
 
@@ -601,6 +599,46 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
    FC_LOG_AND_RETHROW();
 
    return op.symbol;
+}
+
+void smt_database_fixture::set_phase_times( const asset_symbol_type& symbol, const phase_times& _phase_times )
+{
+   const smt_token_object* _token = db->find< smt_token_object, by_symbol >( symbol );
+   FC_ASSERT( _token );
+
+   db->modify( *_token, [&]( smt_token_object& token )
+   {
+      for( auto& item : _phase_times )
+      {
+         switch( item.first )
+         {
+            case phase::contribution_end:
+               token.generation_end_time = item.second;
+            break;
+
+            case phase::launch:
+               token.announced_launch_time = item.second;
+            break;
+
+            case phase::launch_expiration:
+               token.launch_expiration_time = item.second;
+            break;
+         }
+      }
+   });
+}
+
+asset_symbol_type smt_database_fixture::prepare_scheduler_data( const std::string& account_name,
+                                                   const fc::ecc::private_key& key,
+                                                   uint8_t token_decimal_places,
+                                                   const phase_times& _phase_times )
+{
+   signed_transaction tx;
+
+   asset_symbol_type symbol = create_smt(tx, account_name, key, token_decimal_places );
+   set_phase_times( symbol, _phase_times );
+
+   return symbol;
 }
 
 #endif

@@ -4,7 +4,7 @@
 #include <steem/protocol/types_fwd.hpp>
 
 #define STEEM_ASSET_SYMBOL_PRECISION_BITS 4
-#define SMT_MAX_NAI                       99999999
+#define SMT_MAX_NAI                       0x8000000
 #define SMT_MIN_NAI                       1
 #define STEEM_ASSET_SYMBOL_MAX_LENGTH     10
 

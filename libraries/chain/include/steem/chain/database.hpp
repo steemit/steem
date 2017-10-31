@@ -9,6 +9,7 @@
 #include <steem/chain/block_log.hpp>
 #include <steem/chain/operation_notification.hpp>
 #include <steem/chain/util/signal.hpp>
+#include <steem/chain/util/scheduler_event.hpp>
 
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
@@ -29,11 +30,14 @@ namespace steem { namespace chain {
    using steem::protocol::asset_symbol_type;
    using steem::protocol::price;
 
+   using steem::chain::util::timed_event_object;
+
    class database_impl;
    class custom_operation_interpreter;
 
    namespace util {
       struct comment_reward_context;
+      class timed_event_scheduler;
    }
 
    /**
@@ -412,6 +416,15 @@ namespace steem { namespace chain {
 
          const std::string& get_json_schema() const;
 
+         void scheduler_close();
+         void scheduler_add( const time_point_sec& key, const timed_event_object& value, bool buffered = false );
+         void scheduler_run( const time_point_sec& current_time );
+#ifdef IS_TEST_NET
+         size_t scheduler_size();
+         size_t scheduler_size( const time_point_sec& head_block_time );
+#endif
+         void process_smt_operations( const signed_block& block );
+
          void set_flush_interval( uint32_t flush_blocks );
          void show_free_memory( bool force, uint32_t current_block_num );
 
@@ -491,6 +504,8 @@ namespace steem { namespace chain {
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;
+
+         std::unique_ptr< util::timed_event_scheduler > scheduler;
    };
 
 } }

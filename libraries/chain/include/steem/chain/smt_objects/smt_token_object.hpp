@@ -2,10 +2,15 @@
 
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/protocol/smt_operations.hpp>
+#include <steem/protocol/asset_symbol.hpp>
+#include <steem/protocol/asset.hpp>
 
 #ifdef STEEM_ENABLE_SMT
 
 namespace steem { namespace chain {
+
+using steem::protocol::asset_symbol_type;
+using steem::protocol::asset;
 
 class smt_token_object : public object< smt_token_object_type, smt_token_object >
 {
@@ -16,6 +21,10 @@ public:
    {
       account_elevated,
       setup_completed,
+      contribution_begin_time_completed,
+      contribution_end_time_completed,
+      launch_time_completed,
+      launch_expiration_time_completed
    };
 
 public:
@@ -62,6 +71,13 @@ public:
    uint32_t             lep_rel_amount_numerator = 0;
    uint32_t             rep_rel_amount_numerator = 0;
    uint8_t              rel_amount_denom_bits = 0;
+
+   // smt_setup_operation
+   time_point_sec generation_begin_time;
+   time_point_sec generation_end_time;
+   time_point_sec announced_launch_time;
+   time_point_sec launch_expiration_time;
+
 };
 
 struct by_symbol;
@@ -83,8 +99,12 @@ typedef multi_index_container <
 } } // namespace steem::chain
 
 FC_REFLECT_ENUM( steem::chain::smt_token_object::smt_phase,
-                 (account_elevated)
-                 (setup_completed)
+                  (account_elevated)
+                  (setup_completed)
+                  (contribution_begin_time_completed)
+                  (contribution_end_time_completed)
+                  (launch_time_completed)
+                  (launch_expiration_time_completed)
 )
 
 FC_REFLECT( steem::chain::smt_token_object,

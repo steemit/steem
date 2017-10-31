@@ -5,6 +5,7 @@
 #include <steem/chain/smt_objects.hpp>
 
 #include <steem/chain/util/reward.hpp>
+#include <steem/chain/util/scheduler.hpp>
 
 #include <steem/protocol/smt_operations.hpp>
 
@@ -102,6 +103,7 @@ void smt_setup_evaluator::do_apply( const smt_setup_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    // TODO: Check whether some impostor tries to hijack SMT operation.
+   _db.scheduler_add( o.generation_begin_time, util::contribution_begin_scheduler_event( o.smt_name ) );
 }
 
 void smt_cap_reveal_evaluator::do_apply( const smt_cap_reveal_operation& o )

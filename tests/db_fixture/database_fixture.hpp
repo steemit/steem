@@ -249,12 +249,36 @@ struct live_database_fixture : public database_fixture
 #ifdef STEEM_ENABLE_SMT
 struct smt_database_fixture : public clean_database_fixture
 {
-   smt_database_fixture();
-   virtual ~smt_database_fixture();
+   public:
 
-   asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
-      uint8_t token_decimal_places );
+      enum class phase
+      {
+         contribution_end,
+         launch,
+         launch_expiration
+      };
+
+      using phase_time = std::pair< phase, time_point_sec >;
+      using phase_times = std::list< phase_time >;
+
+   private:
+
+      void set_phase_times( const asset_symbol_type& symbol, const phase_times& _phase_times );
+
+   public:
+
+      smt_database_fixture();
+      virtual ~smt_database_fixture();
+
+      asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
+         uint8_t token_decimal_places );
+
+      asset_symbol_type prepare_scheduler_data( const std::string& account_name,
+                                                const fc::ecc::private_key& key,
+                                                uint8_t token_decimal_places,
+                                                const phase_times& _phase_times );
 };
+
 #endif
 
 struct json_rpc_database_fixture : public database_fixture
