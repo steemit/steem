@@ -600,6 +600,7 @@ BOOST_AUTO_TEST_CASE( comment_apply )
    FC_LOG_AND_RETHROW()
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( comment_delete_apply )
 {
    try
@@ -705,6 +706,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( vote_validate )
 {
@@ -727,6 +729,8 @@ BOOST_AUTO_TEST_CASE( vote_authorities )
    }
    FC_LOG_AND_RETHROW()
 }
+
+#if 0
 
 BOOST_AUTO_TEST_CASE( vote_apply )
 {
@@ -1069,6 +1073,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+
+#endif
 
 BOOST_AUTO_TEST_CASE( transfer_validate )
 {
@@ -5602,6 +5608,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
 {
    try
@@ -5750,6 +5757,7 @@ BOOST_AUTO_TEST_CASE( decline_voting_rights_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( account_bandwidth )
 {
@@ -5944,6 +5952,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_authorities )
 
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
 {
    try
@@ -6066,6 +6075,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
 {
@@ -6178,6 +6188,8 @@ BOOST_AUTO_TEST_CASE( delegate_vesting_shares_validate )
    }
    FC_LOG_AND_RETHROW()
 }
+
+#if 0
 
 BOOST_AUTO_TEST_CASE( delegate_vesting_shares_authorities )
 {
@@ -6485,6 +6497,7 @@ BOOST_AUTO_TEST_CASE( issue_971_vesting_removal )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
 {
@@ -6557,6 +6570,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_validate )
    FC_LOG_AND_RETHROW()
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
 {
    try
@@ -6811,6 +6825,7 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

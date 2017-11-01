@@ -25,6 +25,7 @@ using namespace steem::protocol;
 
 BOOST_FIXTURE_TEST_SUITE( operation_time_tests, clean_database_fixture )
 
+#if 0
 BOOST_AUTO_TEST_CASE( comment_payout_equalize )
 {
    try
@@ -213,6 +214,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 /*
 BOOST_AUTO_TEST_CASE( reward_funds )
@@ -288,6 +290,7 @@ BOOST_AUTO_TEST_CASE( reward_funds )
 }
 */
 
+#if 0
 BOOST_AUTO_TEST_CASE( recent_claims_decay )
 {
    try
@@ -370,6 +373,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 /*BOOST_AUTO_TEST_CASE( comment_payout )
 {
@@ -2540,6 +2544,7 @@ BOOST_AUTO_TEST_CASE( post_rate_limit )
    FC_LOG_AND_RETHROW()
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( comment_freeze )
 {
    try
@@ -2844,6 +2849,7 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
    }
    FC_LOG_AND_RETHROW()
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( clear_null_account )
 {
