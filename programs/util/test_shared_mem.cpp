@@ -43,6 +43,9 @@
 
 #include <fc/fixed_string.hpp>
 
+#if !defined( ENABLE_STD_ALLOCATOR )
+   # error "XXXXXXXXXX"
+#endif
 
 using boost::multi_index_container;
 using namespace boost::multi_index;
@@ -52,13 +55,22 @@ namespace bip=boost::interprocess;
  *  * courtesy of Boost.Interprocess.
  *   */
 
-typedef bip::basic_string<
-  char,std::char_traits<char>,
-  bip::allocator<char,bip::managed_mapped_file::segment_manager>
-> shared_string;
+template< typename T >
+using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                           std::allocator< T >,
+                           bip::allocator<T, bip::managed_mapped_file::segment_manager>
+                           >::type;
 
+using shared_string = std::conditional< ENABLE_STD_ALLOCATOR,
+                     std::string,
+                     bip::basic_string< char, std::char_traits< char >, allocator< char > >
+                     >::type;
 
-typedef bip::allocator<shared_string,bip::managed_mapped_file::segment_manager> basic_string_allocator;
+template< typename T >
+using t_deque = std::conditional< ENABLE_STD_ALLOCATOR,
+               std::deque< T, allocator< T > >,
+               bip::deque< T, allocator< T > >
+               >::type;
 
 namespace fc {
     void to_variant( const shared_string& s, fc::variant& vo ) {
@@ -97,13 +109,11 @@ namespace fc {
 
 struct book
 {
-     typedef bip::allocator<book,bip::managed_mapped_file::segment_manager> allocator_type;
-
      template<typename Constructor, typename Allocator>
      book( Constructor&& c, const Allocator& al )
      :name(al),author(al),pages(0),prize(0),
-     auth( bip::allocator<steem::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )),
-     deq( basic_string_allocator( al.get_segment_manager() ) )
+     auth( allocator<steem::chain::shared_authority >( ALLOC_PARAM( al.get_segment_manager() ) )),
+     deq( basic_string_allocator( ALLOC_PARAM( al.get_segment_manager() ) ) )
      {
         c( *this );
      }
@@ -113,12 +123,12 @@ struct book
      int32_t                          pages;
      int32_t                          prize;
      steem::chain::shared_authority auth;
-     bip::deque<shared_string,basic_string_allocator> deq;
+     t_deque< shared_string > deq;
 
      book(const shared_string::allocator_type& al):
      name(al),author(al),pages(0),prize(0),
-     auth( bip::allocator<steem::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )),
-     deq( basic_string_allocator( al.get_segment_manager() ) )
+     auth( allocator<steem::chain::shared_authority >( ALLOC_PARAM( al.get_segment_manager() ) )),
+     deq( basic_string_allocator( ALLOC_PARAM( al.get_segment_manager() ) ) )
      {}
 
 };
@@ -130,7 +140,7 @@ typedef multi_index_container<
      ordered_non_unique< BOOST_MULTI_INDEX_MEMBER(book,shared_string,name) >,
      ordered_non_unique< BOOST_MULTI_INDEX_MEMBER(book,int32_t,prize) >
   >,
-  bip::allocator<book,bip::managed_mapped_file::segment_manager>
+  allocator< book >
 > book_container;
 
 
@@ -153,18 +163,25 @@ int main(int argc, char** argv, char** envp)
 {
    try {
 
+#if !defined( ENABLE_STD_ALLOCATOR )
    bip::managed_mapped_file seg( bip::open_or_create,"./book_container.db", 1024*100);
    bip::named_mutex mutex( bip::open_or_create,"./book_container.db");
+#endif
 
    /*
-   book b( book::allocator_type( seg.get_segment_manager() ) );
+   book b( book::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ) );
    b.name = "test name";
    b.author = "test author";
-   b.deq.push_back( shared_string( "hello world", basic_string_allocator( seg.get_segment_manager() )  ) );
+   b.deq.push_back( shared_string( "hello world", basic_string_allocator( ALLOC_PARAM( seg.get_segment_manager() ) )  ) );
    idump((b));
    */
+#if !defined( ENABLE_STD_ALLOCATOR )
    book_container* pbc = seg.find_or_construct<book_container>("book container")( book_container::ctor_args_list(),
-                                                                                  book_container::allocator_type(seg.get_segment_manager()));
+                                                                                  book_container::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) );
+#else
+   book_container* pbc = new book_container( book_container::ctor_args_list(),
+                                             book_container::allocator_type() );
+#endif
 
    for( const auto& item : *pbc ) {
       idump((item));
@@ -175,12 +192,17 @@ int main(int argc, char** argv, char** envp)
    pbc->emplace( [&]( book& b ) {
                  b.name = "emplace name";
                  b.pages = pbc->size();
-                }, book::allocator_type( seg.get_segment_manager() ) );
+                }, book::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ) );
 
-   bip::deque< book, book::allocator_type > * deq = seg.find_or_construct<bip::deque<book,book::allocator_type> >("book deque")( book_container::allocator_type(seg.get_segment_manager()));
+#if !defined( ENABLE_STD_ALLOCATOR )
+   t_deque< book > * deq = seg.find_or_construct<bip::deque<book,book::allocator_type> >("book deque")( book_container::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) );
+#else
+   t_deque< book > * deq = new bip::deque<book,book::allocator_type> >( book_container::allocator_type() );
+#endif
+
    idump((deq->size()));
 
-  // book c( b ); //book::allocator_type( seg.get_segment_manager() ) );
+  // book c( b ); //book::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ) );
   // deq->push_back( b );
 
 

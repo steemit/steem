@@ -135,8 +135,10 @@ namespace steem { namespace chain {
          const comment_object&  get_comment(  const account_name_type& author, const shared_string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const shared_string& permlink )const;
 
+#if !defined( ENABLE_STD_ALLOCATOR )
          const comment_object&  get_comment(  const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
+#endif
 
          const escrow_object&   get_escrow(  const account_name_type& name, uint32_t escrow_id )const;
          const escrow_object*   find_escrow( const account_name_type& name, uint32_t escrow_id )const;

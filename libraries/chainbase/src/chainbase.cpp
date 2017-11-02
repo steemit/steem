@@ -32,6 +32,7 @@ namespace chainbase {
 
    void database::open( const bfs::path& dir, uint32_t flags, uint64_t shared_file_size )
    {
+#if !defined( ENABLE_STD_ALLOCATOR )
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
@@ -65,24 +66,31 @@ namespace chainbase {
       _flock = bip::file_lock( abs_path.generic_string().c_str() );
       if( !_flock.try_lock() )
          BOOST_THROW_EXCEPTION( std::runtime_error( "could not gain write access to the shared memory file" ) );
+#endif
    }
 
-   void database::flush() {
+   void database::flush()
+   {
+#if !defined( ENABLE_STD_ALLOCATOR )
       if( _segment )
          _segment->flush();
       if( _meta )
          _meta->flush();
+#endif
    }
 
    void database::close()
    {
+#if !defined( ENABLE_STD_ALLOCATOR )
       _segment.reset();
       _meta.reset();
       _data_dir = bfs::path();
+#endif
    }
 
    void database::wipe( const bfs::path& dir )
    {
+#if !defined( ENABLE_STD_ALLOCATOR )
       _segment.reset();
       _meta.reset();
       bfs::remove_all( dir / "shared_memory.bin" );
@@ -90,6 +98,7 @@ namespace chainbase {
       _data_dir = bfs::path();
       _index_list.clear();
       _index_map.clear();
+#endif
    }
 
    void database::set_require_locking( bool enable_require_locking )

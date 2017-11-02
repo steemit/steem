@@ -6,6 +6,7 @@
 #include <boost/interprocess/containers/flat_map.hpp>
 #include <boost/interprocess/containers/deque.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/sync/interprocess_sharable_mutex.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
@@ -40,6 +41,12 @@
    #define CHAINBASE_REQUIRE_WRITE_LOCK(m, t)
 #endif
 
+#ifdef ENABLE_STD_ALLOCATOR
+   #define ALLOC_PARAM( param )
+#else
+   #define ALLOC_PARAM( param ) param
+#endif
+
 namespace chainbase {
 
    namespace bip = boost::interprocess;
@@ -47,13 +54,53 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
-   template<typename T>
-   using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
+   template< typename T >
+   using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                              std::allocator< T >,
+                              bip::allocator<T, bip::managed_mapped_file::segment_manager>
+                              >::type;
 
-   typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
+   using shared_string = std::conditional< ENABLE_STD_ALLOCATOR,
+                        std::string,
+                        bip::basic_string< char, std::char_traits< char >, allocator< char > >
+                        >::type;
 
    template<typename T>
-   using shared_vector = std::vector<T, allocator<T> >;
+   using t_vector = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                              std::vector<T, allocator<T> >,
+                              bip::vector<T, allocator<T> >
+                              >::type;
+
+   
+   template< typename FIRST_TYPE, typename SECOND_TYPE >
+   using t_pair = std::pair< FIRST_TYPE, SECOND_TYPE >;
+
+   template< typename FIRST_TYPE, typename SECOND_TYPE >
+   using t_allocator_pair = allocator< t_pair< const FIRST_TYPE, SECOND_TYPE > >;
+
+   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC >
+   using t_flat_map = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                              boost::container::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >,
+                              bip::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >
+                              >::type;
+
+   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC >
+   using t_map = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                              std::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >,
+                              bip::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >
+                              >::type;
+
+   template< typename T >
+   using t_deque = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                  std::deque< T, allocator< T > >,
+                  bip::deque< T, allocator< T > >
+                  >::type;
+
+   template< typename T, typename LESS_FUNC >
+   using t_set = typename std::conditional< ENABLE_STD_ALLOCATOR,
+                  std::set< T, LESS_FUNC, allocator< T > >,
+                  bip::set< T, LESS_FUNC, allocator< T >  >
+                  >::type;
 
    struct strcmp_less
    {
@@ -62,6 +109,7 @@ namespace chainbase {
          return less( a.c_str(), b.c_str() );
       }
 
+#if !defined( ENABLE_STD_ALLOCATOR )
       bool operator()( const shared_string& a, const std::string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -71,6 +119,8 @@ namespace chainbase {
       {
          return less( a.c_str(), b.c_str() );
       }
+#endif
+
       private:
          inline bool less( const char* a, const char* b )const
          {
@@ -131,14 +181,20 @@ namespace chainbase {
          typedef allocator< std::pair<const id_type, value_type> > id_value_allocator_type;
          typedef allocator< id_type >                              id_allocator_type;
 
+         // template<typename T>
+         // undo_state( allocator<T> al )
+         // {
+
+         // }
+
          template<typename T>
          undo_state( allocator<T> al )
-         :old_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          removed_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          new_ids( id_allocator_type( al.get_segment_manager() ) ){}
+         :old_values( id_value_allocator_type( ALLOC_PARAM( al.get_segment_manager() ) ) ),
+          removed_values( id_value_allocator_type( ALLOC_PARAM( al.get_segment_manager() ) ) ),
+          new_ids( id_allocator_type( ALLOC_PARAM( al.get_segment_manager() ) ) ){}
 
-         typedef boost::interprocess::map< id_type, value_type, std::less<id_type>, id_value_allocator_type >  id_value_type_map;
-         typedef boost::interprocess::set< id_type, std::less<id_type>, id_allocator_type >                    id_type_set;
+         typedef t_map< id_type, value_type, std::less<id_type> >  id_value_type_map;
+         typedef t_set< id_type, std::less<id_type> >                    id_type_set;
 
          id_value_type_map            old_values;
          id_value_type_map            removed_values;
@@ -180,10 +236,12 @@ namespace chainbase {
    class generic_index
    {
       public:
-         typedef bip::managed_mapped_file::segment_manager             segment_manager_type;
+        
          typedef MultiIndexType                                        index_type;
          typedef typename index_type::value_type                       value_type;
-         typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
+
+         typedef allocator< generic_index >                            allocator_type;
+
          typedef undo_state< value_type >                              undo_state_type;
 
          generic_index( allocator<value_type> a )
@@ -207,7 +265,9 @@ namespace chainbase {
                c( v );
             };
 
-            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
+            const allocator<value_type>& a = _indices.get_allocator();
+
+            auto insert_result = _indices.emplace( constructor, a); //_indices.get_allocator() );
 
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
@@ -521,7 +581,7 @@ namespace chainbase {
             head.new_ids.insert( v.id );
          }
 
-         boost::interprocess::deque< undo_state_type, allocator<undo_state_type> > _stack;
+         t_deque< undo_state_type > _stack;
 
          /**
           *  Each new session increments the revision, a squash will decrement the revision by combining
@@ -756,7 +816,11 @@ namespace chainbase {
              }
 
              index_type* idx_ptr =  nullptr;
-             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+#if !defined( ENABLE_STD_ALLOCATOR )
+             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( ALLOC_PARAM( _segment->get_segment_manager() ) ) );
+#else
+             idx_ptr = new index_type( index_alloc() );
+#endif
              idx_ptr->validate();
 
              if( type_id >= _index_map.size() )
@@ -767,13 +831,19 @@ namespace chainbase {
              _index_list.push_back( new_index );
          }
 
+#if !defined( ENABLE_STD_ALLOCATOR )
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
+#endif
 
          size_t get_free_memory()const
          {
+#ifdef ENABLE_STD_ALLOCATOR
+            return 10000000; //temporary !!!!!
+#else
             return _segment->get_segment_manager()->get_free_memory();
+#endif
          }
 
          template<typename MultiIndexType>
@@ -975,10 +1045,11 @@ namespace chainbase {
 
       private:
          read_write_mutex_manager                                    _rw_manager;
+#if !defined( ENABLE_STD_ALLOCATOR )
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          bip::file_lock                                              _flock;
-
+#endif
          /**
           * This is a sparse list of known indicies kept to accelerate creation of undo sessions
           */
