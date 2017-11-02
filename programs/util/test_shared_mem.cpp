@@ -51,26 +51,13 @@ using boost::multi_index_container;
 using namespace boost::multi_index;
 namespace bip=boost::interprocess;
 
+using chainbase::shared_string;
+using chainbase::t_deque;
+using chainbase::allocator;
+
 /* shared_string is a string type placeable in shared memory,
  *  * courtesy of Boost.Interprocess.
  *   */
-
-template< typename T >
-using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                           std::allocator< T >,
-                           bip::allocator<T, bip::managed_mapped_file::segment_manager>
-                           >::type;
-
-using shared_string = std::conditional< ENABLE_STD_ALLOCATOR,
-                     std::string,
-                     bip::basic_string< char, std::char_traits< char >, allocator< char > >
-                     >::type;
-
-template< typename T >
-using t_deque = std::conditional< ENABLE_STD_ALLOCATOR,
-               std::deque< T, allocator< T > >,
-               bip::deque< T, allocator< T > >
-               >::type;
 
 namespace fc {
     void to_variant( const shared_string& s, fc::variant& vo ) {
@@ -163,7 +150,7 @@ int main(int argc, char** argv, char** envp)
 {
    try {
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
    bip::managed_mapped_file seg( bip::open_or_create,"./book_container.db", 1024*100);
    bip::named_mutex mutex( bip::open_or_create,"./book_container.db");
 #endif
@@ -175,7 +162,7 @@ int main(int argc, char** argv, char** envp)
    b.deq.push_back( shared_string( "hello world", basic_string_allocator( ALLOC_PARAM( seg.get_segment_manager() ) )  ) );
    idump((b));
    */
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
    book_container* pbc = seg.find_or_construct<book_container>("book container")( book_container::ctor_args_list(),
                                                                                   book_container::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) );
 #else
@@ -194,7 +181,7 @@ int main(int argc, char** argv, char** envp)
                  b.pages = pbc->size();
                 }, book::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ) );
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
    t_deque< book > * deq = seg.find_or_construct<bip::deque<book,book::allocator_type> >("book deque")( book_container::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) );
 #else
    t_deque< book > * deq = new bip::deque<book,book::allocator_type> >( book_container::allocator_type() );

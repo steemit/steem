@@ -41,7 +41,7 @@
    #define CHAINBASE_REQUIRE_WRITE_LOCK(m, t)
 #endif
 
-#ifdef ENABLE_STD_ALLOCATOR
+#if ENABLE_STD_ALLOCATOR 
    #define ALLOC_PARAM( param )
 #else
    #define ALLOC_PARAM( param ) param
@@ -54,11 +54,18 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
-   template< typename T >
-   using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                              std::allocator< T >,
-                              bip::allocator<T, bip::managed_mapped_file::segment_manager>
-                              >::type;
+   #if ENABLE_STD_ALLOCATOR 
+      template< typename T >
+      using allocator = std::allocator<T>;
+   #else
+      template< typename T >
+      using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
+   #endif
+   // template< typename T >
+   // using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
+   //                            std::allocator< T >,
+   //                            bip::allocator<T, bip::managed_mapped_file::segment_manager>
+   //                            >::type;
 
    using shared_string = std::conditional< ENABLE_STD_ALLOCATOR,
                         std::string,
@@ -78,13 +85,13 @@ namespace chainbase {
    template< typename FIRST_TYPE, typename SECOND_TYPE >
    using t_allocator_pair = allocator< t_pair< const FIRST_TYPE, SECOND_TYPE > >;
 
-   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC >
+   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC = std::less<KEY_TYPE>>
    using t_flat_map = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                              boost::container::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >,
-                              bip::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >
-                              >::type;
+      boost::container::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >,
+      bip::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >
+      >::type;
 
-   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC >
+   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC = std::less<KEY_TYPE>>
    using t_map = typename std::conditional< ENABLE_STD_ALLOCATOR,
                               std::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >,
                               bip::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >
@@ -109,7 +116,7 @@ namespace chainbase {
          return less( a.c_str(), b.c_str() );
       }
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       bool operator()( const shared_string& a, const std::string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -816,7 +823,7 @@ namespace chainbase {
              }
 
              index_type* idx_ptr =  nullptr;
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
              idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( ALLOC_PARAM( _segment->get_segment_manager() ) ) );
 #else
              idx_ptr = new index_type( index_alloc() );
@@ -831,7 +838,7 @@ namespace chainbase {
              _index_list.push_back( new_index );
          }
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
@@ -839,7 +846,7 @@ namespace chainbase {
 
          size_t get_free_memory()const
          {
-#ifdef ENABLE_STD_ALLOCATOR
+#if ENABLE_STD_ALLOCATOR
             return 10000000; //temporary !!!!!
 #else
             return _segment->get_segment_manager()->get_free_memory();
@@ -1045,7 +1052,7 @@ namespace chainbase {
 
       private:
          read_write_mutex_manager                                    _rw_manager;
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          bip::file_lock                                              _flock;
@@ -1068,6 +1075,6 @@ namespace chainbase {
    };
 
    template<typename Object, typename... Args>
-   using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
+   using shared_multi_index_container = boost::multi_index_container<Object,Args..., allocator<Object> >;
 }  // namepsace chainbase
 

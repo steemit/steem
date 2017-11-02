@@ -198,7 +198,7 @@ namespace fc
          pack( ds, v );
       }
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       template< typename T > inline void unpack( const steem::chain::buffer_type& raw, T& v )
       {
          datastream< const char* > ds( raw.data(), raw.size() );
@@ -256,7 +256,7 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 #endif
                )
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
    FC_REFLECT_TYPENAME( steem::chain::shared_string )
    FC_REFLECT_TYPENAME( steem::chain::buffer_type )
 #endif

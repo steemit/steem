@@ -135,7 +135,7 @@ namespace steem { namespace chain {
          const comment_object&  get_comment(  const account_name_type& author, const shared_string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const shared_string& permlink )const;
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
          const comment_object&  get_comment(  const account_name_type& author, const string& permlink )const;
          const comment_object*  find_comment( const account_name_type& author, const string& permlink )const;
 #endif

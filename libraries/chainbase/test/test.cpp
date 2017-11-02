@@ -8,6 +8,7 @@
 #include <boost/multi_index/member.hpp>
 
 #include <iostream>
+
 #if !defined( ENABLE_STD_ALLOCATOR )
    # error "XXXXXXXXXX"
 #endif

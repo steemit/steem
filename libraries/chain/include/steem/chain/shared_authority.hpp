@@ -86,8 +86,8 @@ namespace steem { namespace chain {
       using account_pair_allocator_type = t_allocator_pair< account_name_type, weight_type >;
       using key_pair_allocator_type = t_allocator_pair< public_key_type, weight_type >;
 
-      typedef t_flat_map< account_name_type, weight_type,account_name_type  > account_authority_map;
-      typedef t_flat_map< public_key_type, weight_type, public_key_type > key_authority_map;
+      typedef t_flat_map< account_name_type, weight_type> account_authority_map;
+      typedef t_flat_map< public_key_type, weight_type> key_authority_map;
 
       uint32_t                                                                weight_threshold = 0;
       account_authority_map                                                   account_auths;

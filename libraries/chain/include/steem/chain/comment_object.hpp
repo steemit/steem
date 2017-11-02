@@ -21,7 +21,7 @@ namespace steem { namespace chain {
          return less( a.c_str(), b.c_str() );
       }
 
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       bool operator()( const shared_string& a, const string& b )const
       {
          return less( a.c_str(), b.c_str() );
