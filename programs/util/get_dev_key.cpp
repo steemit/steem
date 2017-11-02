@@ -69,13 +69,14 @@ int main( int argc, char** argv )
 
       bool comma = false;
 
-      auto show_key = [&]( const fc::ecc::private_key& priv_key )
+      auto show_key = [&]( const fc::ecc::private_key& priv_key, const std::string& name )
       {
          fc::mutable_variant_object mvo;
          steem::protocol::public_key_type pub_key = priv_key.get_public_key();
-         mvo( "private_key", steem::utilities::key_to_wif( priv_key ) )
-            ( "public_key", std::string( pub_key ) )
-            ;
+         mvo( "private_key",    steem::utilities::key_to_wif( priv_key ) )
+	    ( "public_key",     std::string( pub_key ) )
+	    ( "account_name", name )
+	 ;
          if( comma )
             std::cout << ",\n";
          std::cout << fc::json::to_string( mvo );
@@ -107,13 +108,14 @@ int main( int argc, char** argv )
          {
             for( int k=lep; k<rep; k++ )
             {
-               std::string s = dev_key_prefix + prefix + std::to_string(k);
-               show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( s ) ) );
+	       std::string suffix = prefix + std::to_string(k);
+               std::string s = dev_key_prefix + suffix;
+               show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( s ) ), suffix );
             }
          }
          else
          {
-            show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( dev_key_prefix + arg ) ) );
+	   show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( dev_key_prefix + arg ) ), arg );
          }
       }
       std::cout << "]\n";
