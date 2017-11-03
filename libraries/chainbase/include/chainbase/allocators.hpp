@@ -21,22 +21,22 @@ namespace chainbase {
    template< typename T >
    struct std_allocator_ex : public std::allocator< T >
    {
-      using seg_type = decltype( ( (bip::managed_mapped_file*)nullptr )->get_segment_manager() );
+      //using seg_type = decltype( ( (bip::managed_mapped_file*)nullptr )->get_segment_manager() );
 
-      std_allocator_ex()
-      {
+      // std_allocator_ex()
+      // {
 
-      }
+      // }
 
-      std_allocator_ex( seg_type* seg )
-      {
+      // std_allocator_ex( seg_type* seg )
+      // {
 
-      }
+      // }
 
       //This method does nothing. It is important to hold consistency with bip::allocator.
-      seg_type* get_segment_manager() const
+      const std_allocator_ex& get_segment_manager() const
       {
-         return nullptr;
+         return *this;
       }
    };
 
