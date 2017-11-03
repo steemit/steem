@@ -58,7 +58,7 @@ class feed_object : public object< feed_object_type, feed_object >
 
       template< typename Constructor, typename Allocator >
       feed_object( Constructor&& c, allocator< Allocator > a )
-      :reblogged_by( a.get_segment_manager() )
+      :reblogged_by( a )
       {
          c( *this );
       }

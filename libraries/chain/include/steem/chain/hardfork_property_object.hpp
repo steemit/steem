@@ -13,7 +13,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          hardfork_property_object( Constructor&& c, allocator< Allocator > a )
-            :processed_hardforks( a.get_segment_manager() )
+            :processed_hardforks( a )
          {
             c( *this );
          }

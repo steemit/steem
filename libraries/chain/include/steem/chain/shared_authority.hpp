@@ -26,8 +26,8 @@ namespace steem { namespace chain {
 
       template< typename Allocator >
       shared_authority( const authority& a, const Allocator& alloc ) :
-         account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),
-         key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) )
+         account_auths( account_pair_allocator_type( alloc ) ),
+         key_auths( key_pair_allocator_type( alloc ) )
       {
          account_auths.reserve( a.account_auths.size() );
          key_auths.reserve( a.key_auths.size() );
@@ -44,14 +44,14 @@ namespace steem { namespace chain {
 
       template< typename Allocator >
       shared_authority( const Allocator& alloc ) :
-         account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),
-         key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) ) {}
+         account_auths( account_pair_allocator_type( alloc ) ),
+         key_auths( key_pair_allocator_type( alloc ) ) {}
 
       template< typename Allocator, class ...Args >
       shared_authority( const Allocator& alloc, uint32_t weight_threshold, Args... auths ) :
          weight_threshold( weight_threshold ),
-         account_auths( account_pair_allocator_type( alloc.get_segment_manager() ) ),
-         key_auths( key_pair_allocator_type( alloc.get_segment_manager() ) )
+         account_auths( account_pair_allocator_type( alloc ) ),
+         key_auths( key_pair_allocator_type( alloc ) )
       {
          add_authorities( auths... );
       }

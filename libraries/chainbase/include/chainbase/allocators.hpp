@@ -18,31 +18,9 @@ namespace chainbase {
 
    namespace bip = boost::interprocess;
 
-   template< typename T >
-   struct std_allocator_ex : public std::allocator< T >
-   {
-      //using seg_type = decltype( ( (bip::managed_mapped_file*)nullptr )->get_segment_manager() );
-
-      // std_allocator_ex()
-      // {
-
-      // }
-
-      // std_allocator_ex( seg_type* seg )
-      // {
-
-      // }
-
-      //This method does nothing. It is important to hold consistency with bip::allocator.
-      const std_allocator_ex& get_segment_manager() const
-      {
-         return *this;
-      }
-   };
-
    #if ENABLE_STD_ALLOCATOR 
       template< typename T >
-      using allocator = std_allocator_ex< T >;
+      using allocator = std::allocator< T >;
    #else
       template< typename T >
       using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;

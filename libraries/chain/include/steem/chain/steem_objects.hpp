@@ -159,7 +159,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          feed_history_object( Constructor&& c, allocator< Allocator > a )
-            :price_history( a.get_segment_manager() )
+            :price_history( a )
          {
             c( *this );
          }

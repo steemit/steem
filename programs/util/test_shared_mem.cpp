@@ -43,10 +43,6 @@
 
 #include <fc/fixed_string.hpp>
 
-#if !defined( ENABLE_STD_ALLOCATOR )
-   # error "XXXXXXXXXX"
-#endif
-
 using boost::multi_index_container;
 using namespace boost::multi_index;
 namespace bip=boost::interprocess;
@@ -100,8 +96,8 @@ struct book
      template<typename Constructor, typename Allocator>
      book( Constructor&& c, const Allocator& al )
      :name(al),author(al),pages(0),prize(0),
-     auth( allocator<steem::chain::shared_authority >( al.get_segment_manager() )),
-     deq( allocator<shared_string>( al.get_segment_manager() ) )
+     auth( allocator<steem::chain::shared_authority >( al )),
+     deq( allocator<shared_string>( al ) )
      {
         c( *this );
      }
@@ -115,8 +111,8 @@ struct book
 
      book(const allocator<shared_string>& al):
      name(al),author(al),pages(0),prize(0),
-     auth( allocator<steem::chain::shared_authority >( al.get_segment_manager() )),
-     deq( allocator<shared_string>( al.get_segment_manager() ) )
+     auth( allocator<steem::chain::shared_authority >( al )),
+     deq( allocator<shared_string>( al ) )
      {}
 
 };

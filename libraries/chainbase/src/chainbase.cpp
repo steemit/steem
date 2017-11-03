@@ -32,7 +32,7 @@ namespace chainbase {
 
    void database::open( const bfs::path& dir, uint32_t flags, uint64_t shared_file_size )
    {
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
@@ -71,7 +71,7 @@ namespace chainbase {
 
    void database::flush()
    {
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       if( _segment )
          _segment->flush();
       if( _meta )
@@ -81,7 +81,7 @@ namespace chainbase {
 
    void database::close()
    {
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       _segment.reset();
       _meta.reset();
       _data_dir = bfs::path();
@@ -90,7 +90,7 @@ namespace chainbase {
 
    void database::wipe( const bfs::path& dir )
    {
-#if !defined( ENABLE_STD_ALLOCATOR )
+#if ENABLE_STD_ALLOCATOR == 0
       _segment.reset();
       _meta.reset();
       bfs::remove_all( dir / "shared_memory.bin" );

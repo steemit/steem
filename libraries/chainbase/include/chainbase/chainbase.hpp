@@ -131,9 +131,9 @@ namespace chainbase {
 
          template<typename T>
          undo_state( allocator<T> al )
-         :old_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          removed_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          new_ids( id_allocator_type( al.get_segment_manager() ) ){}
+         :old_values( id_value_allocator_type( al ) ),
+          removed_values( id_value_allocator_type( al ) ),
+          new_ids( id_allocator_type( al ) ){}
 
          typedef t_map< id_type, value_type, std::less<id_type> >  id_value_type_map;
          typedef t_set< id_type, std::less<id_type> >                    id_type_set;
@@ -757,7 +757,7 @@ namespace chainbase {
 
              index_type* idx_ptr =  nullptr;
 #if ENABLE_STD_ALLOCATOR == 0
-             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( ALLOC_PARAM( _segment->get_segment_manager() ) ) );
+             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
 #else
              idx_ptr = new index_type( index_alloc() );
 #endif
