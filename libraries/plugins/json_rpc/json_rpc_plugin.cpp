@@ -6,6 +6,8 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
 
+#define ENABLE_JSON_RPC_LOG
+
 namespace steem { namespace plugins { namespace json_rpc {
 
 namespace detail
@@ -36,6 +38,45 @@ namespace detail
    typedef string                get_signature_args;
    typedef api_method_signature  get_signature_return;
 
+   class json_rpc_logger
+   {
+   public:
+      json_rpc_logger(const string& _dir_name) : dir_name(_dir_name) {}
+
+      void set_call_info(const string& _api, const string& _method)
+      {
+         api = _api;
+         method = _method;
+      }
+
+      void log(const fc::variant_object& request, json_rpc_response& response)
+      {
+         fc::path file(dir_name);
+
+         ++counter;
+
+         if (api.empty() && method.empty())
+            file /= std::to_string(counter) + ".json";
+         else
+            file /= api + '.' + method + '.' + std::to_string(counter) + ".json";
+
+         fc::json::save_to_file(request, file);
+
+         file.replace_extension("json.pat");
+
+         if (response.error)
+            fc::json::save_to_file(response.error, file);
+         else
+            fc::json::save_to_file(response.result, file);
+      }
+
+   private:
+      string   dir_name;
+      string   api;
+      string   method;
+      uint32_t counter = 0;
+   };
+      
    class json_rpc_plugin_impl
    {
       public:
@@ -52,6 +93,18 @@ namespace detail
 
          void initialize();
 
+         void set_call_info(const string& _api, const string& _method)
+         {
+            if (_logger)
+               _logger->set_call_info(_api, _method);
+         }
+   
+         void log(const fc::variant_object& request, json_rpc_response& response)
+         {
+            if (_logger)
+               _logger->log(request, response);
+         }
+            
          DECLARE_API(
             (get_methods)
             (get_signature) )
@@ -59,6 +112,7 @@ namespace detail
          map< string, api_description >                     _registered_apis;
          vector< string >                                   _methods;
          map< string, map< string, api_method_signature > > _method_sigs;
+         std::unique_ptr< json_rpc_logger >                 _logger;
    };
 
    json_rpc_plugin_impl::json_rpc_plugin_impl() {}
@@ -125,6 +179,8 @@ namespace detail
 
          FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
 
+         set_call_info( v[0].as_string(), v[1].as_string() );
+
          ret = find_api_method( v[0].as_string(), v[1].as_string() );
 
          func_args = ( v.size() == 3 ) ? v[2] : fc::json::from_string( "{}" );
@@ -135,6 +191,8 @@ namespace detail
          boost::split( v, method, boost::is_any_of( "." ) );
 
          FC_ASSERT( v.size() == 2, "method specification invalid. Should be api.method" );
+
+         set_call_info( v[0], v[1] );
 
          ret = find_api_method( v[0], v[1] );
 
@@ -218,6 +276,8 @@ namespace detail
       {
          response.error = json_rpc_error( JSON_RPC_INVALID_REQUEST, "jsonrpc value is not \"2.0\"" );
       }
+
+   log(request, response);
    }
 
    json_rpc_response json_rpc_plugin_impl::rpc( const fc::variant& message )
@@ -257,11 +317,34 @@ namespace detail
 
 using detail::json_rpc_error;
 using detail::json_rpc_response;
+using detail::json_rpc_logger;
 
 json_rpc_plugin::json_rpc_plugin() : my( new detail::json_rpc_plugin_impl() ) {}
 json_rpc_plugin::~json_rpc_plugin() {}
 
-void json_rpc_plugin::plugin_initialize( const variables_map& options ) { my->initialize(); }
+void json_rpc_plugin::set_program_options( options_description& cli, options_description& )
+{
+   cli.add_options()
+      ("log-json-rpc", bpo::value< string >(), "json-rpc log directory name.")
+      ;
+}
+
+void json_rpc_plugin::plugin_initialize( const variables_map& options )
+{
+   my->initialize();
+
+   if( options.count( "log-json-rpc" ) )
+   {
+      auto dir_name = options.at( "log-json-rpc" ).as< string >();
+      FC_ASSERT(dir_name.empty() == false, "Invalid directory name (empty).");
+
+      fc::path p(dir_name);
+      if (fc::exists(p))
+         fc::remove_all(p);
+      fc::create_directories(p);
+      my->_logger.reset(new json_rpc_logger(dir_name));
+   }   
+}
 
 void json_rpc_plugin::plugin_startup()
 {
