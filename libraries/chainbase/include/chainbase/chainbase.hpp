@@ -21,6 +21,8 @@
 #include <boost/thread.hpp>
 #include <boost/throw_exception.hpp>
 
+#include <chainbase/allocators.hpp>
+
 #include <array>
 #include <atomic>
 #include <fstream>
@@ -41,73 +43,12 @@
    #define CHAINBASE_REQUIRE_WRITE_LOCK(m, t)
 #endif
 
-#if ENABLE_STD_ALLOCATOR 
-   #define ALLOC_PARAM( param )
-#else
-   #define ALLOC_PARAM( param ) param
-#endif
-
 namespace chainbase {
 
    namespace bip = boost::interprocess;
    namespace bfs = boost::filesystem;
    using std::unique_ptr;
    using std::vector;
-
-   #if ENABLE_STD_ALLOCATOR 
-      template< typename T >
-      using allocator = std::allocator<T>;
-   #else
-      template< typename T >
-      using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
-   #endif
-   // template< typename T >
-   // using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
-   //                            std::allocator< T >,
-   //                            bip::allocator<T, bip::managed_mapped_file::segment_manager>
-   //                            >::type;
-
-   using shared_string = std::conditional< ENABLE_STD_ALLOCATOR,
-                        std::string,
-                        bip::basic_string< char, std::char_traits< char >, allocator< char > >
-                        >::type;
-
-   template<typename T>
-   using t_vector = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                              std::vector<T, allocator<T> >,
-                              bip::vector<T, allocator<T> >
-                              >::type;
-
-   
-   template< typename FIRST_TYPE, typename SECOND_TYPE >
-   using t_pair = std::pair< FIRST_TYPE, SECOND_TYPE >;
-
-   template< typename FIRST_TYPE, typename SECOND_TYPE >
-   using t_allocator_pair = allocator< t_pair< const FIRST_TYPE, SECOND_TYPE > >;
-
-   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC = std::less<KEY_TYPE>>
-   using t_flat_map = typename std::conditional< ENABLE_STD_ALLOCATOR,
-      boost::container::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >,
-      bip::flat_map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, allocator< t_pair< KEY_TYPE, VALUE_TYPE > > >
-      >::type;
-
-   template< typename KEY_TYPE, typename VALUE_TYPE, typename LESS_FUNC = std::less<KEY_TYPE>>
-   using t_map = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                              std::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >,
-                              bip::map< KEY_TYPE, VALUE_TYPE, LESS_FUNC, t_allocator_pair< KEY_TYPE, VALUE_TYPE > >
-                              >::type;
-
-   template< typename T >
-   using t_deque = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                  std::deque< T, allocator< T > >,
-                  bip::deque< T, allocator< T > >
-                  >::type;
-
-   template< typename T, typename LESS_FUNC >
-   using t_set = typename std::conditional< ENABLE_STD_ALLOCATOR,
-                  std::set< T, LESS_FUNC, allocator< T > >,
-                  bip::set< T, LESS_FUNC, allocator< T >  >
-                  >::type;
 
    struct strcmp_less
    {
@@ -188,17 +129,11 @@ namespace chainbase {
          typedef allocator< std::pair<const id_type, value_type> > id_value_allocator_type;
          typedef allocator< id_type >                              id_allocator_type;
 
-         // template<typename T>
-         // undo_state( allocator<T> al )
-         // {
-
-         // }
-
          template<typename T>
          undo_state( allocator<T> al )
-         :old_values( id_value_allocator_type( ALLOC_PARAM( al.get_segment_manager() ) ) ),
-          removed_values( id_value_allocator_type( ALLOC_PARAM( al.get_segment_manager() ) ) ),
-          new_ids( id_allocator_type( ALLOC_PARAM( al.get_segment_manager() ) ) ){}
+         :old_values( id_value_allocator_type( al.get_segment_manager() ) ),
+          removed_values( id_value_allocator_type( al.get_segment_manager() ) ),
+          new_ids( id_allocator_type( al.get_segment_manager() ) ){}
 
          typedef t_map< id_type, value_type, std::less<id_type> >  id_value_type_map;
          typedef t_set< id_type, std::less<id_type> >                    id_type_set;
@@ -272,9 +207,7 @@ namespace chainbase {
                c( v );
             };
 
-            const allocator<value_type>& a = _indices.get_allocator();
-
-            auto insert_result = _indices.emplace( constructor, a); //_indices.get_allocator() );
+            auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
 
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );

@@ -9,9 +9,6 @@
 
 #include <iostream>
 
-#if !defined( ENABLE_STD_ALLOCATOR )
-   # error "XXXXXXXXXX"
-#endif
 using namespace chainbase;
 using namespace boost::multi_index;
 

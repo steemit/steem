@@ -100,8 +100,8 @@ struct book
      template<typename Constructor, typename Allocator>
      book( Constructor&& c, const Allocator& al )
      :name(al),author(al),pages(0),prize(0),
-     auth( allocator<steem::chain::shared_authority >( ALLOC_PARAM( al.get_segment_manager() ) )),
-     deq( allocator<shared_string>( ALLOC_PARAM( al.get_segment_manager() ) ) )
+     auth( allocator<steem::chain::shared_authority >( al.get_segment_manager() )),
+     deq( allocator<shared_string>( al.get_segment_manager() ) )
      {
         c( *this );
      }
@@ -115,8 +115,8 @@ struct book
 
      book(const allocator<shared_string>& al):
      name(al),author(al),pages(0),prize(0),
-     auth( allocator<steem::chain::shared_authority >( ALLOC_PARAM( al.get_segment_manager() ) )),
-     deq( allocator<shared_string>( ALLOC_PARAM( al.get_segment_manager() ) ) )
+     auth( allocator<steem::chain::shared_authority >( al.get_segment_manager() )),
+     deq( allocator<shared_string>( al.get_segment_manager() ) )
      {}
 
 };
@@ -157,15 +157,15 @@ int main(int argc, char** argv, char** envp)
 #endif
 
    /*
-   book b( book::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ) );
+   book b( book::allocator_type( seg.get_segment_manager() ) );
    b.name = "test name";
    b.author = "test author";
-   b.deq.push_back( shared_string( "hello world", basic_string_allocator( ALLOC_PARAM( seg.get_segment_manager() ) )  ) );
+   b.deq.push_back( shared_string( "hello world", basic_string_allocator( seg.get_segment_manager() )  ) );
    idump((b));
    */
 #if ENABLE_STD_ALLOCATOR == 0
    book_container* pbc = seg.find_or_construct<book_container>("book container")( book_container::ctor_args_list(),
-                                                                                  book_container::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ));
+                                                                                  book_container::allocator_type( seg.get_segment_manager() ));
 #else
    book_container* pbc = new book_container( book_container::ctor_args_list(),
                                              book_container::allocator_type() );
@@ -177,10 +177,17 @@ int main(int argc, char** argv, char** envp)
 
    //b.pages = pbc->size();
    //b.auth = steem::chain::authority( 1, "dan", pbc->size() );
+#if ENABLE_STD_ALLOCATOR == 0
    pbc->emplace( [&]( book& b ) {
                  b.name = "emplace name";
                  b.pages = pbc->size();
-                }, allocator<book>( ALLOC_PARAM( seg.get_segment_manager() ) ) );
+                }, allocator<book>( seg.get_segment_manager() ) );
+#else
+   pbc->emplace( [&]( book& b ) {
+                 b.name = "emplace name";
+                 b.pages = pbc->size();
+                }, allocator<book>() );
+#endif
 
 #if ENABLE_STD_ALLOCATOR == 0
    t_deque< book > * deq = seg.find_or_construct<chainbase::t_deque<book>>("book deque")(allocator<book>(seg.get_segment_manager()));
@@ -190,7 +197,7 @@ int main(int argc, char** argv, char** envp)
 
    idump((deq->size()));
 
-  // book c( b ); //book::allocator_type( ALLOC_PARAM( seg.get_segment_manager() ) ) );
+  // book c( b ); //book::allocator_type( seg.get_segment_manager() ) );
   // deq->push_back( b );
 
 
