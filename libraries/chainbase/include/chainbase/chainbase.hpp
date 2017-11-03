@@ -500,7 +500,7 @@ namespace chainbase {
          {
             if(id._id == 0)
                return nullptr;
-            size_t index = id._id - 1;
+            size_t index = id._id;
             const value_type* object = _indices[index];
             return object;
          }

@@ -76,7 +76,7 @@ public:
    
    const value_type *operator[](size_t idx) const
    {
-      assert(idx < RandomAccessStorage.size());
+      if( idx >= RandomAccessStorage.size() ) BOOST_THROW_EXCEPTION( std::out_of_range("index not found") );
       /// \warning RA container can have gaps caused by element removal.
       if (RandomAccessStorage[idx] != end())
       {
@@ -91,7 +91,7 @@ public:
    const_iterator find(const oid<value_type>& id) const
    {
       std::size_t idx = id;
-      assert(idx < RandomAccessStorage.size());
+      if(idx >= RandomAccessStorage.size()) BOOST_THROW_EXCEPTION( std::out_of_range("id not found") );
 
       return RandomAccessStorage[idx];
    }
