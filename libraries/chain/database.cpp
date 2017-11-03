@@ -2602,7 +2602,9 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
+#if ENABLE_STD_ALLOCATOR == 0
    show_free_memory( false, next_block.block_num() );
+#endif
 
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 

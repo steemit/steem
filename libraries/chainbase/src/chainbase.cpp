@@ -32,11 +32,12 @@ namespace chainbase {
 
    void database::open( const bfs::path& dir, uint32_t flags, uint64_t shared_file_size )
    {
-#if ENABLE_STD_ALLOCATOR == 0
       bfs::create_directories( dir );
       if( _data_dir != dir ) close();
 
       _data_dir = dir;
+
+#if ENABLE_STD_ALLOCATOR == 0
       auto abs_path = bfs::absolute( dir / "shared_memory.bin" );
 
       if( bfs::exists( abs_path ) )
