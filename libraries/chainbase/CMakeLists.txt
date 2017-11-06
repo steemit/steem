@@ -66,6 +66,13 @@ add_library( chainbase src/chainbase.cpp ${HEADERS} )
 target_link_libraries( chainbase  ${Boost_LIBRARIES} )
 target_include_directories( chainbase PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"  ${Boost_INCLUDE_DIR} )
 
+# In debug build add these defines to enable multi_index_container debugging capabilities
+set_property(TARGET chainbase APPEND PROPERTY COMPILE_DEFINITIONS
+   "$<$<CONFIG:Debug>:BOOST_MULTI_INDEX_ENABLE_INVARIANT_CHECKING>")
+
+set_property(TARGET chainbase APPEND PROPERTY COMPILE_DEFINITIONS
+   "$<$<CONFIG:Debug>:BOOST_MULTI_INDEX_ENABLE_SAFE_MODE>")
+
 if( CLANG_TIDY_EXE )
    set_target_properties(
       chainbase PROPERTIES

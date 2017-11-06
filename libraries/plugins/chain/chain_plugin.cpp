@@ -16,6 +16,20 @@ using steem::chain::block_id_type;
 
 namespace detail {
 
+class main_database final : public steem::chain::database
+{
+public:
+   main_database()
+   {
+      install_main_db(this);
+   }
+
+   ~main_database()
+   {
+      uninstall_main_db();
+   }
+};
+
 class chain_plugin_impl
 {
    public:
@@ -33,7 +47,7 @@ class chain_plugin_impl
 
       uint32_t allow_future_time = 5;
 
-      database  db;
+      main_database db;
 };
 
 } // detail

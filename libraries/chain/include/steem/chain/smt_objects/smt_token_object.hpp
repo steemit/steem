@@ -20,7 +20,8 @@ public:
 
 public:
    template< typename Constructor, typename Allocator >
-   smt_token_object( Constructor&& c, allocator< Allocator > a )
+   smt_token_object( Constructor&& c, size_t assignedId, allocator<Allocator> a ) :
+      id(assignedId)
    {
       c( *this );
    }
@@ -67,17 +68,14 @@ public:
 struct by_symbol;
 struct by_control_account;
 
-typedef multi_index_container <
+typedef chainbase::indexed_container <
    smt_token_object,
    indexed_by <
-      ordered_unique< tag< by_id >,
-         member< smt_token_object, smt_token_id_type, &smt_token_object::id > >,
       ordered_unique< tag< by_symbol >,
          member< smt_token_object, asset_symbol_type, &smt_token_object::symbol > >,
       ordered_non_unique< tag< by_control_account >,
          member< smt_token_object, account_name_type, &smt_token_object::control_account > >
-   >,
-   allocator< smt_token_object >
+   >
 > smt_token_index;
 
 } } // namespace steem::chain
