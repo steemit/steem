@@ -1363,20 +1363,9 @@ namespace graphene { namespace net { namespace detail {
         uint32_t active_disconnect_timeout = 10 * _recent_block_interval_in_seconds;
         uint32_t active_send_keepalive_timeout = active_disconnect_timeout / 2;
 
-        // set the ignored request time out to 1 second.  When we request a block
-        // or transaction from a peer, this timeout determines how long we wait for them
-        // to reply before we give up and ask another peer for the item.
-        // Ideally this should be significantly shorter than the block interval, because
-        // we'd like to realize the block isn't coming and fetch it from a different
-        // peer before the next block comes in.  At the current target of 3 second blocks,
-        // 1 second seems reasonable.  When we get closer to our eventual target of 1 second
-        // blocks, this will need to be re-evaluated (i.e., can we set the timeout to 500ms
-        // and still handle normal network & processing delays without excessive disconnects)
-        fc::microseconds active_ignored_request_timeout = fc::seconds(1);
-
         fc::time_point active_disconnect_threshold = fc::time_point::now() - fc::seconds(active_disconnect_timeout);
         fc::time_point active_send_keepalive_threshold = fc::time_point::now() - fc::seconds(active_send_keepalive_timeout);
-        fc::time_point active_ignored_request_threshold = fc::time_point::now() - active_ignored_request_timeout;
+        fc::time_point active_ignored_request_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT);
         for( const peer_connection_ptr& active_peer : _active_connections )
         {
           if( active_peer->connection_initiation_time < active_disconnect_threshold &&
@@ -1464,8 +1453,7 @@ namespace graphene { namespace net { namespace detail {
             peers_to_disconnect_forcibly.push_back( closing_peer );
           }
 
-        uint32_t failed_terminate_timeout_seconds = 120;
-        fc::time_point failed_terminate_threshold = fc::time_point::now() - fc::seconds(failed_terminate_timeout_seconds);
+        fc::time_point failed_terminate_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_FAILED_TERMINATE_TIMEOUT_SECONDS);
         for (const peer_connection_ptr& peer : _terminating_connections )
           if (peer->get_connection_terminated_time() != fc::time_point::min() &&
               peer->get_connection_terminated_time() < failed_terminate_threshold)
@@ -1546,14 +1534,14 @@ namespace graphene { namespace net { namespace detail {
 
       // this has nothing to do with updating the peer list, but we need to prune this list
       // at regular intervals, this is a fine place to do it.
-      fc::time_point_sec oldest_failed_ids_to_keep(fc::time_point::now() - fc::minutes(15));
+      fc::time_point_sec oldest_failed_ids_to_keep(fc::time_point::now() - fc::minutes(GRAPHENE_NET_PRUNE_FAILED_IDS_MINUTES));
       auto oldest_failed_ids_to_keep_iter = _recently_failed_items.get<peer_connection::timestamp_index>().lower_bound(oldest_failed_ids_to_keep);
       auto begin_iter = _recently_failed_items.get<peer_connection::timestamp_index>().begin();
       _recently_failed_items.get<peer_connection::timestamp_index>().erase(begin_iter, oldest_failed_ids_to_keep_iter);
 
       if (!_node_is_shutting_down && !_fetch_updated_peer_lists_loop_done.canceled() )
          _fetch_updated_peer_lists_loop_done = fc::schedule( [this](){ fetch_updated_peer_lists_loop(); },
-                                                             fc::time_point::now() + fc::minutes(15),
+                                                             fc::time_point::now() + fc::minutes(GRAPHENE_NET_FETCH_UPDATED_PEER_LISTS_INTERVAL_MINUTES),
                                                              "fetch_updated_peer_lists_loop" );
     }
     void node_impl::update_bandwidth_data(uint32_t bytes_read_this_second, uint32_t bytes_written_this_second)
@@ -1599,7 +1587,7 @@ namespace graphene { namespace net { namespace detail {
 
       if (!_node_is_shutting_down && !_bandwidth_monitor_loop_done.canceled())
         _bandwidth_monitor_loop_done = fc::schedule( [=](){ bandwidth_monitor_loop(); },
-                                                     fc::time_point::now() + fc::seconds(1),
+                                                     fc::time_point::now() + fc::seconds(GRAPHENE_NET_BANDWIDTH_MONITOR_INTERVAL_SECONDS),
                                                      "bandwidth_monitor_loop" );
     }
 
@@ -1609,7 +1597,7 @@ namespace graphene { namespace net { namespace detail {
       dump_node_status();
       if (!_node_is_shutting_down && !_dump_node_status_task_done.canceled())
         _dump_node_status_task_done = fc::schedule([=](){ dump_node_status_task(); },
-                                                   fc::time_point::now() + fc::minutes(1),
+                                                   fc::time_point::now() + fc::minutes(GRAPHENE_NET_DUMP_NODE_STATUS_INTERVAL_MINUTES),
                                                    "dump_node_status_task");
     }
 
@@ -2130,7 +2118,7 @@ namespace graphene { namespace net { namespace detail {
       originating_peer->send_message(address_request_message());
       fc::time_point now = fc::time_point::now();
       if (_is_firewalled == firewalled_state::unknown &&
-          _last_firewall_check_message_sent < now - fc::minutes(5) &&
+          _last_firewall_check_message_sent < now - fc::minutes(GRAPHENE_NET_FIREWALL_CHECK_MESSAGE_INTERVAL_MINUTES) &&
           originating_peer->core_protocol_version >= 106)
       {
         wlog("I don't know if I'm firewalled.  Sending a firewall check message to peer ${peer}",
@@ -4623,7 +4611,7 @@ namespace graphene { namespace net { namespace detail {
               std::string error_message = error_message_stream.str();
               ulog(error_message);
               _delegate->error_encountered( error_message, fc::oexception() );
-              fc::usleep( fc::seconds(5 ) );
+              fc::usleep( fc::seconds(GRAPHENE_NET_PORT_WAIT_DELAY_SECONDS) );
             }
             else // don't wait, just find a random port
             {
