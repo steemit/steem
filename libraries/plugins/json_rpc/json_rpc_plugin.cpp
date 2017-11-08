@@ -5,6 +5,7 @@
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/io/fstream.hpp>
 
 #define ENABLE_JSON_RPC_LOG
 
@@ -43,28 +44,65 @@ namespace detail
    public:
       json_rpc_logger(const string& _dir_name) : dir_name(_dir_name) {}
 
-      void set_call_info(const string& _api, const string& _method)
+      ~json_rpc_logger()
       {
-         api = _api;
-         method = _method;
+         if ((counter + errors) < 3)
+            return; // nothing to flush
+
+         // flush tests.yaml file with all passed responses
+         fc::path file(dir_name);
+         file /= "tests.yaml";
+
+         const char* head =
+         "---\n"
+         "- config:\n"
+         "  - testset: \"API Tests\"\n"
+         "  - generators:\n"
+         "    - test_id: {type: 'number_sequence', start: 1}\n"
+         "\n"
+         "- base_test: &base_test\n"
+         "  - generator_binds:\n"
+         "    - test_id: test_id\n"
+         "  - url: \"/rpc\"\n"
+         "  - method: \"POST\"\n"
+         "  - validators:\n"
+         "    - extract_test: {jsonpath_mini: \"error\", test: \"not_exists\"}\n"
+         "    - extract_test: {jsonpath_mini: \"result\", test: \"exists\"}\n";
+         
+         fc::ofstream o(file);
+         o << head;
+         o << "    - json_file_validator: {jsonpath_mini: \"result\", comparator: \"json_compare\", expected: {template: '" << dir_name << "/$test_id'}}\n\n";
+
+         for (uint32_t i = 1; i <= counter; ++i)
+         {
+            o << "- test:\n";
+            o << "  - body: {file: \"" << i << ".json\"}\n";
+            o << "  - name: \"test" << i << "\"\n";
+            o << "  - <<: *base_test\n";
+            o << "\n";
+         }
+
+         o.close();
       }
 
       void log(const fc::variant_object& request, json_rpc_response& response)
       {
          fc::path file(dir_name);
-
-         ++counter;
-
-         if (api.empty() && method.empty())
-            file /= std::to_string(counter) + ".json";
+         bool error = response.error.valid();
+         std::string counter_str;
+         
+         if (error)
+            counter_str = std::to_string(++errors) + "_error";
          else
-            file /= api + '.' + method + '.' + std::to_string(counter) + ".json";
+            counter_str = std::to_string(++counter);
+
+         file /= counter_str + ".json";
 
          fc::json::save_to_file(request, file);
 
          file.replace_extension("json.pat");
 
-         if (response.error)
+         if (error)
             fc::json::save_to_file(response.error, file);
          else
             fc::json::save_to_file(response.result, file);
@@ -72,9 +110,11 @@ namespace detail
 
    private:
       string   dir_name;
-      string   api;
-      string   method;
+      /** they are used as 1-based, because of problem with start pyresttest number_sequence generator from 0
+       *  (it means first test is '1' also as first error)
+       */
       uint32_t counter = 0;
+      uint32_t errors = 0;
    };
       
    class json_rpc_plugin_impl
@@ -93,12 +133,6 @@ namespace detail
 
          void initialize();
 
-         void set_call_info(const string& _api, const string& _method)
-         {
-            if (_logger)
-               _logger->set_call_info(_api, _method);
-         }
-   
          void log(const fc::variant_object& request, json_rpc_response& response)
          {
             if (_logger)
@@ -179,8 +213,6 @@ namespace detail
 
          FC_ASSERT( v.size() == 2 || v.size() == 3, "params should be {\"api\", \"method\", \"args\"" );
 
-         set_call_info( v[0].as_string(), v[1].as_string() );
-
          ret = find_api_method( v[0].as_string(), v[1].as_string() );
 
          func_args = ( v.size() == 3 ) ? v[2] : fc::json::from_string( "{}" );
@@ -191,8 +223,6 @@ namespace detail
          boost::split( v, method, boost::is_any_of( "." ) );
 
          FC_ASSERT( v.size() == 2, "method specification invalid. Should be api.method" );
-
-         set_call_info( v[0], v[1] );
 
          ret = find_api_method( v[0], v[1] );
 
