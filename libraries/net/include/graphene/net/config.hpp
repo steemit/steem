@@ -115,7 +115,7 @@
  * blocks, this will need to be re-evaluated (i.e., can we set the timeout to 500ms
  * and still handle normal network & processing delays without excessive disconnects)
  */
-#define GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT            1
+#define GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT_SECONDS    1
 
 #define GRAPHENE_NET_FAILED_TERMINATE_TIMEOUT_SECONDS          120
 
@@ -123,12 +123,12 @@
 
 #define GRAPHENE_NET_FETCH_UPDATED_PEER_LISTS_INTERVAL_MINUTES 15
 
-#define GRAPHENE_NET_BANDWIDTH_MONITOR_INTERVAL_SECONDS         1
+#define GRAPHENE_NET_BANDWIDTH_MONITOR_INTERVAL_SECONDS        1
 
-#define GRAPHENE_NET_DUMP_NODE_STATUS_INTERVAL_MINUTES          1
+#define GRAPHENE_NET_DUMP_NODE_STATUS_INTERVAL_MINUTES         1
 
-#define GRAPHENE_NET_FIREWALL_CHECK_MESSAGE_INTERVAL_MINUTES    5
+#define GRAPHENE_NET_FIREWALL_CHECK_MESSAGE_INTERVAL_MINUTES   5
 
-#define GRAPHENE_NET_PORT_WAIT_DELAY_SECONDS                    5
+#define GRAPHENE_NET_PORT_WAIT_DELAY_SECONDS                   5
 
-#define GRAPHENE_NET_MAX_PEERDB_SIZE                         1000
+#define GRAPHENE_NET_MAX_PEERDB_SIZE                           1000

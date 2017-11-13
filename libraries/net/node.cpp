@@ -1365,7 +1365,7 @@ namespace graphene { namespace net { namespace detail {
 
         fc::time_point active_disconnect_threshold = fc::time_point::now() - fc::seconds(active_disconnect_timeout);
         fc::time_point active_send_keepalive_threshold = fc::time_point::now() - fc::seconds(active_send_keepalive_timeout);
-        fc::time_point active_ignored_request_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT);
+        fc::time_point active_ignored_request_threshold = fc::time_point::now() - fc::seconds(GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT_SECONDS);
         for( const peer_connection_ptr& active_peer : _active_connections )
         {
           if( active_peer->connection_initiation_time < active_disconnect_threshold &&
