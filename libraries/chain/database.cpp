@@ -1477,12 +1477,10 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
 {
    modify( cur, [&]( comment_object& c )
    {
-      if( c.total_payout_value.symbol == sbd_created.symbol )
-         c.total_payout_value += sbd_created;
-      if( c.curator_payout_value.symbol == curator_sbd_value.symbol )
-         c.curator_payout_value += curator_sbd_value;
-      if( c.beneficiary_payout_value.symbol == beneficiary_value.symbol )
-         c.beneficiary_payout_value += beneficiary_value;
+      // input assets should be in sbd
+      c.total_payout_value += sbd_created;
+      c.curator_payout_value += curator_sbd_value;
+      c.beneficiary_payout_value += beneficiary_value;
    } );
    /// TODO: potentially modify author's total payout numbers as well
 }
