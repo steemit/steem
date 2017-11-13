@@ -421,7 +421,6 @@ namespace steem { namespace chain {
          bool skip_transaction_delta_check = true;
          bool disable_low_mem_warning = true;
 #endif
-         bool init_genesis_hardforks = true;
 
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead

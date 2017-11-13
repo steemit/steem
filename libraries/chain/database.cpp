@@ -2632,7 +2632,7 @@ void database::_apply_block( const signed_block& next_block )
 
    uint32_t skip = get_node_properties().skip_flags;
 
-   if( BOOST_UNLIKELY( (next_block_num == 1) && init_genesis_hardforks ) )
+   if( BOOST_UNLIKELY( next_block_num == 1 ) )
    {
       // For every existing before the head_block_time (genesis time), apply the hardfork
       // This allows the test net to launch with past hardforks and apply the next harfork when running
