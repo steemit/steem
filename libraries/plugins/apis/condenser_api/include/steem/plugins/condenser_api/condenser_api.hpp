@@ -27,21 +27,21 @@ namespace detail{ class condenser_api_impl; }
 
 struct discussion_index
 {
-   string                        category;         /// category by which everything is filtered
-   vector< tags::tag_name_type > trending;         /// trending posts over the last 24 hours
-   vector< tags::tag_name_type > payout;           /// pending posts by payout
-   vector< tags::tag_name_type > payout_comments;  /// pending comments by payout
-   vector< tags::tag_name_type > trending30;       /// pending lifetime payout
-   vector< tags::tag_name_type > created;          /// creation date
-   vector< tags::tag_name_type > responses;        /// creation date
-   vector< tags::tag_name_type > updated;          /// creation date
-   vector< tags::tag_name_type > active;           /// last update or reply
-   vector< tags::tag_name_type > votes;            /// last update or reply
-   vector< tags::tag_name_type > cashout;          /// last update or reply
-   vector< tags::tag_name_type > maturing;         /// about to be paid out
-   vector< tags::tag_name_type > best;             /// total lifetime payout
-   vector< tags::tag_name_type > hot;              /// total lifetime payout
-   vector< tags::tag_name_type > promoted;         /// pending lifetime payout
+   string           category;         /// category by which everything is filtered
+   vector< string > trending;         /// trending posts over the last 24 hours
+   vector< string > payout;           /// pending posts by payout
+   vector< string > payout_comments;  /// pending comments by payout
+   vector< string > trending30;       /// pending lifetime payout
+   vector< string > created;          /// creation date
+   vector< string > responses;        /// creation date
+   vector< string > updated;          /// creation date
+   vector< string > active;           /// last update or reply
+   vector< string > votes;            /// last update or reply
+   vector< string > cashout;          /// last update or reply
+   vector< string > maturing;         /// about to be paid out
+   vector< string > best;             /// total lifetime payout
+   vector< string > hot;              /// total lifetime payout
+   vector< string > promoted;         /// pending lifetime payout
 };
 
 struct extended_limit_order : public database_api::api_limit_order_object
