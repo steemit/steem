@@ -4,6 +4,7 @@
 #include <steem/chain/compound.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
 #include <steem/chain/database.hpp>
+#include <steem/chain/profiler.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/db_with.hpp>
 #include <steem/chain/evaluator_registry.hpp>
@@ -151,6 +152,9 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 {
    try
    {
+      int ret_profiler = ProfilerStart("steem_profiler");
+      FC_ASSERT( ret_profiler, " Profiler failed." );
+
       uint32_t last_block_number = 0; // result
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
@@ -216,6 +220,8 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
+
+      ProfilerStop();
 
       return last_block_number;
    }
