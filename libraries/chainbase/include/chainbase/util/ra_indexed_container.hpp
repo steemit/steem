@@ -53,8 +53,7 @@ namespace chainbase
          index_provider(index_provider&&) = default;
          index_provider& operator =(index_provider&&) = default;
 
-         //typedef index_provider< Container, by_id > by_id_index_provider;
-         const typename Container::template index< Tag >::type &get(/*const by_id_index_provider& by_id_idx_provider*/) const
+         const typename Container::template index< Tag >::type &get(const index_provider< Container, by_id >&) const
          {
             return _this.template get<Tag>();
          }
@@ -139,16 +138,10 @@ namespace chainbase
          };
 
          typedef by_id_index type;
-         //typedef index_provider< Container, by_id > by_id_index_provider;
-         const by_id_index &get(/*const by_id_index_provider& by_id_idx_provider*/) const
-         {
-            static by_id_index substitute_index(*_this, *_rac);
-            
-            /// \warning instance of returned index MUST be reinitialized each time
-            substitute_index = by_id_index(*_this, *_rac);
 
-            return substitute_index;
-            //return by_id_idx_provider._index;
+         const by_id_index &get(const index_provider< Container, by_id >& by_id_idx_provider) const
+         {
+            return by_id_idx_provider._index;
          }
    
       private:
@@ -178,7 +171,9 @@ public:
    using typename base_class::index_type_list;
    using typename base_class::iterator_type_list;
    using typename base_class::const_iterator_type_list;
-   using typename base_class::value_type;
+   
+   typedef typename base_class::value_type value_type;
+   /// using typename base_class::value_type;
    using typename base_class::allocator_type;
    using typename base_class::iterator;
    using typename base_class::const_iterator;
@@ -200,7 +195,7 @@ public:
       base_class(alloc),
       FreeIndices(alloc),
       RandomAccessStorage(1, alloc)
-      //,ByIdProvider(*this, RandomAccessStorage)
+      ,ByIdProvider(*this, RandomAccessStorage)
    {
    }
 
@@ -236,7 +231,7 @@ public:
    const typename idx_provider<Tag>::type &get() const
    {
       idx_provider<Tag> provider(*this, RandomAccessStorage);
-      return provider.get(/*ByIdProvider*/);
+      return provider.get(ByIdProvider);
    }
 
    template <typename Modifier>
@@ -351,7 +346,7 @@ public:
    */
    RandomAccessContainer RandomAccessStorage = RandomAccessContainer(1, this->get_allocator());
    ///
-   //idx_provider< by_id > ByIdProvider;
+   idx_provider< by_id > ByIdProvider;
 };
 
 /** Helper trait useful to determine if specified boost::multi_index_container has defined
