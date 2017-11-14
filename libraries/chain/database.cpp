@@ -4127,7 +4127,14 @@ void database::perform_vesting_share_split( uint32_t magnitude )
 {
    try
    {
-      modify( get_dynamic_global_properties(), [&]( dynamic_global_property_object& d )
+      const dynamic_global_property_object& dgpo = get_dynamic_global_properties();
+      if( dgpo.head_block_number <= 1 )
+      {
+         ilog( "perform_vesting_share_split() does not execute at genesis" );
+         return;
+      }
+
+      modify( dgpo, [&]( dynamic_global_property_object& d )
       {
          d.total_vesting_shares.amount *= magnitude;
          d.total_reward_shares2 = 0;
