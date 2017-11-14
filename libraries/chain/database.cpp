@@ -202,7 +202,16 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
             {
                benchmark.second( cur_block_num, false /*is_initial_call*/ );
             }
-            itr = _block_log.read_block( itr.second );
+
+            try
+            {
+               itr = _block_log.read_block( itr.second );
+            }
+            catch(...)
+            {
+               ilog( "Something wrong at block ${n}.", ("n", itr.second ) );
+               itr = _block_log.read_block( itr.second + 1 );
+            }
          }
 
          apply_block( itr.first, skip_flags );
