@@ -152,7 +152,6 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 {
    try
    {
-      int ret_profiler = ProfilerStart("steem_profiler");
       FC_ASSERT( ret_profiler, " Profiler failed." );
 
       uint32_t last_block_number = 0; // result
@@ -179,6 +178,8 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          skip_validate_invariants |
          skip_block_log;
 
+      int ret_profiler = ProfilerStart("steem_profiler");
+
       with_write_lock( [&]()
       {
          _block_log.set_locking( false );
@@ -202,16 +203,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
             {
                benchmark.second( cur_block_num, false /*is_initial_call*/ );
             }
-
-            try
-            {
-               itr = _block_log.read_block( itr.second );
-            }
-            catch(...)
-            {
-               ilog( "Something wrong at block ${n}.", ("n", itr.second ) );
-               itr = _block_log.read_block( itr.second + 1 );
-            }
+            itr = _block_log.read_block( itr.second );
          }
 
          apply_block( itr.first, skip_flags );
