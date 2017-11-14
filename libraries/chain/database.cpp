@@ -152,8 +152,6 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 {
    try
    {
-      FC_ASSERT( ret_profiler, " Profiler failed." );
-
       uint32_t last_block_number = 0; // result
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
@@ -179,6 +177,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          skip_block_log;
 
       int ret_profiler = ProfilerStart("steem_profiler");
+      FC_ASSERT( ret_profiler, " Profiler failed." );
 
       with_write_lock( [&]()
       {
