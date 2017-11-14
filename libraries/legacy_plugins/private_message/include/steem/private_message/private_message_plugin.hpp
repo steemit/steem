@@ -77,8 +77,8 @@ class message_object : public object< message_object_type, message_object >
 {
    public:
       template< typename Constructor, typename Allocator >
-      message_object( Constructor&& c, allocator< Allocator > a ) :
-         encrypted_message( a )
+      message_object( Constructor&& c, size_t assignedId, allocator< Allocator > a ) :
+         id(assignedId), encrypted_message( a )
       {
          c( *this );
       }
@@ -137,10 +137,9 @@ struct by_from_date;
 
 using namespace boost::multi_index;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    message_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< message_object, message_id_type, &message_object::id > >,
       ordered_unique< tag< by_to_date >,
             composite_key< message_object,
                member< message_object, account_name_type, &message_object::to >,
@@ -157,8 +156,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less< string >, std::greater< time_point_sec >, std::less< message_id_type > >
       >
-   >,
-   allocator< message_object >
+   >
 > message_index;
 
 

@@ -62,7 +62,8 @@ class blockchain_statistics_plugin : public steem::app::plugin
 struct bucket_object : public object< bucket_object_type, bucket_object >
 {
    template< typename Constructor, typename Allocator >
-   bucket_object( Constructor&& c, allocator< Allocator > a )
+   bucket_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+      : id(assignedId)
    {
       c( *this );
    }
@@ -118,20 +119,17 @@ struct bucket_object : public object< bucket_object_type, bucket_object >
 
 typedef oid< bucket_object > bucket_id_type;
 
-struct by_id;
 struct by_bucket;
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    bucket_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< bucket_object, bucket_id_type, &bucket_object::id > >,
       ordered_unique< tag< by_bucket >,
          composite_key< bucket_object,
             member< bucket_object, uint32_t, &bucket_object::seconds >,
             member< bucket_object, fc::time_point_sec, &bucket_object::open >
          >
       >
-   >,
-   allocator< bucket_object >
+   >
 > bucket_index;
 
 } } // steem::blockchain_statistics

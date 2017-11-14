@@ -43,8 +43,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         comment_object( Constructor&& c, allocator< Allocator > a )
-            :category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a )
+         comment_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            : id(assignedId), category( a ), parent_permlink( a ), permlink( a ), beneficiaries( a )
          {
             c( *this );
          }
@@ -104,8 +104,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         comment_content_object( Constructor&& c, allocator< Allocator > a ) :
-            title( a ), body( a ), json_metadata( a )
+         comment_content_object( Constructor&& c, size_t assignedId, allocator< Allocator > a ) :
+            id(assignedId), title( a ), body( a ), json_metadata( a )
          {
             c( *this );
          }
@@ -127,7 +127,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         comment_vote_object( Constructor&& c, allocator< Allocator > a )
+         comment_vote_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         : id(assignedId)
          {
             c( *this );
          }
@@ -147,10 +148,9 @@ namespace steem { namespace chain {
    struct by_voter_comment;
    struct by_comment_weight_voter;
    struct by_voter_last_update;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       comment_vote_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< comment_vote_object, comment_vote_id_type, &comment_vote_object::id > >,
          ordered_unique< tag< by_comment_voter >,
             composite_key< comment_vote_object,
                member< comment_vote_object, comment_id_type, &comment_vote_object::comment>,
@@ -179,8 +179,7 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< comment_id_type >, std::greater< uint64_t >, std::less< account_id_type > >
          >
-      >,
-      allocator< comment_vote_object >
+      >
    > comment_vote_index;
 
 
@@ -194,11 +193,10 @@ namespace steem { namespace chain {
    /**
     * @ingroup object_index
     */
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       comment_object,
       indexed_by<
          /// CONSENSUS INDICES - used by evaluators
-         ordered_unique< tag< by_id >, member< comment_object, comment_id_type, &comment_object::id > >,
          ordered_unique< tag< by_cashout_time >,
             composite_key< comment_object,
                member< comment_object, time_point_sec, &comment_object::cashout_time>,
@@ -246,19 +244,16 @@ namespace steem { namespace chain {
             composite_key_compare< std::less< account_name_type >, std::greater< time_point_sec >, std::less< comment_id_type > >
          >
 #endif
-      >,
-      allocator< comment_object >
+      >
    > comment_index;
 
    struct by_comment;
 
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       comment_content_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< comment_content_object, comment_content_id_type, &comment_content_object::id > >,
          ordered_unique< tag< by_comment >, member< comment_content_object, comment_id_type, &comment_content_object::comment > >
-      >,
-      allocator< comment_content_object >
+      >
    > comment_content_index;
 
 } } // steem::chain

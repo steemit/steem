@@ -11,10 +11,21 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 
+#include <boost/iterator/filter_iterator.hpp>
+#include <boost/iterator/transform_iterator.hpp>
+
 #include <boost/throw_exception.hpp>
 
 #include <cstddef>
 #include <vector>
+
+namespace steem
+{
+namespace chain
+{
+   struct by_id;
+}
+}
 
 namespace chainbase
 {
@@ -26,6 +37,127 @@ namespace chainbase
    using boost::multi_index::random_access;
    using boost::multi_index::sequenced;
 
+   using steem::chain::by_id;
+
+
+   namespace detail {
+      template <typename Container, typename Tag>
+      class index_provider
+      {
+      public:
+         index_provider(const typename Container::base_class& __this, const typename Container::RandomAccessContainer& rac) :_this(__this) {};
+         
+         index_provider(const index_provider&) = default;
+         index_provider& operator =(const index_provider&) = default;
+
+         index_provider(index_provider&&) = default;
+         index_provider& operator =(index_provider&&) = default;
+
+         //typedef index_provider< Container, by_id > by_id_index_provider;
+         const typename Container::template index< Tag >::type &get(/*const by_id_index_provider& by_id_idx_provider*/) const
+         {
+            return _this.template get<Tag>();
+         }
+         typedef typename Container::template index< Tag >::type type;
+   
+         const typename Container::base_class& _this;
+      };
+   
+      template <typename Container>
+      class index_provider<Container, by_id >
+      {
+      public:
+         typedef typename Container::base_class base_class;
+         typedef typename Container::RandomAccessContainer RandomAccessContainer;
+
+         index_provider(const base_class& __this, const RandomAccessContainer& rac)
+            : _this(&__this), _rac(&rac), _index(__this, rac) {}
+
+         index_provider(const index_provider&) = default;
+         index_provider& operator =(const index_provider&) = default;
+
+         index_provider(index_provider&&) = default;
+         index_provider& operator =(index_provider&&) = default;
+
+         class by_id_index
+         {
+         public:
+
+            struct hole_filter
+            {
+               hole_filter(const typename RandomAccessContainer::value_type& end_iterator) : _end_iterator_ptr(&end_iterator) {}
+               hole_filter& operator=(const hole_filter& rhs)
+               {
+                  _end_iterator_ptr = rhs._end_iterator_ptr;
+                  return *this;
+               }
+
+               bool operator()(const typename RandomAccessContainer::value_type& item) const
+               {
+                   return item != *_end_iterator_ptr;
+               }
+               const typename RandomAccessContainer::value_type* _end_iterator_ptr;
+            };
+            struct transformer
+            {
+               const typename Container::value_type& operator()(const typename RandomAccessContainer::value_type& item) const
+               {
+                  return const_cast<typename Container::value_type&>(*item);
+               } 
+            };
+      
+            by_id_index(const base_class& __this, const RandomAccessContainer& rac)
+                : _this(&__this),
+                 _rac(&rac) {}
+
+            by_id_index(const by_id_index&) = default;
+            by_id_index& operator=(const by_id_index&) = default;
+
+            by_id_index(by_id_index&&) = default;
+            by_id_index& operator=(by_id_index&&) = default;
+
+            typedef typename boost::transform_iterator< transformer, boost::filter_iterator<hole_filter, typename RandomAccessContainer::const_iterator>, 
+                                                         const typename Container::value_type&, const typename Container::value_type > const_iterator;
+            const_iterator begin() const
+            {
+               hole_filter filter(_this->end());
+               auto source_iterator = boost::make_filter_iterator(filter, ++(_rac->begin()), _rac->end());
+               return //boost::make_transform_iterator(source_iterator, transformer());
+                  const_iterator(source_iterator, transformer());
+            }            
+            const_iterator end() const
+            {
+               hole_filter filter(_this->end());
+               auto source_iterator = boost::make_filter_iterator(filter, _rac->end(), _rac->end());
+               return //boost::make_transform_iterator(source_iterator, transformer());
+                  const_iterator(source_iterator, transformer());
+            }
+
+         private:
+            const typename Container::base_class*            _this;
+            const typename Container::RandomAccessContainer* _rac;
+         };
+
+         typedef by_id_index type;
+         //typedef index_provider< Container, by_id > by_id_index_provider;
+         const by_id_index &get(/*const by_id_index_provider& by_id_idx_provider*/) const
+         {
+            static by_id_index substitute_index(*_this, *_rac);
+            
+            /// \warning instance of returned index MUST be reinitialized each time
+            substitute_index = by_id_index(*_this, *_rac);
+
+            return substitute_index;
+            //return by_id_idx_provider._index;
+         }
+   
+      private:
+         const base_class*             _this;
+         const RandomAccessContainer*  _rac;
+         by_id_index                   _index;
+      };
+   }
+
 /** Dedicated class providing functionality of random_access (via index assigned at object emplacement)
 and fast lookup, as boost::multi_index::multi_index_container does.
 Supports safe object removal and reusing of previously assigned index.
@@ -34,13 +166,16 @@ template <typename Value, typename IndexSpecifierList, typename Allocator = std:
 class ra_indexed_container : protected boost::multi_index::multi_index_container<Value,
                                        IndexSpecifierList, Allocator>
 {
-   typedef boost::multi_index::multi_index_container<Value, IndexSpecifierList, Allocator> base_class;
-
 public:
+   template <typename Tag>
+   using idx_provider = detail::index_provider< ra_indexed_container<Value, IndexSpecifierList, Allocator>, Tag >;
+
+   typedef boost::multi_index::multi_index_container<Value, IndexSpecifierList, Allocator> base_class;
+   typedef std::vector<typename base_class::const_iterator, Allocator> RandomAccessContainer;   
+
    using typename base_class::ctor_args_list;
    using typename base_class::index_specifier_type_list;
    using typename base_class::index_type_list;
-
    using typename base_class::iterator_type_list;
    using typename base_class::const_iterator_type_list;
    using typename base_class::value_type;
@@ -65,6 +200,7 @@ public:
       base_class(alloc),
       FreeIndices(alloc),
       RandomAccessStorage(1, alloc)
+      //,ByIdProvider(*this, RandomAccessStorage)
    {
    }
 
@@ -97,9 +233,10 @@ public:
    }
 
    template <typename Tag>
-   const typename index<Tag>::type &get() const
+   const typename idx_provider<Tag>::type &get() const
    {
-      return base_class::template get<Tag>();
+      idx_provider<Tag> provider(*this, RandomAccessStorage);
+      return provider.get(/*ByIdProvider*/);
    }
 
    template <typename Modifier>
@@ -205,7 +342,6 @@ public:
    /// Class members:
    private:
    typedef std::vector<std::size_t, Allocator> IndicesContainer;
-   typedef std::vector<typename base_class::const_iterator, Allocator> RandomAccessContainer;
    /// Stores RA-indexes of elemements being removed from container (if they didn't placed at the end of container).
    IndicesContainer FreeIndices;
    /** If at given position element has been erased, held iterator == end()
@@ -214,6 +350,8 @@ public:
    At the 0th element stores null element, to conform NULL_INDEX schema in the ptr_ref class.
    */
    RandomAccessContainer RandomAccessStorage = RandomAccessContainer(1, this->get_allocator());
+   ///
+   //idx_provider< by_id > ByIdProvider;
 };
 
 /** Helper trait useful to determine if specified boost::multi_index_container has defined

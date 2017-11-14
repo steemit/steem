@@ -22,8 +22,8 @@ namespace steem { namespace chain {
 
       public:
          template<typename Constructor, typename Allocator>
-         account_object( Constructor&& c, allocator< Allocator > a )
-            :json_metadata( a )
+         account_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id(assignedId), json_metadata( a )
          {
             c(*this);
          };
@@ -132,8 +132,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         account_authority_object( Constructor&& c, allocator< Allocator > a )
-            : owner( a ), active( a ), posting( a )
+         account_authority_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            : id(assignedId), owner( a ), active( a ), posting( a )
          {
             c( *this );
          }
@@ -153,7 +153,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         vesting_delegation_object( Constructor&& c, allocator< Allocator > a )
+         vesting_delegation_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         : id(assignedId)
          {
             c( *this );
          }
@@ -171,7 +172,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         vesting_delegation_expiration_object( Constructor&& c, allocator< Allocator > a )
+         vesting_delegation_expiration_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         : id(assignedId)
          {
             c( *this );
          }
@@ -190,8 +192,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         owner_authority_history_object( Constructor&& c, allocator< Allocator > a )
-            :previous_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
+         owner_authority_history_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id(assignedId), previous_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
          {
             c( *this );
          }
@@ -209,8 +211,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         account_recovery_request_object( Constructor&& c, allocator< Allocator > a )
-            :new_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
+         account_recovery_request_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id(assignedId), new_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
          {
             c( *this );
          }
@@ -226,7 +228,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         change_recovery_account_request_object( Constructor&& c, allocator< Allocator > a )
+         change_recovery_account_request_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         : id(assignedId)
          {
             c( *this );
          }
@@ -245,11 +248,9 @@ namespace steem { namespace chain {
    /**
     * @ingroup object_index
     */
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       account_object,
       indexed_by<
-         ordered_unique< tag< by_id >,
-            member< account_object, account_id_type, &account_object::id > >,
          ordered_unique< tag< by_name >,
             member< account_object, account_name_type, &account_object::name > >,
          ordered_unique< tag< by_proxy >,
@@ -264,17 +265,14 @@ namespace steem { namespace chain {
                member< account_object, account_name_type, &account_object::name >
             > /// composite key by_next_vesting_withdrawal
          >
-      >,
-      allocator< account_object >
+      >
    > account_index;
 
    struct by_account;
 
-   typedef multi_index_container <
+   typedef chainbase::indexed_container <
       owner_authority_history_object,
       indexed_by <
-         ordered_unique< tag< by_id >,
-            member< owner_authority_history_object, owner_authority_history_id_type, &owner_authority_history_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< owner_authority_history_object,
                member< owner_authority_history_object, account_name_type, &owner_authority_history_object::account >,
@@ -283,17 +281,14 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< account_name_type >, std::less< time_point_sec >, std::less< owner_authority_history_id_type > >
          >
-      >,
-      allocator< owner_authority_history_object >
+      >
    > owner_authority_history_index;
 
    struct by_last_owner_update;
 
-   typedef multi_index_container <
+   typedef chainbase::indexed_container <
       account_authority_object,
       indexed_by <
-         ordered_unique< tag< by_id >,
-            member< account_authority_object, account_authority_id_type, &account_authority_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< account_authority_object,
                member< account_authority_object, account_name_type, &account_authority_object::account >,
@@ -308,17 +303,14 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::greater< time_point_sec >, std::less< account_authority_id_type > >
          >
-      >,
-      allocator< account_authority_object >
+      >
    > account_authority_index;
 
    struct by_delegation;
 
-   typedef multi_index_container <
+   typedef chainbase::indexed_container <
       vesting_delegation_object,
       indexed_by <
-         ordered_unique< tag< by_id >,
-            member< vesting_delegation_object, vesting_delegation_id_type, &vesting_delegation_object::id > >,
          ordered_unique< tag< by_delegation >,
             composite_key< vesting_delegation_object,
                member< vesting_delegation_object, account_name_type, &vesting_delegation_object::delegator >,
@@ -326,18 +318,15 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >
-      >,
-      allocator< vesting_delegation_object >
+      >
    > vesting_delegation_index;
 
    struct by_expiration;
    struct by_account_expiration;
 
-   typedef multi_index_container <
+   typedef chainbase::indexed_container <
       vesting_delegation_expiration_object,
       indexed_by <
-         ordered_unique< tag< by_id >,
-            member< vesting_delegation_expiration_object, vesting_delegation_expiration_id_type, &vesting_delegation_expiration_object::id > >,
          ordered_unique< tag< by_expiration >,
             composite_key< vesting_delegation_expiration_object,
                member< vesting_delegation_expiration_object, time_point_sec, &vesting_delegation_expiration_object::expiration >,
@@ -353,17 +342,14 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< account_name_type >, std::less< time_point_sec >, std::less< vesting_delegation_expiration_id_type > >
          >
-      >,
-      allocator< vesting_delegation_expiration_object >
+      >
    > vesting_delegation_expiration_index;
 
    struct by_expiration;
 
-   typedef multi_index_container <
+   typedef chainbase::indexed_container <
       account_recovery_request_object,
       indexed_by <
-         ordered_unique< tag< by_id >,
-            member< account_recovery_request_object, account_recovery_request_id_type, &account_recovery_request_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< account_recovery_request_object,
                member< account_recovery_request_object, account_name_type, &account_recovery_request_object::account_to_recover >
@@ -377,17 +363,14 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< time_point_sec >, std::less< account_name_type > >
          >
-      >,
-      allocator< account_recovery_request_object >
+      >
    > account_recovery_request_index;
 
    struct by_effective_date;
 
-   typedef multi_index_container <
+   typedef chainbase::indexed_container <
       change_recovery_account_request_object,
       indexed_by <
-         ordered_unique< tag< by_id >,
-            member< change_recovery_account_request_object, change_recovery_account_request_id_type, &change_recovery_account_request_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< change_recovery_account_request_object,
                member< change_recovery_account_request_object, account_name_type, &change_recovery_account_request_object::account_to_recover >
@@ -401,8 +384,7 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< time_point_sec >, std::less< account_name_type > >
          >
-      >,
-      allocator< change_recovery_account_request_object >
+      >
    > change_recovery_account_request_index;
 } }
 

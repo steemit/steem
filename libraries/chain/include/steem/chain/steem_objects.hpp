@@ -25,7 +25,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         convert_request_object( Constructor&& c, allocator< Allocator > a )
+         convert_request_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            : id(assignedId)
          {
             c( *this );
          }
@@ -109,7 +110,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         liquidity_reward_balance_object( Constructor&& c, allocator< Allocator > a )
+         liquidity_reward_balance_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            : id(assignedId)
          {
             c( *this );
          }
@@ -182,7 +184,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         limit_order_object( Constructor&& c, allocator< Allocator > a )
+         limit_order_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            : id(assignedId)
          {
             c( *this );
          }
@@ -217,7 +220,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         withdraw_vesting_route_object( Constructor&& c, allocator< Allocator > a )
+         withdraw_vesting_route_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            : id(assignedId)
          {
             c( *this );
          }
@@ -276,10 +280,9 @@ namespace steem { namespace chain {
    struct by_price;
    struct by_expiration;
    struct by_account;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       limit_order_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< limit_order_object, limit_order_id_type, &limit_order_object::id > >,
          ordered_non_unique< tag< by_expiration >, member< limit_order_object, time_point_sec, &limit_order_object::expiration > >,
          ordered_unique< tag< by_price >,
             composite_key< limit_order_object,
@@ -294,16 +297,14 @@ namespace steem { namespace chain {
                member< limit_order_object, uint32_t, &limit_order_object::orderid >
             >
          >
-      >,
-      allocator< limit_order_object >
+      >
    > limit_order_index;
 
    struct by_owner;
    struct by_conversion_date;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       convert_request_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< convert_request_object, convert_request_id_type, &convert_request_object::id > >,
          ordered_unique< tag< by_conversion_date >,
             composite_key< convert_request_object,
                member< convert_request_object, time_point_sec, &convert_request_object::conversion_date >,
@@ -316,17 +317,15 @@ namespace steem { namespace chain {
                member< convert_request_object, uint32_t, &convert_request_object::requestid >
             >
          >
-      >,
-      allocator< convert_request_object >
+      >
    > convert_request_index;
 
    struct by_owner;
    struct by_volume_weight;
 
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       liquidity_reward_balance_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< liquidity_reward_balance_object, liquidity_reward_balance_id_type, &liquidity_reward_balance_object::id > >,
          ordered_unique< tag< by_owner >, member< liquidity_reward_balance_object, account_id_type, &liquidity_reward_balance_object::owner > >,
          ordered_unique< tag< by_volume_weight >,
             composite_key< liquidity_reward_balance_object,
@@ -335,8 +334,7 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::greater< fc::uint128 >, std::less< account_id_type > >
          >
-      >,
-      allocator< liquidity_reward_balance_object >
+      >
    > liquidity_reward_balance_index;
 
    typedef multi_index_container<
@@ -349,10 +347,9 @@ namespace steem { namespace chain {
 
    struct by_withdraw_route;
    struct by_destination;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       withdraw_vesting_route_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< withdraw_vesting_route_object, withdraw_vesting_route_id_type, &withdraw_vesting_route_object::id > >,
          ordered_unique< tag< by_withdraw_route >,
             composite_key< withdraw_vesting_route_object,
                member< withdraw_vesting_route_object, account_name_type, &withdraw_vesting_route_object::from_account >,
@@ -366,8 +363,7 @@ namespace steem { namespace chain {
                member< withdraw_vesting_route_object, withdraw_vesting_route_id_type, &withdraw_vesting_route_object::id >
             >
          >
-      >,
-      allocator< withdraw_vesting_route_object >
+      >
    > withdraw_vesting_route_index;
 
    struct by_from_id;
