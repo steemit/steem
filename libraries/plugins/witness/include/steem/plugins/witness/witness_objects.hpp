@@ -1,5 +1,7 @@
 #pragma once
 
+#include <steem/protocol/authority.hpp>
+
 #include <steem/chain/steem_object_types.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
@@ -8,6 +10,7 @@ namespace steem { namespace plugins{ namespace witness {
 
 using namespace std;
 using namespace steem::chain;
+using namespace steem::protocol;
 
 #ifndef STEEM_WITNESS_SPACE_ID
 #define STEEM_WITNESS_SPACE_ID 12
@@ -18,6 +21,7 @@ enum witness_plugin_object_type
    account_bandwidth_object_type = ( STEEM_WITNESS_SPACE_ID << 8 ),
    content_edit_lock_object_type = ( STEEM_WITNESS_SPACE_ID << 8 ) + 1,
    reserve_ratio_object_type     = ( STEEM_WITNESS_SPACE_ID << 8 ) + 2,
+   egg_object_type               = ( STEEM_WITNESS_SPACE_ID << 8 ) + 3,
 };
 
 enum bandwidth_type
@@ -114,6 +118,25 @@ class reserve_ratio_object : public object< reserve_ratio_object_type, reserve_r
 
 typedef oid< reserve_ratio_object > reserve_ratio_id_type;
 
+class egg_object : public object< egg_object_type, egg_object >
+{
+   public:
+      template< typename Constructor, typename Allocator >
+      egg_object( Constructor&& c, allocator< Allocator > a )
+      {
+         c( *this );
+      }
+
+      egg_object() {}
+
+      id_type           id;
+      authority         egg_auth;
+      fc::sha256        h_egg_auth;
+      bool              used = false;
+};
+
+typedef oid< egg_object > egg_id_type;
+
 
 struct by_account_bandwidth_type;
 
@@ -154,6 +177,24 @@ typedef multi_index_container <
    allocator< reserve_ratio_object >
 > reserve_ratio_index;
 
+struct by_egg_auth;
+struct by_used;
+typedef multi_index_container <
+   egg_object,
+   indexed_by <
+      ordered_unique< tag< by_id >,
+         member< egg_object, egg_id_type, &egg_object::id > >,
+      ordered_unique< tag< by_egg_auth >,
+         member< egg_object, fc::sha256, &egg_object::h_egg_auth > >,
+      ordered_unique< tag< by_used >,
+         composite_key< egg_object,
+            member< egg_object, bool, &egg_object::used >,
+            member< egg_object, egg_id_type, &egg_object::id > >
+         >
+      >,
+      allocator< egg_object >
+> egg_index;
+
 } } } // steem::plugins::witness
 
 FC_REFLECT_ENUM( steem::plugins::witness::bandwidth_type, (post)(forum)(market) )
@@ -169,3 +210,7 @@ CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::content_edit_lock_object, ste
 FC_REFLECT( steem::plugins::witness::reserve_ratio_object,
             (id)(average_block_size)(current_reserve_ratio)(max_virtual_bandwidth) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::reserve_ratio_object, steem::plugins::witness::reserve_ratio_index )
+
+FC_REFLECT( steem::plugins::witness::egg_object,
+            (id)(egg_auth)(h_egg_auth)(used) )
+CHAINBASE_SET_INDEX_TYPE( steem::plugins::witness::egg_object, steem::plugins::witness::egg_index )

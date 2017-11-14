@@ -61,6 +61,9 @@ namespace detail {
 
       void update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type );
 
+      void use_egg( const authority& auth );
+      void remove_used_eggs();
+
       void schedule_production_loop();
       block_production_condition::block_production_condition_enum block_production_loop();
       block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
@@ -256,6 +259,8 @@ namespace detail {
 
    void witness_plugin_impl::on_block( const signed_block& b )
    { try {
+      remove_used_eggs();
+
       int64_t max_block_size = _db.get_dynamic_global_properties().maximum_block_size;
 
       auto reserve_ratio_ptr = _db.find( reserve_ratio_id_type() );
@@ -329,6 +334,36 @@ namespace detail {
       }
    } FC_LOG_AND_RETHROW() }
    #pragma message( "Remove FC_LOG_AND_RETHROW here before appbase release. It exists to help debug a rare lock exception" )
+
+   void witness_plugin_impl::use_egg( const authority& auth )
+   {
+      fc::sha256 h_egg_auth = fc::sha256::hash( auth );
+      const egg_object* egg = _db.find< egg_object, by_egg_auth >( h_egg_auth );
+      STEEM_ASSERT( egg != nullptr, plugin_exception,
+         "Authority ${a} is trying to hatch an account but does not have an egg",
+         ("a", auth) );
+      STEEM_ASSERT( !egg->used, plugin_exception,
+         "Authority ${a} is trying to reuse an egg within the same block",
+         ("a", auth) );
+
+      _db.modify( *egg, []( egg_object& e ) { e.used = true; } );
+   }
+
+   void witness_plugin_impl::remove_used_eggs()
+   {
+      const auto& idx = _db.get_index<egg_index>().indices().get<by_used>();
+      while( true )
+      {
+         auto it = idx.lower_bound( boost::make_tuple( true, egg_id_type() ) );
+         if( it == idx.end() )
+            break;
+         // see https://stackoverflow.com/questions/26143976/is-the-operation-false-true-well-defined
+         static_assert( false < true, "boolean values must compare such that false < true or this code's assumptions are incorrect" );
+         FC_ASSERT( it->used, "This should never happen unless you have a non-compliant compiler where true < false" );
+         ilog( "Removing egg for auth ${a}", ("a", it->egg_auth) );
+         _db.remove( *it );
+      }
+   }
 
    void witness_plugin_impl::update_account_bandwidth( const chain::account_object& a, uint32_t trx_size, const bandwidth_type type )
    {
