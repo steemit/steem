@@ -176,8 +176,8 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          skip_validate_invariants |
          skip_block_log;
 
-      int ret_profiler = ProfilerStart("steem_profiler");
-      FC_ASSERT( ret_profiler, " Profiler failed." );
+      int ret_profiler;
+      int enabled = false;
 
       with_write_lock( [&]()
       {
@@ -194,6 +194,14 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          while( itr.first.block_num() != last_block_num )
          {
             auto cur_block_num = itr.first.block_num();
+
+            if( cur_block_num == 12000000 )
+            {
+               ret_profiler = ProfilerStart("steem_profiler");
+               FC_ASSERT( ret_profiler, " Profiler failed." );
+               enabled = true;
+            }
+
             if( cur_block_num % 100000 == 0 )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
@@ -221,7 +229,8 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
 
-      ProfilerStop();
+      if( enabled )
+         ProfilerStop();
 
       return last_block_number;
    }
