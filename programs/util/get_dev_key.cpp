@@ -57,12 +57,28 @@ int main( int argc, char** argv )
       if( need_help )
       {
          std::cerr << argc << " " << argv[1]  << "\n";
-         std::cerr << "get-dev-key <prefix> <suffix> ...\n"
+         std::cerr << "get-dev-key <secret> <account> ...\n"
              "\n"
-             "example:\n"
+	     "Takes a secret string and a list of account names, and returns a json formatted\n"
+	     "  list of associated private/public key pairs.\n"
+	     "\n"
+	     "Parameters:\n"
+	     "\n"
+	     "  secret:\n"
+	     "    The secret string that will be hashed with the account names to form the keys.\n"
+	     "\n"
+	     "  account:\n"
+	     "    Account name strings for which keys will be generated. There can be an arbitrary\n"
+	     "      number of these passed as parameters.\n"
+	     "    If you want to include multiple accounts with the same name but different integer\n"
+	     "      values at the end, a range can be given after a dash in the form a:b, and the\n"
+             "      input will be exapnded to include each combination in the range (a:b].\n"
+             "      E.g. name-0:3 would expand to abc-0 abc-1 abc-2\n"
+	     "\n"
+             "Examples:\n"
              "\n"
-             "get-dev-key wxyz- owner-5 active-7 balance-9 wit-block-signing-3 wit-owner-5 wit-active-33\n"
-             "get-dev-key wxyz- wit-block-signing-0:101\n"
+             "  get-dev-key xyz owner-5 active-7 balance-9 wit-block-signing-3 wit-owner-5 wit-active-33\n"
+             "  get-dev-key xyz wit-block-signing-0:101\n"
              "\n";
          return 1;
       }
