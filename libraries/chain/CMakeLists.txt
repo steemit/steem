@@ -22,7 +22,11 @@ add_library( steem_chain
              ${HEADERS}
            )
 
-target_link_libraries( steem_chain steem_protocol fc chainbase graphene_schema profiler ${PATCH_MERGE_LIB} )
+FIND_LIBRARY(PROFILER_LIB profiler PATHS "${CMAKE_CURRENT_SOURCE_DIR}/steem-gperftools/lib")
+
+MESSAGE(STATUS "Found profiler library: ${PROFILER_LIB}")
+
+target_link_libraries( steem_chain steem_protocol fc chainbase graphene_schema ${PROFILER_LIB} ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
