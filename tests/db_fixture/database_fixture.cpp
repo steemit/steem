@@ -102,7 +102,9 @@ clean_database_fixture::~clean_database_fixture()
    if( data_dir )
       db->wipe( data_dir->path(), data_dir->path(), true );
    return;
-} FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_LOG( () )
+   exit(1);
+}
 
 void clean_database_fixture::resize_shared_mem( uint64_t size )
 {
@@ -185,7 +187,8 @@ live_database_fixture::~live_database_fixture()
       db->close();
       return;
    }
-   FC_LOG_AND_RETHROW()
+   FC_CAPTURE_AND_LOG( () )
+   exit(1);
 }
 
 fc::ecc::private_key database_fixture::generate_private_key(string seed)
