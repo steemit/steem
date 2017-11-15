@@ -60,8 +60,8 @@ namespace steem { namespace chain {
          };
 
          template< typename Constructor, typename Allocator >
-         witness_object( Constructor&& c, allocator< Allocator > a )
-            :url( a )
+         witness_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId ), url( a )
          {
             c( *this );
          }
@@ -146,7 +146,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         witness_vote_object( Constructor&& c, allocator< Allocator > a )
+         witness_vote_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId )
          {
             c( *this );
          }
@@ -199,10 +200,9 @@ namespace steem { namespace chain {
    /**
     * @ingroup object_index
     */
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       witness_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< witness_object, witness_id_type, &witness_object::id > >,
          ordered_non_unique< tag< by_work >, member< witness_object, digest_type, &witness_object::last_work > >,
          ordered_unique< tag< by_name >, member< witness_object, account_name_type, &witness_object::owner > >,
          ordered_non_unique< tag< by_pow >, member< witness_object, uint64_t, &witness_object::pow_worker > >,
@@ -219,16 +219,14 @@ namespace steem { namespace chain {
                member< witness_object, witness_id_type, &witness_object::id >
             >
          >
-      >,
-      allocator< witness_object >
+      >
    > witness_index;
 
    struct by_account_witness;
    struct by_witness_account;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       witness_vote_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< witness_vote_object, witness_vote_id_type, &witness_vote_object::id > >,
          ordered_unique< tag< by_account_witness >,
             composite_key< witness_vote_object,
                member< witness_vote_object, account_name_type, &witness_vote_object::account >,
@@ -243,8 +241,7 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
          >
-      >, // indexed_by
-      allocator< witness_vote_object >
+      >
    > witness_vote_index;
 
    typedef multi_index_container<

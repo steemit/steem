@@ -46,7 +46,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         escrow_object( Constructor&& c, allocator< Allocator > a )
+         escrow_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId )
          {
             c( *this );
          }
@@ -78,8 +79,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         savings_withdraw_object( Constructor&& c, allocator< Allocator > a )
-            :memo( a )
+         savings_withdraw_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId ), memo( a )
          {
             c( *this );
          }
@@ -241,7 +242,8 @@ namespace steem { namespace chain {
    {
       public:
          template< typename Constructor, typename Allocator >
-         decline_voting_rights_request_object( Constructor&& c, allocator< Allocator > a )
+         decline_voting_rights_request_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId )
          {
             c( *this );
          }
@@ -368,10 +370,9 @@ namespace steem { namespace chain {
 
    struct by_from_id;
    struct by_ratification_deadline;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       escrow_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< escrow_object, escrow_id_type, &escrow_object::id > >,
          ordered_unique< tag< by_from_id >,
             composite_key< escrow_object,
                member< escrow_object, account_name_type,  &escrow_object::from >,
@@ -386,17 +387,15 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< bool >, std::less< time_point_sec >, std::less< escrow_id_type > >
          >
-      >,
-      allocator< escrow_object >
+      >
    > escrow_index;
 
    struct by_from_rid;
    struct by_to_complete;
    struct by_complete_from_rid;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       savings_withdraw_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< savings_withdraw_object, savings_withdraw_id_type, &savings_withdraw_object::id > >,
          ordered_unique< tag< by_from_rid >,
             composite_key< savings_withdraw_object,
                member< savings_withdraw_object, account_name_type,  &savings_withdraw_object::from >,
@@ -417,16 +416,14 @@ namespace steem { namespace chain {
                member< savings_withdraw_object, savings_withdraw_id_type, &savings_withdraw_object::id >
             >
          >
-      >,
-      allocator< savings_withdraw_object >
+      >
    > savings_withdraw_index;
 
    struct by_account;
    struct by_effective_date;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       decline_voting_rights_request_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< decline_voting_rights_request_object, decline_voting_rights_request_id_type, &decline_voting_rights_request_object::id > >,
          ordered_unique< tag< by_account >,
             member< decline_voting_rights_request_object, account_name_type, &decline_voting_rights_request_object::account >
          >,
@@ -437,8 +434,7 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< time_point_sec >, std::less< account_name_type > >
          >
-      >,
-      allocator< decline_voting_rights_request_object >
+      >
    > decline_voting_rights_request_index;
 
    struct by_name;

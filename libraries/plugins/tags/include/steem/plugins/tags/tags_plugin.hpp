@@ -66,7 +66,8 @@ class tag_object : public object< tag_object_type, tag_object >
 {
    public:
       template< typename Constructor, typename Allocator >
-      tag_object( Constructor&& c, allocator< Allocator > a )
+      tag_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -110,10 +111,9 @@ struct by_comment;
 struct by_tag;
 
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    tag_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< tag_object, tag_id_type, &tag_object::id > >,
       ordered_unique< tag< by_comment >,
          composite_key< tag_object,
             member< tag_object, comment_id_type, &tag_object::comment >,
@@ -209,8 +209,7 @@ typedef multi_index_container<
             >,
             composite_key_compare< std::less<tag_name_type>, std::less< bool >,std::greater< int64_t >, std::less< tag_id_type > >
       >
-   >,
-   allocator< tag_object >
+   >
 > tag_index;
 
 /**
@@ -221,7 +220,8 @@ class tag_stats_object : public object< tag_stats_object_type, tag_stats_object 
 {
    public:
       template< typename Constructor, typename Allocator >
-      tag_stats_object( Constructor&& c, allocator< Allocator > )
+      tag_stats_object( Constructor&& c, size_t assignedId, allocator< Allocator > )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -244,10 +244,9 @@ struct by_comments;
 struct by_top_posts;
 struct by_trending;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    tag_stats_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< tag_stats_object, tag_stats_id_type, &tag_stats_object::id > >,
       ordered_unique< tag< by_tag >, member< tag_stats_object, tag_name_type, &tag_stats_object::tag > >,
       /*
       ordered_non_unique< tag< by_comments >,
@@ -272,8 +271,7 @@ typedef multi_index_container<
          >,
          composite_key_compare<  std::greater< fc::uint128  >, std::less< tag_name_type > >
       >
-  >,
-  allocator< tag_stats_object >
+  >
 > tag_stats_index;
 
 

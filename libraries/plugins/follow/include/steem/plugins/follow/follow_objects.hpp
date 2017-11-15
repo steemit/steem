@@ -34,7 +34,8 @@ class follow_object : public object< follow_object_type, follow_object >
 {
    public:
       template< typename Constructor, typename Allocator >
-      follow_object( Constructor&& c, allocator< Allocator > a )
+      follow_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -57,8 +58,8 @@ class feed_object : public object< feed_object_type, feed_object >
       feed_object() = delete;
 
       template< typename Constructor, typename Allocator >
-      feed_object( Constructor&& c, allocator< Allocator > a )
-      :reblogged_by( a.get_segment_manager() )
+      feed_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId ), reblogged_by( a.get_segment_manager() )
       {
          c( *this );
       }
@@ -81,7 +82,8 @@ class blog_object : public object< blog_object_type, blog_object >
 {
    public:
       template< typename Constructor, typename Allocator >
-      blog_object( Constructor&& c, allocator< Allocator > a )
+      blog_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -128,7 +130,8 @@ class reputation_object : public object< reputation_object_type, reputation_obje
 {
    public:
       template< typename Constructor, typename Allocator >
-      reputation_object( Constructor&& c, allocator< Allocator > a )
+      reputation_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -148,7 +151,8 @@ class follow_count_object : public object< follow_count_object_type, follow_coun
 {
    public:
       template< typename Constructor, typename Allocator >
-      follow_count_object( Constructor&& c, allocator< Allocator > a )
+      follow_count_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -170,10 +174,9 @@ struct by_follower_following;
 
 using namespace boost::multi_index;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    follow_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< follow_object, follow_id_type, &follow_object::id > >,
       ordered_unique< tag< by_following_follower >,
          composite_key< follow_object,
             member< follow_object, account_name_type, &follow_object::following >,
@@ -188,8 +191,7 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
       >
-   >,
-   allocator< follow_object >
+   >
 > follow_index;
 
 struct by_blogger_guest_count;
@@ -213,10 +215,9 @@ struct by_old_feed;
 struct by_account;
 struct by_comment;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    feed_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< feed_object, feed_id_type, &feed_object::id > >,
       ordered_unique< tag< by_feed >,
          composite_key< feed_object,
             member< feed_object, account_name_type, &feed_object::account >,
@@ -245,17 +246,15 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
       >
-   >,
-   allocator< feed_object >
+   >
 > feed_index;
 
 struct by_blog;
 struct by_old_blog;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    blog_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< blog_object, blog_id_type, &blog_object::id > >,
       ordered_unique< tag< by_blog >,
          composite_key< blog_object,
             member< blog_object, account_name_type, &blog_object::account >,
@@ -277,16 +276,14 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
       >
-   >,
-   allocator< blog_object >
+   >
 > blog_index;
 
 struct by_reputation;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    reputation_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< reputation_object, reputation_id_type, &reputation_object::id > >,
       ordered_unique< tag< by_reputation >,
          composite_key< reputation_object,
             member< reputation_object, share_type, &reputation_object::reputation >,
@@ -295,18 +292,16 @@ typedef multi_index_container<
          composite_key_compare< std::greater< share_type >, std::less< account_name_type > >
       >,
       ordered_unique< tag< by_account >, member< reputation_object, account_name_type, &reputation_object::account > >
-   >,
-   allocator< reputation_object >
+   >
 > reputation_index;
 
 
 struct by_followers;
 struct by_following;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    follow_count_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< follow_count_object, follow_count_id_type, &follow_count_object::id > >,
       ordered_unique< tag< by_account >, member< follow_count_object, account_name_type, &follow_count_object::account > >,
       ordered_unique< tag< by_followers >,
          composite_key< follow_count_object,
@@ -322,8 +317,7 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::greater< uint32_t >, std::less< follow_count_id_type > >
       >
-   >,
-   allocator< follow_count_object >
+   >
 > follow_count_index;
 
 } } } // steem::plugins::follow

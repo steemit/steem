@@ -31,7 +31,8 @@ class account_bandwidth_object : public object< account_bandwidth_object_type, a
 {
    public:
       template< typename Constructor, typename Allocator >
-      account_bandwidth_object( Constructor&& c, allocator< Allocator > a )
+      account_bandwidth_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -54,7 +55,8 @@ class content_edit_lock_object : public object< content_edit_lock_object_type, c
 {
    public:
       template< typename Constructor, typename Allocator >
-      content_edit_lock_object( Constructor&& c, allocator< Allocator > a )
+      content_edit_lock_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -117,32 +119,26 @@ typedef oid< reserve_ratio_object > reserve_ratio_id_type;
 
 struct by_account_bandwidth_type;
 
-typedef multi_index_container <
+typedef chainbase::indexed_container <
    account_bandwidth_object,
    indexed_by <
-      ordered_unique< tag< by_id >,
-         member< account_bandwidth_object, account_bandwidth_id_type, &account_bandwidth_object::id > >,
       ordered_unique< tag< by_account_bandwidth_type >,
          composite_key< account_bandwidth_object,
             member< account_bandwidth_object, account_name_type, &account_bandwidth_object::account >,
             member< account_bandwidth_object, bandwidth_type, &account_bandwidth_object::type >
          >
       >
-   >,
-   allocator< account_bandwidth_object >
+   >
 > account_bandwidth_index;
 
 struct by_account;
 
-typedef multi_index_container <
+typedef chainbase::indexed_container <
    content_edit_lock_object,
    indexed_by <
-      ordered_unique< tag< by_id >,
-         member< content_edit_lock_object, content_edit_lock_id_type, &content_edit_lock_object::id > >,
       ordered_unique< tag< by_account >,
          member< content_edit_lock_object, account_name_type, &content_edit_lock_object::account > >
-   >,
-   allocator< content_edit_lock_object >
+   >
 > content_edit_lock_index;
 
 typedef multi_index_container <

@@ -21,7 +21,8 @@ class key_lookup_object : public object< key_lookup_object_type, key_lookup_obje
 {
    public:
       template< typename Constructor, typename Allocator >
-      key_lookup_object( Constructor&& c, allocator< Allocator > a )
+      key_lookup_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -39,18 +40,16 @@ using namespace boost::multi_index;
 
 struct by_key;
 
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    key_lookup_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< key_lookup_object, key_lookup_id_type, &key_lookup_object::id > >,
       ordered_unique< tag< by_key >,
          composite_key< key_lookup_object,
             member< key_lookup_object, public_key_type, &key_lookup_object::key >,
             member< key_lookup_object, account_name_type, &key_lookup_object::account >
          >
       >
-   >,
-   allocator< key_lookup_object >
+   >
 > key_lookup_index;
 
 } } } // steem::plugins::account_by_key

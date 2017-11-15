@@ -67,7 +67,8 @@ class market_history_plugin : public plugin< market_history_plugin >
 struct bucket_object : public object< bucket_object_type, bucket_object >
 {
    template< typename Constructor, typename Allocator >
-   bucket_object( Constructor&& c, allocator< Allocator > a )
+   bucket_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+      :id( assignedId )
    {
       c( *this );
    }
@@ -99,7 +100,8 @@ typedef oid< bucket_object > bucket_id_type;
 struct order_history_object : public object< order_history_object_type, order_history_object >
 {
    template< typename Constructor, typename Allocator >
-   order_history_object( Constructor&& c, allocator< Allocator > a )
+   order_history_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+      :id( assignedId )
    {
       c( *this );
    }
@@ -114,10 +116,9 @@ typedef oid< order_history_object > order_history_id_type;
 
 
 struct by_bucket;
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    bucket_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< bucket_object, bucket_id_type, &bucket_object::id > >,
       ordered_unique< tag< by_bucket >,
          composite_key< bucket_object,
             member< bucket_object, uint32_t, &bucket_object::seconds >,
@@ -125,18 +126,15 @@ typedef multi_index_container<
          >,
          composite_key_compare< std::less< uint32_t >, std::less< fc::time_point_sec > >
       >
-   >,
-   allocator< bucket_object >
+   >
 > bucket_index;
 
 struct by_time;
-typedef multi_index_container<
+typedef chainbase::indexed_container<
    order_history_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< order_history_object, order_history_id_type, &order_history_object::id > >,
       ordered_non_unique< tag< by_time >, member< order_history_object, time_point_sec, &order_history_object::time > >
-   >,
-   allocator< order_history_object >
+   >
 > order_history_index;
 
 } } } // steem::plugins::market_history
