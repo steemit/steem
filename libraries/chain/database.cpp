@@ -69,6 +69,7 @@ FC_REFLECT( steem::chain::db_schema, (types)(object_types)(operation_type)(custo
 namespace steem { namespace chain {
 
 using boost::container::flat_set;
+using util::prof;
 
 struct reward_fund_context
 {
@@ -179,6 +180,9 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
       int ret_profiler;
       int enabled = false;
 
+      //int ret_profiler = ProfilerStart("steem_profiler");
+      //FC_ASSERT( ret_profiler, " Profiler failed." );
+
       with_write_lock( [&]()
       {
          _block_log.set_locking( false );
@@ -195,12 +199,12 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          {
             auto cur_block_num = itr.first.block_num();
 
-            if( cur_block_num == 12000000 )
-            {
-               ret_profiler = ProfilerStart("steem_profiler");
-               FC_ASSERT( ret_profiler, " Profiler failed." );
-               enabled = true;
-            }
+            // if( cur_block_num == 12000000 )
+            // {
+            //    ret_profiler = ProfilerStart("steem_profiler");
+            //    FC_ASSERT( ret_profiler, " Profiler failed." );
+            //    enabled = true;
+            // }
 
             if( cur_block_num % 100000 == 0 )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
@@ -229,8 +233,8 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
 
-      if( enabled )
-         ProfilerStop();
+      //if( enabled )
+        // ProfilerStop();
 
       return last_block_number;
    }
@@ -2700,6 +2704,9 @@ void database::_apply_block( const signed_block& next_block )
       );
    }
 
+   prof::instance()->info_start( next_block );
+
+   prof::instance()->begin2( "transaction time:" );
    for( const auto& trx : next_block.transactions )
    {
       /* We do not need to push the undo state for each transaction
@@ -2711,40 +2718,109 @@ void database::_apply_block( const signed_block& next_block )
       apply_transaction( trx, skip );
       ++_current_trx_in_block;
    }
+   prof::instance()->end2();
 
+   prof::instance()->info_end();
+
+   prof::instance()->begin2( "update_global_dynamic_data time:" );
    update_global_dynamic_data(next_block);
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "update_signing_witness:" );
    update_signing_witness(signing_witness, next_block);
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "update_last_irreversible_block:" );
    update_last_irreversible_block();
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "create_block_summary:" );
    create_block_summary(next_block);
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "clear_expired_transactions:" );
    clear_expired_transactions();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "clear_expired_orders:" );
    clear_expired_orders();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "clear_expired_delegations:" );
    clear_expired_delegations();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "update_witness_schedule:" );
    update_witness_schedule(*this);
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "update_median_feed:" );
    update_median_feed();
-   update_virtual_supply();
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "update_virtual_supply:" );
+   update_virtual_supply();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "clear_null_account_balance:" );
    clear_null_account_balance();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_funds:" );
    process_funds();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_conversions:" );
    process_conversions();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_comment_cashout:" );
    process_comment_cashout();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_vesting_withdrawals:" );
    process_vesting_withdrawals();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_savings_withdraws:" );
    process_savings_withdraws();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "pay_liquidity_reward:" );
    pay_liquidity_reward();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "update_virtual_supply2:" );
    update_virtual_supply();
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "account_recovery_processing:" );
    account_recovery_processing();
-   expire_escrow_ratification();
-   process_decline_voting_rights();
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "expire_escrow_ratification:" );
+   expire_escrow_ratification();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_decline_voting_rights:" );
+   process_decline_voting_rights();
+   prof::instance()->end2();
+
+   prof::instance()->begin2( "process_hardforks:" );
    process_hardforks();
+   prof::instance()->end2();
 
    // notify observers that the block has been applied
+   prof::instance()->begin2( "notify_applied_block:" );
    notify_applied_block( next_block );
+   prof::instance()->end2();
 
+   prof::instance()->begin2( "notify_changed_objects:" );
    notify_changed_objects();
+   prof::instance()->end2();
+
+   prof::instance()->info_end2();
+
 } //FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 FC_CAPTURE_LOG_AND_RETHROW( (next_block.block_num()) )
 }
