@@ -4,11 +4,15 @@
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
+#include <steem/chain/util/reward.hpp>
 
 namespace steem { namespace plugins { namespace follow {
 
+using steem::chain::util::prof;
+
 void follow_evaluator::do_apply( const follow_operation& o )
 {
+   prof::instance()->begin( "follow_evaluator:" );
    try
    {
       static map< string, follow_type > follow_type_map = []()
@@ -115,10 +119,12 @@ void follow_evaluator::do_apply( const follow_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
+   prof::instance()->end();
 }
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
+   prof::instance()->begin( "reblog_evaluator:" );
    try
    {
       const auto& c = _db.get_comment( o.author, o.permlink );
@@ -219,6 +225,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
+   prof::instance()->end();
 }
 
 } } } // steem::follow
