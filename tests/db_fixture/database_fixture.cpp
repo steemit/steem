@@ -671,13 +671,41 @@ fc::variant json_rpc_database_fixture::get_answer( std::string& request )
    return fc::json::from_string( body );
 }
 
-void json_rpc_database_fixture::review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail )
+void check_id_equal( const fc::variant& id_a, const fc::variant& id_b )
+{
+   BOOST_REQUIRE( id_a.get_type() == id_b.get_type() );
+
+   switch( id_a.get_type() )
+   {
+      case fc::variant::int64_type:
+         BOOST_REQUIRE( id_a.as_int64() == id_b.as_int64() );
+         break;
+      case fc::variant::uint64_type:
+         BOOST_REQUIRE( id_a.as_uint64() == id_b.as_uint64() );
+         break;
+      case fc::variant::string_type:
+         BOOST_REQUIRE( id_a.as_string() == id_b.as_string() );
+         break;
+      case fc::variant::null_type:
+         break;
+      default:
+         BOOST_REQUIRE( false );
+   }
+}
+
+void json_rpc_database_fixture::review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail, fc::optional< fc::variant > id )
 {
    fc::variant_object error;
    int64_t answer_code;
 
    if( is_fail )
    {
+      if( id.valid() && code != JSON_RPC_SERVER_ERROR && code != JSON_RPC_INVALID_PARAMS )
+      {
+         BOOST_REQUIRE( answer.get_object().contains( "id" ) );
+         check_id_equal( answer[ "id" ], *id );
+      }
+
       BOOST_REQUIRE( answer.get_object().contains( "error" ) );
       BOOST_REQUIRE( answer["error"].is_object() );
       error = answer["error"].get_object();
@@ -689,54 +717,59 @@ void json_rpc_database_fixture::review_answer( fc::variant& answer, int64_t code
          BOOST_TEST_MESSAGE( error["message"].as_string() );
    }
    else
+   {
       BOOST_REQUIRE( answer.get_object().contains( "result" ) );
+      BOOST_REQUIRE( answer.get_object().contains( "id" ) );
+      if( id.valid() )
+         check_id_equal( answer[ "id" ], *id );
+   }
 }
 
-void json_rpc_database_fixture::make_array_request( std::string& request, int64_t code, bool is_warning, bool is_fail )
+void json_rpc_database_fixture::make_array_request( std::string& request, int64_t code, bool check_id, bool is_warning, bool is_fail )
 {
    fc::variant answer = get_answer( request );
    BOOST_REQUIRE( answer.is_array() );
 
+   fc::variants request_array = fc::json::from_string( request ).get_array();
    fc::variants array = answer.get_array();
-   for( fc::variant obj : array )
+
+   BOOST_REQUIRE( array.size() == request_array.size() );
+   for( size_t i = 0; i < array.size(); ++i )
    {
-      review_answer( obj, code, is_warning, is_fail );
+      fc::optional< fc::variant > id;
+
+      try
+      {
+         if( check_id )
+            id = request_array[i][ "id" ];
+      }
+      catch( ... ) {}
+
+      review_answer( array[i], code, is_warning, is_fail, id );
    }
 }
 
-fc::variant json_rpc_database_fixture::make_request( std::string& request, int64_t code, bool is_warning, bool is_fail )
+fc::variant json_rpc_database_fixture::make_request( std::string& request, int64_t code, bool check_id, bool is_warning, bool is_fail )
 {
    fc::variant answer = get_answer( request );
    BOOST_REQUIRE( answer.is_object() );
+   fc::optional< fc::variant > id;
 
-   review_answer( answer, code, is_warning, is_fail );
+   try
+   {
+      if( check_id )
+      id = fc::json::from_string( request ).get_object()[ "id" ];
+   }
+   catch( ... ) {}
+
+   review_answer( answer, code, is_warning, is_fail, id );
 
    return answer;
 }
 
 void json_rpc_database_fixture::make_positive_request( std::string& request )
 {
-   make_request( request, 0/*code*/, false/*is_warning*/, false/*is_fail*/);
-}
-
-void json_rpc_database_fixture::make_positive_request_with_id_analysis( std::string& request, bool treat_id_as_string )
-{
-   fc::variant answer = make_request( request, 0/*code*/, false/*is_warning*/, false/*is_fail*/);
-
-   fc::variant_object vo = answer.get_object();
-   BOOST_REQUIRE( vo.contains( "id" ) );
-
-   int _type = vo[ "id" ].get_type();
-
-   BOOST_REQUIRE(
-                  ( _type == fc::variant::int64_type ) ||
-                  ( _type == fc::variant::uint64_type ) ||
-                  ( _type == fc::variant::string_type )
-               );
-
-   bool answer_treat_id_as_string =  _type == fc::variant::string_type;
-
-   BOOST_REQUIRE( answer_treat_id_as_string == treat_id_as_string );
+   make_request( request, 0/*code*/, true, false/*is_warning*/, false/*is_fail*/);
 }
 
 namespace test {

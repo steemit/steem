@@ -271,7 +271,7 @@ struct json_rpc_database_fixture : public database_fixture
       fc::thread t;
 
       fc::variant get_answer( std::string& request );
-      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail );
+      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail, fc::optional< fc::variant > id );
 
    public:
 
@@ -279,10 +279,9 @@ struct json_rpc_database_fixture : public database_fixture
       virtual ~json_rpc_database_fixture();
 
       void launch_server( int initial_argc, char** initial_argv );
-      void make_array_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
-      fc::variant make_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
+      void make_array_request( std::string& request, int64_t code = 0, bool check_id = true, bool is_warning = false, bool is_fail = true );
+      fc::variant make_request( std::string& request, int64_t code = 0, bool check_id = true, bool is_warning = false, bool is_fail = true );
       void make_positive_request( std::string& request );
-      void make_positive_request_with_id_analysis( std::string& request, bool treat_id_as_string );
 };
 
 namespace test
