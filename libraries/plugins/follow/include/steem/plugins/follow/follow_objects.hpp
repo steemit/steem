@@ -111,7 +111,8 @@ class blog_author_stats_object : public object< blog_author_stats_object_type, b
 {
    public:
       template< typename Constructor, typename Allocator >
-      blog_author_stats_object( Constructor&& c, allocator< Allocator > a )
+      blog_author_stats_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -195,10 +196,9 @@ typedef chainbase::indexed_container<
 > follow_index;
 
 struct by_blogger_guest_count;
-typedef chainbase::shared_multi_index_container<
+typedef chainbase::indexed_container<
    blog_author_stats_object,
    indexed_by<
-      ordered_unique< tag< by_id >, member< blog_author_stats_object, blog_author_stats_id_type, &blog_author_stats_object::id > >,
       ordered_unique< tag< by_blogger_guest_count >,
          composite_key< blog_author_stats_object,
             member< blog_author_stats_object, account_name_type, &blog_author_stats_object::blogger >,

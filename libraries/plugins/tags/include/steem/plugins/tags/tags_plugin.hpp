@@ -285,7 +285,8 @@ class author_tag_stats_object : public object< author_tag_stats_object_type, aut
 {
   public:
       template< typename Constructor, typename Allocator >
-      author_tag_stats_object( Constructor&& c, allocator< Allocator > )
+      author_tag_stats_object( Constructor&& c, size_t assignedId, allocator< Allocator > )
+         :id( assignedId )
       {
          c( *this );
       }
@@ -303,12 +304,9 @@ struct by_author_posts_tag;
 using std::less;
 using std::greater;
 
-typedef chainbase::shared_multi_index_container<
+typedef chainbase::indexed_container<
   author_tag_stats_object,
   indexed_by<
-      ordered_unique< tag< by_id >,
-        member< author_tag_stats_object, author_tag_stats_id_type, &author_tag_stats_object::id >
-      >,
       ordered_unique< tag< by_author_posts_tag >,
          composite_key< author_tag_stats_object,
             member< author_tag_stats_object, account_id_type, &author_tag_stats_object::author >,

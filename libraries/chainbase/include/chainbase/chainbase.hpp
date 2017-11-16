@@ -1050,8 +1050,5 @@ namespace chainbase {
          bool                                                        _enable_require_locking = false;
          static database*                                            s_main_db;
    };
-
-   template<typename Object, typename... Args>
-   using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
 }  // namepsace chainbase
 
