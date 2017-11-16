@@ -93,7 +93,7 @@ class prof
    items_type items;
 
    prof()
-   : s_meths( "__methods.txt" ), s_blocks( "__s_blocks.txt" ), s_info( "__info.txt" ), meths( 0, 20000 ), blocks( 0, 100000 ), infos( 1, 20000 )
+   : s_meths( "__methods.txt" ), s_blocks( "__s_blocks.txt" ), s_info( "__info.txt" ), meths( 0, 20000 ), blocks( 0, 100000 ), infos( 1, 100 )
    {
       time = fc::time_point::now();
    }
