@@ -72,6 +72,7 @@ class feed_object : public object< feed_object_type, feed_object >
       comment_id_type                  comment;
       uint32_t                         reblogs;
       uint32_t                         account_feed_id = 0;
+      uint32_t                         activated = 1;
 };
 
 typedef oid< feed_object > feed_id_type;
@@ -220,30 +221,18 @@ typedef multi_index_container<
       ordered_unique< tag< by_feed >,
          composite_key< feed_object,
             member< feed_object, account_name_type, &feed_object::account >,
-            member< feed_object, uint32_t, &feed_object::account_feed_id >
+            member< feed_object, uint32_t, &feed_object::account_feed_id >,
+            member< feed_object, uint32_t, &feed_object::activated >
          >,
-         composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
-      >,
-      ordered_unique< tag< by_old_feed >,
-         composite_key< feed_object,
-            member< feed_object, account_name_type, &feed_object::account >,
-            member< feed_object, uint32_t, &feed_object::account_feed_id >
-         >,
-         composite_key_compare< std::less< account_name_type >, std::less< uint32_t > >
-      >,
-      ordered_unique< tag< by_account >,
-         composite_key< feed_object,
-            member< feed_object, account_name_type, &feed_object::account >,
-            member< feed_object, feed_id_type, &feed_object::id >
-         >,
-         composite_key_compare< std::less< account_name_type >, std::less< feed_id_type > >
+         composite_key_compare< std::less< account_name_type >, std::greater< uint32_t >, std::greater< uint32_t > >
       >,
       ordered_unique< tag< by_comment >,
          composite_key< feed_object,
             member< feed_object, comment_id_type, &feed_object::comment >,
-            member< feed_object, account_name_type, &feed_object::account >
+            member< feed_object, account_name_type, &feed_object::account >,
+            member< feed_object, uint32_t, &feed_object::activated >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >, std::greater< uint32_t > >
       >
    >,
    allocator< feed_object >
@@ -333,7 +322,7 @@ FC_REFLECT_ENUM( steem::plugins::follow::follow_type, (undefined)(blog)(ignore) 
 FC_REFLECT( steem::plugins::follow::follow_object, (id)(follower)(following)(what) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_object, steem::plugins::follow::follow_index )
 
-FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id) )
+FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id)(activated) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::feed_object, steem::plugins::follow::feed_index )
 
 FC_REFLECT( steem::plugins::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )

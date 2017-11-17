@@ -4,6 +4,8 @@
 
 namespace steem { namespace chain { namespace util {
 
+std::unique_ptr< prof > prof::self;
+
 uint8_t find_msb( const uint128_t& u )
 {
    uint64_t x;

@@ -101,11 +101,11 @@ int main( int argc, char** argv )
          wlog( "Error parsing logging config" );
       }
 
-      // if( args.at( "backtrace" ).as< string >() == "yes" )
-      // {
-      //    fc::print_stacktrace_on_segfault();
-      //    ilog( "Backtrace on segfault is enabled." );
-      // }
+      if( args.at( "backtrace" ).as< string >() == "yes" )
+      {
+         fc::print_stacktrace_on_segfault();
+         ilog( "Backtrace on segfault is enabled." );
+      }
 
       appbase::app().startup();
       appbase::app().exec();

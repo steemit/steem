@@ -33,12 +33,14 @@
 #include <steem/chain/database.hpp>
 #include <steem/chain/index.hpp>
 #include <steem/chain/generic_custom_operation_interpreter.hpp>
+#include <steem/chain/util/reward.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
 namespace steem { namespace private_message {
 
+using steem::chain::util::prof;
 namespace detail
 {
 
@@ -78,6 +80,7 @@ private_message_plugin_impl::~private_message_plugin_impl()
 
 void private_message_evaluator::do_apply( const private_message_operation& pm )
 {
+   prof::instance()->begin( "private_message_evaluator:" );
    database& d = db();
 
    const flat_map<string, string>& tracked_accounts = _plugin->my->_tracked_accounts;
@@ -107,6 +110,7 @@ void private_message_evaluator::do_apply( const private_message_operation& pm )
          std::copy( pm.encrypted_message.begin(), pm.encrypted_message.end(), pmo.encrypted_message.begin() );
       } );
    }
+   prof::instance()->end();
 }
 
 private_message_plugin::private_message_plugin( application* app )
