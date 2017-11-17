@@ -258,6 +258,14 @@ namespace steem { namespace protocol {
          FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
          FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
       }
+
+      itr = props.find( "account_subsidy_limit" );
+      if( itr != props.end() )
+      {
+         uint32_t account_subsidy_limit;
+         fc::raw::unpack( itr->second, account_subsidy_limit ); // Checks that the value can be deserialized
+         FC_UNUSED( account_subsidy_limit );
+      }
    }
 
    void account_witness_vote_operation::validate() const
