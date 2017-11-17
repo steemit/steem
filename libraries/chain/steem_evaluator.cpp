@@ -111,6 +111,94 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
    }
 }
 
+void witness_set_properties_evaluator::do_apply( const witness_set_properties_operation& o )
+{
+   FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_20__1620 ), "witness_set_properties_evaluator not enabled until HF 20" );
+
+   const auto& witness = _db.get< witness_object, by_name >( o.owner ); // verifies witness exists;
+
+   // Capture old properties. This allows only updating the object once.
+   chain_properties  props;
+   public_key_type   signing_key;
+   price             sbd_exchange_rate;
+   time_point_sec    last_sbd_exchange_update;
+   string            url;
+
+   bool account_creation_changed = false;
+   bool max_block_changed        = false;
+   bool sbd_interest_changed     = false;
+   bool key_changed              = false;
+   bool sbd_exchange_changed     = false;
+   bool url_changed              = false;
+
+   auto itr = o.props.find( "account_creation_fee" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack( itr->second, props.account_creation_fee );
+      account_creation_changed = true;
+   }
+
+   itr = o.props.find( "maximum_block_size" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack( itr->second, props.maximum_block_size );
+      max_block_changed = true;
+   }
+
+   itr = o.props.find( "sbd_interest_rate" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack( itr->second, props.sbd_interest_rate );
+      sbd_interest_changed = true;
+   }
+
+   itr = o.props.find( "new_signing_key" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack( itr->second, signing_key );
+      key_changed = true;
+   }
+
+   itr = o.props.find( "sbd_exchange_rate" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack( itr->second, sbd_exchange_rate );
+      last_sbd_exchange_update = _db.head_block_time();
+      sbd_exchange_changed = true;
+   }
+
+   itr = o.props.find( "url" );
+   if( itr != o.props.end() )
+   {
+      fc::raw::unpack< std::string >( itr->second, url );
+      url_changed = true;
+   }
+
+   _db.modify( witness, [&]( witness_object& w )
+   {
+      if( account_creation_changed )
+         w.props.account_creation_fee = props.account_creation_fee;
+
+      if( max_block_changed )
+         w.props.maximum_block_size = props.maximum_block_size;
+
+      if( sbd_interest_changed )
+         w.props.sbd_interest_rate = props.sbd_interest_rate;
+
+      if( key_changed )
+         w.signing_key = signing_key;
+
+      if( sbd_exchange_changed )
+      {
+         w.sbd_exchange_rate = sbd_exchange_rate;
+         w.last_sbd_exchange_update = last_sbd_exchange_update;
+      }
+
+      if( url_changed )
+         from_string( w.url, url );
+   });
+}
+
 void verify_authority_accounts_exist(
    const database& db,
    const authority& auth,
@@ -1733,11 +1821,16 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 {
-  const auto& witness = _db.get_witness( o.publisher );
-  _db.modify( witness, [&]( witness_object& w ){
+   if( _db.has_hardfork( STEEM_HARDFORK_0_20__409 ) )
+      FC_ASSERT( is_asset_type( o.exchange_rate.base, SBD_SYMBOL ) && is_asset_type( o.exchange_rate.quote, STEEM_SYMBOL ),
+            "Price feed must be a STEEM/SBD price" );
+
+   const auto& witness = _db.get_witness( o.publisher );
+   _db.modify( witness, [&]( witness_object& w )
+   {
       w.sbd_exchange_rate = o.exchange_rate;
       w.last_sbd_exchange_update = _db.head_block_time();
-  });
+   });
 }
 
 void convert_evaluator::do_apply( const convert_operation& o )
