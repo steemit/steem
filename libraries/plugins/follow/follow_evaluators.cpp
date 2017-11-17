@@ -1,6 +1,7 @@
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
+#include <steem/plugins/follow/inc_performance.hpp>
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
@@ -127,6 +128,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
    prof::instance()->begin( "reblog_evaluator:" );
    try
    {
+      performance perf( _db );
+
       const auto& c = _db.get_comment( o.author, o.permlink );
       FC_ASSERT( c.parent_author.size() == 0, "Only top level posts can be reblogged" );
 
@@ -181,12 +184,12 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                uint32_t next_id = 0;
                auto last_feed = feed_idx.lower_bound( itr->follower );
 
-               if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
+               if( last_feed != feed_idx.end() && last_feed->activated == 1 && last_feed->account == itr->follower )
                {
                   next_id = last_feed->account_feed_id + 1;
                }
 
-               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower, 1/*activated*/ ) );
 
                if( feed_itr == comment_idx.end() )
                {
@@ -210,14 +213,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   });
                }
 
-               const auto& old_feed_idx = _db.get_index< feed_index >().indices().get< by_old_feed >();
-               auto old_feed = old_feed_idx.lower_bound( itr->follower );
-
-               while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin->max_feed_size )
-               {
-                  _db.remove( *old_feed );
-                  old_feed = old_feed_idx.lower_bound( itr->follower );
-               };
+               perf.mark_deleted_feed_objects( itr->follower, next_id, _plugin->max_feed_size );
             }
 
             ++itr;
