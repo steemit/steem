@@ -54,9 +54,10 @@ namespace chainbase {
    using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
 
    template <typename ValueType,
-             typename IndexSpecifierList=boost::multi_index::indexed_by <boost::multi_index::sequenced<>>
+             typename IndexSpecifierList=boost::multi_index::indexed_by <boost::multi_index::sequenced<>>,
+             bool ReuseIndices=true
             >
-   using indexed_container = ra_indexed_container<ValueType, IndexSpecifierList, allocator<ValueType> >;
+   using indexed_container = ra_indexed_container<ValueType, IndexSpecifierList, allocator<ValueType>, ReuseIndices>;
 
    typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
 
@@ -457,9 +458,9 @@ namespace chainbase {
          }
 
       private:
-         template <typename Constructor, typename IndexSpecifierList>
+         template <typename Constructor, typename IndexSpecifierList, bool ReuseIndices>
          const value_type& final_emplace(Constructor&& c,
-            indexed_container<value_type, IndexSpecifierList>& container)
+            indexed_container<value_type, IndexSpecifierList, ReuseIndices>& container)
          {
          auto insert_result = container.emplace(c);
             

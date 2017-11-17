@@ -18,8 +18,8 @@ namespace steem { namespace chain {
 
       public:
          template< typename Constructor, typename Allocator >
-         operation_object( Constructor&& c, allocator< Allocator > a )
-            :serialized_op( a.get_segment_manager() )
+         operation_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId ), serialized_op( a.get_segment_manager() )
          {
             c( *this );
          }
@@ -37,10 +37,9 @@ namespace steem { namespace chain {
 
    struct by_location;
    struct by_transaction_id;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       operation_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< operation_object, operation_id_type, &operation_object::id > >,
          ordered_unique< tag< by_location >,
             composite_key< operation_object,
                member< operation_object, uint32_t, &operation_object::block>,
@@ -59,15 +58,15 @@ namespace steem { namespace chain {
             >
          >
 #endif
-      >,
-      allocator< operation_object >
+      >
    > operation_index;
 
    class account_history_object : public object< account_history_object_type, account_history_object >
    {
       public:
          template< typename Constructor, typename Allocator >
-         account_history_object( Constructor&& c, allocator< Allocator > a )
+         account_history_object( Constructor&& c, size_t assignedId, allocator< Allocator > a )
+            :id( assignedId )
          {
             c( *this );
          }
@@ -80,10 +79,9 @@ namespace steem { namespace chain {
    };
 
    struct by_account;
-   typedef multi_index_container<
+   typedef chainbase::indexed_container<
       account_history_object,
       indexed_by<
-         ordered_unique< tag< by_id >, member< account_history_object, account_history_id_type, &account_history_object::id > >,
          ordered_unique< tag< by_account >,
             composite_key< account_history_object,
                member< account_history_object, account_name_type, &account_history_object::account>,
@@ -92,7 +90,7 @@ namespace steem { namespace chain {
             composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
          >
       >,
-      allocator< account_history_object >
+      false /*Don't reuse indices!*/
    > account_history_index;
 } }
 

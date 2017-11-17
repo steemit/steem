@@ -67,6 +67,7 @@ namespace chainbase
       {
       public:
          typedef typename Container::base_class base_class;
+         typedef typename Container::value_type value_type;
          typedef typename Container::RandomAccessContainer RandomAccessContainer;
 
          index_provider(const base_class& __this, const RandomAccessContainer& rac)
@@ -121,15 +122,26 @@ namespace chainbase
             {
                hole_filter filter(_this->end());
                auto source_iterator = boost::make_filter_iterator(filter, ++(_rac->begin()), _rac->end());
-               return //boost::make_transform_iterator(source_iterator, transformer());
-                  const_iterator(source_iterator, transformer());
+               return const_iterator(source_iterator, transformer());
             }            
             const_iterator end() const
             {
                hole_filter filter(_this->end());
                auto source_iterator = boost::make_filter_iterator(filter, _rac->end(), _rac->end());
-               return //boost::make_transform_iterator(source_iterator, transformer());
-                  const_iterator(source_iterator, transformer());
+               return const_iterator(source_iterator, transformer());
+            }
+
+            //template< typename ObjectType >
+            const_iterator find( const oid< value_type >& key ) const
+            {
+               std::size_t idx = key._id;
+               if(idx >= _rac->size() )
+                  return this->end();
+         
+               hole_filter filter(_this->end());
+               auto rac_it = _rac->begin() + idx;
+               auto source_iterator = boost::make_filter_iterator(filter, rac_it, _rac->end());
+               return const_iterator(source_iterator, transformer());
             }
 
          private:
@@ -155,13 +167,13 @@ namespace chainbase
 and fast lookup, as boost::multi_index::multi_index_container does.
 Supports safe object removal and reusing of previously assigned index.
 */
-template <typename Value, typename IndexSpecifierList, typename Allocator = std::allocator<Value>>
+template <typename Value, typename IndexSpecifierList, typename Allocator = std::allocator<Value>, bool ReuseIndices = true>
 class ra_indexed_container : protected boost::multi_index::multi_index_container<Value,
                                        IndexSpecifierList, Allocator>
 {
 public:
    template <typename Tag>
-   using idx_provider = detail::index_provider< ra_indexed_container<Value, IndexSpecifierList, Allocator>, Tag >;
+   using idx_provider = detail::index_provider< ra_indexed_container<Value, IndexSpecifierList, Allocator, ReuseIndices>, Tag >;
 
    typedef boost::multi_index::multi_index_container<Value, IndexSpecifierList, Allocator> base_class;
    typedef std::vector<typename base_class::const_iterator, Allocator> RandomAccessContainer;   
@@ -194,8 +206,9 @@ public:
    explicit ra_indexed_container(const allocator_type& alloc = allocator_type()) :
       base_class(alloc),
       FreeIndices(alloc),
-      RandomAccessStorage(1, alloc)
-      ,ByIdProvider(*this, RandomAccessStorage)
+      RandomAccessStorage(1, alloc),
+      ByIdProvider(*this, RandomAccessStorage),
+      LastIndex(0)
    {
    }
 
@@ -270,16 +283,20 @@ public:
       if (node_ii.second)
       {
          assert(index == getIndex(*ii.first) && "Built object must have assigned actual id");
+         assert((ReuseIndices == true || index == RandomAccessStorage.size()) && "Invalid index in no-index-reusing mode");
 
          if (RandomAccessStorage.size() == index)
             RandomAccessStorage.push_back(ii.first);
          else
             RandomAccessStorage[index] = ii.first;
 
-         if (FreeIndices.empty() == false)
+         if( ReuseIndices )
          {
-            assert(FreeIndices.back() == index);
-            FreeIndices.pop_back();
+            if (FreeIndices.empty() == false)
+            {
+               assert(FreeIndices.back() == index);
+               FreeIndices.pop_back();
+            }
          }
       }
 
@@ -304,8 +321,11 @@ public:
    {
       const value_type &object = *position;
       size_t index = getIndex(object);
-      if (index <= this->size() - 1)
-         FreeIndices.emplace_back(index);
+      if( ReuseIndices )
+      {
+         if (index <= this->size() - 1)
+            FreeIndices.emplace_back(index);
+      }
 
       RandomAccessStorage[index] = this->cend();
 
@@ -324,9 +344,12 @@ public:
    /** Allows to query for the next random access identifier to be assigned to the new object being
    constructed & stored in this container.
    */
-   std::size_t retrieveNextId() const
+   std::size_t retrieveNextId()
    {
-      return FreeIndices.empty() ? this->size() + 1 : FreeIndices.back();
+      if( ReuseIndices )
+         return FreeIndices.empty() ? this->size() + 1 : FreeIndices.back();
+      else
+         return ++LastIndex;
    }
 
    std::size_t getIndex(const value_type &object) const
@@ -347,6 +370,8 @@ public:
    RandomAccessContainer RandomAccessStorage = RandomAccessContainer(1, this->get_allocator());
    ///
    idx_provider< by_id > ByIdProvider;
+   /// Used only in no-index-reusing mode.
+   size_t LastIndex = 0;
 };
 
 /** Helper trait useful to determine if specified boost::multi_index_container has defined
@@ -356,10 +381,22 @@ public:
 template<typename MultiIndexType>
 struct has_master_index
 {
-   typedef typename std::is_same<MultiIndexType, ra_indexed_container<
+   typedef ra_indexed_container<
       typename MultiIndexType::value_type,
       typename MultiIndexType::index_specifier_type_list,
-      typename MultiIndexType::allocator_type>>::type type;
+      typename MultiIndexType::allocator_type> ra_reuse;
+
+   typedef ra_indexed_container<
+      typename MultiIndexType::value_type,
+      typename MultiIndexType::index_specifier_type_list,
+      typename MultiIndexType::allocator_type,
+      false /*No index reuse*/> ra_no_reuse;
+
+   typedef typename std::is_same<MultiIndexType, ra_reuse>::type type_reuse;
+   typedef typename std::is_same<MultiIndexType, ra_no_reuse>::type type_no_reuse;
+
+   typedef typename std::conditional<type_reuse::value, type_reuse, type_no_reuse>::type type;
+
    enum { value = type::value };
 };
    
