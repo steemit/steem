@@ -1,5 +1,6 @@
 #include <steem/protocol/steem_operations.hpp>
 #include <fc/io/json.hpp>
+#include <fc/macros.hpp>
 
 #include <locale>
 
@@ -190,6 +191,63 @@ namespace steem { namespace protocol {
       FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
       FC_ASSERT( fee >= asset( 0, STEEM_SYMBOL ), "Fee cannot be negative" );
       props.validate< false >();
+   }
+
+   void witness_set_properties_operation::validate() const
+   {
+      validate_account_name( owner );
+
+      size_t property_count = 0;
+
+      if( props.contains( "account_creation_fee" ) )
+      {
+         ++property_count;
+         asset account_creation_fee = props[ "account_creation_fee" ].as< asset >();
+         FC_ASSERT( account_creation_fee.symbol == STEEM_SYMBOL, "account_creation_fee must be in STEEM" );
+         FC_ASSERT( account_creation_fee.amount >= STEEM_MIN_ACCOUNT_CREATION_FEE , "account_creation_fee smaller than minimum account creation fee" );
+      }
+
+      if( props.contains( "maximum_block_size" ) )
+      {
+         ++property_count;
+         uint32_t maximum_block_size = props[ "maximum_block_size" ].as< uint32_t >();
+         FC_ASSERT( maximum_block_size >= STEEM_MIN_BLOCK_SIZE_LIMIT, "maximum_block_size smaller than minimum max block size" );
+      }
+
+      if( props.contains( "sbd_interest_rate" ) )
+      {
+         ++property_count;
+         uint16_t sbd_interest_rate = props[ "sbd_interest_rate" ].as< uint16_t >();
+         FC_ASSERT( sbd_interest_rate >= 0, "sbd_interest_rate must be positive" );
+         FC_ASSERT( sbd_interest_rate <= STEEM_100_PERCENT, "sbd_interest_rate must not exceed 100%" );
+      }
+
+      if( props.contains( "signing_key" ) )
+      {
+         ++property_count;
+         public_key_type signing_key = props[ "signing_key" ].as< public_key_type >();
+         FC_UNUSED( signing_key ); // This tests the deserialization of the key
+      }
+
+      if( props.contains( "sbd_exchange_rate" ) )
+      {
+         ++property_count;
+         price sbd_exchange_rate = props[ "sbd_exchange_rate" ].as< price >();
+         FC_ASSERT( ( is_asset_type( sbd_exchange_rate.base, STEEM_SYMBOL ) && is_asset_type( sbd_exchange_rate.quote, SBD_SYMBOL ) ),
+            "Price feed must be a STEEM/SBD price" );
+         sbd_exchange_rate.validate();
+      }
+
+      if( props.contains( "url" ) )
+      {
+         ++property_count;
+         string url = props[ "url" ].as< string >();
+         FC_ASSERT( url.size() <= STEEM_MAX_WITNESS_URL_LENGTH, "URL is too long" );
+         FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
+         FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
+      }
+
+      FC_ASSERT( props.size() == property_count, "There are extraneous properties" );
    }
 
    void account_witness_vote_operation::validate() const

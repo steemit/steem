@@ -50,6 +50,7 @@ STEEM_DEFINE_EVALUATOR( reset_account )
 STEEM_DEFINE_EVALUATOR( set_reset_account )
 STEEM_DEFINE_EVALUATOR( claim_reward_balance )
 STEEM_DEFINE_EVALUATOR( delegate_vesting_shares )
+STEEM_DEFINE_EVALUATOR( witness_set_properties )
 #ifdef STEEM_ENABLE_SMT
 STEEM_DEFINE_EVALUATOR( smt_setup )
 STEEM_DEFINE_EVALUATOR( smt_cap_reveal )
