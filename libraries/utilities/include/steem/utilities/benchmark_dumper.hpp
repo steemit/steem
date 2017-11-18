@@ -20,6 +20,28 @@ namespace steem { namespace utilities {
 class benchmark_dumper
 {
 public:
+   struct index_memory_details_t
+   {
+      index_memory_details_t(std::string&& name, size_t size)
+         : index_name(name), index_size(size) {}
+
+      std::string    index_name;
+      size_t         index_size = 0;
+   };
+
+   typedef std::vector<index_memory_details_t> index_memory_details_cntr_t;
+
+   struct database_object_sizeof_t
+   {
+      database_object_sizeof_t(std::string&& name, size_t size)
+         : object_name(name), object_size(size) {}
+
+      std::string    object_name;
+      size_t         object_size = 0;
+   };
+
+   typedef std::vector<database_object_sizeof_t> database_object_sizeof_cntr_t;
+
    class measurement
    {
    public:
@@ -38,16 +60,29 @@ public:
       int32_t  cpu_ms = 0;
       uint64_t current_mem = 0;
       uint64_t peak_mem = 0;
+      index_memory_details_cntr_t index_memory_details_cntr;
    };
 
-   void initialize()
+   typedef std::vector<measurement> TMeasurements;
+
+   struct TAllData
+   {
+      database_object_sizeof_cntr_t database_object_sizeofs;
+      TMeasurements                 measurements;
+   };
+
+   typedef std::function<void(index_memory_details_cntr_t&)> get_indexes_memory_details_t;
+   typedef std::function<void(database_object_sizeof_cntr_t&)> get_database_objects_sizeofs_t;
+
+   void initialize(get_database_objects_sizeofs_t get_database_objects_sizeofs)
    {
       _init_sys_time = _last_sys_time = fc::time_point::now();
       _init_cpu_time = _last_cpu_time = clock();
       _pid = getpid();
+      get_database_objects_sizeofs(_all_data.database_object_sizeofs);
    }
 
-   const measurement& measure(uint32_t block_number)
+   const measurement& measure(uint32_t block_number, get_indexes_memory_details_t get_indexes_memory_details)
    {
       uint64_t current_virtual = 0;
       uint64_t peak_virtual = 0;
@@ -62,13 +97,14 @@ public:
                 int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC), // cpu_ms
                 current_virtual,
                 peak_virtual );
-      _measurements.push_back( data );
+      get_indexes_memory_details(data.index_memory_details_cntr);
+      _all_data.measurements.push_back( data );
    
       _last_sys_time = current_sys_time;
       _last_cpu_time = current_cpu_time;
       _total_blocks = block_number;
    
-      return _measurements.back();
+      return _all_data.measurements.back();
    }
 
    void dump(const char* file_name, measurement* total_measurement = nullptr)
@@ -76,7 +112,7 @@ public:
       const fc::path path(file_name);
       try
       {
-         fc::json::save_to_file(_measurements, path);
+         fc::json::save_to_file(_all_data, path);
       }
       catch ( const fc::exception& except )
       {
@@ -108,10 +144,19 @@ private:
    clock_t        _last_cpu_time = 0;
    uint64_t       _total_blocks = 0;
    pid_t          _pid = 0;
-   typedef std::vector<measurement> TMeasurements;   
-   TMeasurements  _measurements;
+   TAllData       _all_data;
 };
 
 } } // steem::utilities
 
-FC_REFLECT( steem::utilities::benchmark_dumper::measurement, (block_number)(real_ms)(cpu_ms)(current_mem)(peak_mem) )
+FC_REFLECT( steem::utilities::benchmark_dumper::index_memory_details_t,
+            (index_name)(index_size) )
+
+FC_REFLECT( steem::utilities::benchmark_dumper::database_object_sizeof_t,
+            (object_name)(object_size) )
+
+FC_REFLECT( steem::utilities::benchmark_dumper::measurement,
+            (block_number)(real_ms)(cpu_ms)(current_mem)(peak_mem)(index_memory_details_cntr) )
+
+FC_REFLECT( steem::utilities::benchmark_dumper::TAllData,
+            (database_object_sizeofs)(measurements) )
