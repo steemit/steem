@@ -26,6 +26,7 @@ class chain_plugin_impl
       bool                             readonly = false;
       bool                             check_locks = false;
       bool                             validate_invariants = false;
+      bool                             dump_memory_details = false;
       uint32_t                         stop_replay_at = 0;
       uint32_t                         benchmark_interval = 0;
       uint32_t                         flush_interval = 0;
@@ -37,6 +38,7 @@ class chain_plugin_impl
 };
 
 } // detail
+
 
 chain_plugin::chain_plugin() : my( new detail::chain_plugin_impl() ) {}
 chain_plugin::~chain_plugin(){}
@@ -59,6 +61,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("resync-blockchain", bpo::bool_switch()->default_value(false), "clear chain database and block log" )
          ("stop-replay-at-block", bpo::value<uint32_t>(), "Stop and exit after reaching given block number")
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
+         ("dump-memory-details", bpo::bool_switch()->default_value(false), "Dump database objects memory usage info. Use set-benchmark-interval to set dump interval.")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
 #ifdef IS_TEST_NET
@@ -89,6 +92,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
    my->check_locks         = options.at( "check-locks" ).as< bool >();
    my->validate_invariants = options.at( "validate-database-invariants" ).as<bool>();
+   my->dump_memory_details = options.at( "dump-memory-details" ).as<bool>();
    if( options.count( "flush-state-interval" ) )
       my->flush_interval = options.at( "flush-state-interval" ).as<uint32_t>();
    else
@@ -127,28 +131,54 @@ void chain_plugin::plugin_startup()
    my->db.add_checkpoints( my->loaded_checkpoints );
    my->db.set_require_locking( my->check_locks );
 
+   bool dump_memory_details = my->dump_memory_details;
+   steem::utilities::benchmark_dumper dumper;
+
+   auto benchmark_lambda = [&dumper, dump_memory_details] ( uint32_t current_block_number,
+      const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
+   {
+      if( current_block_number == 0 ) // initial call
+      {
+         typedef steem::utilities::benchmark_dumper::database_object_sizeof_cntr_t database_object_sizeof_cntr_t;
+         auto get_database_objects_sizeofs = [dump_memory_details, &abstract_index_cntr]
+            (database_object_sizeof_cntr_t& database_object_sizeof_cntr)
+         {
+            if (dump_memory_details == false)
+               return;
+            
+            for (auto idx : abstract_index_cntr)
+               database_object_sizeof_cntr.emplace_back(idx->get_object_typename(), idx->get_object_sizeof());
+         };
+
+         dumper.initialize(get_database_objects_sizeofs);
+         return;
+      }
+
+      typedef steem::utilities::benchmark_dumper::index_memory_details_cntr_t index_memory_details_cntr_t;
+      auto get_indexes_memory_details = [dump_memory_details, &abstract_index_cntr]
+         (index_memory_details_cntr_t& index_memory_details_cntr)
+      {
+         if (dump_memory_details == false)
+            return;
+         
+         for (auto idx : abstract_index_cntr)
+            index_memory_details_cntr.emplace_back(idx->get_object_typename(), idx->size());
+      };
+
+      const steem::utilities::benchmark_dumper::measurement& measure =
+         dumper.measure(current_block_number, get_indexes_memory_details);
+      ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
+         ("n", current_block_number)
+         ("rt", measure.real_ms)
+         ("ct", measure.cpu_ms)
+         ("cm", measure.current_mem)
+         ("pm", measure.peak_mem) );
+   };
+
    if(my->replay)
    {
       ilog("Replaying blockchain on user request.");
       uint32_t last_block_number = 0;
-      steem::utilities::benchmark_dumper dumper;
-      auto benchmark_lambda = [&dumper]( uint32_t current_block_number, bool is_initial_call )
-      {
-         if( is_initial_call )
-         {
-            dumper.initialize();
-            return;
-         }
-
-         const steem::utilities::benchmark_dumper::measurement& measure =
-           dumper.measure(current_block_number);
-         ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
-            ("n", current_block_number)
-            ("rt", measure.real_ms)
-            ("ct", measure.cpu_ms)
-            ("cm", measure.current_mem)
-            ("pm", measure.peak_mem) );
-      };
       steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
       last_block_number = my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size,
                                           my->stop_replay_at, benchmark );
@@ -173,10 +203,18 @@ void chain_plugin::plugin_startup()
    }
    else
    {
+      steem::chain::database::TBenchmark benchmark(dump_memory_details, benchmark_lambda);
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size, my->validate_invariants );
+         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size,
+                      0, my->validate_invariants, benchmark );
+
+         if (dump_memory_details)
+         {
+         steem::utilities::benchmark_dumper::measurement total_data;
+         dumper.dump( BENCHMARK_FILE_NAME, &total_data );
+         }
       }
       catch( const fc::exception& e )
       {
@@ -189,7 +227,8 @@ void chain_plugin::plugin_startup()
          catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size, my->validate_invariants );
+            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size,
+                         0, my->validate_invariants );
          }
       }
    }

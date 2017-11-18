@@ -585,6 +585,10 @@ namespace chainbase {
 
          virtual void remove_object( int64_t id ) = 0;
 
+         virtual std::string get_object_typename() const = 0;
+         virtual size_t get_object_sizeof() const = 0;
+         virtual size_t size() const = 0;
+
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
@@ -611,6 +615,14 @@ namespace chainbase {
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
          virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
+
+         virtual std::string get_object_typename() const override
+            { return boost::core::demangle( typeid( typename BaseIndex::value_type ).name() ); }
+         virtual size_t get_object_sizeof() const override
+            { return sizeof(typename BaseIndex::value_type); }
+         virtual size_t size() const override
+            { return _base.indicies().size(); }
+
       private:
          BaseIndex& _base;
    };
@@ -973,6 +985,12 @@ namespace chainbase {
             }
          }
 
+         typedef vector<abstract_index*> abstract_index_cntr_t;
+         
+      protected:
+         const abstract_index_cntr_t& get_abstract_index_cntr() const
+            { return _index_list; }
+
       private:
          read_write_mutex_manager                                    _rw_manager;
          unique_ptr<bip::managed_mapped_file>                        _segment;
@@ -982,7 +1000,7 @@ namespace chainbase {
          /**
           * This is a sparse list of known indicies kept to accelerate creation of undo sessions
           */
-         vector<abstract_index*>                                     _index_list;
+         abstract_index_cntr_t                                       _index_list;
 
          /**
           * This is a full map (size 2^16) of all possible index designed for constant time lookup
