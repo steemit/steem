@@ -273,7 +273,7 @@ namespace chainbase {
          session start_undo_session( bool enabled ) {
             if( enabled ) {
                _stack.emplace_back( _indices.get_allocator() );
-               _stack.back().old_next_id = _next_id;
+               _stack.back().old_next_id = saveNextId(_indices);
                _stack.back().revision = ++_revision;
                return session( *this, _revision );
             } else {
@@ -305,7 +305,8 @@ namespace chainbase {
             {
                _indices.erase( _indices.find( id ) );
             }
-            _next_id = head.old_next_id;
+            
+            restoreNextId(head.old_next_id, _indices);
 
             for( auto& item : head.removed_values ) {
                bool ok = _indices.emplace( std::move( item.second ) ).second;
@@ -458,6 +459,32 @@ namespace chainbase {
          }
 
       private:
+         template <typename IndexSpecifierList, bool ReuseIndices>
+         size_t saveNextId(const indexed_container<value_type, IndexSpecifierList, ReuseIndices>& c) const
+         {
+            return c.saveNextId();
+         }
+
+         template <typename IndexSpecifierList, typename Allocator>
+         size_t saveNextId(const boost::multi_index::multi_index_container<value_type, IndexSpecifierList, Allocator>& c) const
+         {
+            return _next_id;
+         }
+         
+         template <typename IndexSpecifierList, bool ReuseIndices>
+         void restoreNextId(size_t nextId,
+            indexed_container<value_type, IndexSpecifierList, ReuseIndices>& c)
+         {
+            c.restoreNextId(nextId);
+         }
+
+         template <typename IndexSpecifierList, typename Allocator>
+         void restoreNextId(size_t nextId,
+            boost::multi_index::multi_index_container<value_type, IndexSpecifierList, Allocator>& c)
+         {
+            _next_id = nextId;
+         }
+
          template <typename Constructor, typename IndexSpecifierList, bool ReuseIndices>
          const value_type& final_emplace(Constructor&& c,
             indexed_container<value_type, IndexSpecifierList, ReuseIndices>& container)
@@ -915,17 +942,25 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
-             if( !obj ) BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
+             if( !obj )
+             {
+                BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
+             }
+
              return *obj;
          }
 
          template< typename ObjectType >
          const ObjectType& get( const oid< ObjectType >& key = oid< ObjectType >() )const
          {
-             CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
-             auto obj = find< ObjectType >( key );
-             if( !obj ) BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key") );
-             return *obj;
+            CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
+            auto obj = find< ObjectType >( key );
+            if( !obj )
+            {
+               BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" + std::to_string(key._id)) );
+            }
+
+            return *obj;
          }
 
          template<typename ObjectType, typename Modifier>

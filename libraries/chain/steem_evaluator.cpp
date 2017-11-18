@@ -394,6 +394,14 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
       }
    }
 
+   #ifndef IS_LOW_MEM
+   const comment_content_object* commentContent = _db.find<comment_content_object, by_comment>(comment.id);
+   if(commentContent != nullptr)
+   {
+      _db.remove(*commentContent);
+   }
+   #endif /// IS_LOW_MEM
+   
    _db.remove( comment );
 }
 

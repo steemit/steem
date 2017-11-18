@@ -67,7 +67,8 @@ namespace chainbase
       {
       public:
          typedef typename Container::base_class base_class;
-         typedef typename Container::value_type value_type;
+         typedef typename base_class::const_iterator source_iterator;
+         typedef typename Container::value_type      value_type;
          typedef typename Container::RandomAccessContainer RandomAccessContainer;
 
          index_provider(const base_class& __this, const RandomAccessContainer& rac)
@@ -82,30 +83,31 @@ namespace chainbase
          class by_id_index
          {
          public:
-
             struct hole_filter
             {
-               hole_filter(const typename RandomAccessContainer::value_type& end_iterator) : _end_iterator_ptr(&end_iterator) {}
-               hole_filter& operator=(const hole_filter& rhs)
+               explicit hole_filter(const source_iterator& end_iterator) : _end(end_iterator) {}
+               hole_filter(const hole_filter&) = default;
+               hole_filter(hole_filter&&) = default;
+               hole_filter& operator=(const hole_filter&) = default;
+               hole_filter& operator=(hole_filter&&) = default;
+               
+               bool operator()(const source_iterator& item) const
                {
-                  _end_iterator_ptr = rhs._end_iterator_ptr;
-                  return *this;
+                   return item != _end;
                }
-
-               bool operator()(const typename RandomAccessContainer::value_type& item) const
-               {
-                   return item != *_end_iterator_ptr;
-               }
-               const typename RandomAccessContainer::value_type* _end_iterator_ptr;
+               
+            private:
+               source_iterator _end;
             };
+
             struct transformer
             {
-               const typename Container::value_type& operator()(const typename RandomAccessContainer::value_type& item) const
+               const typename Container::value_type& operator()(const source_iterator& item) const
                {
-                  return const_cast<typename Container::value_type&>(*item);
+                  return *item;
                } 
             };
-      
+            
             by_id_index(const base_class& __this, const RandomAccessContainer& rac)
                 : _this(&__this),
                  _rac(&rac) {}
@@ -117,7 +119,8 @@ namespace chainbase
             by_id_index& operator=(by_id_index&&) = default;
 
             typedef typename boost::transform_iterator< transformer, boost::filter_iterator<hole_filter, typename RandomAccessContainer::const_iterator>, 
-                                                         const typename Container::value_type&, const typename Container::value_type > const_iterator;
+               const typename Container::value_type&, const typename Container::value_type > const_iterator;
+
             const_iterator begin() const
             {
                hole_filter filter(_this->end());
@@ -220,9 +223,10 @@ public:
    
    const value_type *operator[](size_t idx) const
    {
-      if( idx >= RandomAccessStorage.size() ) BOOST_THROW_EXCEPTION( std::out_of_range("index not found") );
+      auto rasSize = RandomAccessStorage.size();
+
       /// \warning RA container can have gaps caused by element removal.
-      if (RandomAccessStorage[idx] != end())
+      if (idx < rasSize && RandomAccessStorage[idx] != end())
       {
          const auto &iterator = RandomAccessStorage[idx];
          const value_type &object = *iterator;
@@ -235,7 +239,8 @@ public:
    const_iterator find(const oid<value_type>& id) const
    {
       std::size_t idx = id;
-      if(idx >= RandomAccessStorage.size()) BOOST_THROW_EXCEPTION( std::out_of_range("id not found") );
+      if(idx >= RandomAccessStorage.size())
+         return cend();
 
       return RandomAccessStorage[idx];
    }
@@ -282,39 +287,56 @@ public:
 
       if (node_ii.second)
       {
+         auto rasSize = RandomAccessStorage.size();
          assert(index == getIndex(*ii.first) && "Built object must have assigned actual id");
-         assert((ReuseIndices == true || index == RandomAccessStorage.size()) && "Invalid index in no-index-reusing mode");
+         assert((ReuseIndices || index == rasSize) && "Invalid index in no-index-reusing mode");
 
-         if (RandomAccessStorage.size() == index)
+         if (rasSize == index)
             RandomAccessStorage.push_back(ii.first);
          else
             RandomAccessStorage[index] = ii.first;
 
-         if( ReuseIndices )
-         {
-            if (FreeIndices.empty() == false)
-            {
-               assert(FreeIndices.back() == index);
-               FreeIndices.pop_back();
-            }
-         }
+         claimNextId(index);
       }
 
       return std::move(ii);
    }
 
+   /** Method reponsible for emplacing back all items previosly removed from the container
+    *  while processing an undo state.
+    *  The RA index previously associated to the source object shall be reused to satisfy
+    *  referential integrity.
+    */
    std::pair<iterator, bool> emplace(value_type&& source)
    {
-      auto actualId = retrieveNextId();
-      
       /// Be sure that object moved to the container storage has set correct id
-      auto constructor = [&source, actualId](value_type& newObject)
+      auto constructor = [&source](value_type& newObject)
       {
          newObject = std::move(source);
-         newObject.id._id = actualId;
       };
 
-      return emplace(std::move(constructor));
+      auto index = getIndex(source);
+
+      auto node_ii = base_class::emplace_(constructor, index, this->get_allocator());
+      std::pair<iterator, bool> ii = std::make_pair(const_iterator(node_ii.first), node_ii.second);
+
+      if(node_ii.second)
+      {
+         auto rasSize = RandomAccessStorage.size();
+
+         if(rasSize == index)
+         {
+            RandomAccessStorage.push_back(ii.first);
+         }
+         else
+         {
+            assert(RandomAccessStorage[index] == this->cend() &&
+               "Place must point to previously erased item");
+            RandomAccessStorage[index] = ii.first;
+         }
+      }
+
+      return std::move(ii);
    }
    
    iterator erase(iterator position)
@@ -323,11 +345,20 @@ public:
       size_t index = getIndex(object);
       if( ReuseIndices )
       {
-         if (index <= this->size() - 1)
+         if (index < this->size() - 1)
             FreeIndices.emplace_back(index);
+
+         if(index == RandomAccessStorage.size() - 1)
+            RandomAccessStorage.pop_back();
+         else
+            RandomAccessStorage[index] = this->cend();
+      }
+      else
+      {
+         RandomAccessStorage[index] = this->cend();
       }
 
-      RandomAccessStorage[index] = this->cend();
+      assert(RandomAccessStorage.size() >= this->size());
 
       return base_class::erase(position);
    }
@@ -337,20 +368,60 @@ public:
       FreeIndices.clear();
       RandomAccessStorage.clear();
       RandomAccessStorage.push_back(end());
+      LastIndex = 0;
       base_class::clear();
+   }
+
+   size_t saveNextId() const
+   {
+      return LastIndex;
+   }
+
+   void restoreNextId(size_t nextId)
+   {
+      if(ReuseIndices == false)
+      {
+         assert(nextId >= this->size());
+         RandomAccessStorage.resize(nextId + 1); /// plus 0 entry to match null-id
+         LastIndex = nextId;
+      }
    }
 
    private:
    /** Allows to query for the next random access identifier to be assigned to the new object being
    constructed & stored in this container.
    */
-   std::size_t retrieveNextId()
+   std::size_t retrieveNextId() const
    {
       if( ReuseIndices )
          return FreeIndices.empty() ? this->size() + 1 : FreeIndices.back();
       else
-         return ++LastIndex;
+         return LastIndex + 1;
    }
+
+   /** Allows to claim previously retrieved random access indentifier to be reserved for just inserted object.
+    */
+   void claimNextId(std::size_t index)
+   {
+      if( ReuseIndices )
+      {
+         if (FreeIndices.empty())
+         {
+            assert(index == this->size() && "Container should already contain new item");
+         }
+         else
+         {
+            assert(FreeIndices.back() == index);
+            FreeIndices.pop_back();
+         }
+      }
+      else
+      {
+         assert(LastIndex + 1 == index);
+         LastIndex = index;
+      }
+   }
+
 
    std::size_t getIndex(const value_type &object) const
    {
