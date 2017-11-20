@@ -39,27 +39,35 @@ std::ostream &operator<<(std::ostream &os, const test_object &a)
 
 struct OrderedIndex;
 
-typedef chainbase::ra_indexed_container<test_object,
+template <bool ReuseIndices>
+struct TContainer
+{
+   typedef chainbase::ra_indexed_container<test_object,
    indexed_by<
       ordered_unique<
             tag<OrderedIndex>, member<test_object, std::string, &test_object::name>>>,
-   std::allocator<test_object>
+   std::allocator<test_object>,
+   ReuseIndices
    >
-   TContainer;
+   type;
+};
 
 static const std::vector<std::string> s_names =
       {"Alice", "has", "a", "cat", "but", "the", "cat", "has", "insects"};
 
+template <typename TContainer>
 void verifyContainer(const TContainer &x)
 {
+   typedef typename TContainer::value_type TContainerValueType;
+
    std::cout << "Container size:" << x.size() << std::endl;
    std::cout << "Performing dump using direct container:" << std::endl;
-   std::copy(x.cbegin(), x.cend(), std::ostream_iterator<TContainer::value_type>(std::cout, "\n"));
+   std::copy(x.cbegin(), x.cend(), std::ostream_iterator<TContainerValueType>(std::cout, "\n"));
 
    const auto &orderedIdx = x.get<OrderedIndex>();
 
    std::cout << "Performing dump using ordered index:" << std::endl;
-   std::copy(orderedIdx.cbegin(), orderedIdx.cend(), std::ostream_iterator<TContainer::value_type>(
+   std::copy(orderedIdx.cbegin(), orderedIdx.cend(), std::ostream_iterator<TContainerValueType>(
                                                          std::cout, "\n"));
 
    std::cout << "Performing lookup test..." << std::endl;
@@ -78,7 +86,7 @@ void verifyContainer(const TContainer &x)
 
    std::vector<size_t> validRandomIds;
    std::transform(x.cbegin(), x.cend(), std::back_inserter(validRandomIds),
-                  [](const TContainer::value_type &obj) -> size_t {
+                  [](const TContainerValueType &obj) -> size_t {
                      return obj.id;
                   });
 
@@ -92,6 +100,7 @@ void verifyContainer(const TContainer &x)
    }
 }
 
+template <typename TContainer>
 void fillContainer(TContainer * c)
 {
    for (const auto &name : s_names)
@@ -113,16 +122,19 @@ void printTestTitle(const char *title)
    std::cout << frame << std::endl;
 }
 
-} /// namespace anonymous
-
-BOOST_AUTO_TEST_SUITE(ra_indexed_container_tests)
-
-BOOST_AUTO_TEST_CASE(basic_tests)
+template <bool ReuseIndices>
+void basic_test()
 {
    std::vector<test_object> sourceContainer;
    std::allocator<test_object> stringAlloc;
    /// tests for various constructors originally defined in multi_index_container
-   TContainer x, y(stringAlloc);
+   typedef typename TContainer<ReuseIndices>::type TTestContainer;
+   TTestContainer x, y(stringAlloc);
+
+   std::string title("Testing with");
+   title += ReuseIndices ? " " : "out ";
+   title += "indices reusing...";
+   printTestTitle(title.c_str());
 
    printTestTitle("Container initial test...");
 
@@ -135,7 +147,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
 
    std::vector<size_t> validIds, newIds;
    std::transform(y.cbegin(), y.cend(), std::back_inserter(validIds),
-                  [](const TContainer::value_type &obj) -> size_t {
+                  [](const typename TTestContainer::value_type &obj) -> size_t {
                      return obj.id;
                   });
 
@@ -145,7 +157,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
    fillContainer(&y);
    verifyContainer(y);
    std::transform(y.cbegin(), y.cend(), std::back_inserter(newIds),
-                  [](const TContainer::value_type &obj) -> size_t {
+                  [](const typename TTestContainer::value_type &obj) -> size_t {
                      return obj.id;
                   });
 
@@ -158,7 +170,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
    std::uniform_int_distribution<size_t> distribution(1, x.size());
    size_t idToRemove = distribution(generator);
 
-   const TContainer::value_type *object = x[idToRemove];
+   const typename TTestContainer::value_type *object = x[idToRemove];
    auto pointingIterator = x.iterator_to(*object);
    BOOST_REQUIRE(pointingIterator != x.end());
 
@@ -183,10 +195,20 @@ BOOST_AUTO_TEST_CASE(basic_tests)
 
    auto ii = x.emplace(constructor);
 
-   BOOST_REQUIRE(ii.second);                 /// Element must be inserted
-   BOOST_REQUIRE(ii.first->id == removedId); /// Id shall be reused
+   BOOST_REQUIRE(ii.second);                                                           /// Element must be inserted
+   BOOST_REQUIRE(ReuseIndices ? ii.first->id == removedId : ii.first->id > removedId); /// Id shall be reused
 
    verifyContainer(x);
+}
+
+} /// namespace anonymous
+
+BOOST_AUTO_TEST_SUITE(ra_indexed_container_tests)
+
+BOOST_AUTO_TEST_CASE(basic_tests)
+{
+   basic_test<true>();
+   basic_test<false>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
