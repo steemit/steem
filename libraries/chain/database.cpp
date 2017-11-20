@@ -4,7 +4,6 @@
 #include <steem/chain/compound.hpp>
 #include <steem/chain/custom_operation_interpreter.hpp>
 #include <steem/chain/database.hpp>
-#include <steem/chain/profiler.hpp>
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/db_with.hpp>
 #include <steem/chain/evaluator_registry.hpp>
@@ -177,12 +176,6 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          skip_validate_invariants |
          skip_block_log;
 
-      int ret_profiler;
-      int enabled = false;
-
-      //int ret_profiler = ProfilerStart("steem_profiler");
-      //FC_ASSERT( ret_profiler, " Profiler failed." );
-
       with_write_lock( [&]()
       {
          _block_log.set_locking( false );
@@ -198,13 +191,6 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          while( itr.first.block_num() != last_block_num )
          {
             auto cur_block_num = itr.first.block_num();
-
-            // if( cur_block_num == 12000000 )
-            // {
-            //    ret_profiler = ProfilerStart("steem_profiler");
-            //    FC_ASSERT( ret_profiler, " Profiler failed." );
-            //    enabled = true;
-            // }
 
             if( cur_block_num % 100000 == 0 )
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
@@ -232,9 +218,6 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 
       auto end = fc::time_point::now();
       ilog( "Done reindexing, elapsed time: ${t} sec", ("t",double((end-start).count())/1000000.0 ) );
-
-      //if( enabled )
-        // ProfilerStop();
 
       return last_block_number;
    }

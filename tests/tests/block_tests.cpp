@@ -87,17 +87,25 @@ BOOST_AUTO_TEST_CASE( generate_empty_blocks )
          database db;
          db._log_hardforks = false;
          db.open(data_dir.path(), data_dir.path(), INITIAL_TEST_SUPPLY, TEST_SHARED_MEM_SIZE );
+#if ENABLE_STD_ALLOCATOR == 0
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num() );
+#endif
          b = cutoff_block;
          for( uint32_t i = 0; i < 200; ++i )
          {
+#if ENABLE_STD_ALLOCATOR == 0
             BOOST_CHECK( db.head_block_id() == b.id() );
+#else
+            BOOST_CHECK( i==0 || ( db.head_block_id() == b.id() ) );
+#endif
             //witness_id_type prev_witness = b.witness;
             string cur_witness = db.get_scheduled_witness(1);
             //BOOST_CHECK( cur_witness != prev_witness );
             b = db.generate_block(db.get_slot_time(1), cur_witness, init_account_priv_key, database::skip_nothing);
          }
+#if ENABLE_STD_ALLOCATOR == 0
          BOOST_CHECK_EQUAL( db.head_block_num(), cutoff_block.block_num()+200 );
+#endif
       }
    } catch (fc::exception& e) {
       edump((e.to_detail_string()));
