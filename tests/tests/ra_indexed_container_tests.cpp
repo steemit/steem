@@ -2,6 +2,7 @@
 
 #include <chainbase/util/ra_indexed_container.hpp>
 
+#include <boost/multi_index/composite_key.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -38,6 +39,7 @@ std::ostream &operator<<(std::ostream &os, const test_object &a)
 }
 
 struct OrderedIndex;
+struct CompositeOrderedIndex;
 
 template <bool ReuseIndices>
 struct TContainer
@@ -45,7 +47,14 @@ struct TContainer
    typedef chainbase::ra_indexed_container<test_object,
    indexed_by<
       ordered_unique<
-            tag<OrderedIndex>, member<test_object, std::string, &test_object::name>>>,
+            tag<OrderedIndex>, member<test_object, std::string, &test_object::name>>,
+      ordered_unique< tag< CompositeOrderedIndex >,
+            composite_key< test_object,
+               member< test_object, std::string, &test_object::name >,
+               member< test_object, const size_t, &test_object::id >
+               >
+            >
+      >,
    std::allocator<test_object>,
    ReuseIndices
    >
@@ -101,8 +110,9 @@ void verifyContainer(const TContainer &x)
 }
 
 template <typename TContainer>
-void fillContainer(TContainer * c)
+void fillContainer(TContainer * c, size_t limit = 0 /*0 means no limit*/)
 {
+   size_t counter = 0;
    for (const auto &name : s_names)
    {
       auto constructor = [&name](test_object &obj) {
@@ -110,7 +120,32 @@ void fillContainer(TContainer * c)
       };
 
       c->emplace(constructor);
+      if(++counter == limit)
+         break;
    }
+}
+
+template <typename TContainer>
+size_t eraseFromContainer(TContainer * c, size_t idToRemove)
+{
+   const typename TContainer::value_type *object = (*c)[idToRemove];
+   auto pointingIterator = c->iterator_to(*object);
+   BOOST_REQUIRE(pointingIterator != c->end());
+
+   size_t removedId = object->id;
+   BOOST_REQUIRE(removedId == idToRemove);
+
+   std::cout << "Attempting to erase object pointed by id: " << idToRemove << ", object: "
+               << *object << std::endl;
+
+   c->erase(pointingIterator);
+   return removedId;
+}
+
+template <typename TContainer>
+void clearContainer(TContainer * c)
+{
+   c->clear();
 }
 
 void printTestTitle(const char *title)
@@ -170,17 +205,7 @@ void basic_test()
    std::uniform_int_distribution<size_t> distribution(1, x.size());
    size_t idToRemove = distribution(generator);
 
-   const typename TTestContainer::value_type *object = x[idToRemove];
-   auto pointingIterator = x.iterator_to(*object);
-   BOOST_REQUIRE(pointingIterator != x.end());
-
-   size_t removedId = object->id;
-   BOOST_REQUIRE(removedId == idToRemove);
-
-   std::cout << "Attempting to erase object pointed by id: " << idToRemove << ", object: "
-               << *object << std::endl;
-
-   x.erase(pointingIterator);
+   size_t removedId = eraseFromContainer(&x, idToRemove);
    verifyContainer(x);
 
    printTestTitle("Container insertion after erasure test...");
@@ -198,6 +223,18 @@ void basic_test()
    BOOST_REQUIRE(ii.second);                                                           /// Element must be inserted
    BOOST_REQUIRE(ReuseIndices ? ii.first->id == removedId : ii.first->id > removedId); /// Id shall be reused
 
+   verifyContainer(x);
+
+   printTestTitle("Add 3, remove 2nd, add 1, container test...");
+   clearContainer(&x);
+   fillContainer(&x, 3);
+   removedId = eraseFromContainer(&x, 2);
+
+   ii = x.emplace(constructor);
+
+   BOOST_REQUIRE(ii.second);                                                           /// Element must be inserted
+   BOOST_REQUIRE(ReuseIndices ? ii.first->id == removedId : ii.first->id > removedId); /// Id shall be reused
+   
    verifyContainer(x);
 }
 
