@@ -113,7 +113,7 @@ DEFINE_API( follow_api_impl, get_feed_entries )
    const auto& feed_idx = _db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
    auto itr = feed_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
 
-   while( itr != feed_idx.end() && itr->activated == 1 && itr->account == args.account && result.feed.size() < args.limit )
+   while( itr != feed_idx.end() && itr->blocked == 0 && itr->account == args.account && result.feed.size() < args.limit )
    {
       const auto& comment = _db.get( itr->comment );
       feed_entry entry;
@@ -150,7 +150,7 @@ DEFINE_API( follow_api_impl, get_feed )
    const auto& feed_idx = _db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
    auto itr = feed_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
 
-   while( itr != feed_idx.end() && itr->activated == 1 && itr->account == args.account && result.feed.size() < args.limit )
+   while( itr != feed_idx.end() && itr->blocked == 0 && itr->account == args.account && result.feed.size() < args.limit )
    {
       const auto& comment = _db.get( itr->comment );
       comment_feed_entry entry;

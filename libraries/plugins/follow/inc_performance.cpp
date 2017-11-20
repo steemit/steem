@@ -9,6 +9,8 @@ class performance_impl
 {
    database& db;
 
+   static uint32_t blocked_counter;
+
    public:
    
       performance_impl( database& _db );
@@ -16,6 +18,12 @@ class performance_impl
 
       void mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const;
 };
+
+/*
+Important!!!
+   At the beginning this value has to be greater than '0', because '0' denotes non blocked( active ) object.
+*/
+uint32_t performance_impl::blocked_counter = 1;
 
 performance_impl::performance_impl( database& _db )
                : db( _db )
@@ -44,27 +52,33 @@ void performance_impl::mark_deleted_feed_objects( const account_name_type& follo
    if( feed_it.size() == 0 )
       return;
 
-   const uint32_t val = next_id - max_feed_size;
+   //std::string dbg_follower_str = std::string( follower );
 
    auto r_it = feed_it.upper_bound( follower );
 
-   auto begin_it = feed_it.end();
-   auto end_it = feed_it.end();
+   auto begin_it = feed_it.begin();
+   auto end_it = feed_it.end();                                                                                                                                
 
    if( r_it == end_it )
       --r_it;
 
-   while( ( r_it->account == follower ) && ( val > r_it->account_feed_id ) )
+   //std::string dbg_account_str = std::string( r_it->account );
+   //uint32_t dbg_size = feed_it.size();
+   //uint32_t dbg_id = r_it->account_feed_id;
+
+   while( ( r_it->account == follower ) && ( r_it->blocked == 0 ) && ( next_id - r_it->account_feed_id > max_feed_size ) )
    {
       db.modify( *r_it, [&]( feed_object& f )
       {
-         f.activated = 0;
+         f.blocked = blocked_counter++;
       });
 
       if( r_it == begin_it )
          break;
 
       --r_it;
+      //dbg_account_str = std::string( r_it->account );
+      //dbg_id = r_it->account_feed_id;
    }
 }
 
