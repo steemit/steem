@@ -66,12 +66,13 @@ void performance_impl::mark_deleted_feed_objects( const account_name_type& follo
    //uint32_t dbg_size = feed_it.size();
    //uint32_t dbg_id = r_it->account_feed_id;
 
-   while( ( r_it->account == follower ) && ( r_it->blocked == 0 ) && ( next_id - r_it->account_feed_id > max_feed_size ) )
+   while( ( r_it->account == follower ) && ( next_id - r_it->account_feed_id > max_feed_size ) )
    {
-      db.modify( *r_it, [&]( feed_object& f )
-      {
-         f.blocked = blocked_counter++;
-      });
+      if( r_it->blocked == 0 )
+         db.modify( *r_it, [&]( feed_object& f )
+         {
+            f.blocked = blocked_counter++;
+         });
 
       if( r_it == begin_it )
          break;
