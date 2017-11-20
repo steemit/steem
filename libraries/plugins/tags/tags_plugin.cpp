@@ -71,7 +71,9 @@ class tags_plugin_impl
       void remove_tag( const tag_object& tag )const;
       const tag_stats_object& get_stats( const string& tag )const;
       comment_metadata filter_tags( const comment_object& c, const comment_content_object& con )const;
-      void update_tag( const tag_object& current, const comment_object& comment, double hot, double trending )const;
+      template <class tag_object_iterator>
+      void update_tag( const tag_object& current, tag_object_iterator* tagIterator, const comment_object& comment,
+         double hot, double trending )const;
       void create_tag( const string& tag, const comment_object& comment, double hot, double trending )const;
       void update_tags( const comment_object& c, bool parse_tags = false )const;
 };
@@ -188,27 +190,39 @@ comment_metadata tags_plugin_impl::filter_tags( const comment_object& c, const c
    return meta;
 }
 
-void tags_plugin_impl::update_tag( const tag_object& current, const comment_object& comment, double hot, double trending )const
+template <class tag_object_iterator>
+void tags_plugin_impl::update_tag( const tag_object& current, tag_object_iterator* tagIt,
+   const comment_object& comment, double hot, double trending )const
 {
-    const auto& stats = get_stats( current.tag );
-    remove_stats( current, stats );
+   const auto& stats = get_stats( current.tag );
+   remove_stats( current, stats );
 
-    if( comment.cashout_time != fc::time_point_sec::maximum() ) {
-       _db.modify( current, [&]( tag_object& obj ) {
-          obj.active            = comment.active;
-          obj.cashout           = _db.calculate_discussion_payout_time( comment );
-          obj.children          = comment.children;
-          obj.net_rshares       = comment.net_rshares.value;
-          obj.net_votes         = comment.net_votes;
-          obj.hot               = hot;
-          obj.trending          = trending;
-          if( obj.cashout == fc::time_point_sec() )
-            obj.promoted_balance = 0;
+   if( comment.cashout_time != fc::time_point_sec::maximum() )
+   {
+      _db.modify( current, [&]( tag_object& obj ) {
+         obj.active            = comment.active;
+         obj.cashout           = _db.calculate_discussion_payout_time( comment );
+         obj.children          = comment.children;
+         obj.net_rshares       = comment.net_rshares.value;
+         obj.net_votes         = comment.net_votes;
+         obj.hot               = hot;
+         obj.trending          = trending;
+         if( obj.cashout == fc::time_point_sec() )
+         obj.promoted_balance = 0;
       });
       add_stats( current, stats );
-    } else {
-       _db.remove( current );
-    }
+      /// If caller requested to manage its iterator, lets move it to next item
+      if(tagIt != nullptr)
+         ++(*tagIt);
+   }
+   else
+   {
+      /// If caller requested to manage its iterator, retrieve the one pointing another item after erase
+      if(tagIt != nullptr)
+         _db.remove<tag_object>(tagIt);
+      else
+         _db.remove(current);
+   }
 }
 
 void tags_plugin_impl::create_tag( const string& tag, const comment_object& comment, double hot, double trending )const
@@ -265,7 +279,7 @@ void tags_plugin_impl::update_tags( const comment_object& c, bool parse_tags )co
    auto hot = calculate_hot( c.net_rshares, c.created );
    auto trending = calculate_trending( c.net_rshares, c.created );
 
-   const auto& comment_idx = _db.get_index< tag_index >().indices().get< by_comment >();
+   const auto& comment_idx = _db.get_index< tag_index, by_comment >();
 
 #ifndef IS_LOW_MEM
    if( parse_tags )
@@ -301,7 +315,7 @@ void tags_plugin_impl::update_tags( const comment_object& c, bool parse_tags )co
          }
          else
          {
-            update_tag( *existing->second, c, hot, trending );
+            update_tag<decltype(citr)>( *existing->second, nullptr, c, hot, trending );
          }
       }
 
@@ -315,8 +329,7 @@ void tags_plugin_impl::update_tags( const comment_object& c, bool parse_tags )co
 
       while( citr != comment_idx.end() && citr->comment == c.id )
       {
-         update_tag( *citr, c, hot, trending );
-         ++citr;
+         update_tag( *citr, &citr, c, hot, trending );
       }
    }
 

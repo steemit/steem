@@ -279,3 +279,28 @@ FC_REFLECT( steem::chain::comment_vote_object,
              (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comment_vote_index )
+
+namespace chainbase
+{
+namespace helpers
+{
+   template <>
+   struct ra_index_container_logging_enabled<steem::chain::comment_object>
+   {
+      //typedef std::true_type type;
+      typedef std::false_type type;
+      enum
+      {
+         value = type::value
+      };
+   };
+
+   template <>
+   struct ra_index_container_logging_dumper<steem::chain::comment_object>
+   {
+      static std::string dump(const steem::chain::comment_object& o);
+   };
+
+} /// namespace helpers
+
+} /// namespace chainbase

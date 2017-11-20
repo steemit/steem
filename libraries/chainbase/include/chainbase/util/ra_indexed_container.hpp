@@ -11,12 +11,19 @@
 #include <boost/multi_index/random_access_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 
+#include <boost/core/demangle.hpp>
+
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+
+#include <boost/mpl/front.hpp>
+#include <boost/mpl/for_each.hpp>
 
 #include <boost/throw_exception.hpp>
 
 #include <cstddef>
+#include <fstream>
+#include <iostream>
 #include <vector>
 
 namespace steem
@@ -39,6 +46,28 @@ namespace chainbase
 
    using steem::chain::by_id;
 
+namespace helpers
+{
+   template <typename T>
+   struct ra_index_container_logging_enabled
+   {
+      typedef std::false_type type;
+      enum
+      {
+         value = type::value
+      };
+   };
+
+   template <typename T>
+   struct ra_index_container_logging_dumper
+   {
+      static std::string dump(const T& v)
+       {
+          return "Unable to dump value";
+       }
+   };
+   
+} /// namespace helpers
 
    namespace detail {
       template <typename Container, typename Tag>
@@ -175,8 +204,9 @@ class ra_indexed_container : protected boost::multi_index::multi_index_container
                                        IndexSpecifierList, Allocator>
 {
 public:
+   typedef ra_indexed_container<Value, IndexSpecifierList, Allocator, ReuseIndices> this_type;
    template <typename Tag>
-   using idx_provider = detail::index_provider< ra_indexed_container<Value, IndexSpecifierList, Allocator, ReuseIndices>, Tag >;
+   using idx_provider = detail::index_provider<this_type, Tag>;
 
    typedef boost::multi_index::multi_index_container<Value, IndexSpecifierList, Allocator> base_class;
    typedef std::vector<typename base_class::const_iterator, Allocator> RandomAccessContainer;   
@@ -240,9 +270,15 @@ public:
    {
       std::size_t idx = id;
       if(idx >= RandomAccessStorage.size())
+      {
+         _log.log_find(nullptr, [&id]() {return std::to_string(id._id);});
          return cend();
+      }
 
-      return RandomAccessStorage[idx];
+      auto foundPos = RandomAccessStorage[idx];
+      const auto& object = *foundPos;
+      _log.log_find(&object, [&id]() {return std::to_string(id._id);});
+      return foundPos;
    }
 
    template <typename Tag>
@@ -299,6 +335,8 @@ public:
          claimNextId(index);
       }
 
+      _log.log_emplace(ii, index, c);
+
       return std::move(ii);
    }
 
@@ -320,21 +358,27 @@ public:
       auto node_ii = base_class::emplace_(constructor, index, this->get_allocator());
       std::pair<iterator, bool> ii = std::make_pair(const_iterator(node_ii.first), node_ii.second);
 
-      if(node_ii.second)
+      if(node_ii.second == false)
       {
-         auto rasSize = RandomAccessStorage.size();
-
-         if(rasSize == index)
-         {
-            RandomAccessStorage.push_back(ii.first);
-         }
-         else
-         {
-            assert(RandomAccessStorage[index] == this->cend() &&
-               "Place must point to previously erased item");
-            RandomAccessStorage[index] = ii.first;
-         }
+         BOOST_THROW_EXCEPTION(std::runtime_error("Cannot emplace object during undo state processing"));
       }
+
+      auto rasSize = RandomAccessStorage.size();
+
+      if(rasSize == index)
+      {
+         RandomAccessStorage.push_back(ii.first);
+      }
+      else
+      {
+         assert(RandomAccessStorage[index] == this->cend() &&
+            "Place must point to previously erased item");
+         RandomAccessStorage[index] = ii.first;
+      }
+
+      auto dummyConstructor = [](value_type&) {};
+
+      _log.log_emplace(ii, index, dummyConstructor);
 
       return std::move(ii);
    }
@@ -345,13 +389,15 @@ public:
       size_t index = getIndex(object);
       if( ReuseIndices )
       {
-         if (index < this->size() - 1)
-            FreeIndices.emplace_back(index);
-
          if(index == RandomAccessStorage.size() - 1)
+         {
             RandomAccessStorage.pop_back();
+         }
          else
+         {
+            FreeIndices.emplace_back(index);
             RandomAccessStorage[index] = this->cend();
+         }
       }
       else
       {
@@ -359,6 +405,8 @@ public:
       }
 
       assert(RandomAccessStorage.size() >= this->size());
+
+      _log.log_erase(position, index);
 
       return base_class::erase(position);
    }
@@ -370,6 +418,8 @@ public:
       RandomAccessStorage.push_back(end());
       LastIndex = 0;
       base_class::clear();
+
+      _log.log_clear();
    }
 
    size_t saveNextId() const
@@ -443,6 +493,131 @@ public:
    idx_provider< by_id > ByIdProvider;
    /// Used only in no-index-reusing mode.
    size_t LastIndex = 0;
+
+struct index_specifier_processor
+   {
+   index_specifier_processor(const this_type& c, const value_type& valueToCheck, std::string& output) :
+      _container(c), _value(valueToCheck), _output(output) {}
+
+   template <typename IdxSpecType>
+   void operator()(const IdxSpecType& idxSpec) const
+      {
+      typedef typename boost::mpl::front<typename IdxSpecType::tag_list_type>::type IndexTag;
+      typedef typename IdxSpecType::key_from_value_type key_from_value_type;
+
+      //std::string tagName = boost::core::demangle(typeid(IndexTag).name());
+      std::string tagName = boost::core::demangle(typeid(IdxSpecType).name());
+
+      const auto& idx = _container.template get<IndexTag>();
+      key_from_value_type kfv;
+      const auto& key = kfv(_value);
+
+      auto ii = idx.find(key);
+      if(ii != idx.end())
+         _output += "Object is present in the index: `" + tagName + "'\n";
+      }
+
+   private:
+      const this_type&  _container;
+      const value_type& _value;
+      std::string&      _output;
+   };
+
+   class logger
+   {
+   public:
+      explicit logger(const this_type* c) : container(c) {}
+
+      void log_find(const value_type* foundItem, std::function<std::string()> keyDump) const
+      {
+         if(helpers::ra_index_container_logging_enabled<value_type>::value == false)
+            return;
+
+         std::string msg = "Lookup for key: `" + keyDump() + " ";
+         if(foundItem != nullptr)
+         {
+            msg += "succeeded. Found object:\n";
+            msg += helpers::ra_index_container_logging_dumper<value_type>::dump(*foundItem);
+         }
+         else
+         {
+            msg += "failed.";
+         }
+
+         msg += '\n';
+         log(msg);
+      }
+
+      template <typename ValueTypeConstructor>
+      void log_emplace(std::pair<iterator, bool>& ii, size_t raIndex,
+         ValueTypeConstructor&& constructor)
+      {
+         if(helpers::ra_index_container_logging_enabled<value_type>::value == false)
+            return;
+
+         std::string msg = "New value emplacement at RA-position: `" +
+            std::to_string(raIndex) + "' ";
+         if(ii.second)
+         {
+            msg += "succeeded. Inserted object:\n";
+            msg += helpers::ra_index_container_logging_dumper<value_type>::dump(*ii.first);
+         }
+         else
+         {
+            msg += "FAILED. Conflicting object:\n";
+            msg += helpers::ra_index_container_logging_dumper<value_type>::dump(*ii.first);
+
+            value_type newObject(constructor, raIndex, container->get_allocator());
+            msg += "\nNew object:\n";
+            msg += helpers::ra_index_container_logging_dumper<value_type>::dump(newObject);
+            msg += "\nNew object conflicts agains old one in the following indices:\n";
+
+            index_specifier_processor processor(*container, newObject, msg);
+            boost::mpl::for_each<index_specifier_type_list>(processor);
+         }
+
+         log(msg);
+      }
+
+      void log_erase(iterator itemIt, size_t raIndex)
+      {
+         if(helpers::ra_index_container_logging_enabled<value_type>::value == false)
+            return;
+         
+         std::string msg("Erasing value stored at RA-position: `");
+         msg += std::to_string(raIndex) + "' pointing to object:\n";
+         msg += helpers::ra_index_container_logging_dumper<value_type>::dump(*itemIt);
+         log(msg);
+      }
+
+      void log_clear()
+      {
+         if(helpers::ra_index_container_logging_enabled<value_type>::value == false)
+            return;
+         log("Container cleared");
+      }
+
+   private:
+      void log(const std::string& text) const
+      {
+         if(dumpStream.is_open() == false)
+         {
+            dumpStream.open("ra_index_container_dump.txt");
+            if(dumpStream.good())
+               out = &dumpStream;
+            else
+               out = &std::cout;
+         }
+         *out << text << std::endl;
+      }
+
+   private:
+      const this_type* container;
+      mutable std::ofstream dumpStream;
+      mutable std::ostream* out = nullptr;
+   };
+   
+   logger _log = logger(this);
 };
 
 /** Helper trait useful to determine if specified boost::multi_index_container has defined

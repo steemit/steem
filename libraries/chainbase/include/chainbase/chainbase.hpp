@@ -202,9 +202,21 @@ namespace chainbase {
             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
          }
 
-         void remove( const value_type& obj ) {
+         void remove( const value_type& obj) {
             on_remove( obj );
             _indices.erase( _indices.iterator_to( obj ) );
+         }
+
+         /** Allows to remove object from index (pointed by iterator) and retrieve its successor.
+          *  Useful inside loops iterating over index being modified.
+          */
+         template <class value_type_iterator>
+         void remove(value_type_iterator* nextIterator)
+         {
+            const value_type& obj = *(*nextIterator);
+            on_remove( obj );
+            auto next = _indices.erase(*nextIterator);
+            *nextIterator = next;
          }
 
          template<typename CompatibleKey>
@@ -492,8 +504,9 @@ namespace chainbase {
          auto insert_result = container.emplace(c);
             
          if( !insert_result.second ) {
-            BOOST_THROW_EXCEPTION( std::logic_error(
-               "could not insert object, most likely a uniqueness constraint was violated") );
+            std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+            BOOST_THROW_EXCEPTION( std::logic_error("could not insert object: `" + type_name +
+               "', most likely a uniqueness constraint was violated\n") );
          }
             
          on_create( *insert_result.first );
@@ -976,8 +989,17 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_WRITE_LOCK("remove", ObjectType);
              typedef typename get_index_type<ObjectType>::type index_type;
-             return get_mutable_index<index_type>().remove( obj );
+             get_mutable_index<index_type>().remove( obj );
          }
+
+         template<typename ObjectType, typename ObjectTypeIterator>
+         void remove( ObjectTypeIterator* iterator )
+         {
+             CHAINBASE_REQUIRE_WRITE_LOCK("remove", ObjectType);
+             typedef typename get_index_type<ObjectType>::type index_type;
+             get_mutable_index<index_type>().remove(iterator);
+         }
+
 
          template<typename ObjectType, typename Constructor>
          const ObjectType& create( Constructor&& con )
