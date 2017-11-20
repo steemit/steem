@@ -160,7 +160,7 @@ void chain_plugin::plugin_startup()
                database_object_sizeof_cntr.emplace_back(idx->get_object_typename(), idx->get_object_sizeof());
          };
 
-         dumper.initialize(get_database_objects_sizeofs);
+         dumper.initialize(get_database_objects_sizeofs, BENCHMARK_FILE_NAME);
          return;
       }
 
@@ -197,7 +197,7 @@ void chain_plugin::plugin_startup()
       if( my->benchmark_interval > 0 )
       {
          steem::utilities::benchmark_dumper::measurement total_data;
-         dumper.dump( BENCHMARK_FILE_NAME, &total_data );
+         dumper.dump( &total_data );
          ilog( "Performance report (total). Blocks: ${b}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
                ("b", total_data.block_number)
                ("rt", total_data.real_ms)
@@ -216,6 +216,7 @@ void chain_plugin::plugin_startup()
    else
    {
       steem::chain::database::TBenchmark benchmark(dump_memory_details, benchmark_lambda);
+     
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
@@ -224,7 +225,7 @@ void chain_plugin::plugin_startup()
          if (dump_memory_details)
          {
             steem::utilities::benchmark_dumper::measurement total_data;
-            dumper.dump( BENCHMARK_FILE_NAME, &total_data );
+            dumper.dump( &total_data );
          }
       }
       catch( const fc::exception& e )
