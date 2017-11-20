@@ -74,8 +74,10 @@ public:
    typedef std::function<void(index_memory_details_cntr_t&)> get_indexes_memory_details_t;
    typedef std::function<void(database_object_sizeof_cntr_t&)> get_database_objects_sizeofs_t;
 
-   void initialize(get_database_objects_sizeofs_t get_database_objects_sizeofs)
+   void initialize(get_database_objects_sizeofs_t get_database_objects_sizeofs,
+                   const char* file_name)
    {
+      _file_name = file_name;
       _init_sys_time = _last_sys_time = fc::time_point::now();
       _init_cpu_time = _last_cpu_time = clock();
       _pid = getpid();
@@ -103,13 +105,15 @@ public:
       _last_sys_time = current_sys_time;
       _last_cpu_time = current_cpu_time;
       _total_blocks = block_number;
+
+      dump();
    
       return _all_data.measurements.back();
    }
 
-   void dump(const char* file_name, measurement* total_measurement = nullptr)
+   void dump(measurement* total_measurement = nullptr)
    {
-      const fc::path path(file_name);
+      const fc::path path(_file_name);
       try
       {
          fc::json::save_to_file(_all_data, path);
@@ -138,6 +142,7 @@ private:
    bool read_mem(pid_t pid, uint64_t* current_virtual, uint64_t* peak_virtual);
 
 private:
+   const char*    _file_name = nullptr;
    fc::time_point _init_sys_time;
    fc::time_point _last_sys_time;
    clock_t        _init_cpu_time = 0;
