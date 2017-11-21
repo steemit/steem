@@ -11,12 +11,17 @@ class performance_impl
 
    static uint32_t blocked_counter;
 
+   boost::signals2::connection reindex_finished;
+
+   void reindex_finished_operation();
+
    public:
    
       performance_impl( database& _db );
       ~performance_impl();
 
       void mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const;
+      void delete_marked_objects() const;
 };
 
 /*
@@ -28,12 +33,18 @@ uint32_t performance_impl::blocked_counter = 1;
 performance_impl::performance_impl( database& _db )
                : db( _db )
 {
-
+   //Temporary disabled.
+   //my->reindex_finished = db.reindex_finished.connect( [&](){ reindex_finished_operation(); } );
 }
 
 performance_impl::~performance_impl()
 {
 
+}
+
+void performance_impl::reindex_finished_operation()
+{
+   delete_marked_objects();
 }
 
 void performance_impl::mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const
@@ -83,6 +94,18 @@ void performance_impl::mark_deleted_feed_objects( const account_name_type& follo
    }
 }
 
+void performance_impl::delete_marked_objects() const
+{
+   const auto& feed_idx = db.get_index< feed_index >().indices().get< by_blocked >();
+   auto itr = feed_idx.upper_bound( 0 );
+
+   while( itr != feed_idx.end() )
+   {
+      db.remove( *itr );
+      itr = feed_idx.upper_bound( 0 );
+   }
+}
+
 performance::performance( database& _db )
          : my( new performance_impl( _db ) )
 {
@@ -98,6 +121,12 @@ void performance::mark_deleted_feed_objects( const account_name_type& follower, 
 {
    FC_ASSERT( my );
    my->mark_deleted_feed_objects( follower, next_id, max_feed_size );
+}
+
+void performance::delete_marked_objects() const
+{
+   FC_ASSERT( my );
+   my->delete_marked_objects();
 }
 
 } } } //steem::follow

@@ -209,8 +209,9 @@ typedef chainbase::shared_multi_index_container<
    >
 > blog_author_stats_index;
 
+struct by_blocked;
+
 struct by_feed;
-struct by_old_feed;
 struct by_account;
 struct by_comment;
 
@@ -218,6 +219,7 @@ typedef multi_index_container<
    feed_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< feed_object, feed_id_type, &feed_object::id > >,
+      ordered_non_unique< tag< by_blocked >, member< feed_object, uint32_t, &feed_object::blocked > >,
       ordered_unique< tag< by_feed >,
          composite_key< feed_object,
             member< feed_object, account_name_type, &feed_object::account >,
