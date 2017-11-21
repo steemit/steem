@@ -196,8 +196,7 @@ void chain_plugin::plugin_startup()
                                           my->stop_replay_at, benchmark );
       if( my->benchmark_interval > 0 )
       {
-         steem::utilities::benchmark_dumper::measurement total_data;
-         dumper.dump( &total_data );
+         const steem::utilities::benchmark_dumper::measurement& total_data = dumper.dump();
          ilog( "Performance report (total). Blocks: ${b}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
                ("b", total_data.block_number)
                ("rt", total_data.real_ms)
@@ -223,10 +222,7 @@ void chain_plugin::plugin_startup()
          my->db.open( db_open_args );
 
          if (dump_memory_details)
-         {
-            steem::utilities::benchmark_dumper::measurement total_data;
-            dumper.dump( &total_data );
-         }
+            dumper.dump();
       }
       catch( const fc::exception& e )
       {

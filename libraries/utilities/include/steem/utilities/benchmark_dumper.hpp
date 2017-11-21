@@ -69,6 +69,7 @@ public:
    {
       database_object_sizeof_cntr_t database_object_sizeofs;
       TMeasurements                 measurements;
+      measurement                   total_measurement;
    };
 
    typedef std::function<void(index_memory_details_cntr_t&)> get_indexes_memory_details_t;
@@ -106,36 +107,31 @@ public:
       _last_cpu_time = current_cpu_time;
       _total_blocks = block_number;
 
+      _all_data.total_measurement.set(_total_blocks,
+         (_last_sys_time - _init_sys_time).count()/1000,
+         int((_last_cpu_time - _init_cpu_time) * 1000 / CLOCKS_PER_SEC),
+         current_virtual,
+         peak_virtual );
+
       dump();
    
       return _all_data.measurements.back();
    }
 
-   void dump(measurement* total_measurement = nullptr)
+   const measurement& dump()
    {
       const fc::path path(_file_name);
       try
       {
          fc::json::save_to_file(_all_data, path);
-      }
+       }
       catch ( const fc::exception& except )
       {
          elog( "error writing benchmark data to file ${filename}: ${error}",
                ( "filename", path )("error", except.to_detail_string() ) );
       }
 
-      if( total_measurement == nullptr )
-         return;
-
-      uint64_t current_virtual = 0;
-      uint64_t peak_virtual = 0;
-      read_mem(_pid, &current_virtual, &peak_virtual);
-   
-      total_measurement->set(_total_blocks,
-         (_last_sys_time - _init_sys_time).count()/1000,
-         int((_last_cpu_time - _init_cpu_time) * 1000 / CLOCKS_PER_SEC),
-         current_virtual,
-         peak_virtual );
+      return _all_data.total_measurement;
    }
 
 private:
@@ -164,4 +160,4 @@ FC_REFLECT( steem::utilities::benchmark_dumper::measurement,
             (block_number)(real_ms)(cpu_ms)(current_mem)(peak_mem)(index_memory_details_cntr) )
 
 FC_REFLECT( steem::utilities::benchmark_dumper::TAllData,
-            (database_object_sizeofs)(measurements) )
+            (database_object_sizeofs)(measurements)(total_measurement) )
