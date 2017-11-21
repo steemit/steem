@@ -43,7 +43,7 @@ int main( int argc, char** argv )
    {
       std::string dev_key_prefix;
       bool need_help = false;
-      if( argc < 2 )
+      if( argc < 3 )
          need_help = true;
       else
       {
@@ -56,8 +56,7 @@ int main( int argc, char** argv )
 
       if( need_help )
       {
-         std::cerr << argc << " " << argv[1]  << "\n";
-         std::cerr << "get-dev-key <secret> <account> ...\n"
+         std::cerr << "get-dev-key <prefix> <suffix> ...\n"
              "\n"
 	     "Takes a secret string and a list of account names, and returns a json formatted\n"
 	     "  list of associated private/public key pairs.\n"
