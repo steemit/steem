@@ -98,7 +98,7 @@ struct pre_operation_visitor
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
 
-         while( itr != feed_idx.end() && itr->blocked == 0 && itr->comment == comment->id )
+         while( itr != feed_idx.end() /*&& itr->blocked == 0*/ && itr->comment == comment->id )
          {
             const auto& old_feed = *itr;
             ++itr;
@@ -189,12 +189,12 @@ struct post_operation_visitor
                   uint32_t next_id = 0;
                   auto last_feed = feed_idx.lower_bound( itr->follower );
 
-                  if( last_feed != feed_idx.end() && last_feed->blocked == 0 && last_feed->account == itr->follower )
+                  if( last_feed != feed_idx.end() /*&& last_feed->blocked == 0*/ && last_feed->account == itr->follower )
                   {
                      next_id = last_feed->account_feed_id + 1;
                   }
 
-                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower, 0/*blocked*/ ) ) == comment_idx.end() )
+                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower/*, 0 blocked*/ ) ) == comment_idx.end() )
                   {
                      db.create< feed_object >( [&]( feed_object& f )
                      {

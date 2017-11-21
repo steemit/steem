@@ -49,61 +49,81 @@ void performance_impl::reindex_finished_operation()
 
 void performance_impl::mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const
 {
-   // const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
-   // auto old_feed = old_feed_idx.lower_bound( follower );
+   const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
 
-   // while( old_feed->account == follower && next_id - old_feed->account_feed_id > max_feed_size )
-   // {
-   //    db.remove( *old_feed );
-   //    old_feed = old_feed_idx.lower_bound( follower );
-   // }
-
-   const auto& feed_it = db.get_index< feed_index >().indices().get< by_feed >();
-
-   if( feed_it.size() == 0 )
+   if( old_feed_idx.empty() )
       return;
 
-   //std::string dbg_follower_str = std::string( follower );
+   auto it_l = old_feed_idx.lower_bound( follower );
+   auto it_u = old_feed_idx.upper_bound( follower );
+   auto it = it_u;
+   auto it_start = it_u;
 
-   auto r_it = feed_it.upper_bound( follower );
+   --it;
 
-   auto begin_it = feed_it.begin();
-   auto end_it = feed_it.end();                                                                                                                                
-
-   if( r_it == end_it )
-      --r_it;
-
-   //std::string dbg_account_str = std::string( r_it->account );
-   //uint32_t dbg_size = feed_it.size();
-   //uint32_t dbg_id = r_it->account_feed_id;
-
-   while( ( r_it->account == follower ) && ( next_id - r_it->account_feed_id > max_feed_size ) )
+   while( it->account == follower && next_id - it->account_feed_id > max_feed_size )
    {
-      if( r_it->blocked == 0 )
-         db.modify( *r_it, [&]( feed_object& f )
-         {
-            f.blocked = blocked_counter++;
-         });
-
-      if( r_it == begin_it )
+      if( it == it_l )
          break;
 
-      --r_it;
-      //dbg_account_str = std::string( r_it->account );
-      //dbg_id = r_it->account_feed_id;
+      --it;
+      --it_start;
    }
+
+   if( it_start != it_u )
+   {
+      if( it_u == old_feed_idx.end() )
+         db.remove_range( *it_start );
+      else
+         db.remove_range( *it_start, *it_u );
+   }
+
+   // const auto& feed_it = db.get_index< feed_index >().indices().get< by_feed >();
+
+   // if( feed_it.size() == 0 )
+   //    return;
+
+   // //std::string dbg_follower_str = std::string( follower );
+
+   // auto r_it = feed_it.upper_bound( follower );
+
+   // auto begin_it = feed_it.begin();
+   // auto end_it = feed_it.end();                                                                                                                                
+
+   // if( r_it == end_it )
+   //    --r_it;
+
+   // //std::string dbg_account_str = std::string( r_it->account );
+   // //uint32_t dbg_size = feed_it.size();
+   // //uint32_t dbg_id = r_it->account_feed_id;
+
+   // while( ( r_it->account == follower ) && ( next_id - r_it->account_feed_id > max_feed_size ) )
+   // {
+   //    if( r_it->blocked == 0 )
+   //       db.modify( *r_it, [&]( feed_object& f )
+   //       {
+   //          f.blocked = blocked_counter++;
+   //       });
+
+   //    if( r_it == begin_it )
+   //       break;
+
+   //    --r_it;
+   //    //dbg_account_str = std::string( r_it->account );
+   //    //dbg_id = r_it->account_feed_id;
+   // }
 }
 
 void performance_impl::delete_marked_objects() const
 {
-   const auto& feed_idx = db.get_index< feed_index >().indices().get< by_blocked >();
-   auto itr = feed_idx.upper_bound( 0 );
+   // const auto& feed_idx = db.get_index< feed_index >().indices().get< by_blocked >();
+   // auto itr = feed_idx.upper_bound( 0 );
 
-   while( itr != feed_idx.end() )
-   {
-      db.remove( *itr );
-      itr = feed_idx.upper_bound( 0 );
-   }
+   // while( itr != feed_idx.end() )
+   // {
+   //    db.remove( *itr );
+   //    itr = feed_idx.upper_bound( 0 );
+   // }
 }
 
 performance::performance( database& _db )

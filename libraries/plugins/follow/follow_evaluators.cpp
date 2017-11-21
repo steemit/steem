@@ -184,12 +184,12 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                uint32_t next_id = 0;
                auto last_feed = feed_idx.lower_bound( itr->follower );
 
-               if( last_feed != feed_idx.end() && last_feed->blocked == 0 && last_feed->account == itr->follower )
+               if( last_feed != feed_idx.end() /*&& last_feed->blocked == 0*/ && last_feed->account == itr->follower )
                {
                   next_id = last_feed->account_feed_id + 1;
                }
 
-               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower, 0/*blocked*/ ) );
+               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower/*, 0 blocked*/ ) );
 
                if( feed_itr == comment_idx.end() )
                {

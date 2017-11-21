@@ -72,7 +72,7 @@ class feed_object : public object< feed_object_type, feed_object >
       comment_id_type                  comment;
       uint32_t                         reblogs;
       uint32_t                         account_feed_id = 0;
-      uint32_t                         blocked = 0;
+      //uint32_t                         blocked = 0;
 };
 
 typedef oid< feed_object > feed_id_type;
@@ -209,7 +209,7 @@ typedef chainbase::shared_multi_index_container<
    >
 > blog_author_stats_index;
 
-struct by_blocked;
+//struct by_blocked;
 
 struct by_feed;
 struct by_account;
@@ -219,22 +219,22 @@ typedef multi_index_container<
    feed_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< feed_object, feed_id_type, &feed_object::id > >,
-      ordered_non_unique< tag< by_blocked >, member< feed_object, uint32_t, &feed_object::blocked > >,
+      //ordered_non_unique< tag< by_blocked >, member< feed_object, uint32_t, &feed_object::blocked > >,
       ordered_unique< tag< by_feed >,
          composite_key< feed_object,
             member< feed_object, account_name_type, &feed_object::account >,
-            member< feed_object, uint32_t, &feed_object::account_feed_id >,
-            member< feed_object, uint32_t, &feed_object::blocked >
+            member< feed_object, uint32_t, &feed_object::account_feed_id >
+            //member< feed_object, uint32_t, &feed_object::blocked >
          >,
-         composite_key_compare< std::less< account_name_type >, std::greater< uint32_t >, std::less< uint32_t > >
+         composite_key_compare< std::less< account_name_type >, std::greater< uint32_t >/*, std::less< uint32_t >*/ >
       >,
       ordered_unique< tag< by_comment >,
          composite_key< feed_object,
             member< feed_object, comment_id_type, &feed_object::comment >,
-            member< feed_object, account_name_type, &feed_object::account >,
-            member< feed_object, uint32_t, &feed_object::blocked >
+            member< feed_object, account_name_type, &feed_object::account >
+            //member< feed_object, uint32_t, &feed_object::blocked >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >, std::less< uint32_t > >
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >/*, std::less< uint32_t >*/ >
       >
    >,
    allocator< feed_object >
@@ -324,7 +324,7 @@ FC_REFLECT_ENUM( steem::plugins::follow::follow_type, (undefined)(blog)(ignore) 
 FC_REFLECT( steem::plugins::follow::follow_object, (id)(follower)(following)(what) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_object, steem::plugins::follow::follow_index )
 
-FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id)(blocked) )
+FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::feed_object, steem::plugins::follow::feed_index )
 
 FC_REFLECT( steem::plugins::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )
