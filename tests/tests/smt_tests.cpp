@@ -23,6 +23,24 @@ using boost::container::flat_set;
 
 BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
+BOOST_AUTO_TEST_CASE( asset_symbol_validate )
+{
+   try
+   {
+      auto check_validate = [&]( const std::string& name, uint8_t decimal_places )
+      {
+         asset_symbol_type sym = name_to_asset_symbol( name, decimal_places );
+         sym.validate();
+      };
+
+      // specific cases in https://github.com/steemit/steem/issues/1738
+      check_validate( "0", 0 );
+      check_validate( "d2", 1 );
+      check_validate( "da1", 1 );
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE( smt_create_validate )
 {
    try
