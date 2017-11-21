@@ -207,6 +207,10 @@ asset_symbol_type database_fixture::name_to_asset_symbol( const std::string& nam
 
    uint32_t h0 = (boost::endian::native_to_big( fc::sha256::hash( name )._hash[0] ) >> 32) & 0x7FFFFFF;
    FC_ASSERT( decimal_places <= STEEM_ASSET_MAX_DECIMALS, "Invalid decimal_places" );
+   while( h0 > SMT_MAX_NAI )
+      h0 -= SMT_MAX_NAI;
+   while( h0 < SMT_MIN_NAI )
+      h0 += SMT_MIN_NAI;
    uint32_t asset_num = (h0 << 5) | 0x10 | decimal_places;
    return asset_symbol_type::from_asset_num( asset_num );
 }
