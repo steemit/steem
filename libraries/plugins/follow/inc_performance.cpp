@@ -56,8 +56,11 @@ void performance_impl::mark_deleted_feed_objects( const account_name_type& follo
 
    auto it_l = old_feed_idx.lower_bound( follower );
    auto it_u = old_feed_idx.upper_bound( follower );
+
+   if( it_l == it_u )
+      return;
+
    auto it = it_u;
-   auto it_start = it_u;
 
    --it;
 
@@ -66,16 +69,9 @@ void performance_impl::mark_deleted_feed_objects( const account_name_type& follo
       if( it == it_l )
          break;
 
+      auto old_itr = it;
       --it;
-      --it_start;
-   }
-
-   if( it_start != it_u )
-   {
-      if( it_u == old_feed_idx.end() )
-         db.remove_range( *it_start );
-      else
-         db.remove_range( *it_start, *it_u );
+      db.remove( *old_itr );
    }
 
    // const auto& feed_it = db.get_index< feed_index >().indices().get< by_feed >();

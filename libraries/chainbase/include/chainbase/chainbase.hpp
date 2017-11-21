@@ -230,26 +230,6 @@ namespace chainbase {
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
-         void remove_range( const value_type& _b, const value_type& _e ) {
-            auto b = _indices.iterator_to( _b );
-            auto e = _indices.iterator_to( _e );
-
-            for( auto it = b; it != e; ++it )
-               on_remove( *it );
-
-            _indices.erase( b, e );
-         }
-
-         void remove_range( const value_type& _b ) {
-            auto b = _indices.iterator_to( _b );
-            auto e = _indices.end();
-
-            for( auto it = b; it != e; ++it )
-               on_remove( *it );
-
-            _indices.erase( b, e );
-         }
-
          template<typename CompatibleKey>
          const value_type* find( CompatibleKey&& key )const {
             auto itr = _indices.find( std::forward<CompatibleKey>(key) );
@@ -930,22 +910,6 @@ namespace chainbase {
              CHAINBASE_REQUIRE_WRITE_LOCK("remove", ObjectType);
              typedef typename get_index_type<ObjectType>::type index_type;
              return get_mutable_index<index_type>().remove( obj );
-         }
-
-         template< typename ObjectType>
-         void remove_range( const ObjectType& obj_b, const ObjectType& obj_e )
-         {
-             CHAINBASE_REQUIRE_WRITE_LOCK("remove", ObjectType);
-             typedef typename get_index_type<ObjectType>::type index_type;
-             get_mutable_index<index_type>().remove_range( obj_b, obj_e );
-         }
-
-         template< typename ObjectType>
-         void remove_range( const ObjectType& obj_b )
-         {
-             CHAINBASE_REQUIRE_WRITE_LOCK("remove", ObjectType);
-             typedef typename get_index_type<ObjectType>::type index_type;
-             get_mutable_index<index_type>().remove_range( obj_b );
          }
 
          template<typename ObjectType, typename Constructor>

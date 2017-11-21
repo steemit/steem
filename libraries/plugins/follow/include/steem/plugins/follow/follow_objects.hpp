@@ -272,19 +272,10 @@ typedef multi_index_container<
    allocator< blog_object >
 > blog_index;
 
-struct by_reputation;
-
 typedef multi_index_container<
    reputation_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< reputation_object, reputation_id_type, &reputation_object::id > >,
-      ordered_unique< tag< by_reputation >,
-         composite_key< reputation_object,
-            member< reputation_object, share_type, &reputation_object::reputation >,
-            member< reputation_object, account_name_type, &reputation_object::account >
-         >,
-         composite_key_compare< std::greater< share_type >, std::less< account_name_type > >
-      >,
       ordered_unique< tag< by_account >, member< reputation_object, account_name_type, &reputation_object::account > >
    >,
    allocator< reputation_object >
