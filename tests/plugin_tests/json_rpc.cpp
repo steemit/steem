@@ -17,11 +17,6 @@ BOOST_AUTO_TEST_CASE( basic_validation )
 {
    try
    {
-      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
-      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
-
-      launch_server( initial_argc, initial_argv );
-
       std::string request;
 
       /*
@@ -141,13 +136,6 @@ BOOST_AUTO_TEST_CASE( syntax_validation )
 {
    try
    {
-      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
-      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
-
-      launch_server( initial_argc, initial_argv );
-
-      fc::usleep( fc::seconds(2) );
-
       std::string request;
 
       request = "";
@@ -214,11 +202,6 @@ BOOST_AUTO_TEST_CASE( misc_validation )
 {
    try
    {
-      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
-      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
-
-      launch_server( initial_argc, initial_argv );
-
       std::string request;
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"a.b.c\", \"params\": [\"a\",\"b\", {} ], \"id\": 1}";
@@ -246,11 +229,6 @@ BOOST_AUTO_TEST_CASE( positive_validation )
 {
    try
    {
-      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
-      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
-
-      launch_server( initial_argc, initial_argv );
-
       std::string request;
 
       request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":1}";
@@ -317,11 +295,6 @@ BOOST_AUTO_TEST_CASE( semantics_validation )
 {
    try
    {
-      int initial_argc = boost::unit_test::framework::master_test_suite().argc;
-      char** initial_argv = boost::unit_test::framework::master_test_suite().argv;
-
-      launch_server( initial_argc, initial_argv );
-
       std::string request;
 
       request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":20 }";
