@@ -269,7 +269,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_feed )
 
    if( start_author.size() || start_permlink.size() )
    {
-      auto start_c = c_idx.find( boost::make_tuple( _db.get_comment( start_author, start_permlink ).id, account.name/*, 0 blocked*/ ) );
+      auto start_c = c_idx.find( boost::make_tuple( _db.get_comment( start_author, start_permlink ).id, account.name ) );
       FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
       feed_itr = f_idx.iterator_to( *start_c );
    }
@@ -277,7 +277,7 @@ DEFINE_API( tags_api_impl, get_discussions_by_feed )
    get_discussions_by_feed_return result;
    result.discussions.reserve( args.limit );
 
-   while( result.discussions.size() < args.limit /*&& feed_itr->blocked == 0*/ && feed_itr != f_idx.end() )
+   while( result.discussions.size() < args.limit && feed_itr != f_idx.end() )
    {
       if( feed_itr->account != account.name )
          break;

@@ -72,7 +72,6 @@ class feed_object : public object< feed_object_type, feed_object >
       comment_id_type                  comment;
       uint32_t                         reblogs;
       uint32_t                         account_feed_id = 0;
-      //uint32_t                         blocked = 0;
 };
 
 typedef oid< feed_object > feed_id_type;
@@ -209,8 +208,6 @@ typedef chainbase::shared_multi_index_container<
    >
 > blog_author_stats_index;
 
-//struct by_blocked;
-
 struct by_feed;
 struct by_account;
 struct by_comment;
@@ -219,22 +216,19 @@ typedef multi_index_container<
    feed_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< feed_object, feed_id_type, &feed_object::id > >,
-      //ordered_non_unique< tag< by_blocked >, member< feed_object, uint32_t, &feed_object::blocked > >,
       ordered_unique< tag< by_feed >,
          composite_key< feed_object,
             member< feed_object, account_name_type, &feed_object::account >,
             member< feed_object, uint32_t, &feed_object::account_feed_id >
-            //member< feed_object, uint32_t, &feed_object::blocked >
          >,
-         composite_key_compare< std::less< account_name_type >, std::greater< uint32_t >/*, std::less< uint32_t >*/ >
+         composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
       >,
       ordered_unique< tag< by_comment >,
          composite_key< feed_object,
             member< feed_object, comment_id_type, &feed_object::comment >,
             member< feed_object, account_name_type, &feed_object::account >
-            //member< feed_object, uint32_t, &feed_object::blocked >
          >,
-         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type >/*, std::less< uint32_t >*/ >
+         composite_key_compare< std::less< comment_id_type >, std::less< account_name_type > >
       >
    >,
    allocator< feed_object >
@@ -281,21 +275,7 @@ typedef multi_index_container<
    follow_count_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< follow_count_object, follow_count_id_type, &follow_count_object::id > >,
-      ordered_unique< tag< by_account >, member< follow_count_object, account_name_type, &follow_count_object::account > >,
-      ordered_unique< tag< by_followers >,
-         composite_key< follow_count_object,
-            member< follow_count_object, uint32_t, &follow_count_object::follower_count >,
-            member< follow_count_object, follow_count_id_type, &follow_count_object::id >
-         >,
-         composite_key_compare< std::greater< uint32_t >, std::less< follow_count_id_type > >
-      >,
-      ordered_unique< tag< by_following >,
-         composite_key< follow_count_object,
-            member< follow_count_object, uint32_t, &follow_count_object::following_count >,
-            member< follow_count_object, follow_count_id_type, &follow_count_object::id >
-         >,
-         composite_key_compare< std::greater< uint32_t >, std::less< follow_count_id_type > >
-      >
+      ordered_unique< tag< by_account >, member< follow_count_object, account_name_type, &follow_count_object::account > >
    >,
    allocator< follow_count_object >
 > follow_count_index;
