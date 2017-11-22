@@ -25,8 +25,8 @@ class performance
       performance( database& _db );
       ~performance();
 
-      void mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const;
-      void delete_marked_objects() const;
+      template< typename MultiContainer, typename Index >
+      void delete_old_objects( const account_name_type& start_account, uint32_t next_id, uint32_t max_size ) const;
 };
 
 } } } //steem::follow

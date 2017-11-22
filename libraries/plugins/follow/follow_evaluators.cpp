@@ -213,7 +213,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   });
                }
 
-               perf.mark_deleted_feed_objects( itr->follower, next_id, _plugin->max_feed_size );
+               perf.delete_old_objects< feed_index, by_feed >( itr->follower, next_id, _plugin->max_feed_size );
             }
 
             ++itr;

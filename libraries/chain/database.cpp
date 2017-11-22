@@ -224,8 +224,6 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
             benchmark.second( last_block_number, false /*is_initial_call*/ );
          }
 
-         notify_reindex_finished();
-
          set_revision( head_block_num() );
          _block_log.set_locking( true );
       });
@@ -918,11 +916,6 @@ void database::clear_pending()
       _pending_tx_session.reset();
    }
    FC_CAPTURE_AND_RETHROW()
-}
-
-void database::notify_reindex_finished()
-{
-   STEEM_TRY_NOTIFY( reindex_finished )
 }
 
 void database::notify_pre_apply_operation( operation_notification& note )

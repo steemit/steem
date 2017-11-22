@@ -203,7 +203,7 @@ struct post_operation_visitor
                         f.account_feed_id = next_id;
                      });
 
-                     perf.mark_deleted_feed_objects( itr->follower, next_id, _plugin._self.max_feed_size );
+                     perf.delete_old_objects< feed_index, by_feed >( itr->follower, next_id, _plugin._self.max_feed_size );
                   }
                }
 
@@ -230,14 +230,7 @@ struct post_operation_visitor
                b.blog_feed_id = next_id;
             });
 
-            const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
-            auto old_blog = old_blog_idx.lower_bound( op.author );
-
-            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin._self.max_feed_size )
-            {
-               db.remove( *old_blog );
-               old_blog = old_blog_idx.lower_bound( op.author );
-            }
+            perf.delete_old_objects< blog_index, by_blog >( op.author, next_id, _plugin._self.max_feed_size );
          }
       }
       FC_LOG_AND_RETHROW()

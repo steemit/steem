@@ -241,7 +241,6 @@ typedef multi_index_container<
 > feed_index;
 
 struct by_blog;
-struct by_old_blog;
 
 typedef multi_index_container<
    blog_object,
@@ -253,13 +252,6 @@ typedef multi_index_container<
             member< blog_object, uint32_t, &blog_object::blog_feed_id >
          >,
          composite_key_compare< std::less< account_name_type >, std::greater< uint32_t > >
-      >,
-      ordered_unique< tag< by_old_blog >,
-         composite_key< blog_object,
-            member< blog_object, account_name_type, &blog_object::account >,
-            member< blog_object, uint32_t, &blog_object::blog_feed_id >
-         >,
-         composite_key_compare< std::less< account_name_type >, std::less< uint32_t > >
       >,
       ordered_unique< tag< by_comment >,
          composite_key< blog_object,

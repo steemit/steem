@@ -203,7 +203,6 @@ namespace steem { namespace chain {
           *  The applied operations are cleared after post_apply_operation.
           */
          void notify_pre_apply_operation( operation_notification& note );
-         void notify_reindex_finished();
          void notify_post_apply_operation( const operation_notification& note );
          inline const void push_virtual_operation( const operation& op, bool force = false ); // vops are not needed for low mem. Force will push them on low mem.
          void notify_applied_block( const signed_block& block );
@@ -216,11 +215,6 @@ namespace steem { namespace chain {
           */
          fc::signal<void(const operation_notification&)> pre_apply_operation;
          fc::signal<void(const operation_notification&)> post_apply_operation;
-
-         /**
-          *  This signal is emitted for plugins when reindexing is finished.
-          */
-         fc::signal<void()> reindex_finished;
 
          /**
           *  This signal is emitted after all operations and virtual operation for a
