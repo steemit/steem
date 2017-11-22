@@ -130,9 +130,8 @@ BOOST_AUTO_TEST_CASE( basic_validation )
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [], \"id\": null}";
       make_request( request, JSON_RPC_INVALID_REQUEST );
 
-      // This test intentionall requires the IDs do not match because the rpc should fail on the id
       request = "{\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": [], \"id\": 5.4}";
-      make_request( request, JSON_RPC_INVALID_REQUEST, false /*check_id*/ );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
       //==============id==============
    }
    FC_LOG_AND_RETHROW()

@@ -279,8 +279,8 @@ struct json_rpc_database_fixture : public database_fixture
       virtual ~json_rpc_database_fixture();
 
       void launch_server( int initial_argc, char** initial_argv );
-      void make_array_request( std::string& request, int64_t code = 0, bool check_id = true, bool is_warning = false, bool is_fail = true );
-      fc::variant make_request( std::string& request, int64_t code = 0, bool check_id = true, bool is_warning = false, bool is_fail = true );
+      void make_array_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
+      fc::variant make_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
       void make_positive_request( std::string& request );
 };
 

@@ -700,7 +700,7 @@ void json_rpc_database_fixture::review_answer( fc::variant& answer, int64_t code
 
    if( is_fail )
    {
-      if( id.valid() && code != JSON_RPC_SERVER_ERROR && code != JSON_RPC_INVALID_PARAMS )
+      if( id.valid() && code != JSON_RPC_INVALID_REQUEST )
       {
          BOOST_REQUIRE( answer.get_object().contains( "id" ) );
          check_id_equal( answer[ "id" ], *id );
@@ -725,7 +725,7 @@ void json_rpc_database_fixture::review_answer( fc::variant& answer, int64_t code
    }
 }
 
-void json_rpc_database_fixture::make_array_request( std::string& request, int64_t code, bool check_id, bool is_warning, bool is_fail )
+void json_rpc_database_fixture::make_array_request( std::string& request, int64_t code, bool is_warning, bool is_fail )
 {
    fc::variant answer = get_answer( request );
    BOOST_REQUIRE( answer.is_array() );
@@ -740,8 +740,7 @@ void json_rpc_database_fixture::make_array_request( std::string& request, int64_
 
       try
       {
-         if( check_id )
-            id = request_array[i][ "id" ];
+         id = request_array[i][ "id" ];
       }
       catch( ... ) {}
 
@@ -749,7 +748,7 @@ void json_rpc_database_fixture::make_array_request( std::string& request, int64_
    }
 }
 
-fc::variant json_rpc_database_fixture::make_request( std::string& request, int64_t code, bool check_id, bool is_warning, bool is_fail )
+fc::variant json_rpc_database_fixture::make_request( std::string& request, int64_t code, bool is_warning, bool is_fail )
 {
    fc::variant answer = get_answer( request );
    BOOST_REQUIRE( answer.is_object() );
@@ -757,7 +756,6 @@ fc::variant json_rpc_database_fixture::make_request( std::string& request, int64
 
    try
    {
-      if( check_id )
       id = fc::json::from_string( request ).get_object()[ "id" ];
    }
    catch( ... ) {}
@@ -769,7 +767,7 @@ fc::variant json_rpc_database_fixture::make_request( std::string& request, int64
 
 void json_rpc_database_fixture::make_positive_request( std::string& request )
 {
-   make_request( request, 0/*code*/, true, false/*is_warning*/, false/*is_fail*/);
+   make_request( request, 0/*code*/, false/*is_warning*/, false/*is_fail*/);
 }
 
 namespace test {
