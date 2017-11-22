@@ -199,7 +199,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          });
       }
 
-      const auto& feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = _db.get_index< feed_index >().indices().get< by_comment >();
       const auto& fast_idx = _db.get_index< fast_follow_index >().indices().get< by_account >();
       auto fast_itr = fast_idx.find( o.account );
@@ -211,37 +210,38 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          {
             if( item.second & ( 1 << blog ) )
             {
-               uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( item.first );
-
-               if( last_feed != feed_idx.end() && last_feed->account == item.first )
-                  next_id = last_feed->account_feed_id + 1;
-
                auto feed_itr = comment_idx.find( boost::make_tuple( c.id, item.first ) );
+               bool is_empty = feed_itr == comment_idx.end();
+               uint32_t feed_id = is_empty ? 0 : feed_itr->account_feed_id;
 
-               if( feed_itr == comment_idx.end() )
+               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( item.first, _plugin->max_feed_size );
+
+               if( is_empty )
                {
-                  _db.create< feed_object >( [&]( feed_object& f )
+                  if( next_id - 0 <= _plugin->max_feed_size )
                   {
-                     f.account = item.first;
-                     f.reblogged_by.push_back( o.account );
-                     f.first_reblogged_by = o.account;
-                     f.first_reblogged_on = _db.head_block_time();
-                     f.comment = c.id;
-                     f.reblogs = 1;
-                     f.account_feed_id = next_id;
-                  });
+                     _db.create< feed_object >( [&]( feed_object& f )
+                     {
+                        f.account = item.first;
+                        f.reblogged_by.push_back( o.account );
+                        f.first_reblogged_by = o.account;
+                        f.first_reblogged_on = _db.head_block_time();
+                        f.comment = c.id;
+                        f.reblogs = 1;
+                        f.account_feed_id = next_id;
+                     });
+                  }
                }
                else
                {
-                  _db.modify( *feed_itr, [&]( feed_object& f )
-                  {
-                     f.reblogged_by.push_back( o.account );
-                     f.reblogs++;
-                  });
+                  if( next_id - feed_id <= _plugin->max_feed_size )
+                     _db.modify( *feed_itr, [&]( feed_object& f )
+                     {
+                        f.reblogged_by.push_back( o.account );
+                        f.reblogs++;
+                     });
                }
 
-               perf.delete_old_objects< feed_index, by_feed >( item.first, next_id, _plugin->max_feed_size );
             }
          }
       }

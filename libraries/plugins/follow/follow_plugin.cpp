@@ -178,8 +178,6 @@ struct post_operation_visitor
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto fast_itr = fast_idx.find( op.author );
 
-         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
-
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
             const t_vector< std::pair< account_name_type, uint16_t > >& _v = fast_itr->followers;
@@ -187,47 +185,41 @@ struct post_operation_visitor
             {
                if( item.second & ( 1 << blog ) )
                {
-                  uint32_t next_id = 0;
-                  auto last_feed = feed_idx.lower_bound( item.first );
-
-                  if( last_feed != feed_idx.end() && last_feed->account == item.first )
-                     next_id = last_feed->account_feed_id + 1;
+                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( item.first, _plugin._self.max_feed_size );
 
                   if( comment_idx.find( boost::make_tuple( c.id, item.first ) ) == comment_idx.end() )
                   {
-                     db.create< feed_object >( [&]( feed_object& f )
+                     if( next_id - 0 <= _plugin._self.max_feed_size )
                      {
-                        f.account = item.first;
-                        f.comment = c.id;
-                        f.account_feed_id = next_id;
-                     });
+                        db.create< feed_object >( [&]( feed_object& f )
+                        {
+                           f.account = item.first;
+                           f.comment = c.id;
+                           f.account_feed_id = next_id;
+                        });
+                     }
                   }
 
-                  perf.delete_old_objects< feed_index, by_feed >( item.first, next_id, _plugin._self.max_feed_size );
                }
             }
          }
 
-         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
-         auto last_blog = blog_idx.lower_bound( op.author );
-         uint32_t next_id = 0;
 
-         if( last_blog != blog_idx.end() && last_blog->account == op.author )
-         {
-            next_id = last_blog->blog_feed_id + 1;
-         }
+         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog >( op.author, _plugin._self.max_feed_size );
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
-            db.create< blog_object >( [&]( blog_object& b)
+            if( next_id - 0 <= _plugin._self.max_feed_size )
             {
-               b.account = op.author;
-               b.comment = c.id;
-               b.blog_feed_id = next_id;
-            });
+               db.create< blog_object >( [&]( blog_object& b)
+               {
+                  b.account = op.author;
+                  b.comment = c.id;
+                  b.blog_feed_id = next_id;
+               });
+            }
 
-            perf.delete_old_objects< blog_index, by_blog >( op.author, next_id, _plugin._self.max_feed_size );
          }
       }
       FC_LOG_AND_RETHROW()

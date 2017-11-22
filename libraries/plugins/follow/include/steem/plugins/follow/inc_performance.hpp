@@ -26,7 +26,7 @@ class performance
       ~performance();
 
       template< typename MultiContainer, typename Index >
-      void delete_old_objects( const account_name_type& start_account, uint32_t next_id, uint32_t max_size ) const;
+      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const;
 };
 
 } } } //steem::follow
