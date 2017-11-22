@@ -166,9 +166,9 @@ namespace detail
 
    void json_rpc_plugin_impl::rpc_jsonrpc( const fc::variant_object& request, json_rpc_response& response )
    {
-      if( request.contains( "jsonrpc" ) && request[ "jsonrpc" ].as_string() == "2.0" )
+      if( request.contains( "jsonrpc" ) && request[ "jsonrpc" ].is_string() && request[ "jsonrpc" ].as_string() == "2.0" )
       {
-         if( request.contains( "method" ) )
+         if( request.contains( "method" ) && request[ "method" ].is_string() )
          {
             try
             {
@@ -231,20 +231,41 @@ namespace detail
          const auto& request = message.get_object();
 
          rpc_id( request, response );
-         if( !response.error.valid() )
-            rpc_jsonrpc( request, response );
+
+         // This second layer try/catch is to isolate errors that occur after parsing the id so that the id is properly returned.
+         try
+         {
+            if( !response.error.valid() )
+               rpc_jsonrpc( request, response );
+         }
+         catch( fc::exception& e )
+         {
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+         }
+         catch( std::exception& e )
+         {
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed", fc::variant( e.what() ) );
+         }
+         catch( ... )
+         {
+            response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed" );
+         }
       }
       catch( fc::parse_error_exception& e )
       {
-         response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+         response.error = json_rpc_error( JSON_RPC_PARSE_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
       }
       catch( fc::bad_cast_exception& e )
       {
-         response.error = json_rpc_error( JSON_RPC_INVALID_PARAMS, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+         response.error = json_rpc_error( JSON_RPC_PARSE_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
       }
       catch( fc::exception& e )
       {
          response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, e.to_string(), fc::variant( *(e.dynamic_copy_exception()) ) );
+      }
+      catch( std::exception& e )
+      {
+         response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed", fc::variant( e.what() ) );
       }
       catch( ... )
       {

@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( basic_validation )
       make_request( request, JSON_RPC_SERVER_ERROR );
 
       request = "[1,2,3]";
-      make_array_request( request, JSON_RPC_INVALID_PARAMS );
+      make_array_request( request, JSON_RPC_PARSE_ERROR );
 
       request = "{\"JSONRPC\": \"2.0\", \"method\": \"call\", \"params\": [], \"id\": 1}";
       make_request( request, JSON_RPC_INVALID_REQUEST );
@@ -68,16 +68,16 @@ BOOST_AUTO_TEST_CASE( basic_validation )
       make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": {}, \"method\": \"call\", \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_INVALID_PARAMS );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": [], \"method\": \"call\", \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_INVALID_PARAMS );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": { \"jsonrpc\":\"2.0\" }, \"method\": \"call\", \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_INVALID_PARAMS );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "\"jsonrpc\" \"2.0\"";
-      make_request( request, JSON_RPC_INVALID_PARAMS );
+      make_request( request, JSON_RPC_PARSE_ERROR );
       //==============jsonrpc==============
 
       //==============method==============
@@ -91,19 +91,19 @@ BOOST_AUTO_TEST_CASE( basic_validation )
       make_request( request, JSON_RPC_PARSE_PARAMS_ERROR );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": 123, \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_PARSE_PARAMS_ERROR );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": false, \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_PARSE_PARAMS_ERROR );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": null, \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_PARSE_PARAMS_ERROR );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": {}, \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_INVALID_PARAMS );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
 
       request = "{\"jsonrpc\": \"2.0\", \"method\": [], \"params\": [], \"id\": 1}";
-      make_request( request, JSON_RPC_INVALID_PARAMS );
+      make_request( request, JSON_RPC_INVALID_REQUEST );
       //==============method==============
 
       //==============params==============
@@ -325,16 +325,16 @@ BOOST_AUTO_TEST_CASE( semantics_validation )
       std::string request;
 
       request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":20 }";
-      make_positive_request_with_id_analysis( request, false/*treat_id_as_string*/ );
+      make_positive_request( request );
 
       request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":\"20\" }";
-      make_positive_request_with_id_analysis( request, true/*treat_id_as_string*/ );
+      make_positive_request( request );
 
       request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":-20 }";
-      make_positive_request_with_id_analysis( request, false/*treat_id_as_string*/ );
+      make_positive_request( request );
 
       request = "{\"jsonrpc\":\"2.0\", \"method\":\"call\", \"params\":[\"database_api\", \"get_dynamic_global_properties\"], \"id\":\"-20\" }";
-      make_positive_request_with_id_analysis( request, true/*treat_id_as_string*/ );
+      make_positive_request( request );
    }
    FC_LOG_AND_RETHROW()
 }
