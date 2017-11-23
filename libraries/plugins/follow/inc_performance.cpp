@@ -107,7 +107,7 @@ uint32_t performance_impl::delete_old_objects( const account_name_type& start_ac
          desc = "remove-";
          desc += get_actual_name( *it );
 
-         performance::dump( desc.c_str(), std::string( it->account ), get_actual_id( *it ) );
+         //performance::dump( desc.c_str(), std::string( it->account ), get_actual_id( *it ) );
          db.remove( *it );
          break;
       }
@@ -118,7 +118,7 @@ uint32_t performance_impl::delete_old_objects( const account_name_type& start_ac
       desc = "remove-";
       desc += get_actual_name( *it );
 
-      performance::dump( desc.c_str(), std::string( old_itr->account ), get_actual_id( *old_itr ) );
+      //performance::dump( desc.c_str(), std::string( old_itr->account ), get_actual_id( *old_itr ) );
       db.remove( *old_itr );
    }
 

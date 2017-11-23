@@ -188,7 +188,7 @@ struct post_operation_visitor
 
                   if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
-                     performance::dump( "create-feed2", std::string( itr->follower ), next_id );
+                     //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
@@ -208,7 +208,7 @@ struct post_operation_visitor
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
-            performance::dump( "create-blog2", std::string( op.author ), next_id );
+            //performance::dump( "create-blog2", std::string( op.author ), next_id );
             db.create< blog_object >( [&]( blog_object& b)
             {
                b.account = op.author;
