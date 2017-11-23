@@ -21,12 +21,14 @@ class account_history_api_impl
 
 DEFINE_API( account_history_api_impl, get_ops_in_block )
 {
+   auto blk = _db.fetch_block_by_number( args.block_num );
+   FC_ASSERT( blk.valid() );
    const auto& idx = _db.get_index< chain::operation_index, chain::by_location >();
    auto itr = idx.lower_bound( args.block_num );
    get_ops_in_block_return result;
    while( itr != idx.end() && itr->block == args.block_num )
    {
-      api_operation_object temp = *itr;
+      api_operation_object temp = api_operation_object( *itr, blk->timestamp );
       if( !args.only_virtual || is_virtual_operation( temp.op ) )
          result.ops.push_back( temp );
       ++itr;
@@ -67,7 +69,11 @@ DEFINE_API( account_history_api_impl, get_account_history )
    get_account_history_return result;
    while( itr != end )
    {
-      result.history[ itr->sequence ] = _db.get( itr->op );
+      const steem::chain::operation_object& op = _db.get( itr->op );
+      auto blk = _db.fetch_block_by_number( op.block );
+      FC_ASSERT( blk.valid() );
+      const steem::protocol::signed_block& block = *blk;
+      result.history[ itr->sequence ] = api_operation_object( op, block.timestamp );
       ++itr;
    }
 
