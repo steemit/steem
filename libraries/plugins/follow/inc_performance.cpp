@@ -5,12 +5,17 @@
  
 namespace steem { namespace plugins{ namespace follow {
 
+std::unique_ptr< dumper > dumper::self;
+
 class performance_impl
 {
    database& db;
 
    template< typename Object >
    uint32_t get_actual_id( const Object& it ) const;
+
+   template< typename Object >
+   const char* get_actual_name( const Object& it ) const;
 
    public:
    
@@ -43,6 +48,18 @@ uint32_t performance_impl::get_actual_id( const blog_object& obj ) const
    return obj.blog_feed_id;
 }
 
+template<>
+const char* performance_impl::get_actual_name( const feed_object& obj ) const
+{
+   return "feed";
+}
+
+template<>
+const char* performance_impl::get_actual_name( const blog_object& obj ) const
+{
+   return "blog";
+}
+
 template< typename MultiContainer, typename Index >
 uint32_t performance_impl::delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const
 {
@@ -63,16 +80,27 @@ uint32_t performance_impl::delete_old_objects( const account_name_type& start_ac
 
    --it;
 
+   std::string desc;
+
    while( it->account == start_account && next_id - get_actual_id( *it ) > max_size )
    {
       if( it == it_l )
       {
+         desc = "remove-";
+         desc += get_actual_name( *it );
+
+         performance::dump( desc.c_str(), std::string( it->account ), get_actual_id( *it ) );
          db.remove( *it );
          break;
       }
 
       auto old_itr = it;
       --it;
+
+      desc = "remove-";
+      desc += get_actual_name( *it );
+
+      performance::dump( desc.c_str(), std::string( old_itr->account ), get_actual_id( *old_itr ) );
       db.remove( *old_itr );
    }
 

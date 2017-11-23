@@ -29,9 +29,6 @@ void follow_evaluator::do_apply( const follow_operation& o )
       const auto& idx = _db.get_index<follow_index>().indices().get< by_follower_following >();
       auto itr = idx.find( boost::make_tuple( o.follower, o.following ) );
 
-      const auto& fast_idx = _db.get_index<fast_follow_index>().indices().get< by_account >();
-      auto fast_itr = fast_idx.find( o.following );
-
       uint16_t what = 0;
       bool is_following = false;
 
@@ -73,33 +70,6 @@ void follow_evaluator::do_apply( const follow_operation& o )
          _db.modify( *itr, [&]( follow_object& obj )
          {
             obj.what = what;
-         });
-      }
-
-      if( fast_itr == fast_idx.end() )
-      {
-         _db.create< fast_follow_object >( [&]( fast_follow_object& obj )
-         {
-            obj.following = o.following;
-            obj.followers.push_back( std::make_pair( o.follower, what ) );
-         });
-      }
-      else
-      {
-         _db.modify( *fast_itr, [&]( fast_follow_object& obj )
-         {
-            auto found = std::find_if( obj.followers.begin(), obj.followers.end(),
-               [&]( const std::pair< account_name_type, uint32_t >& item )
-               {
-                  return item.first == o.follower;
-               }
-            );
-
-            if( found == obj.followers.end() )
-               obj.followers.push_back( std::make_pair( o.follower, what ) );
-            else
-               found->second = what;
-
          });
       }
 
@@ -200,29 +170,29 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       }
 
       const auto& comment_idx = _db.get_index< feed_index >().indices().get< by_comment >();
-      const auto& fast_idx = _db.get_index< fast_follow_index >().indices().get< by_account >();
-      auto fast_itr = fast_idx.find( o.account );
+      const auto& idx = _db.get_index< follow_index >().indices().get< by_following_follower >();
+      auto itr = idx.find( o.account );
 
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
-         const t_vector< std::pair< account_name_type, uint16_t > >& _v = fast_itr->followers;
-         for( auto& item : _v )
+         while( itr != idx.end() && itr->following == o.account )
          {
-            if( item.second & ( 1 << blog ) )
+            if( itr->what & ( 1 << blog ) )
             {
-               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, item.first ) );
+               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
                bool is_empty = feed_itr == comment_idx.end();
                uint32_t feed_id = is_empty ? 0 : feed_itr->account_feed_id;
 
-               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( item.first, _plugin->max_feed_size );
+               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin->max_feed_size );
 
                if( is_empty )
                {
                   if( next_id - 0 <= _plugin->max_feed_size )
                   {
+                     performance::dump( "create-feed1", std::string( itr->follower ), next_id );
                      _db.create< feed_object >( [&]( feed_object& f )
                      {
-                        f.account = item.first;
+                        f.account = itr->follower;
                         f.reblogged_by.push_back( o.account );
                         f.first_reblogged_by = o.account;
                         f.first_reblogged_on = _db.head_block_time();
@@ -234,13 +204,17 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                else
                {
                   if( next_id - feed_id <= _plugin->max_feed_size )
+                  {
+                     performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
                      _db.modify( *feed_itr, [&]( feed_object& f )
                      {
                         f.reblogged_by.push_back( o.account );
                      });
+                  }
                }
 
             }
+            ++itr;
          }
       }
    }

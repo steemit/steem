@@ -174,26 +174,26 @@ struct post_operation_visitor
 
          if( c.created != db.head_block_time() ) return;
 
-         const auto& fast_idx = db.get_index< fast_follow_index >().indices().get< by_account >();
+         const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
-         auto fast_itr = fast_idx.find( op.author );
+         auto itr = idx.find( op.author );
 
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
-            const t_vector< std::pair< account_name_type, uint16_t > >& _v = fast_itr->followers;
-            for( auto& item : _v )
+            while( itr != idx.end() && itr->following == op.author )
             {
-               if( item.second & ( 1 << blog ) )
+               if( itr->what & ( 1 << blog ) )
                {
-                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( item.first, _plugin._self.max_feed_size );
+                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin._self.max_feed_size );
 
-                  if( comment_idx.find( boost::make_tuple( c.id, item.first ) ) == comment_idx.end() )
+                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
                      if( next_id - 0 <= _plugin._self.max_feed_size )
                      {
+                        performance::dump( "create-feed2", std::string( itr->follower ), next_id );
                         db.create< feed_object >( [&]( feed_object& f )
                         {
-                           f.account = item.first;
+                           f.account = itr->follower;
                            f.comment = c.id;
                            f.account_feed_id = next_id;
                         });
@@ -201,6 +201,7 @@ struct post_operation_visitor
                   }
 
                }
+               ++itr;
             }
          }
 
@@ -212,6 +213,7 @@ struct post_operation_visitor
          {
             if( next_id - 0 <= _plugin._self.max_feed_size )
             {
+               performance::dump( "create-blog2", std::string( op.author ), next_id );
                db.create< blog_object >( [&]( blog_object& b)
                {
                   b.account = op.author;
@@ -335,7 +337,6 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
       my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
       add_plugin_index< follow_index            >( my->_db );
-      add_plugin_index< fast_follow_index       >( my->_db );
       add_plugin_index< feed_index              >( my->_db );
       add_plugin_index< blog_index              >( my->_db );
       add_plugin_index< reputation_index        >( my->_db );
