@@ -88,7 +88,6 @@ class feed_object : public object< feed_object_type, feed_object >
       account_name_type                first_reblogged_by;
       time_point_sec                   first_reblogged_on;
       comment_id_type                  comment;
-      uint32_t                         reblogs;
       uint32_t                         account_feed_id = 0;
 };
 
@@ -309,7 +308,7 @@ CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_object, steem::plugins:
 FC_REFLECT( steem::plugins::follow::fast_follow_object, (id)(following)(followers) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::fast_follow_object, steem::plugins::follow::fast_follow_index )
 
-FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(reblogs)(account_feed_id) )
+FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(account_feed_id) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::feed_object, steem::plugins::follow::feed_index )
 
 FC_REFLECT( steem::plugins::follow::blog_object, (id)(account)(comment)(reblogged_on)(blog_feed_id) )

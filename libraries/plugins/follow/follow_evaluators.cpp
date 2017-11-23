@@ -227,7 +227,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                         f.first_reblogged_by = o.account;
                         f.first_reblogged_on = _db.head_block_time();
                         f.comment = c.id;
-                        f.reblogs = 1;
                         f.account_feed_id = next_id;
                      });
                   }
@@ -238,7 +237,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                      _db.modify( *feed_itr, [&]( feed_object& f )
                      {
                         f.reblogged_by.push_back( o.account );
-                        f.reblogs++;
                      });
                }
 
