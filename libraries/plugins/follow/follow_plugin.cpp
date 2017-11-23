@@ -184,7 +184,7 @@ struct post_operation_visitor
             {
                if( itr->what & ( 1 << blog ) )
                {
-                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin._self.max_feed_size );
+                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed, true/*OptimizationEnabled*/ >( itr->follower, _plugin._self.max_feed_size );
 
                   if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
@@ -204,7 +204,7 @@ struct post_operation_visitor
 
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
 
-         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog >( op.author, _plugin._self.max_feed_size );
+         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog, false/*OptimizationEnabled*/ >( op.author, _plugin._self.max_feed_size );
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {

@@ -67,7 +67,7 @@ class performance
       performance( database& _db );
       ~performance();
 
-      template< typename MultiContainer, typename Index >
+      template< typename MultiContainer, typename Index, bool OptimizationEnabled >
       uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const;
 
       template< typename T, typename T2 >
