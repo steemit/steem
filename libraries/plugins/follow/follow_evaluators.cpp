@@ -187,30 +187,24 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
                if( is_empty )
                {
-                  if( next_id - 0 <= _plugin->max_feed_size )
+                  performance::dump( "create-feed1", std::string( itr->follower ), next_id );
+                  _db.create< feed_object >( [&]( feed_object& f )
                   {
-                     performance::dump( "create-feed1", std::string( itr->follower ), next_id );
-                     _db.create< feed_object >( [&]( feed_object& f )
-                     {
-                        f.account = itr->follower;
-                        f.reblogged_by.push_back( o.account );
-                        f.first_reblogged_by = o.account;
-                        f.first_reblogged_on = _db.head_block_time();
-                        f.comment = c.id;
-                        f.account_feed_id = next_id;
-                     });
-                  }
+                     f.account = itr->follower;
+                     f.reblogged_by.push_back( o.account );
+                     f.first_reblogged_by = o.account;
+                     f.first_reblogged_on = _db.head_block_time();
+                     f.comment = c.id;
+                     f.account_feed_id = next_id;
+                  });
                }
                else
                {
-                  if( next_id - feed_id <= _plugin->max_feed_size )
+                  performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
+                  _db.modify( *feed_itr, [&]( feed_object& f )
                   {
-                     performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
-                     _db.modify( *feed_itr, [&]( feed_object& f )
-                     {
-                        f.reblogged_by.push_back( o.account );
-                     });
-                  }
+                     f.reblogged_by.push_back( o.account );
+                  });
                }
 
             }

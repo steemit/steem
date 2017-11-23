@@ -188,16 +188,13 @@ struct post_operation_visitor
 
                   if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
-                     if( next_id - 0 <= _plugin._self.max_feed_size )
+                     performance::dump( "create-feed2", std::string( itr->follower ), next_id );
+                     db.create< feed_object >( [&]( feed_object& f )
                      {
-                        performance::dump( "create-feed2", std::string( itr->follower ), next_id );
-                        db.create< feed_object >( [&]( feed_object& f )
-                        {
-                           f.account = itr->follower;
-                           f.comment = c.id;
-                           f.account_feed_id = next_id;
-                        });
-                     }
+                        f.account = itr->follower;
+                        f.comment = c.id;
+                        f.account_feed_id = next_id;
+                     });
                   }
 
                }
@@ -211,17 +208,13 @@ struct post_operation_visitor
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
-            if( next_id - 0 <= _plugin._self.max_feed_size )
+            performance::dump( "create-blog2", std::string( op.author ), next_id );
+            db.create< blog_object >( [&]( blog_object& b)
             {
-               performance::dump( "create-blog2", std::string( op.author ), next_id );
-               db.create< blog_object >( [&]( blog_object& b)
-               {
-                  b.account = op.author;
-                  b.comment = c.id;
-                  b.blog_feed_id = next_id;
-               });
-            }
-
+               b.account = op.author;
+               b.comment = c.id;
+               b.blog_feed_id = next_id;
+            });
          }
       }
       FC_LOG_AND_RETHROW()
