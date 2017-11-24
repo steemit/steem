@@ -48,8 +48,10 @@ struct pre_operation_visitor
 {
    follow_plugin_impl& _plugin;
 
+   performance perf;
+
    pre_operation_visitor( follow_plugin_impl& plugin )
-      : _plugin( plugin ) {}
+      : _plugin( plugin ), perf( plugin._db ) {}
 
    typedef void result_type;
 
@@ -102,6 +104,7 @@ struct pre_operation_visitor
          {
             const auto& old_feed = *itr;
             ++itr;
+            //performance::dump( "remove-feed2", std::string( old_feed.account ), old_feed.account_feed_id );
             db.remove( old_feed );
          }
 
@@ -112,6 +115,7 @@ struct pre_operation_visitor
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
+            //performance::dump( "remove-blog2", std::string( old_blog.account ), old_blog.blog_feed_id );
             db.remove( old_blog );
          }
       }
@@ -184,7 +188,7 @@ struct post_operation_visitor
             {
                if( itr->what & ( 1 << blog ) )
                {
-                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed, true/*OptimizationEnabled*/ >( itr->follower, _plugin._self.max_feed_size );
+                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin._self.max_feed_size );
 
                   if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
@@ -204,7 +208,7 @@ struct post_operation_visitor
 
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
 
-         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog, false/*OptimizationEnabled*/ >( op.author, _plugin._self.max_feed_size );
+         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog >( op.author, _plugin._self.max_feed_size );
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {

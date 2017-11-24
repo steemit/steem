@@ -9,10 +9,7 @@ std::unique_ptr< dumper > dumper::self;
 
 class performance_impl
 {
-   using t_items = flat_map< account_name_type, uint16_t >;
-
    database& db;
-   static t_items items;
 
    template< typename Object >
    uint32_t get_actual_id( const Object& it ) const;
@@ -25,11 +22,10 @@ class performance_impl
       performance_impl( database& _db );
       ~performance_impl();
 
-      template< typename MultiContainer, typename Index, bool OptimizationEnabled >
+      template< typename MultiContainer, typename Index >
       uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const;
 };
 
-performance_impl::t_items performance_impl::items;
 
 performance_impl::performance_impl( database& _db )
                : db( _db )
@@ -65,26 +61,10 @@ const char* performance_impl::get_actual_name( const blog_object& obj ) const
    return "blog";
 }
 
-template< typename MultiContainer, typename Index, bool OptimizationEnabled >
+template< typename MultiContainer, typename Index >
 uint32_t performance_impl::delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const
 {
    const auto& old_idx = db.get_index< MultiContainer >().indices().get< Index >();
-
-   if( OptimizationEnabled )
-   {
-      auto found = items.find( start_account );
-      if( found == items.end() )
-      {
-         items.emplace( std::make_pair( start_account, 0 ) );
-         return 0;
-      }
-      else
-         if( found->second < max_size )
-            return ++found->second;
-   }
-   else
-      if( old_idx.empty() )
-         return 0;
 
    auto it_l = old_idx.lower_bound( start_account );
    auto it_u = old_idx.upper_bound( start_account );
@@ -136,15 +116,14 @@ performance::~performance()
 
 }
 
-template< typename MultiContainer, typename Index, bool OptimizationEnabled >
+template< typename MultiContainer, typename Index >
 uint32_t performance::delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const
 {
    FC_ASSERT( my );
-   return my->delete_old_objects< MultiContainer, Index, OptimizationEnabled >( start_account, max_size );
+   return my->delete_old_objects< MultiContainer, Index >( start_account, max_size );
 }
 
-template uint32_t performance::delete_old_objects< feed_index, by_feed, true >( const account_name_type& start_account, uint32_t max_size ) const;
-template uint32_t performance::delete_old_objects< blog_index, by_blog, false >( const account_name_type& start_account, uint32_t max_size ) const;
-
+template uint32_t performance::delete_old_objects< feed_index, by_feed >( const account_name_type& start_account, uint32_t max_size ) const;
+template uint32_t performance::delete_old_objects< blog_index, by_blog >( const account_name_type& start_account, uint32_t max_size ) const;
 
 } } } //steem::follow

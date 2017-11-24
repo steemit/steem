@@ -181,9 +181,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
             {
                auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
                bool is_empty = feed_itr == comment_idx.end();
-               uint32_t feed_id = is_empty ? 0 : feed_itr->account_feed_id;
 
-               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed, true/*OptimizationEnabled*/ >( itr->follower, _plugin->max_feed_size );
+               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin->max_feed_size );
 
                if( is_empty )
                {
