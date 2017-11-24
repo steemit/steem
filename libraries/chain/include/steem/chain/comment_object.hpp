@@ -179,7 +179,7 @@ namespace steem { namespace chain {
             >,
             composite_key_compare< std::less< comment_id_type >, std::greater< uint64_t >, std::less< account_id_type > >
          >
-      >
+      >, false
    > comment_vote_index;
 
 
@@ -244,7 +244,7 @@ namespace steem { namespace chain {
             composite_key_compare< std::less< account_name_type >, std::greater< time_point_sec >, std::less< comment_id_type > >
          >
 #endif
-      >
+      >, false
    > comment_index;
 
    struct by_comment;

@@ -1070,7 +1070,9 @@ asset database::create_vesting( const account_object& to_account, asset steem, b
             to.reward_vesting_steem += steem;
          }
          else
+         {
             to.vesting_shares += new_vesting;
+         }
       } );
 
       modify( cprops, [&]( dynamic_global_property_object& props )

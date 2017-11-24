@@ -299,7 +299,7 @@ namespace steem { namespace chain {
                member< limit_order_object, uint32_t, &limit_order_object::orderid >
             >
          >
-      >
+      >, false
    > limit_order_index;
 
    struct by_owner;

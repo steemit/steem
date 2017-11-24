@@ -24,7 +24,7 @@ struct test_object
    }
 
    std::string name;
-   const size_t id;
+   chainbase::oid<test_object> id;
 };
 
 std::ostream &operator<<(std::ostream &os, const test_object &a)
@@ -51,7 +51,7 @@ struct TContainer
       ordered_unique< tag< CompositeOrderedIndex >,
             composite_key< test_object,
                member< test_object, std::string, &test_object::name >,
-               member< test_object, const size_t, &test_object::id >
+               member< test_object, chainbase::oid<test_object>, &test_object::id >
                >
             >
       >,
@@ -73,7 +73,7 @@ void verifyContainer(const TContainer &x)
    std::cout << "Performing dump using direct container:" << std::endl;
    std::copy(x.cbegin(), x.cend(), std::ostream_iterator<TContainerValueType>(std::cout, "\n"));
 
-   const auto &orderedIdx = x.get<OrderedIndex>();
+   const auto &orderedIdx = x.template get<OrderedIndex>();
 
    std::cout << "Performing dump using ordered index:" << std::endl;
    std::copy(orderedIdx.cbegin(), orderedIdx.cend(), std::ostream_iterator<TContainerValueType>(
@@ -83,7 +83,7 @@ void verifyContainer(const TContainer &x)
    for (const auto &a : x)
    {
       auto foundI = orderedIdx.find(a.name);
-      BOOST_REQUIRE(foundI != x.end());
+      BOOST_REQUIRE(foundI != orderedIdx.end());
       std::cout << "Name: `" << a.name << "' points to object: " << *foundI << std::endl;
    }
 
@@ -91,7 +91,7 @@ void verifyContainer(const TContainer &x)
    brokenName += "_broken";
 
    auto foundI = orderedIdx.find(brokenName);
-   BOOST_REQUIRE(foundI == x.end());
+   BOOST_REQUIRE(foundI == orderedIdx.end());
 
    std::vector<size_t> validRandomIds;
    std::transform(x.cbegin(), x.cend(), std::back_inserter(validRandomIds),
@@ -221,7 +221,7 @@ void basic_test()
    auto ii = x.emplace(constructor);
 
    BOOST_REQUIRE(ii.second);                                                           /// Element must be inserted
-   BOOST_REQUIRE(ReuseIndices ? ii.first->id == removedId : ii.first->id > removedId); /// Id shall be reused
+   BOOST_REQUIRE(ReuseIndices ? ii.first->id._id == removedId : ii.first->id._id > removedId); /// Id shall be reused
 
    verifyContainer(x);
 
@@ -233,7 +233,7 @@ void basic_test()
    ii = x.emplace(constructor);
 
    BOOST_REQUIRE(ii.second);                                                           /// Element must be inserted
-   BOOST_REQUIRE(ReuseIndices ? ii.first->id == removedId : ii.first->id > removedId); /// Id shall be reused
+   BOOST_REQUIRE(ReuseIndices ? ii.first->id._id == removedId : ii.first->id._id > removedId); /// Id shall be reused
    
    verifyContainer(x);
 }
