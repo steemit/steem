@@ -72,6 +72,7 @@ struct operation_visitor
             obj.trx_in_block = _note.trx_in_block;
             obj.op_in_trx    = _note.op_in_trx;
             obj.virtual_op   = _note.virtual_op;
+            obj.timestamp    = _db.head_block_time();
             //fc::raw::pack( obj.serialized_op , _note.op);  //call to 'pack' is ambiguous
             auto size = fc::raw::pack_size( _note.op );
             obj.serialized_op.resize( size );
@@ -107,7 +108,7 @@ struct operation_visitor
 
          while( seq_itr->account == item
                && sequence - seq_itr->sequence > 30
-               && now - _db.fetch_block_by_number( _db.get< chain::operation_object >( seq_itr->op ).block )->timestamp > fc::days(30) )
+               && now - _db.get< chain::operation_object >( seq_itr->op ).timestamp > fc::days(30) )
          {
             to_remove.push_back( &(*seq_itr) );
             --seq_itr;

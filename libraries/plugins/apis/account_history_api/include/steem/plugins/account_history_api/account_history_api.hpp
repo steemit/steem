@@ -18,12 +18,12 @@ namespace detail { class account_history_api_impl; }
 struct api_operation_object
 {
    api_operation_object() {}
-   api_operation_object( const steem::chain::operation_object& op_obj, fc::time_point_sec timestamp ) :
+   api_operation_object( const steem::chain::operation_object& op_obj ) :
       trx_id( op_obj.trx_id ),
       block( op_obj.block ),
       trx_in_block( op_obj.trx_in_block ),
       virtual_op( op_obj.virtual_op ),
-      timestamp( timestamp )
+      timestamp( op_obj.timestamp )
    {
       op = fc::raw::unpack< steem::protocol::operation >( op_obj.serialized_op );
    }
