@@ -55,6 +55,31 @@ class dumper
       }
 };
 
+struct performance_data
+{
+   enum class t_creation_type{ full_feed, part_feed, full_blog };
+
+   const account_name_type* account;
+   const time_point_sec* time;
+   const comment_id_type& comment;
+
+   t_creation_type creation_type;
+   bool creation;
+   bool is_empty;
+
+   performance_data( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
+   : account( &_account ), time( &_time ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( _is_empty )
+   {
+
+   }
+
+   performance_data( const comment_id_type& _comment, t_creation_type _creation_type )
+   : account( nullptr ), time( nullptr ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( false )
+   {
+
+   }
+};
+
 class performance
 {
 
@@ -68,7 +93,7 @@ class performance
       ~performance();
 
       template< typename MultiContainer, typename Index >
-      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const;
+      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const;
 
       template< typename T, typename T2 >
       static void dump( const char* message, const T& data, const T2& data2 )

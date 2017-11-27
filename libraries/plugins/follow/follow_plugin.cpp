@@ -188,9 +188,13 @@ struct post_operation_visitor
             {
                if( itr->what & ( 1 << blog ) )
                {
-                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin._self.max_feed_size );
+                  auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+                  bool is_empty = feed_itr == comment_idx.end();
 
-                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
+                  performance_data pd( c.id, performance_data::t_creation_type::part_feed );
+                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin._self.max_feed_size, pd );
+
+                  if( pd.creation && is_empty )
                   {
                      //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
@@ -207,10 +211,13 @@ struct post_operation_visitor
          }
 
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
+         auto blog_itr = comment_blog_idx.find( boost::make_tuple( c.id, op.author ) );
+         bool is_empty = blog_itr == comment_blog_idx.end();
 
-         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog >( op.author, _plugin._self.max_feed_size );
+         performance_data pd( c.id, performance_data::t_creation_type::full_blog );
+         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog >( op.author, _plugin._self.max_feed_size, pd );
 
-         if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
+         if( pd.creation && is_empty )
          {
             //performance::dump( "create-blog2", std::string( op.author ), next_id );
             db.create< blog_object >( [&]( blog_object& b)
