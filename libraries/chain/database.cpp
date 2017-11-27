@@ -4275,4 +4275,27 @@ void database::retally_witness_vote_counts( bool force )
    }
 }
 
+#ifdef STEEM_ENABLE_SMT
+vector< asset_symbol_type > database::get_smt_next_identifier()
+{
+   // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
+   // Although a container of available nais is returned, it contains only one entry for simplicity.
+   // Note that no decimal places argument is required from SMT creator at this stage.
+   // This is because asset_symbol_type's to_string method omits the precision when serializing.
+   // For appropriate use of this method see e.g. smt_database_fixture::create_smt
+   
+   uint8_t decimal_places = 0;
+   FC_ASSERT( _next_available_nai >= SMT_MIN_NAI );
+   FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
+
+   uint32_t asset_num = (_next_available_nai++ << 5) | 0x10 | decimal_places;
+
+   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( asset_num );
+   new_symbol.validate();
+   FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
+
+   return std::move( vector< asset_symbol_type >( 1, new_symbol ) );
+}
+#endif
+
 } } //steem::chain

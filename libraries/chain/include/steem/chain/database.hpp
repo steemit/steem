@@ -422,6 +422,18 @@ namespace steem { namespace chain {
          bool disable_low_mem_warning = true;
 #endif
 
+#ifdef STEEM_ENABLE_SMT
+         ///Smart Media Tokens related methods
+         ///@{
+
+         /**
+          * @return a list of available NAIs.
+         */
+         vector< asset_symbol_type > get_smt_next_identifier();
+
+         ///@}
+#endif         
+
    protected:
          //Mark pop_undo() as protected -- we do not want outside calling pop_undo(); it should call pop_block() instead
          //void pop_undo() { object_database::pop_undo(); }
@@ -488,6 +500,7 @@ namespace steem { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
+         uint32_t                      _next_available_nai = 1;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;

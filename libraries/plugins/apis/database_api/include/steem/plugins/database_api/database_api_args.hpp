@@ -523,6 +523,15 @@ struct verify_account_authority_args
 
 typedef verify_authority_return verify_account_authority_return;
 
+#ifdef STEEM_ENABLE_SMT
+typedef void_type get_smt_next_identifier_args;
+
+struct get_smt_next_identifier_return
+{
+   vector< asset_symbol_type > nais;
+};
+#endif
+
 } } } // steem::database_api
 
 FC_REFLECT_ENUM( steem::plugins::database_api::sort_order_type,
@@ -733,3 +742,8 @@ FC_REFLECT( steem::plugins::database_api::verify_authority_return,
 FC_REFLECT( steem::plugins::database_api::verify_account_authority_args,
    (account)
    (signers) )
+
+#ifdef STEEM_ENABLE_SMT
+FC_REFLECT( steem::plugins::database_api::get_smt_next_identifier_return,
+   (nais) )
+#endif
