@@ -99,12 +99,12 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags, bool do_validate_invariants )
+void database::open( const open_args& args )
 {
    try
    {
       init_schema();
-      chainbase::database::open( shared_mem_dir, chainbase_flags, shared_file_size );
+      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size );
 
       initialize_indexes();
       initialize_evaluators();
@@ -112,10 +112,10 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
       if( !find< dynamic_global_property_object >() )
          with_write_lock( [&]()
          {
-            init_genesis( initial_supply );
+            init_genesis( args.initial_supply );
          });
 
-      _block_log.open( data_dir / "block_log" );
+      _block_log.open( args.data_dir / "block_log" );
 
       auto log_head = _block_log.head();
 
@@ -125,7 +125,7 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
          undo_all();
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
-         if (do_validate_invariants)
+         if (args.do_validate_invariants)
             validate_invariants();
       });
 
@@ -143,25 +143,23 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
          init_hardforks(); // Writes to local state, but reads from db
       });
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
+   FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
-uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size,
-   uint32_t stop_replay_at /*=0*/, TBenchmark benchmark /*=TBenchmark(0, [](uint32_t,bool){;})*/)
+uint32_t database::reindex( const open_args& args )
 {
    try
    {
       uint32_t last_block_number = 0; // result
       ilog( "Reindexing Blockchain" );
-      wipe( data_dir, shared_mem_dir, false );
-      open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size );
+      wipe( args.data_dir, args.shared_mem_dir, false );
+      open( args );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
       STEEM_ASSERT( _block_log.head(), block_log_exception, "No blocks in block log. Cannot reindex an empty chain." );
 
       ilog( "Replaying blocks..." );
-
 
       uint64_t skip_flags =
          skip_witness_signature |
@@ -180,11 +178,11 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          _block_log.set_locking( false );
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
-         if( stop_replay_at > 0 && stop_replay_at < last_block_num )
-            last_block_num = stop_replay_at;
-         if( benchmark.first > 0 )
+         if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
+            last_block_num = args.stop_replay_at;
+         if( args.benchmark.first > 0 )
          {
-            benchmark.second( 0, true /*is_initial_call*/ );
+            args.benchmark.second( 0, true /*is_initial_call*/ );
          }
 
          while( itr.first.block_num() != last_block_num )
@@ -194,18 +192,21 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
-            if( benchmark.first > 0 && cur_block_num % benchmark.first == 0 )
+            if(    (args.benchmark.first > 0)
+                && (cur_block_num % args.benchmark.first == 0) )
             {
-               benchmark.second( cur_block_num, false /*is_initial_call*/ );
+               args.benchmark.second( cur_block_num, false /*is_initial_call*/ );
             }
             itr = _block_log.read_block( itr.second );
          }
 
          apply_block( itr.first, skip_flags );
          last_block_number = itr.first.block_num();
-         if( benchmark.first > 0 && last_block_number % benchmark.first == 0 )
+
+         if(    (args.benchmark.first > 0)
+             && (last_block_number % args.benchmark.first == 0) )
          {
-            benchmark.second( last_block_number, false /*is_initial_call*/ );
+            args.benchmark.second( last_block_number, false /*is_initial_call*/ );
          }
          set_revision( head_block_num() );
          _block_log.set_locking( true );
@@ -219,7 +220,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 
       return last_block_number;
    }
-   FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
+   FC_CAPTURE_AND_RETHROW( (args.data_dir)(args.shared_mem_dir) )
 
 }
 
