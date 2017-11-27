@@ -73,8 +73,8 @@ struct performance_data
 
    }
 
-   performance_data( const comment_id_type& _comment, t_creation_type _creation_type )
-   : account( nullptr ), time( nullptr ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( false )
+   performance_data( const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
+   : account( nullptr ), time( nullptr ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( _is_empty )
    {
 
    }

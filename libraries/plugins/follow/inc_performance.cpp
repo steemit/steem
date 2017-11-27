@@ -70,16 +70,15 @@ const char* performance_impl::get_actual_name( const blog_object& obj ) const
 template<>
 void performance_impl::modify( const feed_object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const
 {
-   //std::string desc = "modify!-";
+   //std::string desc = "MODIFY!-";
    //desc += get_actual_name( obj );
-
-   //performance::dump( desc.c_str(), std::string( start_account ), next_id );
-   //performance::dump( "NOTHING!-", std::string( start_account ), next_id );
-
-   pd.creation = false;
 
    if( pd.creation_type == performance_data::t_creation_type::full_feed )
    {
+      //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
+      //performance::dump( "NEW!-", std::string( start_account ), next_id );
+      pd.creation = false;
+
       db.modify( obj, [&]( feed_object& f )
       {
          f.account = start_account;
@@ -93,6 +92,10 @@ void performance_impl::modify( const feed_object& obj, const account_name_type& 
    }
    else if( pd.creation_type == performance_data::t_creation_type::part_feed )
    {
+      //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
+      //performance::dump( "NEW!-", std::string( start_account ), next_id );
+      pd.creation = false;
+
       db.modify( obj, [&]( feed_object& f )
       {
          f.account = start_account;
@@ -108,16 +111,16 @@ void performance_impl::modify( const feed_object& obj, const account_name_type& 
 template<>
 void performance_impl::modify( const blog_object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const
 {
-   //std::string desc = "modify!-";
+   //std::string desc = "MODIFY!-";
    //desc += get_actual_name( obj );
-
-   //performance::dump( desc.c_str(), std::string( start_account ), next_id );
-   //performance::dump( "NOTHING!-", std::string( start_account ), next_id );
-
-   pd.creation = false;
 
    if( pd.creation_type == performance_data::t_creation_type::full_blog )
    {
+      //performance::dump( desc.c_str(), std::string( start_account ), obj.blog_feed_id );
+      //performance::dump( "NEW!-", std::string( start_account ), next_id );
+
+      pd.creation = false;
+
       db.modify( obj, [&]( blog_object& b )
       {
          b.account = start_account;
@@ -178,14 +181,14 @@ uint32_t performance_impl::delete_old_objects( const account_name_type& start_ac
    {
       if( it == it_l )
       {
-         smart( !_pd.is_empty, is_init, delayed_it, it );
+         smart( _pd.is_empty, is_init, delayed_it, it );
          break;
       }
 
       auto old_itr = it;
       --it;
 
-      smart( !_pd.is_empty, is_init, delayed_it, old_itr );
+      smart( _pd.is_empty, is_init, delayed_it, old_itr );
    }
 
    if( !is_init )
