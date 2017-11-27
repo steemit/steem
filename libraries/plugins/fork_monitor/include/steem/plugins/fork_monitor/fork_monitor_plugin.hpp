@@ -27,7 +27,7 @@ class fork_monitor_plugin : public plugin< fork_monitor_plugin >
       void plugin_startup();
       void plugin_shutdown();
       #ifdef IS_TEST_NET
-      std::map< uint32_t, std::vector< signed_block > > get_orphans();
+      std::map< uint32_t, signed_block > get_map();
       #endif
       std::unique_ptr< detail::fork_monitor_plugin_impl > _my;
 
