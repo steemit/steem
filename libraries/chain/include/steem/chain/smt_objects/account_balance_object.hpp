@@ -7,13 +7,13 @@
 
 namespace steem { namespace chain {
 
-template <enum account_balance_target BalanceTarget, enum object_type ObjectType>
-class account_balance_object : public object< ObjectType, account_balance_object<BalanceTarget, ObjectType> >
+template <enum object_type ObjectType>
+class account_balance_object : public object< ObjectType, account_balance_object<ObjectType> >
 {
    account_balance_object() = delete;
 
 public:
-   typedef account_balance_object<BalanceTarget, ObjectType>   _this_type;
+   typedef account_balance_object<ObjectType>   _this_type;
 
    template <class Constructor, class Allocator>
    account_balance_object(Constructor&&, allocator< Allocator >)
@@ -21,14 +21,14 @@ public:
       c( *this );
    }
 
-   // id_type is actually oid<account_balance_object<BalanceTarget, ObjectType> >
+   // id_type is actually oid<account_balance_object<ObjectType> >
    typename object< ObjectType, _this_type >::id_type id;
    account_name_type                                  owner = "@@@@@";
    asset                                              balance;
 
-   account_balance_target balanceTarget() const
+   bool is_savings_balance() const
    {
-      return BalanceTarget;
+      return ObjectType == account_savings_balance_object_type;
    }
 
    asset_symbol_type get_symbol() const
