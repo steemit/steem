@@ -115,7 +115,7 @@
  * blocks, this will need to be re-evaluated (i.e., can we set the timeout to 500ms
  * and still handle normal network & processing delays without excessive disconnects)
  */
-#define GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT_SECONDS    1
+#define GRAPHENE_NET_ACTIVE_IGNORED_REQUEST_TIMEOUT_SECONDS    6
 
 #define GRAPHENE_NET_FAILED_TERMINATE_TIMEOUT_SECONDS          120
 
