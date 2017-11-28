@@ -15,6 +15,7 @@ namespace steem { namespace chain {
    using steem::protocol::asset;
    using steem::protocol::price;
    using steem::protocol::asset_symbol_type;
+   using chainbase::t_deque;
 
    typedef protocol::fixed_string_16 reward_fund_name_type;
 
@@ -158,15 +159,18 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          feed_history_object( Constructor&& c, allocator< Allocator > a )
-            :price_history( a.get_segment_manager() )
+            :price_history( a )
          {
             c( *this );
          }
 
-         id_type                                   id;
+         id_type           id;
 
-         price                                     current_median_history; ///< the current median of the price history, used as the base for convert operations
-         bip::deque< price, allocator< price > >   price_history; ///< tracks this last week of median_feed one per hour
+         price             current_median_history; ///< the current median of the price history, used as the base for convert operations
+
+         using t_price_history = t_deque< price >;
+
+         t_deque< price >   price_history; ///< tracks this last week of median_feed one per hour
    };
 
 

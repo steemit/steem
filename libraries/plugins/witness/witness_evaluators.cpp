@@ -2,11 +2,15 @@
 #include <steem/plugins/witness/witness_objects.hpp>
 
 #include <steem/chain/database.hpp>
+#include <steem/chain/util/reward.hpp>
 
 namespace steem { namespace plugins { namespace witness {
 
+using steem::chain::util::prof;
+
 void enable_content_editing_evaluator::do_apply( const enable_content_editing_operation& o )
 {
+   prof::instance()->begin( "enable_content_editing_evaluator:" );
    try
    {
       auto edit_lock = _db.find< content_edit_lock_object, by_account >( o.account );
@@ -28,6 +32,7 @@ void enable_content_editing_evaluator::do_apply( const enable_content_editing_op
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
+   prof::instance()->end();
 }
 
 } } } // steem::plugins::witness

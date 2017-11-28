@@ -6,6 +6,7 @@
 #include <boost/interprocess/containers/flat_map.hpp>
 #include <boost/interprocess/containers/deque.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/sync/interprocess_sharable_mutex.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
@@ -19,6 +20,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <boost/throw_exception.hpp>
+
+#include <chainbase/allocators.hpp>
 
 #include <array>
 #include <atomic>
@@ -47,14 +50,6 @@ namespace chainbase {
    using std::unique_ptr;
    using std::vector;
 
-   template<typename T>
-   using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
-
-   typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
-
-   template<typename T>
-   using shared_vector = std::vector<T, allocator<T> >;
-
    struct strcmp_less
    {
       bool operator()( const shared_string& a, const shared_string& b )const
@@ -62,6 +57,7 @@ namespace chainbase {
          return less( a.c_str(), b.c_str() );
       }
 
+#if ENABLE_STD_ALLOCATOR == 0
       bool operator()( const shared_string& a, const std::string& b )const
       {
          return less( a.c_str(), b.c_str() );
@@ -71,6 +67,8 @@ namespace chainbase {
       {
          return less( a.c_str(), b.c_str() );
       }
+#endif
+
       private:
          inline bool less( const char* a, const char* b )const
          {
@@ -133,12 +131,12 @@ namespace chainbase {
 
          template<typename T>
          undo_state( allocator<T> al )
-         :old_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          removed_values( id_value_allocator_type( al.get_segment_manager() ) ),
-          new_ids( id_allocator_type( al.get_segment_manager() ) ){}
+         :old_values( id_value_allocator_type( al ) ),
+          removed_values( id_value_allocator_type( al ) ),
+          new_ids( id_allocator_type( al ) ){}
 
-         typedef boost::interprocess::map< id_type, value_type, std::less<id_type>, id_value_allocator_type >  id_value_type_map;
-         typedef boost::interprocess::set< id_type, std::less<id_type>, id_allocator_type >                    id_type_set;
+         typedef t_map< id_type, value_type, std::less<id_type> >  id_value_type_map;
+         typedef t_set< id_type, std::less<id_type> >                    id_type_set;
 
          id_value_type_map            old_values;
          id_value_type_map            removed_values;
@@ -180,10 +178,12 @@ namespace chainbase {
    class generic_index
    {
       public:
-         typedef bip::managed_mapped_file::segment_manager             segment_manager_type;
+        
          typedef MultiIndexType                                        index_type;
          typedef typename index_type::value_type                       value_type;
-         typedef bip::allocator< generic_index, segment_manager_type > allocator_type;
+
+         typedef allocator< generic_index >                            allocator_type;
+
          typedef undo_state< value_type >                              undo_state_type;
 
          generic_index( allocator<value_type> a )
@@ -521,7 +521,7 @@ namespace chainbase {
             head.new_ids.insert( v.id );
          }
 
-         boost::interprocess::deque< undo_state_type, allocator<undo_state_type> > _stack;
+         t_deque< undo_state_type > _stack;
 
          /**
           *  Each new session increments the revision, a squash will decrement the revision by combining
@@ -768,7 +768,11 @@ namespace chainbase {
              }
 
              index_type* idx_ptr =  nullptr;
+#if ENABLE_STD_ALLOCATOR == 0
              idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+#else
+             idx_ptr = new index_type( index_alloc() );
+#endif
              idx_ptr->validate();
 
              if( type_id >= _index_map.size() )
@@ -779,13 +783,19 @@ namespace chainbase {
              _index_list.push_back( new_index );
          }
 
+#if ENABLE_STD_ALLOCATOR == 0
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
+#endif
 
          size_t get_free_memory()const
          {
+#if ENABLE_STD_ALLOCATOR
+            return 10000000; //temporary !!!!!
+#else
             return _segment->get_segment_manager()->get_free_memory();
+#endif
          }
 
          template<typename MultiIndexType>
@@ -993,10 +1003,11 @@ namespace chainbase {
 
       private:
          read_write_mutex_manager                                    _rw_manager;
+#if ENABLE_STD_ALLOCATOR == 0
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          bip::file_lock                                              _flock;
-
+#endif
          /**
           * This is a sparse list of known indicies kept to accelerate creation of undo sessions
           */
@@ -1015,6 +1026,6 @@ namespace chainbase {
    };
 
    template<typename Object, typename... Args>
-   using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
+   using shared_multi_index_container = boost::multi_index_container<Object,Args..., allocator<Object> >;
 }  // namepsace chainbase
 

@@ -1,6 +1,7 @@
 #include <steem/plugins/follow/follow_plugin.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
 #include <steem/plugins/follow/follow_operations.hpp>
+#include <steem/plugins/follow/inc_performance.hpp>
 
 #include <steem/chain/util/impacted.hpp>
 
@@ -97,7 +98,7 @@ struct pre_operation_visitor
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
 
-         while( itr != feed_idx.end() && itr->comment == comment->id )
+         while( itr != feed_idx.end() && itr->activated == 1 && itr->comment == comment->id )
          {
             const auto& old_feed = *itr;
             ++itr;
@@ -122,8 +123,10 @@ struct post_operation_visitor
 {
    follow_plugin_impl& _plugin;
 
+   performance perf;
+
    post_operation_visitor( follow_plugin_impl& plugin )
-      : _plugin( plugin ) {}
+      : _plugin( plugin ), perf( plugin._db ) {}
 
    typedef void result_type;
 
@@ -186,12 +189,12 @@ struct post_operation_visitor
                   uint32_t next_id = 0;
                   auto last_feed = feed_idx.lower_bound( itr->follower );
 
-                  if( last_feed != feed_idx.end() && last_feed->account == itr->follower )
+                  if( last_feed != feed_idx.end() && last_feed->activated == 1 && last_feed->account == itr->follower )
                   {
                      next_id = last_feed->account_feed_id + 1;
                   }
 
-                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
+                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower, 1/*activated*/ ) ) == comment_idx.end() )
                   {
                      db.create< feed_object >( [&]( feed_object& f )
                      {
@@ -200,14 +203,7 @@ struct post_operation_visitor
                         f.account_feed_id = next_id;
                      });
 
-                     const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
-                     auto old_feed = old_feed_idx.lower_bound( itr->follower );
-
-                     while( old_feed->account == itr->follower && next_id - old_feed->account_feed_id > _plugin._self.max_feed_size )
-                     {
-                        db.remove( *old_feed );
-                        old_feed = old_feed_idx.lower_bound( itr->follower );
-                     }
+                     perf.mark_deleted_feed_objects( itr->follower, next_id, _plugin._self.max_feed_size );
                   }
                }
 

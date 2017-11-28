@@ -15,6 +15,7 @@
 namespace steem { namespace chain {
 
    using steem::protocol::authority;
+   using chainbase::allocator;
 
    class account_object : public object< account_object_type, account_object >
    {
@@ -191,7 +192,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          owner_authority_history_object( Constructor&& c, allocator< Allocator > a )
-            :previous_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
+            :previous_owner_authority( allocator< shared_authority >( a ) )
          {
             c( *this );
          }
@@ -210,7 +211,7 @@ namespace steem { namespace chain {
       public:
          template< typename Constructor, typename Allocator >
          account_recovery_request_object( Constructor&& c, allocator< Allocator > a )
-            :new_owner_authority( shared_authority::allocator_type( a.get_segment_manager() ) )
+            :new_owner_authority( allocator< shared_authority >( a ) )
          {
             c( *this );
          }

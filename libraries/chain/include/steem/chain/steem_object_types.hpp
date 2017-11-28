@@ -13,7 +13,6 @@
 
 namespace steem { namespace chain {
 
-namespace bip = chainbase::bip;
 using namespace boost::multi_index;
 
 using boost::multi_index_container;
@@ -28,11 +27,12 @@ using steem::protocol::chain_id_type;
 using steem::protocol::account_name_type;
 using steem::protocol::share_type;
 
-typedef bip::basic_string< char, std::char_traits< char >, allocator< char > > shared_string;
+using chainbase::shared_string;
+
 inline std::string to_string( const shared_string& str ) { return std::string( str.begin(), str.end() ); }
 inline void from_string( shared_string& out, const string& in ){ out.assign( in.begin(), in.end() ); }
 
-typedef bip::vector< char, allocator< char > > buffer_type;
+using buffer_type = chainbase::t_vector< char >;
 
 struct by_id;
 
@@ -190,9 +190,6 @@ namespace fc
 
    namespace raw
    {
-      namespace bip = chainbase::bip;
-      using chainbase::allocator;
-
       template< typename T > inline void pack( steem::chain::buffer_type& raw, const T& v )
       {
          auto size = pack_size( v );
@@ -201,6 +198,7 @@ namespace fc
          pack( ds, v );
       }
 
+#if ENABLE_STD_ALLOCATOR == 0
       template< typename T > inline void unpack( const steem::chain::buffer_type& raw, T& v )
       {
          datastream< const char* > ds( raw.data(), raw.size() );
@@ -214,6 +212,7 @@ namespace fc
          unpack( ds, v );
          return v;
       }
+#endif
    }
 }
 
@@ -257,7 +256,9 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 #endif
                )
 
-FC_REFLECT_TYPENAME( steem::chain::shared_string )
-FC_REFLECT_TYPENAME( steem::chain::buffer_type )
+#if ENABLE_STD_ALLOCATOR == 0
+   FC_REFLECT_TYPENAME( steem::chain::shared_string )
+   FC_REFLECT_TYPENAME( steem::chain::buffer_type )
+#endif
 
 FC_REFLECT_ENUM( steem::chain::bandwidth_type, (post)(forum)(market) )

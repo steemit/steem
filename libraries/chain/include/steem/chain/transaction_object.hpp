@@ -8,6 +8,7 @@
 namespace steem { namespace chain {
 
    using steem::protocol::signed_transaction;
+   using chainbase::t_vector;
 
    /**
     * The purpose of this object is to enable the detection of duplicate transactions. When a transaction is included
@@ -28,7 +29,9 @@ namespace steem { namespace chain {
 
          id_type              id;
 
-         bip::vector< char, allocator< char > > packed_trx;
+         using t_packed_trx = t_vector< char >;
+
+         t_packed_trx         packed_trx;
          transaction_id_type  trx_id;
          time_point_sec       expiration;
    };
