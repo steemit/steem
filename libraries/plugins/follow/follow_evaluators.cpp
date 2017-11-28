@@ -9,11 +9,8 @@
 
 namespace steem { namespace plugins { namespace follow {
 
-using steem::chain::util::prof;
-
 void follow_evaluator::do_apply( const follow_operation& o )
 {
-   prof::instance()->begin( "follow_evaluator:" );
    try
    {
       static map< string, follow_type > follow_type_map = []()
@@ -120,12 +117,10 @@ void follow_evaluator::do_apply( const follow_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-   prof::instance()->end();
 }
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
-   prof::instance()->begin( "reblog_evaluator:" );
    try
    {
       performance perf( _db );
@@ -222,7 +217,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-   prof::instance()->end();
 }
 
 } } } // steem::follow

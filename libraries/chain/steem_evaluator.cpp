@@ -32,7 +32,6 @@ std::string wstring_to_utf8(const std::wstring& str)
 
 namespace steem { namespace chain {
    using fc::uint128_t;
-   using util::prof;
 
 inline void validate_permlink_0_1( const string& permlink )
 {
@@ -72,8 +71,6 @@ void copy_legacy_chain_properties( chain_properties& dest, const legacy_chain_pr
 
 void witness_update_evaluator::do_apply( const witness_update_operation& o )
 {
-   prof::instance()->begin( "witness_update_evaluator:" );
-
    _db.get_account( o.owner ); // verify owner exists
 
    if ( _db.has_hardfork( STEEM_HARDFORK_0_14__410 ) )
@@ -112,7 +109,6 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
          copy_legacy_chain_properties< false >( w.props, o.props );
       });
    }
-   prof::instance()->end();
 }
 
 void verify_authority_accounts_exist(
@@ -131,7 +127,6 @@ void verify_authority_accounts_exist(
 
 void account_create_evaluator::do_apply( const account_create_operation& o )
 {
-   prof::instance()->begin( "account_create_evaluator:" );
    const auto& creator = _db.get_account( o.creator );
 
    const auto& props = _db.get_dynamic_global_properties();
@@ -194,12 +189,10 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    if( o.fee.amount > 0 )
       _db.create_vesting( new_account, o.fee );
-   prof::instance()->end();
 }
 
 void account_create_with_delegation_evaluator::do_apply( const account_create_with_delegation_operation& o )
 {
-   prof::instance()->begin( "account_create_with_delegation_evaluator:" );
    FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_17__818 ), "Account creation with delegation is not enabled until hardfork 17" );
 
    const auto& creator = _db.get_account( o.creator );
@@ -289,13 +282,11 @@ void account_create_with_delegation_evaluator::do_apply( const account_create_wi
 
    if( o.fee.amount > 0 )
       _db.create_vesting( new_account, o.fee );
-   prof::instance()->end();
 }
 
 
 void account_update_evaluator::do_apply( const account_update_operation& o )
 {
-   prof::instance()->begin( "account_update_evaluator:" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_1 ) ) FC_ASSERT( o.account != STEEM_TEMP_ACCOUNT, "Cannot update temp account." );
 
    if( ( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) ) && o.posting )
@@ -348,8 +339,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
          if( o.posting ) auth.posting = *o.posting;
       });
    }
-
-   prof::instance()->end();
 }
 
 
@@ -358,7 +347,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
  */
 void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
 {
-   prof::instance()->begin( "delete_comment_evaluator:" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
    {
       const auto& auth = _db.get_account( o.author );
@@ -406,7 +394,6 @@ void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
    }
 
    _db.remove( comment );
-   prof::instance()->end();
 }
 
 struct comment_options_extension_visitor
@@ -437,7 +424,6 @@ struct comment_options_extension_visitor
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
-   prof::instance()->begin( "comment_options_evaluator:" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
    {
       const auto& auth = _db.get_account( o.author );
@@ -464,12 +450,11 @@ void comment_options_evaluator::do_apply( const comment_options_operation& o )
    {
       e.visit( comment_options_extension_visitor( comment, _db ) );
    }
-   prof::instance()->end();
 }
 
 void comment_evaluator::do_apply( const comment_operation& o )
 {
-   prof::instance()->begin( "comment_evaluator:" );try {
+   try {
    if( _db.has_hardfork( STEEM_HARDFORK_0_5__55 ) )
       FC_ASSERT( o.title.size() + o.body.size() + o.json_metadata.size(), "Cannot update comment because nothing appears to be changing." );
 
@@ -684,13 +669,10 @@ void comment_evaluator::do_apply( const comment_operation& o )
    } // end EDIT case
 
 } FC_CAPTURE_AND_RETHROW( (o) )
-
-   prof::instance()->end();
 }
 
 void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
 {
-   prof::instance()->begin( "escrow_transfer_evaluator:" );
    try
    {
       const auto& from_account = _db.get_account(o.from);
@@ -727,13 +709,10 @@ void escrow_transfer_evaluator::do_apply( const escrow_transfer_operation& o )
       });
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-
-   prof::instance()->end();
 }
 
 void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
 {
-   prof::instance()->begin( "escrow_approve_evaluator:" );
    try
    {
 
@@ -791,13 +770,10 @@ void escrow_approve_evaluator::do_apply( const escrow_approve_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-
-   prof::instance()->end();
 }
 
 void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
 {
-   prof::instance()->begin( "escrow_dispute_evaluator:" );
    try
    {
       _db.get_account( o.from ); // Verify from account exists
@@ -815,12 +791,10 @@ void escrow_dispute_evaluator::do_apply( const escrow_dispute_operation& o )
       });
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-   prof::instance()->end();
 }
 
 void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
 {
-   prof::instance()->begin( "escrow_release_evaluator:" );
    try
    {
       _db.get_account(o.from); // Verify from account exists
@@ -873,12 +847,10 @@ void escrow_release_evaluator::do_apply( const escrow_release_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-   prof::instance()->end();
 }
 
 void transfer_evaluator::do_apply( const transfer_operation& o )
 {
-   prof::instance()->begin( "transfer_evaluator:" );
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = _db.get_account(o.to);
 
@@ -894,24 +866,20 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
    FC_ASSERT( _db.get_balance( from_account, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
    _db.adjust_balance( from_account, -o.amount );
    _db.adjust_balance( to_account, o.amount );
-   prof::instance()->end();
 }
 
 void transfer_to_vesting_evaluator::do_apply( const transfer_to_vesting_operation& o )
 {
-   prof::instance()->begin( "transfer_to_vesting_evaluator:" );
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = o.to.size() ? _db.get_account(o.to) : from_account;
 
    FC_ASSERT( _db.get_balance( from_account, STEEM_SYMBOL) >= o.amount, "Account does not have sufficient STEEM for transfer." );
    _db.adjust_balance( from_account, -o.amount );
    _db.create_vesting( to_account, o.amount );
-   prof::instance()->end();
 }
 
 void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
 {
-   prof::instance()->begin( "withdraw_vesting_evaluator:" );
    const auto& account = _db.get_account( o.account );
 
    FC_ASSERT( account.vesting_shares >= asset( 0, VESTS_SYMBOL ), "Account does not have sufficient Steem Power for withdraw." );
@@ -963,12 +931,10 @@ void withdraw_vesting_evaluator::do_apply( const withdraw_vesting_operation& o )
          a.withdrawn = 0;
       });
    }
-   prof::instance()->end();
 }
 
 void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_route_operation& o )
 {
-   prof::instance()->begin( "set_withdraw_vesting_route_evaluator:" );
    try
    {
    const auto& from_account = _db.get_account( o.from_account );
@@ -1026,12 +992,10 @@ void set_withdraw_vesting_route_evaluator::do_apply( const set_withdraw_vesting_
    FC_ASSERT( total_percent <= STEEM_100_PERCENT, "More than 100% of vesting withdrawals allocated to destinations." );
    }
    FC_CAPTURE_AND_RETHROW()
-   prof::instance()->end();
 }
 
 void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_operation& o )
 {
-   prof::instance()->begin( "account_witness_proxy_evaluator:" );
    const auto& account = _db.get_account( o.account );
    FC_ASSERT( account.proxy != o.proxy, "Proxy must change." );
 
@@ -1074,13 +1038,11 @@ void account_witness_proxy_evaluator::do_apply( const account_witness_proxy_oper
           a.proxy = o.proxy;
       });
    }
-   prof::instance()->end();
 }
 
 
 void account_witness_vote_evaluator::do_apply( const account_witness_vote_operation& o )
 {
-   prof::instance()->begin( "account_witness_vote_evaluator:" );
    const auto& voter = _db.get_account( o.account );
    FC_ASSERT( voter.proxy.size() == 0, "A proxy is currently set, please clear the proxy before voting for a witness." );
 
@@ -1144,12 +1106,11 @@ void account_witness_vote_evaluator::do_apply( const account_witness_vote_operat
       });
       _db.remove( *itr );
    }
-   prof::instance()->end();
 }
 
 void vote_evaluator::do_apply( const vote_operation& o )
 { 
-   prof::instance()->begin( "vote_evaluator:" );try {
+   try {
    const auto& comment = _db.get_comment( o.author, o.permlink );
    const auto& voter   = _db.get_account( o.voter );
 
@@ -1532,13 +1493,12 @@ void vote_evaluator::do_apply( const vote_operation& o )
    }
 
 } FC_CAPTURE_AND_RETHROW( (o)) 
-   prof::instance()->end();}
+}
 
 void custom_evaluator::do_apply( const custom_operation& o ){}
 
 void custom_json_evaluator::do_apply( const custom_json_operation& o )
 {
-   prof::instance()->begin( "custom_json_evaluator:" );
    database& d = db();
    std::shared_ptr< custom_operation_interpreter > eval = d.get_custom_json_evaluator( o.id );
    if( !eval )
@@ -1557,13 +1517,11 @@ void custom_json_evaluator::do_apply( const custom_json_operation& o )
    {
       elog( "Unexpected exception applying custom json evaluator." );
    }
-   prof::instance()->end();
 }
 
 
 void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
 {
-   prof::instance()->begin( "custom_binary_evaluator:" );
    database& d = db();
    FC_ASSERT( d.has_hardfork( STEEM_HARDFORK_0_14__317 ) );
 
@@ -1584,7 +1542,6 @@ void custom_binary_evaluator::do_apply( const custom_binary_operation& o )
    {
       elog( "Unexpected exception applying custom json evaluator." );
    }
-   prof::instance()->end();
 }
 
 
@@ -1683,16 +1640,13 @@ void pow_apply( database& db, Operation o )
 }
 
 void pow_evaluator::do_apply( const pow_operation& o ) {
-   prof::instance()->begin( "pow_evaluator:" );
    FC_ASSERT( !db().has_hardfork( STEEM_HARDFORK_0_13__256 ), "pow is deprecated. Use pow2 instead" );
    pow_apply( db(), o );
-   prof::instance()->end();
 }
 
 
 void pow2_evaluator::do_apply( const pow2_operation& o )
 {
-   prof::instance()->begin( "pow2_evaluator:" );
    database& db = this->db();
    FC_ASSERT( !db.has_hardfork( STEEM_HARDFORK_0_17__770 ), "mining is now disabled" );
 
@@ -1778,23 +1732,19 @@ void pow2_evaluator::do_apply( const pow2_operation& o )
       const auto& inc_witness = db.get_account( dgp.current_witness );
       db.create_vesting( inc_witness, inc_reward );
    }
-   prof::instance()->end();
 }
 
 void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 {
-   prof::instance()->begin( "feed_publish_evaluator:" );
   const auto& witness = _db.get_witness( o.publisher );
   _db.modify( witness, [&]( witness_object& w ){
       w.sbd_exchange_rate = o.exchange_rate;
       w.last_sbd_exchange_update = _db.head_block_time();
   });
-   prof::instance()->end();
 }
 
 void convert_evaluator::do_apply( const convert_operation& o )
 {
-   prof::instance()->begin( "convert_evaluator:" );
   const auto& owner = _db.get_account( o.owner );
   FC_ASSERT( _db.get_balance( owner, o.amount.symbol ) >= o.amount, "Account does not have sufficient balance for conversion." );
 
@@ -1814,13 +1764,10 @@ void convert_evaluator::do_apply( const convert_operation& o )
       obj.amount          = o.amount;
       obj.conversion_date = _db.head_block_time() + steem_conversion_delay;
   });
-   prof::instance()->end();
-
 }
 
 void limit_order_create_evaluator::do_apply( const limit_order_create_operation& o )
 {
-   prof::instance()->begin( "limit_order_create_evaluator:" );
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    const auto& owner = _db.get_account( o.owner );
@@ -1842,12 +1789,10 @@ void limit_order_create_evaluator::do_apply( const limit_order_create_operation&
    bool filled = _db.apply_order( order );
 
    if( o.fill_or_kill ) FC_ASSERT( filled, "Cancelling order because it was not filled." );
-   prof::instance()->end();
 }
 
 void limit_order_create2_evaluator::do_apply( const limit_order_create2_operation& o )
 {
-   prof::instance()->begin( "limit_order_create2_evaluator:" );
    FC_ASSERT( o.expiration > _db.head_block_time(), "Limit order has to expire after head block time." );
 
    const auto& owner = _db.get_account( o.owner );
@@ -1869,7 +1814,6 @@ void limit_order_create2_evaluator::do_apply( const limit_order_create2_operatio
    bool filled = _db.apply_order( order );
 
    if( o.fill_or_kill ) FC_ASSERT( filled, "Cancelling order because it was not filled." );
-   prof::instance()->end();
 }
 
 void limit_order_cancel_evaluator::do_apply( const limit_order_cancel_operation& o )
@@ -1884,7 +1828,6 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
 
 void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
 {
-   prof::instance()->begin( "challenge_authority_evaluator:" );
    if( _db.has_hardfork( STEEM_HARDFORK_0_14__307 ) ) FC_ASSERT( false, "Challenge authority operation is currently disabled." );
    const auto& challenged = _db.get_account( o.challenged );
    const auto& challenger = _db.get_account( o.challenger );
@@ -1918,12 +1861,10 @@ void challenge_authority_evaluator::do_apply( const challenge_authority_operatio
          a.active_challenged = true;
       });
   }
-   prof::instance()->end();
 }
 
 void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
 {
-   prof::instance()->begin( "prove_authority_evaluator:" );
    const auto& challenged = _db.get_account( o.challenged );
    FC_ASSERT( challenged.owner_challenged || challenged.active_challenged, "Account is not challeneged. No need to prove authority." );
 
@@ -1937,12 +1878,10 @@ void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
          a.last_owner_proved = _db.head_block_time();
       }
    });
-   prof::instance()->end();
 }
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
 {
-   prof::instance()->begin( "request_account_recovery_evaluator:" );
    const auto& account_to_recover = _db.get_account( o.account_to_recover );
 
    if ( account_to_recover.recovery_account.length() )   // Make sure recovery matches expected recovery account
@@ -1997,12 +1936,10 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
          req.expires = _db.head_block_time() + STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD;
       });
    }
-   prof::instance()->end();
 }
 
 void recover_account_evaluator::do_apply( const recover_account_operation& o )
 {
-   prof::instance()->begin( "recover_account_evaluator:" );
    const auto& account = _db.get_account( o.account_to_recover );
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_12 ) )
@@ -2033,12 +1970,10 @@ void recover_account_evaluator::do_apply( const recover_account_operation& o )
    {
       a.last_account_recovery = _db.head_block_time();
    });
-   prof::instance()->end();
 }
 
 void change_recovery_account_evaluator::do_apply( const change_recovery_account_operation& o )
 {
-   prof::instance()->begin( "change_recovery_account_evaluator:" );
    _db.get_account( o.new_recovery_account ); // Simply validate account exists
    const auto& account_to_recover = _db.get_account( o.account_to_recover );
 
@@ -2066,24 +2001,20 @@ void change_recovery_account_evaluator::do_apply( const change_recovery_account_
    {
       _db.remove( *request );
    }
-   prof::instance()->end();
 }
 
 void transfer_to_savings_evaluator::do_apply( const transfer_to_savings_operation& op )
 {
-   prof::instance()->begin( "transfer_to_savings_evaluator:" );
    const auto& from = _db.get_account( op.from );
    const auto& to   = _db.get_account(op.to);
    FC_ASSERT( _db.get_balance( from, op.amount.symbol ) >= op.amount, "Account does not have sufficient funds to transfer to savings." );
 
    _db.adjust_balance( from, -op.amount );
    _db.adjust_savings_balance( to, op.amount );
-   prof::instance()->end();
 }
 
 void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_operation& op )
 {
-   prof::instance()->begin( "transfer_from_savings_evaluator:" );
    const auto& from = _db.get_account( op.from );
    _db.get_account(op.to); // Verify to account exists
 
@@ -2106,12 +2037,10 @@ void transfer_from_savings_evaluator::do_apply( const transfer_from_savings_oper
    {
       a.savings_withdraw_requests++;
    });
-   prof::instance()->end();
 }
 
 void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_from_savings_operation& op )
 {
-   prof::instance()->begin( "cancel_transfer_from_savings_evaluator:" );
    const auto& swo = _db.get_savings_withdraw( op.from, op.request_id );
    _db.adjust_savings_balance( _db.get_account( swo.from ), swo.amount );
    _db.remove( swo );
@@ -2121,12 +2050,10 @@ void cancel_transfer_from_savings_evaluator::do_apply( const cancel_transfer_fro
    {
       a.savings_withdraw_requests--;
    });
-   prof::instance()->end();
 }
 
 void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_operation& o )
 {
-   prof::instance()->begin( "decline_voting_rights_evaluator:" );
    FC_ASSERT( _db.has_hardfork( STEEM_HARDFORK_0_14__324 ) );
 
    const auto& account = _db.get_account( o.account );
@@ -2148,7 +2075,6 @@ void decline_voting_rights_evaluator::do_apply( const decline_voting_rights_oper
       FC_ASSERT( itr != request_idx.end(), "Cannot cancel the request because it does not exist." );
       _db.remove( *itr );
    }
-   prof::instance()->end();
 }
 
 void reset_account_evaluator::do_apply( const reset_account_operation& op )
@@ -2184,7 +2110,6 @@ void set_reset_account_evaluator::do_apply( const set_reset_account_operation& o
 
 void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operation& op )
 {
-   prof::instance()->begin( "claim_reward_balance_evaluator:" );
    const auto& acnt = _db.get_account( op.account );
 
    FC_ASSERT( op.reward_steem <= acnt.reward_steem_balance, "Cannot claim that much STEEM. Claim: ${c} Actual: ${a}",
@@ -2223,12 +2148,10 @@ void claim_reward_balance_evaluator::do_apply( const claim_reward_balance_operat
    });
 
    _db.adjust_proxied_witness_votes( acnt, op.reward_vests.amount );
-   prof::instance()->end();
 }
 
 void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_operation& op )
 {
-   prof::instance()->begin( "delegate_vesting_shares_evaluator:" );
    const auto& delegator = _db.get_account( op.delegator );
    const auto& delegatee = _db.get_account( op.delegatee );
    auto delegation = _db.find< vesting_delegation_object, by_delegation >( boost::make_tuple( op.delegator, op.delegatee ) );
@@ -2326,7 +2249,6 @@ void delegate_vesting_shares_evaluator::do_apply( const delegate_vesting_shares_
          _db.remove( *delegation );
       }
    }
-   prof::instance()->end();
 }
 
 } } // steem::chain
