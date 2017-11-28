@@ -70,7 +70,6 @@ struct performance_data
       unsigned creation : 1;
       bool is_empty     : 1;
       bool allow_modify : 1;
-      t_creation_type creation_type : 2;
    } s;
 
    performance_data()
@@ -78,17 +77,16 @@ struct performance_data
       memset( &s, 0, sizeof( s ) );
    }
 
-   performance_data( const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
+   performance_data( const comment_id_type& _comment, bool _is_empty )
    {
-      init( _comment, _creation_type, _is_empty );
+      init( _comment, _is_empty );
    }
 
-   void init( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty, uint32_t _old_id )
+   void init( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, bool _is_empty, uint32_t _old_id )
    {
       account = &_account;
       time = &_time;
       comment = &_comment;
-      s.creation_type = _creation_type;
       s.creation = true;
       s.is_empty = _is_empty;
 
@@ -96,12 +94,11 @@ struct performance_data
       s.allow_modify = true;
    }
 
-   void init( const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
+   void init( const comment_id_type& _comment, bool _is_empty )
    {
       account = nullptr;
       time = nullptr;
       comment = &_comment;
-      s.creation_type = _creation_type;
       s.creation = true;
       s.is_empty = _is_empty;
 
@@ -123,8 +120,8 @@ class performance
       performance( database& _db );
       ~performance();
 
-      template< typename MultiContainer, typename Index >
-      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+      template< performance_data::t_creation_type CreationType, typename Index >
+      uint32_t delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 
       template< typename T, typename T2 >
       static void dump( const char* message, const T& data, const T2& data2 )
