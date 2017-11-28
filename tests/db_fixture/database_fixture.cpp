@@ -121,7 +121,14 @@ void clean_database_fixture::resize_shared_mem( uint64_t size )
    }
    init_account_pub_key = init_account_priv_key.get_public_key();
 
-   db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, size );
+   {
+      database::open_args args;
+      args.data_dir = data_dir->path();
+      args.shared_mem_dir = args.data_dir;
+      args.initial_supply = INITIAL_TEST_SUPPLY;
+      args.shared_file_size = size;
+      db->open( args );
+   }
 
    boost::program_options::variables_map options;
 
@@ -162,7 +169,12 @@ live_database_fixture::live_database_fixture()
       db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
       BOOST_REQUIRE( db );
 
-      db->open( _chain_dir, _chain_dir );
+      {
+         database::open_args args;
+         args.data_dir = _chain_dir;
+         args.shared_mem_dir = args.data_dir;
+         db->open( args );
+      }
 
       validate_database();
       generate_block();
@@ -224,10 +236,17 @@ string database_fixture::generate_anon_acct_name()
 
 void database_fixture::open_database()
 {
-   if( !data_dir ) {
+   if( !data_dir )
+   {
       data_dir = fc::temp_directory( steem::utilities::temp_directory_path() );
       db->_log_hardforks = false;
-      db->open( data_dir->path(), data_dir->path(), INITIAL_TEST_SUPPLY, 1024 * 1024 * 8 ); // 8 MB file for testing
+
+      database::open_args args;
+      args.data_dir = data_dir->path();
+      args.shared_mem_dir = args.data_dir;
+      args.initial_supply = INITIAL_TEST_SUPPLY;
+      args.shared_file_size = 1024 * 1024 * 8;     // 8MB file for testing
+      db->open(args);
    }
 }
 

@@ -71,6 +71,23 @@ namespace steem { namespace chain {
             skip_block_log              = 1 << 13  ///< used to skip block logging on reindex
          };
 
+         typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
+         typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
+
+         struct open_args
+         {
+            fc::path data_dir;
+            fc::path shared_mem_dir;
+            uint64_t initial_supply = STEEM_INIT_SUPPLY;
+            uint64_t shared_file_size = 0;
+            uint32_t chainbase_flags = 0;
+            bool do_validate_invariants = false;
+
+            // The following fields are only used on reindexing
+            uint32_t stop_replay_at = 0;
+            TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;});
+         };
+
          /**
           * @brief Open a database, creating a new one if necessary
           *
@@ -79,11 +96,8 @@ namespace steem { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-         void open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply = STEEM_INIT_SUPPLY, uint64_t shared_file_size = 0, uint32_t chainbase_flags = 0,
-                    bool do_validate_invariants = false );
+         void open( const open_args& args );
 
-         typedef std::function<void(uint32_t current_block_number, bool is_initial_call)> TBenchmarkMidReport;
-         typedef std::pair<uint32_t, TBenchmarkMidReport> TBenchmark;
          /**
           * @brief Rebuild object graph from block history and open detabase
           *
@@ -92,8 +106,7 @@ namespace steem { namespace chain {
           *
           * @return the last replayed block number.
           */
-          uint32_t reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l),
-                            uint32_t stop_replay_at = 0, TBenchmark benchmark = TBenchmark(0, [](uint32_t,bool){;}) );
+         uint32_t reindex( const open_args& args );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
