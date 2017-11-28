@@ -22,11 +22,17 @@ add_library( steem_chain
              ${HEADERS}
            )
 
+target_link_libraries( steem_chain steem_protocol fc chainbase graphene_schema ${PATCH_MERGE_LIB} )
+
 FIND_LIBRARY(PROFILER_LIB profiler PATHS "${CMAKE_CURRENT_SOURCE_DIR}/steem-gperftools/lib")
 
-MESSAGE(STATUS "Found profiler library: ${PROFILER_LIB}")
+if (PROFILER_LIB)
+   MESSAGE(STATUS "Google perftools profiler library found: ${PROFILER_LIB}")
+   target_link_libraries( steem_chain ${PROFILER_LIB} )
+else()
+   MESSAGE(STATUS "Google perftools not installed - profiler library not found")
+endif()
 
-target_link_libraries( steem_chain steem_protocol fc chainbase graphene_schema ${PROFILER_LIB} ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
