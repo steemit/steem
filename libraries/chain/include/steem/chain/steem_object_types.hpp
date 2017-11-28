@@ -69,7 +69,9 @@ enum object_type
    vesting_delegation_expiration_object_type,
 #ifdef STEEM_ENABLE_SMT
    // SMT objects
-   smt_token_object_type
+   smt_token_object_type,
+   account_regular_balance_object_type,
+   account_savings_balance_object_type
 #endif
 };
 
@@ -105,6 +107,14 @@ class vesting_delegation_expiration_object;
 
 #ifdef STEEM_ENABLE_SMT
 class smt_token_object;
+enum account_balance_target : short
+{
+   REGULAR,
+   SAVINGS
+};
+template <enum account_balance_target BalanceTarget, enum object_type ObjectType> class account_balance_object;
+typedef account_balance_object<REGULAR, account_regular_balance_object_type> account_regular_balance_object;
+typedef account_balance_object<SAVINGS, account_savings_balance_object_type> account_savings_balance_object;    
 #endif
 
 typedef oid< dynamic_global_property_object         > dynamic_global_property_id_type;
@@ -139,6 +149,8 @@ typedef oid< vesting_delegation_expiration_object   > vesting_delegation_expirat
 
 #ifdef STEEM_ENABLE_SMT
 typedef oid< smt_token_object                       > smt_token_id_type;
+typedef oid< account_regular_balance_object         > account_regular_balance_id_type;
+typedef oid< account_savings_balance_object         > account_savings_balance_id_type;
 #endif
 
 enum bandwidth_type
@@ -254,6 +266,8 @@ FC_REFLECT_ENUM( steem::chain::object_type,
 
 #ifdef STEEM_ENABLE_SMT
                  (smt_token_object_type)
+                 (account_regular_balance_object_type)
+                 (account_savings_balance_object_type)
 #endif
                )
 

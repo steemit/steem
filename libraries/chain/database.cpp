@@ -2306,6 +2306,8 @@ void database::initialize_indexes()
    add_core_index< vesting_delegation_expiration_index     >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+   add_core_index< account_regular_balance_index           >(*this);
+   add_core_index< account_savings_balance_index           >(*this);
 #endif
 
    _plugin_index_signal();
