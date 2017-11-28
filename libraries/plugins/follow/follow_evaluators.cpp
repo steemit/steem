@@ -169,7 +169,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          });
       }
 
-      const auto& feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       const auto& comment_idx = _db.get_index< feed_index >().indices().get< by_comment >();
       const auto& idx = _db.get_index< follow_index >().indices().get< by_following_follower >();
       auto itr = idx.find( o.account );
@@ -178,21 +177,16 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       {
          while( itr != idx.end() && itr->following == o.account )
          {
-
             if( itr->what & ( 1 << blog ) )
             {
-               uint32_t next_id = 0;
-               auto last_feed = feed_idx.lower_bound( itr->follower );
+               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin->max_feed_size );
 
-               if( last_feed != feed_idx.end() && last_feed->activated == 1 && last_feed->account == itr->follower )
+               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+               bool is_empty = feed_itr == comment_idx.end();
+
+               if( is_empty )
                {
-                  next_id = last_feed->account_feed_id + 1;
-               }
-
-               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower, 1/*activated*/ ) );
-
-               if( feed_itr == comment_idx.end() )
-               {
+                  //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
                   _db.create< feed_object >( [&]( feed_object& f )
                   {
                      f.account = itr->follower;
@@ -200,22 +194,19 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                      f.first_reblogged_by = o.account;
                      f.first_reblogged_on = _db.head_block_time();
                      f.comment = c.id;
-                     f.reblogs = 1;
                      f.account_feed_id = next_id;
                   });
                }
                else
                {
+                  //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
                   _db.modify( *feed_itr, [&]( feed_object& f )
                   {
                      f.reblogged_by.push_back( o.account );
-                     f.reblogs++;
                   });
                }
 
-               perf.mark_deleted_feed_objects( itr->follower, next_id, _plugin->max_feed_size );
             }
-
             ++itr;
          }
       }

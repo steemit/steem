@@ -5,22 +5,31 @@
  
 namespace steem { namespace plugins{ namespace follow {
 
+std::unique_ptr< dumper > dumper::self;
+
 class performance_impl
 {
    database& db;
+
+   template< typename Object >
+   uint32_t get_actual_id( const Object& it ) const;
+
+   template< typename Object >
+   const char* get_actual_name( const Object& it ) const;
 
    public:
    
       performance_impl( database& _db );
       ~performance_impl();
 
-      void mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const;
+      template< typename MultiContainer, typename Index >
+      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const;
 };
+
 
 performance_impl::performance_impl( database& _db )
                : db( _db )
 {
-
 }
 
 performance_impl::~performance_impl()
@@ -28,44 +37,72 @@ performance_impl::~performance_impl()
 
 }
 
-void performance_impl::mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const
+template<>
+uint32_t performance_impl::get_actual_id( const feed_object& obj ) const
 {
-   // const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_old_feed >();
-   // auto old_feed = old_feed_idx.lower_bound( follower );
+   return obj.account_feed_id;
+}
 
-   // while( old_feed->account == follower && next_id - old_feed->account_feed_id > max_feed_size )
-   // {
-   //    db.remove( *old_feed );
-   //    old_feed = old_feed_idx.lower_bound( follower );
-   // }
+template<>
+uint32_t performance_impl::get_actual_id( const blog_object& obj ) const
+{
+   return obj.blog_feed_id;
+}
 
-   const auto& feed_it = db.get_index< feed_index >().indices().get< by_feed >();
+template<>
+const char* performance_impl::get_actual_name( const feed_object& obj ) const
+{
+   return "feed";
+}
 
-   if( feed_it.size() == 0 )
-      return;
+template<>
+const char* performance_impl::get_actual_name( const blog_object& obj ) const
+{
+   return "blog";
+}
 
-   const uint32_t val = next_id - max_feed_size;
+template< typename MultiContainer, typename Index >
+uint32_t performance_impl::delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const
+{
+   const auto& old_idx = db.get_index< MultiContainer >().indices().get< Index >();
 
-   auto r_it = feed_it.upper_bound( follower );
+   auto it_l = old_idx.lower_bound( start_account );
+   auto it_u = old_idx.upper_bound( start_account );
+ 
+   if( it_l == it_u )
+      return 0;
 
-   auto begin_it = feed_it.end();
-   auto end_it = feed_it.end();
+   uint32_t next_id = get_actual_id( *it_l ) + 1;
 
-   if( r_it == end_it )
-      --r_it;
+   auto it = it_u;
 
-   while( ( r_it->account == follower ) && ( val > r_it->account_feed_id ) )
+   --it;
+
+   std::string desc;
+
+   while( it->account == start_account && next_id - get_actual_id( *it ) > max_size )
    {
-      db.modify( *r_it, [&]( feed_object& f )
+      if( it == it_l )
       {
-         f.activated = 0;
-      });
+         desc = "remove-";
+         desc += get_actual_name( *it );
 
-      if( r_it == begin_it )
+         //performance::dump( desc.c_str(), std::string( it->account ), get_actual_id( *it ) );
+         db.remove( *it );
          break;
+      }
 
-      --r_it;
+      auto old_itr = it;
+      --it;
+
+      desc = "remove-";
+      desc += get_actual_name( *it );
+
+      //performance::dump( desc.c_str(), std::string( old_itr->account ), get_actual_id( *old_itr ) );
+      db.remove( *old_itr );
    }
+
+   return next_id;
 }
 
 performance::performance( database& _db )
@@ -79,10 +116,14 @@ performance::~performance()
 
 }
 
-void performance::mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const
+template< typename MultiContainer, typename Index >
+uint32_t performance::delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const
 {
    FC_ASSERT( my );
-   my->mark_deleted_feed_objects( follower, next_id, max_feed_size );
+   return my->delete_old_objects< MultiContainer, Index >( start_account, max_size );
 }
+
+template uint32_t performance::delete_old_objects< feed_index, by_feed >( const account_name_type& start_account, uint32_t max_size ) const;
+template uint32_t performance::delete_old_objects< blog_index, by_blog >( const account_name_type& start_account, uint32_t max_size ) const;
 
 } } } //steem::follow

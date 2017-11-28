@@ -13,6 +13,48 @@ using steem::protocol::account_name_type;
 
 class performance_impl;
 
+class dumper
+{
+   private:
+      
+      std::ofstream f;
+
+      static std::unique_ptr< dumper > self;
+
+      dumper() :
+#if ENABLE_STD_ALLOCATOR == 1
+      f( "std_dumped_objects.txt" )
+#else
+      f( "bip_dumped_objects.txt" )
+#endif
+      {
+      }
+
+   public:
+
+      ~dumper()
+      {
+         f.flush();
+         f.close();
+      }
+
+      static std::unique_ptr< dumper >& instance()
+      {
+         if( !self )
+            self = std::unique_ptr< dumper >( new dumper() );
+
+         return self;
+      }
+
+      template< typename T, typename T2 >
+      void dump( const char* message, const T& data, const T2& data2 )
+      {
+         static uint64_t counter = 0;
+         f<<counter++<<" "<<message<<" "<<data<<" "<<data2<<"\n";
+         f.flush();
+      }
+};
+
 class performance
 {
 
@@ -25,7 +67,14 @@ class performance
       performance( database& _db );
       ~performance();
 
-      void mark_deleted_feed_objects( const account_name_type& follower, uint32_t next_id, uint32_t max_feed_size ) const;
+      template< typename MultiContainer, typename Index >
+      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size ) const;
+
+      template< typename T, typename T2 >
+      static void dump( const char* message, const T& data, const T2& data2 )
+      {
+         dumper::instance()->dump( message, data, data2 );
+      }
 };
 
 } } } //steem::follow

@@ -230,6 +230,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          {
             benchmark.second( last_block_number, get_abstract_index_cntr() );
          }
+
          set_revision( head_block_num() );
          _block_log.set_locking( true );
       });

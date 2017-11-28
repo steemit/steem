@@ -48,8 +48,10 @@ struct pre_operation_visitor
 {
    follow_plugin_impl& _plugin;
 
+   performance perf;
+
    pre_operation_visitor( follow_plugin_impl& plugin )
-      : _plugin( plugin ) {}
+      : _plugin( plugin ), perf( plugin._db ) {}
 
    typedef void result_type;
 
@@ -98,10 +100,11 @@ struct pre_operation_visitor
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
 
-         while( itr != feed_idx.end() && itr->activated == 1 && itr->comment == comment->id )
+         while( itr != feed_idx.end() && itr->comment == comment->id )
          {
             const auto& old_feed = *itr;
             ++itr;
+            //performance::dump( "remove-feed2", std::string( old_feed.account ), old_feed.account_feed_id );
             db.remove( old_feed );
          }
 
@@ -112,6 +115,7 @@ struct pre_operation_visitor
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
+            //performance::dump( "remove-blog2", std::string( old_blog.account ), old_blog.blog_feed_id );
             db.remove( old_blog );
          }
       }
@@ -178,66 +182,43 @@ struct post_operation_visitor
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = idx.find( op.author );
 
-         const auto& feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
-
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
             while( itr != idx.end() && itr->following == op.author )
             {
                if( itr->what & ( 1 << blog ) )
                {
-                  uint32_t next_id = 0;
-                  auto last_feed = feed_idx.lower_bound( itr->follower );
+                  uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin._self.max_feed_size );
 
-                  if( last_feed != feed_idx.end() && last_feed->activated == 1 && last_feed->account == itr->follower )
+                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower ) ) == comment_idx.end() )
                   {
-                     next_id = last_feed->account_feed_id + 1;
-                  }
-
-                  if( comment_idx.find( boost::make_tuple( c.id, itr->follower, 1/*activated*/ ) ) == comment_idx.end() )
-                  {
+                     //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
                         f.comment = c.id;
                         f.account_feed_id = next_id;
                      });
-
-                     perf.mark_deleted_feed_objects( itr->follower, next_id, _plugin._self.max_feed_size );
                   }
-               }
 
+               }
                ++itr;
             }
          }
 
-         const auto& blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
-         auto last_blog = blog_idx.lower_bound( op.author );
-         uint32_t next_id = 0;
 
-         if( last_blog != blog_idx.end() && last_blog->account == op.author )
-         {
-            next_id = last_blog->blog_feed_id + 1;
-         }
+         uint32_t next_id = perf.delete_old_objects< blog_index, by_blog >( op.author, _plugin._self.max_feed_size );
 
          if( comment_blog_idx.find( boost::make_tuple( c.id, op.author ) ) == comment_blog_idx.end() )
          {
+            //performance::dump( "create-blog2", std::string( op.author ), next_id );
             db.create< blog_object >( [&]( blog_object& b)
             {
                b.account = op.author;
                b.comment = c.id;
                b.blog_feed_id = next_id;
             });
-
-            const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_old_blog >();
-            auto old_blog = old_blog_idx.lower_bound( op.author );
-
-            while( old_blog->account == op.author && next_id - old_blog->blog_feed_id > _plugin._self.max_feed_size )
-            {
-               db.remove( *old_blog );
-               old_blog = old_blog_idx.lower_bound( op.author );
-            }
          }
       }
       FC_LOG_AND_RETHROW()
