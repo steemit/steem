@@ -67,8 +67,11 @@ struct performance_data
    bool creation;
    bool is_empty;
 
-   performance_data( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
-   : account( &_account ), time( &_time ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( _is_empty )
+   uint32_t old_id = 0;
+   bool allow_modify = true;
+
+   performance_data( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty, uint32_t _old_id )
+   : account( &_account ), time( &_time ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( _is_empty ), old_id( _old_id )
    {
 
    }
@@ -93,7 +96,7 @@ class performance
       ~performance();
 
       template< typename MultiContainer, typename Index >
-      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const;
+      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 
       template< typename T, typename T2 >
       static void dump( const char* message, const T& data, const T2& data2 )

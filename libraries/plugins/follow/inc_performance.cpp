@@ -21,7 +21,10 @@ class performance_impl
    void modify( const Object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const;
 
    template< typename Iterator >
-   void smart( bool is_delayed, bool& init, Iterator& delayed, Iterator& actual ) const;
+   void skip_modify( Iterator& actual, performance_data& pd ) const;
+
+   template< typename Iterator >
+   void smart( bool is_delayed, bool& init, Iterator& delayed, Iterator& actual, performance_data& pd ) const;
 
    public:
    
@@ -29,7 +32,7 @@ class performance_impl
       ~performance_impl();
 
       template< typename MultiContainer, typename Index >
-      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const;
+      uint32_t delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 };
 
 
@@ -132,7 +135,23 @@ void performance_impl::modify( const blog_object& obj, const account_name_type& 
 }
 
 template< typename Iterator >
-void performance_impl::smart( bool is_delayed, bool& init, Iterator& delayed, Iterator& actual ) const
+void performance_impl::skip_modify( Iterator& actual, performance_data& pd ) const
+{
+   if( pd.creation_type == performance_data::t_creation_type::full_feed )
+   {
+      uint32_t _id = get_actual_id( *actual );
+      if( _id == pd.old_id )
+      {
+         //std::string desc = "SKIP-MODIFY!-";
+         //desc += get_actual_name( *actual );
+         //performance::dump( desc.c_str(), std::string( actual->account ), _id );
+         pd.allow_modify = false;
+      }
+   }
+}
+
+template< typename Iterator >
+void performance_impl::smart( bool is_delayed, bool& init, Iterator& delayed, Iterator& actual, performance_data& pd ) const
 {
    //std::string desc = "remove-";
 
@@ -145,6 +164,7 @@ void performance_impl::smart( bool is_delayed, bool& init, Iterator& delayed, It
          //desc += get_actual_name( *delayed );
 
          //performance::dump( desc.c_str(), std::string( delayed->account ), get_actual_id( *delayed ) );
+         skip_modify( delayed, pd );
          db.remove( *delayed );
       }
       delayed = actual;
@@ -154,12 +174,13 @@ void performance_impl::smart( bool is_delayed, bool& init, Iterator& delayed, It
       //desc += get_actual_name( *actual );
 
       //performance::dump( desc.c_str(), std::string( actual->account ), get_actual_id( *actual ) );
+      skip_modify( actual, pd );
       db.remove( *actual );
    }
 }
 
 template< typename MultiContainer, typename Index >
-uint32_t performance_impl::delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const
+uint32_t performance_impl::delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
 {
    const auto& old_idx = db.get_index< MultiContainer >().indices().get< Index >();
 
@@ -181,18 +202,18 @@ uint32_t performance_impl::delete_old_objects( const account_name_type& start_ac
    {
       if( it == it_l )
       {
-         smart( _pd.is_empty, is_init, delayed_it, it );
+         smart( pd.is_empty, is_init, delayed_it, it, pd );
          break;
       }
 
       auto old_itr = it;
       --it;
 
-      smart( _pd.is_empty, is_init, delayed_it, old_itr );
+      smart( pd.is_empty, is_init, delayed_it, old_itr, pd );
    }
 
    if( !is_init )
-     modify( *delayed_it, start_account, next_id, _pd );
+     modify( *delayed_it, start_account, next_id, pd );
 
    return next_id;
 }
@@ -209,13 +230,13 @@ performance::~performance()
 }
 
 template< typename MultiContainer, typename Index >
-uint32_t performance::delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const
+uint32_t performance::delete_old_objects( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const
 {
    FC_ASSERT( my );
-   return my->delete_old_objects< MultiContainer, Index >( start_account, max_size, _pd );
+   return my->delete_old_objects< MultiContainer, Index >( start_account, max_size, pd );
 }
 
-template uint32_t performance::delete_old_objects< feed_index, by_feed >( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const;
-template uint32_t performance::delete_old_objects< blog_index, by_blog >( const account_name_type& start_account, uint32_t max_size, performance_data& _pd ) const;
+template uint32_t performance::delete_old_objects< feed_index, by_feed >( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+template uint32_t performance::delete_old_objects< blog_index, by_blog >( const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 
 } } } //steem::follow

@@ -182,7 +182,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
                bool is_empty = feed_itr == comment_idx.end();
 
-               performance_data pd( o.account, _db.head_block_time(), c.id, performance_data::t_creation_type::full_feed, is_empty );
+               performance_data pd( o.account, _db.head_block_time(), c.id, performance_data::t_creation_type::full_feed, is_empty, is_empty?0:feed_itr->account_feed_id );
                uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin->max_feed_size, pd );
 
                if( pd.creation )
@@ -202,11 +202,14 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   }
                   else
                   {
-                     //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
-                     _db.modify( *feed_itr, [&]( feed_object& f )
+                     if( pd.allow_modify )
                      {
-                        f.reblogged_by.push_back( o.account );
-                     });
+                        //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
+                        _db.modify( *feed_itr, [&]( feed_object& f )
+                        {
+                           f.reblogged_by.push_back( o.account );
+                        });
+                     }
                   }
                }
 
