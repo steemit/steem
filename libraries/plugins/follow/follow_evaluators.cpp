@@ -173,6 +173,8 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       const auto& idx = _db.get_index< follow_index >().indices().get< by_following_follower >();
       auto itr = idx.find( o.account );
 
+      performance_data pd;
+
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
          while( itr != idx.end() && itr->following == o.account )
@@ -182,10 +184,10 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
                bool is_empty = feed_itr == comment_idx.end();
 
-               performance_data pd( o.account, _db.head_block_time(), c.id, performance_data::t_creation_type::full_feed, is_empty, is_empty?0:feed_itr->account_feed_id );
+               pd.init( o.account, _db.head_block_time(), c.id, performance_data::t_creation_type::full_feed, is_empty, is_empty ? 0 : feed_itr->account_feed_id );
                uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin->max_feed_size, pd );
 
-               if( pd.creation )
+               if( pd.s.creation )
                {
                   if( is_empty )
                   {
@@ -202,7 +204,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   }
                   else
                   {
-                     if( pd.allow_modify )
+                     if( pd.s.allow_modify )
                      {
                         //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
                         _db.modify( *feed_itr, [&]( feed_object& f )

@@ -76,34 +76,34 @@ void performance_impl::modify( const feed_object& obj, const account_name_type& 
    //std::string desc = "MODIFY!-";
    //desc += get_actual_name( obj );
 
-   if( pd.creation_type == performance_data::t_creation_type::full_feed )
+   if( pd.s.creation_type == performance_data::t_creation_type::full_feed )
    {
       //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
       //performance::dump( "NEW!-", std::string( start_account ), next_id );
-      pd.creation = false;
+      pd.s.creation = false;
 
       db.modify( obj, [&]( feed_object& f )
       {
          f.account = start_account;
          f.reblogged_by.clear();
-         f.reblogged_by.push_back( *( pd.account ) );
-         f.first_reblogged_by = *( pd.account );
-         f.first_reblogged_on = *( pd.time );
-         f.comment = pd.comment;
+         f.reblogged_by.push_back( *pd.account );
+         f.first_reblogged_by = *pd.account;
+         f.first_reblogged_on = *pd.time;
+         f.comment = *pd.comment;
          f.account_feed_id = next_id;
       });
    }
-   else if( pd.creation_type == performance_data::t_creation_type::part_feed )
+   else if( pd.s.creation_type == performance_data::t_creation_type::part_feed )
    {
       //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
       //performance::dump( "NEW!-", std::string( start_account ), next_id );
-      pd.creation = false;
+      pd.s.creation = false;
 
       db.modify( obj, [&]( feed_object& f )
       {
          f.account = start_account;
          f.reblogged_by.clear();
-         f.comment = pd.comment;
+         f.comment = *pd.comment;
          f.account_feed_id = next_id;
          f.first_reblogged_by = account_name_type();
          f.first_reblogged_on = time_point_sec();
@@ -117,17 +117,17 @@ void performance_impl::modify( const blog_object& obj, const account_name_type& 
    //std::string desc = "MODIFY!-";
    //desc += get_actual_name( obj );
 
-   if( pd.creation_type == performance_data::t_creation_type::full_blog )
+   if( pd.s.creation_type == performance_data::t_creation_type::full_blog )
    {
       //performance::dump( desc.c_str(), std::string( start_account ), obj.blog_feed_id );
       //performance::dump( "NEW!-", std::string( start_account ), next_id );
 
-      pd.creation = false;
+      pd.s.creation = false;
 
       db.modify( obj, [&]( blog_object& b )
       {
          b.account = start_account;
-         b.comment = pd.comment;
+         b.comment = *pd.comment;
          b.blog_feed_id = next_id;
          b.reblogged_on = time_point_sec();
       });
@@ -137,15 +137,15 @@ void performance_impl::modify( const blog_object& obj, const account_name_type& 
 template< typename Iterator >
 void performance_impl::skip_modify( Iterator& actual, performance_data& pd ) const
 {
-   if( pd.creation_type == performance_data::t_creation_type::full_feed )
+   if( pd.s.creation_type == performance_data::t_creation_type::full_feed )
    {
       uint32_t _id = get_actual_id( *actual );
       if( _id == pd.old_id )
       {
-         //std::string desc = "SKIP-MODIFY!-";
-         //desc += get_actual_name( *actual );
+         std::string desc = "SKIP-MODIFY!-";
+         desc += get_actual_name( *actual );
          //performance::dump( desc.c_str(), std::string( actual->account ), _id );
-         pd.allow_modify = false;
+         pd.s.allow_modify = false;
       }
    }
 }
@@ -202,14 +202,14 @@ uint32_t performance_impl::delete_old_objects( const account_name_type& start_ac
    {
       if( it == it_l )
       {
-         smart( pd.is_empty, is_init, delayed_it, it, pd );
+         smart( pd.s.is_empty, is_init, delayed_it, it, pd );
          break;
       }
 
       auto old_itr = it;
       --it;
 
-      smart( pd.is_empty, is_init, delayed_it, old_itr, pd );
+      smart( pd.s.is_empty, is_init, delayed_it, old_itr, pd );
    }
 
    if( !is_init )

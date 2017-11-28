@@ -57,30 +57,58 @@ class dumper
 
 struct performance_data
 {
-   enum class t_creation_type{ full_feed, part_feed, full_blog };
+   enum t_creation_type{ none = 0, full_feed, part_feed, full_blog };
 
-   const account_name_type* account;
-   const time_point_sec* time;
-   const comment_id_type& comment;
-
-   t_creation_type creation_type;
-   bool creation;
-   bool is_empty;
+   const account_name_type* account = nullptr;
+   const time_point_sec* time = nullptr;
+   const comment_id_type* comment = nullptr;
 
    uint32_t old_id = 0;
-   bool allow_modify = true;
 
-   performance_data( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty, uint32_t _old_id )
-   : account( &_account ), time( &_time ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( _is_empty ), old_id( _old_id )
+   struct
    {
+      unsigned creation : 1;
+      bool is_empty     : 1;
+      bool allow_modify : 1;
+      t_creation_type creation_type : 2;
+   } s;
 
+   performance_data()
+   {
+      memset( &s, 0, sizeof( s ) );
    }
 
    performance_data( const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
-   : account( nullptr ), time( nullptr ), comment( _comment ), creation_type( _creation_type ), creation( true ), is_empty( _is_empty )
    {
-
+      init( _comment, _creation_type, _is_empty );
    }
+
+   void init( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty, uint32_t _old_id )
+   {
+      account = &_account;
+      time = &_time;
+      comment = &_comment;
+      s.creation_type = _creation_type;
+      s.creation = true;
+      s.is_empty = _is_empty;
+
+      old_id = _old_id;
+      s.allow_modify = true;
+   }
+
+   void init( const comment_id_type& _comment, t_creation_type _creation_type, bool _is_empty )
+   {
+      account = nullptr;
+      time = nullptr;
+      comment = &_comment;
+      s.creation_type = _creation_type;
+      s.creation = true;
+      s.is_empty = _is_empty;
+
+      old_id = 0;
+      s.allow_modify = true;
+   }
+   
 };
 
 class performance
