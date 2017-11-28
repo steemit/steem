@@ -125,6 +125,12 @@ class database_api
          * @return true if the signers have enough authority to authorize an account
          */
          (verify_account_authority)
+#ifdef STEEM_ENABLE_SMT
+         /**
+         * @return array of Numeric Asset Identifier (NAI) available to be used for new SMT to be created.
+         */
+         (get_smt_next_identifier)
+#endif
       )
 
    private:

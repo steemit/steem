@@ -279,14 +279,12 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
    try
    {
       ACTORS( (alice)(bob) )
-      SMT_SYMBOL( alice, 3 );
 
       smt_setup_emissions_operation op;
       op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
       op.schedule_time = now;
       op.emissions_unit.token_unit["bob"] = 10;
-      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, alice_symbol );
 
       signed_transaction tx;
 
@@ -300,11 +298,10 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       // Create SMT.
       signed_transaction ty;
       op.symbol = create_smt(ty, "alice", alice_private_key, 3);
-      FC_ASSERT( op.symbol == alice_symbol, "SMT symbol mismatch ${s1} vs ${s2}",
-         ("s1", op.symbol.to_nai())("s2", alice_symbol.to_nai()) );
-
+      op.lep_abs_amount = op.rep_abs_amount = asset( 1000, op.symbol );
+      
       // TODO: Replace the code below with account setup operation execution once its implemented.
-      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( alice_symbol );
+      const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( op.symbol );
       FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
       FC_ASSERT( smt->phase < steem::chain::smt_token_object::smt_phase::setup_completed, "Who closed setup phase?!" );
       db->modify( *smt, [&]( steem::chain::smt_token_object& token )

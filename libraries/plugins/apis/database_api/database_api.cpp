@@ -60,6 +60,9 @@ class database_api_impl
          (get_potential_signatures)
          (verify_authority)
          (verify_account_authority)
+#ifdef STEEM_ENABLE_SMT
+         (get_smt_next_identifier)
+#endif
       )
 
       template< typename ResultType >
@@ -1816,5 +1819,28 @@ DEFINE_API( database_api_impl, verify_account_authority )
 
    return verify_authority( vap );
 }
+
+#ifdef STEEM_ENABLE_SMT
+//////////////////////////////////////////////////////////////////////
+//                                                                  //
+// SMT                                                              //
+//                                                                  //
+//////////////////////////////////////////////////////////////////////
+
+DEFINE_API( database_api, get_smt_next_identifier )
+{
+   return my->_db.with_read_lock( [&]()
+   {
+      return my->get_smt_next_identifier( args );
+   });
+}
+
+DEFINE_API( database_api_impl, get_smt_next_identifier )
+{
+   get_smt_next_identifier_return result;
+   result.nais = _db.get_smt_next_identifier();
+   return result;
+}
+#endif
 
 } } } // steem::plugins::database_api
