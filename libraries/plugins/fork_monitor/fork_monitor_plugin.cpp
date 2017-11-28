@@ -28,50 +28,33 @@ namespace detail {
 
          void on_block( const signed_block& b );
 
-         std::map< uint32_t, std::vector< signed_block > > _last_blocks;
+         std::map< uint32_t, signed_block > block_map;
          chain::database& db;
    };
 
    void fork_monitor_plugin_impl::on_block( const signed_block& b )
    {
-
      auto lib = db.get_dynamic_global_properties().last_irreversible_block_num;
-
-      if( b.block_num() > lib ) // Should not be needed, but just in case
-         _last_blocks[ b.block_num() ].push_back( b );
-
-      if( _last_blocks.find( lib ) != _last_blocks.end() )
-      {
-         auto& blocks = _last_blocks[ lib ];
-         fc::optional< signed_block > included_block = db.fetch_block_by_number( lib );
-         std::set< signature_type > printed_blocks;
-         auto it = std::begin(blocks);
-
-         /* remove duplicate orphan blocks */
-         while (it != std::end(blocks)) {
-            if( it->witness_signature != included_block->witness_signature
-                && printed_blocks.find( it->witness_signature ) != printed_blocks.end() )
-            {
-                it = blocks.erase(it);
+     if( b.block_num() > lib ) { // Should not be needed, but just in case
+         /* Check for deviant block */
+         signed_block old_block;
+         map<uint32_t, signed_block>::iterator it = block_map.find(b.block_num());
+         if(it != block_map.end()){
+            old_block = it->second;
+            if(old_block.witness_signature != b.witness_signature){
+               ilog( "Orphaned Block ${n} --- Data:${d}", ("n", old_block.block_num() )("d", old_block) );
+               block_map[ b.block_num() ] = b;
             }
-            else {
-              printed_blocks.insert( it->witness_signature );
-              ++it;
+         }
+         else {
+            block_map[ b.block_num() ] = b;
+            if(block_map.size() > 21){
+               it = block_map.find(lib);
+               block_map.erase ( block_map.begin(), it );    // erasing up to lib
             }
-          }
-
-          for( auto& orphan : blocks )
-          {
-            if( orphan.witness_signature != included_block->witness_signature )
-            {
-              ilog( "Orphaned Block ${n} --- Data:${d}", ("n", lib )("d", orphan) );
-          }
-        }
-         _last_blocks.erase( lib );
+         }
       }
-
    }
-
 } // detail
 
 fork_monitor_plugin::fork_monitor_plugin() : _my( new detail::fork_monitor_plugin_impl() ) {}
@@ -84,19 +67,17 @@ void fork_monitor_plugin::set_program_options(
 void fork_monitor_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
    try
-   {
-      chain::database& _db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
-
-      _db.applied_block.connect( [&]( const chain::signed_block& b ){ _my->on_block( b ); } );
-   }
+      {
+         chain::database& _db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
+         _db.applied_block.connect( [&]( const chain::signed_block& b ){ _my->on_block( b ); } );
+      }
    FC_CAPTURE_AND_RETHROW()
-
 }
 
 #ifdef IS_TEST_NET
-std::map< uint32_t, std::vector< signed_block > > fork_monitor_plugin::get_orphans()
+std::map< uint32_t, signed_block > fork_monitor_plugin::get_map()
 {
-  return _my->_last_blocks;
+   return _my->block_map;
 }
 #endif
 
