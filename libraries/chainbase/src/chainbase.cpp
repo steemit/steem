@@ -97,9 +97,9 @@ namespace chainbase {
       bfs::remove_all( dir / "shared_memory.bin" );
       bfs::remove_all( dir / "shared_memory.meta" );
       _data_dir = bfs::path();
+#endif
       _index_list.clear();
       _index_map.clear();
-#endif
    }
 
    void database::set_require_locking( bool enable_require_locking )

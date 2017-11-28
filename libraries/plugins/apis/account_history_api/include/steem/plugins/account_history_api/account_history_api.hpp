@@ -17,23 +17,23 @@ namespace detail { class account_history_api_impl; }
 
 struct api_operation_object
 {
-   api_operation_object() {}
+   api_operation_object() = default;
    api_operation_object( const steem::chain::operation_object& op_obj ) :
       trx_id( op_obj.trx_id ),
       block( op_obj.block ),
       trx_in_block( op_obj.trx_in_block ),
-      virtual_op( op_obj.virtual_op ),
+      virtual_op( op_obj.virtual_op() ),
       timestamp( op_obj.timestamp )
    {
       op = fc::raw::unpack< steem::protocol::operation >( op_obj.serialized_op );
    }
 
    steem::protocol::transaction_id_type trx_id;
-   uint32_t                               block = 0;
-   uint32_t                               trx_in_block = 0;
-   uint16_t                               op_in_trx = 0;
-   uint64_t                               virtual_op = 0;
-   fc::time_point_sec                     timestamp;
+   uint32_t                             block = 0;
+   uint32_t                             trx_in_block = 0;
+   uint16_t                             op_in_trx = 0;
+   uint64_t                             virtual_op = 0;
+   fc::time_point_sec                   timestamp;
    steem::protocol::operation           op;
 };
 
@@ -61,8 +61,8 @@ typedef steem::protocol::annotated_signed_transaction get_transaction_return;
 struct get_account_history_args
 {
    steem::protocol::account_name_type   account;
-   uint64_t                               start = -1;
-   uint32_t                               limit = 1000;
+   uint64_t                             start = -1;
+   uint32_t                             limit = 1000;
 };
 
 struct get_account_history_return

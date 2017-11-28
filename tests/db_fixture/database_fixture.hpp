@@ -225,7 +225,7 @@ struct database_fixture {
    const asset& get_balance( const string& account_name )const;
    void sign( signed_transaction& trx, const fc::ecc::private_key& key );
 
-   vector< operation > get_last_operations( uint32_t ops );
+   vector< operation > get_last_operations( uint32_t ops, const char* account_name = nullptr);
 
    void validate_database( void );
 };

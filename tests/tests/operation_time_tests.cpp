@@ -2005,9 +2005,9 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       sam_reward_last_update = db->head_block_time();
       bob_sbd_volume += ( alice_sbd.amount.value / 10 ) * 3 - ( alice_sbd.amount.value / 20 );
       bob_reward_last_update = db->head_block_time();
-      ops = get_last_operations( 4 );
+      ops = get_last_operations( 1, "bob" );
 
-      fill_order_op = ops[1].get< fill_order_operation >();
+      fill_order_op = ops[0].get< fill_order_operation >();
       BOOST_REQUIRE( fill_order_op.open_owner == "bob" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 4 );
       BOOST_REQUIRE( fill_order_op.open_pays.amount.value == asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
@@ -2015,7 +2015,8 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       BOOST_REQUIRE( fill_order_op.current_orderid == 5 );
       BOOST_REQUIRE( fill_order_op.current_pays.amount.value == asset( ( alice_sbd.amount.value / 10 ) * 3 - alice_sbd.amount.value / 20, SBD_SYMBOL ).amount.value );
 
-      fill_order_op = ops[3].get< fill_order_operation >();
+      ops = get_last_operations( 1, "sam" );
+      fill_order_op = ops[0].get< fill_order_operation >();
       BOOST_REQUIRE( fill_order_op.open_owner == "sam" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 3 );
       BOOST_REQUIRE( fill_order_op.open_pays.amount.value == asset( alice_sbd.amount.value / 20, STEEM_SYMBOL ).amount.value );
@@ -2073,8 +2074,8 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       generate_blocks( db->head_block_time() + fc::seconds( STEEM_MIN_LIQUIDITY_REWARD_PERIOD_SEC_HF10.to_seconds() / 2 ), true );
 
-      ops = get_last_operations( 3 );
-      fill_order_op = ops[2].get< fill_order_operation >();
+      ops = get_last_operations( 1, "alice" );
+      fill_order_op = ops[0].get< fill_order_operation >();
 
       BOOST_REQUIRE( fill_order_op.open_owner == "alice" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 6 );
@@ -2121,8 +2122,8 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
       sam_steem_volume -= alice_sbd.amount.value / 20;
       sam_reward_last_update = db->head_block_time();
 
-      ops = get_last_operations( 2 );
-      fill_order_op = ops[1].get< fill_order_operation >();
+      ops = get_last_operations( 1, "alice" );
+      fill_order_op = ops[0].get< fill_order_operation >();
 
       BOOST_REQUIRE( fill_order_op.open_owner == "alice" );
       BOOST_REQUIRE( fill_order_op.open_orderid == 6 );
