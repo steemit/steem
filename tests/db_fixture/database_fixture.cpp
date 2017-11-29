@@ -637,69 +637,88 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 #endif
 
 json_rpc_database_fixture::json_rpc_database_fixture()
-                        : t( "json_rpc_test_server" )
 {
-   url = "127.0.0.1";
-   port = "9876";
+   try {
+   int argc = boost::unit_test::framework::master_test_suite().argc;
+   char** argv = boost::unit_test::framework::master_test_suite().argv;
+   for( int i=1; i<argc; i++ )
+   {
+      const std::string arg = argv[i];
+      if( arg == "--record-assert-trip" )
+         fc::enable_record_assert_trip = true;
+      if( arg == "--show-test-names" )
+         std::cout << "running test " << boost::unit_test::framework::current_test_case().p_name << std::endl;
+   }
+
+   appbase::app().register_plugin< steem::plugins::account_history::account_history_plugin >();
+   db_plugin = &appbase::app().register_plugin< steem::plugins::debug_node::debug_node_plugin >();
+   appbase::app().register_plugin< steem::plugins::witness::witness_plugin >();
+   rpc_plugin = &appbase::app().register_plugin< steem::plugins::json_rpc::json_rpc_plugin >();
+   appbase::app().register_plugin< steem::plugins::block_api::block_api_plugin >();
+   appbase::app().register_plugin< steem::plugins::database_api::database_api_plugin >();
+   appbase::app().register_plugin< steem::plugins::condenser_api::condenser_api_plugin >();
+
+   db_plugin->logging = false;
+   appbase::app().initialize<
+      steem::plugins::account_history::account_history_plugin,
+      steem::plugins::debug_node::debug_node_plugin,
+      steem::plugins::witness::witness_plugin,
+      steem::plugins::json_rpc::json_rpc_plugin,
+      steem::plugins::block_api::block_api_plugin,
+      steem::plugins::database_api::database_api_plugin,
+      steem::plugins::condenser_api::condenser_api_plugin
+      >( argc, argv );
+
+   appbase::app().get_plugin< steem::plugins::condenser_api::condenser_api_plugin >().plugin_startup();
+
+   db = &appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
+   BOOST_REQUIRE( db );
+
+   init_account_pub_key = init_account_priv_key.get_public_key();
+
+   open_database();
+
+   generate_block();
+   db->set_hardfork( STEEM_BLOCKCHAIN_VERSION.minor() );
+   generate_block();
+
+   vest( "initminer", 10000 );
+
+   // Fill up the rest of the required miners
+   for( int i = STEEM_NUM_INIT_MINERS; i < STEEM_MAX_WITNESSES; i++ )
+   {
+      account_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_pub_key );
+      fund( STEEM_INIT_MINER_NAME + fc::to_string( i ), STEEM_MIN_PRODUCER_REWARD.amount.value );
+      witness_create( STEEM_INIT_MINER_NAME + fc::to_string( i ), init_account_priv_key, "foo.bar", init_account_pub_key, STEEM_MIN_PRODUCER_REWARD.amount );
+   }
+
+   validate_database();
+   } catch ( const fc::exception& e )
+   {
+      edump( (e.to_detail_string()) );
+      throw;
+   }
+
+   return;
 }
 
 json_rpc_database_fixture::~json_rpc_database_fixture()
-{
-   appbase::app().quit();
-}
+{ try {
+   // If we're unwinding due to an exception, don't do any more checks.
+   // This way, boost test's last checkpoint tells us approximately where the error was.
+   if( !std::uncaught_exception() )
+   {
+      BOOST_CHECK( db->get_node_properties().skip_flags == database::skip_nothing );
+   }
 
-void json_rpc_database_fixture::launch_server( int initial_argc, char** initial_argv )
-{
-   t.async
-   (
-      [&]()
-      {
-         BOOST_CHECK( initial_argc >= 1 );
-
-         std::string url_param = "--webserver-http-endpoint=" + url + ":" + port;
-
-         char* argv[] = {  initial_argv[0],
-                           ( char* )( "-d" ),
-                           ( char* )( "testnet" ),
-                           ( char* )( url_param.c_str() ),
-                           nullptr
-                        };
-         int argc = sizeof(argv) / sizeof(char*) - 1;
-
-         appbase::app().register_plugin< block_api_plugin >();
-         appbase::app().register_plugin< database_api_plugin >();
-         appbase::app().register_plugin< webserver_plugin >();
-         appbase::app().register_plugin< condenser_api_plugin >();
-
-         appbase::app().initialize<
-            block_api_plugin,
-            database_api_plugin,
-            webserver_plugin,
-            condenser_api_plugin
-         >( argc, argv );
-
-         appbase::app().startup();
-         appbase::app().exec();
-      }
-   );
-
-   fc::usleep( fc::seconds( delay ) );
-}
+   if( data_dir )
+      db->wipe( data_dir->path(), data_dir->path(), true );
+   return;
+} FC_CAPTURE_AND_RETHROW() }
 
 fc::variant json_rpc_database_fixture::get_answer( std::string& request )
 {
-   const std::string method = "POST";
-   const std::string http = "http://" + url;
-
-   std::string body;
-   fc::http::reply reply;
-
-   connection.connect_to( fc::ip::endpoint( fc::ip::endpoint::from_string( url + ":" + port ) ) );
-   reply = connection.request( method, http, request );
-   BOOST_REQUIRE( reply.status == 200 );
-   body = std::string( reply.body.begin(), reply.body.end() );
-
-   return fc::json::from_string( body );
+   return fc::json::from_string( rpc_plugin->call( request ) );
 }
 
 void check_id_equal( const fc::variant& id_a, const fc::variant& id_b )
