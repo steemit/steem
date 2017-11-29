@@ -71,7 +71,7 @@ namespace helpers
          {
             for(const auto& o : index)
             {
-               info._item_additional_allocation += o.packed_trx.size()*sizeof(t_packed_trx::value_type);
+               info._item_additional_allocation += o.packed_trx.capacity()*sizeof(t_packed_trx::value_type);
             }
          }
 

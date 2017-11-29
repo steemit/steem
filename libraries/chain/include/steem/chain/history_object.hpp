@@ -170,7 +170,7 @@ namespace helpers
          {
             for(const auto& o : index)
                info._item_additional_allocation +=
-                  o.serialized_op.size()*sizeof(steem::chain::buffer_type::value_type);
+                  o.serialized_op.capacity()*sizeof(steem::chain::buffer_type::value_type);
          }
 
          return info;
@@ -191,7 +191,7 @@ namespace helpers
          if(onlyStaticInfo == false)
          {
             for(const auto& o : index)
-               info._item_additional_allocation += o.get_ops().size()*
+               info._item_additional_allocation += o.get_ops().capacity()*
                   sizeof(steem::chain::account_history_object::operation_container::value_type);
          }
 
