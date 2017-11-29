@@ -102,3 +102,62 @@ CHAINBASE_SET_INDEX_TYPE( steem::chain::operation_object, steem::chain::operatio
 
 FC_REFLECT( steem::chain::account_history_object, (id)(account)(sequence)(op) )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::account_history_object, steem::chain::account_history_index )
+
+namespace helpers
+{
+   template <>
+   class index_statistic_provider<steem::chain::operation_index>
+   {
+   public:
+      typedef steem::chain::operation_index IndexType;
+
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         info._value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
+         info._item_count = index.size();
+         info._item_sizeof = sizeof(typename IndexType::value_type);
+         info._item_additional_allocation = 0;
+         if(onlyStaticInfo == false)
+         {
+            for(const auto& o : index)
+               info._item_additional_allocation +=
+                  o.serialized_op.size()*sizeof(steem::chain::buffer_type::value_type);
+         }
+
+         size_t pureNodeSize = sizeof(typename IndexType::node_type) -
+            sizeof(typename IndexType::value_type);
+         info._additional_container_allocation = info._item_count*pureNodeSize;
+         return info;
+      }
+   };
+
+   template <>
+   class index_statistic_provider<steem::chain::account_history_index>
+   {
+   public:
+      typedef steem::chain::account_history_index IndexType;
+
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         info._value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
+         info._item_count = index.size();
+         info._item_sizeof = sizeof(typename IndexType::value_type);
+         info._item_additional_allocation = 0;
+         if(onlyStaticInfo == false)
+         {
+            for(const auto& o : index)
+               info._item_additional_allocation += o.get_ops().size()*
+                  sizeof(steem::chain::account_history_object::operation_container::value_type);
+         }
+
+         size_t pureNodeSize = sizeof(typename IndexType::node_type) -
+            sizeof(typename IndexType::value_type);
+         info._additional_container_allocation = info._item_count*pureNodeSize;
+         return info;
+      }
+   };
+
+} /// namespace helpers
+

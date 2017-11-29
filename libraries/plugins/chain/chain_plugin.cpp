@@ -142,7 +142,24 @@ void chain_plugin::plugin_startup()
    bool dump_memory_details = my->dump_memory_details;
    steem::utilities::benchmark_dumper dumper;
 
-   auto benchmark_lambda = [&dumper, dump_memory_details] ( uint32_t current_block_number,
+   const auto& abstract_index_cntr = my->db.get_abstract_index_cntr();
+
+   typedef steem::utilities::benchmark_dumper::index_memory_details_cntr_t index_memory_details_cntr_t;
+   auto get_indexes_memory_details = [dump_memory_details, &abstract_index_cntr]
+      (index_memory_details_cntr_t& index_memory_details_cntr, bool onlyStaticInfo)
+   {
+      if (dump_memory_details == false)
+         return;
+
+      for (auto idx : abstract_index_cntr)
+      {
+         auto info = idx->get_statistics(onlyStaticInfo);
+         index_memory_details_cntr.emplace_back(std::move(info._value_type_name), info._item_count,
+            info._item_sizeof, info._item_additional_allocation, info._additional_container_allocation);
+      }
+   };
+
+   auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
       const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
 
    if(my->replay)
@@ -157,25 +174,15 @@ void chain_plugin::plugin_startup()
                return;
             
             for (auto idx : abstract_index_cntr)
-               database_object_sizeof_cntr.emplace_back(idx->get_object_typename(), idx->get_object_sizeof());
+            {
+               auto info = idx->get_statistics(true);
+               database_object_sizeof_cntr.emplace_back(std::move(info._value_type_name), info._item_sizeof);
+            }
          };
 
          dumper.initialize(get_database_objects_sizeofs, BENCHMARK_FILE_NAME);
          return;
       }
-
-      typedef steem::utilities::benchmark_dumper::index_memory_details_cntr_t index_memory_details_cntr_t;
-      auto get_indexes_memory_details = [dump_memory_details, &abstract_index_cntr]
-         (index_memory_details_cntr_t& index_memory_details_cntr)
-      {
-         if (dump_memory_details == false)
-            return;
-         
-         for (auto idx : abstract_index_cntr)
-            index_memory_details_cntr.emplace_back(idx->get_object_typename(), idx->size());
-      };
-      db_open_args.benchmark = steem::chain::database::TBenchmark(my->benchmark_interval, benchmark_lambda);
-      last_block_number = my->db.reindex( db_open_args );
 
       const steem::utilities::benchmark_dumper::measurement& measure =
          dumper.measure(current_block_number, get_indexes_memory_details);
@@ -196,7 +203,7 @@ void chain_plugin::plugin_startup()
                                           my->stop_replay_at, benchmark );
       if( my->benchmark_interval > 0 )
       {
-         const steem::utilities::benchmark_dumper::measurement& total_data = dumper.dump();
+         const steem::utilities::benchmark_dumper::measurement& total_data = dumper.dump(true, get_indexes_memory_details);
          ilog( "Performance report (total). Blocks: ${b}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
                ("b", total_data.block_number)
                ("rt", total_data.real_ms)
@@ -222,7 +229,7 @@ void chain_plugin::plugin_startup()
          my->db.open( db_open_args );
 
          if (dump_memory_details)
-            dumper.dump();
+            dumper.dump(true, get_indexes_memory_details);
       }
       catch( const fc::exception& e )
       {

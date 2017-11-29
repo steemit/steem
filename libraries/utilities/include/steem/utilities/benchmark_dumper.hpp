@@ -22,11 +22,25 @@ class benchmark_dumper
 public:
    struct index_memory_details_t
    {
-      index_memory_details_t(std::string&& name, size_t size)
-         : index_name(name), index_size(size) {}
+      index_memory_details_t(std::string&& name, size_t size, size_t i_sizeof,
+         size_t item_add_allocation, size_t add_container_allocation)
+         : index_name(name), index_size(size), item_sizeof(i_sizeof),
+           item_additional_allocation(item_add_allocation),
+           additional_container_allocation(add_container_allocation)
+      {
+         total_index_mem_usage = additional_container_allocation;
+         total_index_mem_usage += item_additional_allocation;
+         total_index_mem_usage += index_size*item_sizeof;
+      }
 
       std::string    index_name;
       size_t         index_size = 0;
+      size_t         item_sizeof = 0;
+      /// Additional (ie dynamic container) allocations held in all stored items 
+      size_t         item_additional_allocation = 0;
+      /// Additional memory used for container internal structures (like tree nodes).
+      size_t         additional_container_allocation = 0;
+      size_t         total_index_mem_usage = 0;
    };
 
    typedef std::vector<index_memory_details_t> index_memory_details_cntr_t;
@@ -72,7 +86,7 @@ public:
       measurement                   total_measurement;
    };
 
-   typedef std::function<void(index_memory_details_cntr_t&)> get_indexes_memory_details_t;
+   typedef std::function<void(index_memory_details_cntr_t&, bool)> get_indexes_memory_details_t;
    typedef std::function<void(database_object_sizeof_cntr_t&)> get_database_objects_sizeofs_t;
 
    void initialize(get_database_objects_sizeofs_t get_database_objects_sizeofs,
@@ -100,7 +114,7 @@ public:
                 int((current_cpu_time - _last_cpu_time) * 1000 / CLOCKS_PER_SEC), // cpu_ms
                 current_virtual,
                 peak_virtual );
-      get_indexes_memory_details(data.index_memory_details_cntr);
+      get_indexes_memory_details(data.index_memory_details_cntr, true);
       _all_data.measurements.push_back( data );
    
       _last_sys_time = current_sys_time;
@@ -113,13 +127,29 @@ public:
          current_virtual,
          peak_virtual );
 
-      dump();
+      dump(false, get_indexes_memory_details);
    
       return _all_data.measurements.back();
    }
 
-   const measurement& dump()
+   const measurement& dump(bool finalMeasure, get_indexes_memory_details_t get_indexes_memory_details)
    {
+      if(finalMeasure)
+      {
+         /// Collect index data including dynamic container sizes, what can be time consuming
+         auto& idxData = _all_data.total_measurement.index_memory_details_cntr;
+
+         idxData.clear();
+
+         get_indexes_memory_details(idxData, false);
+
+         std::sort(idxData.begin(), idxData.end(),
+            [](const index_memory_details_t& info1, const index_memory_details_t& info2) -> bool
+            {
+               return info1.total_index_mem_usage > info2.total_index_mem_usage;
+            }
+         );
+      }
       const fc::path path(_file_name);
       try
       {
@@ -151,7 +181,9 @@ private:
 } } // steem::utilities
 
 FC_REFLECT( steem::utilities::benchmark_dumper::index_memory_details_t,
-            (index_name)(index_size) )
+            (index_name)(index_size)(item_sizeof)(item_additional_allocation)
+            (additional_container_allocation)(total_index_mem_usage)
+          )
 
 FC_REFLECT( steem::utilities::benchmark_dumper::database_object_sizeof_t,
             (object_name)(object_size) )
