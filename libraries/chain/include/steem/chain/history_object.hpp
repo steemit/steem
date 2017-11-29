@@ -164,10 +164,8 @@ namespace helpers
       index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
       {
          index_statistic_info info;
-         info._value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
-         info._item_count = index.size();
-         info._item_sizeof = sizeof(typename IndexType::value_type);
-         info._item_additional_allocation = 0;
+         gather_index_static_data(index, &info);
+         
          if(onlyStaticInfo == false)
          {
             for(const auto& o : index)
@@ -175,9 +173,6 @@ namespace helpers
                   o.serialized_op.size()*sizeof(steem::chain::buffer_type::value_type);
          }
 
-         size_t pureNodeSize = sizeof(typename IndexType::node_type) -
-            sizeof(typename IndexType::value_type);
-         info._additional_container_allocation = info._item_count*pureNodeSize;
          return info;
       }
    };
@@ -191,10 +186,8 @@ namespace helpers
       index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
       {
          index_statistic_info info;
-         info._value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
-         info._item_count = index.size();
-         info._item_sizeof = sizeof(typename IndexType::value_type);
-         info._item_additional_allocation = 0;
+         gather_index_static_data(index, &info);
+
          if(onlyStaticInfo == false)
          {
             for(const auto& o : index)
@@ -202,9 +195,6 @@ namespace helpers
                   sizeof(steem::chain::account_history_object::operation_container::value_type);
          }
 
-         size_t pureNodeSize = sizeof(typename IndexType::node_type) -
-            sizeof(typename IndexType::value_type);
-         info._additional_container_allocation = info._item_count*pureNodeSize;
          return info;
       }
    };

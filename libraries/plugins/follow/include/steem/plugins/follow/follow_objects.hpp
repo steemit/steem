@@ -53,6 +53,8 @@ typedef oid< follow_object > follow_id_type;
 class feed_object : public object< feed_object_type, feed_object >
 {
    public:
+      typedef t_vector<account_name_type> t_reblogged_by_container;
+
       feed_object() = delete;
 
       template< typename Constructor, typename Allocator >
@@ -65,7 +67,7 @@ class feed_object : public object< feed_object_type, feed_object >
       id_type           id;
 
       account_name_type                account;
-      t_vector<account_name_type>      reblogged_by;
+      t_reblogged_by_container         reblogged_by;
       account_name_type                first_reblogged_by;
       time_point_sec                   first_reblogged_on;
       comment_id_type                  comment;
@@ -298,3 +300,31 @@ CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_count_object, steem::pl
 
 FC_REFLECT( steem::plugins::follow::blog_author_stats_object, (id)(blogger)(guest)(count) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::blog_author_stats_object, steem::plugins::follow::blog_author_stats_index );
+
+namespace helpers
+{
+   template <>
+   class index_statistic_provider<steem::plugins::follow::feed_index>
+   {
+   public:
+      typedef steem::plugins::follow::feed_index IndexType;
+      typedef typename steem::plugins::follow::feed_object::t_reblogged_by_container t_reblogged_by_container;
+
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         gather_index_static_data(index, &info);
+
+         if(onlyStaticInfo == false)
+         {
+            for(const auto& o : index)
+            {
+               info._item_additional_allocation += o.reblogged_by.size()*sizeof(t_reblogged_by_container::value_type);
+            }
+         }
+
+         return info;
+      }
+   };
+
+} /// namespace helpers
