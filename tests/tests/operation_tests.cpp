@@ -2476,6 +2476,22 @@ BOOST_AUTO_TEST_CASE( convert_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( fixture_convert_checks_balance )
+{
+   // This actually tests the convert() method of the database fixture can't result in negative
+   //   balances, see issue #1825
+   try
+   {
+      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      ACTORS( (dany) )
+
+      fund( "dany", 5000 );
+      STEEM_REQUIRE_THROW( convert( "dany", ASSET( "5000.000 TESTS" ) ), fc::exception );
+   }
+   FC_LOG_AND_RETHROW()
+
+}
+
 BOOST_AUTO_TEST_CASE( limit_order_create_validate )
 {
    try

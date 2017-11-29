@@ -299,7 +299,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       signed_transaction ty;
       op.symbol = create_smt(ty, "alice", alice_private_key, 3);
       op.lep_abs_amount = op.rep_abs_amount = asset( 1000, op.symbol );
-      
+
       // TODO: Replace the code below with account setup operation execution once its implemented.
       const steem::chain::smt_token_object* smt = db->find< steem::chain::smt_token_object, by_symbol >( op.symbol );
       FC_ASSERT( smt != nullptr, "The SMT has just been created!" );
@@ -325,11 +325,11 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
       ACTORS( (dany)(eddy) )
 
-      fund( "dany", 5000 );
+      fund( "dany", 5000000 );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
 
       signed_transaction tx;
-      
+
       smt_set_setup_parameters_operation op;
       op.control_account = "dany";
 
@@ -359,9 +359,9 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       tx1.operations.push_back( op );
       tx1.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx1.sign( eddy_private_key, db->get_chain_id() );
-      
+
       STEEM_REQUIRE_THROW( db->push_transaction( tx1, 0 ), fc::exception ); // wrong private key
-      
+
       signed_transaction tx2;
 
       op.setup_parameters.clear();
@@ -372,7 +372,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       tx2.sign( dany_private_key, db->get_chain_id() );
 
       db->push_transaction( tx2, 0 );
-      
+
       signed_transaction tx3;
 
       op.setup_parameters.clear();
@@ -382,7 +382,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       tx3.sign( dany_private_key, db->get_chain_id() );
 
       db->push_transaction( tx3, 0 );
-      
+
       // TODO:
       // - check applying smt_set_setup_parameters_operation after setup completed
    }
