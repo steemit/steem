@@ -19,8 +19,7 @@ enum follow_plugin_object_type
    feed_object_type              = ( STEEM_FOLLOW_SPACE_ID << 8 ) + 1,
    reputation_object_type        = ( STEEM_FOLLOW_SPACE_ID << 8 ) + 2,
    blog_object_type              = ( STEEM_FOLLOW_SPACE_ID << 8 ) + 3,
-   follow_count_object_type      = ( STEEM_FOLLOW_SPACE_ID << 8 ) + 4,
-   blog_author_stats_object_type = ( STEEM_FOLLOW_SPACE_ID << 8 ) + 5
+   blog_author_stats_object_type = ( STEEM_FOLLOW_SPACE_ID << 8 ) + 4
 };
 
 enum follow_type
@@ -43,9 +42,10 @@ class follow_object : public object< follow_object_type, follow_object >
 
       id_type           id;
 
-      account_name_type follower;
-      account_name_type following;
-      uint16_t          what = 0;
+      account_name_type account;
+
+      t_vector< std::pair< account_name_type, uint16_t > > followers;
+      t_vector< std::pair< account_name_type, uint16_t > > followings;
 };
 
 typedef oid< follow_object > follow_id_type;
@@ -141,29 +141,7 @@ class reputation_object : public object< reputation_object_type, reputation_obje
 
 typedef oid< reputation_object > reputation_id_type;
 
-
-class follow_count_object : public object< follow_count_object_type, follow_count_object >
-{
-   public:
-      template< typename Constructor, typename Allocator >
-      follow_count_object( Constructor&& c, allocator< Allocator > a )
-      {
-         c( *this );
-      }
-
-      follow_count_object() {}
-
-      id_type           id;
-
-      account_name_type account;
-      uint32_t          follower_count  = 0;
-      uint32_t          following_count = 0;
-};
-
-typedef oid< follow_count_object > follow_count_id_type;
-
-struct by_following_follower;
-struct by_follower_following;
+struct by_account;
 
 using namespace boost::multi_index;
 
@@ -171,20 +149,7 @@ typedef multi_index_container<
    follow_object,
    indexed_by<
       ordered_unique< tag< by_id >, member< follow_object, follow_id_type, &follow_object::id > >,
-      ordered_unique< tag< by_following_follower >,
-         composite_key< follow_object,
-            member< follow_object, account_name_type, &follow_object::following >,
-            member< follow_object, account_name_type, &follow_object::follower >
-         >,
-         composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
-      >,
-      ordered_unique< tag< by_follower_following >,
-         composite_key< follow_object,
-            member< follow_object, account_name_type, &follow_object::follower >,
-            member< follow_object, account_name_type, &follow_object::following >
-         >,
-         composite_key_compare< std::less< account_name_type >, std::less< account_name_type > >
-      >
+      ordered_unique< tag< by_account >, member< follow_object, account_name_type, &follow_object::account > >
    >,
    allocator< follow_object >
 > follow_index;
@@ -206,7 +171,6 @@ typedef chainbase::shared_multi_index_container<
 > blog_author_stats_index;
 
 struct by_feed;
-struct by_account;
 struct by_comment;
 
 typedef multi_index_container<
@@ -268,20 +232,11 @@ typedef multi_index_container<
 struct by_followers;
 struct by_following;
 
-typedef multi_index_container<
-   follow_count_object,
-   indexed_by<
-      ordered_unique< tag< by_id >, member< follow_count_object, follow_count_id_type, &follow_count_object::id > >,
-      ordered_unique< tag< by_account >, member< follow_count_object, account_name_type, &follow_count_object::account > >
-   >,
-   allocator< follow_count_object >
-> follow_count_index;
-
 } } } // steem::plugins::follow
 
 FC_REFLECT_ENUM( steem::plugins::follow::follow_type, (undefined)(blog)(ignore) )
 
-FC_REFLECT( steem::plugins::follow::follow_object, (id)(follower)(following)(what) )
+FC_REFLECT( steem::plugins::follow::follow_object, (id)(account)(followers)(followings) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_object, steem::plugins::follow::follow_index )
 
 FC_REFLECT( steem::plugins::follow::feed_object, (id)(account)(first_reblogged_by)(first_reblogged_on)(reblogged_by)(comment)(account_feed_id) )
@@ -292,9 +247,6 @@ CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::blog_object, steem::plugins::f
 
 FC_REFLECT( steem::plugins::follow::reputation_object, (id)(account)(reputation) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::reputation_object, steem::plugins::follow::reputation_index )
-
-FC_REFLECT( steem::plugins::follow::follow_count_object, (id)(account)(follower_count)(following_count) )
-CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::follow_count_object, steem::plugins::follow::follow_count_index )
 
 FC_REFLECT( steem::plugins::follow::blog_author_stats_object, (id)(blogger)(guest)(count) )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::follow::blog_author_stats_object, steem::plugins::follow::blog_author_stats_index );

@@ -23,8 +23,9 @@ void follow_evaluator::do_apply( const follow_operation& o )
          return follow_map;
       }();
 
-      const auto& idx = _db.get_index<follow_index>().indices().get< by_follower_following >();
-      auto itr = idx.find( boost::make_tuple( o.follower, o.following ) );
+      const auto& idx = _db.get_index<follow_index>().indices().get< by_account >();
+      auto following_itr = idx.find( o.following );
+      auto follower_itr = idx.find( o.follower );
 
       uint16_t what = 0;
       bool is_following = false;
@@ -48,73 +49,61 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
       if( what & ( 1 << ignore ) )
          FC_ASSERT( !( what & ( 1 << blog ) ), "Cannot follow blog and ignore author at the same time" );
-
-      bool was_followed = false;
-
-      if( itr == idx.end() )
+ 
+      if( following_itr == idx.end() )
       {
          _db.create< follow_object >( [&]( follow_object& obj )
          {
-            obj.follower = o.follower;
-            obj.following = o.following;
-            obj.what = what;
-         });
-      }
-      else
-      {
-         was_followed = itr->what & 1 << blog;
-
-         _db.modify( *itr, [&]( follow_object& obj )
-         {
-            obj.what = what;
-         });
-      }
-
-      const auto& follower = _db.find< follow_count_object, by_account >( o.follower );
-
-      if( follower == nullptr )
-      {
-         _db.create< follow_count_object >( [&]( follow_count_object& obj )
-         {
             obj.account = o.follower;
-
-            if( is_following )
-               obj.following_count = 1;
+            obj.followers.push_back( std::make_pair( o.follower, what ) );
          });
       }
       else
       {
-         _db.modify( *follower, [&]( follow_count_object& obj )
+         _db.modify( *following_itr, [&]( follow_object& obj )
          {
-            if( was_followed )
-               obj.following_count--;
-            if( is_following )
-               obj.following_count++;
+            auto found = std::find_if( obj.followers.begin(), obj.followers.end(),
+               [&]( const std::pair< account_name_type, uint32_t >& item )
+               {
+                  return item.first == o.follower;
+               }
+            );
+
+            if( found == obj.followers.end() )
+               obj.followers.push_back( std::make_pair( o.follower, what ) );
+            else
+               found->second = what;
+
          });
       }
 
-      const auto& following = _db.find< follow_count_object, by_account >( o.following );
-
-      if( following == nullptr )
+      if( follower_itr == idx.end() )
       {
-         _db.create< follow_count_object >( [&]( follow_count_object& obj )
+         _db.create< follow_object >( [&]( follow_object& obj )
          {
             obj.account = o.following;
-
-            if( is_following )
-               obj.follower_count = 1;
+            obj.followings.push_back( std::make_pair( o.following, what ) );
          });
       }
       else
       {
-         _db.modify( *following, [&]( follow_count_object& obj )
+         _db.modify( *follower_itr, [&]( follow_object& obj )
          {
-            if( was_followed )
-               obj.follower_count--;
-            if( is_following )
-               obj.follower_count++;
+            auto found = std::find_if( obj.followings.begin(), obj.followings.end(),
+               [&]( const std::pair< account_name_type, uint32_t >& item )
+               {
+                  return item.first == o.following;
+               }
+            );
+
+            if( found == obj.followings.end() )
+               obj.followings.push_back( std::make_pair( o.following, what ) );
+            else
+               found->second = what;
+
          });
       }
+
    }
    FC_CAPTURE_AND_RETHROW( (o) )
 }
@@ -165,7 +154,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       }
 
       const auto& comment_idx = _db.get_index< feed_index >().indices().get< by_comment >();
-      const auto& idx = _db.get_index< follow_index >().indices().get< by_following_follower >();
+      const auto& idx = _db.get_index< follow_index >().indices().get< by_account >();
       const auto& old_feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       auto itr = idx.find( o.account );
 
@@ -173,15 +162,16 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
-         while( itr != idx.end() && itr->following == o.account )
+         const t_vector< std::pair< account_name_type, uint16_t > >& _v = itr->followers;
+         for( auto& item : _v )
          {
-            if( itr->what & ( 1 << blog ) )
+            if( item.second & ( 1 << blog ) )
             {
-               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, item.first ) );
                bool is_empty = feed_itr == comment_idx.end();
 
                pd.init( o.account, _db.head_block_time(), c.id, is_empty, is_empty ? 0 : feed_itr->account_feed_id );
-               uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_feed >( old_feed_idx, itr->follower, _plugin->max_feed_size, pd );
+               uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_feed >( old_feed_idx, item.first, _plugin->max_feed_size, pd );
 
                if( pd.s.creation )
                {
@@ -190,7 +180,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                      //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
                      _db.create< feed_object >( [&]( feed_object& f )
                      {
-                        f.account = itr->follower;
+                        f.account = item.first;
                         f.reblogged_by.push_back( o.account );
                         f.first_reblogged_by = o.account;
                         f.first_reblogged_on = _db.head_block_time();
@@ -212,7 +202,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                }
 
             }
-            ++itr;
          }
       }
    }

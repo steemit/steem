@@ -178,7 +178,7 @@ struct post_operation_visitor
 
          if( c.created != db.head_block_time() ) return;
 
-         const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
+         const auto& idx = db.get_index< follow_index >().indices().get< by_account >();
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
          const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
          auto itr = idx.find( op.author );
@@ -187,29 +187,29 @@ struct post_operation_visitor
 
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
-            while( itr != idx.end() && itr->following == op.author )
+            const t_vector< std::pair< account_name_type, uint16_t > >& _v = itr->followers;
+            for( auto& item : _v )
             {
-               if( itr->what & ( 1 << blog ) )
+               if( item.second & ( 1 << blog ) )
                {
-                  auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
+                  auto feed_itr = comment_idx.find( boost::make_tuple( c.id, item.first ) );
                   bool is_empty = feed_itr == comment_idx.end();
 
                   pd.init( c.id, is_empty );
-                  uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, itr->follower, _plugin._self.max_feed_size, pd );
+                  uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, item.first, _plugin._self.max_feed_size, pd );
 
                   if( pd.s.creation && is_empty )
                   {
-                     //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
+                     //performance::dump( "create-feed2", std::string( item.first ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
                      {
-                        f.account = itr->follower;
+                        f.account = item.first;
                         f.comment = c.id;
                         f.account_feed_id = next_id;
                      });
                   }
 
                }
-               ++itr;
             }
          }
 
@@ -348,7 +348,6 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       add_plugin_index< feed_index              >( my->_db );
       add_plugin_index< blog_index              >( my->_db );
       add_plugin_index< reputation_index        >( my->_db );
-      add_plugin_index< follow_count_index      >( my->_db );
       add_plugin_index< blog_author_stats_index >( my->_db );
 
 

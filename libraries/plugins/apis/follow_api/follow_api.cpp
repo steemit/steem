@@ -41,23 +41,23 @@ DEFINE_API( follow_api_impl, get_followers )
    FC_ASSERT( args.limit <= 1000 );
 
    get_followers_return result;
-   result.followers.reserve( args.limit );
+   // result.followers.reserve( args.limit );
 
-   const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_following_follower >();
-   auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
-   while( itr != idx.end() && result.followers.size() < args.limit && itr->following == args.account )
-   {
-      if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
-      {
-         api_follow_object entry;
-         entry.follower = itr->follower;
-         entry.following = itr->following;
-         set_what( entry.what, itr->what );
-         result.followers.push_back( entry );
-      }
+   // const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_following_follower >();
+   // auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
+   // while( itr != idx.end() && result.followers.size() < args.limit && itr->following == args.account )
+   // {
+   //    if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
+   //    {
+   //       api_follow_object entry;
+   //       entry.follower = itr->follower;
+   //       entry.following = itr->following;
+   //       set_what( entry.what, itr->what );
+   //       result.followers.push_back( entry );
+   //    }
 
-      ++itr;
-   }
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -67,23 +67,23 @@ DEFINE_API( follow_api_impl, get_following )
    FC_ASSERT( args.limit <= 1000 );
 
    get_following_return result;
-   result.following.reserve( args.limit );
+   // result.following.reserve( args.limit );
 
-   const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_follower_following >();
-   auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
-   while( itr != idx.end() && result.following.size() < args.limit && itr->follower == args.account )
-   {
-      if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
-      {
-         api_follow_object entry;
-         entry.follower = itr->follower;
-         entry.following = itr->following;
-         set_what( entry.what, itr->what );
-         result.following.push_back( entry );
-      }
+   // const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_follower_following >();
+   // auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
+   // while( itr != idx.end() && result.following.size() < args.limit && itr->follower == args.account )
+   // {
+   //    if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
+   //    {
+   //       api_follow_object entry;
+   //       entry.follower = itr->follower;
+   //       entry.following = itr->following;
+   //       set_what( entry.what, itr->what );
+   //       result.following.push_back( entry );
+   //    }
 
-      ++itr;
-   }
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -91,12 +91,12 @@ DEFINE_API( follow_api_impl, get_following )
 DEFINE_API( follow_api_impl, get_follow_count )
 {
    get_follow_count_return result;
-   auto itr = _db.find< follow::follow_count_object, follow::by_account >( args.account );
+   // auto itr = _db.find< follow::follow_count_object, follow::by_account >( args.account );
 
-   if( itr != nullptr )
-      result = get_follow_count_return{ itr->account, itr->follower_count, itr->following_count };
-   else
-      result.account = args.account;
+   // if( itr != nullptr )
+   //    result = get_follow_count_return{ itr->account, itr->follower_count, itr->following_count };
+   // else
+   //    result.account = args.account;
 
    return result;
 }
