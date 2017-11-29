@@ -2308,7 +2308,7 @@ void database::initialize_indexes()
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
    add_core_index< account_regular_balance_index           >(*this);
-   add_core_index< account_savings_balance_index           >(*this);
+   add_core_index< account_rewards_balance_index           >(*this);
 #endif
 
    _plugin_index_signal();
