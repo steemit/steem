@@ -608,7 +608,7 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       fund( account_name, 10 * 1000 * 1000 );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
