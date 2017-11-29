@@ -368,7 +368,7 @@ namespace helpers
          {
             for(const auto& o : index)
             {
-               info._item_additional_allocation += o.reblogged_by.size()*sizeof(t_reblogged_by_container::value_type);
+               info._item_additional_allocation += o.reblogged_by.capacity()*sizeof(t_reblogged_by_container::value_type);
             }
          }
 

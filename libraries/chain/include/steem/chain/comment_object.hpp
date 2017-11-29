@@ -305,11 +305,10 @@ namespace helpers
          {
             for(const auto& o : index)
             {
-               info._item_additional_allocation += o.category.size()*sizeof(shared_string::value_type);
-               info._item_additional_allocation += o.parent_author.size()*sizeof(shared_string::value_type);
-               info._item_additional_allocation += o.parent_permlink.size()*sizeof(shared_string::value_type);
-               info._item_additional_allocation += o.permlink.size()*sizeof(shared_string::value_type);
-               info._item_additional_allocation += o.beneficiaries.size()*sizeof(t_beneficiaries::value_type);
+               info._item_additional_allocation += o.category.capacity()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.parent_permlink.capacity()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.permlink.capacity()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.beneficiaries.capacity()*sizeof(t_beneficiaries::value_type);
             }
          }
 
@@ -332,9 +331,9 @@ namespace helpers
          {
             for(const auto& o : index)
             {
-               info._item_additional_allocation += o.title.size()*sizeof(shared_string::value_type);
-               info._item_additional_allocation += o.body.size()*sizeof(shared_string::value_type);
-               info._item_additional_allocation += o.json_metadata.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.title.capacity()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.body.capacity()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.json_metadata.capacity()*sizeof(shared_string::value_type);
             }
          }
 
