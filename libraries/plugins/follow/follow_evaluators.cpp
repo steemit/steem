@@ -28,7 +28,6 @@ void follow_evaluator::do_apply( const follow_operation& o )
       auto follower_itr = idx.find( o.follower );
 
       uint16_t what = 0;
-      bool is_following = false;
 
       for( const auto& target : o.what )
       {
@@ -36,7 +35,6 @@ void follow_evaluator::do_apply( const follow_operation& o )
          {
             case blog:
                what |= 1 << blog;
-               is_following = true;
                break;
             case ignore:
                what |= 1 << ignore;
@@ -54,23 +52,28 @@ void follow_evaluator::do_apply( const follow_operation& o )
       {
          _db.create< follow_object >( [&]( follow_object& obj )
          {
-            obj.account = o.follower;
+            obj.account = o.following;
             obj.followers.push_back( std::make_pair( o.follower, what ) );
          });
       }
       else
       {
+         using t_internal = std::pair< account_name_type, uint32_t >;
+
          _db.modify( *following_itr, [&]( follow_object& obj )
          {
-            auto found = std::find_if( obj.followers.begin(), obj.followers.end(),
-               [&]( const std::pair< account_name_type, uint32_t >& item )
-               {
-                  return item.first == o.follower;
-               }
-            );
+            auto found = std::lower_bound( obj.followers.begin(), obj.followers.end(), std::make_pair( o.follower, 0 ),
+                [&]( const t_internal& item, const t_internal& src_item )
+                {
+                   return item.first < src_item.first;
+                }
+             );
 
-            if( found == obj.followers.end() )
+            if( found == obj.followers.end() || found->first != o.follower )
+            {
                obj.followers.push_back( std::make_pair( o.follower, what ) );
+               std::sort( obj.followers.begin(), obj.followers.end() );
+            }
             else
                found->second = what;
 
@@ -81,23 +84,28 @@ void follow_evaluator::do_apply( const follow_operation& o )
       {
          _db.create< follow_object >( [&]( follow_object& obj )
          {
-            obj.account = o.following;
+            obj.account = o.follower;
             obj.followings.push_back( std::make_pair( o.following, what ) );
          });
       }
       else
       {
+         using t_internal = std::pair< account_name_type, uint32_t >;
+
          _db.modify( *follower_itr, [&]( follow_object& obj )
          {
-            auto found = std::find_if( obj.followings.begin(), obj.followings.end(),
-               [&]( const std::pair< account_name_type, uint32_t >& item )
-               {
-                  return item.first == o.following;
-               }
-            );
+            auto found = std::lower_bound( obj.followings.begin(), obj.followings.end(), std::make_pair( o.following, 0 ),
+                [&]( const t_internal& item, const t_internal& src_item )
+                {
+                   return item.first < src_item.first;
+                }
+             );
 
-            if( found == obj.followings.end() )
+            if( found == obj.followings.end() || found->first != o.following )
+            {
                obj.followings.push_back( std::make_pair( o.following, what ) );
+               std::sort( obj.followings.begin(), obj.followings.end() );
+            }
             else
                found->second = what;
 
@@ -177,7 +185,7 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                {
                   if( is_empty )
                   {
-                     //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
+                     //performance::dump( "create-feed1", std::string( item.first ), next_id );
                      _db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = item.first;
