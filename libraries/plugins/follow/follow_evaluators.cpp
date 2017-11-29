@@ -62,24 +62,23 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
          _db.modify( *following_itr, [&]( follow_object& obj )
          {
-            auto found = std::find_if( obj.followers.begin(), obj.followers.end(),
-               [&]( const std::pair< account_name_type, uint32_t >& item )
-               {
-                  return item.first == o.follower;
-               }
-            );
+            auto found = std::lower_bound( obj.followers.begin(), obj.followers.end(), t_internal( o.follower, what ),
+                [&]( const t_internal& item, const t_internal& src_item )
+                {
+                   return item.first < src_item.first;
+                }
+             );
 
-            // auto found = std::lower_bound( obj.followers.begin(), obj.followers.end(), t_internal( o.follower, what ),
-            //     [&]( const t_internal& item, const t_internal& src_item )
-            //     {
-            //        return item.first < src_item.first;
-            //     }
-            //  );
-
-            if( found == obj.followers.end() /*|| found->first != o.follower*/ )
+            if( found == obj.followers.end() || found->first != o.follower )
             {
-               obj.followers.push_back( t_internal( o.follower, what ) );
-               //std::sort( obj.followers.begin(), obj.followers.end() );
+               t_internal p( o.follower, what );
+               auto found_upper = std::upper_bound( obj.followers.begin(), obj.followers.end(), p,
+                  [&]( const t_internal& item, const t_internal& src_item )
+                  {
+                     return item.first < src_item.first;
+                  }
+               );
+               obj.followers.insert( found_upper, p );
             }
             else
                found->second = what;
@@ -101,24 +100,23 @@ void follow_evaluator::do_apply( const follow_operation& o )
 
          _db.modify( *follower_itr, [&]( follow_object& obj )
          {
-            auto found = std::find_if( obj.followings.begin(), obj.followings.end(),
-               [&]( const std::pair< account_name_type, uint32_t >& item )
-               {
-                  return item.first == o.following;
-               }
-            );
+            auto found = std::lower_bound( obj.followings.begin(), obj.followings.end(), t_internal( o.following, what ),
+                [&]( const t_internal& item, const t_internal& src_item )
+                {
+                   return item.first < src_item.first;
+                }
+             );
 
-            // auto found = std::lower_bound( obj.followings.begin(), obj.followings.end(), t_internal( o.following, what ),
-            //     [&]( const t_internal& item, const t_internal& src_item )
-            //     {
-            //        return item.first < src_item.first;
-            //     }
-            //  );
-
-            if( found == obj.followings.end() /*|| found->first != o.following*/ )
+            if( found == obj.followings.end() || found->first != o.following )
             {
-               obj.followings.push_back(  t_internal( o.following, what ) );
-               //std::sort( obj.followings.begin(), obj.followings.end() );
+               t_internal p( o.following, what );
+               auto found_upper = std::upper_bound( obj.followings.begin(), obj.followings.end(), p,
+                  [&]( const t_internal& item, const t_internal& src_item )
+                  {
+                     return item.first < src_item.first;
+                  }
+               );
+               obj.followings.insert( found_upper, p );
             }
             else
                found->second = what;
