@@ -54,19 +54,25 @@ namespace helpers
    };
    
    template <class IndexType>
+   void gather_index_static_data(const IndexType& index, index_statistic_info* info)
+   {
+      info->_value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
+      info->_item_count = index.size();
+      info->_item_sizeof = sizeof(typename IndexType::value_type);
+      info->_item_additional_allocation = 0;
+      size_t pureNodeSize = sizeof(typename IndexType::node_type) -
+         sizeof(typename IndexType::value_type);
+      info->_additional_container_allocation = info->_item_count*pureNodeSize;
+   }
+
+   template <class IndexType>
    class index_statistic_provider
    {
    public:
       index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
       {
          index_statistic_info info;
-         info._value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
-         info._item_count = index.size();
-         info._item_sizeof = sizeof(typename IndexType::value_type);
-         info._item_additional_allocation = 0;
-         size_t pureNodeSize = sizeof(typename IndexType::node_type) -
-            sizeof(typename IndexType::value_type);
-         info._additional_container_allocation = info._item_count*pureNodeSize;
+         gather_index_static_data(index, &info);
          return info;
       }
    };

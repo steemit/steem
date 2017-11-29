@@ -284,3 +284,62 @@ FC_REFLECT( steem::chain::comment_vote_object,
              (id)(voter)(comment)(weight)(rshares)(vote_percent)(last_update)(num_changes)
           )
 CHAINBASE_SET_INDEX_TYPE( steem::chain::comment_vote_object, steem::chain::comment_vote_index )
+
+namespace helpers
+{
+   using steem::chain::shared_string;
+   
+   template <>
+   class index_statistic_provider<steem::chain::comment_index>
+   {
+   public:
+      typedef steem::chain::comment_index IndexType;
+      typedef typename steem::chain::comment_object::t_beneficiaries t_beneficiaries;
+
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         gather_index_static_data(index, &info);
+
+         if(onlyStaticInfo == false)
+         {
+            for(const auto& o : index)
+            {
+               info._item_additional_allocation += o.category.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.parent_author.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.parent_permlink.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.permlink.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.beneficiaries.size()*sizeof(t_beneficiaries::value_type);
+            }
+         }
+
+         return info;
+      }
+   };
+
+   template <>
+   class index_statistic_provider<steem::chain::comment_content_index>
+   {
+   public:
+      typedef steem::chain::comment_content_index IndexType;
+
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         gather_index_static_data(index, &info);
+
+         if(onlyStaticInfo == false)
+         {
+            for(const auto& o : index)
+            {
+               info._item_additional_allocation += o.title.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.body.size()*sizeof(shared_string::value_type);
+               info._item_additional_allocation += o.json_metadata.size()*sizeof(shared_string::value_type);
+            }
+         }
+
+         return info;
+      }
+   };
+
+} /// namespace helpers
