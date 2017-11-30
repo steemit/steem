@@ -29,7 +29,7 @@ public:
    id_type           id;
 
    asset_symbol_type symbol;
-   account_name_type control_account = "@@@@@";
+   account_name_type control_account;
    smt_phase         phase = smt_phase::account_elevated;
 
    /// set_setup_parameters

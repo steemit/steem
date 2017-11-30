@@ -30,7 +30,7 @@ public:
    // id_type is actually oid<account_balance_object<ObjectType> >
    id_type             id;
    /// Name of the account, the balance is held for.
-   account_name_type   owner = "@@@@@";
+   account_name_type   owner;
    asset               balance;
 
    /// Returns true if this object holds a savings balance, regular one otherwise.
