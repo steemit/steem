@@ -23,7 +23,7 @@ class debug_node_api_impl
          _db( appbase::app().get_plugin< chain::chain_plugin >().db() ),
          _debug_node( appbase::app().get_plugin< debug_node_plugin >() ) {}
 
-      DECLARE_API(
+      DECLARE_API_IMPL(
          (debug_push_blocks)
          (debug_generate_blocks)
          (debug_generate_blocks_until)
@@ -32,15 +32,14 @@ class debug_node_api_impl
          (debug_get_hardfork_property_object)
          (debug_set_hardfork)
          (debug_has_hardfork)
+         (debug_get_json_schema)
       )
-
-      void debug_get_json_schema( std::string& schema );
 
       chain::database& _db;
       debug_node::debug_node_plugin& _debug_node;
 };
 
-DEFINE_API( debug_node_api_impl, debug_push_blocks )
+DEFINE_API_IMPL( debug_node_api_impl, debug_push_blocks )
 {
    auto& src_filename = args.src_filename;
    auto count = args.count;
@@ -101,34 +100,34 @@ DEFINE_API( debug_node_api_impl, debug_push_blocks )
    return { 0 };
 }
 
-DEFINE_API( debug_node_api_impl, debug_generate_blocks )
+DEFINE_API_IMPL( debug_node_api_impl, debug_generate_blocks )
 {
    debug_generate_blocks_return ret;
    _debug_node.debug_generate_blocks( ret, args );
    return ret;
 }
 
-DEFINE_API( debug_node_api_impl, debug_generate_blocks_until )
+DEFINE_API_IMPL( debug_node_api_impl, debug_generate_blocks_until )
 {
    return { _debug_node.debug_generate_blocks_until( args.debug_key, args.head_block_time, args.generate_sparsely, chain::database::skip_nothing ) };
 }
 
-DEFINE_API( debug_node_api_impl, debug_pop_block )
+DEFINE_API_IMPL( debug_node_api_impl, debug_pop_block )
 {
    return { _db.fetch_block_by_number( _db.head_block_num() ) };
 }
 
-DEFINE_API( debug_node_api_impl, debug_get_witness_schedule )
+DEFINE_API_IMPL( debug_node_api_impl, debug_get_witness_schedule )
 {
    return _db.get( chain::witness_schedule_id_type() );
 }
 
-DEFINE_API( debug_node_api_impl, debug_get_hardfork_property_object )
+DEFINE_API_IMPL( debug_node_api_impl, debug_get_hardfork_property_object )
 {
    return _db.get( chain::hardfork_property_id_type() );
 }
 
-DEFINE_API( debug_node_api_impl, debug_set_hardfork )
+DEFINE_API_IMPL( debug_node_api_impl, debug_set_hardfork )
 {
    if( args.hardfork_id > STEEM_NUM_HARDFORKS )
       return {};
@@ -141,14 +140,14 @@ DEFINE_API( debug_node_api_impl, debug_set_hardfork )
    return {};
 }
 
-DEFINE_API( debug_node_api_impl, debug_has_hardfork )
+DEFINE_API_IMPL( debug_node_api_impl, debug_has_hardfork )
 {
    return { _db.get( chain::hardfork_property_id_type() ).last_hardfork >= args.hardfork_id };
 }
 
-void debug_node_api_impl::debug_get_json_schema( std::string& schema )
+DEFINE_API_IMPL( debug_node_api_impl, debug_get_json_schema )
 {
-   schema = _db.get_json_schema();
+   return { _db.get_json_schema() };
 }
 
 } // detail
@@ -160,51 +159,16 @@ debug_node_api::debug_node_api(): my( new detail::debug_node_api_impl() )
 
 debug_node_api::~debug_node_api() {}
 
-DEFINE_API( debug_node_api, debug_push_blocks )
-{
-   return my->debug_push_blocks( args );
-}
-
-DEFINE_API( debug_node_api, debug_generate_blocks )
-{
-   return my->debug_generate_blocks( args );
-}
-
-DEFINE_API( debug_node_api, debug_generate_blocks_until )
-{
-   return my->debug_generate_blocks_until( args );
-}
-
-DEFINE_API( debug_node_api, debug_pop_block )
-{
-   return my->debug_pop_block( args );
-}
-
-DEFINE_API( debug_node_api, debug_get_witness_schedule )
-{
-   return my->debug_get_witness_schedule( args );
-}
-
-DEFINE_API( debug_node_api, debug_get_hardfork_property_object )
-{
-   return my->debug_get_hardfork_property_object( args );
-}
-
-DEFINE_API( debug_node_api, debug_set_hardfork )
-{
-   return my->debug_set_hardfork( args );
-}
-
-DEFINE_API( debug_node_api, debug_has_hardfork )
-{
-   return my->debug_has_hardfork( args );
-}
-
-DEFINE_API( debug_node_api, debug_get_json_schema )
-{
-   std::string result;
-   my->debug_get_json_schema( result );
-   return { result };
-}
+DEFINE_LOCKLESS_APIS( debug_node_api,
+   (debug_push_blocks)
+   (debug_generate_blocks)
+   (debug_generate_blocks_until)
+   (debug_pop_block)
+   (debug_get_witness_schedule)
+   (debug_get_hardfork_property_object)
+   (debug_set_hardfork)
+   (debug_has_hardfork)
+   (debug_get_json_schema)
+)
 
 } } } // steem::plugins::debug_node

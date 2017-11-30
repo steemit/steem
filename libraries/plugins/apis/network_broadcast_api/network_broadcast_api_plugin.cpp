@@ -11,9 +11,6 @@ void network_broadcast_api_plugin::set_program_options( options_description& cli
 void network_broadcast_api_plugin::plugin_initialize( const variables_map& options )
 {
    api = std::make_shared< network_broadcast_api >();
-
-   on_applied_block_connection = appbase::app().get_plugin< chain::chain_plugin >().db().applied_block.connect(
-      [&]( const signed_block& b ){ api->on_applied_block( b ); } );
 }
 
 void network_broadcast_api_plugin::plugin_startup() {}

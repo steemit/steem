@@ -14,7 +14,7 @@ class market_history_api_impl
    public:
       market_history_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API(
+      DECLARE_API_IMPL(
          (get_ticker)
          (get_volume)
          (get_order_book)
@@ -27,7 +27,7 @@ class market_history_api_impl
       chain::database& _db;
 };
 
-DEFINE_API( market_history_api_impl, get_ticker )
+DEFINE_API_IMPL( market_history_api_impl, get_ticker )
 {
    get_ticker_return result;
 
@@ -47,7 +47,7 @@ DEFINE_API( market_history_api_impl, get_ticker )
    return result;
 }
 
-DEFINE_API( market_history_api_impl, get_volume )
+DEFINE_API_IMPL( market_history_api_impl, get_volume )
 {
    const auto& bucket_idx = _db.get_index< bucket_index, by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( 0, _db.head_block_time() - 86400 ) );
@@ -68,7 +68,7 @@ DEFINE_API( market_history_api_impl, get_volume )
    return result;
 }
 
-DEFINE_API( market_history_api_impl, get_order_book )
+DEFINE_API_IMPL( market_history_api_impl, get_order_book )
 {
    FC_ASSERT( args.limit <= 500 );
 
@@ -108,7 +108,7 @@ DEFINE_API( market_history_api_impl, get_order_book )
    return result;
 }
 
-DEFINE_API( market_history_api_impl, get_trade_history )
+DEFINE_API_IMPL( market_history_api_impl, get_trade_history )
 {
    FC_ASSERT( args.limit <= 1000 );
    const auto& bucket_idx = _db.get_index< order_history_index, by_time >();
@@ -129,7 +129,7 @@ DEFINE_API( market_history_api_impl, get_trade_history )
    return result;
 }
 
-DEFINE_API( market_history_api_impl, get_recent_trades )
+DEFINE_API_IMPL( market_history_api_impl, get_recent_trades )
 {
    FC_ASSERT( args.limit <= 1000 );
    const auto& order_idx = _db.get_index< order_history_index, by_time >();
@@ -150,7 +150,7 @@ DEFINE_API( market_history_api_impl, get_recent_trades )
    return result;
 }
 
-DEFINE_API( market_history_api_impl, get_market_history )
+DEFINE_API_IMPL( market_history_api_impl, get_market_history )
 {
    const auto& bucket_idx = _db.get_index< bucket_index, by_bucket >();
    auto itr = bucket_idx.lower_bound( boost::make_tuple( args.bucket_seconds, args.start ) );
@@ -167,7 +167,7 @@ DEFINE_API( market_history_api_impl, get_market_history )
    return result;
 }
 
-DEFINE_API( market_history_api_impl, get_market_history_buckets )
+DEFINE_API_IMPL( market_history_api_impl, get_market_history_buckets )
 {
    get_market_history_buckets_return result;
    result.bucket_sizes = appbase::app().get_plugin< steem::plugins::market_history::market_history_plugin >().get_tracked_buckets();
@@ -184,60 +184,14 @@ market_history_api::market_history_api(): my( new detail::market_history_api_imp
 
 market_history_api::~market_history_api() {}
 
-DEFINE_API( market_history_api, get_ticker )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_ticker( args );
-   });
-}
-
-DEFINE_API( market_history_api, get_volume )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_volume( args );
-   });
-}
-
-DEFINE_API( market_history_api, get_order_book )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_order_book( args );
-   });
-}
-
-DEFINE_API( market_history_api, get_trade_history )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_trade_history( args );
-   });
-}
-
-DEFINE_API( market_history_api, get_recent_trades )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_recent_trades( args );
-   });
-}
-
-DEFINE_API( market_history_api, get_market_history )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_market_history( args );
-   });
-}
-
-DEFINE_API( market_history_api, get_market_history_buckets )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_market_history_buckets( args );
-   });
-}
+DEFINE_READ_APIS( market_history_api,
+   (get_ticker)
+   (get_volume)
+   (get_order_book)
+   (get_trade_history)
+   (get_recent_trades)
+   (get_market_history)
+   (get_market_history_buckets)
+)
 
 } } } // steem::plugins::market_history

@@ -53,30 +53,22 @@ typedef void_type broadcast_block_return;
 
 typedef std::function< void( const broadcast_transaction_synchronous_return& ) > confirmation_callback;
 
+namespace detail{ class network_broadcast_api_impl; }
+
 class network_broadcast_api
 {
-public:
-   network_broadcast_api();
-   ~network_broadcast_api();
+   public:
+      network_broadcast_api();
+      ~network_broadcast_api();
 
-   DECLARE_API(
-      (broadcast_transaction)
-      (broadcast_transaction_synchronous)
-      (broadcast_block)
-   )
+      DECLARE_API(
+         (broadcast_transaction)
+         (broadcast_transaction_synchronous)
+         (broadcast_block)
+      )
 
-   bool check_max_block_age( int32_t max_block_age ) const;
-
-   void on_applied_block( const signed_block& b );
-
-
-private:
-   steem::plugins::p2p::p2p_plugin&                    _p2p;
-   steem::plugins::chain::chain_plugin&                _chain;
-   map< transaction_id_type, confirmation_callback >     _callbacks;
-   map< time_point_sec, vector< transaction_id_type > >  _callback_expirations;
-
-   boost::mutex                                          _mtx;
+   private:
+      std::unique_ptr< detail::network_broadcast_api_impl > my;
 };
 
 } } } // steem::plugins::network_broadcast_api

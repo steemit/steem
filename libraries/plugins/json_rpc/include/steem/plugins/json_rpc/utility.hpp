@@ -3,6 +3,8 @@
 #include <type_traits>
 
 #include <fc/reflect/reflect.hpp>
+#include <fc/macros.hpp>
+
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/cat.hpp>
 
@@ -30,6 +32,12 @@ BOOST_PP_CAT( method, _return ) method( const BOOST_PP_CAT( method, _args )& arg
    { \
       BOOST_PP_SEQ_FOR_EACH( FOR_EACH_API_HELPER, callback, METHODS ) \
    }
+
+#define DECLARE_API_IMPL_HELPER( r, data, method ) \
+BOOST_PP_CAT( method, _return ) method( const BOOST_PP_CAT( method, _args )& args );
+
+#define DECLARE_API_IMPL( METHODS ) \
+BOOST_PP_SEQ_FOR_EACH( DECLARE_API_IMPL_HELPER, _, METHODS )
 
 #define DEFINE_API_IMPL( class, method )                                                        \
 BOOST_PP_CAT( method, _return ) class :: method ( const BOOST_PP_CAT( method, _args )& args )   \
@@ -63,7 +71,7 @@ BOOST_PP_CAT( method, _return ) class :: method ( const BOOST_PP_CAT( method, _a
 #define DEFINE_LOCKLESS_API_HELPER( r, class, method )                                                   \
 BOOST_PP_CAT( method, _return ) class :: method ( const BOOST_PP_CAT( method, _args )& args, bool lock ) \
 {                                                                                                        \
-   FC_UNUSED( lock )                                                                                     \
+   FC_UNUSED( lock );                                                                                     \
    return my->method( args );                                                                            \
 }
 

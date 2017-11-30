@@ -30,8 +30,6 @@ public:
    virtual void plugin_startup() override;
    virtual void plugin_shutdown() override;
 
-   boost::signals2::connection on_applied_block_connection;
-
    std::shared_ptr< class network_broadcast_api > api;
 };
 
