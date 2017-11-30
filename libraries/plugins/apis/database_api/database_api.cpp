@@ -13,7 +13,7 @@ class database_api_impl
       database_api_impl();
       ~database_api_impl();
 
-      DECLARE_API
+      DECLARE_API_IMPL
       (
          (get_config)
          (get_dynamic_global_properties)
@@ -110,71 +110,28 @@ database_api_impl::~database_api_impl() {}
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-DEFINE_API( database_api, get_config )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_config( args );
-   });
-}
 
-DEFINE_API( database_api_impl, get_config )
+DEFINE_API_IMPL( database_api_impl, get_config )
 {
    return steem::protocol::get_config();
 }
 
-
-DEFINE_API( database_api, get_dynamic_global_properties )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_dynamic_global_properties( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_dynamic_global_properties )
+DEFINE_API_IMPL( database_api_impl, get_dynamic_global_properties )
 {
    return _db.get_dynamic_global_properties();
 }
 
-
-DEFINE_API( database_api, get_witness_schedule )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_witness_schedule( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_witness_schedule )
+DEFINE_API_IMPL( database_api_impl, get_witness_schedule )
 {
    return api_witness_schedule_object( _db.get_witness_schedule_object() );
 }
 
-
-DEFINE_API( database_api, get_hardfork_properties )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_hardfork_properties( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_hardfork_properties )
+DEFINE_API_IMPL( database_api_impl, get_hardfork_properties )
 {
    return _db.get_hardfork_property_object();
 }
 
-
-DEFINE_API( database_api, get_reward_funds )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_reward_funds( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_reward_funds )
+DEFINE_API_IMPL( database_api_impl, get_reward_funds )
 {
    get_reward_funds_return result;
 
@@ -190,30 +147,12 @@ DEFINE_API( database_api_impl, get_reward_funds )
    return result;
 }
 
-
-DEFINE_API( database_api, get_current_price_feed )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_current_price_feed( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_current_price_feed )
+DEFINE_API_IMPL( database_api_impl, get_current_price_feed )
 {
    return _db.get_feed_history().current_median_history;;
 }
 
-
-DEFINE_API( database_api, get_feed_history )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_feed_history( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_feed_history )
+DEFINE_API_IMPL( database_api_impl, get_feed_history )
 {
    return _db.get_feed_history();
 }
@@ -225,15 +164,7 @@ DEFINE_API( database_api_impl, get_feed_history )
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-DEFINE_API( database_api, list_witnesses )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_witnesses( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_witnesses )
+DEFINE_API_IMPL( database_api_impl, list_witnesses )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -279,16 +210,7 @@ DEFINE_API( database_api_impl, list_witnesses )
    return result;
 }
 
-
-DEFINE_API( database_api, find_witnesses )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_witnesses( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_witnesses )
+DEFINE_API_IMPL( database_api_impl, find_witnesses )
 {
    FC_ASSERT( args.owners.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -305,16 +227,7 @@ DEFINE_API( database_api_impl, find_witnesses )
    return result;
 }
 
-
-DEFINE_API( database_api, list_witness_votes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_witness_votes( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_witness_votes )
+DEFINE_API_IMPL( database_api_impl, list_witness_votes )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -350,16 +263,7 @@ DEFINE_API( database_api_impl, list_witness_votes )
    return result;
 }
 
-
-DEFINE_API( database_api, get_active_witnesses )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_active_witnesses( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_active_witnesses )
+DEFINE_API_IMPL( database_api_impl, get_active_witnesses )
 {
    const auto& wso = _db.get_witness_schedule_object();
    size_t n = wso.current_shuffled_witnesses.size();
@@ -379,15 +283,7 @@ DEFINE_API( database_api_impl, get_active_witnesses )
 
 /* Accounts */
 
-DEFINE_API( database_api, list_accounts )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_accounts( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_accounts )
+DEFINE_API_IMPL( database_api_impl, list_accounts )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -432,16 +328,7 @@ DEFINE_API( database_api_impl, list_accounts )
    return result;
 }
 
-
-DEFINE_API( database_api, find_accounts )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_accounts( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_accounts )
+DEFINE_API_IMPL( database_api_impl, find_accounts )
 {
    find_accounts_return result;
    FC_ASSERT( args.accounts.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
@@ -459,15 +346,7 @@ DEFINE_API( database_api_impl, find_accounts )
 
 /* Owner Auth Histories */
 
-DEFINE_API( database_api, list_owner_histories )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_owner_histories( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_owner_histories )
+DEFINE_API_IMPL( database_api_impl, list_owner_histories )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -484,16 +363,7 @@ DEFINE_API( database_api_impl, list_owner_histories )
    return result;
 }
 
-
-DEFINE_API( database_api, find_owner_histories )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_owner_histories( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_owner_histories )
+DEFINE_API_IMPL( database_api_impl, find_owner_histories )
 {
    find_owner_histories_return result;
 
@@ -512,15 +382,7 @@ DEFINE_API( database_api_impl, find_owner_histories )
 
 /* Account Recovery Requests */
 
-DEFINE_API( database_api, list_account_recovery_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_account_recovery_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_account_recovery_requests )
+DEFINE_API_IMPL( database_api_impl, list_account_recovery_requests )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -555,16 +417,7 @@ DEFINE_API( database_api_impl, list_account_recovery_requests )
    return result;
 }
 
-
-DEFINE_API( database_api, find_account_recovery_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_account_recovery_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_account_recovery_requests )
+DEFINE_API_IMPL( database_api_impl, find_account_recovery_requests )
 {
    find_account_recovery_requests_return result;
    FC_ASSERT( args.accounts.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
@@ -583,15 +436,7 @@ DEFINE_API( database_api_impl, find_account_recovery_requests )
 
 /* Change Recovery Account Requests */
 
-DEFINE_API( database_api, list_change_recovery_account_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_change_recovery_account_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_change_recovery_account_requests )
+DEFINE_API_IMPL( database_api_impl, list_change_recovery_account_requests )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -626,16 +471,7 @@ DEFINE_API( database_api_impl, list_change_recovery_account_requests )
    return result;
 }
 
-
-DEFINE_API( database_api, find_change_recovery_account_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_change_recovery_account_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_change_recovery_account_requests )
+DEFINE_API_IMPL( database_api_impl, find_change_recovery_account_requests )
 {
    find_change_recovery_account_requests_return result;
    FC_ASSERT( args.accounts.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
@@ -654,15 +490,7 @@ DEFINE_API( database_api_impl, find_change_recovery_account_requests )
 
 /* Escrows */
 
-DEFINE_API( database_api, list_escrows )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_escrows( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_escrows )
+DEFINE_API_IMPL( database_api_impl, list_escrows )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -699,16 +527,7 @@ DEFINE_API( database_api_impl, list_escrows )
    return result;
 }
 
-
-DEFINE_API( database_api, find_escrows )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_escrows( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_escrows )
+DEFINE_API_IMPL( database_api_impl, find_escrows )
 {
    find_escrows_return result;
 
@@ -727,15 +546,7 @@ DEFINE_API( database_api_impl, find_escrows )
 
 /* Withdraw Vesting Routes */
 
-DEFINE_API( database_api, list_withdraw_vesting_routes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_withdraw_vesting_routes( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_withdraw_vesting_routes )
+DEFINE_API_IMPL( database_api_impl, list_withdraw_vesting_routes )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -771,16 +582,7 @@ DEFINE_API( database_api_impl, list_withdraw_vesting_routes )
    return result;
 }
 
-
-DEFINE_API( database_api, find_withdraw_vesting_routes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_withdraw_vesting_routes( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_withdraw_vesting_routes )
+DEFINE_API_IMPL( database_api_impl, find_withdraw_vesting_routes )
 {
    find_withdraw_vesting_routes_return result;
 
@@ -822,15 +624,7 @@ DEFINE_API( database_api_impl, find_withdraw_vesting_routes )
 
 /* Savings Withdrawals */
 
-DEFINE_API( database_api, list_savings_withdrawals )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_savings_withdrawals( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_savings_withdrawals )
+DEFINE_API_IMPL( database_api_impl, list_savings_withdrawals )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -878,16 +672,7 @@ DEFINE_API( database_api_impl, list_savings_withdrawals )
    return result;
 }
 
-
-DEFINE_API( database_api, find_savings_withdrawals )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_savings_withdrawals( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_savings_withdrawals )
+DEFINE_API_IMPL( database_api_impl, find_savings_withdrawals )
 {
    find_savings_withdrawals_return result;
    const auto& withdraw_idx = _db.get_index< chain::savings_withdraw_index, chain::by_from_rid >();
@@ -905,15 +690,7 @@ DEFINE_API( database_api_impl, find_savings_withdrawals )
 
 /* Vesting Delegations */
 
-DEFINE_API( database_api, list_vesting_delegations )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_vesting_delegations( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_vesting_delegations )
+DEFINE_API_IMPL( database_api_impl, list_vesting_delegations )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -939,15 +716,7 @@ DEFINE_API( database_api_impl, list_vesting_delegations )
    return result;
 }
 
-DEFINE_API( database_api, find_vesting_delegations )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_vesting_delegations( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_vesting_delegations )
+DEFINE_API_IMPL( database_api_impl, find_vesting_delegations )
 {
    find_vesting_delegations_return result;
    const auto& delegation_idx = _db.get_index< chain::vesting_delegation_index, chain::by_delegation >();
@@ -965,15 +734,7 @@ DEFINE_API( database_api_impl, find_vesting_delegations )
 
 /* Vesting Delegation Expirations */
 
-DEFINE_API( database_api, list_vesting_delegation_expirations )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_vesting_delegation_expirations( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_vesting_delegation_expirations )
+DEFINE_API_IMPL( database_api_impl, list_vesting_delegation_expirations )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -1010,16 +771,7 @@ DEFINE_API( database_api_impl, list_vesting_delegation_expirations )
    return result;
 }
 
-
-DEFINE_API( database_api, find_vesting_delegation_expirations )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_vesting_delegation_expirations( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_vesting_delegation_expirations )
+DEFINE_API_IMPL( database_api_impl, find_vesting_delegation_expirations )
 {
    find_vesting_delegation_expirations_return result;
    const auto& del_exp_idx = _db.get_index< chain::vesting_delegation_expiration_index, chain::by_account_expiration >();
@@ -1037,15 +789,7 @@ DEFINE_API( database_api_impl, find_vesting_delegation_expirations )
 
 /* SBD Conversion Requests */
 
-DEFINE_API( database_api, list_sbd_conversion_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_sbd_conversion_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_sbd_conversion_requests )
+DEFINE_API_IMPL( database_api_impl, list_sbd_conversion_requests )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -1081,16 +825,7 @@ DEFINE_API( database_api_impl, list_sbd_conversion_requests )
    return result;
 }
 
-
-DEFINE_API( database_api, find_sbd_conversion_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_sbd_conversion_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_sbd_conversion_requests )
+DEFINE_API_IMPL( database_api_impl, find_sbd_conversion_requests )
 {
    find_sbd_conversion_requests_return result;
    const auto& convert_idx = _db.get_index< chain::convert_request_index, chain::by_owner >();
@@ -1108,15 +843,7 @@ DEFINE_API( database_api_impl, find_sbd_conversion_requests )
 
 /* Decline Voting Rights Requests */
 
-DEFINE_API( database_api, list_decline_voting_rights_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_decline_voting_rights_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_decline_voting_rights_requests )
+DEFINE_API_IMPL( database_api_impl, list_decline_voting_rights_requests )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -1151,16 +878,7 @@ DEFINE_API( database_api_impl, list_decline_voting_rights_requests )
    return result;
 }
 
-
-DEFINE_API( database_api, find_decline_voting_rights_requests )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_decline_voting_rights_requests( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_decline_voting_rights_requests )
+DEFINE_API_IMPL( database_api_impl, find_decline_voting_rights_requests )
 {
    FC_ASSERT( args.accounts.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
    find_decline_voting_rights_requests_return result;
@@ -1185,15 +903,7 @@ DEFINE_API( database_api_impl, find_decline_voting_rights_requests )
 
 /* Comments */
 
-DEFINE_API( database_api, list_comments )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_comments( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_comments )
+DEFINE_API_IMPL( database_api_impl, list_comments )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -1347,16 +1057,7 @@ DEFINE_API( database_api_impl, list_comments )
    return result;
 }
 
-
-DEFINE_API( database_api, find_comments )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_comments( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_comments )
+DEFINE_API_IMPL( database_api_impl, find_comments )
 {
    FC_ASSERT( args.comments.size() <= DATABASE_API_SINGLE_QUERY_LIMIT );
    find_comments_return result;
@@ -1376,15 +1077,7 @@ DEFINE_API( database_api_impl, find_comments )
 
 /* Votes */
 
-DEFINE_API( database_api, list_votes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_votes( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_votes )
+DEFINE_API_IMPL( database_api_impl, list_votes )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -1532,16 +1225,7 @@ DEFINE_API( database_api_impl, list_votes )
    return result;
 }
 
-
-DEFINE_API( database_api, find_votes )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_votes( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_votes )
+DEFINE_API_IMPL( database_api_impl, find_votes )
 {
    find_votes_return result;
 
@@ -1569,15 +1253,7 @@ DEFINE_API( database_api_impl, find_votes )
 
 /* Limit Orders */
 
-DEFINE_API( database_api, list_limit_orders )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->list_limit_orders( args );
-   });
-}
-
-DEFINE_API( database_api_impl, list_limit_orders )
+DEFINE_API_IMPL( database_api_impl, list_limit_orders )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
 
@@ -1613,16 +1289,7 @@ DEFINE_API( database_api_impl, list_limit_orders )
    return result;
 }
 
-
-DEFINE_API( database_api, find_limit_orders )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->find_limit_orders( args );
-   });
-}
-
-DEFINE_API( database_api_impl, find_limit_orders )
+DEFINE_API_IMPL( database_api_impl, find_limit_orders )
 {
    find_limit_orders_return result;
    const auto& order_idx = _db.get_index< chain::limit_order_index, chain::by_account >();
@@ -1640,15 +1307,7 @@ DEFINE_API( database_api_impl, find_limit_orders )
 
 /* Order Book */
 
-DEFINE_API( database_api, get_order_book )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_order_book( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_order_book )
+DEFINE_API_IMPL( database_api_impl, get_order_book )
 {
    FC_ASSERT( args.limit <= DATABASE_API_SINGLE_QUERY_LIMIT );
    get_order_book_return result;
@@ -1698,30 +1357,12 @@ DEFINE_API( database_api_impl, get_order_book )
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-DEFINE_API( database_api, get_transaction_hex )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_transaction_hex( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_transaction_hex )
+DEFINE_API_IMPL( database_api_impl, get_transaction_hex )
 {
    return get_transaction_hex_return( { fc::to_hex( fc::raw::pack( args.trx ) ) } );
 }
 
-
-
-DEFINE_API( database_api, get_required_signatures )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_required_signatures( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_required_signatures )
+DEFINE_API_IMPL( database_api_impl, get_required_signatures )
 {
    get_required_signatures_return result;
    result.keys = args.trx.get_required_signatures( _db.get_chain_id(),
@@ -1734,16 +1375,7 @@ DEFINE_API( database_api_impl, get_required_signatures )
    return result;
 }
 
-
-DEFINE_API( database_api, get_potential_signatures )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_potential_signatures( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_potential_signatures )
+DEFINE_API_IMPL( database_api_impl, get_potential_signatures )
 {
    get_potential_signatures_return result;
    args.trx.get_required_signatures(
@@ -1776,16 +1408,7 @@ DEFINE_API( database_api_impl, get_potential_signatures )
    return result;
 }
 
-
-DEFINE_API( database_api, verify_authority )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->verify_authority( args );
-   });
-}
-
-DEFINE_API( database_api_impl, verify_authority )
+DEFINE_API_IMPL( database_api_impl, verify_authority )
 {
    args.trx.verify_authority(_db.get_chain_id(),
                            [&]( string account_name ){ return authority( _db.get< chain::account_authority_object, chain::by_account >( account_name ).active  ); },
@@ -1795,18 +1418,9 @@ DEFINE_API( database_api_impl, verify_authority )
    return verify_authority_return( { true } );
 }
 
-
-DEFINE_API( database_api, verify_account_authority )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->verify_account_authority( args );
-   });
-}
-
 // TODO: This is broken. By the look of is, it has been since BitShares. verify_authority always
 // returns false because the TX is not signed.
-DEFINE_API( database_api_impl, verify_account_authority )
+DEFINE_API_IMPL( database_api_impl, verify_account_authority )
 {
    auto account = _db.find< chain::account_object, chain::by_name >( args.account );
    FC_ASSERT( account != nullptr, "no such account" );
@@ -1827,20 +1441,64 @@ DEFINE_API( database_api_impl, verify_account_authority )
 //                                                                  //
 //////////////////////////////////////////////////////////////////////
 
-DEFINE_API( database_api, get_smt_next_identifier )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_smt_next_identifier( args );
-   });
-}
-
-DEFINE_API( database_api_impl, get_smt_next_identifier )
+DEFINE_API_IMPL( database_api_impl, get_smt_next_identifier )
 {
    get_smt_next_identifier_return result;
    result.nais = _db.get_smt_next_identifier();
    return result;
 }
 #endif
+
+DEFINE_LOCKLESS_APIS( database_api, (get_config) )
+
+DEFINE_READ_APIS( database_api,
+   (get_dynamic_global_properties)
+   (get_witness_schedule)
+   (get_hardfork_properties)
+   (get_reward_funds)
+   (get_current_price_feed)
+   (get_feed_history)
+   (list_witnesses)
+   (find_witnesses)
+   (list_witness_votes)
+   (get_active_witnesses)
+   (list_accounts)
+   (find_accounts)
+   (list_owner_histories)
+   (find_owner_histories)
+   (list_account_recovery_requests)
+   (find_account_recovery_requests)
+   (list_change_recovery_account_requests)
+   (find_change_recovery_account_requests)
+   (list_escrows)
+   (find_escrows)
+   (list_withdraw_vesting_routes)
+   (find_withdraw_vesting_routes)
+   (list_savings_withdrawals)
+   (find_savings_withdrawals)
+   (list_vesting_delegations)
+   (find_vesting_delegations)
+   (list_vesting_delegation_expirations)
+   (find_vesting_delegation_expirations)
+   (list_sbd_conversion_requests)
+   (find_sbd_conversion_requests)
+   (list_decline_voting_rights_requests)
+   (find_decline_voting_rights_requests)
+   (list_comments)
+   (find_comments)
+   (list_votes)
+   (find_votes)
+   (list_limit_orders)
+   (find_limit_orders)
+   (get_order_book)
+   (get_transaction_hex)
+   (get_required_signatures)
+   (get_potential_signatures)
+   (verify_authority)
+   (verify_account_authority)
+#ifdef STEEM_ENABLE_SMT
+   (get_smt_next_identifier)
+#endif
+)
 
 } } } // steem::plugins::database_api

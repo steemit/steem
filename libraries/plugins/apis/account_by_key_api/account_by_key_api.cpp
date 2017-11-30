@@ -50,12 +50,6 @@ account_by_key_api::account_by_key_api(): my( new detail::account_by_key_api_imp
 
 account_by_key_api::~account_by_key_api() {}
 
-get_key_references_return account_by_key_api::get_key_references( const get_key_references_args& args )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_key_references( args );
-   });
-}
+DEFINE_READ_APIS( account_by_key_api, (get_key_references) )
 
 } } } // steem::plugins::account_by_key

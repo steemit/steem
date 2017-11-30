@@ -5,6 +5,7 @@
 
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/macros.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -81,13 +82,15 @@ namespace detail
       JSON_RPC_REGISTER_API( "jsonrpc" );
    }
 
-   DEFINE_API( json_rpc_plugin_impl, get_methods )
+   get_methods_return json_rpc_plugin_impl::get_methods( const get_methods_args& args, bool lock )
    {
+      FC_UNUSED( lock )
       return _methods;
    }
 
-   DEFINE_API( json_rpc_plugin_impl, get_signature )
+   get_signature_return json_rpc_plugin_impl::get_signature( const get_signature_args& args, bool lock )
    {
+      FC_UNUSED( lock )
       vector< string > v;
       boost::split( v, args, boost::is_any_of( "." ) );
       FC_ASSERT( v.size() == 2, "Invalid method name" );
