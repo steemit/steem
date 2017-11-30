@@ -3520,7 +3520,6 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
-
    const auto& props = get_dynamic_global_properties();
    if( props.head_block_number < STEEM_BLOCKS_PER_DAY*7 )
       adjust_vesting = false;
@@ -3535,13 +3534,13 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
             props.current_supply += delta + new_vesting;
             props.virtual_supply += delta + new_vesting;
             props.total_vesting_fund_steem += new_vesting;
-            assert( props.current_supply.amount.value >= 0 );
+            FC_ASSERT( props.current_supply.amount.value >= 0 );
             break;
          }
          case STEEM_ASSET_NUM_SBD:
             props.current_sbd_supply += delta;
             props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
-            assert( props.current_sbd_supply.amount.value >= 0 );
+            FC_ASSERT( props.current_sbd_supply.amount.value >= 0 );
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
