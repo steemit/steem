@@ -48,7 +48,6 @@ BOOST_AUTO_TEST_CASE( smt_create_validate )
       SMT_SYMBOL( alice, 3 );
 
       smt_create_operation op;
-      op.control_account = "@@@@@";
       op.smt_creation_fee = ASSET( "1.000 TESTS" );
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
@@ -162,7 +161,6 @@ BOOST_AUTO_TEST_CASE( setup_emissions_validate )
       ilog( "alice_symbol: ${s}", ("s", alice_symbol) );
 
       smt_setup_emissions_operation op;
-      op.control_account = "@@@@@";
       // Invalid account name.
       STEEM_REQUIRE_THROW( op.validate(), fc::exception );
 
