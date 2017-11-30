@@ -158,7 +158,7 @@ namespace detail
       string path = args[0].as< string >();
 
       state _state;
-      _state.props         = _database_api->get_dynamic_global_properties( {} );
+      _state.props         = get_dynamic_global_properties( {} );
       _state.current_route = path;
       _state.feed_price    = _database_api->get_current_price_feed( {} );
 
@@ -712,7 +712,16 @@ namespace detail
    DEFINE_API_IMPL( condenser_api_impl, get_dynamic_global_properties )
    {
       CHECK_ARG_SIZE( 0 )
-      return _database_api->get_dynamic_global_properties( {} );
+      get_dynamic_global_properties_return gpo = _database_api->get_dynamic_global_properties( {} );
+      if( _witness_api )
+      {
+         auto reserve_ratio = _witness_api->get_reserve_ratio( {} );
+         gpo.average_block_size = reserve_ratio.average_block_size;
+         gpo.current_reserve_ratio = reserve_ratio.current_reserve_ratio;
+         gpo.max_virtual_bandwidth = reserve_ratio.max_virtual_bandwidth;
+      }
+
+      return gpo;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_chain_properties )
@@ -793,6 +802,26 @@ namespace detail
             if( _follow_api )
             {
                results.back().reputation = _follow_api->get_account_reputations( { itr->name, 1 } ).reputations[0].reputation;
+            }
+
+            if( _witness_api )
+            {
+               auto& e_acct = results.back();
+               auto forum_bandwidth = _witness_api->get_account_bandwidth( { itr->name, witness::bandwidth_type::forum } );
+               if( forum_bandwidth.bandwidth.valid() )
+               {
+                  e_acct.average_bandwidth = forum_bandwidth.bandwidth->average_bandwidth;
+                  e_acct.lifetime_bandwidth = forum_bandwidth.bandwidth->lifetime_bandwidth;
+                  e_acct.last_bandwidth_update = forum_bandwidth.bandwidth->last_bandwidth_update;
+               }
+
+               auto market_bandwidth = _witness_api->get_account_bandwidth( { itr->name, witness::bandwidth_type::market } );
+               if( market_bandwidth.bandwidth.valid() )
+               {
+                  e_acct.average_market_bandwidth = market_bandwidth.bandwidth->average_bandwidth;
+                  e_acct.lifetime_market_bandwidth = market_bandwidth.bandwidth->lifetime_bandwidth;
+                  e_acct.last_market_bandwidth_update = market_bandwidth.bandwidth->last_bandwidth_update;
+               }
             }
 
             auto vitr = vidx.lower_bound( boost::make_tuple( itr->name, account_name_type() ) );
