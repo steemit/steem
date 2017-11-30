@@ -9,11 +9,8 @@
 
 namespace steem { namespace plugins { namespace follow {
 
-using steem::chain::util::prof;
-
 void follow_evaluator::do_apply( const follow_operation& o )
 {
-   prof::instance()->begin( "follow_evaluator:" );
    try
    {
       static map< string, follow_type > follow_type_map = []()
@@ -120,12 +117,10 @@ void follow_evaluator::do_apply( const follow_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-   prof::instance()->end();
 }
 
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
-   prof::instance()->begin( "reblog_evaluator:" );
    try
    {
       performance perf( _db );
@@ -171,7 +166,10 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
 
       const auto& comment_idx = _db.get_index< feed_index >().indices().get< by_comment >();
       const auto& idx = _db.get_index< follow_index >().indices().get< by_following_follower >();
+      const auto& old_feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       auto itr = idx.find( o.account );
+
+      performance_data pd;
 
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
@@ -179,31 +177,38 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
          {
             if( itr->what & ( 1 << blog ) )
             {
-               uint32_t next_id = perf.delete_old_objects< feed_index, by_feed >( itr->follower, _plugin->max_feed_size );
-
                auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
                bool is_empty = feed_itr == comment_idx.end();
 
-               if( is_empty )
+               pd.init( o.account, _db.head_block_time(), c.id, is_empty, is_empty ? 0 : feed_itr->account_feed_id );
+               uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_feed >( old_feed_idx, itr->follower, _plugin->max_feed_size, pd );
+
+               if( pd.s.creation )
                {
-                  //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
-                  _db.create< feed_object >( [&]( feed_object& f )
+                  if( is_empty )
                   {
-                     f.account = itr->follower;
-                     f.reblogged_by.push_back( o.account );
-                     f.first_reblogged_by = o.account;
-                     f.first_reblogged_on = _db.head_block_time();
-                     f.comment = c.id;
-                     f.account_feed_id = next_id;
-                  });
-               }
-               else
-               {
-                  //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
-                  _db.modify( *feed_itr, [&]( feed_object& f )
+                     //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
+                     _db.create< feed_object >( [&]( feed_object& f )
+                     {
+                        f.account = itr->follower;
+                        f.reblogged_by.push_back( o.account );
+                        f.first_reblogged_by = o.account;
+                        f.first_reblogged_on = _db.head_block_time();
+                        f.comment = c.id;
+                        f.account_feed_id = next_id;
+                     });
+                  }
+                  else
                   {
-                     f.reblogged_by.push_back( o.account );
-                  });
+                     if( pd.s.allow_modify )
+                     {
+                        //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
+                        _db.modify( *feed_itr, [&]( feed_object& f )
+                        {
+                           f.reblogged_by.push_back( o.account );
+                        });
+                     }
+                  }
                }
 
             }
@@ -212,7 +217,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
-   prof::instance()->end();
 }
 
 } } } // steem::follow
