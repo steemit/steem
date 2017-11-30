@@ -643,6 +643,13 @@ namespace chainbase {
          std::atomic< uint32_t >                                    _current_lock;
    };
 
+   struct lock_exception : public std::exception
+   {
+      explicit lock_exception() {}
+      virtual ~lock_exception() {}
+
+      virtual const char* what() { return "Unable to acquire database lock"; }
+   };
 
    /**
     *  This class
@@ -916,7 +923,7 @@ namespace chainbase {
             else
             {
                if( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
-                  BOOST_THROW_EXCEPTION( std::runtime_error( "unable to acquire lock" ) );
+                  BOOST_THROW_EXCEPTION( lock_exception() );
             }
 
             return callback();

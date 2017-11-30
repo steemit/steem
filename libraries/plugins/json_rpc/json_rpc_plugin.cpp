@@ -6,6 +6,8 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
 
+#include <chainbase/chainbase.hpp>
+
 namespace steem { namespace plugins { namespace json_rpc {
 
 namespace detail
@@ -193,6 +195,10 @@ namespace detail
                   {
                      if( call )
                         response.result = (*call)( func_args );
+                  }
+                  catch( chainbase::lock_exception& e )
+                  {
+                     response.error = json_rpc_error( JSON_RPC_ERROR_DURING_CALL, e.what() );
                   }
                   catch( fc::assert_exception& e )
                   {
