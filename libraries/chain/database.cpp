@@ -3407,6 +3407,32 @@ void database::clear_expired_delegations()
 
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
+      const account_regular_balance_object* arbo = 
+         find< account_regular_balance_object, by_owned_symbol >( boost::make_tuple(a.name, delta.symbol) );
+      if( arbo == nullptr )
+      {
+         create< account_regular_balance_object >( [&]( account_regular_balance_object& smt_balance )
+         {
+            smt_balance.owner = a.name;
+            smt_balance.balance = delta;
+         } );
+      }
+      else
+      {
+         modify( *arbo, [&]( account_regular_balance_object& smt_balance )
+         {
+            smt_balance.balance += delta;
+         } );
+      }
+
+      return;
+   }   
+#endif
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
@@ -3497,6 +3523,31 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 
 void database::adjust_reward_balance( const account_object& a, const asset& delta )
 {
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      const account_rewards_balance_object* arbo = 
+         find< account_rewards_balance_object, by_owned_symbol >( boost::make_tuple(a.name, delta.symbol) );
+      if( arbo == nullptr )
+      {
+         create< account_rewards_balance_object >( [&]( account_rewards_balance_object& smt_balance )
+         {
+            smt_balance.owner = a.name;
+            smt_balance.balance = delta;
+         } );
+      }
+      else
+      {
+         modify( *arbo, [&]( account_rewards_balance_object& smt_balance )
+         {
+            smt_balance.balance += delta;
+         } );
+      }
+
+      return;
+   }   
+#endif
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
@@ -3555,7 +3606,23 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       case STEEM_ASSET_NUM_SBD:
          return a.sbd_balance;
       default:
-         FC_ASSERT( false, "invalid symbol" );
+      {
+#ifdef STEEM_ENABLE_SMT
+         FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
+         const account_regular_balance_object* arbo = 
+            find< account_regular_balance_object, by_owned_symbol >( boost::make_tuple(a.name, symbol) );
+         if( arbo == nullptr )
+         {
+            return asset(0, symbol);
+         }
+         else
+         {
+            return arbo->balance;
+         }
+#else
+      FC_ASSERT( false, "invalid symbol" );
+#endif
+      }
    }
 }
 
@@ -3567,7 +3634,7 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
          return a.savings_balance;
       case STEEM_ASSET_NUM_SBD:
          return a.savings_sbd_balance;
-      default:
+      default: // Note no savings balance for SMT per comments in issue 1682.
          FC_ASSERT( !"invalid symbol" );
    }
 }

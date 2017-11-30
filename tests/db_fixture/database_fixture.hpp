@@ -254,6 +254,8 @@ struct smt_database_fixture : public clean_database_fixture
 
    asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
+
+   void transfer_smt( const string& from, const string& to, const asset& steem );
 };
 #endif
 

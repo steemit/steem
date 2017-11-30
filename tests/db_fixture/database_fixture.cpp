@@ -634,6 +634,28 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
    return op.symbol;
 }
 
+void smt_database_fixture::transfer_smt(
+   const string& from,
+   const string& to,
+   const asset& amount )
+{
+   FC_ASSERT( amount.symbol.space() == asset_symbol_type::smt_nai_space, "Use transfer_smt wit SMT only" );
+
+   try
+   {
+      transfer_operation op;
+      op.from = from;
+      op.to = to;
+      op.amount = amount;
+
+      trx.operations.push_back( op );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      trx.validate();
+      db->push_transaction( trx, ~0 );
+      trx.operations.clear();
+   } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
+}
+
 #endif
 
 json_rpc_database_fixture::json_rpc_database_fixture()
