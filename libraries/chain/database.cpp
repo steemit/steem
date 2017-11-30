@@ -492,6 +492,7 @@ const reward_fund_object& database::get_reward_fund( const comment_object& c ) c
    return get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
 }
 
+#pragma message( "After HF20 passes, re-apply the commit titled 'Remove now-redundant sufficient funds checks #1811'" )
 void database::pay_fee( const account_object& account, asset fee )
 {
    FC_ASSERT( fee.amount >= 0 ); /// NOTE if this fails then validate() on some operation is probably wrong
@@ -3407,12 +3408,18 @@ void database::clear_expired_delegations()
 
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.balance.amount.value >= 0, "Insufficient STEEM funds" );
+            }
             break;
          case STEEM_ASSET_NUM_SBD:
             if( a.sbd_seconds_last_update != head_block_time() )
@@ -3442,6 +3449,10 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                }
             }
             acnt.sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.sbd_balance.amount.value >= 0, "Insufficient SBD funds" );
+            }
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
@@ -3452,12 +3463,18 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
 {
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.savings_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings STEEM funds" );
+            }
             break;
          case STEEM_ASSET_NUM_SBD:
             if( a.savings_sbd_seconds_last_update != head_block_time() )
@@ -3487,6 +3504,10 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
                }
             }
             acnt.savings_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings SBD funds" );
+            }
             break;
          default:
             FC_ASSERT( !"invalid symbol" );
@@ -3497,15 +3518,25 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 
 void database::adjust_reward_balance( const account_object& a, const asset& delta )
 {
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.reward_steem_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+            }
             break;
          case STEEM_ASSET_NUM_SBD:
             acnt.reward_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
+            }
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
@@ -3516,6 +3547,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
+   bool check_supply = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
    const auto& props = get_dynamic_global_properties();
    if( props.head_block_number < STEEM_BLOCKS_PER_DAY*7 )
@@ -3531,13 +3563,19 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
             props.current_supply += delta + new_vesting;
             props.virtual_supply += delta + new_vesting;
             props.total_vesting_fund_steem += new_vesting;
-            assert( props.current_supply.amount.value >= 0 );
+            if( check_supply )
+            {
+               FC_ASSERT( props.current_supply.amount.value >= 0 );
+            }
             break;
          }
          case STEEM_ASSET_NUM_SBD:
             props.current_sbd_supply += delta;
             props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
-            assert( props.current_sbd_supply.amount.value >= 0 );
+            if( check_supply )
+            {
+               FC_ASSERT( props.current_sbd_supply.amount.value >= 0 );
+            }
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );

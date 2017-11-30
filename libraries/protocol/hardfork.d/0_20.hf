@@ -3,6 +3,8 @@
 
 #define STEEM_HARDFORK_0_20_TIME 1597970800 // Future 2020...
 
+#define STEEM_HARDFORK_0_20__1811 (STEEM_HARDFORK_0_20)
+
 #define STEEM_HARDFORK_0_20_VERSION hardfork_version( 0, 20 )
 
 #endif
