@@ -22,7 +22,7 @@ public:
    using typename object< ObjectType, _this_type >::id_type;
 
    template <class Constructor, class Allocator>
-   account_balance_object(Constructor&&, allocator< Allocator >)
+   account_balance_object(Constructor&& c, allocator< Allocator > a)
    {
       c( *this );
    }
@@ -54,7 +54,7 @@ using account_balance_index = chainbase::shared_multi_index_container <account_b
       ordered_unique< tag< by_id >,
          member< account_balance_object<ObjectType>, typename account_balance_object<ObjectType>::id_type, &account_balance_object<ObjectType>::id>
       >,
-      ordered_unique< tag< by_account >,
+      ordered_non_unique< tag< by_account >,
          member< account_balance_object<ObjectType>, account_name_type, &account_balance_object<ObjectType>::owner>
       >,
       ordered_unique<tag<by_owned_symbol>,
