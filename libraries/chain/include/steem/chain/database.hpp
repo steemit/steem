@@ -483,7 +483,10 @@ namespace steem { namespace chain {
          void apply_hardfork( uint32_t hardfork );
 
          ///@}
-
+#ifdef STEEM_ENABLE_SMT
+         template< typename smt_balance_object_type >
+         void adjust_smt_balance( const account_object& a, const asset& delta );
+#endif
          std::unique_ptr< database_impl > _my;
 
          vector< signed_transaction >  _pending_tx;

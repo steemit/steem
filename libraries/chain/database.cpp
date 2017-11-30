@@ -3404,32 +3404,37 @@ void database::clear_expired_delegations()
       itr = delegations_by_exp.begin();
    }
 }
-
+#ifdef STEEM_ENABLE_SMT
+template< typename smt_balance_object_type >
+void database::adjust_smt_balance( const account_object& a, const asset& delta )
+{
+   //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
+   const smt_balance_object_type* bo = 
+      find< smt_balance_object_type, by_owned_symbol >( boost::make_tuple(a.name, delta.symbol) );
+   if( bo == nullptr )
+   {
+      create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
+      {
+         smt_balance.owner = a.name;
+         smt_balance.balance = delta;
+      } );
+   }
+   else
+   {
+      modify( *bo, [&]( smt_balance_object_type& smt_balance )
+      {
+         smt_balance.balance += delta;
+      } );
+   }
+}
+#endif
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
-      const account_regular_balance_object* arbo = 
-         find< account_regular_balance_object, by_owned_symbol >( boost::make_tuple(a.name, delta.symbol) );
-      if( arbo == nullptr )
-      {
-         create< account_regular_balance_object >( [&]( account_regular_balance_object& smt_balance )
-         {
-            smt_balance.owner = a.name;
-            smt_balance.balance = delta;
-         } );
-      }
-      else
-      {
-         modify( *arbo, [&]( account_regular_balance_object& smt_balance )
-         {
-            smt_balance.balance += delta;
-         } );
-      }
-
+      adjust_smt_balance< account_regular_balance_object >( a, delta );
       return;
    }   
 #endif
@@ -3527,24 +3532,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
    // No account object modification for SMT balance, hence separate handling here.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      const account_rewards_balance_object* arbo = 
-         find< account_rewards_balance_object, by_owned_symbol >( boost::make_tuple(a.name, delta.symbol) );
-      if( arbo == nullptr )
-      {
-         create< account_rewards_balance_object >( [&]( account_rewards_balance_object& smt_balance )
-         {
-            smt_balance.owner = a.name;
-            smt_balance.balance = delta;
-         } );
-      }
-      else
-      {
-         modify( *arbo, [&]( account_rewards_balance_object& smt_balance )
-         {
-            smt_balance.balance += delta;
-         } );
-      }
-
+      adjust_smt_balance< account_rewards_balance_object >( a, delta );
       return;
    }   
 #endif
