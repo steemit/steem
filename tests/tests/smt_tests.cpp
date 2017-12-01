@@ -549,5 +549,60 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( smt_transfer_validate )
+{
+   try
+   {
+      ACTORS( (alice) )
+      signed_transaction tx;
+      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
+
+      transfer_operation op;
+      op.from = "alice";
+      op.to = "bob";
+      op.amount = asset(100, alice_symbol);
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( smt_transfer_apply )
+{
+   // This simple test touches SMT account balance objects, related functions (get/adjust)
+   // and transfer operation that builds on them.
+   try
+   {
+      ACTORS( (alice)(bob) )
+
+      // Create SMT.
+      signed_transaction tx, ty;
+      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
+      asset_symbol_type bob_symbol = create_smt(ty, "bob", bob_private_key, 1);
+
+      // Give some SMT to creators.
+      const account_object& alice_account = db->get_account("alice");
+      db->adjust_balance(alice_account, asset(100, alice_symbol));
+      const account_object& bob_account = db->get_account("bob");
+      db->adjust_balance(bob_account, asset(110, bob_symbol));
+
+      // Check pre-tranfer amounts.
+      FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 0, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 0, "SMT balance adjusting error" );
+      FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 110, "SMT balance adjusting error" );
+
+      // Transfer SMT.
+      transfer_smt( "alice", "bob", asset(20, alice_symbol) );
+      transfer_smt( "bob", "alice", asset(50, bob_symbol) );
+
+      // Check transfer outcome.
+      FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 80, "SMT transfer error" );
+      FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 50, "SMT transfer error" );
+      FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
+      FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
+   }
+   FC_LOG_AND_RETHROW()   
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
