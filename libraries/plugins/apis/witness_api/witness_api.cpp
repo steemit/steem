@@ -10,7 +10,10 @@ class witness_api_impl
    public:
       witness_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API_IMPL( (get_account_bandwidth) )
+      DECLARE_API_IMPL(
+         (get_account_bandwidth)
+         (get_reserve_ratio)
+      )
 
       chain::database& _db;
 };
@@ -26,6 +29,11 @@ DEFINE_API_IMPL( witness_api_impl, get_account_bandwidth )
    return result;
 }
 
+DEFINE_API_IMPL( witness_api_impl, get_reserve_ratio )
+{
+   return _db.get( reserve_ratio_id_type() );
+}
+
 } // detail
 
 witness_api::witness_api(): my( new detail::witness_api_impl() )
@@ -35,6 +43,9 @@ witness_api::witness_api(): my( new detail::witness_api_impl() )
 
 witness_api::~witness_api() {}
 
-DEFINE_READ_APIS( witness_api, (get_account_bandwidth) )
+DEFINE_READ_APIS( witness_api,
+   (get_account_bandwidth)
+   (get_reserve_ratio)
+)
 
 } } } // steem::plugins::witness
