@@ -3431,7 +3431,7 @@ void database::adjust_smt_balance( const account_object& a, const asset& delta, 
 
    if( check_balance )
    {
-      FC_ASSERT( bo->amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      FC_ASSERT( bo->balance.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
    }
 }
 #endif
