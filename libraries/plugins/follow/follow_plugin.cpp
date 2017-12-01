@@ -100,11 +100,14 @@ struct pre_operation_visitor
          const auto& feed_idx = db.get_index< feed_index >().indices().get< by_comment >();
          auto itr = feed_idx.lower_bound( comment->id );
 
+         //const auto& dbg_account_idx = db.get_index<account_index>().indices().get< by_id >();
+
          while( itr != feed_idx.end() && itr->comment == comment->id )
          {
             const auto& old_feed = *itr;
             ++itr;
-            //performance::dump( "remove-feed2", std::string( old_feed.account ), old_feed.account_feed_id );
+            //auto dbg_itr_account = dbg_account_idx.find( old_feed.account );
+            //performance::dump( "remove-feed2", std::string( dbg_itr_account->name ), old_feed.account_feed_id );
             db.remove( old_feed );
          }
 
@@ -115,7 +118,8 @@ struct pre_operation_visitor
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
-            //performance::dump( "remove-blog2", std::string( old_blog.account ), old_blog.blog_feed_id );
+            //auto dbg_itr_account = dbg_account_idx.find( old_blog.account );
+            //performance::dump( "remove-blog2", std::string( dbg_itr_account->name ), old_blog.blog_feed_id );
             db.remove( old_blog );
          }
       }
@@ -178,16 +182,18 @@ struct post_operation_visitor
 
          if( c.created != db.head_block_time() ) return;
 
+         const auto& account_idx = db.get_index<account_index>().indices().get< by_name >();
          const auto& idx = db.get_index< follow_index >().indices().get< by_following_follower >();
          const auto& comment_idx = db.get_index< feed_index >().indices().get< by_comment >();
          const auto& old_feed_idx = db.get_index< feed_index >().indices().get< by_feed >();
-         auto itr = idx.find( op.author );
+         auto itr_account = account_idx.find( op.author );
+         auto itr = idx.find( itr_account->id );
 
          performance_data pd;
 
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
-            while( itr != idx.end() && itr->following == op.author )
+            while( itr != idx.end() && itr->following == itr_account->id )
             {
                if( itr->what & ( 1 << blog ) )
                {
@@ -199,7 +205,9 @@ struct post_operation_visitor
 
                   if( pd.s.creation && is_empty )
                   {
-                     //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
+                     //const auto& dbg_account_idx = db.get_index<account_index>().indices().get< by_id >();
+                     //auto dbg_itr_account = dbg_account_idx.find( itr->follower );
+                     //performance::dump( "create-feed2", std::string( dbg_itr_account->name ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
@@ -214,19 +222,19 @@ struct post_operation_visitor
          }
 
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();
-         auto blog_itr = comment_blog_idx.find( boost::make_tuple( c.id, op.author ) );
+         auto blog_itr = comment_blog_idx.find( boost::make_tuple( c.id, itr_account->id ) );
          const auto& old_blog_idx = db.get_index< blog_index >().indices().get< by_blog >();
          bool is_empty = blog_itr == comment_blog_idx.end();
 
          pd.init( c.id, is_empty );
-         uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_blog >( old_blog_idx, op.author, _plugin._self.max_feed_size, pd );
+         uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_blog >( old_blog_idx, itr_account->id, _plugin._self.max_feed_size, pd );
 
          if( pd.s.creation && is_empty )
          {
             //performance::dump( "create-blog2", std::string( op.author ), next_id );
             db.create< blog_object >( [&]( blog_object& b)
             {
-               b.account = op.author;
+               b.account = itr_account->id;
                b.comment = c.id;
                b.blog_feed_id = next_id;
             });

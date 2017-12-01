@@ -59,7 +59,7 @@ struct performance_data
 {
    enum t_creation_type{ none = 0, full_feed, part_feed, full_blog };
 
-   const account_name_type* account = nullptr;
+   const account_id_type* account_id = nullptr;
    const time_point_sec* time = nullptr;
    const comment_id_type* comment = nullptr;
 
@@ -82,9 +82,9 @@ struct performance_data
       init( _comment, _is_empty );
    }
 
-   void init( const account_name_type& _account, const time_point_sec& _time, const comment_id_type& _comment, bool _is_empty, uint32_t _old_id )
+   void init( const account_id_type& _account_id, const time_point_sec& _time, const comment_id_type& _comment, bool _is_empty, uint32_t _old_id )
    {
-      account = &_account;
+      account_id = &_account_id;
       time = &_time;
       comment = &_comment;
       s.creation = true;
@@ -96,7 +96,7 @@ struct performance_data
 
    void init( const comment_id_type& _comment, bool _is_empty )
    {
-      account = nullptr;
+      account_id = nullptr;
       time = nullptr;
       comment = &_comment;
       s.creation = true;
@@ -121,7 +121,7 @@ class performance
       ~performance();
 
       template< performance_data::t_creation_type CreationType, typename Index >
-      uint32_t delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+      uint32_t delete_old_objects( const Index& old_idx, const account_id_type& start_account, uint32_t max_size, performance_data& pd ) const;
 
       template< typename T, typename T2 >
       static void dump( const char* message, const T& data, const T2& data2 )

@@ -256,117 +256,117 @@ DEFINE_API( tags_api_impl, get_discussions_by_hot )
 
 DEFINE_API( tags_api_impl, get_discussions_by_feed )
 {
-   args.validate();
-   FC_ASSERT( _db.has_index< follow::feed_index >(), "Node is not running the follow plugin" );
-   auto start_author = args.start_author ? *( args.start_author ) : "";
-   auto start_permlink = args.start_permlink ? *( args.start_permlink ) : "";
+   // args.validate();
+   // FC_ASSERT( _db.has_index< follow::feed_index >(), "Node is not running the follow plugin" );
+   // auto start_author = args.start_author ? *( args.start_author ) : "";
+   // auto start_permlink = args.start_permlink ? *( args.start_permlink ) : "";
 
-   const auto& account = _db.get_account( args.tag );
+   // const auto& account = _db.get_account( args.tag );
 
-   const auto& c_idx = _db.get_index< follow::feed_index, follow::by_comment >();
-   const auto& f_idx = _db.get_index< follow::feed_index, follow::by_feed >();
-   auto feed_itr = f_idx.lower_bound( account.name );
+   // const auto& c_idx = _db.get_index< follow::feed_index, follow::by_comment >();
+   // const auto& f_idx = _db.get_index< follow::feed_index, follow::by_feed >();
+   // auto feed_itr = f_idx.lower_bound( account.name );
 
-   if( start_author.size() || start_permlink.size() )
-   {
-      auto start_c = c_idx.find( boost::make_tuple( _db.get_comment( start_author, start_permlink ).id, account.name ) );
-      FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
-      feed_itr = f_idx.iterator_to( *start_c );
-   }
+   // if( start_author.size() || start_permlink.size() )
+   // {
+   //    auto start_c = c_idx.find( boost::make_tuple( _db.get_comment( start_author, start_permlink ).id, account.name ) );
+   //    FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's feed" );
+   //    feed_itr = f_idx.iterator_to( *start_c );
+   // }
 
    get_discussions_by_feed_return result;
-   result.discussions.reserve( args.limit );
+   // result.discussions.reserve( args.limit );
 
-   while( result.discussions.size() < args.limit && feed_itr != f_idx.end() )
-   {
-      if( feed_itr->account != account.name )
-         break;
-      try
-      {
-         result.discussions.push_back( lookup_discussion( feed_itr->comment ) );
-         if( feed_itr->first_reblogged_by != account_name_type() )
-         {
-            result.discussions.back().reblogged_by = vector<account_name_type>( feed_itr->reblogged_by.begin(), feed_itr->reblogged_by.end() );
-            result.discussions.back().first_reblogged_by = feed_itr->first_reblogged_by;
-            result.discussions.back().first_reblogged_on = feed_itr->first_reblogged_on;
-         }
-      }
-      catch ( const fc::exception& e )
-      {
-         edump((e.to_detail_string()));
-      }
+   // while( result.discussions.size() < args.limit && feed_itr != f_idx.end() )
+   // {
+   //    if( feed_itr->account != account.name )
+   //       break;
+   //    try
+   //    {
+   //       result.discussions.push_back( lookup_discussion( feed_itr->comment ) );
+   //       if( feed_itr->first_reblogged_by != account_name_type() )
+   //       {
+   //          result.discussions.back().reblogged_by = vector<account_name_type>( feed_itr->reblogged_by.begin(), feed_itr->reblogged_by.end() );
+   //          result.discussions.back().first_reblogged_by = feed_itr->first_reblogged_by;
+   //          result.discussions.back().first_reblogged_on = feed_itr->first_reblogged_on;
+   //       }
+   //    }
+   //    catch ( const fc::exception& e )
+   //    {
+   //       edump((e.to_detail_string()));
+   //    }
 
-      ++feed_itr;
-   }
+   //    ++feed_itr;
+   // }
    return result;
 }
 
 DEFINE_API( tags_api_impl, get_discussions_by_blog )
 {
-   args.validate();
-   FC_ASSERT( _db.has_index< follow::blog_index >(), "Node is not running the follow plugin" );
-   auto start_author = args.start_author ? *( args.start_author ) : "";
-   auto start_permlink = args.start_permlink ? *( args.start_permlink ) : "";
+   // args.validate();
+   // FC_ASSERT( _db.has_index< follow::blog_index >(), "Node is not running the follow plugin" );
+   // auto start_author = args.start_author ? *( args.start_author ) : "";
+   // auto start_permlink = args.start_permlink ? *( args.start_permlink ) : "";
 
-   const auto& account = _db.get_account( args.tag );
+   // const auto& account = _db.get_account( args.tag );
 
-   const auto& tag_idx = _db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
+   // const auto& tag_idx = _db.get_index<tags::tag_index>().indices().get<tags::by_comment>();
 
-   const auto& c_idx = _db.get_index< follow::blog_index, follow::by_comment >();
-   const auto& b_idx = _db.get_index< follow::blog_index, follow::by_blog >();
-   auto blog_itr = b_idx.lower_bound( account.name );
+   // const auto& c_idx = _db.get_index< follow::blog_index, follow::by_comment >();
+   // const auto& b_idx = _db.get_index< follow::blog_index, follow::by_blog >();
+   // auto blog_itr = b_idx.lower_bound( account.name );
 
-   if( start_author.size() || start_permlink.size() )
-   {
-      auto start_c = c_idx.find( boost::make_tuple( _db.get_comment( start_author, start_permlink ).id, account.name ) );
-      FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's blog" );
-      blog_itr = b_idx.iterator_to( *start_c );
-   }
+   // if( start_author.size() || start_permlink.size() )
+   // {
+   //    auto start_c = c_idx.find( boost::make_tuple( _db.get_comment( start_author, start_permlink ).id, account.name ) );
+   //    FC_ASSERT( start_c != c_idx.end(), "Comment is not in account's blog" );
+   //    blog_itr = b_idx.iterator_to( *start_c );
+   // }
 
    get_discussions_by_blog_return result;
-   result.discussions.reserve( args.limit );
+   // result.discussions.reserve( args.limit );
 
-   while( result.discussions.size() < args.limit && blog_itr != b_idx.end() )
-   {
-      if( blog_itr->account != account.name )
-         break;
-      try
-      {
-         if( args.select_authors.size() &&
-               args.select_authors.find( blog_itr->account ) == args.select_authors.end() ) {
-            ++blog_itr;
-            continue;
-         }
+   // while( result.discussions.size() < args.limit && blog_itr != b_idx.end() )
+   // {
+   //    if( blog_itr->account != account.name )
+   //       break;
+   //    try
+   //    {
+   //       if( args.select_authors.size() &&
+   //             args.select_authors.find( blog_itr->account ) == args.select_authors.end() ) {
+   //          ++blog_itr;
+   //          continue;
+   //       }
 
-         if( args.select_tags.size() ) {
-            auto tag_itr = tag_idx.lower_bound( blog_itr->comment );
+   //       if( args.select_tags.size() ) {
+   //          auto tag_itr = tag_idx.lower_bound( blog_itr->comment );
 
-            bool found = false;
-            while( tag_itr != tag_idx.end() && tag_itr->comment == blog_itr->comment ) {
-               if( args.select_tags.find( tag_itr->tag ) != args.select_tags.end() ) {
-                  found = true; break;
-               }
-               ++tag_itr;
-            }
-            if( !found ) {
-               ++blog_itr;
-               continue;
-            }
-         }
+   //          bool found = false;
+   //          while( tag_itr != tag_idx.end() && tag_itr->comment == blog_itr->comment ) {
+   //             if( args.select_tags.find( tag_itr->tag ) != args.select_tags.end() ) {
+   //                found = true; break;
+   //             }
+   //             ++tag_itr;
+   //          }
+   //          if( !found ) {
+   //             ++blog_itr;
+   //             continue;
+   //          }
+   //       }
 
-         result.discussions.push_back( lookup_discussion( blog_itr->comment, args.truncate_body ) );
-         if( blog_itr->reblogged_on > time_point_sec() )
-         {
-            result.discussions.back().first_reblogged_on = blog_itr->reblogged_on;
-         }
-      }
-      catch ( const fc::exception& e )
-      {
-         edump((e.to_detail_string()));
-      }
+   //       result.discussions.push_back( lookup_discussion( blog_itr->comment, args.truncate_body ) );
+   //       if( blog_itr->reblogged_on > time_point_sec() )
+   //       {
+   //          result.discussions.back().first_reblogged_on = blog_itr->reblogged_on;
+   //       }
+   //    }
+   //    catch ( const fc::exception& e )
+   //    {
+   //       edump((e.to_detail_string()));
+   //    }
 
-      ++blog_itr;
-   }
+   //    ++blog_itr;
+   // }
    return result;
 }
 

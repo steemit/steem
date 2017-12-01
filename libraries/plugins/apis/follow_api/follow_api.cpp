@@ -41,23 +41,23 @@ DEFINE_API( follow_api_impl, get_followers )
    FC_ASSERT( args.limit <= 1000 );
 
    get_followers_return result;
-   result.followers.reserve( args.limit );
+   // result.followers.reserve( args.limit );
 
-   const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_following_follower >();
-   auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
-   while( itr != idx.end() && result.followers.size() < args.limit && itr->following == args.account )
-   {
-      if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
-      {
-         api_follow_object entry;
-         entry.follower = itr->follower;
-         entry.following = itr->following;
-         set_what( entry.what, itr->what );
-         result.followers.push_back( entry );
-      }
+   // const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_following_follower >();
+   // auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
+   // while( itr != idx.end() && result.followers.size() < args.limit && itr->following == args.account )
+   // {
+   //    if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
+   //    {
+   //       api_follow_object entry;
+   //       entry.follower = itr->follower;
+   //       entry.following = itr->following;
+   //       set_what( entry.what, itr->what );
+   //       result.followers.push_back( entry );
+   //    }
 
-      ++itr;
-   }
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -67,23 +67,23 @@ DEFINE_API( follow_api_impl, get_following )
    FC_ASSERT( args.limit <= 1000 );
 
    get_following_return result;
-   result.following.reserve( args.limit );
+   // result.following.reserve( args.limit );
 
-   const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_follower_following >();
-   auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
-   while( itr != idx.end() && result.following.size() < args.limit && itr->follower == args.account )
-   {
-      if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
-      {
-         api_follow_object entry;
-         entry.follower = itr->follower;
-         entry.following = itr->following;
-         set_what( entry.what, itr->what );
-         result.following.push_back( entry );
-      }
+   // const auto& idx = _db.get_index< follow::follow_index >().indices().get< follow::by_follower_following >();
+   // auto itr = idx.lower_bound( std::make_tuple( args.account, args.start ) );
+   // while( itr != idx.end() && result.following.size() < args.limit && itr->follower == args.account )
+   // {
+   //    if( args.type == follow::undefined || itr->what & ( 1 << args.type ) )
+   //    {
+   //       api_follow_object entry;
+   //       entry.follower = itr->follower;
+   //       entry.following = itr->following;
+   //       set_what( entry.what, itr->what );
+   //       result.following.push_back( entry );
+   //    }
 
-      ++itr;
-   }
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -108,32 +108,32 @@ DEFINE_API( follow_api_impl, get_feed_entries )
    auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_feed_entries_return result;
-   result.feed.reserve( args.limit );
+   // result.feed.reserve( args.limit );
 
-   const auto& feed_idx = _db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
-   auto itr = feed_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
+   // const auto& feed_idx = _db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
+   // auto itr = feed_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
 
-   while( itr != feed_idx.end() && itr->account == args.account && result.feed.size() < args.limit )
-   {
-      const auto& comment = _db.get( itr->comment );
-      feed_entry entry;
-      entry.author = comment.author;
-      entry.permlink = chain::to_string( comment.permlink );
-      entry.entry_id = itr->account_feed_id;
+   // while( itr != feed_idx.end() && itr->account == args.account && result.feed.size() < args.limit )
+   // {
+   //    const auto& comment = _db.get( itr->comment );
+   //    feed_entry entry;
+   //    entry.author = comment.author;
+   //    entry.permlink = chain::to_string( comment.permlink );
+   //    entry.entry_id = itr->account_feed_id;
 
-      if( itr->first_reblogged_by != account_name_type() )
-      {
-         entry.reblog_by.reserve( itr->reblogged_by.size() );
+   //    if( itr->first_reblogged_by != account_name_type() )
+   //    {
+   //       entry.reblog_by.reserve( itr->reblogged_by.size() );
 
-         for( const auto& a : itr->reblogged_by )
-            entry.reblog_by.push_back(a);
+   //       for( const auto& a : itr->reblogged_by )
+   //          entry.reblog_by.push_back(a);
 
-         entry.reblog_on = itr->first_reblogged_on;
-      }
+   //       entry.reblog_on = itr->first_reblogged_on;
+   //    }
 
-      result.feed.push_back( entry );
-      ++itr;
-   }
+   //    result.feed.push_back( entry );
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -145,31 +145,31 @@ DEFINE_API( follow_api_impl, get_feed )
    auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_feed_return result;
-   result.feed.reserve( args.limit );
+   // result.feed.reserve( args.limit );
 
-   const auto& feed_idx = _db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
-   auto itr = feed_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
+   // const auto& feed_idx = _db.get_index< follow::feed_index >().indices().get< follow::by_feed >();
+   // auto itr = feed_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
 
-   while( itr != feed_idx.end() && itr->account == args.account && result.feed.size() < args.limit )
-   {
-      const auto& comment = _db.get( itr->comment );
-      comment_feed_entry entry;
-      entry.comment = database_api::api_comment_object( comment, _db );
-      entry.entry_id = itr->account_feed_id;
+   // while( itr != feed_idx.end() && itr->account == args.account && result.feed.size() < args.limit )
+   // {
+   //    const auto& comment = _db.get( itr->comment );
+   //    comment_feed_entry entry;
+   //    entry.comment = database_api::api_comment_object( comment, _db );
+   //    entry.entry_id = itr->account_feed_id;
 
-      if( itr->first_reblogged_by != account_name_type() )
-      {
-         entry.reblog_by.reserve( itr->reblogged_by.size() );
+   //    if( itr->first_reblogged_by != account_name_type() )
+   //    {
+   //       entry.reblog_by.reserve( itr->reblogged_by.size() );
 
-         for( const auto& a : itr->reblogged_by )
-            entry.reblog_by.push_back( a );
+   //       for( const auto& a : itr->reblogged_by )
+   //          entry.reblog_by.push_back( a );
 
-         entry.reblog_on = itr->first_reblogged_on;
-      }
+   //       entry.reblog_on = itr->first_reblogged_on;
+   //    }
 
-      result.feed.push_back( entry );
-      ++itr;
-   }
+   //    result.feed.push_back( entry );
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -181,24 +181,24 @@ DEFINE_API( follow_api_impl, get_blog_entries )
    auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_blog_entries_return result;
-   result.blog.reserve( args.limit );
+   // result.blog.reserve( args.limit );
 
-   const auto& blog_idx = _db.get_index< follow::blog_index >().indices().get< follow::by_blog >();
-   auto itr = blog_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
+   // const auto& blog_idx = _db.get_index< follow::blog_index >().indices().get< follow::by_blog >();
+   // auto itr = blog_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
 
-   while( itr != blog_idx.end() && itr->account == args.account && result.blog.size() < args.limit )
-   {
-      const auto& comment = _db.get( itr->comment );
-      blog_entry entry;
-      entry.author = comment.author;
-      entry.permlink = chain::to_string( comment.permlink );
-      entry.blog = args.account;
-      entry.reblog_on = itr->reblogged_on;
-      entry.entry_id = itr->blog_feed_id;
+   // while( itr != blog_idx.end() && itr->account == args.account && result.blog.size() < args.limit )
+   // {
+   //    const auto& comment = _db.get( itr->comment );
+   //    blog_entry entry;
+   //    entry.author = comment.author;
+   //    entry.permlink = chain::to_string( comment.permlink );
+   //    entry.blog = args.account;
+   //    entry.reblog_on = itr->reblogged_on;
+   //    entry.entry_id = itr->blog_feed_id;
 
-      result.blog.push_back( entry );
-      ++itr;
-   }
+   //    result.blog.push_back( entry );
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -210,23 +210,23 @@ DEFINE_API( follow_api_impl, get_blog )
    auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_blog_return result;
-   result.blog.reserve( args.limit );
+   // result.blog.reserve( args.limit );
 
-   const auto& blog_idx = _db.get_index< follow::blog_index >().indices().get< follow::by_blog >();
-   auto itr = blog_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
+   // const auto& blog_idx = _db.get_index< follow::blog_index >().indices().get< follow::by_blog >();
+   // auto itr = blog_idx.lower_bound( boost::make_tuple( args.account, entry_id ) );
 
-   while( itr != blog_idx.end() && itr->account == args.account && result.blog.size() < args.limit )
-   {
-      const auto& comment = _db.get( itr->comment );
-      comment_blog_entry entry;
-      entry.comment = database_api::api_comment_object( comment, _db );
-      entry.blog = args.account;
-      entry.reblog_on = itr->reblogged_on;
-      entry.entry_id = itr->blog_feed_id;
+   // while( itr != blog_idx.end() && itr->account == args.account && result.blog.size() < args.limit )
+   // {
+   //    const auto& comment = _db.get( itr->comment );
+   //    comment_blog_entry entry;
+   //    entry.comment = database_api::api_comment_object( comment, _db );
+   //    entry.blog = args.account;
+   //    entry.reblog_on = itr->reblogged_on;
+   //    entry.entry_id = itr->blog_feed_id;
 
-      result.blog.push_back( entry );
-      ++itr;
-   }
+   //    result.blog.push_back( entry );
+   //    ++itr;
+   // }
 
    return result;
 }
@@ -262,16 +262,16 @@ DEFINE_API( follow_api_impl, get_reblogged_by )
 {
    get_reblogged_by_return result;
 
-   const auto& post = _db.get_comment( args.author, args.permlink );
-   const auto& blog_idx = _db.get_index< follow::blog_index, follow::by_comment >();
+   // const auto& post = _db.get_comment( args.author, args.permlink );
+   // const auto& blog_idx = _db.get_index< follow::blog_index, follow::by_comment >();
 
-   auto itr = blog_idx.lower_bound( post.id );
+   // auto itr = blog_idx.lower_bound( post.id );
 
-   while( itr != blog_idx.end() && itr->comment == post.id && result.accounts.size() < 2000 )
-   {
-      result.accounts.push_back( itr->account );
-      ++itr;
-   }
+   // while( itr != blog_idx.end() && itr->comment == post.id && result.accounts.size() < 2000 )
+   // {
+   //    result.accounts.push_back( itr->account );
+   //    ++itr;
+   // }
 
    return result;
 }
