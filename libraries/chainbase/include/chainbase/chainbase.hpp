@@ -648,7 +648,7 @@ namespace chainbase {
       explicit lock_exception() {}
       virtual ~lock_exception() {}
 
-      virtual const char* what() { return "Unable to acquire database lock"; }
+      virtual const char* what() const noexcept { return "Unable to acquire database lock"; }
    };
 
    /**
