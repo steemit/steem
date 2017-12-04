@@ -1471,7 +1471,7 @@ void database::process_vesting_withdrawals()
       if( to_withdraw > 0 )
          adjust_proxied_witness_votes( from_account, -to_withdraw );
 
-      push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_withdraw, VESTS_SYMBOL ), converted_steem ) );
+      push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_convert, VESTS_SYMBOL ), converted_steem ) );
    }
 }
 
