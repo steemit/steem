@@ -4,7 +4,8 @@
 
 namespace steemit { namespace protocol {
 
-void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
+template< typename AuthContainerType >
+void verify_authority( const vector<AuthContainerType>& auth_containers, const flat_set<public_key_type>& sigs,
                        const authority_getter& get_active,
                        const authority_getter& get_owner,
                        const authority_getter& get_posting,
@@ -20,8 +21,10 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
    flat_set< account_name_type > required_posting;
    vector< authority > other;
 
-   for( const auto& op : ops )
-      operation_get_required_authorities( op, required_active, required_owner, required_posting, other );
+   get_required_auth_visitor auth_visitor( required_active, required_owner, required_posting, other );
+
+   for( const auto& a : auth_containers )
+      auth_visitor( a );
 
    /**
     *  Transactions with operations required posting authority cannot be combined
@@ -91,6 +94,6 @@ void verify_authority( const vector<operation>& ops, const flat_set<public_key_t
       tx_irrelevant_sig,
       "Unnecessary signature(s) detected"
       );
-} FC_CAPTURE_AND_RETHROW( (ops)(sigs) ) }
+} FC_CAPTURE_AND_RETHROW( (auth_containers)(sigs) ) }
 
 } } // steemit::protocol
