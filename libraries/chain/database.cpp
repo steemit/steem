@@ -3407,31 +3407,44 @@ void database::clear_expired_delegations()
 }
 #ifdef STEEM_ENABLE_SMT
 template< typename smt_balance_object_type >
-void database::adjust_smt_balance( const account_object& a, const asset& delta, bool check_balance )
+void database::adjust_smt_balance( const account_name_type& a, const asset& delta )
 {
    //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
    const smt_balance_object_type* bo = 
-      find< smt_balance_object_type, by_owned_symbol >( boost::make_tuple(a.name, delta.symbol) );
+      find< smt_balance_object_type, by_owned_symbol >( boost::make_tuple(a, delta.symbol) );
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
+      // No balance object related to the SMT means '0' balance. Check delta to avoid creation of negative balance.
+      FC_ASSERT( delta.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      // No need to create object with '0' balance (see comment above).
+      if( delta.amount.value == 0 )
+         return;
+
       const auto& new_balance = create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
-         smt_balance.owner = a.name;
+         smt_balance.owner = a;
          smt_balance.balance = delta;
       } );
       bo = &new_balance;
    }
    else
    {
-      modify( *bo, [&]( smt_balance_object_type& smt_balance )
+      asset result = bo->balance + delta;
+      // Check result to avoid negative balance storing.
+      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      // Zero balance is the same as non object balance at all.
+      if( result.amount.value == 0 )
       {
-         smt_balance.balance += delta;
-      } );
-   }
-
-   if( check_balance )
-   {
-      FC_ASSERT( bo->amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+         remove( *bo );
+      }
+      else
+      {
+         modify( *bo, [&]( smt_balance_object_type& smt_balance )
+         {
+            smt_balance.balance = result;
+         } );
+      }
    }
 }
 #endif
@@ -3441,9 +3454,10 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_regular_balance_object >( a, delta, check_balance );
+      adjust_smt_balance< account_regular_balance_object >( a.name, delta );
       return;
    }   
 #endif
@@ -3559,9 +3573,10 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 
 #ifdef STEEM_ENABLE_SMT
    // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
    {
-      adjust_smt_balance< account_rewards_balance_object >( a, delta, check_balance );
+      adjust_smt_balance< account_rewards_balance_object >( a.name, delta );
       return;
    }   
 #endif
