@@ -20,6 +20,7 @@
 #include <fc/thread/thread.hpp>
 
 #include <memory>
+#include <thread>
 
 namespace steem { namespace plugins { namespace follow {
 
@@ -168,6 +169,39 @@ struct post_operation_visitor
       FC_CAPTURE_AND_RETHROW()
    }
 
+   template< typename Comment_IDX, typename FEED_IDX, typename Iterator, typename Account, typename CommentId >
+   void process_follow_data( chain::database& db, Comment_IDX& comment_idx, FEED_IDX& old_feed_idx, Account& account, CommentId& comment_id, Iterator& itr, const Iterator& end, const uint32_t& max_feed_size ) const
+   {
+      performance_data pd;
+
+      while( itr != end && itr->following == account )
+      {
+         if( itr->what & ( 1 << blog ) )
+         {
+            auto feed_itr = comment_idx.find( boost::make_tuple( comment_id, itr->follower ) );
+            bool is_empty = feed_itr == comment_idx.end();
+
+            pd.init( comment_id, is_empty );
+            uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, itr->follower, _plugin._self.max_feed_size, pd );
+
+            if( pd.s.creation && is_empty )
+            {
+               perf.lock();
+               //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
+               db.create< feed_object >( [&]( feed_object& f )
+               {
+                  f.account = std::string( itr->follower );
+                  f.comment = comment_id;
+                  f.account_feed_id = next_id;
+               });
+               perf.unlock();
+            }
+
+         }
+         ++itr;
+      }
+   }
+
    void operator()( const comment_operation& op )const
    {
       try
@@ -187,30 +221,21 @@ struct post_operation_visitor
 
          if( db.head_block_time() >= _plugin._self.start_feeds )
          {
-            while( itr != idx.end() && itr->following == op.author )
+            const auto& following = db.find< follow_count_object, by_account >(  op.author );
+            if( following && following->follower_count >= performance::get_thread_trigger() )
             {
-               if( itr->what & ( 1 << blog ) )
-               {
-                  auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
-                  bool is_empty = feed_itr == comment_idx.end();
+               auto it_middle = itr;
+               std::advance( it_middle, following->follower_count / 2 );
+               auto it_start_middle = it_middle;
 
-                  pd.init( c.id, is_empty );
-                  uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::part_feed >( old_feed_idx, itr->follower, _plugin._self.max_feed_size, pd );
+               std::thread t( [&]{ process_follow_data( db, comment_idx, old_feed_idx, op.author, c.id, itr, it_middle, _plugin._self.max_feed_size ); } );
 
-                  if( pd.s.creation && is_empty )
-                  {
-                     //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
-                     db.create< feed_object >( [&]( feed_object& f )
-                     {
-                        f.account = itr->follower;
-                        f.comment = c.id;
-                        f.account_feed_id = next_id;
-                     });
-                  }
+               process_follow_data( db, comment_idx, old_feed_idx, op.author, c.id, it_start_middle, idx.end(), _plugin._self.max_feed_size );
 
-               }
-               ++itr;
+               t.join();
             }
+            else
+               process_follow_data( db, comment_idx, old_feed_idx, op.author, c.id, itr, idx.end(), _plugin._self.max_feed_size );
          }
 
          const auto& comment_blog_idx = db.get_index< blog_index >().indices().get< by_comment >();

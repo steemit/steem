@@ -2,6 +2,8 @@
 
 #include <steem/chain/database.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
+
+#include <mutex>
  
 namespace steem { namespace plugins{ namespace follow {
 
@@ -10,6 +12,7 @@ std::unique_ptr< dumper > dumper::self;
 class performance_impl
 {
    database& db;
+   mutable std::mutex mtx;
 
    template< typename Object >
    uint32_t get_actual_id( const Object& it ) const;
@@ -31,6 +34,9 @@ class performance_impl
       performance_impl( database& _db );
       ~performance_impl();
 
+      void lock() const;
+      void unlock() const;
+
       template< performance_data::t_creation_type CreationType, typename Index >
       uint32_t delete_old_objects( const Index& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 };
@@ -44,6 +50,16 @@ performance_impl::performance_impl( database& _db )
 performance_impl::~performance_impl()
 {
 
+}
+
+void performance_impl::lock() const
+{
+   mtx.lock();
+}
+
+void performance_impl::unlock() const
+{
+   mtx.unlock();
 }
 
 template<>
@@ -80,6 +96,7 @@ void performance_impl::modify< performance_data::t_creation_type::full_feed >( c
    //performance::dump( "NEW!-", std::string( start_account ), next_id );
    pd.s.creation = false;
 
+   lock();
    db.modify( obj, [&]( feed_object& f )
    {
       f.account = start_account;
@@ -97,6 +114,7 @@ void performance_impl::modify< performance_data::t_creation_type::full_feed >( c
       f.comment = *pd.comment;
       f.account_feed_id = next_id;
    });
+   unlock();
 }
 
 template<>
@@ -105,10 +123,11 @@ void performance_impl::modify< performance_data::t_creation_type::part_feed >( c
    //std::string desc = "MODIFY!-";
    //desc += get_actual_name( obj );
 
-   //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
-   //performance::dump( "NEW!-", std::string( start_account ), next_id );
    pd.s.creation = false;
 
+   lock();
+   //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
+   //performance::dump( "NEW!-", std::string( start_account ), next_id );
    db.modify( obj, [&]( feed_object& f )
    {
       f.account = start_account;
@@ -118,7 +137,7 @@ void performance_impl::modify< performance_data::t_creation_type::part_feed >( c
       f.first_reblogged_by = account_name_type();
       f.first_reblogged_on = time_point_sec();
    });
-
+   unlock();
 }
 
 template<>
@@ -170,7 +189,10 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& del
          //performance::dump( desc.c_str(), std::string( delayed->account ), get_actual_id( *delayed ) );
          if( CreationType == performance_data::t_creation_type::full_feed )
             skip_modify( delayed, pd );
+   
+         lock();
          db.remove( *delayed );
+         unlock();
       }
       delayed = actual;
    }
@@ -181,7 +203,10 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& del
       //performance::dump( desc.c_str(), std::string( actual->account ), get_actual_id( *actual ) );
       if( CreationType == performance_data::t_creation_type::full_feed )
          skip_modify( actual, pd );
+
+      lock();
       db.remove( *actual );
+      unlock();
    }
 }
 
@@ -234,11 +259,25 @@ uint32_t performance::delete_old_objects( const Index& old_idx, const account_na
    return my->delete_old_objects< CreationType >( old_idx, start_account, max_size, pd );
 }
 
+void performance::lock() const
+{
+   FC_ASSERT( my );
+   my->lock();
+}
+
+void performance::unlock() const
+{
+   FC_ASSERT( my );
+   my->unlock();
+}
+
 using t_feed = decltype( ((database*)nullptr)->get_index< feed_index >().indices().get< by_feed >() );
 using t_blog = decltype( ((database*)nullptr)->get_index< blog_index >().indices().get< by_blog >() );
 
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_feed >( const t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::part_feed >( const t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_blog >( const t_blog& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
+
+uint32_t performance::thread_trigger = 150;
 
 } } } //steem::follow

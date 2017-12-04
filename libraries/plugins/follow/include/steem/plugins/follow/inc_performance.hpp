@@ -115,6 +115,8 @@ class performance
 
       std::unique_ptr< performance_impl > my;
 
+      static uint32_t thread_trigger;
+
    public:
    
       performance( database& _db );
@@ -127,6 +129,14 @@ class performance
       static void dump( const char* message, const T& data, const T2& data2 )
       {
          dumper::instance()->dump( message, data, data2 );
+      }
+
+      void lock() const;
+      void unlock() const;
+
+      static uint32_t get_thread_trigger()
+      {
+         return thread_trigger;
       }
 };
 

@@ -7,6 +7,8 @@
 #include <steem/chain/comment_object.hpp>
 #include <steem/chain/util/reward.hpp>
 
+#include <thread>
+
 namespace steem { namespace plugins { namespace follow {
 
 void follow_evaluator::do_apply( const follow_operation& o )
@@ -119,6 +121,58 @@ void follow_evaluator::do_apply( const follow_operation& o )
    FC_CAPTURE_AND_RETHROW( (o) )
 }
 
+template< typename Comment_IDX, typename FEED_IDX, typename Iterator, typename Account, typename CommentId >
+void process_follow_data( chain::database& db, performance& perf, Comment_IDX& comment_idx, FEED_IDX& old_feed_idx, Account& account, CommentId& comment_id, Iterator& itr, const Iterator& end, const uint32_t& max_feed_size )
+{
+   performance_data pd;
+
+   while( itr != end && itr->following == account )
+   {
+      if( itr->what & ( 1 << blog ) )
+      {
+         auto feed_itr = comment_idx.find( boost::make_tuple( comment_id, itr->follower ) );
+         bool is_empty = feed_itr == comment_idx.end();
+
+         pd.init( account, db.head_block_time(), comment_id, is_empty, is_empty ? 0 : feed_itr->account_feed_id );
+         uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_feed >( old_feed_idx, itr->follower, max_feed_size, pd );
+
+         if( pd.s.creation )
+         {
+            if( is_empty )
+            {
+               perf.lock();
+               //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
+               db.create< feed_object >( [&]( feed_object& f )
+               {
+                  f.account = itr->follower;
+                  f.reblogged_by.push_back( account );
+                  f.first_reblogged_by = account;
+                  f.first_reblogged_on = db.head_block_time();
+                  f.comment = comment_id;
+                  f.account_feed_id = next_id;
+               });
+               perf.unlock();
+            }
+            else
+            {
+               if( pd.s.allow_modify )
+               {
+                  perf.lock();
+                  //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
+                  db.modify( *feed_itr, [&]( feed_object& f )
+                  {
+                     f.reblogged_by.push_back( account );
+                  });
+                  perf.unlock();
+               }
+            }
+         }
+
+      }
+      ++itr;
+   }
+}
+
 void reblog_evaluator::do_apply( const reblog_operation& o )
 {
    try
@@ -169,51 +223,23 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
       const auto& old_feed_idx = _db.get_index< feed_index >().indices().get< by_feed >();
       auto itr = idx.find( o.account );
 
-      performance_data pd;
-
       if( _db.head_block_time() >= _plugin->start_feeds )
       {
-         while( itr != idx.end() && itr->following == o.account )
+         const auto& following = _db.find< follow_count_object, by_account >( o.account );
+         if( following && following->follower_count >= performance::get_thread_trigger() )
          {
-            if( itr->what & ( 1 << blog ) )
-            {
-               auto feed_itr = comment_idx.find( boost::make_tuple( c.id, itr->follower ) );
-               bool is_empty = feed_itr == comment_idx.end();
+            auto it_middle = itr;
+            std::advance( it_middle, following->follower_count / 2 );
+            auto it_start_middle = it_middle;
 
-               pd.init( o.account, _db.head_block_time(), c.id, is_empty, is_empty ? 0 : feed_itr->account_feed_id );
-               uint32_t next_id = perf.delete_old_objects< performance_data::t_creation_type::full_feed >( old_feed_idx, itr->follower, _plugin->max_feed_size, pd );
+            std::thread t( [&]{ process_follow_data( _db, perf, comment_idx, old_feed_idx, o.account, c.id, itr, it_middle, _plugin->max_feed_size ); } );
 
-               if( pd.s.creation )
-               {
-                  if( is_empty )
-                  {
-                     //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
-                     _db.create< feed_object >( [&]( feed_object& f )
-                     {
-                        f.account = itr->follower;
-                        f.reblogged_by.push_back( o.account );
-                        f.first_reblogged_by = o.account;
-                        f.first_reblogged_on = _db.head_block_time();
-                        f.comment = c.id;
-                        f.account_feed_id = next_id;
-                     });
-                  }
-                  else
-                  {
-                     if( pd.s.allow_modify )
-                     {
-                        //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
-                        _db.modify( *feed_itr, [&]( feed_object& f )
-                        {
-                           f.reblogged_by.push_back( o.account );
-                        });
-                     }
-                  }
-               }
+            process_follow_data( _db, perf, comment_idx, old_feed_idx, o.account, c.id, it_start_middle, idx.end(), _plugin->max_feed_size );
 
-            }
-            ++itr;
+            t.join();
          }
+         else
+            process_follow_data( _db, perf, comment_idx, old_feed_idx, o.account, c.id, itr, idx.end(), _plugin->max_feed_size );
       }
    }
    FC_CAPTURE_AND_RETHROW( (o) )
