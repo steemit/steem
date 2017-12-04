@@ -4,6 +4,8 @@
 #include <steem/plugins/database_api/database_api_plugin.hpp>
 
 #include <steem/protocol/get_config.hpp>
+#include <steem/protocol/exceptions.hpp>
+#include <steem/protocol/transaction_util.hpp>
 
 namespace steem { namespace plugins { namespace database_api {
 
@@ -60,6 +62,7 @@ class database_api_impl
          (get_potential_signatures)
          (verify_authority)
          (verify_account_authority)
+         (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
          (get_smt_next_identifier)
 #endif
@@ -1434,6 +1437,37 @@ DEFINE_API_IMPL( database_api_impl, verify_account_authority )
    return verify_authority( vap );
 }
 
+DEFINE_API_IMPL( database_api_impl, verify_signatures )
+{
+   // get_signature_keys can throw for dup sigs. Allow this to throw.
+   flat_set< public_key_type > sig_keys;
+   for( const auto&  sig : args.signatures )
+   {
+      STEEM_ASSERT(
+         sig_keys.insert( fc::ecc::public_key( sig, args.hash ) ).second,
+         protocol::tx_duplicate_sig,
+         "Duplicate Signature detected" );
+   }
+
+   verify_signatures_return result;
+   result.valid = true;
+
+   // verify authority throws on failure, catch and return false
+   try
+   {
+      steem::protocol::verify_authority< verify_signatures_args >(
+         { args },
+         sig_keys,
+         [this]( const string& name ) { return authority( _db.get< chain::account_authority_object, chain::by_account >( name ).owner ); },
+         [this]( const string& name ) { return authority( _db.get< chain::account_authority_object, chain::by_account >( name ).active ); },
+         [this]( const string& name ) { return authority( _db.get< chain::account_authority_object, chain::by_account >( name ).posting ); },
+         STEEM_MAX_SIG_CHECK_DEPTH );
+   }
+   catch( fc::exception& ) { result.valid = false; }
+
+   return result;
+}
+
 #ifdef STEEM_ENABLE_SMT
 //////////////////////////////////////////////////////////////////////
 //                                                                  //
@@ -1496,6 +1530,7 @@ DEFINE_READ_APIS( database_api,
    (get_potential_signatures)
    (verify_authority)
    (verify_account_authority)
+   (verify_signatures)
 #ifdef STEEM_ENABLE_SMT
    (get_smt_next_identifier)
 #endif

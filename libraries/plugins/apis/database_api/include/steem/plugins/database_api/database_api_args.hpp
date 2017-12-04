@@ -523,6 +523,41 @@ struct verify_account_authority_args
 
 typedef verify_authority_return verify_account_authority_return;
 
+struct verify_signatures_args
+{
+   fc::sha256                    hash;
+   vector< signature_type >      signatures;
+   vector< account_name_type >   required_owner;
+   vector< account_name_type >   required_active;
+   vector< account_name_type >   required_posting;
+   vector< authority >           required_other;
+
+   void get_required_owner_authorities( flat_set< account_name_type >& a )const
+   {
+      a.insert( required_owner.begin(), required_owner.end() );
+   }
+
+   void get_required_active_authorities( flat_set< account_name_type >& a )const
+   {
+      a.insert( required_active.begin(), required_active.end() );
+   }
+
+   void get_required_posting_authorities( flat_set< account_name_type >& a )const
+   {
+      a.insert( required_posting.begin(), required_posting.end() );
+   }
+
+   void get_required_authorities( vector< authority >& a )const
+   {
+      a.insert( a.end(), required_other.begin(), required_other.end() );
+   }
+};
+
+struct verify_signatures_return
+{
+   bool valid;
+};
+
 #ifdef STEEM_ENABLE_SMT
 typedef void_type get_smt_next_identifier_args;
 
@@ -742,6 +777,17 @@ FC_REFLECT( steem::plugins::database_api::verify_authority_return,
 FC_REFLECT( steem::plugins::database_api::verify_account_authority_args,
    (account)
    (signers) )
+
+FC_REFLECT( steem::plugins::database_api::verify_signatures_args,
+   (hash)
+   (signatures)
+   (required_owner)
+   (required_active)
+   (required_posting)
+   (required_other) )
+
+FC_REFLECT( steem::plugins::database_api::verify_signatures_return,
+   (valid) )
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::plugins::database_api::get_smt_next_identifier_return,
