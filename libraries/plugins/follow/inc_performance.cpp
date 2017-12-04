@@ -3,8 +3,9 @@
 #include <steem/chain/database.hpp>
 #include <steem/plugins/follow/follow_objects.hpp>
 
-#include <mutex>
- 
+#include<mutex>
+#include<atomic>
+
 namespace steem { namespace plugins{ namespace follow {
 
 std::unique_ptr< dumper > dumper::self;
@@ -12,7 +13,8 @@ std::unique_ptr< dumper > dumper::self;
 class performance_impl
 {
    database& db;
-   mutable std::mutex mtx;
+
+   mutable std::atomic_flag spin_lock = ATOMIC_FLAG_INIT;
 
    template< typename Object >
    uint32_t get_actual_id( const Object& it ) const;
@@ -54,12 +56,12 @@ performance_impl::~performance_impl()
 
 void performance_impl::lock() const
 {
-   mtx.lock();
+   while( spin_lock.test_and_set( std::memory_order_acquire ) );
 }
 
 void performance_impl::unlock() const
 {
-   mtx.unlock();
+   spin_lock.clear( std::memory_order_release );
 }
 
 template<>
@@ -278,6 +280,6 @@ template uint32_t performance::delete_old_objects< performance_data::t_creation_
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::part_feed >( const t_feed& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 template uint32_t performance::delete_old_objects< performance_data::t_creation_type::full_blog >( const t_blog& old_idx, const account_name_type& start_account, uint32_t max_size, performance_data& pd ) const;
 
-uint32_t performance::thread_trigger = 150;
+uint32_t performance::thread_trigger = 300;
 
 } } } //steem::follow
