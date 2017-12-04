@@ -3426,7 +3426,6 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
          smt_balance.owner = a;
          smt_balance.balance = delta;
       } );
-      bo = &new_balance;
    }
    else
    {
