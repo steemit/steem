@@ -22,7 +22,7 @@ add_library( steem_chain
              ${HEADERS}
            )
 
-target_link_libraries( steem_chain steem_protocol fc chainbase graphene_schema tcmalloc ${PATCH_MERGE_LIB} )
+target_link_libraries( steem_chain steem_protocol fc chainbase graphene_schema  ${PATCH_MERGE_LIB} )
 target_include_directories( steem_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" )
 
