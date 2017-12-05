@@ -199,7 +199,7 @@ namespace steem { namespace protocol {
 
       size_t property_count = 1;
       // current signing key must be present
-      FC_ASSERT( props.find( "current_signing_key" ) != props.end() );
+      FC_ASSERT( props.find( "key" ) != props.end(), "No signing key provided" );
 
       auto itr = props.find( "account_creation_fee" );
       if( itr != props.end() )

@@ -6863,10 +6863,13 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       db->push_transaction( tx, 0 );
       generate_block();
 
-      BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
+      BOOST_TEST_MESSAGE( "--- failure when signing key is not present" );
       witness_set_properties_operation prop_op;
       prop_op.owner = "alice";
-      prop_op.props[ "current_signing_key" ] = fc::raw::pack( signing_key.get_public_key() );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
       prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TBD" ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
@@ -6912,7 +6915,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_authorities )
 
       witness_set_properties_operation op;
       op.owner = "alice";
-      op.props[ "current_signing_key" ] = fc::raw::pack( generate_private_key( "key" ).get_public_key() );
+      op.props[ "key" ] = fc::raw::pack( generate_private_key( "key" ).get_public_key() );
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -6930,7 +6933,25 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_authorities )
       vector< authority > expected_keys;
       expected_keys.push_back( authority( 1, generate_private_key( "key" ).get_public_key(), 1 ) );
       op.get_required_authorities( key_auths );
+      BOOST_REQUIRE( key_auths == expected_keys );
+
+      op.props.erase( "key" );
+      key_auths.clear();
+      expected_keys.clear();
+
+      op.get_required_owner_authorities( auths );
       BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected_keys.push_back( authority( 1, STEEM_NULL_ACCOUNT, 1 ) );
+      op.get_required_authorities( key_auths );
+      BOOST_REQUIRE( key_auths == expected_keys );
+
    }
    FC_LOG_AND_RETHROW()
 }
@@ -6965,7 +6986,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       const witness_object& alice_witness = db->get_witness( "alice" );
       witness_set_properties_operation prop_op;
       prop_op.owner = "alice";
-      prop_op.props[ "current_signing_key" ] = fc::raw::pack( signing_key.get_public_key() );
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
       prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TESTS" ) );
       tx.clear();
       tx.operations.push_back( prop_op );
@@ -7005,8 +7026,8 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting new sbd_exchange_rate
       prop_op.props.erase( "new_signing_key" );
-      prop_op.props[ "current_signing_key" ].clear();
-      prop_op.props[ "current_signing_key" ] = fc::raw::pack( signing_key.get_public_key() );
+      prop_op.props[ "key" ].clear();
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
       prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
       tx.clear();
       tx.operations.push_back( prop_op );
@@ -7030,6 +7051,15 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing failure when 'key' does not match witness signing key" );
+      prop_op.props.erase( "extranious_property" );
+      prop_op.props[ "key" ].clear();
+      prop_op.props[ "key" ] = fc::raw::pack( old_signing_key.get_public_key() );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( old_signing_key, db->get_chain_id() );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
       validate_database();

@@ -131,7 +131,14 @@ void witness_set_properties_evaluator::do_apply( const witness_set_properties_op
    bool sbd_exchange_changed     = false;
    bool url_changed              = false;
 
-   auto itr = o.props.find( "account_creation_fee" );
+   auto itr = o.props.find( "key" );
+
+   // This existence of 'key' is checked in witness_set_properties_operation::validate
+   fc::raw::unpack( itr->second, signing_key );
+   FC_ASSERT( signing_key == witness.signing_key, "'key' does not match witness signing key.",
+      ("key", signing_key)("signing_key", witness.signing_key) );
+
+   itr = o.props.find( "account_creation_fee" );
    if( itr != o.props.end() )
    {
       fc::raw::unpack( itr->second, props.account_creation_fee );

@@ -430,7 +430,7 @@ namespace steem { namespace protocol {
       void validate()const;
       void get_required_authorities( vector< authority >& a )const
       {
-         auto key_itr = props.find( "current_signing_key" );
+         auto key_itr = props.find( "key" );
 
          if( key_itr != props.end() )
          {
@@ -439,7 +439,7 @@ namespace steem { namespace protocol {
             a.push_back( authority( 1, signing_key, 1 ) );
          }
          else
-            a.push_back( authority( 1, public_key_type(), 0 ) ); // This authority is impossible to satisfy
+            a.push_back( authority( 1, STEEM_NULL_ACCOUNT, 1 ) ); // The null account auth is impossible to satisfy
       }
    };
 
