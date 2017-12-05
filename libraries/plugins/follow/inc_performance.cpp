@@ -223,7 +223,9 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
 
    uint32_t next_id = get_actual_id( *it_l ) + 1;
 
+   lock();
    auto r_end = old_idx.rend();
+   unlock();
    decltype( r_end ) it( it_u );
 
    auto delayed_it = it;
@@ -232,7 +234,9 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
    while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
    {
       auto old_itr = it;
+      lock();
       ++it;
+      unlock();
 
       remember_last< CreationType >( pd.s.is_empty, is_init, delayed_it, old_itr, pd );
    }
