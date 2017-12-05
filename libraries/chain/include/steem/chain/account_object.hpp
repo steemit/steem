@@ -15,9 +15,7 @@
 namespace steem { namespace chain {
 
    using steem::protocol::authority;
-   class smt_token_object;
-   class database;
-
+   
    class account_object : public object< account_object_type, account_object >
    {
       account_object() = delete;
