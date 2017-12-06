@@ -46,7 +46,7 @@ public:
    }
 };
 
-struct by_owned_symbol;
+struct by_owner_symbol;
 
 template <enum object_type ObjectType>
 using account_balance_index = chainbase::shared_multi_index_container <account_balance_object<ObjectType>,
@@ -54,10 +54,7 @@ using account_balance_index = chainbase::shared_multi_index_container <account_b
       ordered_unique< tag< by_id >,
          member< account_balance_object<ObjectType>, typename account_balance_object<ObjectType>::id_type, &account_balance_object<ObjectType>::id>
       >,
-      ordered_non_unique< tag< by_account >,
-         member< account_balance_object<ObjectType>, account_name_type, &account_balance_object<ObjectType>::owner>
-      >,
-      ordered_unique<tag<by_owned_symbol>,
+      ordered_unique<tag<by_owner_symbol>,
          composite_key<account_balance_object<ObjectType>,
             member< account_balance_object<ObjectType>, account_name_type, &account_balance_object<ObjectType>::owner >,
             const_mem_fun< account_balance_object<ObjectType>, asset_symbol_type, &account_balance_object<ObjectType>::get_symbol >

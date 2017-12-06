@@ -3411,7 +3411,7 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
 {
    //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
    const smt_balance_object_type* bo = 
-      find< smt_balance_object_type, by_owned_symbol >( boost::make_tuple(a, delta.symbol) );
+      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple(a, delta.symbol) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
    {
@@ -3656,7 +3656,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
 #ifdef STEEM_ENABLE_SMT
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
          const account_regular_balance_object* arbo = 
-            find< account_regular_balance_object, by_owned_symbol >( boost::make_tuple(a.name, symbol) );
+            find< account_regular_balance_object, by_owner_symbol >( boost::make_tuple(a.name, symbol) );
          if( arbo == nullptr )
          {
             return asset(0, symbol);
