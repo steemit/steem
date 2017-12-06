@@ -7045,14 +7045,6 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       db->push_transaction( tx, 0 );
       BOOST_REQUIRE( alice_witness.url == "foo.bar" );
 
-      // Setting extranious_property
-      prop_op.props.erase( "url" );
-      prop_op.props[ "extranious_property" ] = fc::raw::pack( "unimplemented" );
-      tx.clear();
-      tx.operations.push_back( prop_op );
-      tx.sign( signing_key, db->get_chain_id() );
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
-
       BOOST_TEST_MESSAGE( "--- Testing failure when 'key' does not match witness signing key" );
       prop_op.props.erase( "extranious_property" );
       prop_op.props[ "key" ].clear();

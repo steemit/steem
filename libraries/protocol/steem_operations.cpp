@@ -197,14 +197,12 @@ namespace steem { namespace protocol {
    {
       validate_account_name( owner );
 
-      size_t property_count = 1;
       // current signing key must be present
       FC_ASSERT( props.find( "key" ) != props.end(), "No signing key provided" );
 
       auto itr = props.find( "account_creation_fee" );
       if( itr != props.end() )
       {
-         ++property_count;
          asset account_creation_fee;
          fc::raw::unpack( itr->second, account_creation_fee );
          FC_ASSERT( account_creation_fee.symbol == STEEM_SYMBOL, "account_creation_fee must be in STEEM" );
@@ -214,7 +212,6 @@ namespace steem { namespace protocol {
       itr = props.find( "maximum_block_size" );
       if( itr != props.end() )
       {
-         ++property_count;
          uint32_t maximum_block_size;
          fc::raw::unpack( itr->second, maximum_block_size );
          FC_ASSERT( maximum_block_size >= STEEM_MIN_BLOCK_SIZE_LIMIT, "maximum_block_size smaller than minimum max block size" );
@@ -223,7 +220,6 @@ namespace steem { namespace protocol {
       itr = props.find( "sbd_interest_rate" );
       if( itr != props.end() )
       {
-         ++property_count;
          uint16_t sbd_interest_rate;
          fc::raw::unpack( itr->second, sbd_interest_rate );
          FC_ASSERT( sbd_interest_rate >= 0, "sbd_interest_rate must be positive" );
@@ -233,7 +229,6 @@ namespace steem { namespace protocol {
       itr = props.find( "new_signing_key" );
       if( itr != props.end() )
       {
-         ++property_count;
          public_key_type signing_key;
          fc::raw::unpack( itr->second, signing_key );
          FC_UNUSED( signing_key ); // This tests the deserialization of the key
@@ -242,7 +237,6 @@ namespace steem { namespace protocol {
       itr = props.find( "sbd_exchange_rate" );
       if( itr != props.end() )
       {
-         ++property_count;
          price sbd_exchange_rate;
          fc::raw::unpack( itr->second, sbd_exchange_rate );
          FC_ASSERT( ( is_asset_type( sbd_exchange_rate.base, SBD_SYMBOL ) && is_asset_type( sbd_exchange_rate.quote, STEEM_SYMBOL ) ),
@@ -253,7 +247,6 @@ namespace steem { namespace protocol {
       itr = props.find( "url" );
       if( itr != props.end() )
       {
-         ++property_count;
          std::string url;
          fc::raw::unpack< std::string >( itr->second, url );
 
@@ -261,8 +254,6 @@ namespace steem { namespace protocol {
          FC_ASSERT( url.size() > 0, "URL size must be greater than 0" );
          FC_ASSERT( fc::is_utf8( url ), "URL is not valid UTF8" );
       }
-
-      FC_ASSERT( props.size() == property_count, "There are extraneous properties" );
    }
 
    void account_witness_vote_operation::validate() const
