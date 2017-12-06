@@ -21,10 +21,10 @@ class performance_impl
    void modify( const Object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const;
 
    template< typename Iterator >
-   void skip_modify( Iterator& actual, performance_data& pd ) const;
+   void skip_modify( const Iterator& actual, performance_data& pd ) const;
 
    template< performance_data::t_creation_type CreationType, typename Iterator >
-   void remember_last( bool is_delayed, bool& init, Iterator& delayed, Iterator& actual, performance_data& pd ) const;
+   void remember_last( bool is_delayed, bool& init, Iterator& actual, performance_data& pd ) const;
 
    public:
    
@@ -142,7 +142,7 @@ void performance_impl::modify< performance_data::t_creation_type::full_blog >( c
 }
 
 template< typename Iterator >
-void performance_impl::skip_modify( Iterator& actual, performance_data& pd ) const
+void performance_impl::skip_modify( const Iterator& actual, performance_data& pd ) const
 {
    uint32_t _id = get_actual_id( *actual );
    if( _id == pd.old_id )
@@ -155,7 +155,7 @@ void performance_impl::skip_modify( Iterator& actual, performance_data& pd ) con
 }
 
 template< performance_data::t_creation_type CreationType, typename Iterator >
-void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& delayed, Iterator& actual, performance_data& pd ) const
+void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& actual, performance_data& pd ) const
 {
    //std::string desc = "remove-";
 
@@ -165,14 +165,14 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& del
          init = false;
       else
       {
-         //desc += get_actual_name( *delayed );
+         //desc += get_actual_name( *std::prev( actual ) );
 
-         //performance::dump( desc.c_str(), std::string( delayed->account ), get_actual_id( *delayed ) );
+         //performance::dump( desc.c_str(), std::string( std::prev( actual )->account ), get_actual_id( *std::prev( actual ) ) );
+         auto removed = std::prev( actual );
          if( CreationType == performance_data::t_creation_type::full_feed )
-            skip_modify( delayed, pd );
-         db.remove( *delayed );
+            skip_modify( removed, pd );
+         db.remove( *removed );
       }
-      delayed = actual;
    }
    else
    {
@@ -199,7 +199,6 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
    auto r_end = old_idx.rend();
    decltype( r_end ) it( it_u );
 
-   auto delayed_it = it;
    bool is_init = true;
 
    while( it != r_end && it->account == start_account && next_id - get_actual_id( *it ) > max_size )
@@ -207,11 +206,11 @@ uint32_t performance_impl::delete_old_objects( const Index& old_idx, const accou
       auto old_itr = it;
       ++it;
 
-      remember_last< CreationType >( pd.s.is_empty, is_init, delayed_it, old_itr, pd );
+      remember_last< CreationType >( pd.s.is_empty, is_init, old_itr, pd );
    }
 
    if( !is_init )
-     modify< CreationType >( *delayed_it, start_account, next_id, pd );
+     modify< CreationType >( *std::prev( it ), start_account, next_id, pd );
 
    return next_id;
 }
