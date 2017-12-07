@@ -290,11 +290,19 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
       db->push_transaction( tx, 0 ); \
    }
 
-#define FAIL_WITH_OP(OP,KEY) \
+#define PUSH_OP_TWICE(OP,KEY) \
    { \
       signed_transaction tx; \
       OP2TX(OP,tx,KEY) \
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception ); \
+      db->push_transaction( tx, 0 ); \
+      db->push_transaction( tx, database::skip_transaction_dupe_check ); \
+   }
+
+#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
+   { \
+      signed_transaction tx; \
+      OP2TX(OP,tx,KEY) \
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
    }
 
 BOOST_AUTO_TEST_CASE( setup_emissions_apply )
@@ -308,13 +316,12 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       fc::time_point now = fc::time_point::now();
       fail_op.schedule_time = now;
       fail_op.emissions_unit.token_unit["bob"] = 10;
-      fail_op.lep_abs_amount = fail_op.rep_abs_amount = asset( 1000, alice_symbol );
 
       // Do invalid attempt at SMT creation.
       create_invalid_smt("alice", alice_private_key);      
 
       // Fail due to non-existing SMT (too early).
-      FAIL_WITH_OP(fail_op,alice_private_key)
+      FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
 
       // Create SMT(s) and continue.
       create_smt_3("alice", alice_private_key, [&fail_op, this, alice_private_key]
@@ -337,7 +344,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
             token.phase = steem::chain::smt_token_object::smt_phase::setup_completed;
          });
          // Fail due to closed setup phase (too late).
-         FAIL_WITH_OP(fail_op,alice_private_key)
+         FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
       });
    }
    FC_LOG_AND_RETHROW()
@@ -353,63 +360,44 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       fund( "dany", 5000000 );
       convert( "dany", ASSET( "5000.000 TESTS" ) );
 
-      signed_transaction tx;
+      smt_set_setup_parameters_operation fail_op;
+      fail_op.control_account = "dany";
 
-      smt_set_setup_parameters_operation op;
-      op.control_account = "dany";
+      // Do invalid attempt at SMT creation.
+      create_invalid_smt("dany", dany_private_key);
+      
+      // Fail due to non-existing SMT (too early).
+      FAIL_WITH_OP(fail_op, dany_private_key, fc::assert_exception)
+      
+      // Create SMT(s) and continue.
+      create_smt_3("dany", dany_private_key, [&fail_op, this, dany_private_key, eddy_private_key]
+                                             (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+         // "Reset" parameters to default value.
+         smt_set_setup_parameters_operation valid_op = fail_op;
+         valid_op.symbol = smt1;
+         PUSH_OP_TWICE(valid_op, dany_private_key);
 
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( dany_private_key, db->get_chain_id() );
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception ); // no SMT
+         // Fail with wrong key.
+         fail_op.symbol = smt2;
+         fail_op.setup_parameters.clear();
+         fail_op.setup_parameters.emplace( smt_param_allow_vesting() );
+         fail_op.setup_parameters.emplace( smt_param_allow_voting() );
+         FAIL_WITH_OP(fail_op, eddy_private_key, fc::exception);
 
-      // create SMT
-      signed_transaction ty;
-      op.symbol = create_smt(ty, "dany", dany_private_key, 3);
+         // Set both explicitly to false.
+         valid_op.setup_parameters.clear();
+         valid_op.setup_parameters.emplace( smt_param_allow_vesting({false}) );
+         valid_op.setup_parameters.emplace( smt_param_allow_voting({false}) );
+         PUSH_OP(valid_op, dany_private_key);
 
-      signed_transaction tz;
-      tz.operations.push_back( op );
-      tz.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tz.sign( dany_private_key, db->get_chain_id() );
+         // Set one to true and another one to false.
+         valid_op.setup_parameters.clear();
+         valid_op.setup_parameters.emplace( smt_param_allow_vesting() );
+         PUSH_OP(valid_op, dany_private_key);
 
-      db->push_transaction( tz, 0 );
-
-      db->push_transaction( tz, database::skip_transaction_dupe_check );
-
-      signed_transaction tx1;
-
-      op.setup_parameters.clear();
-      op.setup_parameters.emplace( smt_param_allow_vesting() );
-      op.setup_parameters.emplace( smt_param_allow_voting() );
-      tx1.operations.push_back( op );
-      tx1.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx1.sign( eddy_private_key, db->get_chain_id() );
-
-      STEEM_REQUIRE_THROW( db->push_transaction( tx1, 0 ), fc::exception ); // wrong private key
-
-      signed_transaction tx2;
-
-      op.setup_parameters.clear();
-      op.setup_parameters.emplace( smt_param_allow_vesting({false}) );
-      op.setup_parameters.emplace( smt_param_allow_voting({false}) );
-      tx2.operations.push_back( op );
-      tx2.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx2.sign( dany_private_key, db->get_chain_id() );
-
-      db->push_transaction( tx2, 0 );
-
-      signed_transaction tx3;
-
-      op.setup_parameters.clear();
-      op.setup_parameters.emplace( smt_param_allow_vesting() );
-      tx3.operations.push_back( op );
-      tx3.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx3.sign( dany_private_key, db->get_chain_id() );
-
-      db->push_transaction( tx3, 0 );
-
-      // TODO:
-      // - check applying smt_set_setup_parameters_operation after setup completed
+         // TODO:
+         // - check applying smt_set_setup_parameters_operation after setup completed
+         });
    }
    FC_LOG_AND_RETHROW()
 }

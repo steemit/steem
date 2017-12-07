@@ -722,10 +722,6 @@ void smt_database_fixture::create_invalid_smt( const char* control_account_name,
    // Fail due to precision too big.
    smt_create_operation op_precision;
    STEEM_REQUIRE_THROW( set_create_op(&op_precision, control_account_name, "smt", STEEM_ASSET_MAX_DECIMALS + 1), fc::assert_exception );
-   // Fail due to invalid token name.
-   smt_create_operation op_name;
-   set_create_op(&op_name, control_account_name, "alice1", 0);
-   push_invalid_operation(op_name, key, db);
 }
 
 void smt_database_fixture::create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name,
