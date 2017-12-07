@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE( account_create_apply )
    {
       BOOST_TEST_MESSAGE( "Testing: account_create_apply" );
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       signed_transaction tx;
       private_key_type priv_key = generate_private_key( "alice" );
@@ -612,7 +612,7 @@ BOOST_AUTO_TEST_CASE( comment_delete_apply )
 
       generate_block();
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       signed_transaction tx;
       comment_operation comment;
@@ -2040,7 +2040,7 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandchild proxy" );
-      //       alice 
+      //       alice
       //         |
       // bob->  sam->dave
 
@@ -2224,7 +2224,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_authorities )
 
       feed_publish_operation op;
       op.publisher = "alice";
-      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) );
 
       signed_transaction tx;
       tx.operations.push_back( op );
@@ -2272,7 +2272,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       BOOST_TEST_MESSAGE( "--- Test publishing price feed" );
       feed_publish_operation op;
       op.publisher = "alice";
-      op.exchange_rate = price( ASSET( "1000.000 TESTS" ), ASSET( "1.000 TBD" ) ); // 1000 STEEM : 1 SBD
+      op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1000.000 TESTS" ) ); // 1000 STEEM : 1 SBD
 
       signed_transaction tx;
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -2297,11 +2297,21 @@ BOOST_AUTO_TEST_CASE( feed_publish_apply )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test failure publishing with SBD base symbol" );
+
+      tx.operations.clear();
+      tx.signatures.clear();
+      op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) );
+      tx.sign( alice_private_key, db->get_chain_id() );
+
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+      validate_database();
+
       BOOST_TEST_MESSAGE( "--- Test updating price feed" );
 
       tx.operations.clear();
       tx.signatures.clear();
-      op.exchange_rate = price( ASSET(" 1500.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      op.exchange_rate = price( ASSET(" 1.000 TBD" ), ASSET( "1500.000 TESTS" ) );
       op.publisher = "alice";
       tx.operations.push_back( op );
       tx.sign( alice_private_key, db->get_chain_id() );
@@ -2334,7 +2344,7 @@ BOOST_AUTO_TEST_CASE( convert_authorities )
       ACTORS( (alice)(bob) )
       fund( "alice", 10000 );
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       convert( "alice", ASSET( "2.500 TESTS" ) );
 
@@ -2392,7 +2402,7 @@ BOOST_AUTO_TEST_CASE( convert_apply )
 
       const auto& convert_request_idx = db->get_index< convert_request_index >().indices().get< by_owner >();
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       convert( "alice", ASSET( "2.500 TESTS" ) );
       convert( "bob", ASSET( "7.000 TESTS" ) );
@@ -2482,7 +2492,7 @@ BOOST_AUTO_TEST_CASE( fixture_convert_checks_balance )
    //   balances, see issue #1825
    try
    {
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       ACTORS( (dany) )
 
       fund( "dany", 5000 );
@@ -2552,7 +2562,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
    {
       BOOST_TEST_MESSAGE( "Testing: limit_order_create_apply" );
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       ACTORS( (alice)(bob) )
       fund( "alice", 1000000 );
@@ -2886,7 +2896,7 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
    {
       BOOST_TEST_MESSAGE( "Testing: limit_order_create2_apply" );
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       ACTORS( (alice)(bob) )
       fund( "alice", 1000000 );
@@ -6093,7 +6103,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance_apply )
       ACTORS( (alice) )
       generate_block();
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       db_plugin->debug_update( []( database& db )
       {
@@ -6581,7 +6591,7 @@ BOOST_AUTO_TEST_CASE( comment_beneficiaries_apply )
       ACTORS( (alice)(bob)(sam)(dave) )
       generate_block();
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       comment_operation comment;
       vote_operation vote;
@@ -6828,5 +6838,225 @@ BOOST_AUTO_TEST_CASE( enable_content_editing_apply )
    FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: witness_set_properties_validate" );
+
+      ACTORS( (alice) )
+      fund( "alice", 10000 );
+      private_key_type signing_key = generate_private_key( "old_key" );
+
+      witness_update_operation op;
+      op.owner = "alice";
+      op.url = "foo.bar";
+      op.fee = ASSET( "1.000 TESTS" );
+      op.block_signing_key = signing_key.get_public_key();
+      op.props.account_creation_fee = legacy_steem_asset::from_asset( asset(STEEM_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL) );
+      op.props.maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT + 100;
+
+      signed_transaction tx;
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      generate_block();
+
+      BOOST_TEST_MESSAGE( "--- failure when signing key is not present" );
+      witness_set_properties_operation prop_op;
+      prop_op.owner = "alice";
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
+      prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TBD" ) );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting maximum_block_size below STEEM_MIN_BLOCK_SIZE_LIMIT" );
+      prop_op.props.erase( "account_creation_fee" );
+      prop_op.props[ "maximum_block_size" ] = fc::raw::pack( STEEM_MIN_BLOCK_SIZE_LIMIT - 1 );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting sbd_interest_rate with negative number" );
+      prop_op.props.erase( "maximum_block_size" );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( -700 );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting sbd_interest_rate to STEEM_100_PERCENT + 1" );
+      prop_op.props[ "sbd_interest_rate" ].clear();
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( STEEM_100_PERCENT + 1 );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting new sbd_exchange_rate with SBD / STEEM" );
+      prop_op.props.erase( "sbd_interest_rate" );
+      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET( "1.000 TESTS" ), ASSET( "10.000 TBD" ) ) );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting new url with length of zero" );
+      prop_op.props.erase( "sbd_exchange_rate" );
+      prop_op.props[ "url" ] = fc::raw::pack( "" );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- failure when setting new url with non UTF-8 character" );
+      prop_op.props[ "url" ].clear();
+      prop_op.props[ "url" ] = fc::raw::pack( "\xE0\x80\x80" );
+      STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( witness_set_properties_authorities )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: witness_set_properties_authorities" );
+
+      witness_set_properties_operation op;
+      op.owner = "alice";
+      op.props[ "key" ] = fc::raw::pack( generate_private_key( "key" ).get_public_key() );
+
+      flat_set< account_name_type > auths;
+      flat_set< account_name_type > expected;
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      vector< authority > key_auths;
+      vector< authority > expected_keys;
+      expected_keys.push_back( authority( 1, generate_private_key( "key" ).get_public_key(), 1 ) );
+      op.get_required_authorities( key_auths );
+      BOOST_REQUIRE( key_auths == expected_keys );
+
+      op.props.erase( "key" );
+      key_auths.clear();
+      expected_keys.clear();
+
+      op.get_required_owner_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_active_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      op.get_required_posting_authorities( auths );
+      BOOST_REQUIRE( auths == expected );
+
+      expected_keys.push_back( authority( 1, STEEM_NULL_ACCOUNT, 1 ) );
+      op.get_required_authorities( key_auths );
+      BOOST_REQUIRE( key_auths == expected_keys );
+
+   }
+   FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Testing: witness_set_properties_apply" );
+
+      ACTORS( (alice) )
+      fund( "alice", 10000 );
+      private_key_type signing_key = generate_private_key( "old_key" );
+
+      witness_update_operation op;
+      op.owner = "alice";
+      op.url = "foo.bar";
+      op.fee = ASSET( "1.000 TESTS" );
+      op.block_signing_key = signing_key.get_public_key();
+      op.props.account_creation_fee = legacy_steem_asset::from_asset( asset(STEEM_MIN_ACCOUNT_CREATION_FEE + 10, STEEM_SYMBOL) );
+      op.props.maximum_block_size = STEEM_MIN_BLOCK_SIZE_LIMIT + 100;
+
+      signed_transaction tx;
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      BOOST_TEST_MESSAGE( "--- Test setting runtime parameters" );
+
+      // Setting account_creation_fee
+      const witness_object& alice_witness = db->get_witness( "alice" );
+      witness_set_properties_operation prop_op;
+      prop_op.owner = "alice";
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
+      prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TESTS" ) );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.props.account_creation_fee == ASSET( "2.000 TESTS" ) );
+
+      // Setting maximum_block_size
+      prop_op.props.erase( "account_creation_fee" );
+      prop_op.props[ "maximum_block_size" ] = fc::raw::pack( STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.props.maximum_block_size == STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
+
+      // Setting sbd_interest_rate
+      prop_op.props.erase( "maximim_block_size" );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( 700 );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.props.sbd_interest_rate == 700 );
+
+      // Setting new signing_key
+      private_key_type old_signing_key = signing_key;
+      signing_key = generate_private_key( "new_key" );
+      public_key_type alice_pub = signing_key.get_public_key();
+      prop_op.props.erase( "sbd_interest_rate" );
+      prop_op.props[ "new_signing_key" ] = fc::raw::pack( alice_pub );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( old_signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.signing_key == alice_pub );
+
+      // Setting new sbd_exchange_rate
+      prop_op.props.erase( "new_signing_key" );
+      prop_op.props[ "key" ].clear();
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
+      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.sbd_exchange_rate == price( ASSET( "1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
+      BOOST_REQUIRE( alice_witness.last_sbd_exchange_update == db->head_block_time() );
+
+      // Setting new url
+      prop_op.props.erase( "sbd_exchange_rate" );
+      prop_op.props[ "url" ] = fc::raw::pack( "foo.bar" );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.url == "foo.bar" );
+
+      BOOST_TEST_MESSAGE( "--- Testing failure when 'key' does not match witness signing key" );
+      prop_op.props.erase( "extranious_property" );
+      prop_op.props[ "key" ].clear();
+      prop_op.props[ "key" ] = fc::raw::pack( old_signing_key.get_public_key() );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( old_signing_key, db->get_chain_id() );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
 BOOST_AUTO_TEST_SUITE_END()
 #endif
