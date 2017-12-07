@@ -1034,8 +1034,10 @@ FC_REFLECT( steem::protocol::delete_comment_operation, (author)(permlink) );
 FC_REFLECT( steem::protocol::beneficiary_route_type, (account)(weight) )
 FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
 
+#ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::votable_asset_info_v1, (max_accepted_payout)(allow_curation_rewards) )
 FC_REFLECT( steem::protocol::allowed_vote_assets, (votable_assets) )
+#endif
 
 FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
 FC_REFLECT( steem::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
