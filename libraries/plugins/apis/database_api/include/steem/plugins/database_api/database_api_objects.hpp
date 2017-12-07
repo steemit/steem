@@ -169,8 +169,6 @@ struct api_account_object
       last_account_update( a.last_account_update ),
       created( a.created ),
       mined( a.mined ),
-      owner_challenged( a.owner_challenged ),
-      active_challenged( a.active_challenged ),
       last_owner_proved( a.last_owner_proved ),
       last_active_proved( a.last_active_proved ),
       recovery_account( a.recovery_account ),
@@ -246,8 +244,6 @@ struct api_account_object
 
    time_point_sec    created;
    bool              mined = false;
-   bool              owner_challenged = false;
-   bool              active_challenged = false;
    time_point_sec    last_owner_proved;
    time_point_sec    last_active_proved;
    account_name_type recovery_account;
@@ -559,7 +555,7 @@ FC_REFLECT( steem::plugins::database_api::api_comment_vote_object,
 FC_REFLECT( steem::plugins::database_api::api_account_object,
              (id)(name)(owner)(active)(posting)(memo_key)(json_metadata)(proxy)(last_owner_update)(last_account_update)
              (created)(mined)
-             (owner_challenged)(active_challenged)(last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
+             (last_owner_proved)(last_active_proved)(recovery_account)(last_account_recovery)(reset_account)
              (comment_count)(lifetime_vote_count)(post_count)(can_vote)(voting_power)(last_vote_time)
              (balance)
              (savings_balance)

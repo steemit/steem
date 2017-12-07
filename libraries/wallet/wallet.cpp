@@ -2193,38 +2193,6 @@ void wallet_api::set_transaction_expiration(uint32_t seconds)
    my->set_transaction_expiration(seconds);
 }
 
-annotated_signed_transaction wallet_api::challenge( string challenger, string challenged, bool broadcast )
-{
-   FC_ASSERT( !is_locked() );
-
-   challenge_authority_operation op;
-   op.challenger = challenger;
-   op.challenged = challenged;
-   op.require_owner = false;
-
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-annotated_signed_transaction wallet_api::prove( string challenged, bool broadcast )
-{
-   FC_ASSERT( !is_locked() );
-
-   prove_authority_operation op;
-   op.challenged = challenged;
-   op.require_owner = false;
-
-   signed_transaction tx;
-   tx.operations.push_back( op );
-   tx.validate();
-
-   return my->sign_transaction( tx, broadcast );
-}
-
-
 annotated_signed_transaction wallet_api::get_transaction( transaction_id_type id )const {
    return my->_remote_api->get_transaction( id );
 }
