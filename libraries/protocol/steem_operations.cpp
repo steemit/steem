@@ -129,16 +129,14 @@ namespace steem { namespace protocol {
       validate_account_name( author );
    }
 
-   void challenge_authority_operation::validate()const
-    {
-      validate_account_name( challenger );
-      validate_account_name( challenged );
-      FC_ASSERT( challenged != challenger, "cannot challenge yourself" );
+   void placeholder_a_operation::validate()const
+   {
+      FC_ASSERT( false, "This is not a valid op" );
    }
 
-   void prove_authority_operation::validate()const
+   void placeholder_b_operation::validate()const
    {
-      validate_account_name( challenged );
+      FC_ASSERT( false, "This is not a valid op" );
    }
 
    void vote_operation::validate() const

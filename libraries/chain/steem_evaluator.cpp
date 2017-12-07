@@ -1824,58 +1824,14 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
    FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_4 ), "report_over_production_operation is disabled." );
 }
 
-void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
+void placeholder_a_evaluator::do_apply( const placeholder_a_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_14__307 ) ) FC_ASSERT( false, "Challenge authority operation is currently disabled." );
-   const auto& challenged = _db.get_account( o.challenged );
-   const auto& challenger = _db.get_account( o.challenger );
-
-   if( o.require_owner )
-   {
-      FC_ASSERT( challenged.reset_account == o.challenger, "Owner authority can only be challenged by its reset account." );
-      FC_ASSERT( challenger.balance >= STEEM_OWNER_CHALLENGE_FEE );
-      FC_ASSERT( !challenged.owner_challenged );
-      FC_ASSERT( _db.head_block_time() - challenged.last_owner_proved > STEEM_OWNER_CHALLENGE_COOLDOWN );
-
-      _db.adjust_balance( challenger, - STEEM_OWNER_CHALLENGE_FEE );
-      _db.create_vesting( _db.get_account( o.challenged ), STEEM_OWNER_CHALLENGE_FEE );
-
-      _db.modify( challenged, [&]( account_object& a )
-      {
-         a.owner_challenged = true;
-      });
-  }
-  else
-  {
-      FC_ASSERT( challenger.balance >= STEEM_ACTIVE_CHALLENGE_FEE, "Account does not have sufficient funds to pay challenge fee." );
-      FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "Account is already challenged." );
-      FC_ASSERT( _db.head_block_time() - challenged.last_active_proved > STEEM_ACTIVE_CHALLENGE_COOLDOWN, "Account cannot be challenged because it was recently challenged." );
-
-      _db.adjust_balance( challenger, - STEEM_ACTIVE_CHALLENGE_FEE );
-      _db.create_vesting( _db.get_account( o.challenged ), STEEM_ACTIVE_CHALLENGE_FEE );
-
-      _db.modify( challenged, [&]( account_object& a )
-      {
-         a.active_challenged = true;
-      });
-  }
+   FC_ASSERT( false, "This is not a valid op." );
 }
 
-void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
+void placeholder_b_evaluator::do_apply( const placeholder_b_operation& o )
 {
-   const auto& challenged = _db.get_account( o.challenged );
-   FC_ASSERT( challenged.owner_challenged || challenged.active_challenged, "Account is not challeneged. No need to prove authority." );
-
-   _db.modify( challenged, [&]( account_object& a )
-   {
-      a.active_challenged = false;
-      a.last_active_proved = _db.head_block_time();
-      if( o.require_owner )
-      {
-         a.owner_challenged = false;
-         a.last_owner_proved = _db.head_block_time();
-      }
-   });
+   FC_ASSERT( false, "This is not a valid op" );
 }
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
