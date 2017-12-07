@@ -539,27 +539,16 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       op.runtime_parameters.insert( regeneration );
       op.runtime_parameters.insert( rewards );
 
-      signed_transaction tx;
-
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
-
       //First we should create SMT
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
-      tx.operations.clear();
-      tx.signatures.clear();
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception)
 
-      //Try to create SMT
-      op.symbol = create_smt( tx, "alice", alice_private_key, 3 );
-      tx.operations.clear();
-      tx.signatures.clear();
-
-      //Make transaction again.
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
+      // Create SMT(s) and continue.
+      create_smt_3("alice", alice_private_key, [&op, this, alice_private_key]
+                                               (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+         //Make transaction again.
+         op.symbol = smt3;
+         PUSH_OP(op, alice_private_key);
+      });
    }
    FC_LOG_AND_RETHROW()
 }
