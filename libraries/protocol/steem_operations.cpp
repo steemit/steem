@@ -1,4 +1,6 @@
 #include <steem/protocol/steem_operations.hpp>
+
+#include <fc/macros.hpp>
 #include <fc/io/json.hpp>
 
 #include <locale>
@@ -80,10 +82,14 @@ namespace steem { namespace protocol {
 
    struct comment_options_extension_validate_visitor
    {
-      comment_options_extension_validate_visitor() {}
-
       typedef void result_type;
 
+#ifdef STEEM_ENABLE_SMT
+      void operator()( const allowed_vote_assets& va) const
+      {
+         FC_TODO("To be implemented  suppport for allowed_vote_assets");
+      }
+#endif
       void operator()( const comment_payout_beneficiaries& cpb ) const
       {
          cpb.validate();

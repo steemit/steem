@@ -13,6 +13,7 @@
 #include <steem/utilities/plugin_utilities.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/macros.hpp>
 #include <fc/smart_ref_impl.hpp>
 
 #include <boost/asio.hpp>
@@ -88,6 +89,13 @@ namespace detail {
 
       const comment_object& _c;
       const database& _db;
+
+#ifdef STEEM_ENABLE_SMT
+      void operator()( const allowed_vote_assets& va) const
+      {
+         FC_TODO("To be implemented  suppport for allowed_vote_assets");
+      }
+#endif
 
       void operator()( const comment_payout_beneficiaries& cpb )const
       {
