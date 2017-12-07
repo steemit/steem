@@ -2230,8 +2230,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< limit_order_create_evaluator             >();
    _my->_evaluator_registry.register_evaluator< limit_order_create2_evaluator            >();
    _my->_evaluator_registry.register_evaluator< limit_order_cancel_evaluator             >();
-   _my->_evaluator_registry.register_evaluator< challenge_authority_evaluator            >();
-   _my->_evaluator_registry.register_evaluator< prove_authority_evaluator                >();
+   _my->_evaluator_registry.register_evaluator< placeholder_a_evaluator                  >();
+   _my->_evaluator_registry.register_evaluator< placeholder_b_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< request_account_recovery_evaluator       >();
    _my->_evaluator_registry.register_evaluator< recover_account_evaluator                >();
    _my->_evaluator_registry.register_evaluator< change_recovery_account_evaluator        >();
@@ -3451,7 +3451,7 @@ template< typename smt_balance_object_type >
 void database::adjust_smt_balance( const account_name_type& a, const asset& delta )
 {
    //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
-   const smt_balance_object_type* bo = 
+   const smt_balance_object_type* bo =
       find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple(a, delta.symbol) );
    // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
    if( bo == nullptr )
@@ -3499,7 +3499,7 @@ void database::adjust_balance( const account_object& a, const asset& delta )
    {
       adjust_smt_balance< account_regular_balance_object >( a.name, delta );
       return;
-   }   
+   }
 #endif
    modify( a, [&]( account_object& acnt )
    {
@@ -3618,7 +3618,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
    {
       adjust_smt_balance< account_rewards_balance_object >( a.name, delta );
       return;
-   }   
+   }
 #endif
    modify( a, [&]( account_object& acnt )
    {
@@ -3696,7 +3696,7 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       {
 #ifdef STEEM_ENABLE_SMT
          FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
-         const account_regular_balance_object* arbo = 
+         const account_regular_balance_object* arbo =
             find< account_regular_balance_object, by_owner_symbol >( boost::make_tuple(a.name, symbol) );
          if( arbo == nullptr )
          {
@@ -4440,7 +4440,7 @@ vector< asset_symbol_type > database::get_smt_next_identifier()
    // Note that no decimal places argument is required from SMT creator at this stage.
    // This is because asset_symbol_type's to_string method omits the precision when serializing.
    // For appropriate use of this method see e.g. smt_database_fixture::create_smt
-   
+
    uint8_t decimal_places = 0;
    FC_ASSERT( _next_available_nai >= SMT_MIN_NAI );
    FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );

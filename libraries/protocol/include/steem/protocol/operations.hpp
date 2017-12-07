@@ -44,8 +44,8 @@ namespace steem { namespace protocol {
             comment_options_operation,
             set_withdraw_vesting_route_operation,
             limit_order_create2_operation,
-            challenge_authority_operation,
-            prove_authority_operation,
+            placeholder_a_operation,               // A new op can go here
+            placeholder_b_operation,               // A new op can go here
             request_account_recovery_operation,
             recover_account_operation,
             change_recovery_account_operation,

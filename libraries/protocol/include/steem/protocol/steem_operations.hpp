@@ -128,26 +128,14 @@ namespace steem { namespace protocol {
    };
 
 
-   struct challenge_authority_operation : public base_operation
+   struct placeholder_a_operation : public base_operation
    {
-      account_name_type challenger;
-      account_name_type challenged;
-      bool              require_owner = false;
-
       void validate()const;
-
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(challenger); }
    };
 
-   struct prove_authority_operation : public base_operation
+   struct placeholder_b_operation : public base_operation
    {
-      account_name_type challenged;
-      bool              require_owner = false;
-
       void validate()const;
-
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ if( !require_owner ) a.insert(challenged); }
-      void get_required_owner_authorities( flat_set<account_name_type>& a )const{  if(  require_owner ) a.insert(challenged); }
    };
 
 
@@ -1018,8 +1006,8 @@ FC_REFLECT( steem::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(s
 FC_REFLECT( steem::protocol::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
 FC_REFLECT( steem::protocol::escrow_dispute_operation, (from)(to)(agent)(who)(escrow_id) );
 FC_REFLECT( steem::protocol::escrow_release_operation, (from)(to)(agent)(who)(receiver)(escrow_id)(sbd_amount)(steem_amount) );
-FC_REFLECT( steem::protocol::challenge_authority_operation, (challenger)(challenged)(require_owner) );
-FC_REFLECT( steem::protocol::prove_authority_operation, (challenged)(require_owner) );
+FC_REFLECT( steem::protocol::placeholder_a_operation, );
+FC_REFLECT( steem::protocol::placeholder_b_operation, );
 FC_REFLECT( steem::protocol::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );

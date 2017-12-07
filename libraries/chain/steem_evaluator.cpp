@@ -317,12 +317,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
       if( o.memo_key != public_key_type() )
             acc.memo_key = o.memo_key;
 
-      if( ( o.active || o.owner ) && acc.active_challenged )
-      {
-         acc.active_challenged = false;
-         acc.last_active_proved = _db.head_block_time();
-      }
-
       acc.last_account_update = _db.head_block_time();
 
       #ifndef IS_LOW_MEM
@@ -348,12 +342,6 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
  */
 void delete_comment_evaluator::do_apply( const delete_comment_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-   {
-      const auto& auth = _db.get_account( o.author );
-      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ), "Operation cannot be processed because account is currently challenged." );
-   }
-
    const auto& comment = _db.get_comment( o.author, o.permlink );
    FC_ASSERT( comment.children == 0, "Cannot delete a comment with replies." );
 
@@ -425,12 +413,6 @@ struct comment_options_extension_visitor
 
 void comment_options_evaluator::do_apply( const comment_options_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-   {
-      const auto& auth = _db.get_account( o.author );
-      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ), "Operation cannot be processed because account is currently challenged." );
-   }
-
    const auto& comment = _db.get_comment( o.author, o.permlink );
    if( !o.allow_curation_rewards || !o.allow_votes || o.max_accepted_payout < comment.max_accepted_payout )
       FC_ASSERT( comment.abs_rshares == 0, "One of the included comment options requires the comment to have no rshares allocated to it." );
@@ -462,9 +444,6 @@ void comment_evaluator::do_apply( const comment_operation& o )
    auto itr = by_permlink_idx.find( boost::make_tuple( o.author, o.permlink ) );
 
    const auto& auth = _db.get_account( o.author ); /// prove it exists
-
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-      FC_ASSERT( !(auth.owner_challenged || auth.active_challenged ), "Operation cannot be processed because account is currently challenged." );
 
    comment_id_type id;
 
@@ -853,15 +832,6 @@ void transfer_evaluator::do_apply( const transfer_operation& o )
    const auto& from_account = _db.get_account(o.from);
    const auto& to_account = _db.get_account(o.to);
 
-   if( from_account.active_challenged )
-   {
-      _db.modify( from_account, [&]( account_object& a )
-      {
-         a.active_challenged = false;
-         a.last_active_proved = _db.head_block_time();
-      });
-   }
-
    FC_ASSERT( _db.get_balance( from_account, o.amount.symbol ) >= o.amount, "Account does not have sufficient funds for transfer." );
    _db.adjust_balance( from_account, -o.amount );
    _db.adjust_balance( to_account, o.amount );
@@ -1111,9 +1081,6 @@ void vote_evaluator::do_apply( const vote_operation& o )
 { try {
    const auto& comment = _db.get_comment( o.author, o.permlink );
    const auto& voter   = _db.get_account( o.voter );
-
-   if( _db.has_hardfork( STEEM_HARDFORK_0_10 ) )
-      FC_ASSERT( !(voter.owner_challenged || voter.active_challenged ), "Operation cannot be processed because the account is currently challenged." );
 
    FC_ASSERT( voter.can_vote, "Voter has declined their voting rights." );
 
@@ -1824,58 +1791,14 @@ void report_over_production_evaluator::do_apply( const report_over_production_op
    FC_ASSERT( !_db.has_hardfork( STEEM_HARDFORK_0_4 ), "report_over_production_operation is disabled." );
 }
 
-void challenge_authority_evaluator::do_apply( const challenge_authority_operation& o )
+void placeholder_a_evaluator::do_apply( const placeholder_a_operation& o )
 {
-   if( _db.has_hardfork( STEEM_HARDFORK_0_14__307 ) ) FC_ASSERT( false, "Challenge authority operation is currently disabled." );
-   const auto& challenged = _db.get_account( o.challenged );
-   const auto& challenger = _db.get_account( o.challenger );
-
-   if( o.require_owner )
-   {
-      FC_ASSERT( challenged.reset_account == o.challenger, "Owner authority can only be challenged by its reset account." );
-      FC_ASSERT( challenger.balance >= STEEM_OWNER_CHALLENGE_FEE );
-      FC_ASSERT( !challenged.owner_challenged );
-      FC_ASSERT( _db.head_block_time() - challenged.last_owner_proved > STEEM_OWNER_CHALLENGE_COOLDOWN );
-
-      _db.adjust_balance( challenger, - STEEM_OWNER_CHALLENGE_FEE );
-      _db.create_vesting( _db.get_account( o.challenged ), STEEM_OWNER_CHALLENGE_FEE );
-
-      _db.modify( challenged, [&]( account_object& a )
-      {
-         a.owner_challenged = true;
-      });
-  }
-  else
-  {
-      FC_ASSERT( challenger.balance >= STEEM_ACTIVE_CHALLENGE_FEE, "Account does not have sufficient funds to pay challenge fee." );
-      FC_ASSERT( !( challenged.owner_challenged || challenged.active_challenged ), "Account is already challenged." );
-      FC_ASSERT( _db.head_block_time() - challenged.last_active_proved > STEEM_ACTIVE_CHALLENGE_COOLDOWN, "Account cannot be challenged because it was recently challenged." );
-
-      _db.adjust_balance( challenger, - STEEM_ACTIVE_CHALLENGE_FEE );
-      _db.create_vesting( _db.get_account( o.challenged ), STEEM_ACTIVE_CHALLENGE_FEE );
-
-      _db.modify( challenged, [&]( account_object& a )
-      {
-         a.active_challenged = true;
-      });
-  }
+   FC_ASSERT( false, "This is not a valid op." );
 }
 
-void prove_authority_evaluator::do_apply( const prove_authority_operation& o )
+void placeholder_b_evaluator::do_apply( const placeholder_b_operation& o )
 {
-   const auto& challenged = _db.get_account( o.challenged );
-   FC_ASSERT( challenged.owner_challenged || challenged.active_challenged, "Account is not challeneged. No need to prove authority." );
-
-   _db.modify( challenged, [&]( account_object& a )
-   {
-      a.active_challenged = false;
-      a.last_active_proved = _db.head_block_time();
-      if( o.require_owner )
-      {
-         a.owner_challenged = false;
-         a.last_owner_proved = _db.head_block_time();
-      }
-   });
+   FC_ASSERT( false, "This is not a valid op" );
 }
 
 void request_account_recovery_evaluator::do_apply( const request_account_recovery_operation& o )
