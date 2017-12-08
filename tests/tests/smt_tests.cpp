@@ -105,6 +105,33 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+#define OP2TX(OP,TX,KEY) \
+TX.operations.push_back( OP ); \
+TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
+TX.sign( KEY, db->get_chain_id() );
+
+#define PUSH_OP(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+}
+
+#define PUSH_OP_TWICE(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+   db->push_transaction( tx, database::skip_transaction_dupe_check ); \
+}
+
+#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
+}
+
 BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try
@@ -114,25 +141,33 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       ACTORS( (alice)(bob) )
       SMT_SYMBOL( alice, 3 );
 
-      fund( "alice", 10 * 1000 * 1000 );
+      const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+      asset required_creation_fee = dgpo.smt_creation_fee;
+      FC_ASSERT( required_creation_fee.amount > 0, "Expected positive smt_creation_fee." );
+      unsigned int test_amount = required_creation_fee.amount.value;
 
       smt_create_operation op;
-
-      op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = "alice";
       op.symbol = alice_symbol;
       op.precision = op.symbol.decimals();
 
-      signed_transaction tx;
+      // Fund with STEEM, and set fee with SBD.
+      fund( "alice", test_amount );
+      // Declare fee in SBD/TBD though alice has none.
+      op.smt_creation_fee = asset( test_amount, SBD_SYMBOL );
+      // Throw due to insufficient balance of SBD/TBD.
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
 
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      // throw due to insufficient balance
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      // Now fund with SBD, and set fee with STEEM.
+      convert( "alice", asset( test_amount, STEEM_SYMBOL ) );
+      // Declare fee in STEEM though alice has none.
+      op.smt_creation_fee = asset( test_amount, STEEM_SYMBOL );
+      // Throw due to insufficient balance of STEEM.
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
 
-      convert( "alice", ASSET( "5000.000 TESTS" ) );
-      db->push_transaction( tx, 0 );
+      // Push valid operation.
+      op.smt_creation_fee = asset( test_amount, SBD_SYMBOL );
+      PUSH_OP( op, alice_private_key );
 
       // Check the SMT cannot be created twice even with different precision.
       create_conflicting_smt(op.symbol, "alice", alice_private_key);
@@ -143,11 +178,25 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       // Check that invalid SMT can't be created
       create_invalid_smt("alice", alice_private_key);
 
-      // TODO:
-      // - Check that 1000 TESTS throws
-      // - Check that less than 1000 TBD throws
-      // - Check that more than 1000 TBD succeeds
-      //
+      // Check fee set too low.
+      asset fee_too_low = required_creation_fee;
+      unsigned int too_low_fee_amount = required_creation_fee.amount.value-1;
+      fee_too_low.amount -= 1;
+
+      SMT_SYMBOL( bob, 0 );
+      op.control_account = "bob";
+      op.symbol = bob_symbol;
+      op.precision = op.symbol.decimals();
+
+      // Check too low fee in STEEM.
+      fund( "bob", too_low_fee_amount );
+      op.smt_creation_fee = asset( too_low_fee_amount, STEEM_SYMBOL );
+      FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
+
+      // Check too low fee in SBD.
+      convert( "bob", asset( too_low_fee_amount, STEEM_SYMBOL ) );
+      op.smt_creation_fee = asset( too_low_fee_amount, SBD_SYMBOL );
+      FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
    }
    FC_LOG_AND_RETHROW()
 }
@@ -277,33 +326,6 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
    }
    FC_LOG_AND_RETHROW()
 }
-
-#define OP2TX(OP,TX,KEY) \
-   TX.operations.push_back( OP ); \
-   TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
-   TX.sign( KEY, db->get_chain_id() );
-
-#define PUSH_OP(OP,KEY) \
-   { \
-      signed_transaction tx; \
-      OP2TX(OP,tx,KEY) \
-      db->push_transaction( tx, 0 ); \
-   }
-
-#define PUSH_OP_TWICE(OP,KEY) \
-   { \
-      signed_transaction tx; \
-      OP2TX(OP,tx,KEY) \
-      db->push_transaction( tx, 0 ); \
-      db->push_transaction( tx, database::skip_transaction_dupe_check ); \
-   }
-
-#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
-   { \
-      signed_transaction tx; \
-      OP2TX(OP,tx,KEY) \
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
-   }
 
 BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 {
