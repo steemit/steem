@@ -25,6 +25,7 @@ std::string wstring_to_utf8(const std::wstring& str)
 
 #endif
 
+#include <fc/macros.hpp>
 #include <fc/uint128.hpp>
 #include <fc/utf8.hpp>
 
@@ -488,6 +489,13 @@ struct comment_options_extension_visitor
 
    const comment_object& _c;
    database& _db;
+
+#ifdef STEEM_ENABLE_SMT
+   void operator()( const allowed_vote_assets& va) const
+   {
+      FC_TODO("To be implemented  suppport for allowed_vote_assets");
+   }
+#endif
 
    void operator()( const comment_payout_beneficiaries& cpb ) const
    {

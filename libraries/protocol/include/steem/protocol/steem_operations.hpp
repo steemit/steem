@@ -98,8 +98,30 @@ namespace steem { namespace protocol {
       void validate()const;
    };
 
+#ifdef STEEM_ENABLE_SMT
+   struct votable_asset_info_v1
+   {
+      share_type        max_accepted_payout    = 0;
+      bool              allow_curation_rewards = false;
+   };
+
+   typedef static_variant< votable_asset_info_v1 > votable_asset_info;
+
+   /** Allows to store all SMT tokens being allowed to use during voting process.
+    *  Maps asset symbol (SMT) to the vote info.
+    *  @see SMT spec for details: https://github.com/steemit/smt-whitepaper/blob/master/smt-manual/manual.md
+    */
+   struct allowed_vote_assets
+   {
+      flat_map< asset_symbol_type, votable_asset_info > votable_assets;
+   };
+#endif /// STEEM_ENABLE_SMT
+
    typedef static_variant<
             comment_payout_beneficiaries
+#ifdef STEEM_ENABLE_SMT
+            ,allowed_vote_assets
+#endif /// STEEM_ENABLE_SMT
            > comment_options_extension;
 
    typedef flat_set< comment_options_extension > comment_options_extensions_type;
@@ -1021,6 +1043,12 @@ FC_REFLECT( steem::protocol::delete_comment_operation, (author)(permlink) );
 
 FC_REFLECT( steem::protocol::beneficiary_route_type, (account)(weight) )
 FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
+
+#ifdef STEEM_ENABLE_SMT
+FC_REFLECT( steem::protocol::votable_asset_info_v1, (max_accepted_payout)(allow_curation_rewards) )
+FC_REFLECT( steem::protocol::allowed_vote_assets, (votable_assets) )
+#endif
+
 FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
 FC_REFLECT( steem::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
