@@ -6928,6 +6928,16 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       tx.sign( old_signing_key, db->get_chain_id() );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::assert_exception );
 
+      BOOST_TEST_MESSAGE( "--- Testing setting account subsidy limit" );
+      prop_op.props[ "key" ].clear();
+      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
+      prop_op.props[ "account_subsidy_limit" ] = fc::raw::pack( 1000 );
+      tx.clear();
+      tx.operations.push_back( prop_op );
+      tx.sign( signing_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+      BOOST_REQUIRE( alice_witness.props.account_subsidy_limit == 1000 );
+
       validate_database();
    }
    FC_LOG_AND_RETHROW()
