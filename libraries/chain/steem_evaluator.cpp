@@ -257,7 +257,12 @@ void initialize_account_object( account_object& acc, const account_name_type& na
    acc.created = props.time;
    acc.last_vote_time = props.time;
    acc.mined = mined;
-   acc.recovery_account = recovery_account;
+
+   FC_TODO( "If after HF 20, there are no temp account recoveries, the HF check can be removed." )
+   if( !_db.has_hardfork( STEEM_HARDFORK_0_11__169 ) )
+         acc.recovery_account = "steem";
+   else if( o.creator != STEEM_TEMP_ACCOUNT || !_db.has_hardfork( STEEM_HARDFORK_0_20__1782 ) )
+      acc.recovery_account = recovery_account;
 }
 
 void account_create_evaluator::do_apply( const account_create_operation& o )
@@ -1226,7 +1231,7 @@ void calculate_power_shares( i_voting_helper* voting_helper, t_voter_asset_info*
    int64_t elapsed_seconds = (db.head_block_time() - last_vote_time).to_seconds();
 
    if( db.has_hardfork( STEEM_HARDFORK_0_11 ) )
-      FC_ASSERT( elapsed_seconds >= voting_helper->get_minimal_vote_interval(), 
+      FC_ASSERT( elapsed_seconds >= voting_helper->get_minimal_vote_interval(),
                  "Can only vote once every ${sec} seconds.", ("sec", voting_helper->get_minimal_vote_interval()) );
 
    int64_t regenerated_power = (STEEM_100_PERCENT * elapsed_seconds) / voting_helper->get_vote_regeneration_period();
@@ -1356,7 +1361,7 @@ void cast_vote( i_voting_helper* voting_helper, const t_voter_asset_info& info, 
    }
    voting_helper->update_comment_vote_object( cvo, vote_weight, rshares );
 
-   
+
    if( max_vote_weight ) // Optimization
    {
       voting_helper->increase_comment_total_vote_weight( comment,  max_vote_weight );
@@ -1834,7 +1839,11 @@ void request_account_recovery_evaluator::do_apply( const request_account_recover
    const auto& account_to_recover = _db.get_account( o.account_to_recover );
 
    if ( account_to_recover.recovery_account.length() )   // Make sure recovery matches expected recovery account
+   {
       FC_ASSERT( account_to_recover.recovery_account == o.recovery_account, "Cannot recover an account that does not have you as there recovery partner." );
+      if( o.recovery_account == STEEM_TEMP_ACCOUNT )
+         wlog( "Recovery by temp account" );
+   }
    else                                                  // Empty string recovery account defaults to top witness
       FC_ASSERT( _db.get_index< witness_index >().indices().get< by_vote_name >().begin()->owner == o.recovery_account, "Top witness must recover an account with no recovery partner." );
 
