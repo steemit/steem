@@ -686,7 +686,7 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       fund( control_account_name, 10 * 1000 * 1000 );
       convert( control_account_name, ASSET( "5000.000 TESTS" ) );
