@@ -200,9 +200,19 @@ namespace steem { namespace chain {
 
          pair< asset_symbol_type, asset_symbol_type > get_market()const
          {
-            return sell_price.base.symbol < sell_price.quote.symbol ?
-                std::make_pair( sell_price.base.symbol, sell_price.quote.symbol ) :
-                std::make_pair( sell_price.quote.symbol, sell_price.base.symbol );
+            if(
+               sell_price.base.symbol.space() == asset_symbol_type::smt_nai_space
+               || sell_price.quote.symbol.space() == asset_symbol_type::smt_nai_space
+              )
+            {
+               return sell_price.base.symbol.space() == asset_symbol_type::smt_nai_space ?
+                  std::make_pair( sell_price.base.symbol, sell_price.quote.symbol ) :
+                  std::make_pair( sell_price.quote.symbol, sell_price.base.symbol );
+            }
+            else
+               return sell_price.base.symbol < sell_price.quote.symbol ?
+                  std::make_pair( sell_price.base.symbol, sell_price.quote.symbol ) :
+                  std::make_pair( sell_price.quote.symbol, sell_price.base.symbol );
          }
 
          asset amount_for_sale()const   { return asset( for_sale, sell_price.base.symbol ); }
