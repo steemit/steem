@@ -6,9 +6,6 @@
 #include <steem/chain/index.hpp>
 #include <steem/chain/operation_notification.hpp>
 
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
-
 namespace steem { namespace plugins { namespace account_by_key {
 
 namespace detail {

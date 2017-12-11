@@ -6,9 +6,6 @@
 #include <steem/chain/index.hpp>
 #include <steem/chain/operation_notification.hpp>
 
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
-
 #include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace plugins { namespace smt_test {

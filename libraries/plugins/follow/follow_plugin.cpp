@@ -12,9 +12,6 @@
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
 
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
-
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
