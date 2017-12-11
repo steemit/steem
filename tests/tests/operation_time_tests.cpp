@@ -2836,7 +2836,7 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
 
       db->skip_price_feed_limit_check = false;
       const auto& gpo = db->get_dynamic_global_properties();
-      auto new_exchange_rate = price( gpo.current_sbd_supply, asset( ( STEEM_100_PERCENT ) * gpo.current_supply.amount ) );
+      auto new_exchange_rate = price( gpo.current_sbd_supply, asset( ( STEEM_100_PERCENT ) * gpo.current_supply.amount, STEEM_SYMBOL ) );
       set_price_feed( new_exchange_rate );
       set_price_feed( new_exchange_rate );
 
