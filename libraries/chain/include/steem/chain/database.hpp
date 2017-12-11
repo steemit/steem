@@ -13,7 +13,6 @@
 #include <steem/protocol/protocol.hpp>
 #include <steem/protocol/hardfork.hpp>
 
-//#include <graphene/db2/database.hpp>
 #include <fc/signals.hpp>
 
 #include <fc/log/logger.hpp>
@@ -259,7 +258,7 @@ namespace steem { namespace chain {
           *  Emitted After a block has been applied and committed.  The callback
           *  should not yield and should execute quickly.
           */
-         //fc::signal<void(const vector< graphene::db2::generic_id >&)> changed_objects;
+         //fc::signal<void(const vector< object_id_type >&)> changed_objects;
 
          /** this signal is emitted any time an object is removed and contains a
           * pointer to the last value of every object that was removed.

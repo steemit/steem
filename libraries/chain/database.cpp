@@ -37,8 +37,6 @@
 
 namespace steem { namespace chain {
 
-//namespace db2 = graphene::db2;
-
 struct object_schema_repr
 {
    std::pair< uint16_t, uint16_t > space_type;
@@ -2503,7 +2501,7 @@ void database::notify_changed_objects()
 {
    try
    {
-      /*vector< graphene::chainbase::generic_id > ids;
+      /*vector< chainbase::generic_id > ids;
       get_changed_ids( ids );
       STEEM_TRY_NOTIFY( changed_objects, ids )*/
       /*
