@@ -3,11 +3,13 @@
 
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/database.hpp>
+#include <steem/chain/global_property_object.hpp>
 #include <steem/chain/index.hpp>
 #include <steem/chain/operation_notification.hpp>
 
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 namespace steem { namespace plugins { namespace block_log_info {
 
@@ -21,15 +23,22 @@ class block_log_info_plugin_impl
          _self( _plugin ) {}
 
       void on_applied_block( const signed_block& b );
+      void print_message( const block_log_message_data& data );
 
       database&                     _db;
       block_log_info_plugin&        _self;
       boost::signals2::connection   on_applied_block_connection;
+      int32_t                       print_interval_seconds = 0;
+      bool                          print_irreversible = true;
+      std::string                   output_name;
 };
 
 void block_log_info_plugin_impl::on_applied_block( const signed_block& b )
 {
-   if( b.block_num() == 1 )
+   uint32_t block_num = b.block_num();
+   bool is_genesis = (block_num == 1);
+
+   if( is_genesis )
    {
       _db.create< block_log_hash_state_object >( []( block_log_hash_state_object& bso )
       {
@@ -37,6 +46,48 @@ void block_log_info_plugin_impl::on_applied_block( const signed_block& b )
    }
 
    const block_log_hash_state_object& state = _db.get< block_log_hash_state_object, by_id >( block_log_hash_state_id_type(0) );
+   uint64_t current_interval = state.last_interval;
+
+   if( (print_interval_seconds > 0) && !is_genesis )
+   {
+      current_interval = b.timestamp.sec_since_epoch() / print_interval_seconds;
+      if( current_interval != state.last_interval )
+      {
+         block_log_message_data data;
+         data.block_num = block_num;
+         data.total_size = state.total_size;
+         data.current_interval = current_interval;
+         data.rsha256 = state.rsha256;
+
+         if( !print_irreversible )
+         {
+            print_message( data );
+         }
+         else
+         {
+            _db.create< block_log_pending_message_object >( [&data]( block_log_pending_message_object& msg )
+            {
+               msg.data = data;
+            } );
+         }
+      }
+
+      const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
+
+      const auto& idx = _db.get_index< block_log_pending_message_index, by_id >();
+      while( true )
+      {
+         auto it = idx.begin();
+         if( it == idx.end() )
+            break;
+         if( it->data.block_num > dgpo.last_irreversible_block_num )
+            break;
+         print_message( it->data );
+         _db.remove( *it );
+      }
+   }
+
+
    uint64_t offset = state.total_size;
    std::vector< char > data = fc::raw::pack( b );
    for( int i=0; i<8; i++ )
@@ -49,14 +100,30 @@ void block_log_info_plugin_impl::on_applied_block( const signed_block& b )
    {
       bso.total_size += data.size();
       bso.rsha256.update( data.data(), data.size() );
+      bso.last_interval = current_interval;
    } );
+}
 
-   if( (b.block_num() % 100000) == 0 )
+void block_log_info_plugin_impl::print_message( const block_log_message_data& data )
+{
+   std::stringstream ss;
+   ss << "block_num=" << data.block_num << "   size=" << data.total_size << "   hash=" << data.rsha256.hexdigest();
+
+   std::string msg = ss.str();
+
+   if( output_name == "" )
+      return;
+   else if( (output_name == "STDOUT") || (output_name == "-") )
+      std::cout << msg << std::endl;
+   else if( output_name == "STDERR" )
+      std::cerr << msg << std::endl;
+   else if( output_name == "ILOG" )
+      ilog( "${msg}", ("msg", msg) );
+   else
    {
-      fc::restartable_sha256 h = state.rsha256;
-      h.finish();
-      ilog( "block_num=${b}   size=${ts}   hash=${h}",
-         ("b", b.block_num())("ts", state.total_size)("h", h.hexdigest()) );
+      std::ofstream out( output_name, std::ofstream::app );
+      out << msg << std::endl;
+      out.close();
    }
 }
 
@@ -65,7 +132,14 @@ void block_log_info_plugin_impl::on_applied_block( const signed_block& b )
 block_log_info_plugin::block_log_info_plugin() {}
 block_log_info_plugin::~block_log_info_plugin() {}
 
-void block_log_info_plugin::set_program_options( options_description& cli, options_description& cfg ){}
+void block_log_info_plugin::set_program_options( options_description& cli, options_description& cfg )
+{
+   cfg.add_options()
+         ("block-log-info-print-interval-seconds", boost::program_options::value< int32_t >()->default_value(60*60*24), "How often to print out block_log_info (default 1 day)")
+         ("block-log-info-print-irreversible", boost::program_options::value< bool >()->default_value(true), "Whether to defer printing until block is irreversible")
+         ("block-log-info-print-file", boost::program_options::value< string >()->default_value("ILOG"), "Where to print (filename or special sink ILOG, STDOUT, STDERR)")
+         ;
+}
 
 void block_log_info_plugin::plugin_initialize( const boost::program_options::variables_map& options )
 {
@@ -78,6 +152,16 @@ void block_log_info_plugin::plugin_initialize( const boost::program_options::var
       my->on_applied_block_connection = db.applied_block.connect( [&]( const signed_block& b ){ my->on_applied_block( b ); } );
 
       add_plugin_index< block_log_hash_state_index >(db);
+      add_plugin_index< block_log_pending_message_index >(db);
+
+      my->print_interval_seconds = options.at( "block-log-info-print-interval-seconds" ).as< int32_t >();
+      my->print_irreversible = options.at( "block-log-info-print-irreversible" ).as< bool >();
+      my->output_name = options.at( "block-log-info-print-file" ).as< string >();
+
+      if( my->print_interval_seconds <= 0 )
+      {
+         wlog( "print_interval_seconds set to value <= 0, if you don't need printing, consider disabling block_log_info_plugin entirely to improve performance" );
+      }
    }
    FC_CAPTURE_AND_RETHROW()
 }
