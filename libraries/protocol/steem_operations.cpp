@@ -440,10 +440,10 @@ namespace steem { namespace protocol {
                || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( min_to_receive, STEEM_SYMBOL ) )
                || (
                      amount_to_sell.symbol.space() == asset_symbol_type::smt_nai_space
-                     && ( is_asset_type( min_to_receive, SBD_SYMBOL ) || is_asset_type( min_to_receive, STEEM_SYMBOL ) )
+                     && is_asset_type( min_to_receive, STEEM_SYMBOL )
                   )
                || (
-                     ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) || is_asset_type( amount_to_sell, SBD_SYMBOL ) )
+                     is_asset_type( amount_to_sell, STEEM_SYMBOL )
                      && min_to_receive.symbol.space() == asset_symbol_type::smt_nai_space
                   ),
                "Limit order must be for the STEEM:SBD or SMT:(STEEM/SBD) market" );
@@ -462,10 +462,10 @@ namespace steem { namespace protocol {
                || ( is_asset_type( amount_to_sell, SBD_SYMBOL ) && is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) )
                || (
                      amount_to_sell.symbol.space() == asset_symbol_type::smt_nai_space
-                     && ( is_asset_type( exchange_rate.quote, SBD_SYMBOL ) || is_asset_type( exchange_rate.quote, STEEM_SYMBOL ) )
+                     && is_asset_type( exchange_rate.quote, STEEM_SYMBOL )
                   )
                || (
-                     ( is_asset_type( amount_to_sell, STEEM_SYMBOL ) || is_asset_type( amount_to_sell, SBD_SYMBOL ) )
+                     is_asset_type( amount_to_sell, STEEM_SYMBOL )
                      && exchange_rate.quote.symbol.space() == asset_symbol_type::smt_nai_space
                   ),
                "Limit order must be for the STEEM:SBD or SMT:(STEEM/SBD) market" );
