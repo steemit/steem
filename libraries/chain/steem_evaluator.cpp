@@ -1805,7 +1805,7 @@ void feed_publish_evaluator::do_apply( const feed_publish_operation& o )
 {
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__409 ) )
       FC_ASSERT( is_asset_type( o.exchange_rate.base, SBD_SYMBOL ) && is_asset_type( o.exchange_rate.quote, STEEM_SYMBOL ),
-            "Price feed must be a STEEM/SBD price" );
+            "Price feed must be a SBD/STEEM price" );
 
    const auto& witness = _db.get_witness( o.publisher );
    _db.modify( witness, [&]( witness_object& w )
