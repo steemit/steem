@@ -410,7 +410,7 @@ BOOST_FIXTURE_TEST_CASE( optional_tapos, clean_database_fixture )
 
       BOOST_TEST_MESSAGE( "Create transaction" );
 
-      transfer( STEEM_INIT_MINER_NAME, "alice", 1000000 );
+      transfer( STEEM_INIT_MINER_NAME, "alice", asset( 1000000, STEEM_SYMBOL ) );
       transfer_operation op;
       op.from = "alice";
       op.to = "bob";
@@ -534,7 +534,7 @@ BOOST_FIXTURE_TEST_CASE( pop_block_twice, clean_database_fixture )
 
       db->get_account( STEEM_INIT_MINER_NAME );
       // transfer from committee account to Sam account
-      transfer( STEEM_INIT_MINER_NAME, "sam", 100000 );
+      transfer( STEEM_INIT_MINER_NAME, "sam", asset( 100000, STEEM_SYMBOL ) );
 
       generate_block(skip_flags);
 

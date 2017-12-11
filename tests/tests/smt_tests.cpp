@@ -596,8 +596,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 110, "SMT balance adjusting error" );
 
       // Transfer SMT.
-      transfer_smt( "alice", "bob", asset(20, alice_symbol) );
-      transfer_smt( "bob", "alice", asset(50, bob_symbol) );
+      transfer( "alice", "bob", asset(20, alice_symbol) );
+      transfer( "bob", "alice", asset(50, bob_symbol) );
 
       // Check transfer outcome.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 80, "SMT transfer error" );
