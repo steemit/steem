@@ -70,7 +70,6 @@ class database_api_impl : public std::enable_shared_from_this<database_api_impl>
       set<public_key_type> get_potential_signatures( const signed_transaction& trx )const;
       bool verify_authority( const signed_transaction& trx )const;
       bool verify_account_authority( const string& name_or_id, const flat_set<public_key_type>& signers )const;
-      verify_signatures_return verify_signatures( const verify_signatures_args& args )const;
 
       // signal handlers
       void on_applied_block( const chain::signed_block& b );
@@ -963,65 +962,6 @@ bool database_api_impl::verify_account_authority( const string& name, const flat
    trx.operations.emplace_back(op);
 
    return verify_authority( trx );
-}
-
-verify_signatures_return database_api_impl::verify_signatures( const verify_signatures_args& args )const
-{
-   // get_signature_keys can throw for dup sigs. Allow this to throw.
-   flat_set< public_key_type > sig_keys;
-   for( const auto&  sig : args.signatures )
-   {
-      STEEMIT_ASSERT(
-         sig_keys.insert( fc::ecc::public_key(sig,args.hash) ).second,
-         tx_duplicate_sig,
-         "Duplicate Signature detected" );
-   }
-
-   verify_signatures_return result;
-   result.valid = true;
-
-   // verify authority throws on failure, catch and return false
-   try
-   {
-      steemit::protocol::verify_authority(
-         [&args]( flat_set< account_name_type >& required_active,
-                  flat_set< account_name_type >& required_owner,
-                  flat_set< account_name_type >& required_posting,
-                  vector< authority >& )
-         {
-            switch( args.auth_level )
-            {
-               case authority::owner:
-                  std::copy( args.accounts.begin(), args.accounts.end(), required_owner.end() );
-                  break;
-               case authority::active:
-                  std::copy( args.accounts.begin(), args.accounts.end(), required_active.end() );
-                  break;
-               case authority::posting:
-                  std::copy( args.accounts.begin(), args.accounts.end(), required_posting.end() );
-                  break;
-               case authority::key:
-               default:
-                  FC_ASSERT( false, "verify_signatures only supports owner, active, and posting auths" );
-            }
-         },
-         sig_keys,
-         [this]( const string& name ) { return authority( _db.get< account_authority_object, by_account >( name ).owner ); },
-         [this]( const string& name ) { return authority( _db.get< account_authority_object, by_account >( name ).active ); },
-         [this]( const string& name ) { return authority( _db.get< account_authority_object, by_account >( name ).posting ); },
-         STEEMIT_MAX_SIG_CHECK_DEPTH );
-   }
-   catch( fc::exception& ) { result.valid = false; }
-
-   return result;
-}
-
-verify_signatures_return database_api::verify_signatures( const verify_signatures_args& args )const
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->verify_signatures( args );
-   });
 }
 
 vector<convert_request_api_obj> database_api::get_conversion_requests( const string& account )const

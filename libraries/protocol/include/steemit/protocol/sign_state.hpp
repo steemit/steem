@@ -6,11 +6,6 @@
 namespace steemit { namespace protocol {
 
 typedef std::function<authority(const string&)> authority_getter;
-typedef std::function< void( flat_set< account_name_type >&,
-                             flat_set< account_name_type >&,
-                             flat_set< account_name_type >&,
-                             vector< authority >& ) >
-                             required_authority_getter;
 
 struct sign_state
 {

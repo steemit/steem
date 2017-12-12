@@ -82,7 +82,7 @@ void transaction::get_required_authorities( flat_set< account_name_type >& activ
       operation_get_required_authorities( op, active, owner, posting, other );
 }
 
-void verify_authority( const required_authority_getter& get_required_authorities, const flat_set<public_key_type>& sigs,
+void verify_authority( const vector<operation>& ops, const flat_set<public_key_type>& sigs,
                        const authority_getter& get_active,
                        const authority_getter& get_owner,
                        const authority_getter& get_posting,
@@ -98,7 +98,8 @@ void verify_authority( const required_authority_getter& get_required_authorities
    flat_set< account_name_type > required_posting;
    vector< authority > other;
 
-   get_required_authorities( required_active, required_owner, required_posting, other );
+   for( const auto& op : ops )
+      operation_get_required_authorities( op, required_active, required_owner, required_posting, other );
 
    /**
     *  Transactions with operations required posting authority cannot be combined
@@ -168,7 +169,8 @@ void verify_authority( const required_authority_getter& get_required_authorities
       tx_irrelevant_sig,
       "Unnecessary signature(s) detected"
       );
-} FC_CAPTURE_AND_RETHROW( (sigs) ) }
+} FC_CAPTURE_AND_RETHROW( (ops)(sigs) ) }
+
 
 flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
 { try {
@@ -183,6 +185,8 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    }
    return result;
 } FC_CAPTURE_AND_RETHROW() }
+
+
 
 set<public_key_type> signed_transaction::get_required_signatures(
    const chain_id_type& chain_id,
@@ -258,14 +262,7 @@ set<public_key_type> signed_transaction::minimize_required_signatures(
       result.erase( k );
       try
       {
-         steemit::protocol::verify_authority( [this]( flat_set< account_name_type >& required_active,
-                                                             flat_set< account_name_type >& required_owner,
-                                                             flat_set< account_name_type >& required_posting,
-                                                             vector< authority >& other )
-            {
-               for( const auto& op : operations )
-               operation_get_required_authorities( op, required_active, required_owner, required_posting, other );
-            }, result, get_active, get_owner, get_posting, max_recursion );
+         steemit::protocol::verify_authority( operations, result, get_active, get_owner, get_posting, max_recursion );
          continue;  // element stays erased if verify_authority is ok
       }
       catch( const tx_missing_owner_auth& e ) {}
@@ -284,15 +281,7 @@ void signed_transaction::verify_authority(
    const authority_getter& get_posting,
    uint32_t max_recursion )const
 { try {
-   steemit::protocol::verify_authority( [this]( flat_set< account_name_type >& required_active,
-                                                       flat_set< account_name_type >& required_owner,
-                                                       flat_set< account_name_type >& required_posting,
-                                                       vector< authority >& other )
-      {
-         for( const auto& op : operations )
-         operation_get_required_authorities( op, required_active, required_owner, required_posting, other );
-      },
-      get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
+   steemit::protocol::verify_authority( operations, get_signature_keys( chain_id ), get_active, get_owner, get_posting, max_recursion );
 } FC_CAPTURE_AND_RETHROW( (*this) ) }
 
 } } // steemit::protocol
