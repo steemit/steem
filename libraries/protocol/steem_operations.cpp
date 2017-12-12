@@ -88,7 +88,9 @@ namespace steem { namespace protocol {
 #ifdef STEEM_ENABLE_SMT
       void operator()( const allowed_vote_assets& va) const
       {
-         FC_TODO("To be implemented  suppport for allowed_vote_assets");
+         FC_ASSERT(va.size() <= SMT_MAX_VOTABLE_ASSETS, "Too much votable assets specified");
+         FC_ASSERT(va.votable_assets.find(STEEM_SYMBOL) == va.votable_assets.end(),
+            "STEEM cannot be explicitly specified as votable assets");
       }
 #endif
       void operator()( const comment_payout_beneficiaries& cpb ) const

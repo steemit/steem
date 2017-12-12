@@ -558,8 +558,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
    try
    {
       ACTORS( (alice) )
-      signed_transaction tx;
-      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
+
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 0);
 
       transfer_operation op;
       op.from = "alice";
@@ -579,9 +579,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       ACTORS( (alice)(bob) )
 
       // Create SMT.
-      signed_transaction tx, ty;
-      asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
-      asset_symbol_type bob_symbol = create_smt(ty, "bob", bob_private_key, 1);
+      asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 0);
+      asset_symbol_type bob_symbol = create_smt("bob", bob_private_key, 1);
 
       // Give some SMT to creators.
       const account_object& alice_account = db->get_account("alice");
@@ -606,6 +605,91 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
    }
    FC_LOG_AND_RETHROW()   
+}
+
+BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
+      ACTORS(alice);
+      std::array<asset_symbol_type, SMT_MAX_VOTABLE_ASSETS + 1> smts;
+      /// Create one more than limit to test negative cases
+      for(size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS + 1; ++i)
+      {
+         asset_symbol_type alice_smt = create_smt("alice", alice_private_key, 0);
+         smts[i] = std::move(smt);
+      }
+
+      comment_options_operation op;
+
+      op.author = "alice";
+      op.permlink = "test";
+
+      BOOST_TEST_MESSAGE( "--- Testing valid configuration of votable_assets" );
+      allowed_vote_assets ava;
+      for(size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS; ++i)
+      {
+         const auto& smt = smts[i];
+         ava.votable_assets[smt] = votable_asset_info(10, false);
+      }
+      
+      op.extensions.insert( ava );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing more than 100% total weight" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bob" ), STEEM_1_PERCENT * 75 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "sam" ), STEEM_1_PERCENT * 75 ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing maximum number of routes" );
+      b.beneficiaries.clear();
+      for( size_t i = 0; i < 127; i++ )
+      {
+         b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "foo" + fc::to_string( i ) ), 1 ) );
+      }
+
+      op.extensions.clear();
+      std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
+      op.extensions.insert( b );
+      op.validate();
+
+      BOOST_TEST_MESSAGE( "--- Testing one too many routes" );
+      b.beneficiaries.push_back( beneficiary_route_type( account_name_type( "bar" ), 1 ) );
+      std::sort( b.beneficiaries.begin(), b.beneficiaries.end() );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+
+      BOOST_TEST_MESSAGE( "--- Testing duplicate accounts" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT * 2 ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing incorrect account sort order" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEM_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
+
+      BOOST_TEST_MESSAGE( "--- Testing correct account sort order" );
+      b.beneficiaries.clear();
+      b.beneficiaries.push_back( beneficiary_route_type( "alice", STEEM_1_PERCENT ) );
+      b.beneficiaries.push_back( beneficiary_route_type( "bob", STEEM_1_PERCENT ) );
+      op.extensions.clear();
+      op.extensions.insert( b );
+      op.validate();
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()
