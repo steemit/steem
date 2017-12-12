@@ -2658,6 +2658,7 @@ void database::init_genesis( uint64_t init_supply )
          p.current_supply = asset( init_supply, STEEM_SYMBOL );
          p.virtual_supply = p.current_supply;
          p.maximum_block_size = STEEM_MAX_BLOCK_SIZE;
+         p.reverse_auction_seconds = STEEM_REVERSE_AUCTION_WINDOW_SECONDS_HF6;
       } );
 
       // Nothing to do
