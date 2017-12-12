@@ -14,38 +14,105 @@ index : field
 
 namespace steem { namespace protocol {
 
-void asset_symbol_type::to_string( char* buf )const
+#define STEEM_ASSET_SYMBOL_MAX_LENGTH  12
+
+namespace
 {
-   uint64_t* p = (uint64_t*) buf;
-   static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 7, "This code will overflow a short buffer" );
+
+template <typename T>
+class conversion_helper
+   {
+   public:
+      typedef std::array<char, std::numeric_limits<T>::digits10 + 2> buffer_t;
+      typedef typename buffer_t::const_iterator const_iterator;
+
+      /// Returns max. number of potential decimal digits to be produced from value of given type 
+      size_t maxDigits() const
+      {
+         return buffer.size();
+      }
+
+      std::pair<const_iterator, const_iterator> to_decimal_string(T& v, unsigned int forceDecimalDigits)
+      {
+         FC_ASSERT(forceDecimalDigits < maxDigits());
+
+         auto insertionPoint = buffer.rbegin();
+         size_t produced = 0;
+         do
+         {
+            char d = char( v%10 );
+            v /= 10;
+            *insertionPoint = '0' + d;
+
+            if(++produced < forceDecimalDigits)
+               ++insertionPoint;
+            else
+               break;
+         }
+         while(insertionPoint != buffer.rend());
+
+         return std::make_pair(insertionPoint.base() - 1, buffer.end());
+      }
+
+      /// Allows to convert given value to decimal string
+      void to_decimal_string(std::string* output, T& v)
+      {
+         auto insertionPoint = buffer.rbegin();
+
+         while(1)
+         {
+            assert(insertionPoint != buffer.rend());
+
+            char d = char( v%10 );
+            v /= 10;
+            *insertionPoint = '0' + d;
+
+            if(v == 0)
+               break;
+
+            ++insertionPoint;
+         }
+
+         output->append(insertionPoint.base() - 1, buffer.end());
+      }
+
+   private:
+      buffer_t buffer;
+   };
+
+} /// namespace anonymous
+
+void asset_symbol_type::to_string(std::string* buffer) const
+{
+   union
+   {
+      uint64_t  encodedValue;
+      char      buffer[sizeof(encodedValue)+1];
+   } helper;
 
    switch( asset_num )
    {
       case STEEM_ASSET_NUM_STEEM:
-         (*p) = STEEM_SYMBOL_U64;
+         helper.encodedValue = STEEM_SYMBOL_U64;
+         buffer->append(helper.buffer);
          break;
       case STEEM_ASSET_NUM_SBD:
-         (*p) = SBD_SYMBOL_U64;
+         helper.encodedValue = SBD_SYMBOL_U64;
+         buffer->append(helper.buffer);
          break;
       case STEEM_ASSET_NUM_VESTS:
-         (*p) = VESTS_SYMBOL_U64;
+         helper.encodedValue = VESTS_SYMBOL_U64;
+         buffer->append(helper.buffer);
          break;
       default:
       {
-         static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 10, "This code will overflow a short buffer" );
+         FC_ASSERT(space() == smt_nai_space);
+
          uint32_t x = to_nai();
-         buf[11] = '\0';
-         buf[10] = ((x%10)+'0');  x /= 10;
-         buf[ 9] = ((x%10)+'0');  x /= 10;
-         buf[ 8] = ((x%10)+'0');  x /= 10;
-         buf[ 7] = ((x%10)+'0');  x /= 10;
-         buf[ 6] = ((x%10)+'0');  x /= 10;
-         buf[ 5] = ((x%10)+'0');  x /= 10;
-         buf[ 4] = ((x%10)+'0');  x /= 10;
-         buf[ 3] = ((x%10)+'0');  x /= 10;
-         buf[ 2] = ((x   )+'0');
-         buf[ 1] = '@';
-         buf[ 0] = '@';
+         buffer->append("@@");
+
+         conversion_helper<uint32_t> helper;
+         helper.to_decimal_string(buffer, x);
       }
    }
 }
@@ -170,7 +237,7 @@ uint8_t damm_checksum_8digit(uint32_t value)
 {
    FC_ASSERT( value < 100000000 );
 
-   const uint8_t t[] = {
+   static const uint8_t t[] = {
        0, 30, 10, 70, 50, 90, 80, 60, 40, 20,
       70,  0, 90, 20, 10, 50, 40, 80, 60, 30,
       40, 20,  0, 60, 80, 70, 10, 30, 50, 90,
@@ -277,35 +344,26 @@ void asset::validate()const
 std::string asset::to_string()const
 {
    validate();
-   static const int BEGIN_OFFSET = 21;
-   //       amount string  space   symbol string                   null terminator
-   char buf[BEGIN_OFFSET + 1     + STEEM_ASSET_SYMBOL_MAX_LENGTH + 1];
-   char* p = buf+BEGIN_OFFSET-1;
+   
+   conversion_helper<uint64_t> helper, decimalsHelper;
+
+   std::string retVal;
+   //               amount-string     dot      decimals       space       symbol-string
+   retVal.reserve(helper.maxDigits() + 1  + symbol.decimals() + 1 + STEEM_ASSET_SYMBOL_MAX_LENGTH);
+
    uint64_t v = uint64_t( amount.value );
-   int decimal_places = int(symbol.decimals());
 
-   p[1] = ' ';
-   symbol.to_string( p+2 );
+   auto decimals = decimalsHelper.to_decimal_string(v, symbol.decimals());
+   helper.to_decimal_string(&retVal, v);
 
-   for( int i=0; i<decimal_places; i++ )
-   {
-      char d = char( v%10 );
-      v /= 10;
-      (*p) = '0' + d;
-      --p;
-   }
+   retVal += '.';
+   retVal.append(decimals.first, decimals.second);
 
-   (*p) = '.';
+   retVal += ' ';
 
-   do
-   {
-      --p;
-      char d = char( v%10 );
-      v /= 10;
-      (*p) = '0' + d;
-   } while( v != 0 );
+   symbol.to_string(&retVal);
 
-   return std::string(p);
+   return retVal;
 }
 
 void asset::fill_from_string( const char* p )

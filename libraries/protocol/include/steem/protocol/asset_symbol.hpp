@@ -6,7 +6,6 @@
 #define STEEM_ASSET_SYMBOL_PRECISION_BITS 4
 #define SMT_MAX_NAI                       99999999
 #define SMT_MIN_NAI                       1
-#define STEEM_ASSET_SYMBOL_MAX_LENGTH     10
 
 #define STEEM_ASSET_NUM_SBD \
   (((SMT_MAX_NAI+1) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | 3)
@@ -37,6 +36,8 @@
 
 namespace steem { namespace protocol {
 
+struct asset;
+
 class asset_symbol_type
 {
    public:
@@ -46,9 +47,8 @@ class asset_symbol_type
          smt_nai_space = 2
       };
 
-      asset_symbol_type() {}
+      asset_symbol_type() = default;
 
-      // buf must have space for STEEM_ASSET_SYMBOL_MAX_LENGTH+1
       static asset_symbol_type from_string( const char* buf, uint8_t decimal_places );
       static asset_symbol_type from_asset_num( uint32_t asset_num )
       {   asset_symbol_type result;   result.asset_num = asset_num;   return result;   }
@@ -56,13 +56,13 @@ class asset_symbol_type
       static asset_symbol_type from_nai( uint32_t nai, uint8_t decimal_places )
       {   return from_asset_num( asset_num_from_nai( nai, decimal_places ) );          }
 
-      void to_string( char* buf )const;
-      std::string to_string()const
+      std::string to_string() const
       {
-         char buf[ STEEM_ASSET_SYMBOL_MAX_LENGTH+1 ];
-         to_string( buf );
-         return std::string(buf);
+         std::string buf;
+         to_string(&buf);
+         return buf;
       }
+      
       uint32_t to_nai()const;
 
       asset_symbol_space space()const;
@@ -84,6 +84,10 @@ class asset_symbol_type
       {  return (a.asset_num >= b.asset_num);   }
 
       uint32_t asset_num = 0;
+
+   private:
+   friend struct asset;
+   void to_string(std::string* buffer) const;
 };
 
 } } // steem::protocol
