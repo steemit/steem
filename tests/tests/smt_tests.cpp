@@ -23,6 +23,40 @@ using boost::container::flat_set;
 
 BOOST_FIXTURE_TEST_SUITE( smt_tests, smt_database_fixture )
 
+BOOST_AUTO_TEST_CASE( smt_asset_serialization )
+{
+try
+{
+   SMT_SYMBOL( alice12, 12);
+   SMT_SYMBOL( alice11, 11);
+   SMT_SYMBOL( alice10, 10);
+
+   asset alice12a(12, alice12_symbol);
+   asset alice11a(11, alice11_symbol);
+   asset alice10a(10, alice10_symbol);
+
+   auto ss12 = alice12_symbol.to_string();
+   auto ss11 = alice11_symbol.to_string();
+   auto ss10 = alice10_symbol.to_string();
+
+   auto as12 = alice12a.to_string();
+   auto as11 = alice11a.to_string();
+   auto as10 = alice10a.to_string();
+
+   asset a = asset::from_string(as12);
+   BOOST_REQUIRE(a == alice12a);
+
+   a = asset::from_string(as11);
+   BOOST_REQUIRE(a == alice11a);
+
+   a = asset::from_string(as10);
+   BOOST_REQUIRE(a == alice10a);
+
+}
+FC_LOG_AND_RETHROW()
+
+}
+
 BOOST_AUTO_TEST_CASE( asset_symbol_validate )
 {
    try
