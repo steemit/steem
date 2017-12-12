@@ -3463,7 +3463,7 @@ void database::adjust_smt_balance( const account_name_type& a, const asset& delt
       if( delta.amount.value == 0 )
          return;
 
-      const auto& new_balance = create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
+      create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
       {
          smt_balance.owner = a;
          smt_balance.balance = delta;

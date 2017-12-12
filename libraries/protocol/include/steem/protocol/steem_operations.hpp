@@ -101,6 +101,10 @@ namespace steem { namespace protocol {
 #ifdef STEEM_ENABLE_SMT
    struct votable_asset_info_v1
    {
+      votable_asset_info_v1() = default;
+      votable_asset_info_v1(const share_type& max_payout, bool allow_rewards) :
+         max_accepted_payout(max_payout), allow_curation_rewards(allow_rewards) {}
+
       share_type        max_accepted_payout    = 0;
       bool              allow_curation_rewards = false;
    };
@@ -113,7 +117,59 @@ namespace steem { namespace protocol {
     */
    struct allowed_vote_assets
    {
+      /// Helper method to simplify construction of votable_asset_info.
+      void add_votable_asset(const asset_symbol_type& symbol, const share_type& max_accepted_payout,
+         bool allow_curation_rewards)
+         {
+            votable_asset_info info(votable_asset_info_v1(max_accepted_payout, allow_curation_rewards));
+            votable_assets[symbol] = std::move(info);
+         }
+
+      /** Allows to check if given symbol is allowed votable asset.
+       *  @param symbol - asset symbol to be check against votable feature
+       *  @param max_accepted_payout - optional output parameter which allows to take `max_accepted_payout`
+       *                  configured for given asset
+       *  @param allow_curation_rewards - optional output parameter which allows to take `allow_curation_rewards`
+       *                  specified for given votable asset.
+       *  @returns true if given asset is allowed votable asset for given comment.
+       */
+      bool is_allowed(const asset_symbol_type& symbol, share_type* max_accepted_payout = nullptr,
+         bool* allow_curation_rewards = nullptr) const
+         {
+            auto foundI = votable_assets.find(symbol);
+            if(foundI == votable_assets.end())
+            {
+               if(max_accepted_payout != nullptr)
+                  *max_accepted_payout = 0;
+               if(allow_curation_rewards != nullptr)
+                  *allow_curation_rewards = false;
+               return false;
+            }
+
+            if(max_accepted_payout != nullptr)
+               *max_accepted_payout = foundI->second.get<votable_asset_info_v1>().max_accepted_payout;
+            if(allow_curation_rewards != nullptr)
+               *allow_curation_rewards = foundI->second.get<votable_asset_info_v1>().allow_curation_rewards;
+            
+            return true;
+         }
+
+      /** Part of `comment_option_operation` validation process, to be called when allowed_vote_assets object
+       *  has been added as comment option extension.
+       *  @throws fc::assert_exception on failure.
+       */
+      void validate() const
+      {
+         FC_ASSERT(votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS, "Too much votable assets specified");
+         FC_ASSERT(is_allowed(STEEM_SYMBOL) == false,
+            "STEEM can not be explicitly specified as one of allowed_vote_assets");
+      }
+
+   private:
       flat_map< asset_symbol_type, votable_asset_info > votable_assets;
+
+      template <typename T>
+      friend struct fc::reflector;
    };
 #endif /// STEEM_ENABLE_SMT
 
