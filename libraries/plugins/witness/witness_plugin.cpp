@@ -599,9 +599,9 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
    my->_custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( this );
    appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db().set_custom_operation_interpreter( name(), my->_custom_operation_interpreter );
 
-   my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->applied_block_connection = my->_db.applied_block.connect( [&]( const signed_block& b ){ my->on_block( b ); } );
+   my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( 0, [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->applied_block_connection = my->_db.applied_block.connect( 0, [&]( const signed_block& b ){ my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
    add_plugin_index< content_edit_lock_index >( my->_db );
