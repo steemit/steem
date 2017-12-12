@@ -346,8 +346,11 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
       FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
 
       // Create SMT(s) and continue.
-      create_smt_3("alice", alice_private_key, [&fail_op, this, alice_private_key]
-                                               (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
+         const auto& smt1 = smts[0];
+         const auto& smt2 = smts[1];
+
          // Do successful op with one smt.
          smt_setup_emissions_operation valid_op = fail_op;
          valid_op.symbol = smt1;
@@ -367,7 +370,7 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          });
          // Fail due to closed setup phase (too late).
          FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
-      });
+      }
    }
    FC_LOG_AND_RETHROW()
 }
@@ -392,8 +395,11 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
       FAIL_WITH_OP(fail_op, dany_private_key, fc::assert_exception)
       
       // Create SMT(s) and continue.
-      create_smt_3("dany", dany_private_key, [&fail_op, this, dany_private_key, eddy_private_key]
-                                             (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+      auto smts = create_smt_3("dany", dany_private_key);
+      {
+         const auto& smt1 = smts[0];
+         const auto& smt2 = smts[1];
+
          // "Reset" parameters to default value.
          smt_set_setup_parameters_operation valid_op = fail_op;
          valid_op.symbol = smt1;
@@ -419,7 +425,7 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 
          // TODO:
          // - check applying smt_set_setup_parameters_operation after setup completed
-         });
+      }
    }
    FC_LOG_AND_RETHROW()
 }
@@ -565,12 +571,12 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
       FAIL_WITH_OP(op, alice_private_key, fc::assert_exception)
 
       // Create SMT(s) and continue.
-      create_smt_3("alice", alice_private_key, [&op, this, alice_private_key]
-                                               (const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) {
+      auto smts = create_smt_3("alice", alice_private_key);
+      {
          //Make transaction again.
-         op.symbol = smt3;
+         op.symbol = smts[2];
          PUSH_OP(op, alice_private_key);
-      });
+      }
    }
    FC_LOG_AND_RETHROW()
 }
