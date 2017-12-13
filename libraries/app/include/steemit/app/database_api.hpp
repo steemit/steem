@@ -100,10 +100,32 @@ struct discussion_query {
 
 struct verify_signatures_args
 {
-   fc::sha256                       hash;
-   vector< signature_type >         signatures;
-   vector< account_name_type >      accounts;
-   authority::classification        auth_level;
+   fc::sha256                    hash;
+   vector< signature_type >      signatures;
+   vector< account_name_type >   required_owner;
+   vector< account_name_type >   required_active;
+   vector< account_name_type >   required_posting;
+   vector< authority >           required_other;
+
+   void get_required_owner_authorities( flat_set< account_name_type >& a )const
+   {
+      a.insert( required_owner.begin(), required_owner.end() );
+   }
+
+   void get_required_active_authorities( flat_set< account_name_type >& a )const
+   {
+      a.insert( required_active.begin(), required_active.end() );
+   }
+
+   void get_required_posting_authorities( flat_set< account_name_type >& a )const
+   {
+      a.insert( required_posting.begin(), required_posting.end() );
+   }
+
+   void get_required_authorities( vector< authority >& a )const
+   {
+      a.insert( a.end(), required_other.begin(), required_other.end() );
+   }
 };
 
 struct verify_signatures_return
@@ -466,8 +488,16 @@ FC_REFLECT( steemit::app::discussion_query, (tag)(filter_tags)(select_tags)(sele
 
 FC_REFLECT_ENUM( steemit::app::withdraw_route_type, (incoming)(outgoing)(all) );
 
-FC_REFLECT( steemit::app::verify_signatures_args, (hash)(signatures)(accounts)(auth_level) );
-FC_REFLECT( steemit::app::verify_signatures_return, (valid) );
+FC_REFLECT( steemit::app::verify_signatures_args,
+   (hash)
+   (signatures)
+   (required_owner)
+   (required_active)
+   (required_posting)
+   (required_other) )
+
+FC_REFLECT( steemit::app::verify_signatures_return,
+   (valid) )
 
 FC_API(steemit::app::database_api,
    // Subscriptions
