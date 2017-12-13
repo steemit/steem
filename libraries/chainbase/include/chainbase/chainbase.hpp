@@ -660,6 +660,25 @@ namespace chainbase {
     */
    class database
    {
+      private:
+         class abstract_index_type
+         {
+            public:
+               abstract_index_type() {}
+               virtual ~abstract_index_type() {}
+
+               virtual void add_index( database& db ) = 0;
+         };
+
+         template< typename IndexType >
+         class index_type_impl : public abstract_index_type
+         {
+            virtual void add_index( database& db ) override
+            {
+               db.add_index_helper< IndexType >();
+            }
+         };
+
       public:
          enum open_flags {
             read_only     = 0,
@@ -756,6 +775,7 @@ namespace chainbase {
 
 
          template<typename MultiIndexType>
+<<<<<<< HEAD
          void add_index() {
              const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
              typedef generic_index<MultiIndexType>          index_type;
@@ -783,6 +803,12 @@ namespace chainbase {
              auto new_index = new index<index_type>( *idx_ptr );
              _index_map[ type_id ].reset( new_index );
              _index_list.push_back( new_index );
+=======
+         void add_index()
+         {
+            _index_types.push_back( unique_ptr< abstract_index_type >( new index_type_impl< MultiIndexType >() ) );
+            _index_types.back()->add_index( *this );
+>>>>>>> 09dbdcae... Save mutli index types when adding indices #1891
          }
 
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
@@ -995,6 +1021,30 @@ namespace chainbase {
          }
 
       private:
+         template<typename MultiIndexType>
+         void add_index_helper() {
+             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+             typedef generic_index<MultiIndexType>          index_type;
+             typedef typename index_type::allocator_type    index_alloc;
+
+             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+
+             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
+                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
+             }
+
+             index_type* idx_ptr =  nullptr;
+             idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
+             idx_ptr->validate();
+
+             if( type_id >= _index_map.size() )
+                _index_map.resize( type_id + 1 );
+
+             auto new_index = new index<index_type>( *idx_ptr );
+             _index_map[ type_id ].reset( new_index );
+             _index_list.push_back( new_index );
+         }
+
          unique_ptr<bip::managed_mapped_file>                        _segment;
          unique_ptr<bip::managed_mapped_file>                        _meta;
          read_write_mutex_manager*                                   _rw_manager = nullptr;
@@ -1010,6 +1060,8 @@ namespace chainbase {
           * This is a full map (size 2^16) of all possible index designed for constant time lookup
           */
          vector<unique_ptr<abstract_index>>                          _index_map;
+
+         vector<unique_ptr<abstract_index_type>>                     _index_types;
 
          bfs::path                                                   _data_dir;
 
