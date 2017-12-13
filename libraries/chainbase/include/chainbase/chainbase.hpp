@@ -731,11 +731,11 @@ namespace chainbase {
          };
 
       public:
-         void open( const bfs::path& dir, uint32_t flags = 0, uint64_t shared_file_size = 0 );
+         void open( const bfs::path& dir, uint32_t flags = 0, size_t shared_file_size = 0 );
          void close();
          void flush();
          void wipe( const bfs::path& dir );
-         void resize( uint64_t new_shared_file_size );
+         void resize( size_t new_shared_file_size );
          void set_require_locking( bool enable_require_locking );
 
 #ifdef CHAINBASE_CHECK_LOCKING
@@ -835,6 +835,11 @@ namespace chainbase {
          size_t get_free_memory()const
          {
             return _segment->get_segment_manager()->get_free_memory();
+         }
+
+         size_t get_max_memory()const
+         {
+            return _file_size;
          }
 
          template<typename MultiIndexType>
@@ -1088,6 +1093,7 @@ namespace chainbase {
          bool                                                        _enable_require_locking = false;
 
          int32_t                                                     _undo_session_count = 0;
+         size_t                                                      _file_size = 0;
    };
 
    template<typename Object, typename... Args>
