@@ -689,6 +689,7 @@ namespace chainbase {
          void close();
          void flush();
          void wipe( const bfs::path& dir );
+         void resize( uint64_t new_shared_file_size );
          void set_require_locking( bool enable_require_locking );
 
 #ifdef CHAINBASE_CHECK_LOCKING
