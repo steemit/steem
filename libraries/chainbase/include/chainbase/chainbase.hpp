@@ -160,6 +160,10 @@ namespace chainbase {
       public:
          int_incrementer( int32_t& target ) : _target(target)
          { ++_target; }
+
+         int_incrementer( int_incrementer& ii ) : _target( ii._target )
+         { ++_target; }
+
          ~int_incrementer()
          { --_target; }
 
@@ -287,15 +291,12 @@ namespace chainbase {
                int64_t        _revision = 0;
          };
 
-         session start_undo_session( bool enabled ) {
-            if( enabled ) {
-               _stack.emplace_back( _indices.get_allocator() );
-               _stack.back().old_next_id = _next_id;
-               _stack.back().revision = ++_revision;
-               return session( *this, _revision );
-            } else {
-               return session( *this, -1 );
-            }
+         session start_undo_session()
+         {
+            _stack.emplace_back( _indices.get_allocator() );
+            _stack.back().old_next_id = _next_id;
+            _stack.back().revision = ++_revision;
+            return session( *this, _revision );
          }
 
          const index_type& indicies()const { return _indices; }
@@ -574,7 +575,7 @@ namespace chainbase {
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
          virtual void     set_revision( int64_t revision ) = 0;
-         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) = 0;
+         virtual unique_ptr<abstract_session> start_undo_session() = 0;
 
          virtual int64_t revision()const = 0;
          virtual void    undo()const = 0;
@@ -598,8 +599,8 @@ namespace chainbase {
       public:
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
 
-         virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override {
-            return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session( enabled ) ) );
+         virtual unique_ptr<abstract_session> start_undo_session() override {
+            return unique_ptr<abstract_session>(new session_impl<typename BaseIndex::session>( _base.start_undo_session() ) );
          }
 
          virtual void     set_revision( int64_t revision ) override { _base.set_revision( revision ); }
@@ -689,8 +690,14 @@ namespace chainbase {
 
          struct session {
             public:
-               session( session&& s ):_index_sessions( std::move(s._index_sessions) ),_revision( s._revision ){}
-               session( vector<std::unique_ptr<abstract_session>>&& s ):_index_sessions( std::move(s) )
+               session( session&& s )
+                  : _index_sessions( std::move(s._index_sessions) ),
+                    _revision( s._revision ),
+                    _session_incrementer( s._session_incrementer )
+               {}
+
+               session( vector<std::unique_ptr<abstract_session>>&& s, int32_t& session_count )
+                  : _index_sessions( std::move(s) ), _session_incrementer( session_count )
                {
                   if( _index_sessions.size() )
                      _revision = _index_sessions[0]->revision();
@@ -722,13 +729,13 @@ namespace chainbase {
 
             private:
                friend class database;
-               session(){}
 
                vector< std::unique_ptr<abstract_session> > _index_sessions;
                int64_t _revision = -1;
+               int_incrementer _session_incrementer;
          };
 
-         session start_undo_session( bool enabled );
+         session start_undo_session();
 
          int64_t revision()const {
              if( _index_list.size() == 0 ) return -1;
@@ -1009,6 +1016,8 @@ namespace chainbase {
          int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
+
+         int32_t                                                     _undo_session_count = 0;
    };
 
    template<typename Object, typename... Args>
