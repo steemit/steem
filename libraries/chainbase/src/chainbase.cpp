@@ -92,6 +92,25 @@ namespace chainbase {
       _index_map.clear();
    }
 
+   void database::resize( uint64_t new_shared_file_size )
+   {
+      if( _undo_session_count )
+         BOOST_THROW_EXCEPTION( std::runtime_error( "Cannot resize shared memory file while undo session is active" ) );
+
+      _segment.reset();
+      _meta.reset();
+
+      open( _data_dir, 0, new_shared_file_size );
+
+      _index_list.clear();
+      _index_map.clear();
+
+      for( auto& index_type : _index_types )
+      {
+         index_type->add_index( *this );
+      }
+   }
+
    void database::set_require_locking( bool enable_require_locking )
    {
 #ifdef CHAINBASE_CHECK_LOCKING
