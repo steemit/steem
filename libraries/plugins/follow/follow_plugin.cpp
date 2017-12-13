@@ -83,17 +83,10 @@ struct pre_operation_visitor
                // Rule #2: If you are down voting another user, you must have more reputation than them to impact their reputation
                if( cv->rshares < 0 && !( voter_rep != rep_idx.end() && voter_rep->reputation > author_rep->reputation - rep_delta ) ) return;
 
-               if( rep_delta == author_rep->reputation )
+               db.modify( *author_rep, [&]( reputation_object& r )
                {
-                  db.remove( *author_rep );
-               }
-               else
-               {
-                  db.modify( *author_rep, [&]( reputation_object& r )
-                  {
-                     r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
-                  });
-               }
+                  r.reputation -= ( cv->rshares >> 6 ); // Shift away precision from vests. It is noise
+               });
             }
          }
       }
