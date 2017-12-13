@@ -64,6 +64,24 @@ class market_history_plugin : public plugin< market_history_plugin >
       std::unique_ptr< detail::market_history_plugin_impl > my;
 };
 
+struct bucket_object_details
+{
+   share_type           high;
+   share_type           low;
+   share_type           open;
+   share_type           close;
+   share_type           volume;
+
+   void fill( const share_type& val )
+   {
+      high = val;
+      low = val;
+      open = val;
+      close = val;
+      volume = val;
+   }
+};
+
 struct bucket_object : public object< bucket_object_type, bucket_object >
 {
    template< typename Constructor, typename Allocator >
@@ -78,19 +96,22 @@ struct bucket_object : public object< bucket_object_type, bucket_object >
 
    fc::time_point_sec   open;
    uint32_t             seconds = 0;
-   share_type           high_steem;
-   share_type           high_sbd;
-   share_type           low_steem;
-   share_type           low_sbd;
-   share_type           open_steem;
-   share_type           open_sbd;
-   share_type           close_steem;
-   share_type           close_sbd;
-   share_type           steem_volume;
-   share_type           sbd_volume;
 
-   price high()const { return asset( high_sbd, SBD_SYMBOL ) / asset( high_steem, STEEM_SYMBOL ); }
-   price low()const { return asset( low_sbd, SBD_SYMBOL ) / asset( low_steem, STEEM_SYMBOL ); }
+   bucket_object_details steem;
+
+#ifdef STEEM_ENABLE_SMT
+   asset_symbol_type symbol = SBD_SYMBOL;
+
+   bucket_object_details sbd_smt;
+
+   price high()const { return asset( sbd_smt.high, symbol ) / asset( steem.high, STEEM_SYMBOL ); }
+   price low()const { return asset( sbd_smt.low, symbol ) / asset( steem.low, STEEM_SYMBOL ); }
+#else
+   bucket_object_details sbd;
+
+   price high()const { return asset( sbd.high, SBD_SYMBOL ) / asset( steem.high, STEEM_SYMBOL ); }
+   price low()const { return asset( sbd.low, SBD_SYMBOL ) / asset( steem.low, STEEM_SYMBOL ); }
+#endif
 };
 
 typedef oid< bucket_object > bucket_id_type;
@@ -141,14 +162,22 @@ typedef multi_index_container<
 
 } } } // steem::plugins::market_history
 
+FC_REFLECT( steem::plugins::market_history::bucket_object_details,
+            (high)
+            (low)
+            (open)
+            (close)
+            (volume) )
+
 FC_REFLECT( steem::plugins::market_history::bucket_object,
                      (id)
                      (open)(seconds)
-                     (high_steem)(high_sbd)
-                     (low_steem)(low_sbd)
-                     (open_steem)(open_sbd)
-                     (close_steem)(close_sbd)
-                     (steem_volume)(sbd_volume) )
+#if defined STEEM_ENABLE_SMT
+                     (steem)(symbol)(sbd_smt)
+#else
+                     (steem)(sbd)
+#endif
+         )
 CHAINBASE_SET_INDEX_TYPE( steem::plugins::market_history::bucket_object, steem::plugins::market_history::bucket_index )
 
 FC_REFLECT( steem::plugins::market_history::order_history_object,

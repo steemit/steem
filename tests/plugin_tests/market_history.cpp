@@ -147,156 +147,244 @@ BOOST_AUTO_TEST_CASE( mh_test )
 
       BOOST_REQUIRE( bucket->seconds == 15 );
       BOOST_REQUIRE( bucket->open == time_a );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "1.500 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "1.500 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "1.500 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "1.500 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.500 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.750 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.750 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 15 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.500 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.500 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.500 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.500 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.500 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.250 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.250 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 15 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) + 60 );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.450 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "0.950 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.500 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.950 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.500 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.500 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 60 );
       BOOST_REQUIRE( bucket->open == time_a );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "1.500 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "1.500 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "1.500 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "1.500 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.500 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.750 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.750 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 60 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.500 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.500 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.500 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.500 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.500 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.250 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.250 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 60 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) + 60 );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.450 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "0.950 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.500 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "0.950 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.500 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.500 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 300 );
       BOOST_REQUIRE( bucket->open == time_a );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "1.500 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "1.500 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "1.500 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "1.500 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.500 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.750 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.750 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 300 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 90 ) );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.450 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "1.450 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.450 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.750 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.750 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 3600 );
       BOOST_REQUIRE( bucket->open == time_a );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "1.500 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "1.500 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "1.500 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "1.500 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.500 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.750 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.750 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 3600 );
       BOOST_REQUIRE( bucket->open == time_a + ( 60 * 60 ) );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.450 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "0.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "1.450 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "0.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "1.450 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "0.750 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "0.750 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket->seconds == 86400 );
       BOOST_REQUIRE( bucket->open == STEEM_GENESIS_TIME );
-      BOOST_REQUIRE( bucket->high_steem == ASSET( "0.450 TESTS " ).amount );
-      BOOST_REQUIRE( bucket->high_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->low_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->low_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->open_steem == ASSET( "1.500 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->open_sbd == ASSET( "0.750 TBD" ).amount );
-      BOOST_REQUIRE( bucket->close_steem == ASSET( "0.450 TESTS").amount );
-      BOOST_REQUIRE( bucket->close_sbd == ASSET( "0.250 TBD" ).amount );
-      BOOST_REQUIRE( bucket->steem_volume == ASSET( "2.950 TESTS" ).amount );
-      BOOST_REQUIRE( bucket->sbd_volume == ASSET( "1.500 TBD" ).amount );
+      BOOST_REQUIRE( bucket->steem.high == ASSET( "0.450 TESTS " ).amount );
+      BOOST_REQUIRE( bucket->steem.low == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.open == ASSET( "1.500 TESTS" ).amount );
+      BOOST_REQUIRE( bucket->steem.close == ASSET( "0.450 TESTS").amount );
+      BOOST_REQUIRE( bucket->steem.volume == ASSET( "2.950 TESTS" ).amount );
+#ifdef STEEM_ENABLE_SMT
+      BOOST_REQUIRE( bucket->sbd_smt.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd_smt.volume == ASSET( "1.500 TBD" ).amount );
+#else
+      BOOST_REQUIRE( bucket->sbd.high == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.low == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.open == ASSET( "0.750 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.close == ASSET( "0.250 TBD" ).amount );
+      BOOST_REQUIRE( bucket->sbd.volume == ASSET( "1.500 TBD" ).amount );
+#endif
       bucket++;
 
       BOOST_REQUIRE( bucket == bucket_idx.end() );

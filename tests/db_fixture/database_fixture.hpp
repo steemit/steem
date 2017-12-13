@@ -249,10 +249,15 @@ struct live_database_fixture : public database_fixture
 };
 
 #ifdef STEEM_ENABLE_SMT
-struct smt_database_fixture : public clean_database_fixture
+template< typename T >
+struct t_smt_database_fixture : public T
 {
-   smt_database_fixture();
-   virtual ~smt_database_fixture();
+   using database_fixture::set_price_feed;
+   using database_fixture::fund;
+   using database_fixture::convert;
+
+   t_smt_database_fixture(){}
+   virtual ~t_smt_database_fixture(){}
 
    asset_symbol_type create_smt( const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
@@ -264,6 +269,10 @@ struct smt_database_fixture : public clean_database_fixture
    /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
    void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 };
+
+using smt_database_fixture = t_smt_database_fixture< clean_database_fixture >;
+using smt_database_fixture_for_plugin = t_smt_database_fixture< database_fixture >;
+
 #endif
 
 struct json_rpc_database_fixture : public database_fixture
