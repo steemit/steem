@@ -689,7 +689,7 @@ namespace chainbase {
          void close();
          void flush();
          void wipe( const bfs::path& dir );
-         void resize( uint64_t new_shared_file_size );
+         void resize( size_t new_shared_file_size );
          void set_require_locking( bool enable_require_locking );
 
 #ifdef CHAINBASE_CHECK_LOCKING
@@ -776,40 +776,10 @@ namespace chainbase {
 
 
          template<typename MultiIndexType>
-<<<<<<< HEAD
-         void add_index() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType>          index_type;
-             typedef typename index_type::allocator_type    index_alloc;
-
-             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
-
-             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
-                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
-             }
-
-             index_type* idx_ptr =  nullptr;
-             if( !_read_only ) {
-                idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
-             } else {
-                idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
-                if( !idx_ptr ) BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
-             }
-
-             idx_ptr->validate();
-
-             if( type_id >= _index_map.size() )
-                _index_map.resize( type_id + 1 );
-
-             auto new_index = new index<index_type>( *idx_ptr );
-             _index_map[ type_id ].reset( new_index );
-             _index_list.push_back( new_index );
-=======
          void add_index()
          {
             _index_types.push_back( unique_ptr< abstract_index_type >( new index_type_impl< MultiIndexType >() ) );
             _index_types.back()->add_index( *this );
->>>>>>> 09dbdcae... Save mutli index types when adding indices #1891
          }
 
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
@@ -819,6 +789,11 @@ namespace chainbase {
          size_t get_free_memory()const
          {
             return _segment->get_segment_manager()->get_free_memory();
+         }
+
+         size_t get_max_memory()const
+         {
+            return _file_size;
          }
 
          template<typename MultiIndexType>
@@ -1071,6 +1046,7 @@ namespace chainbase {
          bool                                                        _enable_require_locking = false;
 
          int32_t                                                     _undo_session_count = 0;
+         size_t                                                      _file_size = 0;
    };
 
    template<typename Object, typename... Args>

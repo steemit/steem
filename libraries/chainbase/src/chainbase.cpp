@@ -48,11 +48,13 @@ namespace chainbase {
       {
          if( write )
          {
-            auto existing_file_size = bfs::file_size( abs_path );
-            if( shared_file_size > existing_file_size )
+            _file_size = bfs::file_size( abs_path );
+            if( shared_file_size > _file_size )
             {
-               if( !bip::managed_mapped_file::grow( abs_path.generic_string().c_str(), shared_file_size - existing_file_size ) )
+               if( !bip::managed_mapped_file::grow( abs_path.generic_string().c_str(), shared_file_size - _file_size ) )
                   BOOST_THROW_EXCEPTION( std::runtime_error( "could not grow database file to requested size." ) );
+
+               _file_size = shared_file_size;
             }
 
             _segment.reset( new bip::managed_mapped_file( bip::open_only,
@@ -70,6 +72,7 @@ namespace chainbase {
             BOOST_THROW_EXCEPTION( std::runtime_error( "database created by a different compiler, build, or operating system" ) );
          }
       } else {
+         _file_size = shared_file_size;
          _segment.reset( new bip::managed_mapped_file( bip::create_only,
                                                        abs_path.generic_string().c_str(), shared_file_size
                                                        ) );
@@ -130,7 +133,7 @@ namespace chainbase {
       _index_map.clear();
    }
 
-   void database::resize( uint64_t new_shared_file_size )
+   void database::resize( size_t new_shared_file_size )
    {
       if( _undo_session_count )
          BOOST_THROW_EXCEPTION( std::runtime_error( "Cannot resize shared memory file while undo session is active" ) );

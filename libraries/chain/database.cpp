@@ -183,6 +183,8 @@ void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir
                std::cerr << "   " << double( cur_block_num * 100 ) / last_block_num << "%   " << cur_block_num << " of " << last_block_num <<
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
+
+            check_free_memory( false, cur_block_num );
             itr = _block_log.read_block( itr.second );
          }
 
@@ -513,6 +515,8 @@ bool database::push_block(const signed_block& new_block, uint32_t skip)
                result = _push_block(new_block);
             }
             FC_CAPTURE_AND_RETHROW( (new_block) )
+
+            check_free_memory( false, new_block.block_num() );
          });
       });
    });
@@ -2558,25 +2562,49 @@ void database::apply_block( const signed_block& next_block, uint32_t skip )
       }
    }
 
-   show_free_memory( false );
-
 } FC_CAPTURE_AND_RETHROW( (next_block) ) }
 
-void database::show_free_memory( bool force )
+void database::check_free_memory( bool force_print, uint32_t current_block_num )
 {
-   uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
-   if( force || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) )
+   uint64_t free_mem = get_free_memory();
+   uint64_t max_mem = get_max_memory();
+
+   //idump( (free_mem)(max_mem) );
+
+   uint16_t full_threshold = 90 * STEEM_1_PERCENT;
+   uint16_t scale_factor = 25 * STEEM_1_PERCENT;
+
+   if( BOOST_UNLIKELY( full_threshold != 0 && scale_factor != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
    {
-      ilog( "Free memory is now ${n}G", ("n", free_gb) );
+      uint64_t new_max = ( uint128_t( max_mem * scale_factor ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
+
+      wlog( "Memory is almost full, increasing to ${mem}G", ("mem", new_max / (1024*1024*1024)) );
+
+      resize( new_max );
+
+      uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
+      wlog( "Free memory is now ${free}G", ("free", get_free_memory() / (1024*1024*1024)) );
       _last_free_gb_printed = free_gb;
    }
-
-   if( free_gb == 0 )
+   else
    {
-      uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+      uint32_t free_gb = uint32_t( free_mem / (1024*1024*1024) );
+      if( BOOST_UNLIKELY( force_print || (free_gb < _last_free_gb_printed) || (free_gb > _last_free_gb_printed+1) ) )
+      {
+         ilog( "Free memory is now ${n}G. Current block number: ${block}", ("n", free_gb)("block",current_block_num) );
+         _last_free_gb_printed = free_gb;
+      }
 
-      if( free_mb <= 100 && head_block_num() % 10 == 0 )
-         elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
+      if( BOOST_UNLIKELY( free_gb == 0 ) )
+      {
+         uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+
+   #ifdef IS_TEST_NET
+      if( !disable_low_mem_warning )
+   #endif
+         if( free_mb <= 100 && head_block_num() % 10 == 0 )
+            elog( "Free memory is now ${n}M. Increase shared file size immediately!" , ("n", free_mb) );
+      }
    }
 }
 
