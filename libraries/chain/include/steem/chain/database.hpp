@@ -438,7 +438,7 @@ namespace steem { namespace chain {
 #ifdef STEEM_ENABLE_SMT
          ///Smart Media Tokens related methods
          ///@{
-
+         void validate_smt_invariants()const;
          /**
           * @return a list of available NAIs.
          */

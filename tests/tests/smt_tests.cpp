@@ -600,16 +600,22 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
    {
       ACTORS( (alice)(bob) )
 
+      generate_block();
+
       // Create SMT.
       signed_transaction tx, ty;
       asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
       asset_symbol_type bob_symbol = create_smt(ty, "bob", bob_private_key, 1);
 
       // Give some SMT to creators.
-      const account_object& alice_account = db->get_account("alice");
-      db->adjust_balance(alice_account, asset(100, alice_symbol));
-      const account_object& bob_account = db->get_account("bob");
-      db->adjust_balance(bob_account, asset(110, bob_symbol));
+      asset alice_symbol_supply( 100, alice_symbol );
+      db->adjust_supply( alice_symbol_supply );
+      const account_object& alice_account = db->get_account( "alice" );
+      db->adjust_balance( alice_account, alice_symbol_supply );
+      asset bob_symbol_supply( 110, bob_symbol );
+      db->adjust_supply( bob_symbol_supply );
+      const account_object& bob_account = db->get_account( "bob" );
+      db->adjust_balance( bob_account, bob_symbol_supply );
 
       // Check pre-tranfer amounts.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
@@ -626,6 +632,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 50, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
+
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()   
 }

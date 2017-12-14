@@ -608,11 +608,12 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       fund( account_name, 10 * 1000 * 1000 );
-      convert( account_name, ASSET( "5000.000 TESTS" ) );
+      generate_block();
 
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      convert( account_name, ASSET( "5000.000 TESTS" ) );
+      
       // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
       auto available_nais =  db->get_smt_next_identifier();
       FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
@@ -628,6 +629,8 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
       tx.sign( key, db->get_chain_id() );
 
       db->push_transaction( tx, 0 );
+
+      generate_block();      
    }
    FC_LOG_AND_RETHROW();
 

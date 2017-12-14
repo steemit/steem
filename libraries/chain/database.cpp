@@ -3648,6 +3648,20 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
+#ifdef STEEM_ENABLE_SMT
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      const auto& smt = get< smt_token_object, by_symbol >( delta.symbol );
+      auto smt_new_supply = smt.current_supply + delta.amount;
+      FC_ASSERT( smt_new_supply >= 0 );
+      modify( smt, [smt_new_supply]( smt_token_object& smt )
+      {
+         smt.current_supply = smt_new_supply;
+      });
+      return;
+   }
+#endif
+
    bool check_supply = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
    const auto& props = get_dynamic_global_properties();
@@ -4243,18 +4257,6 @@ void database::validate_invariants()const
          else
             FC_ASSERT( false, "found savings withdraw that is not SBD or STEEM" );
       }
-      fc::uint128_t total_rshares2;
-
-      const auto& comment_idx = get_index< comment_index >().indices();
-
-      for( auto itr = comment_idx.begin(); itr != comment_idx.end(); ++itr )
-      {
-         if( itr->net_rshares.value > 0 )
-         {
-            auto delta = util::evaluate_reward_curve( itr->net_rshares.value );
-            total_rshares2 += delta;
-         }
-      }
 
       const auto& reward_idx = get_index< reward_fund_index, by_id >();
 
@@ -4280,6 +4282,70 @@ void database::validate_invariants()const
    }
    FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
 }
+
+#ifdef STEEM_ENABLE_SMT
+
+namespace {
+   typedef std::map< asset_symbol_type, asset > TTotalSupplyMap;
+
+   template <typename index_type>
+   void add_from_balance_index(const index_type& balance_idx, TTotalSupplyMap& theMap)
+   {
+      auto it = balance_idx.begin();
+      auto end = balance_idx.end();
+      for( ; it != end; ++it )
+      {
+         const auto& balance = *it;
+         auto insertInfo = theMap.emplace( balance.balance.symbol, balance.balance );
+         if( insertInfo.second == false )
+            insertInfo.first->second += balance.balance;
+      }
+   }
+}
+
+/**
+ * SMT version of validate_invariants.
+ */
+void database::validate_smt_invariants()const
+{
+   try
+   {
+      // Get total balances.
+      TTotalSupplyMap theMap;
+
+      // - Balances
+      const auto& balance_idx = get_index< account_regular_balance_index, by_id >();
+      add_from_balance_index( balance_idx, theMap );
+
+      // - Reward balances
+      const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
+      add_from_balance_index( rewards_balance_idx, theMap );
+
+      // - Total vesting 
+#pragma message( "TODO: Add SMT vesting support here once it is implemented." )
+         
+      // - Market orders
+#pragma message( "TODO: Add limit_order_object iteration here once they support SMTs." )
+
+      // - Reward funds
+#pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
+                  
+      // - Escrow & savings - no support of SMT is expected.
+
+      // Do the verification of total balances.
+      auto itr = get_index< smt_token_index, by_id >().begin();
+      auto end = get_index< smt_token_index, by_id >().end();
+      for( ; itr != end; ++itr )
+      {
+         const smt_token_object& smt = *itr;
+         auto totalIt = theMap.find( smt.symbol );
+         asset total_supply = totalIt == theMap.end() ? asset(0, smt.symbol) : totalIt->second;
+         FC_ASSERT( asset(smt.current_supply, smt.symbol) == total_supply, "", ("smt.current_supply",smt.current_supply)("total_supply",total_supply) );
+      }
+   }
+   FC_CAPTURE_LOG_AND_RETHROW( (head_block_num()) );
+}
+#endif
 
 void database::perform_vesting_share_split( uint32_t magnitude )
 {
