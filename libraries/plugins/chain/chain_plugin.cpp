@@ -271,9 +271,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->shared_memory_dir = sfd;
    }
 
-   my->shared_memory_size           = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
-   my->shared_file_full_threshold   = options.at( "shared-file-full-threshold" ).as< uint16_t >();
-   my->shared_file_scale_rate       = options.at( "shared-file-scale_rate" ).as< uint16_t >();
+   my->shared_memory_size = fc::parse_size( options.at( "shared-file-size" ).as< string >() );
+
+   if( options.count( "shared-file-full-threshold" ) )
+      my->shared_file_full_threshold = options.at( "shared-file-full-threshold" ).as< uint16_t >();
+
+   if( options.count( "shared-file-scale-rate" ) )
+      my->shared_file_scale_rate = options.at( "shared-file-scale-rate" ).as< uint16_t >();
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
