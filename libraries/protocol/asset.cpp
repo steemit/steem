@@ -14,6 +14,17 @@ index : field
 
 namespace steem { namespace protocol {
 
+namespace
+{
+const char* skip_spaces(const char* str)
+{
+   while(*str != '\0' && std::isspace(*str))
+      ++str;
+
+   return str;
+}
+} /// anonymous
+
 void asset_symbol_type::to_string( char* buf )const
 {
    uint64_t* p = (uint64_t*) buf;
@@ -33,8 +44,14 @@ void asset_symbol_type::to_string( char* buf )const
       default:
       {
          static_assert( STEEM_ASSET_SYMBOL_MAX_LENGTH >= 10, "This code will overflow a short buffer" );
+         static char hexLookup [] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+         int precision = decimals();
+         assert(precision < sizeof(hexLookup)/sizeof(char));
+
          uint32_t x = to_nai();
-         buf[11] = '\0';
+         
+         buf[12] = '\0';
+         buf[11] = hexLookup[precision];
          buf[10] = ((x%10)+'0');  x /= 10;
          buf[ 9] = ((x%10)+'0');  x /= 10;
          buf[ 8] = ((x%10)+'0');  x /= 10;
@@ -53,18 +70,7 @@ void asset_symbol_type::to_string( char* buf )const
 asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal_places )
 {
    // \s*
-   while( true )
-   {
-      switch( *p )
-      {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         default:
-            break;
-      }
-      break;
-   }
+   p = skip_spaces(p);
 
    // [A-Z]{1,6}
    uint32_t asset_num = 0;
@@ -78,18 +84,36 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
 
          uint64_t nai = 0;
          int digit_count = 0;
+         
          while( true )
          {
-            switch( *p )
+            char digit = std::toupper(*p);
+
+            switch(digit)
             {
                case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
                {
-                  uint64_t new_nai = nai*10 + ((*p) - '0');
-                  FC_ASSERT( new_nai > nai, "Cannot parse asset amount" );
-                  FC_ASSERT( new_nai <= SMT_MAX_NAI, "Cannot parse asset amount" );
+                  uint64_t new_nai = nai*10 + (digit - '0');
+                  /// new_nai can be greater or equal (in case processed digit is '0')
+                  FC_ASSERT( new_nai >= nai, "Cannot parse asset amount" );
                   nai = new_nai;
-                  ++p;
                   ++digit_count;
+                  ++p;
+
+                  if(digit_count == 9)
+                  {
+                     digit = std::toupper(*p);
+                     FC_ASSERT(std::isxdigit(digit), "Precision is supposed to be a hexadecimal digit");
+
+                     /// Time to parse precision specified for given SMT asset
+                     int encoded_precision = digit > '9' ? digit - 'A' + 10 : digit - '0';
+                     int dp = decimal_places;
+                     FC_ASSERT(encoded_precision == 0 || encoded_precision == decimal_places,
+                        "encoded precision must match precision passed by caller");
+                     ++p;
+                     break;
+                  }
+
                   continue;
                }
                default:
@@ -98,7 +122,8 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
             break;
          }
          FC_ASSERT( digit_count == 9 );
-         asset_num = asset_num_from_nai( nai, uint8_t( decimal_places ) );
+         
+         asset_num = asset_num_from_nai( nai, decimal_places );
          break;
       }
       case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I':
@@ -144,20 +169,8 @@ asset_symbol_type asset_symbol_type::from_string( const char* p, uint8_t decimal
    }
 
    // \s*\0
-   while( true )
-   {
-      switch( *p )
-      {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         case '\0':
-            break;
-         default:
-            FC_ASSERT( false, "Cannot parse asset symbol" );
-      }
-      break;
-   }
+   p = skip_spaces(p);
+   FC_ASSERT( *p == '\0', "Cannot parse asset symbol - superfluous trailing contents" );
 
    asset_symbol_type sym;
    sym.asset_num = asset_num;
@@ -310,18 +323,7 @@ std::string asset::to_string()const
 
 void asset::fill_from_string( const char* p )
 {
-   while( true )
-   {
-      switch( *p )
-      {
-         case ' ':  case '\t':  case '\n':  case '\r':
-            ++p;
-            continue;
-         default:
-            break;
-      }
-      break;
-   }
+   p = skip_spaces(p);
 
    int decimal_places = 0;
    int decimal_places_inc = 0;
