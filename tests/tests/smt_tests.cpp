@@ -644,12 +644,10 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       // Give some SMT to creators.
       asset alice_symbol_supply( 100, alice_symbol );
       db->adjust_supply( alice_symbol_supply );
-      const account_object& alice_account = db->get_account( "alice" );
-      db->adjust_balance( alice_account, alice_symbol_supply );
+      db->adjust_balance( "alice", alice_symbol_supply );
       asset bob_symbol_supply( 110, bob_symbol );
       db->adjust_supply( bob_symbol_supply );
-      const account_object& bob_account = db->get_account( "bob" );
-      db->adjust_balance( bob_account, bob_symbol_supply );
+      db->adjust_balance( "bob", bob_symbol_supply );
 
       // Check pre-tranfer amounts.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
