@@ -7058,5 +7058,77 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
    }
    FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE( issue_1885_match_order )
+{
+   try
+   {
+      BOOST_TEST_MESSAGE( "--- Test filling best order with multiple matches." );
+
+      ACTORS( (alice)(bob)(chell)(dan) )
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      generate_block();
+      fund( "alice", ASSET( "25.000 TBD" ) );
+      fund( "bob",   1000000 );
+      fund( "chell", 1000000 );
+      fund( "dan", 1000000 );
+
+      limit_order_create_operation op;
+      signed_transaction tx;
+      op.owner = "bob";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.min_to_receive = ASSET( "22.000 TBD" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      op.owner = "chell";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.min_to_receive = ASSET( "20.000 TBD" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( chell_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      op.owner = "dan";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.min_to_receive = ASSET( "23.000 TBD" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( dan_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      op.owner = "alice";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "15.000 TBD" );
+      op.min_to_receive = ASSET( "10.000 TESTS" );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      auto recent_ops = get_last_operations( 1 );
+      auto fill_order_op = recent_ops[0].get< fill_order_operation >();
+      BOOST_REQUIRE( fill_order_op.open_owner == "chell" );
+      BOOST_REQUIRE( fill_order_op.open_orderid == 1 );
+      BOOST_REQUIRE( fill_order_op.open_pays == ASSET( "15.000 TESTS") );
+      BOOST_REQUIRE( fill_order_op.current_owner == "alice" );
+      BOOST_REQUIRE( fill_order_op.current_orderid == 1 );
+      BOOST_REQUIRE( fill_order_op.current_pays == ASSET( "15.000 TBD" ) );
+
+      validate_database();
+   }
+   FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 #endif
