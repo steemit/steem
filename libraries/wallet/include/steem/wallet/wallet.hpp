@@ -721,7 +721,7 @@ class wallet_api
        *  @param from       - the account that initiated the transfer
        *  @param request_id - an unique ID assigned by from account, the id is used to cancel the operation and can be reused after the transfer completes
        *  @param to         - the account getting the transfer
-       *  @param amount     - the amount of assets to be transfered 
+       *  @param amount     - the amount of assets to be transfered
        *  @param memo A memo for the transactionm, encrypted with the to account's public memo key
        *  @param broadcast true if you wish to broadcast the transaction
        */
@@ -868,16 +868,6 @@ class wallet_api
       void set_transaction_expiration(uint32_t seconds);
 
       /**
-       * Challenge a user's authority. The challenger pays a fee to the challenged which is depositted as
-       * Steem Power. Until the challenged proves their active key, all posting rights are revoked.
-       *
-       * @param challenger The account issuing the challenge
-       * @param challenged The account being challenged
-       * @param broadcast true if you wish to broadcast the transaction
-       */
-      annotated_signed_transaction challenge( string challenger, string challenged, bool broadcast );
-
-      /**
        * Create an account recovery request as a recover account. The syntax for this command contains a serialized authority object
        * so there is an example below on how to pass in the authority.
        *
@@ -913,15 +903,6 @@ class wallet_api
       annotated_signed_transaction change_recovery_account( string owner, string new_recovery_account, bool broadcast );
 
       vector< database_api::api_owner_authority_history_object > get_owner_history( string account )const;
-
-      /**
-       * Prove an account's active authority, fulfilling a challenge, restoring posting rights, and making
-       * the account immune to challenge for 24 hours.
-       *
-       * @param challenged The account that was challenged and is proving its authority.
-       * @param broadcast true if you wish to broadcast the transaction
-       */
-      annotated_signed_transaction prove( string challenged, bool broadcast );
 
       /**
        *  Account operations have sequence numbers from 0 to N where N is the most recent operation. This method
@@ -1054,8 +1035,6 @@ FC_API( steem::wallet::wallet_api,
         (post_comment)
         (vote)
         (set_transaction_expiration)
-        (challenge)
-        (prove)
         (request_account_recovery)
         (recover_account)
         (change_recovery_account)

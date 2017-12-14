@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
       // U,V,W : voters
 
       // set a ridiculously high STEEM price ($1 / satoshi) to disable dust threshold
-      set_price_feed( price( ASSET( "0.001 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "0.001 TESTS" ) ) );
 
       for( const auto& voter : voters )
       {
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_dust )
       vest( "alice", ASSET( "10.000 TESTS" ) );
       vest( "bob", ASSET( "10.000 TESTS" ) );
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       generate_block();
       validate_database();
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE( recent_claims_decay )
       ACTORS( (alice)(bob) )
       generate_block();
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       generate_block();
 
       comment_operation comment;
@@ -1455,13 +1455,13 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
          txs.push_back( signed_transaction() );
       }
 
-      ops[0].exchange_rate = price( asset( 100000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
-      ops[1].exchange_rate = price( asset( 105000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
-      ops[2].exchange_rate = price( asset(  98000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
-      ops[3].exchange_rate = price( asset(  97000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
-      ops[4].exchange_rate = price( asset(  99000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
-      ops[5].exchange_rate = price( asset(  97500, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
-      ops[6].exchange_rate = price( asset( 102000, STEEM_SYMBOL ), asset( 1000, SBD_SYMBOL ) );
+      ops[0].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 100000, STEEM_SYMBOL ) );
+      ops[1].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 105000, STEEM_SYMBOL ) );
+      ops[2].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  98000, STEEM_SYMBOL ) );
+      ops[3].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  97000, STEEM_SYMBOL ) );
+      ops[4].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  99000, STEEM_SYMBOL ) );
+      ops[5].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset(  97500, STEEM_SYMBOL ) );
+      ops[6].exchange_rate = price( asset( 1000, SBD_SYMBOL ), asset( 102000, STEEM_SYMBOL ) );
 
       for( int i = 0; i < 7; i++ )
       {
@@ -1477,8 +1477,8 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
       BOOST_TEST_MESSAGE( "Get feed history object" );
       feed_history_object feed_history = db->get_feed_history();
       BOOST_TEST_MESSAGE( "Check state" );
-      BOOST_REQUIRE( feed_history.current_median_history == price( asset( 99000, STEEM_SYMBOL), asset( 1000, SBD_SYMBOL ) ) );
-      BOOST_REQUIRE( feed_history.price_history[ 0 ] == price( asset( 99000, STEEM_SYMBOL), asset( 1000, SBD_SYMBOL ) ) );
+      BOOST_REQUIRE( feed_history.current_median_history == price( asset( 1000, SBD_SYMBOL ), asset( 99000, STEEM_SYMBOL) ) );
+      BOOST_REQUIRE( feed_history.price_history[ 0 ] == price( asset( 1000, SBD_SYMBOL ), asset( 99000, STEEM_SYMBOL) ) );
       validate_database();
 
       for ( int i = 0; i < 23; i++ )
@@ -1489,7 +1489,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
          {
             txs[j].operations.clear();
             txs[j].signatures.clear();
-            ops[j].exchange_rate = price( ops[j].exchange_rate.base, asset( ops[j].exchange_rate.quote.amount + 10, SBD_SYMBOL ) );
+            ops[j].exchange_rate = price( ops[j].exchange_rate.base, asset( ops[j].exchange_rate.quote.amount + 10, STEEM_SYMBOL ) );
             txs[j].set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
             txs[j].operations.push_back( ops[j] );
             txs[j].sign( keys[j], db->get_chain_id() );
@@ -1520,7 +1520,7 @@ BOOST_AUTO_TEST_CASE( convert_delay )
       vest( "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "25.000 TBD" ) );
 
-      set_price_feed( price( asset::from_string( "1.250 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
+      set_price_feed( price( asset::from_string( "1.000 TBD" ), asset::from_string( "1.250 TESTS" ) ) );
 
       convert_operation op;
       signed_transaction tx;
@@ -1764,7 +1764,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       vest( "alice", ASSET( "10.000 TESTS" ) );
       vest( "bob", ASSET( "10.000 TESTS" ) );
 
-      set_price_feed( price( asset::from_string( "1.000 TESTS" ), asset::from_string( "1.000 TBD" ) ) );
+      set_price_feed( price( asset::from_string( "1.000 TBD" ), asset::from_string( "1.000 TESTS" ) ) );
 
       BOOST_TEST_MESSAGE( "Testing interest over smallest interest period" );
 
@@ -1853,7 +1853,7 @@ BOOST_AUTO_TEST_CASE( liquidity_rewards )
 
       BOOST_TEST_MESSAGE( "Rewarding Bob with TESTS" );
 
-      auto exchange_rate = price( ASSET( "1.250 TESTS" ), ASSET( "1.000 TBD" ) );
+      auto exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1.250 TESTS" ) );
       set_price_feed( exchange_rate );
 
       signed_transaction tx;
@@ -2556,7 +2556,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
       vest( "sam", 10000 );
       vest( "dave", 10000 );
 
-      auto exchange_rate = price( ASSET( "1.250 TESTS" ), ASSET( "1.000 TBD" ) );
+      auto exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "1.250 TESTS" ) );
       set_price_feed( exchange_rate );
 
       signed_transaction tx;
@@ -2855,7 +2855,7 @@ BOOST_AUTO_TEST_CASE( clear_null_account )
       ACTORS( (alice) );
       generate_block();
 
-      set_price_feed( price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       fund( "alice", ASSET( "10.000 TESTS" ) );
       fund( "alice", ASSET( "10.000 TBD" ) );

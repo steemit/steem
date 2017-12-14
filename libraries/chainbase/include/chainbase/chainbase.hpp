@@ -657,7 +657,7 @@ namespace chainbase {
          virtual void     undo_all() const override {_base.undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
-         virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
+         virtual void     remove_object( int64_t id ) override { _base.remove_object( id ); }
 
          virtual statistic_info get_statistics(bool onlyStaticInfo) const override final
          {
@@ -710,6 +710,13 @@ namespace chainbase {
          std::atomic< uint32_t >                                    _current_lock;
    };
 
+   struct lock_exception : public std::exception
+   {
+      explicit lock_exception() {}
+      virtual ~lock_exception() {}
+
+      virtual const char* what() const noexcept { return "Unable to acquire database lock"; }
+   };
 
    /**
     *  This class
@@ -798,7 +805,6 @@ namespace chainbase {
              CHAINBASE_REQUIRE_WRITE_LOCK( "set_revision", int64_t );
              for( const auto& i : _index_list ) i->set_revision( revision );
          }
-
 
          template<typename MultiIndexType>
          void add_index() {
@@ -1000,7 +1006,7 @@ namespace chainbase {
             else
             {
                if( !lock.timed_lock( boost::posix_time::microsec_clock::universal_time() + boost::posix_time::microseconds( wait_micro ) ) )
-                  BOOST_THROW_EXCEPTION( std::runtime_error( "unable to acquire lock" ) );
+                  BOOST_THROW_EXCEPTION( lock_exception() );
             }
 
             return callback();
@@ -1074,7 +1080,7 @@ namespace chainbase {
          int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
-   };
+};
 
    template<typename Object, typename... Args>
    using shared_multi_index_container = boost::multi_index_container<Object,Args..., allocator<Object> >;

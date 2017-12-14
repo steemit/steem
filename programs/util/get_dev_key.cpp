@@ -43,7 +43,7 @@ int main( int argc, char** argv )
    {
       std::string dev_key_prefix;
       bool need_help = false;
-      if( argc < 2 )
+      if( argc < 3 )
          need_help = true;
       else
       {
@@ -56,26 +56,42 @@ int main( int argc, char** argv )
 
       if( need_help )
       {
-         std::cerr << argc << " " << argv[1]  << "\n";
          std::cerr << "get-dev-key <prefix> <suffix> ...\n"
              "\n"
-             "example:\n"
+	     "Takes a secret string and a list of account names, and returns a json formatted\n"
+	     "  list of associated private/public key pairs.\n"
+	     "\n"
+	     "Parameters:\n"
+	     "\n"
+	     "  secret:\n"
+	     "    The secret string that will be hashed with the account names to form the keys.\n"
+	     "\n"
+	     "  account:\n"
+	     "    Account name strings for which keys will be generated. There can be an arbitrary\n"
+	     "      number of these passed as parameters.\n"
+	     "    If you want to include multiple accounts with the same name but different integer\n"
+	     "      values at the end, a range can be given after a dash in the form a:b, and the\n"
+             "      input will be exapnded to include each combination in the range (a:b].\n"
+             "      E.g. name-0:3 would expand to abc-0 abc-1 abc-2\n"
+	     "\n"
+             "Examples:\n"
              "\n"
-             "get-dev-key wxyz- owner-5 active-7 balance-9 wit-block-signing-3 wit-owner-5 wit-active-33\n"
-             "get-dev-key wxyz- wit-block-signing-0:101\n"
+             "  get-dev-key xyz owner-5 active-7 balance-9 wit-block-signing-3 wit-owner-5 wit-active-33\n"
+             "  get-dev-key xyz wit-block-signing-0:101\n"
              "\n";
          return 1;
       }
 
       bool comma = false;
 
-      auto show_key = [&]( const fc::ecc::private_key& priv_key )
+      auto show_key = [&]( const fc::ecc::private_key& priv_key, const std::string& name )
       {
          fc::mutable_variant_object mvo;
          steem::protocol::public_key_type pub_key = priv_key.get_public_key();
-         mvo( "private_key", steem::utilities::key_to_wif( priv_key ) )
-            ( "public_key", std::string( pub_key ) )
-            ;
+         mvo( "private_key",    steem::utilities::key_to_wif( priv_key ) )
+	    ( "public_key",     std::string( pub_key ) )
+	    ( "account_name", name )
+	 ;
          if( comma )
             std::cout << ",\n";
          std::cout << fc::json::to_string( mvo );
@@ -107,13 +123,14 @@ int main( int argc, char** argv )
          {
             for( int k=lep; k<rep; k++ )
             {
-               std::string s = dev_key_prefix + prefix + std::to_string(k);
-               show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( s ) ) );
+	       std::string suffix = prefix + std::to_string(k);
+               std::string s = dev_key_prefix + suffix;
+               show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( s ) ), suffix );
             }
          }
          else
          {
-            show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( dev_key_prefix + arg ) ) );
+	   show_key( fc::ecc::private_key::regenerate( fc::sha256::hash( dev_key_prefix + arg ) ), arg );
          }
       }
       std::cout << "]\n";

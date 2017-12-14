@@ -18,7 +18,7 @@ class account_history_api_impl
    public:
       account_history_api_impl() : _db( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db() ) {}
 
-      DECLARE_API(
+      DECLARE_API_IMPL(
          (get_ops_in_block)
          (get_transaction)
          (get_account_history)
@@ -27,7 +27,7 @@ class account_history_api_impl
       chain::database& _db;
 };
 
-DEFINE_API( account_history_api_impl, get_ops_in_block )
+DEFINE_API_IMPL( account_history_api_impl, get_ops_in_block )
 {
    const auto& idx = _db.get_index< chain::operation_index, chain::by_location >();
    auto itr = idx.lower_bound( args.block_num );
@@ -42,7 +42,7 @@ DEFINE_API( account_history_api_impl, get_ops_in_block )
    return result;
 }
 
-DEFINE_API( account_history_api_impl, get_transaction )
+DEFINE_API_IMPL( account_history_api_impl, get_transaction )
 {
 #ifdef SKIP_BY_TX_ID
    FC_ASSERT( false, "This node's operator has disabled operation indexing by transaction_id" );
@@ -63,7 +63,7 @@ DEFINE_API( account_history_api_impl, get_transaction )
 #endif
 }
 
-DEFINE_API( account_history_api_impl, get_account_history )
+DEFINE_API_IMPL( account_history_api_impl, get_account_history )
 {
    FC_ASSERT( args.limit <= 10000, "limit of ${l} is greater than maxmimum allowed", ("l",args.limit) );
    FC_ASSERT( args.start >= args.limit, "start must be greater than limit" );
@@ -111,32 +111,10 @@ account_history_api::account_history_api(): my( new detail::account_history_api_
 
 account_history_api::~account_history_api() {}
 
-DEFINE_API( account_history_api, get_ops_in_block )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_ops_in_block( args );
-   });
-}
-
-DEFINE_API( account_history_api, get_transaction )
-{
-#ifdef SKIP_BY_TX_ID
-   FC_ASSERT( false, "This node's operator has disabled operation indexing by transaction_id" );
-#else
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_transaction( args );
-   });
-#endif
-}
-
-DEFINE_API( account_history_api, get_account_history )
-{
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_account_history( args );
-   });
-}
+DEFINE_READ_APIS( account_history_api,
+   (get_ops_in_block)
+   (get_transaction)
+   (get_account_history)
+)
 
 } } } // steem::plugins::account_history

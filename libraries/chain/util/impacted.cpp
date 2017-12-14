@@ -44,12 +44,6 @@ struct get_impacted_account_visitor
          _impacted.insert( op.parent_author );
    }
 
-   void operator()( const challenge_authority_operation& op )
-   {
-      _impacted.insert( op.challenger );
-      _impacted.insert( op.challenged );
-   }
-
    void operator()( const vote_operation& op )
    {
       _impacted.insert( op.voter );

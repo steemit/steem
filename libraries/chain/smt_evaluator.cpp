@@ -14,6 +14,23 @@ namespace steem { namespace chain {
 
 namespace {
 
+/// Return SMT token object controlled by this account identified by its symbol. Throws assert exception when not found!
+inline const smt_token_object& get_controlled_smt( const database& db, const account_name_type& control_account, const asset_symbol_type& smt_symbol )
+{
+   const smt_token_object* smt = db.find< smt_token_object, by_symbol >( smt_symbol );
+   // The SMT is supposed to be found.
+   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", smt_symbol.to_nai()) );
+   // Check against unotherized account trying to access (and alter) SMT. Unotherized means "other than the one that created the SMT".
+   FC_ASSERT( smt->control_account == control_account, "The account ${account} does NOT control the SMT ${smt}",
+      ("account", control_account)("smt", smt_symbol.to_nai()) );
+   
+   return *smt;
+}
+   
+}
+
+namespace {
+
 class smt_setup_parameters_visitor : public fc::visitor<bool>
 {
 public:
@@ -38,15 +55,12 @@ private:
 const smt_token_object& common_pre_setup_evaluation(
    const database& _db, const asset_symbol_type& symbol, const account_name_type& control_account )
 {
-   const smt_token_object* smt = _db.find< smt_token_object, by_symbol >( symbol );
-   // Check whether it's not too early to setup operation.
-   FC_ASSERT( smt != nullptr, "SMT numerical asset identifier ${smt} not found", ("smt", symbol.to_nai()) );
-   // Check whether some impostor tries to hijack SMT operation.
-   FC_ASSERT( smt->control_account == control_account );
-   // Check whether it's not too late to setup emissions operation.
-   FC_ASSERT( smt->phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
+   const smt_token_object& smt = get_controlled_smt( _db, control_account, symbol );
 
-   return *smt;
+   // Check whether it's not too late to setup emissions operation.
+   FC_ASSERT( smt.phase < smt_token_object::smt_phase::setup_completed, "SMT pre-setup operation no longer allowed after setup phase is over" );
+
+   return smt;
 }
 
 } // namespace
@@ -55,6 +69,12 @@ void smt_create_evaluator::do_apply( const smt_create_operation& o )
 {
    FC_ASSERT( _db.has_hardfork( STEEM_SMT_HARDFORK ), "SMT functionality not enabled until hardfork ${hf}", ("hf", STEEM_SMT_HARDFORK) );
    const dynamic_global_property_object& dgpo = _db.get_dynamic_global_properties();
+
+   // Check that SMT with given nai has not been created already.
+   // Note that symbols with the same nai and different precision (decimal places) are not allowed,
+   // therefore we can't use 'by_symbol' index here, as we need to strip the symbol from precision info.
+   FC_ASSERT( (_db.find< smt_token_object, by_nai >( o.symbol.to_nai() ) == nullptr),
+      "SMT ${nai} has already been created.", ("nai", o.symbol.to_nai()));
 
    asset effective_elevation_fee;
 

@@ -30,20 +30,92 @@ namespace detail
       public:
          condenser_api_impl() : _db( appbase::app().get_plugin< chain::chain_plugin >().db() ) {}
 
-         DECLARE_API(
+         DECLARE_API_IMPL(
+            (get_version)
+            (get_trending_tags)
             (get_state)
+            (get_active_witnesses)
+            (get_block_header)
+            (get_block)
+            (get_ops_in_block)
+            (get_config)
+            (get_dynamic_global_properties)
+            (get_chain_properties)
+            (get_current_median_history_price)
+            (get_feed_history)
+            (get_witness_schedule)
+            (get_hardfork_version)
             (get_next_scheduled_hardfork)
             (get_reward_fund)
+            (get_key_references)
             (get_accounts)
+            (get_account_references)
             (lookup_account_names)
             (lookup_accounts)
             (get_account_count)
+            (get_owner_history)
+            (get_recovery_request)
+            (get_escrow)
+            (get_withdraw_routes)
+            (get_account_bandwidth)
+            (get_savings_withdraw_from)
             (get_savings_withdraw_to)
+            (get_vesting_delegations)
+            (get_expiring_vesting_delegations)
             (get_witnesses)
+            (get_conversion_requests)
+            (get_witness_by_account)
+            (get_witnesses_by_vote)
+            (lookup_witness_accounts)
             (get_witness_count)
             (get_open_orders)
+            (get_transaction_hex)
+            (get_transaction)
+            (get_required_signatures)
+            (get_potential_signatures)
+            (verify_authority)
+            (verify_account_authority)
+            (get_active_votes)
             (get_account_votes)
-            (lookup_witness_accounts)
+            (get_content)
+            (get_content_replies)
+            (get_tags_used_by_author)
+            (get_post_discussions_by_payout)
+            (get_comment_discussions_by_payout)
+            (get_discussions_by_trending)
+            (get_discussions_by_created)
+            (get_discussions_by_active)
+            (get_discussions_by_cashout)
+            (get_discussions_by_votes)
+            (get_discussions_by_children)
+            (get_discussions_by_hot)
+            (get_discussions_by_feed)
+            (get_discussions_by_blog)
+            (get_discussions_by_comments)
+            (get_discussions_by_promoted)
+            (get_replies_by_last_update)
+            (get_discussions_by_author_before_date)
+            (get_account_history)
+            (broadcast_transaction)
+            (broadcast_transaction_synchronous)
+            (broadcast_block)
+            (get_followers)
+            (get_following)
+            (get_follow_count)
+            (get_feed_entries)
+            (get_feed)
+            (get_blog_entries)
+            (get_blog)
+            (get_account_reputations)
+            (get_reblogged_by)
+            (get_blog_authors)
+            (get_ticker)
+            (get_volume)
+            (get_order_book)
+            (get_trade_history)
+            (get_recent_trades)
+            (get_market_history)
+            (get_market_history_buckets)
          )
 
          void recursively_fetch_content( state& _state, tags::discussion& root, set<string>& referenced_accounts );
@@ -61,12 +133,32 @@ namespace detail
          std::shared_ptr< witness::witness_api > _witness_api;
    };
 
-   DEFINE_API( condenser_api_impl, get_state )
+   DEFINE_API_IMPL( condenser_api_impl, get_version )
    {
+      CHECK_ARG_SIZE( 0 )
+      return get_version_return
+      (
+         fc::string( STEEM_BLOCKCHAIN_VERSION ),
+         fc::string( steem::utilities::git_revision_sha ),
+         fc::string( fc::git_revision_sha )
+      );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_trending_tags )
+   {
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_trending_tags( { args[0].as< string >(), args[1].as< uint32_t >() } ).tags;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_state )
+   {
+      CHECK_ARG_SIZE( 1 )
       string path = args[0].as< string >();
 
       state _state;
-      _state.props         = _database_api->get_dynamic_global_properties( {} );
+      _state.props         = get_dynamic_global_properties( {} );
       _state.current_route = path;
       _state.feed_price    = _database_api->get_current_price_feed( {} );
 
@@ -583,8 +675,88 @@ namespace detail
       return _state;
    }
 
-   DEFINE_API( condenser_api_impl, get_next_scheduled_hardfork )
+   DEFINE_API_IMPL( condenser_api_impl, get_active_witnesses )
    {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_active_witnesses( {} ).witnesses;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_block_header )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _block_api, "block_api_plugin not enabled." );
+      return _block_api->get_block_header( { args[0].as< uint32_t >() } ).header;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_block )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _block_api, "block_api_plugin not enabled." );
+      return _block_api->get_block( { args[0].as< uint32_t >() } ).block;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_ops_in_block )
+   {
+      FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
+
+      return _account_history_api->get_ops_in_block( { args[0].as< uint32_t >(), args[1].as< bool >() } ).ops;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_config )
+   {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_config( {} );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_dynamic_global_properties )
+   {
+      CHECK_ARG_SIZE( 0 )
+      get_dynamic_global_properties_return gpo = _database_api->get_dynamic_global_properties( {} );
+      if( _witness_api )
+      {
+         auto reserve_ratio = _witness_api->get_reserve_ratio( {} );
+         gpo.average_block_size = reserve_ratio.average_block_size;
+         gpo.current_reserve_ratio = reserve_ratio.current_reserve_ratio;
+         gpo.max_virtual_bandwidth = reserve_ratio.max_virtual_bandwidth;
+      }
+
+      return gpo;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_chain_properties )
+   {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_witness_schedule( {} ).median_props;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_current_median_history_price )
+   {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_current_price_feed( {} );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_feed_history )
+   {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_feed_history( {} );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_witness_schedule )
+   {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_witness_schedule( {} );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_hardfork_version )
+   {
+      CHECK_ARG_SIZE( 0 )
+      return _database_api->get_hardfork_properties( {} ).current_hardfork_version;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_next_scheduled_hardfork )
+   {
+      CHECK_ARG_SIZE( 0 )
       scheduled_hardfork shf;
       const auto& hpo = _db.get( hardfork_property_id_type() );
       shf.hf_version = hpo.next_hardfork;
@@ -592,8 +764,9 @@ namespace detail
       return shf;
    }
 
-   DEFINE_API( condenser_api_impl, get_reward_fund )
+   DEFINE_API_IMPL( condenser_api_impl, get_reward_fund )
    {
+      CHECK_ARG_SIZE( 1 )
       string name = args[0].as< string >();
 
       auto fund = _db.find< reward_fund_object, by_name >( name );
@@ -602,7 +775,15 @@ namespace detail
       return *fund;
    }
 
-   DEFINE_API( condenser_api_impl, get_accounts )
+   DEFINE_API_IMPL( condenser_api_impl, get_key_references )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _account_by_key_api, "account_history_api_plugin not enabled." );
+
+      return _account_by_key_api->get_key_references( { args[0].as< vector< public_key_type > >() } ).accounts;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_accounts )
    {
       vector< account_name_type > names = args[0].as< vector< account_name_type > >();
 
@@ -623,6 +804,26 @@ namespace detail
                results.back().reputation = _follow_api->get_account_reputations( { itr->name, 1 } ).reputations[0].reputation;
             }
 
+            if( _witness_api )
+            {
+               auto& e_acct = results.back();
+               auto forum_bandwidth = _witness_api->get_account_bandwidth( { itr->name, witness::bandwidth_type::forum } );
+               if( forum_bandwidth.bandwidth.valid() )
+               {
+                  e_acct.average_bandwidth = forum_bandwidth.bandwidth->average_bandwidth;
+                  e_acct.lifetime_bandwidth = forum_bandwidth.bandwidth->lifetime_bandwidth;
+                  e_acct.last_bandwidth_update = forum_bandwidth.bandwidth->last_bandwidth_update;
+               }
+
+               auto market_bandwidth = _witness_api->get_account_bandwidth( { itr->name, witness::bandwidth_type::market } );
+               if( market_bandwidth.bandwidth.valid() )
+               {
+                  e_acct.average_market_bandwidth = market_bandwidth.bandwidth->average_bandwidth;
+                  e_acct.lifetime_market_bandwidth = market_bandwidth.bandwidth->lifetime_bandwidth;
+                  e_acct.last_market_bandwidth_update = market_bandwidth.bandwidth->last_bandwidth_update;
+               }
+            }
+
             auto vitr = vidx.lower_bound( boost::make_tuple( itr->name, account_name_type() ) );
             while( vitr != vidx.end() && vitr->account == itr->name ) {
                results.back().witness_votes.insert( _db.get< witness_object, by_name >( vitr->witness ).owner );
@@ -634,8 +835,14 @@ namespace detail
       return results;
    }
 
-   DEFINE_API( condenser_api_impl, lookup_account_names )
+   DEFINE_API_IMPL( condenser_api_impl, get_account_references )
    {
+      FC_ASSERT( false, "condenser_api::get_account_references --- Needs to be refactored for Steem." );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, lookup_account_names )
+   {
+      CHECK_ARG_SIZE( 1 )
       vector< account_name_type > account_names = args[0].as< vector< account_name_type > >();
 
       vector< optional< database_api::api_account_object > > result;
@@ -658,8 +865,9 @@ namespace detail
       return result;
    }
 
-   DEFINE_API( condenser_api_impl, lookup_accounts )
+   DEFINE_API_IMPL( condenser_api_impl, lookup_accounts )
    {
+      CHECK_ARG_SIZE( 1 )
       account_name_type lower_bound_name = args[0].as< account_name_type >();
       uint32_t limit = args[1].as< uint32_t >();
 
@@ -677,12 +885,93 @@ namespace detail
       return result;
    }
 
-   DEFINE_API( condenser_api_impl, get_account_count )
+   DEFINE_API_IMPL( condenser_api_impl, get_account_count )
    {
+      CHECK_ARG_SIZE( 0 )
       return _db.get_index<account_index>().indices().size();
    }
 
-   DEFINE_API( condenser_api_impl, get_savings_withdraw_to )
+   DEFINE_API_IMPL( condenser_api_impl, get_owner_history )
+   {
+      CHECK_ARG_SIZE( 1 )
+      return _database_api->find_owner_histories( { args[0].as< string >() } ).owner_auths;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_recovery_request )
+   {
+      CHECK_ARG_SIZE( 1 )
+      get_recovery_request_return result;
+
+      auto requests = _database_api->find_account_recovery_requests( { { args[0].as< account_name_type >() } } ).requests;
+
+      if( requests.size() )
+         result = requests[0];
+
+      return result;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_escrow )
+   {
+      CHECK_ARG_SIZE( 2 )
+      get_escrow_return result;
+
+      auto escrows = _database_api->list_escrows( { { args }, 1, database_api::by_from_id } ).escrows;
+
+      if( escrows.size()
+         && escrows[0].from == args[0].as< account_name_type >()
+         && escrows[0].escrow_id == args[1].as< uint32_t >() )
+      {
+         result = escrows[0];
+      }
+
+      return result;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_withdraw_routes )
+   {
+      FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
+
+      auto account = args[0].as< string >();
+      auto destination = args.size() == 2 ? args[1].as< withdraw_route_type >() : outgoing;
+
+      get_withdraw_routes_return result;
+
+      if( destination == outgoing || destination == all )
+      {
+         auto routes = _database_api->find_withdraw_vesting_routes( { account, database_api::by_withdraw_route } ).routes;
+         result.insert( result.end(), routes.begin(), routes.end() );
+      }
+
+      if( destination == incoming || destination == all )
+      {
+         auto routes = _database_api->find_withdraw_vesting_routes( { account, database_api::by_destination } ).routes;
+         result.insert( result.end(), routes.begin(), routes.end() );
+      }
+
+      return result;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_account_bandwidth )
+   {
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _witness_api, "witness_api_plugin not enabled." );
+      return _witness_api->get_account_bandwidth(
+         {
+            args[0].as< string >(),
+            args[1].as< witness::bandwidth_type >()
+         }).bandwidth;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_savings_withdraw_from )
+   {
+      CHECK_ARG_SIZE( 1 )
+      return _database_api->find_savings_withdrawals(
+         {
+            args[0].as< string >()
+         }).withdrawals;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_savings_withdraw_to )
    {
       CHECK_ARG_SIZE( 1 )
       account_name_type account = args[0].as< account_name_type >();
@@ -700,8 +989,33 @@ namespace detail
       return result;
    }
 
-   DEFINE_API( condenser_api_impl, get_witnesses )
+   DEFINE_API_IMPL( condenser_api_impl, get_vesting_delegations )
    {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+
+      database_api::list_vesting_delegations_args a;
+      a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
+      a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
+      a.order = database_api::by_delegation;
+
+      return _database_api->list_vesting_delegations( a ).delegations;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_expiring_vesting_delegations )
+   {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+
+      database_api::list_vesting_delegation_expirations_args a;
+      a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
+      a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
+      a.order = database_api::by_account_expiration;
+
+      return _database_api->list_vesting_delegation_expirations( a ).delegations;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_witnesses )
+   {
+      CHECK_ARG_SIZE( 1 )
       vector< witness_id_type > witness_ids = args[0].as< vector< witness_id_type > >();
 
       vector< optional< database_api::api_witness_object > > result;
@@ -721,13 +1035,72 @@ namespace detail
       return result;
    }
 
-   DEFINE_API( condenser_api_impl, get_witness_count )
+   DEFINE_API_IMPL( condenser_api_impl, get_conversion_requests )
    {
+      CHECK_ARG_SIZE( 1 )
+      return _database_api->find_sbd_conversion_requests(
+         {
+            args[0].as< account_name_type >()
+         }).requests;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_witness_by_account )
+   {
+      CHECK_ARG_SIZE( 1 )
+      auto witnesses = _database_api->find_witnesses(
+         {
+            { args[0].as< account_name_type >() }
+         }).witnesses;
+
+      get_witness_by_account_return result;
+
+      if( witnesses.size() )
+         result = witnesses[0];
+
+      return result;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_witnesses_by_vote )
+   {
+      CHECK_ARG_SIZE( 2 )
+      auto start = _database_api->list_witnesses( { args[0], 1, database_api::by_name } );
+
+      if( start.witnesses.size() == 0 )
+         return start.witnesses;
+
+      auto limit = args[1].as< uint32_t >();
+      vector< fc::variant > start_key;
+      start_key.push_back( fc::variant( start.witnesses[0].votes ) );
+      start_key.push_back( fc::variant( start.witnesses[0].owner ) );
+
+      return _database_api->list_witnesses( { fc::variant( start_key ), limit, database_api::by_vote_name } ).witnesses;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, lookup_witness_accounts )
+   {
+      CHECK_ARG_SIZE( 2 )
+      auto limit = args[1].as< uint32_t >();
+
+      lookup_witness_accounts_return result;
+
+      auto witnesses = _database_api->list_witnesses( { args[0], limit, database_api::by_name } ).witnesses;
+
+      for( auto& w : witnesses )
+      {
+         result.push_back( w.owner );
+      }
+
+      return result;
+   }
+   DEFINE_API_IMPL( condenser_api_impl, get_witness_count )
+   {
+      CHECK_ARG_SIZE( 0 )
       return _db.get_index< witness_index >().indices().size();
    }
 
-   DEFINE_API( condenser_api_impl, get_open_orders )
+   DEFINE_API_IMPL( condenser_api_impl, get_open_orders )
    {
+      CHECK_ARG_SIZE( 1 )
       account_name_type owner = args[0].as< account_name_type >();
 
       vector< extended_limit_order > result;
@@ -749,8 +1122,58 @@ namespace detail
       return result;
    }
 
-   DEFINE_API( condenser_api_impl, get_account_votes )
+   DEFINE_API_IMPL( condenser_api_impl, get_transaction_hex )
    {
+      CHECK_ARG_SIZE( 1 )
+      return _database_api->get_transaction_hex(
+      {
+         args[0].as< signed_transaction >()
+      }).hex;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_transaction )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
+
+      return _account_history_api->get_transaction( { args[0].as< transaction_id_type >() } );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_required_signatures )
+   {
+      CHECK_ARG_SIZE( 2 )
+      return _database_api->get_required_signatures( { args[0].as< signed_transaction >(), args[1].as< flat_set< public_key_type > >() } ).keys;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_potential_signatures )
+   {
+      CHECK_ARG_SIZE( 1 )
+      return _database_api->get_potential_signatures( { args[0].as< signed_transaction >() } ).keys;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, verify_authority )
+   {
+      CHECK_ARG_SIZE( 1 )
+      return _database_api->verify_authority( { args[0].as< signed_transaction >() } ).valid;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, verify_account_authority )
+   {
+      CHECK_ARG_SIZE( 2 )
+      return _database_api->verify_account_authority( { args[0].as< account_name_type >(), args[1].as< flat_set< public_key_type > >() } ).valid;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_active_votes )
+   {
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_active_votes( { args[0].as< account_name_type >(), args[1].as< string >() } ).votes;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_account_votes )
+   {
+      CHECK_ARG_SIZE( 1 )
       account_name_type voter = args[0].as< account_name_type >();
 
       vector< account_vote > result;
@@ -777,20 +1200,329 @@ namespace detail
       return result;
    }
 
-   DEFINE_API( condenser_api_impl, lookup_witness_accounts )
+   DEFINE_API_IMPL( condenser_api_impl, get_content )
    {
-      auto limit = args[1].as< uint32_t >();
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      lookup_witness_accounts_return result;
+      return _tags_api->get_discussion( { args[0].as< account_name_type >(), args[1].as< string >() } );
+   }
 
-      auto witnesses = _database_api->list_witnesses( { args[0], limit, database_api::by_name } ).witnesses;
+   DEFINE_API_IMPL( condenser_api_impl, get_content_replies )
+   {
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      for( auto& w : witnesses )
-      {
-         result.push_back( w.owner );
-      }
+      return _tags_api->get_content_replies( { args[0].as< account_name_type >(), args[1].as< string >() } ).discussions;
+   }
 
-      return result;
+   DEFINE_API_IMPL( condenser_api_impl, get_tags_used_by_author )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_tags_used_by_author( { args[0].as< account_name_type >() } ).tags;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_post_discussions_by_payout )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_post_discussions_by_payout(
+         args[0].as< tags::get_post_discussions_by_payout_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_comment_discussions_by_payout )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_comment_discussions_by_payout(
+         args[0].as< tags::get_comment_discussions_by_payout_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_trending )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_trending(
+         args[0].as< tags::get_discussions_by_trending_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_created )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_created(
+         args[0].as< tags::get_discussions_by_created_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_active )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_active(
+         args[0].as< tags::get_discussions_by_active_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_cashout )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_cashout(
+         args[0].as< tags::get_discussions_by_cashout_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_votes )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_votes(
+         args[0].as< tags::get_discussions_by_votes_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_children )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_children(
+         args[0].as< tags::get_discussions_by_children_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_hot )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_hot(
+         args[0].as< tags::get_discussions_by_hot_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_feed )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_feed(
+         args[0].as< tags::get_discussions_by_feed_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_blog )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_blog(
+         args[0].as< tags::get_discussions_by_blog_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_comments )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_comments(
+         args[0].as< tags::get_discussions_by_comments_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_promoted )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_promoted(
+         args[0].as< tags::get_discussions_by_promoted_args >() ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_replies_by_last_update )
+   {
+      CHECK_ARG_SIZE( 3 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_replies_by_last_update( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< uint32_t >() } ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_discussions_by_author_before_date )
+   {
+      CHECK_ARG_SIZE( 4 )
+      FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
+
+      return _tags_api->get_discussions_by_author_before_date( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< time_point_sec >(), args[3].as< uint32_t >() } ).discussions;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_account_history )
+   {
+      CHECK_ARG_SIZE( 3 )
+      FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
+
+      return _account_history_api->get_account_history( { args[0].as< account_name_type >(), args[1].as< uint64_t >(), args[2].as< uint32_t >() } ).history;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, broadcast_transaction )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
+
+      return _network_broadcast_api->broadcast_transaction( { args[0].as< signed_transaction >() } );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, broadcast_transaction_synchronous )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
+
+      return _network_broadcast_api->broadcast_transaction_synchronous( { args[0].as< signed_transaction >() } );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, broadcast_block )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _network_broadcast_api, "network_broadcast_api_plugin not enabled." );
+
+      return _network_broadcast_api->broadcast_block( { args[0].as< signed_block >() } );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_followers )
+   {
+      CHECK_ARG_SIZE( 4 )
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_followers( { args[0].as< account_name_type >(), args[1].as< account_name_type >(), args[2].as< follow::follow_type >(), args[3].as< uint32_t >() } ).followers;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_following )
+   {
+      CHECK_ARG_SIZE( 4 )
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_following( { args[0].as< account_name_type >(), args[1].as< account_name_type >(), args[2].as< follow::follow_type >(), args[3].as< uint32_t >() } ).following;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_follow_count )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_follow_count( { args[0].as< account_name_type >() } );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_feed_entries )
+   {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_feed_entries( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).feed;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_feed )
+   {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_feed( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).feed;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_blog_entries )
+   {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_blog_entries( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).blog;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_blog )
+   {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_blog( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).blog;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_account_reputations )
+   {
+      FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_account_reputations( { args[0].as< account_name_type >(), args.size() == 2 ? args[1].as< uint32_t >() : 1000 } ).reputations;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_reblogged_by )
+   {
+      CHECK_ARG_SIZE( 2 )
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_reblogged_by( { args[0].as< account_name_type >(), args[1].as< string >() } ).accounts;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_blog_authors )
+   {
+      CHECK_ARG_SIZE( 1 )
+      FC_ASSERT( _follow_api, "follow_api_plugin not enabled." );
+
+      return _follow_api->get_blog_authors( { args[0].as< account_name_type >() } ).blog_authors;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_ticker )
+   {
+      CHECK_ARG_SIZE( 0 )
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_ticker( {} );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_volume )
+   {
+      CHECK_ARG_SIZE( 0 )
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_volume( {} );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_order_book )
+   {
+      FC_ASSERT( args.size() == 0 || args.size() == 1, "Expected 0-1 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_order_book( { args.size() == 1 ? args[0].as< uint32_t >() : 500 } );
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_trade_history )
+   {
+      FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_trade_history( { args[0].as< time_point_sec >(), args[1].as< time_point_sec >(), args.size() == 3 ? args[2].as< uint32_t >() : 1000 } ).trades;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_recent_trades )
+   {
+      FC_ASSERT( args.size() == 0 || args.size() == 1, "Expected 0-1 arguments, was ${n}", ("n", args.size()) );
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_recent_trades( { args.size() == 1 ? args[0].as< uint32_t >() : 1000 } ).trades;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_market_history )
+   {
+      CHECK_ARG_SIZE( 3 )
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_market_history( { args[0].as< uint32_t >(), args[1].as< time_point_sec >(), args[2].as< time_point_sec >() } ).buckets;
+   }
+
+   DEFINE_API_IMPL( condenser_api_impl, get_market_history_buckets )
+   {
+      CHECK_ARG_SIZE( 0 )
+      FC_ASSERT( _market_history_api, "market_history_api_plugin not enabled." );
+
+      return _market_history_api->get_market_history_buckets( {} ).bucket_sizes;
    }
 
    /**
@@ -880,742 +1612,95 @@ void condenser_api::api_startup()
       my->_witness_api = witness->api;
 }
 
-DEFINE_API( condenser_api, get_version )
-{
-   CHECK_ARG_SIZE( 0 )
-   return get_version_return
-   (
-      fc::string( STEEM_BLOCKCHAIN_VERSION ),
-      fc::string( steem::utilities::git_revision_sha ),
-      fc::string( fc::git_revision_sha )
-   );
-}
-
-DEFINE_API( condenser_api, get_trending_tags )
-{
-   CHECK_ARG_SIZE( 2 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_trending_tags( { args[0].as< string >(), args[1].as< uint32_t >() } ).tags;
-}
-
-DEFINE_API( condenser_api, get_state )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_state( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_active_witnesses )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_active_witnesses( {} ).witnesses;
-}
-
-DEFINE_API( condenser_api, get_block_header )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
-   return my->_block_api->get_block_header( { args[0].as< uint32_t >() } ).header;
-}
-
-DEFINE_API( condenser_api, get_block )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_block_api, "block_api_plugin not enabled." );
-   return my->_block_api->get_block( { args[0].as< uint32_t >() } ).block;
-}
-
-DEFINE_API( condenser_api, get_ops_in_block )
-{
-   FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_account_history_api, "account_history_api_plugin not enabled." );
-
-   return my->_account_history_api->get_ops_in_block( { args[0].as< uint32_t >(), args[1].as< bool >() } ).ops;
-}
-
-DEFINE_API( condenser_api, get_config )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_config( {} );
-}
-
-DEFINE_API( condenser_api, get_dynamic_global_properties )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_dynamic_global_properties( {} );
-}
-
-DEFINE_API( condenser_api, get_chain_properties )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_witness_schedule( {} ).median_props;
-}
-
-DEFINE_API( condenser_api, get_current_median_history_price )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_current_price_feed( {} );
-}
-
-DEFINE_API( condenser_api, get_feed_history )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_feed_history( {} );
-}
-
-DEFINE_API( condenser_api, get_witness_schedule )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_witness_schedule( {} );
-}
-
-DEFINE_API( condenser_api, get_hardfork_version )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_database_api->get_hardfork_properties( {} ).current_hardfork_version;
-}
-
-DEFINE_API( condenser_api, get_next_scheduled_hardfork )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_next_scheduled_hardfork( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_reward_fund )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_reward_fund( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_key_references )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_account_by_key_api, "account_history_api_plugin not enabled." );
-
-   return my->_account_by_key_api->get_key_references( { args[0].as< vector< public_key_type > >() } ).accounts;
-}
-
-DEFINE_API( condenser_api, get_accounts )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_accounts( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_account_references )
-{
-   FC_ASSERT( false, "condenser_api::get_account_references --- Needs to be refactored for Steem." );
-}
-
-DEFINE_API( condenser_api, lookup_account_names )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->lookup_account_names( args );
-   });
-}
-
-DEFINE_API( condenser_api, lookup_accounts )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->lookup_accounts( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_account_count )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_account_count( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_owner_history )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_database_api->find_owner_histories( { args[0].as< string >() } ).owner_auths;
-}
-
-DEFINE_API( condenser_api, get_recovery_request )
-{
-   CHECK_ARG_SIZE( 1 )
-   get_recovery_request_return result;
-
-   auto requests = my->_database_api->find_account_recovery_requests( { { args[0].as< account_name_type >() } } ).requests;
-
-   if( requests.size() )
-      result = requests[0];
-
-   return result;
-}
-
-DEFINE_API( condenser_api, get_escrow )
-{
-   CHECK_ARG_SIZE( 2 )
-   get_escrow_return result;
-
-   auto escrows = my->_database_api->list_escrows( { { args }, 1, database_api::by_from_id } ).escrows;
-
-   if( escrows.size()
-      && escrows[0].from == args[0].as< account_name_type >()
-      && escrows[0].escrow_id == args[1].as< uint32_t >() )
-   {
-      result = escrows[0];
-   }
-
-   return result;
-}
-
-DEFINE_API( condenser_api, get_withdraw_routes )
-{
-   FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
-
-   auto account = args[0].as< string >();
-   auto destination = args.size() == 2 ? args[1].as< withdraw_route_type >() : outgoing;
-
-   get_withdraw_routes_return result;
-
-   if( destination == outgoing || destination == all )
-   {
-      auto routes = my->_database_api->find_withdraw_vesting_routes( { account, database_api::by_withdraw_route } ).routes;
-      result.insert( result.end(), routes.begin(), routes.end() );
-   }
-
-   if( destination == incoming || destination == all )
-   {
-      auto routes = my->_database_api->find_withdraw_vesting_routes( { account, database_api::by_destination } ).routes;
-      result.insert( result.end(), routes.begin(), routes.end() );
-   }
-
-   return result;
-}
-
-DEFINE_API( condenser_api, get_account_bandwidth )
-{
-   CHECK_ARG_SIZE( 2 )
-   FC_ASSERT( my->_witness_api, "witness_api_plugin not enabled." );
-   return my->_witness_api->get_account_bandwidth(
-      {
-         args[0].as< string >(),
-         args[1].as< witness::bandwidth_type >()
-      }).bandwidth;
-}
-
-DEFINE_API( condenser_api, get_savings_withdraw_from )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_database_api->find_savings_withdrawals(
-      {
-         args[0].as< string >()
-      }).withdrawals;
-}
-
-DEFINE_API( condenser_api, get_savings_withdraw_to )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_savings_withdraw_to( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_vesting_delegations )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-
-   database_api::list_vesting_delegations_args a;
-   a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
-   a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
-   a.order = database_api::by_delegation;
-
-   return my->_database_api->list_vesting_delegations( a ).delegations;
-}
-
-DEFINE_API( condenser_api, get_expiring_vesting_delegations )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-
-   database_api::list_vesting_delegation_expirations_args a;
-   a.start = fc::variant( (vector< variant >){ args[0], args[1] } );
-   a.limit = args.size() == 3 ? args[2].as< uint32_t >() : 100;
-   a.order = database_api::by_account_expiration;
-
-   return my->_database_api->list_vesting_delegation_expirations( a ).delegations;
-}
-
-DEFINE_API( condenser_api, get_witnesses )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_witnesses( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_conversion_requests )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_database_api->find_sbd_conversion_requests(
-      {
-         args[0].as< account_name_type >()
-      }).requests;
-}
-
-DEFINE_API( condenser_api, get_witness_by_account )
-{
-   CHECK_ARG_SIZE( 1 )
-   auto witnesses = my->_database_api->find_witnesses(
-      {
-         { args[0].as< account_name_type >() }
-      }).witnesses;
-
-   get_witness_by_account_return result;
-
-   if( witnesses.size() )
-      result = witnesses[0];
-
-   return result;
-}
-
-DEFINE_API( condenser_api, get_witnesses_by_vote )
-{
-   CHECK_ARG_SIZE( 2 )
-   auto start = my->_database_api->list_witnesses( { args[0], 1, database_api::by_name } );
-
-   if( start.witnesses.size() == 0 )
-      return start.witnesses;
-
-   auto limit = args[1].as< uint32_t >();
-   vector< fc::variant > start_key;
-   start_key.push_back( fc::variant( start.witnesses[0].votes ) );
-   start_key.push_back( fc::variant( start.witnesses[0].owner ) );
-
-   return my->_database_api->list_witnesses( { fc::variant( start_key ), limit, database_api::by_vote_name } ).witnesses;
-}
-
-DEFINE_API( condenser_api, lookup_witness_accounts )
-{
-   CHECK_ARG_SIZE( 2 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->lookup_witness_accounts( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_witness_count )
-{
-   CHECK_ARG_SIZE( 0 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_witness_count( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_open_orders )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_open_orders( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_transaction_hex )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_database_api->get_transaction_hex(
-      {
-         args[0].as< signed_transaction >()
-      }).hex;
-}
-
-DEFINE_API( condenser_api, get_transaction )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_account_history_api, "account_history_api_plugin not enabled." );
-
-   return my->_account_history_api->get_transaction( { args[0].as< transaction_id_type >() } );
-}
-
-DEFINE_API( condenser_api, get_required_signatures )
-{
-   CHECK_ARG_SIZE( 2 )
-   return my->_database_api->get_required_signatures( { args[0].as< signed_transaction >(), args[1].as< flat_set< public_key_type > >() } ).keys;
-}
-
-DEFINE_API( condenser_api, get_potential_signatures )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_database_api->get_potential_signatures( { args[0].as< signed_transaction >() } ).keys;
-}
-
-DEFINE_API( condenser_api, verify_authority )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_database_api->verify_authority( { args[0].as< signed_transaction >() } ).valid;
-}
-
-DEFINE_API( condenser_api, verify_account_authority )
-{
-   CHECK_ARG_SIZE( 2 )
-   return my->_database_api->verify_account_authority( { args[0].as< account_name_type >(), args[1].as< flat_set< public_key_type > >() } ).valid;
-}
-
-DEFINE_API( condenser_api, get_active_votes )
-{
-   CHECK_ARG_SIZE( 2 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_active_votes( { args[0].as< account_name_type >(), args[1].as< string >() } ).votes;
-}
-
-DEFINE_API( condenser_api, get_account_votes )
-{
-   CHECK_ARG_SIZE( 1 )
-   return my->_db.with_read_lock( [&]()
-   {
-      return my->get_account_votes( args );
-   });
-}
-
-DEFINE_API( condenser_api, get_content )
-{
-   CHECK_ARG_SIZE( 2 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussion( { args[0].as< account_name_type >(), args[1].as< string >() } );
-}
-
-DEFINE_API( condenser_api, get_content_replies )
-{
-   CHECK_ARG_SIZE( 2 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_content_replies( { args[0].as< account_name_type >(), args[1].as< string >() } ).discussions;
-}
-
-DEFINE_API( condenser_api, get_tags_used_by_author )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_tags_used_by_author( { args[0].as< account_name_type >() } ).tags;
-}
-
-DEFINE_API( condenser_api, get_post_discussions_by_payout )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_post_discussions_by_payout(
-      args[0].as< tags::get_post_discussions_by_payout_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_comment_discussions_by_payout )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_comment_discussions_by_payout(
-      args[0].as< tags::get_comment_discussions_by_payout_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_trending )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_trending(
-      args[0].as< tags::get_discussions_by_trending_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_created )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_created(
-      args[0].as< tags::get_discussions_by_created_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_active )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_active(
-      args[0].as< tags::get_discussions_by_active_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_cashout )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_cashout(
-      args[0].as< tags::get_discussions_by_cashout_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_votes )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_votes(
-      args[0].as< tags::get_discussions_by_votes_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_children )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_children(
-      args[0].as< tags::get_discussions_by_children_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_hot )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_hot(
-      args[0].as< tags::get_discussions_by_hot_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_feed )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_feed(
-      args[0].as< tags::get_discussions_by_feed_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_blog )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_blog(
-      args[0].as< tags::get_discussions_by_blog_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_comments )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_comments(
-      args[0].as< tags::get_discussions_by_comments_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_promoted )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_promoted(
-      args[0].as< tags::get_discussions_by_promoted_args >() ).discussions;
-}
-
-DEFINE_API( condenser_api, get_replies_by_last_update )
-{
-   CHECK_ARG_SIZE( 3 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_replies_by_last_update( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< uint32_t >() } ).discussions;
-}
-
-DEFINE_API( condenser_api, get_discussions_by_author_before_date )
-{
-   CHECK_ARG_SIZE( 4 )
-   FC_ASSERT( my->_tags_api, "tags_api_plugin not enabled." );
-
-   return my->_tags_api->get_discussions_by_author_before_date( { args[0].as< account_name_type >(), args[1].as< string >(), args[2].as< time_point_sec >(), args[3].as< uint32_t >() } ).discussions;
-}
-
-DEFINE_API( condenser_api, get_account_history )
-{
-   CHECK_ARG_SIZE( 3 )
-   FC_ASSERT( my->_account_history_api, "account_history_api_plugin not enabled." );
-
-   return my->_account_history_api->get_account_history( { args[0].as< account_name_type >(), args[1].as< uint64_t >(), args[2].as< uint32_t >() } ).history;
-}
-
-DEFINE_API( condenser_api, broadcast_transaction )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_network_broadcast_api, "network_broadcast_api_plugin not enabled." );
-
-   return my->_network_broadcast_api->broadcast_transaction( { args[0].as< signed_transaction >() } );
-}
-
-DEFINE_API( condenser_api, broadcast_transaction_synchronous )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_network_broadcast_api, "network_broadcast_api_plugin not enabled." );
-
-   return my->_network_broadcast_api->broadcast_transaction_synchronous( { args[0].as< signed_transaction >() } );
-}
-
-DEFINE_API( condenser_api, broadcast_block )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_network_broadcast_api, "network_broadcast_api_plugin not enabled." );
-
-   return my->_network_broadcast_api->broadcast_block( { args[0].as< signed_block >() } );
-}
-
-DEFINE_API( condenser_api, get_followers )
-{
-   CHECK_ARG_SIZE( 4 )
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_followers( { args[0].as< account_name_type >(), args[1].as< account_name_type >(), args[2].as< follow::follow_type >(), args[3].as< uint32_t >() } ).followers;
-}
-
-DEFINE_API( condenser_api, get_following )
-{
-   CHECK_ARG_SIZE( 4 )
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_following( { args[0].as< account_name_type >(), args[1].as< account_name_type >(), args[2].as< follow::follow_type >(), args[3].as< uint32_t >() } ).following;
-}
-
-DEFINE_API( condenser_api, get_follow_count )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_follow_count( { args[0].as< account_name_type >() } );
-}
-
-DEFINE_API( condenser_api, get_feed_entries )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_feed_entries( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).feed;
-}
-
-DEFINE_API( condenser_api, get_feed )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_feed( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).feed;
-}
-
-DEFINE_API( condenser_api, get_blog_entries )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_blog_entries( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).blog;
-}
-
-DEFINE_API( condenser_api, get_blog )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_blog( { args[0].as< account_name_type >(), args[1].as< uint32_t >(), args.size() == 3 ? args[2].as< uint32_t >() : 500 } ).blog;
-}
-
-DEFINE_API( condenser_api, get_account_reputations )
-{
-   FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_account_reputations( { args[0].as< account_name_type >(), args.size() == 2 ? args[1].as< uint32_t >() : 1000 } ).reputations;
-}
-
-DEFINE_API( condenser_api, get_reblogged_by )
-{
-   CHECK_ARG_SIZE( 2 )
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_reblogged_by( { args[0].as< account_name_type >(), args[1].as< string >() } ).accounts;
-}
-
-DEFINE_API( condenser_api, get_blog_authors )
-{
-   CHECK_ARG_SIZE( 1 )
-   FC_ASSERT( my->_follow_api, "follow_api_plugin not enabled." );
-
-   return my->_follow_api->get_blog_authors( { args[0].as< account_name_type >() } ).blog_authors;
-}
-
-DEFINE_API( condenser_api, get_ticker )
-{
-   CHECK_ARG_SIZE( 0 )
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_ticker( {} );
-}
-
-DEFINE_API( condenser_api, get_volume )
-{
-   CHECK_ARG_SIZE( 0 )
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_volume( {} );
-}
-
-DEFINE_API( condenser_api, get_order_book )
-{
-   FC_ASSERT( args.size() == 0 || args.size() == 1, "Expected 0-1 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_order_book( { args.size() == 1 ? args[0].as< uint32_t >() : 500 } );
-}
-
-DEFINE_API( condenser_api, get_trade_history )
-{
-   FC_ASSERT( args.size() == 2 || args.size() == 3, "Expected 2-3 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_trade_history( { args[0].as< time_point_sec >(), args[1].as< time_point_sec >(), args.size() == 3 ? args[2].as< uint32_t >() : 1000 } ).trades;
-}
-
-DEFINE_API( condenser_api, get_recent_trades )
-{
-   FC_ASSERT( args.size() == 0 || args.size() == 1, "Expected 0-1 arguments, was ${n}", ("n", args.size()) );
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_recent_trades( { args.size() == 1 ? args[0].as< uint32_t >() : 1000 } ).trades;
-}
-
-DEFINE_API( condenser_api, get_market_history )
-{
-   CHECK_ARG_SIZE( 3 )
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_market_history( { args[0].as< uint32_t >(), args[1].as< time_point_sec >(), args[2].as< time_point_sec >() } ).buckets;
-}
-
-DEFINE_API( condenser_api, get_market_history_buckets )
-{
-   CHECK_ARG_SIZE( 0 )
-   FC_ASSERT( my->_market_history_api, "market_history_api_plugin not enabled." );
-
-   return my->_market_history_api->get_market_history_buckets( {} ).bucket_sizes;
-}
+DEFINE_LOCKLESS_APIS( condenser_api,
+   (get_version)
+   (get_config)
+   (get_account_references)
+   (broadcast_transaction)
+   (broadcast_transaction_synchronous)
+   (broadcast_block)
+   (get_market_history_buckets)
+)
+
+DEFINE_READ_APIS( condenser_api,
+   (get_trending_tags)
+   (get_state)
+   (get_active_witnesses)
+   (get_block_header)
+   (get_block)
+   (get_ops_in_block)
+   (get_dynamic_global_properties)
+   (get_chain_properties)
+   (get_current_median_history_price)
+   (get_feed_history)
+   (get_witness_schedule)
+   (get_hardfork_version)
+   (get_next_scheduled_hardfork)
+   (get_reward_fund)
+   (get_key_references)
+   (get_accounts)
+   (lookup_account_names)
+   (lookup_accounts)
+   (get_account_count)
+   (get_owner_history)
+   (get_recovery_request)
+   (get_escrow)
+   (get_withdraw_routes)
+   (get_account_bandwidth)
+   (get_savings_withdraw_from)
+   (get_savings_withdraw_to)
+   (get_vesting_delegations)
+   (get_expiring_vesting_delegations)
+   (get_witnesses)
+   (get_conversion_requests)
+   (get_witness_by_account)
+   (get_witnesses_by_vote)
+   (lookup_witness_accounts)
+   (get_witness_count)
+   (get_open_orders)
+   (get_transaction_hex)
+   (get_transaction)
+   (get_required_signatures)
+   (get_potential_signatures)
+   (verify_authority)
+   (verify_account_authority)
+   (get_active_votes)
+   (get_account_votes)
+   (get_content)
+   (get_content_replies)
+   (get_tags_used_by_author)
+   (get_post_discussions_by_payout)
+   (get_comment_discussions_by_payout)
+   (get_discussions_by_trending)
+   (get_discussions_by_created)
+   (get_discussions_by_active)
+   (get_discussions_by_cashout)
+   (get_discussions_by_votes)
+   (get_discussions_by_children)
+   (get_discussions_by_hot)
+   (get_discussions_by_feed)
+   (get_discussions_by_blog)
+   (get_discussions_by_comments)
+   (get_discussions_by_promoted)
+   (get_replies_by_last_update)
+   (get_discussions_by_author_before_date)
+   (get_account_history)
+   (get_followers)
+   (get_following)
+   (get_follow_count)
+   (get_feed_entries)
+   (get_feed)
+   (get_blog_entries)
+   (get_blog)
+   (get_account_reputations)
+   (get_reblogged_by)
+   (get_blog_authors)
+   (get_ticker)
+   (get_volume)
+   (get_order_book)
+   (get_trade_history)
+   (get_recent_trades)
+   (get_market_history)
+)
 
 } } } // steem::plugins::condenser_api

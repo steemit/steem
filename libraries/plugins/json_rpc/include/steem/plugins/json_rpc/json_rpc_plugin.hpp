@@ -128,7 +128,7 @@ namespace detail {
             _json_rpc_plugin.add_api_method( _api_name, method_name,
                [&plugin,method]( const fc::variant& args ) -> fc::variant
                {
-                  return fc::variant( (plugin.*method)( args.as< Args >() ) );
+                  return fc::variant( (plugin.*method)( args.as< Args >(), true ) );
                },
                api_method_signature{ fc::variant( Args() ), fc::variant( Ret() ) } );
          }

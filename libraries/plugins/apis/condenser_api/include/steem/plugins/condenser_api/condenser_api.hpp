@@ -27,21 +27,21 @@ namespace detail{ class condenser_api_impl; }
 
 struct discussion_index
 {
-   string                        category;         /// category by which everything is filtered
-   vector< tags::tag_name_type > trending;         /// trending posts over the last 24 hours
-   vector< tags::tag_name_type > payout;           /// pending posts by payout
-   vector< tags::tag_name_type > payout_comments;  /// pending comments by payout
-   vector< tags::tag_name_type > trending30;       /// pending lifetime payout
-   vector< tags::tag_name_type > created;          /// creation date
-   vector< tags::tag_name_type > responses;        /// creation date
-   vector< tags::tag_name_type > updated;          /// creation date
-   vector< tags::tag_name_type > active;           /// last update or reply
-   vector< tags::tag_name_type > votes;            /// last update or reply
-   vector< tags::tag_name_type > cashout;          /// last update or reply
-   vector< tags::tag_name_type > maturing;         /// about to be paid out
-   vector< tags::tag_name_type > best;             /// total lifetime payout
-   vector< tags::tag_name_type > hot;              /// total lifetime payout
-   vector< tags::tag_name_type > promoted;         /// pending lifetime payout
+   string           category;         /// category by which everything is filtered
+   vector< string > trending;         /// trending posts over the last 24 hours
+   vector< string > payout;           /// pending posts by payout
+   vector< string > payout_comments;  /// pending comments by payout
+   vector< string > trending30;       /// pending lifetime payout
+   vector< string > created;          /// creation date
+   vector< string > responses;        /// creation date
+   vector< string > updated;          /// creation date
+   vector< string > active;           /// last update or reply
+   vector< string > votes;            /// last update or reply
+   vector< string > cashout;          /// last update or reply
+   vector< string > maturing;         /// about to be paid out
+   vector< string > best;             /// total lifetime payout
+   vector< string > hot;              /// total lifetime payout
+   vector< string > promoted;         /// pending lifetime payout
 };
 
 struct extended_limit_order : public database_api::api_limit_order_object
@@ -64,6 +64,13 @@ struct extended_account : public database_api::api_account_object
    extended_account( const account_object& a, const database& db ) :
       database_api::api_account_object( a, db ) {}
 
+   share_type                                               average_bandwidth;
+   share_type                                               lifetime_bandwidth;
+   time_point_sec                                           last_bandwidth_update;
+   share_type                                               average_market_bandwidth;
+   share_type                                               lifetime_market_bandwidth;
+   time_point_sec                                           last_market_bandwidth_update;
+
    asset                                                    vesting_balance;  /// convert vesting_shares to vesting steem
    share_type                                               reputation = 0;
    map< uint64_t, account_history::api_operation_object >   transfer_history; /// transfer to/from vesting
@@ -83,6 +90,18 @@ struct extended_account : public database_api::api_account_object
    optional< vector< string > >                             recommended;      /// posts recommened for this user
 };
 
+struct extended_dynamic_global_properties : public database_api::api_dynamic_global_property_object
+{
+   extended_dynamic_global_properties( const dynamic_global_property_object& gpo ) :
+      database_api::api_dynamic_global_property_object( gpo ) {}
+
+   extended_dynamic_global_properties(){}
+
+   int32_t     average_block_size = 0;
+   int64_t     current_reserve_ratio = 1;
+   uint128_t   max_virtual_bandwidth = 0;
+};
+
 struct tag_index
 {
    vector< tags::tag_name_type > trending; /// pending payouts
@@ -92,7 +111,7 @@ struct state
 {
    string                                             current_route;
 
-   database_api::api_dynamic_global_property_object   props;
+   extended_dynamic_global_properties                 props;
 
    tag_index                                          tag_idx;
 
@@ -164,7 +183,7 @@ DEFINE_API_ARGS( get_block_header,                       vector< variant >,   op
 DEFINE_API_ARGS( get_block,                              vector< variant >,   optional< block_api::api_signed_block_object > )
 DEFINE_API_ARGS( get_ops_in_block,                       vector< variant >,   vector< account_history::api_operation_object > )
 DEFINE_API_ARGS( get_config,                             vector< variant >,   fc::variant_object )
-DEFINE_API_ARGS( get_dynamic_global_properties,          vector< variant >,   database_api::api_dynamic_global_property_object )
+DEFINE_API_ARGS( get_dynamic_global_properties,          vector< variant >,   extended_dynamic_global_properties )
 DEFINE_API_ARGS( get_chain_properties,                   vector< variant >,   chain_properties )
 DEFINE_API_ARGS( get_current_median_history_price,       vector< variant >,   price )
 DEFINE_API_ARGS( get_feed_history,                       vector< variant >,   database_api::api_feed_history_object )
@@ -357,7 +376,11 @@ FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_limit_order, (steem:
             (real_price)(rewarded) )
 
 FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_account, (steem::plugins::database_api::api_account_object),
+            (average_bandwidth)(lifetime_bandwidth)(last_bandwidth_update)(average_market_bandwidth)(lifetime_market_bandwidth)(last_market_bandwidth_update)
             (vesting_balance)(reputation)(transfer_history)(market_history)(post_history)(vote_history)(other_history)(witness_votes)(tags_usage)(guest_bloggers)(open_orders)(comments)(feed)(blog)(recent_replies)(recommended) )
+
+FC_REFLECT_DERIVED( steem::plugins::condenser_api::extended_dynamic_global_properties, (steem::plugins::database_api::api_dynamic_global_property_object),
+            (average_block_size)(current_reserve_ratio)(max_virtual_bandwidth) )
 
 FC_REFLECT( steem::plugins::condenser_api::scheduled_hardfork,
             (hf_version)(live_time) )

@@ -82,6 +82,9 @@ namespace steem { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unknown_hardfork_exception,        steem::chain::chain_exception, 4090000, "chain attempted to apply unknown hardfork" )
    FC_DECLARE_DERIVED_EXCEPTION( plugin_exception,                  steem::chain::chain_exception, 4100000, "plugin exception" )
    FC_DECLARE_DERIVED_EXCEPTION( block_log_exception,               steem::chain::chain_exception, 4110000, "block log exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( market_exception,                  steem::chain::chain_exception, 4120000, "market exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( order_match_exception,             steem::chain::market_exception, 4120100, "order match exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( order_fill_exception,              steem::chain::market_exception, 4120100, "order fill exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( transaction_expiration_exception,  steem::chain::transaction_exception, 4030100, "transaction expiration exception" )
    FC_DECLARE_DERIVED_EXCEPTION( transaction_tapos_exception,       steem::chain::transaction_exception, 4030200, "transaction tapos exception" )

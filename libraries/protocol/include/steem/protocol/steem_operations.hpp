@@ -98,8 +98,30 @@ namespace steem { namespace protocol {
       void validate()const;
    };
 
+#ifdef STEEM_ENABLE_SMT
+   struct votable_asset_info_v1
+   {
+      share_type        max_accepted_payout    = 0;
+      bool              allow_curation_rewards = false;
+   };
+
+   typedef static_variant< votable_asset_info_v1 > votable_asset_info;
+
+   /** Allows to store all SMT tokens being allowed to use during voting process.
+    *  Maps asset symbol (SMT) to the vote info.
+    *  @see SMT spec for details: https://github.com/steemit/smt-whitepaper/blob/master/smt-manual/manual.md
+    */
+   struct allowed_vote_assets
+   {
+      flat_map< asset_symbol_type, votable_asset_info > votable_assets;
+   };
+#endif /// STEEM_ENABLE_SMT
+
    typedef static_variant<
             comment_payout_beneficiaries
+#ifdef STEEM_ENABLE_SMT
+            ,allowed_vote_assets
+#endif /// STEEM_ENABLE_SMT
            > comment_options_extension;
 
    typedef flat_set< comment_options_extension > comment_options_extensions_type;
@@ -128,26 +150,14 @@ namespace steem { namespace protocol {
    };
 
 
-   struct challenge_authority_operation : public base_operation
+   struct placeholder_a_operation : public base_operation
    {
-      account_name_type challenger;
-      account_name_type challenged;
-      bool              require_owner = false;
-
       void validate()const;
-
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(challenger); }
    };
 
-   struct prove_authority_operation : public base_operation
+   struct placeholder_b_operation : public base_operation
    {
-      account_name_type challenged;
-      bool              require_owner = false;
-
       void validate()const;
-
-      void get_required_active_authorities( flat_set<account_name_type>& a )const{ if( !require_owner ) a.insert(challenged); }
-      void get_required_owner_authorities( flat_set<account_name_type>& a )const{  if(  require_owner ) a.insert(challenged); }
    };
 
 
@@ -421,6 +431,27 @@ namespace steem { namespace protocol {
       void get_required_active_authorities( flat_set<account_name_type>& a )const{ a.insert(owner); }
    };
 
+   struct witness_set_properties_operation : public base_operation
+   {
+      account_name_type                   owner;
+      flat_map< string, vector< char > >  props;
+      extensions_type                     extensions;
+
+      void validate()const;
+      void get_required_authorities( vector< authority >& a )const
+      {
+         auto key_itr = props.find( "key" );
+
+         if( key_itr != props.end() )
+         {
+            public_key_type signing_key;
+            fc::raw::unpack( key_itr->second, signing_key );
+            a.push_back( authority( 1, signing_key, 1 ) );
+         }
+         else
+            a.push_back( authority( 1, STEEM_NULL_ACCOUNT, 1 ) ); // The null account auth is impossible to satisfy
+      }
+   };
 
    /**
     * All accounts with a VFS can vote for or against any witness.
@@ -996,6 +1027,7 @@ FC_REFLECT( steem::protocol::transfer_to_vesting_operation, (from)(to)(amount) )
 FC_REFLECT( steem::protocol::withdraw_vesting_operation, (account)(vesting_shares) )
 FC_REFLECT( steem::protocol::set_withdraw_vesting_route_operation, (from_account)(to_account)(percent)(auto_vest) )
 FC_REFLECT( steem::protocol::witness_update_operation, (owner)(url)(block_signing_key)(props)(fee) )
+FC_REFLECT( steem::protocol::witness_set_properties_operation, (owner)(props)(extensions) )
 FC_REFLECT( steem::protocol::account_witness_vote_operation, (account)(witness)(approve) )
 FC_REFLECT( steem::protocol::account_witness_proxy_operation, (account)(proxy) )
 FC_REFLECT( steem::protocol::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(json_metadata) )
@@ -1011,6 +1043,12 @@ FC_REFLECT( steem::protocol::delete_comment_operation, (author)(permlink) );
 
 FC_REFLECT( steem::protocol::beneficiary_route_type, (account)(weight) )
 FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
+
+#ifdef STEEM_ENABLE_SMT
+FC_REFLECT( steem::protocol::votable_asset_info_v1, (max_accepted_payout)(allow_curation_rewards) )
+FC_REFLECT( steem::protocol::allowed_vote_assets, (votable_assets) )
+#endif
+
 FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
 FC_REFLECT( steem::protocol::comment_options_operation, (author)(permlink)(max_accepted_payout)(percent_steem_dollars)(allow_votes)(allow_curation_rewards)(extensions) )
 
@@ -1018,8 +1056,8 @@ FC_REFLECT( steem::protocol::escrow_transfer_operation, (from)(to)(sbd_amount)(s
 FC_REFLECT( steem::protocol::escrow_approve_operation, (from)(to)(agent)(who)(escrow_id)(approve) );
 FC_REFLECT( steem::protocol::escrow_dispute_operation, (from)(to)(agent)(who)(escrow_id) );
 FC_REFLECT( steem::protocol::escrow_release_operation, (from)(to)(agent)(who)(receiver)(escrow_id)(sbd_amount)(steem_amount) );
-FC_REFLECT( steem::protocol::challenge_authority_operation, (challenger)(challenged)(require_owner) );
-FC_REFLECT( steem::protocol::prove_authority_operation, (challenged)(require_owner) );
+FC_REFLECT( steem::protocol::placeholder_a_operation, );
+FC_REFLECT( steem::protocol::placeholder_b_operation, );
 FC_REFLECT( steem::protocol::request_account_recovery_operation, (recovery_account)(account_to_recover)(new_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::recover_account_operation, (account_to_recover)(new_owner_authority)(recent_owner_authority)(extensions) );
 FC_REFLECT( steem::protocol::change_recovery_account_operation, (account_to_recover)(new_recovery_account)(extensions) );

@@ -99,13 +99,12 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags, bool do_validate_invariants,
-                     TBenchmark benchmark )
+void database::open( const open_args& args )
 {
    try
    {
       init_schema();
-      chainbase::database::open( shared_mem_dir, chainbase_flags, shared_file_size );
+      chainbase::database::open( args.shared_mem_dir, args.chainbase_flags, args.shared_file_size );
 
       initialize_indexes();
       initialize_evaluators();
@@ -113,10 +112,10 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
       if( !find< dynamic_global_property_object >() )
          with_write_lock( [&]()
          {
-            init_genesis( initial_supply );
+            init_genesis( args.initial_supply );
          });
 
-      _block_log.open( data_dir / "block_log" );
+      _block_log.open( args.data_dir / "block_log" );
 
       auto log_head = _block_log.head();
 
@@ -126,7 +125,7 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
          undo_all();
          FC_ASSERT( revision() == head_block_num(), "Chainbase revision does not match head block num",
             ("rev", revision())("head_block", head_block_num()) );
-         if (do_validate_invariants)
+         if (args.do_validate_invariants)
             validate_invariants();
       });
 
@@ -144,25 +143,24 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
          init_hardforks(); // Writes to local state, but reads from db
       });
 
-      if (benchmark.first)
+      if( args.benchmark.first )
       {
-         benchmark.second(0, get_abstract_index_cntr());
+         args.benchmark.second( 0, get_abstract_index_cntr() );
          auto last_block_num = _block_log.head()->block_num();
-         benchmark.second(last_block_num, get_abstract_index_cntr());
+         args.benchmark.second( last_block_num, get_abstract_index_cntr() );
       }
    }
-   FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
+   FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
 
-uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size,
-   uint32_t stop_replay_at /*=0*/, TBenchmark benchmark /*=TBenchmark(0, [](uint32_t,bool){;})*/)
+uint32_t database::reindex( const open_args& args )
 {
    try
    {
       uint32_t last_block_number = 0; // result
       ilog( "Reindexing Blockchain" );
-      wipe( data_dir, shared_mem_dir, false );
-      open( data_dir, shared_mem_dir, STEEM_INIT_SUPPLY, shared_file_size );
+      wipe( args.data_dir, args.shared_mem_dir, false );
+      open( args );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -187,12 +185,10 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
          _block_log.set_locking( false );
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
-         if( stop_replay_at > 0 && stop_replay_at < last_block_num )
-            last_block_num = stop_replay_at;
-         if( benchmark.first > 0 )
-         {
-            benchmark.second( 0, get_abstract_index_cntr() );
-         }
+         if( args.stop_replay_at > 0 && args.stop_replay_at < last_block_num )
+            last_block_num = args.stop_replay_at;
+         if( args.benchmark.first > 0 )
+            args.benchmark.second( 0, get_abstract_index_cntr() );
 
          while( itr.first.block_num() != last_block_num )
          {
@@ -203,18 +199,18 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
                "   (" << (get_free_memory() / (1024*1024)) << "M free)\n";
             apply_block( itr.first, skip_flags );
 
-            if( benchmark.first > 0 && cur_block_num % benchmark.first == 0 )
-               benchmark.second( cur_block_num, get_abstract_index_cntr() );
+            if( args.benchmark.first > 0 && cur_block_num % args.benchmark.first == 0 )
+               args.benchmark.second( cur_block_num, get_abstract_index_cntr() );
 
             itr = _block_log.read_block( itr.second );
          }
 
          apply_block( itr.first, skip_flags );
          last_block_number = itr.first.block_num();
-         if( benchmark.first > 0 && last_block_number % benchmark.first == 0 )
-         {
-            benchmark.second( last_block_number, get_abstract_index_cntr() );
-         }
+
+         if(    (args.benchmark.first > 0)
+             && (last_block_number % args.benchmark.first == 0) )
+            args.benchmark.second( last_block_number, get_abstract_index_cntr() );
 
          set_revision( head_block_num() );
          _block_log.set_locking( true );
@@ -228,7 +224,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 
       return last_block_number;
    }
-   FC_CAPTURE_AND_RETHROW( (data_dir)(shared_mem_dir) )
+   FC_CAPTURE_AND_RETHROW( (args.data_dir)(args.shared_mem_dir) )
 
 }
 
@@ -502,6 +498,7 @@ const reward_fund_object& database::get_reward_fund( const comment_object& c ) c
    return get< reward_fund_object, by_name >( STEEM_POST_REWARD_FUND_NAME );
 }
 
+#pragma message( "After HF20 passes, re-apply the commit titled 'Remove now-redundant sufficient funds checks #1811'" )
 void database::pay_fee( const account_object& account, asset fee )
 {
    FC_ASSERT( fee.amount >= 0 ); /// NOTE if this fails then validate() on some operation is probably wrong
@@ -1480,7 +1477,7 @@ void database::process_vesting_withdrawals()
       if( to_withdraw > 0 )
          adjust_proxied_witness_votes( from_account, -to_withdraw );
 
-      push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_withdraw, VESTS_SYMBOL ), converted_steem ) );
+      push_virtual_operation( fill_vesting_withdraw_operation( from_account.name, from_account.name, asset( to_convert, VESTS_SYMBOL ), converted_steem ) );
    }
 }
 
@@ -1488,10 +1485,10 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
 {
    modify( cur, [&]( comment_object& c )
    {
-      if( c.total_payout_value.symbol == sbd_created.symbol )
-         c.total_payout_value += sbd_created;
-         c.curator_payout_value += curator_sbd_value;
-         c.beneficiary_payout_value += beneficiary_value;
+      // input assets should be in sbd
+      c.total_payout_value += sbd_created;
+      c.curator_payout_value += curator_sbd_value;
+      c.beneficiary_payout_value += beneficiary_value;
    } );
    /// TODO: potentially modify author's total payout numbers as well
 }
@@ -2239,8 +2236,8 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< limit_order_create_evaluator             >();
    _my->_evaluator_registry.register_evaluator< limit_order_create2_evaluator            >();
    _my->_evaluator_registry.register_evaluator< limit_order_cancel_evaluator             >();
-   _my->_evaluator_registry.register_evaluator< challenge_authority_evaluator            >();
-   _my->_evaluator_registry.register_evaluator< prove_authority_evaluator                >();
+   _my->_evaluator_registry.register_evaluator< placeholder_a_evaluator                  >();
+   _my->_evaluator_registry.register_evaluator< placeholder_b_evaluator                  >();
    _my->_evaluator_registry.register_evaluator< request_account_recovery_evaluator       >();
    _my->_evaluator_registry.register_evaluator< recover_account_evaluator                >();
    _my->_evaluator_registry.register_evaluator< change_recovery_account_evaluator        >();
@@ -2257,6 +2254,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< claim_reward_balance_evaluator           >();
    _my->_evaluator_registry.register_evaluator< account_create_with_delegation_evaluator >();
    _my->_evaluator_registry.register_evaluator< delegate_vesting_shares_evaluator        >();
+   _my->_evaluator_registry.register_evaluator< witness_set_properties_evaluator         >();
 
 #ifdef STEEM_ENABLE_SMT
    _my->_evaluator_registry.register_evaluator< smt_setup_evaluator                      >();
@@ -2317,6 +2315,8 @@ void database::initialize_indexes()
    add_core_index< vesting_delegation_expiration_index     >(*this);
 #ifdef STEEM_ENABLE_SMT
    add_core_index< smt_token_index                         >(*this);
+   add_core_index< account_regular_balance_index           >(*this);
+   add_core_index< account_rewards_balance_index           >(*this);
 #endif
 
    _plugin_index_signal();
@@ -2644,6 +2644,43 @@ void database::_apply_block( const signed_block& next_block )
    //block_id_type next_block_id = next_block.id();
 
    uint32_t skip = get_node_properties().skip_flags;
+
+   if( BOOST_UNLIKELY( next_block_num == 1 ) )
+   {
+      // For every existing before the head_block_time (genesis time), apply the hardfork
+      // This allows the test net to launch with past hardforks and apply the next harfork when running
+
+      uint32_t n;
+      for( n=0; n<STEEM_NUM_HARDFORKS; n++ )
+      {
+         if( _hardfork_times[n+1] > next_block.timestamp )
+            break;
+      }
+
+      if( n > 0 )
+      {
+         ilog( "Processing ${n} genesis hardforks", ("n", n) );
+         set_hardfork( n, true );
+
+         const hardfork_property_object& hardfork_state = get_hardfork_property_object();
+         FC_ASSERT( hardfork_state.current_hardfork_version == _hardfork_versions[n], "Unexpected genesis hardfork state" );
+
+         const auto& witness_idx = get_index<witness_index>().indices().get<by_id>();
+         vector<witness_id_type> wit_ids_to_update;
+         for( auto it=witness_idx.begin(); it!=witness_idx.end(); ++it )
+            wit_ids_to_update.push_back(it->id);
+
+         for( witness_id_type wit_id : wit_ids_to_update )
+         {
+            modify( get( wit_id ), [&]( witness_object& wit )
+            {
+               wit.running_version = _hardfork_versions[n];
+               wit.hardfork_version_vote = _hardfork_versions[n];
+               wit.hardfork_time_vote = _hardfork_times[n];
+            } );
+         }
+      }
+   }
 
    if( !( skip & skip_merkle_check ) )
    {
@@ -3207,11 +3244,27 @@ bool database::apply_order( const limit_order_object& new_order_object )
 
 int database::match( const limit_order_object& new_order, const limit_order_object& old_order, const price& match_price )
 {
-   assert( new_order.sell_price.quote.symbol == old_order.sell_price.base.symbol );
-   assert( new_order.sell_price.base.symbol  == old_order.sell_price.quote.symbol );
-   assert( new_order.for_sale > 0 && old_order.for_sale > 0 );
-   assert( match_price.quote.symbol == new_order.sell_price.base.symbol );
-   assert( match_price.base.symbol == old_order.sell_price.base.symbol );
+   bool has_hf_20__1815 = has_hardfork( STEEM_HARDFORK_0_20__1815 );
+
+#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
+   if( has_hf_20__1815 )
+   {
+      STEEM_ASSERT( new_order.sell_price.quote.symbol == old_order.sell_price.base.symbol,
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+      STEEM_ASSERT( new_order.sell_price.base.symbol  == old_order.sell_price.quote.symbol,
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+      STEEM_ASSERT( new_order.for_sale > 0 && old_order.for_sale > 0,
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+      STEEM_ASSERT( match_price.quote.symbol == new_order.sell_price.base.symbol,
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+      STEEM_ASSERT( match_price.base.symbol == old_order.sell_price.base.symbol,
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   }
 
    auto new_order_for_sale = new_order.amount_for_sale();
    auto old_order_for_sale = old_order.amount_for_sale();
@@ -3236,8 +3289,14 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
    old_order_pays = new_order_receives;
    new_order_pays = old_order_receives;
 
-   assert( new_order_pays == new_order.amount_for_sale() ||
-           old_order_pays == old_order.amount_for_sale() );
+#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
+   if( has_hf_20__1815 )
+   {
+      STEEM_ASSERT( new_order_pays == new_order.amount_for_sale() ||
+                    old_order_pays == old_order.amount_for_sale(),
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   }
 
    auto age = head_block_time() - old_order.created;
    if( !has_hardfork( STEEM_HARDFORK_0_12__178 ) &&
@@ -3261,7 +3320,14 @@ int database::match( const limit_order_object& new_order, const limit_order_obje
    int result = 0;
    result |= fill_order( new_order, new_order_pays, new_order_receives );
    result |= fill_order( old_order, old_order_pays, old_order_receives ) << 1;
-   assert( result != 0 );
+
+#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
+   if( has_hf_20__1815 )
+   {
+      STEEM_ASSERT( result != 0,
+         order_match_exception, "error matching orders: ${new_order} ${old_order} ${match_price}",
+         ("new_order", new_order)("old_order", old_order)("match_price", match_price) );
+   }
    return result;
 }
 
@@ -3311,8 +3377,12 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
 {
    try
    {
-      FC_ASSERT( order.amount_for_sale().symbol == pays.symbol );
-      FC_ASSERT( pays.symbol != receives.symbol );
+      STEEM_ASSERT( order.amount_for_sale().symbol == pays.symbol,
+         order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
+         ("order", order)("pays", pays)("receives", receives) );
+      STEEM_ASSERT( pays.symbol != receives.symbol,
+         order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
+         ("order", order)("pays", pays)("receives", receives) );
 
       const account_object& seller = get_account( order.seller );
 
@@ -3325,6 +3395,14 @@ bool database::fill_order( const limit_order_object& order, const asset& pays, c
       }
       else
       {
+#pragma message( "TODO:  Remove if(), do assert unconditionally after HF20 occurs" )
+         if( has_hardfork( STEEM_HARDFORK_0_20__1815 ) )
+         {
+            STEEM_ASSERT( pays < order.amount_for_sale(),
+              order_fill_exception, "error filling orders: ${order} ${pays} ${receives}",
+              ("order", order)("pays", pays)("receives", receives) );
+         }
+
          modify( order, [&]( limit_order_object& b )
          {
             b.for_sale -= pays.amount;
@@ -3393,15 +3471,71 @@ void database::clear_expired_delegations()
       itr = delegations_by_exp.begin();
    }
 }
+#ifdef STEEM_ENABLE_SMT
+template< typename smt_balance_object_type >
+void database::adjust_smt_balance( const account_name_type& a, const asset& delta )
+{
+   //elog( "${a} ${b} ${c}", ("a", a.name) ("b", delta.amount) ("c", delta.symbol));
+   const smt_balance_object_type* bo =
+      find< smt_balance_object_type, by_owner_symbol >( boost::make_tuple(a, delta.symbol) );
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( bo == nullptr )
+   {
+      // No balance object related to the SMT means '0' balance. Check delta to avoid creation of negative balance.
+      FC_ASSERT( delta.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      // No need to create object with '0' balance (see comment above).
+      if( delta.amount.value == 0 )
+         return;
 
+      const auto& new_balance = create< smt_balance_object_type >( [&]( smt_balance_object_type& smt_balance )
+      {
+         smt_balance.owner = a;
+         smt_balance.balance = delta;
+      } );
+   }
+   else
+   {
+      asset result = bo->balance + delta;
+      // Check result to avoid negative balance storing.
+      FC_ASSERT( result.amount.value >= 0, "Insufficient SMT ${smt} funds", ("smt", delta.symbol) );
+      // Zero balance is the same as non object balance at all.
+      if( result.amount.value == 0 )
+      {
+         remove( *bo );
+      }
+      else
+      {
+         modify( *bo, [&]( smt_balance_object_type& smt_balance )
+         {
+            smt_balance.balance = result;
+         } );
+      }
+   }
+}
+#endif
 void database::adjust_balance( const account_object& a, const asset& delta )
 {
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_regular_balance_object >( a.name, delta );
+      return;
+   }
+#endif
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.balance.amount.value >= 0, "Insufficient STEEM funds" );
+            }
             break;
          case STEEM_ASSET_NUM_SBD:
             if( a.sbd_seconds_last_update != head_block_time() )
@@ -3431,6 +3565,10 @@ void database::adjust_balance( const account_object& a, const asset& delta )
                }
             }
             acnt.sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.sbd_balance.amount.value >= 0, "Insufficient SBD funds" );
+            }
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
@@ -3441,12 +3579,18 @@ void database::adjust_balance( const account_object& a, const asset& delta )
 
 void database::adjust_savings_balance( const account_object& a, const asset& delta )
 {
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.savings_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.savings_balance.amount.value >= 0, "Insufficient savings STEEM funds" );
+            }
             break;
          case STEEM_ASSET_NUM_SBD:
             if( a.savings_sbd_seconds_last_update != head_block_time() )
@@ -3476,6 +3620,10 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
                }
             }
             acnt.savings_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.savings_sbd_balance.amount.value >= 0, "Insufficient savings SBD funds" );
+            }
             break;
          default:
             FC_ASSERT( !"invalid symbol" );
@@ -3486,15 +3634,34 @@ void database::adjust_savings_balance( const account_object& a, const asset& del
 
 void database::adjust_reward_balance( const account_object& a, const asset& delta )
 {
+   bool check_balance = has_hardfork( STEEM_HARDFORK_0_20__1811 );
+
+#ifdef STEEM_ENABLE_SMT
+   // No account object modification for SMT balance, hence separate handling here.
+   // Note that SMT related code, being post-20-hf needs no hf-guard to do balance checks.
+   if( delta.symbol.space() == asset_symbol_type::smt_nai_space )
+   {
+      adjust_smt_balance< account_rewards_balance_object >( a.name, delta );
+      return;
+   }
+#endif
    modify( a, [&]( account_object& acnt )
    {
       switch( delta.symbol.asset_num )
       {
          case STEEM_ASSET_NUM_STEEM:
             acnt.reward_steem_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_steem_balance.amount.value >= 0, "Insufficient reward STEEM funds" );
+            }
             break;
          case STEEM_ASSET_NUM_SBD:
             acnt.reward_sbd_balance += delta;
+            if( check_balance )
+            {
+               FC_ASSERT( acnt.reward_sbd_balance.amount.value >= 0, "Insufficient reward SBD funds" );
+            }
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
@@ -3505,6 +3672,7 @@ void database::adjust_reward_balance( const account_object& a, const asset& delt
 
 void database::adjust_supply( const asset& delta, bool adjust_vesting )
 {
+   bool check_supply = has_hardfork( STEEM_HARDFORK_0_20__1811 );
 
    const auto& props = get_dynamic_global_properties();
    if( props.head_block_number < STEEM_BLOCKS_PER_DAY*7 )
@@ -3520,13 +3688,19 @@ void database::adjust_supply( const asset& delta, bool adjust_vesting )
             props.current_supply += delta + new_vesting;
             props.virtual_supply += delta + new_vesting;
             props.total_vesting_fund_steem += new_vesting;
-            assert( props.current_supply.amount.value >= 0 );
+            if( check_supply )
+            {
+               FC_ASSERT( props.current_supply.amount.value >= 0 );
+            }
             break;
          }
          case STEEM_ASSET_NUM_SBD:
             props.current_sbd_supply += delta;
             props.virtual_supply = props.current_sbd_supply * get_feed_history().current_median_history + props.current_supply;
-            assert( props.current_sbd_supply.amount.value >= 0 );
+            if( check_supply )
+            {
+               FC_ASSERT( props.current_sbd_supply.amount.value >= 0 );
+            }
             break;
          default:
             FC_ASSERT( false, "invalid symbol" );
@@ -3544,7 +3718,23 @@ asset database::get_balance( const account_object& a, asset_symbol_type symbol )
       case STEEM_ASSET_NUM_SBD:
          return a.sbd_balance;
       default:
-         FC_ASSERT( false, "invalid symbol" );
+      {
+#ifdef STEEM_ENABLE_SMT
+         FC_ASSERT( symbol.space() == asset_symbol_type::smt_nai_space, "invalid symbol" );
+         const account_regular_balance_object* arbo =
+            find< account_regular_balance_object, by_owner_symbol >( boost::make_tuple(a.name, symbol) );
+         if( arbo == nullptr )
+         {
+            return asset(0, symbol);
+         }
+         else
+         {
+            return arbo->balance;
+         }
+#else
+      FC_ASSERT( false, "invalid symbol" );
+#endif
+      }
    }
 }
 
@@ -3556,7 +3746,7 @@ asset database::get_savings_balance( const account_object& a, asset_symbol_type 
          return a.savings_balance;
       case STEEM_ASSET_NUM_SBD:
          return a.savings_sbd_balance;
-      default:
+      default: // Note no savings balance for SMT per comments in issue 1682.
          FC_ASSERT( !"invalid symbol" );
    }
 }
@@ -3622,10 +3812,10 @@ void database::init_hardforks()
    FC_ASSERT( STEEM_HARDFORK_0_19 == 19, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_19 ] = fc::time_point_sec( STEEM_HARDFORK_0_19_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_19 ] = STEEM_HARDFORK_0_19_VERSION;
-#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_20 == 20, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_20 ] = fc::time_point_sec( STEEM_HARDFORK_0_20_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_20 ] = STEEM_HARDFORK_0_20_VERSION;
+#ifdef IS_TEST_NET
    FC_ASSERT( STEEM_HARDFORK_0_21 == 21, "Invalid hardfork configuration" );
    _hardfork_times[ STEEM_HARDFORK_0_21 ] = fc::time_point_sec( STEEM_HARDFORK_0_21_TIME );
    _hardfork_versions[ STEEM_HARDFORK_0_21 ] = STEEM_HARDFORK_0_21_VERSION;
@@ -4266,5 +4456,28 @@ void database::retally_witness_vote_counts( bool force )
       }
    }
 }
+
+#ifdef STEEM_ENABLE_SMT
+vector< asset_symbol_type > database::get_smt_next_identifier()
+{
+   // This is temporary dummy implementation using simple counter as nai source (_next_available_nai).
+   // Although a container of available nais is returned, it contains only one entry for simplicity.
+   // Note that no decimal places argument is required from SMT creator at this stage.
+   // This is because asset_symbol_type's to_string method omits the precision when serializing.
+   // For appropriate use of this method see e.g. smt_database_fixture::create_smt
+
+   uint8_t decimal_places = 0;
+   FC_ASSERT( _next_available_nai >= SMT_MIN_NAI );
+   FC_ASSERT( _next_available_nai <= SMT_MAX_NAI, "Out of available NAI numbers." );
+
+   uint32_t asset_num = (_next_available_nai++ << 5) | 0x10 | decimal_places;
+
+   asset_symbol_type new_symbol = asset_symbol_type::from_asset_num( asset_num );
+   new_symbol.validate();
+   FC_ASSERT( new_symbol.space() == asset_symbol_type::smt_nai_space );
+
+   return std::move( vector< asset_symbol_type >( 1, new_symbol ) );
+}
+#endif
 
 } } //steem::chain

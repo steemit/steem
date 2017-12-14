@@ -151,8 +151,16 @@ void chain_plugin::plugin_startup()
       }
    };
 
+   database::open_args db_open_args;
+   db_open_args.data_dir = app().data_dir() / "blockchain";
+   db_open_args.shared_mem_dir = my->shared_memory_dir;
+   db_open_args.initial_supply = STEEM_INIT_SUPPLY;
+   db_open_args.shared_file_size = my->shared_memory_size;
+   db_open_args.do_validate_invariants = my->validate_invariants;
+   db_open_args.stop_replay_at = my->stop_replay_at;
+ 
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
-      const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
+   const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
    {
       if( current_block_number == 0 ) // initial call
       {
@@ -188,9 +196,9 @@ void chain_plugin::plugin_startup()
    {
       ilog("Replaying blockchain on user request.");
       uint32_t last_block_number = 0;
-      steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
-      last_block_number = my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size,
-                                          my->stop_replay_at, benchmark );
+      db_open_args.benchmark = steem::chain::database::TBenchmark(my->benchmark_interval, benchmark_lambda);
+      last_block_number = my->db.reindex( db_open_args );
+
       if( my->benchmark_interval > 0 )
       {
          const steem::utilities::benchmark_dumper::measurement& total_data = dumper.dump(true, get_indexes_memory_details);
@@ -216,13 +224,11 @@ void chain_plugin::plugin_startup()
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size,
-                      0, my->validate_invariants, benchmark );
 
-         if (dump_memory_details)
-         {
-            dumper.dump(true, get_indexes_memory_details);
-         }
+         my->db.open( db_open_args );
+
+         if( dump_memory_details )
+            dumper.dump( true, get_indexes_memory_details );
       }
       catch( const fc::exception& e )
       {
@@ -230,13 +236,12 @@ void chain_plugin::plugin_startup()
 
          try
          {
-            my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size );
+            my->db.reindex( db_open_args );
          }
          catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size,
-                         0, my->validate_invariants );
+            my->db.open( db_open_args );
          }
       }
    }

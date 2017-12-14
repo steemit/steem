@@ -254,35 +254,35 @@ struct smt_database_fixture : public clean_database_fixture
 
    asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
+
+   void transfer_smt( const string& from, const string& to, const asset& steem );
+
+   typedef std::function< void(const asset_symbol_type& smt1, const asset_symbol_type& smt2, const asset_symbol_type& smt3) > TFollowUpOps;
+   /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
+   void create_smt_3( const char* control_account_name, const fc::ecc::private_key& key, TFollowUpOps followUpOps );
+   /// Tries to create SMTs with too big precision or invalid name.
+   void create_invalid_smt( const char* control_account_name, const fc::ecc::private_key& key );
+   /// Tries to create SMTs matching existing one. First attempt with matching precision, second one with different (but valid) precision.
+   void create_conflicting_smt( const asset_symbol_type existing_smt, const char* control_account_name, const fc::ecc::private_key& key );
 };
 #endif
 
 struct json_rpc_database_fixture : public database_fixture
 {
    private:
-
-      const uint32_t delay = 2;
-
-      std::string url;
-      std::string port;
-
-      fc::http::connection connection;
-
-      fc::thread t;
+      steem::plugins::json_rpc::json_rpc_plugin* rpc_plugin;
 
       fc::variant get_answer( std::string& request );
-      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail );
+      void review_answer( fc::variant& answer, int64_t code, bool is_warning, bool is_fail, fc::optional< fc::variant > id );
 
    public:
 
       json_rpc_database_fixture();
       virtual ~json_rpc_database_fixture();
 
-      void launch_server( int initial_argc, char** initial_argv );
       void make_array_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
       fc::variant make_request( std::string& request, int64_t code = 0, bool is_warning = false, bool is_fail = true );
       void make_positive_request( std::string& request );
-      void make_positive_request_with_id_analysis( std::string& request, bool treat_id_as_string );
 };
 
 namespace test

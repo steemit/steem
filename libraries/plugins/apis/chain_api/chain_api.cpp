@@ -10,7 +10,7 @@ class chain_api_impl
    public:
       chain_api_impl() : _chain( appbase::app().get_plugin<chain_plugin>() ) {}
 
-      DECLARE_API(
+      DECLARE_API_IMPL(
          (push_block)
          (push_transaction) )
 
@@ -18,7 +18,7 @@ class chain_api_impl
       chain_plugin& _chain;
 };
 
-DEFINE_API( chain_api_impl, push_block )
+DEFINE_API_IMPL( chain_api_impl, push_block )
 {
    push_block_return result;
 
@@ -45,7 +45,7 @@ DEFINE_API( chain_api_impl, push_block )
    return result;
 }
 
-DEFINE_API( chain_api_impl, push_transaction )
+DEFINE_API_IMPL( chain_api_impl, push_transaction )
 {
    push_transaction_return result;
 
@@ -68,7 +68,7 @@ DEFINE_API( chain_api_impl, push_transaction )
    {
       result.error = "uknown error";
    }
-   
+
    return result;
 }
 
@@ -81,14 +81,9 @@ chain_api::chain_api(): my( new detail::chain_api_impl() )
 
 chain_api::~chain_api() {}
 
-DEFINE_API( chain_api, push_block )
-{
-   return my->push_block( args );
-}
-
-DEFINE_API( chain_api, push_transaction )
-{
-   return my->push_transaction( args );
-}
+DEFINE_LOCKLESS_APIS( chain_api,
+   (push_block)
+   (push_transaction)
+)
 
 } } } //steem::plugins::chain
