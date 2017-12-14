@@ -122,7 +122,7 @@ namespace steem { namespace protocol {
          bool allow_curation_rewards)
          {
             votable_asset_info info(votable_asset_info_v1(max_accepted_payout, allow_curation_rewards));
-            votable_assets[symbol] = std::move(info);
+            _votable_assets[symbol] = std::move(info);
          }
 
       /** Allows to check if given symbol is allowed votable asset.
@@ -136,8 +136,8 @@ namespace steem { namespace protocol {
       bool is_allowed(const asset_symbol_type& symbol, share_type* max_accepted_payout = nullptr,
          bool* allow_curation_rewards = nullptr) const
          {
-            auto foundI = votable_assets.find(symbol);
-            if(foundI == votable_assets.end())
+            auto foundI = _votable_assets.find(symbol);
+            if(foundI == _votable_assets.end())
             {
                if(max_accepted_payout != nullptr)
                   *max_accepted_payout = 0;
@@ -160,13 +160,13 @@ namespace steem { namespace protocol {
        */
       void validate() const
       {
-         FC_ASSERT(votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS, "Too much votable assets specified");
+         FC_ASSERT(_votable_assets.size() <= SMT_MAX_VOTABLE_ASSETS, "Too much votable assets specified");
          FC_ASSERT(is_allowed(STEEM_SYMBOL) == false,
             "STEEM can not be explicitly specified as one of allowed_vote_assets");
       }
 
    private:
-      flat_map< asset_symbol_type, votable_asset_info > votable_assets;
+      flat_map< asset_symbol_type, votable_asset_info > _votable_assets;
 
       template <typename T>
       friend struct fc::reflector;
@@ -1102,7 +1102,7 @@ FC_REFLECT( steem::protocol::comment_payout_beneficiaries, (beneficiaries) )
 
 #ifdef STEEM_ENABLE_SMT
 FC_REFLECT( steem::protocol::votable_asset_info_v1, (max_accepted_payout)(allow_curation_rewards) )
-FC_REFLECT( steem::protocol::allowed_vote_assets, (votable_assets) )
+FC_REFLECT( steem::protocol::allowed_vote_assets, (_votable_assets) )
 #endif
 
 FC_REFLECT_TYPENAME( steem::protocol::comment_options_extension )
