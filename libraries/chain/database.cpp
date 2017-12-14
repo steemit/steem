@@ -149,6 +149,9 @@ void database::open( const open_args& args )
          auto last_block_num = _block_log.head()->block_num();
          args.benchmark.second(last_block_num, get_abstract_index_cntr());
       }
+
+      _shared_file_full_threshold = args.shared_file_full_threshold;
+      _shared_file_scale_rate = args.shared_file_scale_rate;
    }
    FC_CAPTURE_LOG_AND_RETHROW( (args.data_dir)(args.shared_mem_dir)(args.shared_file_size) )
 }
@@ -2630,22 +2633,17 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
-   //idump( (free_mem)(max_mem) );
-
-   uint16_t full_threshold = 90 * STEEM_1_PERCENT;
-   uint16_t scale_factor = 25 * STEEM_1_PERCENT;
-
-   if( BOOST_UNLIKELY( full_threshold != 0 && scale_factor != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
+   if( BOOST_UNLIKELY( _shared_file_full_threshold != 0 && _shared_file_scale_rate != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - _shared_file_full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
    {
-      uint64_t new_max = ( uint128_t( max_mem * scale_factor ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
+      uint64_t new_max = ( uint128_t( max_mem * _shared_file_scale_rate ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
 
-      wlog( "Memory is almost full, increasing to ${mem}G", ("mem", new_max / (1024*1024*1024)) );
+      wlog( "Memory is almost full, increasing to ${mem}M", ("mem", new_max / (1024*1024)) );
 
       resize( new_max );
 
-      uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
-      wlog( "Free memory is now ${free}G", ("free", get_free_memory() / (1024*1024*1024)) );
-      _last_free_gb_printed = free_gb;
+      uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+      wlog( "Free memory is now ${free}M", ("free", free_mb) );
+      _last_free_gb_printed = free_mb / 1024;
    }
    else
    {
@@ -2658,7 +2656,7 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
 
       if( BOOST_UNLIKELY( free_gb == 0 ) )
       {
-         uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+         uint32_t free_mb = uint32_t( free_mem / (1024*1024) );
 
    #ifdef IS_TEST_NET
       if( !disable_low_mem_warning )
