@@ -64,13 +64,13 @@ namespace steem { namespace protocol {
  * The string will serialize the same way as std::string for variant and raw formats.
  */
 template< typename Storage >
-class fixed_string
+class fixed_string_impl
 {
    public:
-      fixed_string(){}
-      fixed_string( const fixed_string& c ) : data( c.data ){}
-      fixed_string( const char* str ) : fixed_string( std::string( str ) ) {}
-      fixed_string( const std::string& str )
+      fixed_string_impl(){}
+      fixed_string_impl( const fixed_string_impl& c ) : data( c.data ){}
+      fixed_string_impl( const char* str ) : fixed_string_impl( std::string( str ) ) {}
+      fixed_string_impl( const std::string& str )
       {
          Storage d;
          if( str.size() <= sizeof(d) )
@@ -99,53 +99,73 @@ class fixed_string
 
       uint32_t length()const { return size(); }
 
-      fixed_string& operator = ( const fixed_string& str )
+      fixed_string_impl& operator = ( const fixed_string_impl& str )
       {
          data = str.data;
          return *this;
       }
 
-      fixed_string& operator = ( const char* str )
+      fixed_string_impl& operator = ( const char* str )
       {
-         *this = fixed_string( str );
+         *this = fixed_string_impl( str );
          return *this;
       }
 
-      fixed_string& operator = ( const std::string& str )
+      fixed_string_impl& operator = ( const std::string& str )
       {
-         *this = fixed_string( str );
+         *this = fixed_string_impl( str );
          return *this;
       }
 
-      friend std::string operator + ( const fixed_string& a, const std::string& b ) { return std::string( a ) + b; }
-      friend std::string operator + ( const std::string& a, const fixed_string& b ){ return a + std::string( b ); }
-      friend bool operator < ( const fixed_string& a, const fixed_string& b ) { return a.data < b.data; }
-      friend bool operator <= ( const fixed_string& a, const fixed_string& b ) { return a.data <= b.data; }
-      friend bool operator > ( const fixed_string& a, const fixed_string& b ) { return a.data > b.data; }
-      friend bool operator >= ( const fixed_string& a, const fixed_string& b ) { return a.data >= b.data; }
-      friend bool operator == ( const fixed_string& a, const fixed_string& b ) { return a.data == b.data; }
-      friend bool operator != ( const fixed_string& a, const fixed_string& b ) { return a.data != b.data; }
+      friend std::string operator + ( const fixed_string_impl& a, const std::string& b ) { return std::string( a ) + b; }
+      friend std::string operator + ( const std::string& a, const fixed_string_impl& b ){ return a + std::string( b ); }
+      friend bool operator < ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data < b.data; }
+      friend bool operator <= ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data <= b.data; }
+      friend bool operator > ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data > b.data; }
+      friend bool operator >= ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data >= b.data; }
+      friend bool operator == ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data == b.data; }
+      friend bool operator != ( const fixed_string_impl& a, const fixed_string_impl& b ) { return a.data != b.data; }
 
       Storage data;
 };
 
 // These storage types work with memory layout and should be used instead of a custom template.
-typedef fixed_string< fc::uint128_t >                               fixed_string_16;
-typedef fixed_string< fc::erpair< fc::uint128_t, uint64_t > >       fixed_string_24;
-typedef fixed_string< fc::erpair< fc::uint128_t, fc::uint128_t > >  fixed_string_32;
+template< size_t N >
+struct fixed_string_impl_for_size;
+
+template<>
+struct fixed_string_impl_for_size< 16 >
+{
+   typedef fixed_string_impl< fc::uint128_t >                               t;
+};
+
+template<>
+struct fixed_string_impl_for_size< 24 >
+{
+   typedef fixed_string_impl< fc::erpair< fc::uint128_t, uint64_t > >       t;
+};
+
+template<>
+struct fixed_string_impl_for_size< 32 >
+{
+   typedef fixed_string_impl< fc::erpair< fc::uint128_t, fc::uint128_t > >  t;
+};
+
+template< size_t N >
+using fixed_string = typename fixed_string_impl_for_size<N>::t;
 
 } } // steem::protocol
 
 namespace fc { namespace raw {
 
    template< typename Stream, typename Storage >
-   inline void pack( Stream& s, const steem::protocol::fixed_string< Storage >& u )
+   inline void pack( Stream& s, const steem::protocol::fixed_string_impl< Storage >& u )
    {
       pack( s, std::string( u ) );
    }
 
    template< typename Stream, typename Storage >
-   inline void unpack( Stream& s, steem::protocol::fixed_string< Storage >& u )
+   inline void unpack( Stream& s, steem::protocol::fixed_string_impl< Storage >& u )
    {
       std::string str;
       unpack( s, str );
@@ -154,8 +174,8 @@ namespace fc { namespace raw {
 
 } // raw
    template< typename Storage >
-   void to_variant(   const steem::protocol::fixed_string< Storage >& s, variant& v ) { v = std::string( s ); }
+   void to_variant(   const steem::protocol::fixed_string_impl< Storage >& s, variant& v ) { v = std::string( s ); }
 
    template< typename Storage >
-   void from_variant( const variant& v, steem::protocol::fixed_string< Storage >& s ) { s = v.as_string(); }
+   void from_variant( const variant& v, steem::protocol::fixed_string_impl< Storage >& s ) { s = v.as_string(); }
 } // fc
