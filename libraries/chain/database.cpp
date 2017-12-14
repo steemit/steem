@@ -95,7 +95,13 @@ database::~database()
    clear_pending();
 }
 
-void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply, uint64_t shared_file_size, uint32_t chainbase_flags )
+void database::open( const fc::path& data_dir,
+                     const fc::path& shared_mem_dir,
+                     uint64_t initial_supply,
+                     uint64_t shared_file_size,
+                     uint32_t chainbase_flags,
+                     uint16_t shared_file_full_threshold,
+                     uint16_t shared_file_scale_rate )
 {
    try
    {
@@ -140,17 +146,20 @@ void database::open( const fc::path& data_dir, const fc::path& shared_mem_dir, u
       {
          init_hardforks(); // Writes to local state, but reads from db
       });
+
+      _shared_file_full_threshold = shared_file_full_threshold;
+      _shared_file_scale_rate = shared_file_scale_rate;
    }
    FC_CAPTURE_LOG_AND_RETHROW( (data_dir)(shared_mem_dir)(shared_file_size) )
 }
 
-void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size )
+void database::reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size, uint16_t shared_file_full_threshold, uint16_t shared_file_scale_rate )
 {
    try
    {
       ilog( "Reindexing Blockchain" );
       wipe( data_dir, shared_mem_dir, false );
-      open( data_dir, shared_mem_dir, 0, shared_file_size, chainbase::database::read_write );
+      open( data_dir, shared_mem_dir, 0, shared_file_size, chainbase::database::read_write, shared_file_full_threshold, shared_file_scale_rate );
       _fork_db.reset();    // override effect of _fork_db.start_block() call in open()
 
       auto start = fc::time_point::now();
@@ -2569,22 +2578,17 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
    uint64_t free_mem = get_free_memory();
    uint64_t max_mem = get_max_memory();
 
-   //idump( (free_mem)(max_mem) );
-
-   uint16_t full_threshold = 90 * STEEM_1_PERCENT;
-   uint16_t scale_factor = 25 * STEEM_1_PERCENT;
-
-   if( BOOST_UNLIKELY( full_threshold != 0 && scale_factor != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
+   if( BOOST_UNLIKELY( _shared_file_full_threshold != 0 && _shared_file_scale_rate != 0 && free_mem < ( ( uint128_t( STEEM_100_PERCENT - _shared_file_full_threshold ) * max_mem ) / STEEM_100_PERCENT ).to_uint64() ) )
    {
-      uint64_t new_max = ( uint128_t( max_mem * scale_factor ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
+      uint64_t new_max = ( uint128_t( max_mem * _shared_file_scale_rate ) / STEEM_100_PERCENT ).to_uint64() + max_mem;
 
-      wlog( "Memory is almost full, increasing to ${mem}G", ("mem", new_max / (1024*1024*1024)) );
+      wlog( "Memory is almost full, increasing to ${mem}M", ("mem", new_max / (1024*1024)) );
 
       resize( new_max );
 
-      uint32_t free_gb = uint32_t( get_free_memory() / (1024*1024*1024) );
-      wlog( "Free memory is now ${free}G", ("free", get_free_memory() / (1024*1024*1024)) );
-      _last_free_gb_printed = free_gb;
+      uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+      wlog( "Free memory is now ${free}M", ("free", free_mb) );
+      _last_free_gb_printed = free_mb / 1024;
    }
    else
    {
@@ -2597,7 +2601,7 @@ void database::check_free_memory( bool force_print, uint32_t current_block_num )
 
       if( BOOST_UNLIKELY( free_gb == 0 ) )
       {
-         uint32_t free_mb = uint32_t( get_free_memory() / (1024*1024) );
+         uint32_t free_mb = uint32_t( free_mem / (1024*1024) );
 
    #ifdef IS_TEST_NET
       if( !disable_low_mem_warning )

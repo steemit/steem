@@ -77,7 +77,13 @@ namespace steemit { namespace chain {
           *
           * @param data_dir Path to open or create database in
           */
-         void open( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t initial_supply = STEEMIT_INIT_SUPPLY, uint64_t shared_file_size = 0, uint32_t chainbase_flags = 0 );
+         void open( const fc::path& data_dir,
+                    const fc::path& shared_mem_dir,
+                    uint64_t initial_supply = STEEMIT_INIT_SUPPLY,
+                    uint64_t shared_file_size = 0,
+                    uint32_t chainbase_flags = 0,
+                    uint16_t shared_file_full_threshold = 0,
+                    uint16_t shared_file_scale_rate = 0 );
 
          /**
           * @brief Rebuild object graph from block history and open detabase
@@ -85,7 +91,7 @@ namespace steemit { namespace chain {
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
           */
-         void reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l) );
+         void reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l), uint16_t shared_file_full_threshold, uint16_t shared_file_scale_rate );
 
          /**
           * @brief wipe Delete database from disk, and potentially the raw chain as well.
@@ -477,6 +483,9 @@ namespace steemit { namespace chain {
          uint32_t                      _next_flush_block = 0;
 
          uint32_t                      _last_free_gb_printed = 0;
+
+         uint16_t                      _shared_file_full_threshold = 0;
+         uint16_t                      _shared_file_scale_rate = 0;
 
          flat_map< std::string, std::shared_ptr< custom_operation_interpreter > >   _custom_operation_interpreters;
          std::string                       _json_schema;

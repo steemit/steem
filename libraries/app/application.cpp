@@ -261,6 +261,10 @@ namespace detail {
 
          _shared_file_size = fc::parse_size( _options->at( "shared-file-size" ).as< string >() );
          ilog( "shared_file_size is ${n} bytes", ("n", _shared_file_size) );
+
+         _shared_file_full_threshold   = options.at( "shared-file-full-threshold" ).as< uint16_t >();
+         _shared_file_scale_rate       = options.at( "shared-file-scale_rate" ).as< uint16_t >();
+
          bool read_only = _options->count( "read-only" );
          register_builtin_apis();
 
@@ -302,13 +306,13 @@ namespace detail {
             if( _options->count("replay-blockchain") )
             {
                ilog("Replaying blockchain on user request.");
-               _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+               _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size, _shared_file_full_threshold, _shared_file_scale_rate );
             }
             else
             {
                try
                {
-                  _chain_db->open(_data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write );\
+                  _chain_db->open(_data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write, _shared_file_full_threshold, _shared_file_scale_rate );\
                }
                catch( fc::assert_exception& )
                {
@@ -316,12 +320,12 @@ namespace detail {
 
                   try
                   {
-                     _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size );
+                     _chain_db->reindex( _data_dir / "blockchain", _shared_dir, _shared_file_size, _shared_file_full_threshold, _shared_file_scale_rate );
                   }
                   catch( chain::block_log_exception& )
                   {
                      wlog( "Error opening block log. Having to resync from network..." );
-                     _chain_db->open( _data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write );
+                     _chain_db->open( _data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_write, _shared_file_full_threshold, _shared_file_scale_rate );
                   }
                }
             }
@@ -335,7 +339,7 @@ namespace detail {
          else
          {
             ilog( "Starting Steem node in read mode." );
-            _chain_db->open( _data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_only );
+            _chain_db->open( _data_dir / "blockchain", _shared_dir, STEEMIT_INIT_SUPPLY, _shared_file_size, chainbase::database::read_only, _shared_file_full_threshold, _shared_file_scale_rate );
 
             if( _options->count( "read-forward-rpc" ) )
             {
@@ -930,6 +934,8 @@ namespace detail {
       std::vector< std::string >                       _public_apis;
       int32_t                                          _max_block_age = -1;
       uint64_t                                         _shared_file_size;
+      uint16_t                                         _shared_file_full_threshold = 0;
+      uint16_t                                         _shared_file_scale_rate = 0;
 
       bool                                             _running;
 
@@ -981,6 +987,10 @@ void application::set_program_options(boost::program_options::options_descriptio
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("shared-file-dir", bpo::value<string>(), "Location of the shared memory file. Defaults to data_dir/blockchain")
          ("shared-file-size", bpo::value<string>()->default_value("54G"), "Size of the shared memory file. Default: 54G")
+         ("shared-file-full-threshold", bpo::value<uint16_t>()->default_value(0),
+            "A 2 precision percentage (0-10000) that defines the threshold for when to autoscale the shared memory file. Setting this to 0 disables autoscaling. Recommended value for consensus node is 9500 (95%). Full node is 9900 (99%)" )
+         ("shared-file-scale-rate", bpo::value<uint16_t>()->default_value(0),
+            "A 2 precision percentage (0-10000) that defines how quickly to scale the shared memory file. When autoscaling occurs the file's size will be increased by this percent. Setting this to 0 disables autoscaling. Recommended value is between 1000-2000 (10-20%)" )
          ("rpc-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8090"), "Endpoint for websocket RPC to listen on")
          ("rpc-tls-endpoint", bpo::value<string>()->implicit_value("127.0.0.1:8089"), "Endpoint for TLS websocket RPC to listen on")
          ("read-forward-rpc", bpo::value<string>(), "Endpoint to forward write API calls to for a read node" )
