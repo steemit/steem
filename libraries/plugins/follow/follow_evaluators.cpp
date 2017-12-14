@@ -187,7 +187,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                {
                   if( is_empty )
                   {
-                     //performance::dump( "create-feed1", std::string( itr->follower ), next_id );
                      _db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
@@ -202,7 +201,6 @@ void reblog_evaluator::do_apply( const reblog_operation& o )
                   {
                      if( pd.s.allow_modify )
                      {
-                        //performance::dump( "modify-feed1", std::string( feed_itr->account ), feed_itr->account_feed_id );
                         _db.modify( *feed_itr, [&]( feed_object& f )
                         {
                            f.reblogged_by.push_back( o.account );

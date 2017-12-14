@@ -104,7 +104,6 @@ struct pre_operation_visitor
          {
             const auto& old_feed = *itr;
             ++itr;
-            //performance::dump( "remove-feed2", std::string( old_feed.account ), old_feed.account_feed_id );
             db.remove( old_feed );
          }
 
@@ -115,7 +114,6 @@ struct pre_operation_visitor
          {
             const auto& old_blog = *blog_itr;
             ++blog_itr;
-            //performance::dump( "remove-blog2", std::string( old_blog.account ), old_blog.blog_feed_id );
             db.remove( old_blog );
          }
       }
@@ -199,7 +197,6 @@ struct post_operation_visitor
 
                   if( pd.s.creation && is_empty )
                   {
-                     //performance::dump( "create-feed2", std::string( itr->follower ), next_id );
                      db.create< feed_object >( [&]( feed_object& f )
                      {
                         f.account = itr->follower;
@@ -223,7 +220,6 @@ struct post_operation_visitor
 
          if( pd.s.creation && is_empty )
          {
-            //performance::dump( "create-blog2", std::string( op.author ), next_id );
             db.create< blog_object >( [&]( blog_object& b)
             {
                b.account = op.author;

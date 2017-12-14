@@ -73,11 +73,6 @@ const char* performance_impl::get_actual_name( const blog_object& obj ) const
 template<>
 void performance_impl::modify< performance_data::t_creation_type::full_feed >( const feed_object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const
 {
-   //std::string desc = "MODIFY!-";
-   //desc += get_actual_name( obj );
-
-   //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
-   //performance::dump( "NEW!-", std::string( start_account ), next_id );
    pd.s.creation = false;
 
    db.modify( obj, [&]( feed_object& f )
@@ -102,11 +97,6 @@ void performance_impl::modify< performance_data::t_creation_type::full_feed >( c
 template<>
 void performance_impl::modify< performance_data::t_creation_type::part_feed >( const feed_object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const
 {
-   //std::string desc = "MODIFY!-";
-   //desc += get_actual_name( obj );
-
-   //performance::dump( desc.c_str(), std::string( start_account ), obj.account_feed_id );
-   //performance::dump( "NEW!-", std::string( start_account ), next_id );
    pd.s.creation = false;
 
    db.modify( obj, [&]( feed_object& f )
@@ -124,12 +114,6 @@ void performance_impl::modify< performance_data::t_creation_type::part_feed >( c
 template<>
 void performance_impl::modify< performance_data::t_creation_type::full_blog >( const blog_object& obj, const account_name_type& start_account, uint32_t next_id, performance_data& pd ) const
 {
-   //std::string desc = "MODIFY!-";
-   //desc += get_actual_name( obj );
-
-   //performance::dump( desc.c_str(), std::string( start_account ), obj.blog_feed_id );
-   //performance::dump( "NEW!-", std::string( start_account ), next_id );
-
    pd.s.creation = false;
 
    db.modify( obj, [&]( blog_object& b )
@@ -147,9 +131,6 @@ void performance_impl::skip_modify( const Iterator& actual, performance_data& pd
    uint32_t _id = get_actual_id( *actual );
    if( _id == pd.old_id )
    {
-      //std::string desc = "SKIP-MODIFY!-";
-      //desc += get_actual_name( *actual );
-      //performance::dump( desc.c_str(), std::string( actual->account ), _id );
       pd.s.allow_modify = false;
    }
 }
@@ -157,17 +138,12 @@ void performance_impl::skip_modify( const Iterator& actual, performance_data& pd
 template< performance_data::t_creation_type CreationType, typename Iterator >
 void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& actual, performance_data& pd ) const
 {
-   //std::string desc = "remove-";
-
    if( is_delayed )
    {
       if( init )
          init = false;
       else
       {
-         //desc += get_actual_name( *std::prev( actual ) );
-
-         //performance::dump( desc.c_str(), std::string( std::prev( actual )->account ), get_actual_id( *std::prev( actual ) ) );
          auto removed = std::prev( actual );
          if( CreationType == performance_data::t_creation_type::full_feed )
             skip_modify( removed, pd );
@@ -176,9 +152,6 @@ void performance_impl::remember_last( bool is_delayed, bool& init, Iterator& act
    }
    else
    {
-      //desc += get_actual_name( *actual );
-
-      //performance::dump( desc.c_str(), std::string( actual->account ), get_actual_id( *actual ) );
       if( CreationType == performance_data::t_creation_type::full_feed )
          skip_modify( actual, pd );
       db.remove( *actual );
