@@ -23,6 +23,8 @@
 
 #include <chainbase/allocators.hpp>
 
+#include <unistd.h>
+
 #include <array>
 #include <atomic>
 #include <fstream>
@@ -832,10 +834,17 @@ namespace chainbase {
          }
 #endif
 
+         unsigned long long get_total_system_memory() const
+         {
+            long pages = sysconf(_SC_AVPHYS_PAGES);
+            long page_size = sysconf(_SC_PAGE_SIZE);
+            return pages * page_size;
+         }
+
          size_t get_free_memory()const
          {
 #if ENABLE_STD_ALLOCATOR
-            return 10000000; //temporary !!!!!
+            return get_total_system_memory();
 #else
             return _segment->get_segment_manager()->get_free_memory();
 #endif
