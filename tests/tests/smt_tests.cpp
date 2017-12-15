@@ -136,15 +136,22 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       ACTORS( (alice)(bob) )
-      SMT_SYMBOL( alice, 3 );
+
+      generate_block();
+
+      fund( "alice", 10 * 1000 * 1000 );
+      
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
       asset required_creation_fee = dgpo.smt_creation_fee;
       FC_ASSERT( required_creation_fee.amount > 0, "Expected positive smt_creation_fee." );
       unsigned int test_amount = required_creation_fee.amount.value;
+
+      SMT_SYMBOL( alice, 3 );
 
       smt_create_operation op;
       op.control_account = "alice";
@@ -197,6 +204,9 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       convert( "bob", asset( too_low_fee_amount, STEEM_SYMBOL ) );
       op.smt_creation_fee = asset( too_low_fee_amount, SBD_SYMBOL );
       FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -333,6 +343,8 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
    {
       ACTORS( (alice)(bob) )
 
+      generate_block();
+
       smt_setup_emissions_operation fail_op;
       fail_op.control_account = "alice";
       fc::time_point now = fc::time_point::now();
@@ -368,6 +380,9 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          // Fail due to closed setup phase (too late).
          FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
       });
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -376,12 +391,17 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       ACTORS( (dany)(eddy) )
+      
+      generate_block();
 
       fund( "dany", 5000000 );
-      convert( "dany", ASSET( "5000.000 TESTS" ) );
 
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      convert( "dany", ASSET( "5000.000 TESTS" ) );
+      
       smt_set_setup_parameters_operation fail_op;
       fail_op.control_account = "dany";
 
@@ -420,6 +440,9 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
          // TODO:
          // - check applying smt_set_setup_parameters_operation after setup completed
          });
+
+      db->validate_invariants();
+      db->validate_smt_invariants();   
    }
    FC_LOG_AND_RETHROW()
 }
@@ -536,9 +559,11 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       ACTORS( (alice) )
+
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       smt_set_runtime_parameters_operation op;
 
@@ -571,6 +596,9 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
          op.symbol = smt3;
          PUSH_OP(op, alice_private_key);
       });
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -580,6 +608,9 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
    try
    {
       ACTORS( (alice) )
+
+      generate_block();
+
       signed_transaction tx;
       asset_symbol_type alice_symbol = create_smt(tx, "alice", alice_private_key, 0);
 
@@ -588,6 +619,9 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
       op.to = "bob";
       op.amount = asset(100, alice_symbol);
       op.validate();
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -633,6 +667,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
 
+      db->validate_invariants();
       db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()   

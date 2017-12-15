@@ -689,9 +689,10 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
 
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       fund( control_account_name, 10 * 1000 * 1000 );
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( control_account_name, ASSET( "5000.000 TESTS" ) );
 
       set_create_op(&op0, control_account_name, token_name + "0", 0);
@@ -705,6 +706,8 @@ void smt_database_fixture::create_smt_3( const char* control_account_name, const
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
       tx.sign( key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
+
+      generate_block();
 
       followUpOps(op0.symbol, op1.symbol, op2.symbol);
    }
