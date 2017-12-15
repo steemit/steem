@@ -1,7 +1,7 @@
 Exchange Quickstart
 -------------------
 
-System Requirements: A minimum of 16GB of RAM and at least 50GB of fast local SSD storage. STEEM is one of the most active blockchains in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
+System Requirements: A dedicated server or virtual machine with a minimum of 16GB of RAM, and at least 50GB of fast local SSD storage. STEEM is one of the most active blockchains in the world and handles an incredibly large amount of transactions per second, as such, it requires fast storage to run efficiently.
 
 We recommend using docker to both build and run STEEM for exchanges. Docker is the world's leading containerization platform and using it guarantees that your build and run environment is identical to what our developers use. You can still build from source and you can keep both blockchain data and wallet data outside of the docker container. The instructions below will show you how to do this in just a few easy steps.
 
@@ -61,7 +61,7 @@ docker cp steemd-exchange:/usr/local/steemd-default/bin/cli_wallet /local/path/t
 docker stop steemd-exchange
 ```
 
-For your convenience, we have provided a provided an [example\_config](doc/example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`.
+For your convenience, we have provided a provided an [example\_config](example\_config.ini) that we expect should be sufficient to run your exchange node. Be sure to rename it to simply `config.ini`.
 
 ### Create directories to store blockchain and wallet data outside of Docker
 
