@@ -21,10 +21,18 @@ namespace chainbase {
    #if ENABLE_STD_ALLOCATOR 
       template< typename T >
       using allocator = std::allocator< T >;
+
+      typedef boost::shared_mutex read_write_mutex;
+      typedef boost::shared_lock< read_write_mutex > read_lock;
    #else
       template< typename T >
       using allocator = bip::allocator<T, bip::managed_mapped_file::segment_manager>;
+
+      typedef boost::interprocess::interprocess_sharable_mutex read_write_mutex;
+      typedef boost::interprocess::sharable_lock< read_write_mutex > read_lock;
    #endif
+
+   typedef boost::unique_lock< read_write_mutex > write_lock;
    // template< typename T >
    // using allocator = typename std::conditional< ENABLE_STD_ALLOCATOR,
    //                            std::allocator< T >,

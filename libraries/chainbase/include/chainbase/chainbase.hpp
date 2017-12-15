@@ -116,10 +116,6 @@ namespace chainbase {
          }
    };
 
-   typedef boost::interprocess::interprocess_sharable_mutex read_write_mutex;
-   typedef boost::interprocess::sharable_lock< read_write_mutex > read_lock;
-   typedef boost::unique_lock< read_write_mutex > write_lock;
-
    /**
     *  Object ID type that includes the type of the object it references
     */
@@ -993,7 +989,12 @@ namespace chainbase {
          template< typename Lambda >
          auto with_read_lock( Lambda&& callback, uint64_t wait_micro = 1000000 ) -> decltype( (*(Lambda*)nullptr)() )
          {
+#if ENABLE_STD_ALLOCATOR == 0
             read_lock lock( _rw_manager.current_lock(), bip::defer_lock_type() );
+#else
+            read_lock lock( _rw_manager.current_lock(), boost::defer_lock_t() );
+#endif
+
 #ifdef CHAINBASE_CHECK_LOCKING
             BOOST_ATTRIBUTE_UNUSED
             int_incrementer ii( _read_lock_count );
