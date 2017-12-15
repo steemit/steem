@@ -48,19 +48,19 @@ steemit::protocol::transaction_id_type steemit::protocol::transaction::id() cons
 }
 
 const signature_type& steemit::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)
-{
+{ try {
    digest_type h = sig_digest( chain_id );
    signatures.push_back(key.sign_compact(h));
    return signatures.back();
-}
+} FC_LOG_AND_RETHROW() }
 
 signature_type steemit::protocol::signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const
-{
+{ try {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
    return key.sign_compact(enc.result());
-}
+} FC_LOG_AND_RETHROW() }
 
 void transaction::set_expiration( fc::time_point_sec expiration_time )
 {

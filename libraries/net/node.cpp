@@ -1377,8 +1377,8 @@ namespace graphene { namespace net {
               wlog( "Sending a keepalive message to peer ${peer} who hasn't sent us any messages in the last ${timeout} seconds",
                     ( "peer", active_peer->get_remote_endpoint() )("timeout", active_send_keepalive_timeout ) );
               peers_to_send_keep_alive.push_back(active_peer);
-            }            
-            else if (active_peer->we_need_sync_items_from_peer && 
+            }
+            else if (active_peer->we_need_sync_items_from_peer &&
                      !active_peer->is_currently_handling_message() &&
                      !active_peer->item_ids_requested_from_peer &&
                      active_peer->ids_of_items_to_get.empty())
@@ -4276,7 +4276,7 @@ namespace graphene { namespace net {
     } // accept_loop()
 
     void node_impl::send_hello_message(const peer_connection_ptr& peer)
-    {
+    { try {
       VERIFY_CORRECT_THREAD();
       peer->negotiation_status = peer_connection::connection_negotiation_status::hello_sent;
 
@@ -4315,7 +4315,7 @@ namespace graphene { namespace net {
                           generate_hello_user_data());
 
       peer->send_message(message(hello));
-    }
+    } FC_LOG_AND_RETHROW() }
 
     void node_impl::connect_to_task(peer_connection_ptr new_peer,
                                     const fc::ip::endpoint& remote_endpoint)

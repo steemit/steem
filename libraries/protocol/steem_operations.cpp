@@ -285,7 +285,7 @@ namespace steemit { namespace protocol {
    }
 
    void pow::create( const fc::ecc::private_key& w, const digest_type& i )
-   {
+   { try {
       input  = i;
       signature = w.sign_compact(input,false);
 
@@ -293,9 +293,9 @@ namespace steemit { namespace protocol {
       public_key_type recover  = fc::ecc::public_key( signature, sig_hash, false );
 
       work = fc::sha256::hash(recover);
-   }
+   } FC_LOG_AND_RETHROW() }
    void pow2::create( const block_id_type& prev, const account_name_type& account_name, uint64_t n )
-   {
+   { try {
       input.worker_account = account_name;
       input.prev_block     = prev;
       input.nonce          = n;
@@ -309,7 +309,7 @@ namespace steemit { namespace protocol {
 
       fc::sha256 work = fc::sha256::hash(std::make_pair(input,recover));
       pow_summary = work.approx_log_32();
-   }
+   } FC_LOG_AND_RETHROW() }
 
    void equihash_pow::create( const block_id_type& recent_block, const account_name_type& account_name, uint32_t nonce )
    {

@@ -30,9 +30,9 @@ namespace steemit { namespace protocol {
    }
 
    void signed_block_header::sign( const fc::ecc::private_key& signer )
-   {
+   { try {
       witness_signature = signer.sign_compact( digest() );
-   }
+   } FC_LOG_AND_RETHROW() }
 
    bool signed_block_header::validate_signee( const fc::ecc::public_key& expected_signee )const
    {
