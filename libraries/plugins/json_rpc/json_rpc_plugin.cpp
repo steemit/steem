@@ -3,11 +3,33 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <fc/log/logger.hpp>
 #include <fc/log/logger_config.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/io/fstream.hpp>
 
+#include <exception>
+#include <stdexcept>
+#include <string>
+
 #define ENABLE_JSON_RPC_LOG
+
+namespace
+{
+std::string exception_detail(const std::exception_ptr &eptr)
+{
+    if (!eptr) return "Missing exception info";
+
+   try
+   {
+      std::rethrow_exception(eptr);
+   }
+   catch(const std::exception& e)
+   {
+      return std::string("Exception details: `") + e.what() + "'";
+   }
+}
+} /// anonymous
 
 namespace steem { namespace plugins { namespace json_rpc {
 
@@ -338,7 +360,10 @@ namespace detail
       }
       catch( ... )
       {
-         response.error = json_rpc_error( JSON_RPC_SERVER_ERROR, "Unknown error - parsing rpc message failed" );
+         auto excpt = std::current_exception();
+         auto what = exception_detail(excpt);
+         response.error = json_rpc_error( JSON_RPC_SERVER_ERROR,
+            std::string("Unknown error - parsing rpc message failed.") + what);
       }
 
       return response;
