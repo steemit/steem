@@ -351,7 +351,7 @@ void webserver_plugin::plugin_startup()
    if( chain != nullptr && chain->get_state() != appbase::abstract_plugin::started )
    {
       ilog( "Waiting for chain plugin to start" );
-      my->chain_sync_con = chain->on_sync.connect( [this]()
+      my->chain_sync_con = chain->on_sync.connect( 0, [this]()
       {
          my->start_webserver();
       });

@@ -252,8 +252,8 @@ void account_by_key_plugin::plugin_initialize( const boost::program_options::var
       ilog( "Initializing account_by_key plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      my->pre_apply_connection = db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      my->post_apply_connection = db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      my->pre_apply_connection = db.pre_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      my->post_apply_connection = db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->post_operation( o ); } );
 
       add_plugin_index< key_lookup_index >(db);
    }
