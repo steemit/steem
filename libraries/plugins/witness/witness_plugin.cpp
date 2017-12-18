@@ -1,12 +1,10 @@
 #include <steem/plugins/witness/witness_plugin.hpp>
 #include <steem/plugins/witness/witness_objects.hpp>
-#include <steem/plugins/witness/witness_operations.hpp>
 
 #include <steem/chain/database_exceptions.hpp>
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
 #include <steem/chain/witness_objects.hpp>
-#include <steem/chain/generic_custom_operation_interpreter.hpp>
 #include <steem/chain/index.hpp>
 
 #include <steem/utilities/key_conversion.hpp>
@@ -74,7 +72,6 @@ namespace detail {
       std::set< steem::protocol::account_name_type >                     _witnesses;
       boost::asio::deadline_timer                                          _timer;
 
-      std::shared_ptr< generic_custom_operation_interpreter< witness_plugin_operation > > _custom_operation_interpreter;
       chain::database&     _db;
       boost::signals2::connection   pre_apply_connection;
       boost::signals2::connection   applied_block_connection;
@@ -191,17 +188,6 @@ namespace detail {
             STEEM_ASSERT( parent->depth < STEEM_SOFT_MAX_COMMENT_DEPTH,
                plugin_exception,
                "Comment is nested ${x} posts deep, maximum depth is ${y}.", ("x",parent->depth)("y",STEEM_SOFT_MAX_COMMENT_DEPTH) );
-         }
-
-         auto itr = _db.find< comment_object, chain::by_permlink >( boost::make_tuple( o.author, o.permlink ) );
-
-         if( itr != nullptr && itr->cashout_time == fc::time_point_sec::maximum() )
-         {
-            auto edit_lock = _db.find< content_edit_lock_object, by_account >( o.author );
-
-            STEEM_ASSERT( edit_lock != nullptr && _db.head_block_time() < edit_lock->lock_time,
-               plugin_exception,
-               "The comment is archived" );
          }
       }
 
@@ -595,16 +581,11 @@ void witness_plugin::plugin_initialize(const boost::program_options::variables_m
       my->_required_witness_participation = STEEM_1_PERCENT * options.at( "required-participation" ).as< uint32_t >();
    }
 
-   my->_custom_operation_interpreter = std::make_shared< generic_custom_operation_interpreter< witness_plugin_operation > >( my->_db );
-   my->_custom_operation_interpreter->register_evaluator< enable_content_editing_evaluator >( this );
-   appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db().set_custom_operation_interpreter( name(), my->_custom_operation_interpreter );
-
    my->on_pre_apply_transaction_connection = my->_db.on_pre_apply_transaction.connect( 0, [&]( const signed_transaction& tx ){ my->pre_transaction( tx ); } );
    my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
    my->applied_block_connection = my->_db.applied_block.connect( 0, [&]( const signed_block& b ){ my->on_block( b ); } );
 
    add_plugin_index< account_bandwidth_index >( my->_db );
-   add_plugin_index< content_edit_lock_index >( my->_db );
    add_plugin_index< reserve_ratio_index     >( my->_db );
 
    appbase::app().get_plugin< steem::plugins::p2p::p2p_plugin >().set_block_production( true );
