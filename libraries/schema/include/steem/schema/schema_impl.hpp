@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace graphene { namespace schema { namespace detail {
+namespace steem { namespace schema { namespace detail {
 
 struct get_deps_member_visitor
 {
