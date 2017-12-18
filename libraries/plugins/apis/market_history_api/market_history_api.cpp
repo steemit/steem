@@ -3,6 +3,8 @@
 
 #include <steem/chain/steem_objects.hpp>
 
+#define ASSET_TO_REAL( asset ) (double)( asset.amount.value )
+
 namespace steem { namespace plugins { namespace market_history {
 
 namespace detail {
@@ -81,8 +83,7 @@ DEFINE_API_IMPL( market_history_api_impl, get_order_book )
    {
       order cur;
       cur.order_price = itr->sell_price;
-      // cur.real_price = itr->sell_price.base.to_real() / itr->sell_price.quote.to_real();
-      cur.real_price = 0.0;
+      cur.real_price = ASSET_TO_REAL( itr->sell_price.base ) / ASSET_TO_REAL( itr->sell_price.quote );
       cur.steem = ( asset( itr->for_sale, SBD_SYMBOL ) * itr->sell_price ).amount;
       cur.sbd = itr->for_sale;
       cur.created = itr->created;
@@ -96,8 +97,7 @@ DEFINE_API_IMPL( market_history_api_impl, get_order_book )
    {
       order cur;
       cur.order_price = itr->sell_price;
-      // cur.real_price = itr->sell_price.quote.to_real() / itr->sell_price.base.to_real();
-      cur.real_price = 0.0;
+      cur.real_price = ASSET_TO_REAL( itr->sell_price.quote ) / ASSET_TO_REAL( itr->sell_price.base );
       cur.steem = itr->for_sale;
       cur.sbd = ( asset( itr->for_sale, STEEM_SYMBOL ) * itr->sell_price ).amount;
       cur.created = itr->created;
