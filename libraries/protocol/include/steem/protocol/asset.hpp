@@ -7,8 +7,10 @@ namespace steem { namespace protocol {
 
    struct asset
    {
-      asset( share_type a = 0, asset_symbol_type id = STEEM_SYMBOL )
-      :amount(a),symbol(id){}
+      asset( share_type a, asset_symbol_type id )
+         :amount(a),symbol(id){}
+      asset()
+         :amount(0),symbol(STEEM_SYMBOL){}
 
       share_type        amount;
       asset_symbol_type symbol;

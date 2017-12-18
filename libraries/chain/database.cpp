@@ -1026,7 +1026,7 @@ std::pair< asset, asset > database::create_sbd( const account_object& to_account
          adjust_supply( asset( -to_sbd, STEEM_SYMBOL ) );
          adjust_supply( sbd );
          assets.first = sbd;
-         assets.second = to_steem;
+         assets.second = asset( to_steem, STEEM_SYMBOL );
       }
       else
       {
@@ -1577,7 +1577,7 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             for( auto& b : comment.beneficiaries )
             {
                auto benefactor_tokens = ( author_tokens * b.weight ) / STEEM_100_PERCENT;
-               auto vest_created = create_vesting( get_account( b.account ), benefactor_tokens, has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+               auto vest_created = create_vesting( get_account( b.account ), asset( benefactor_tokens, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
                push_virtual_operation( comment_benefactor_reward_operation( b.account, comment.author, to_string( comment.permlink ), vest_created ) );
                total_beneficiary += benefactor_tokens;
             }
@@ -1588,8 +1588,8 @@ share_type database::cashout_comment_helper( util::comment_reward_context& ctx, 
             auto vesting_steem = author_tokens - sbd_steem;
 
             const auto& author = get_account( comment.author );
-            auto vest_created = create_vesting( author, vesting_steem, has_hardfork( STEEM_HARDFORK_0_17__659 ) );
-            auto sbd_payout = create_sbd( author, sbd_steem, has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+            auto vest_created = create_vesting( author, asset( vesting_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
+            auto sbd_payout = create_sbd( author, asset( sbd_steem, STEEM_SYMBOL ), has_hardfork( STEEM_HARDFORK_0_17__659 ) );
 
             adjust_total_payout( comment, sbd_payout.first + to_sbd( sbd_payout.second + asset( vesting_steem, STEEM_SYMBOL ) ), to_sbd( asset( curation_tokens, STEEM_SYMBOL ) ), to_sbd( asset( total_beneficiary, STEEM_SYMBOL ) ) );
 
@@ -1788,7 +1788,7 @@ void database::process_comment_cashout()
          modify( get< reward_fund_object, by_id >( reward_fund_id_type( i ) ), [&]( reward_fund_object& rfo )
          {
             rfo.recent_claims = funds[ i ].recent_claims;
-            rfo.reward_balance -= funds[ i ].steem_awarded;
+            rfo.reward_balance -= asset( funds[ i ].steem_awarded, STEEM_SYMBOL );
          });
       }
    }

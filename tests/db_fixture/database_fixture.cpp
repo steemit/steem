@@ -387,7 +387,7 @@ void database_fixture::fund(
 {
    try
    {
-      transfer( STEEM_INIT_MINER_NAME, account_name, amount );
+      transfer( STEEM_INIT_MINER_NAME, account_name, asset( amount, STEEM_SYMBOL ) );
 
    } FC_CAPTURE_AND_RETHROW( (account_name)(amount) )
 }
@@ -465,7 +465,7 @@ void database_fixture::convert(
 void database_fixture::transfer(
    const string& from,
    const string& to,
-   const share_type& amount )
+   const asset& amount )
 {
    try
    {
@@ -632,28 +632,6 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
    FC_LOG_AND_RETHROW();
 
    return op.symbol;
-}
-
-void smt_database_fixture::transfer_smt(
-   const string& from,
-   const string& to,
-   const asset& amount )
-{
-   FC_ASSERT( amount.symbol.space() == asset_symbol_type::smt_nai_space, "Use transfer_smt wit SMT only" );
-
-   try
-   {
-      transfer_operation op;
-      op.from = from;
-      op.to = to;
-      op.amount = amount;
-
-      trx.operations.push_back( op );
-      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      trx.validate();
-      db->push_transaction( trx, ~0 );
-      trx.operations.clear();
-   } FC_CAPTURE_AND_RETHROW( (from)(to)(amount) )
 }
 
 void sub_set_create_op(smt_create_operation* op, account_name_type control_acount)

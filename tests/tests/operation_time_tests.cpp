@@ -1446,7 +1446,7 @@ BOOST_AUTO_TEST_CASE( feed_publish_mean )
       // Upgrade accounts to witnesses
       for( int i = 0; i < 7; i++ )
       {
-         transfer( STEEM_INIT_MINER_NAME, accounts[i], 10000 );
+         transfer( STEEM_INIT_MINER_NAME, accounts[i], asset( 10000, STEEM_SYMBOL ) );
          witness_create( accounts[i], keys[i], "foo.bar", keys[i].get_public_key(), 1000 );
 
          ops.push_back( feed_publish_operation() );
@@ -2836,7 +2836,7 @@ BOOST_AUTO_TEST_CASE( sbd_price_feed_limit )
 
       db->skip_price_feed_limit_check = false;
       const auto& gpo = db->get_dynamic_global_properties();
-      auto new_exchange_rate = price( gpo.current_sbd_supply, asset( ( STEEM_100_PERCENT ) * gpo.current_supply.amount ) );
+      auto new_exchange_rate = price( gpo.current_sbd_supply, asset( ( STEEM_100_PERCENT ) * gpo.current_supply.amount, STEEM_SYMBOL ) );
       set_price_feed( new_exchange_rate );
       set_price_feed( new_exchange_rate );
 
