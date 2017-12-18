@@ -2654,7 +2654,7 @@ BOOST_AUTO_TEST_CASE( comment_freeze )
 
       tx.operations.push_back( comment );
       tx.sign( alice_private_key, db->get_chain_id() );
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      db->push_transaction( tx, 0 ); // Works now in #1714
    }
    FC_LOG_AND_RETHROW()
 }
