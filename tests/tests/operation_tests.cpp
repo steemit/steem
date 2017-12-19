@@ -2840,63 +2840,6 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
       BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "45.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "35.909 TESTS" ).amount.value );
       BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "954.500 TBD" ).amount.value );
-
-      BOOST_TEST_MESSAGE( "--- Test filling best order with multiple matches." );
-      ACTORS( (sam)(dave) )
-      fund( "sam", 1000000 );
-      fund( "dave", 1000000 );
-      convert( "dave", ASSET("1000.000 TESTS" ) );
-
-      op.owner = "bob";
-      op.orderid = 6;
-      op.amount_to_sell = ASSET( "20.000 TESTS" );
-      op.min_to_receive = ASSET( "22.000 TBD" );
-      tx.operations.clear();
-      tx.signatures.clear();
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      op.owner = "sam";
-      op.orderid = 1;
-      op.amount_to_sell = ASSET( "20.000 TESTS" );
-      op.min_to_receive = ASSET( "20.000 TBD" );
-      tx.operations.clear();
-      tx.signatures.clear();
-      tx.operations.push_back( op );
-      tx.sign( sam_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      op.owner = "alice";
-      op.orderid = 6;
-      op.amount_to_sell = ASSET( "20.000 TESTS" );
-      op.min_to_receive = ASSET( "23.000 TBD" );
-      tx.operations.clear();
-      tx.signatures.clear();
-      tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      op.owner = "dave";
-      op.orderid = 1;
-      op.amount_to_sell = ASSET( "15.000 TBD" );
-      op.min_to_receive = ASSET( "10.000 TESTS" );
-      tx.operations.clear();
-      tx.signatures.clear();
-      tx.operations.push_back( op );
-      tx.sign( dave_private_key, db->get_chain_id() );
-      db->push_transaction( tx, 0 );
-
-      recent_ops = get_last_operations( 1 );
-      fill_order_op = recent_ops[0].get< fill_order_operation >();
-      BOOST_REQUIRE( fill_order_op.open_owner == "sam" );
-      BOOST_REQUIRE( fill_order_op.open_orderid == 1 );
-      BOOST_REQUIRE( fill_order_op.open_pays == ASSET( "15.000 TESTS") );
-      BOOST_REQUIRE( fill_order_op.current_owner == "dave" );
-      BOOST_REQUIRE( fill_order_op.current_orderid == 1 );
-      BOOST_REQUIRE( fill_order_op.current_pays == ASSET( "15.000 TBD" ) );
-
       validate_database();
    }
    FC_LOG_AND_RETHROW()
@@ -3252,6 +3195,82 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
       BOOST_REQUIRE( alice.sbd_balance.amount.value == ASSET( "45.500 TBD" ).amount.value );
       BOOST_REQUIRE( bob.balance.amount.value == ASSET( "35.909 TESTS" ).amount.value );
       BOOST_REQUIRE( bob.sbd_balance.amount.value == ASSET( "954.500 TBD" ).amount.value );
+
+      BOOST_TEST_MESSAGE( "--- Test filling best order with multiple matches." );
+      ACTORS( (sam)(dave) )
+      fund( "sam", 1000000 );
+      fund( "dave", 1000000 );
+      convert( "dave", ASSET("1000.000 TESTS" ) );
+
+      op.owner = "bob";
+      op.orderid = 6;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      tx.sign( bob_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      op.owner = "sam";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "0.500 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( sam_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      op.owner = "alice";
+      op.orderid = 6;
+      op.amount_to_sell = ASSET( "20.000 TESTS" );
+      op.exchange_rate = price( ASSET( "1.000 TESTS" ), ASSET( "2.000 TBD" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( alice_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      op.owner = "dave";
+      op.orderid = 1;
+      op.amount_to_sell = ASSET( "25.000 TBD" );
+      op.exchange_rate = price( ASSET( "1.000 TBD" ), ASSET( "0.010 TESTS" ) );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      tx.sign( dave_private_key, db->get_chain_id() );
+      db->push_transaction( tx, 0 );
+
+      recent_ops = get_last_operations( 3 );
+      fill_order_op = recent_ops[2].get< fill_order_operation >();
+      BOOST_REQUIRE( fill_order_op.open_owner == "sam" );
+      BOOST_REQUIRE( fill_order_op.open_orderid == 1 );
+      BOOST_REQUIRE( fill_order_op.open_pays == ASSET( "20.000 TESTS") );
+      BOOST_REQUIRE( fill_order_op.current_owner == "dave" );
+      BOOST_REQUIRE( fill_order_op.current_orderid == 1 );
+      BOOST_REQUIRE( fill_order_op.current_pays == ASSET( "10.000 TBD" ) );
+
+      fill_order_op = recent_ops[0].get< fill_order_operation >();
+      BOOST_REQUIRE( fill_order_op.open_owner == "bob" );
+      BOOST_REQUIRE( fill_order_op.open_orderid == 6 );
+      BOOST_REQUIRE( fill_order_op.open_pays == ASSET( "15.000 TESTS") );
+      BOOST_REQUIRE( fill_order_op.current_owner == "dave" );
+      BOOST_REQUIRE( fill_order_op.current_orderid == 1 );
+      BOOST_REQUIRE( fill_order_op.current_pays == ASSET( "15.000 TBD" ) );
+
+      limit_order = limit_order_idx.find( std::make_tuple( "bob", 6 ) );
+      BOOST_REQUIRE( limit_order->seller == "bob" );
+      BOOST_REQUIRE( limit_order->orderid == 6 );
+      BOOST_REQUIRE( limit_order->for_sale.value == 5000 );
+      BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "1.000 TESTS" ), ASSET( "1.000 TBD" ) ) );
+
+      limit_order = limit_order_idx.find( std::make_tuple( "alice", 6 ) );
+      BOOST_REQUIRE( limit_order->seller == "alice" );
+      BOOST_REQUIRE( limit_order->orderid == 6 );
+      BOOST_REQUIRE( limit_order->for_sale.value == 20000 );
+      BOOST_REQUIRE( limit_order->sell_price == price( ASSET( "1.000 TESTS" ), ASSET( "2.000 TBD" ) ) );
       validate_database();
    }
    FC_LOG_AND_RETHROW()
