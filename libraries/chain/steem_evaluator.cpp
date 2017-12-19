@@ -1263,7 +1263,7 @@ void vote_evaluator::do_apply( const vote_operation& o )
    if( _db.has_hardfork( STEEM_HARDFORK_0_20__1764 ) )
    {
       abs_rshares -= STEEM_VOTE_DUST_THRESHOLD;
-      abs_rshares = std::max( 0ll, abs_rshares );
+      abs_rshares = std::max( int64_t(0), abs_rshares );
    }
    if( _db.has_hardfork( STEEM_HARDFORK_0_14__259 ) )
    {
