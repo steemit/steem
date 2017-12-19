@@ -66,9 +66,7 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       signed_transaction tx;
       asset_symbol_type any_smt_symbol = create_smt( tx, "smtcreator", smtcreator_private_key, 3);
-
-      generate_block();
-
+ 
       fund( "alice", ASSET( "1000.000 TESTS" ) );
       fund( "bob", ASSET( "1000.000 TESTS" ) );
       fund( "sam", ASSET( "1000.000 TESTS" ) );
@@ -308,45 +306,45 @@ BOOST_AUTO_TEST_CASE( smt_mh_test )
 
       BOOST_REQUIRE( bucket == bucket_idx.end() );
 
-      // auto order = order_hist_idx.begin();
+      auto order = order_hist_idx.begin();
 
-      // BOOST_REQUIRE( order->time == fill_order_a_time );
-      // BOOST_REQUIRE( order->op.current_owner == "bob" );
-      // BOOST_REQUIRE( order->op.current_orderid == 0 );
-      // BOOST_REQUIRE( order->op.current_pays == ASSET( "1.500 TESTS" ) );
-      // BOOST_REQUIRE( order->op.open_owner == "alice" );
-      // BOOST_REQUIRE( order->op.open_orderid == 0 );
-      // BOOST_REQUIRE( order->op.open_pays == ASSET( "0.750 TBD" ) );
-      // order++;
+      BOOST_REQUIRE( order->time == fill_order_a_time );
+      BOOST_REQUIRE( order->op.current_owner == "bob" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "1.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.open_owner == "alice" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == asset( 750, any_smt_symbol ) );
+      order++;
 
-      // BOOST_REQUIRE( order->time == fill_order_b_time );
-      // BOOST_REQUIRE( order->op.current_owner == "sam" );
-      // BOOST_REQUIRE( order->op.current_orderid == 0 );
-      // BOOST_REQUIRE( order->op.current_pays == ASSET( "0.500 TESTS" ) );
-      // BOOST_REQUIRE( order->op.open_owner == "alice" );
-      // BOOST_REQUIRE( order->op.open_orderid == 0 );
-      // BOOST_REQUIRE( order->op.open_pays == ASSET( "0.250 TBD" ) );
-      // order++;
+      BOOST_REQUIRE( order->time == fill_order_b_time );
+      BOOST_REQUIRE( order->op.current_owner == "sam" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.500 TESTS" ) );
+      BOOST_REQUIRE( order->op.open_owner == "alice" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == asset( 250, any_smt_symbol ) );
+      order++;
 
-      // BOOST_REQUIRE( order->time == fill_order_c_time );
-      // BOOST_REQUIRE( order->op.current_owner == "alice" );
-      // BOOST_REQUIRE( order->op.current_orderid == 0 );
-      // BOOST_REQUIRE( order->op.current_pays == ASSET( "0.250 TBD" ) );
-      // BOOST_REQUIRE( order->op.open_owner == "sam" );
-      // BOOST_REQUIRE( order->op.open_orderid == 0 );
-      // BOOST_REQUIRE( order->op.open_pays == ASSET( "0.500 TESTS" ) );
-      // order++;
+      BOOST_REQUIRE( order->time == fill_order_c_time );
+      BOOST_REQUIRE( order->op.current_owner == "alice" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == asset( 250, any_smt_symbol ) );
+      BOOST_REQUIRE( order->op.open_owner == "sam" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == ASSET( "0.500 TESTS" ) );
+      order++;
 
-      // BOOST_REQUIRE( order->time == fill_order_c_time );
-      // BOOST_REQUIRE( order->op.current_owner == "bob" );
-      // BOOST_REQUIRE( order->op.current_orderid == 0 );
-      // BOOST_REQUIRE( order->op.current_pays == ASSET( "0.450 TESTS" ) );
-      // BOOST_REQUIRE( order->op.open_owner == "alice" );
-      // BOOST_REQUIRE( order->op.open_orderid == 0 );
-      // BOOST_REQUIRE( order->op.open_pays == ASSET( "0.250 TBD" ) );
-      // order++;
+      BOOST_REQUIRE( order->time == fill_order_c_time );
+      BOOST_REQUIRE( order->op.current_owner == "bob" );
+      BOOST_REQUIRE( order->op.current_orderid == 0 );
+      BOOST_REQUIRE( order->op.current_pays == ASSET( "0.450 TESTS" ) );
+      BOOST_REQUIRE( order->op.open_owner == "alice" );
+      BOOST_REQUIRE( order->op.open_orderid == 0 );
+      BOOST_REQUIRE( order->op.open_pays == asset( 250, any_smt_symbol ) );
+      order++;
 
-      // BOOST_REQUIRE( order == order_hist_idx.end() );
+      BOOST_REQUIRE( order == order_hist_idx.end() );
    }
    FC_LOG_AND_RETHROW()
 }
