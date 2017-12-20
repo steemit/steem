@@ -102,10 +102,15 @@ struct bucket_object : public object< bucket_object_type, bucket_object >
 
 #ifdef STEEM_ENABLE_SMT
    asset_symbol_type symbol = SBD_SYMBOL;
-#endif
 
    price high()const { return asset( non_steem.high, symbol ) / asset( steem.high, STEEM_SYMBOL ); }
    price low()const { return asset( non_steem.low, symbol ) / asset( steem.low, STEEM_SYMBOL ); }
+#else
+   bucket_object_details sbd;
+
+   price high()const { return asset( sbd.high, SBD_SYMBOL ) / asset( steem.high, STEEM_SYMBOL ); }
+   price low()const { return asset( sbd.low, SBD_SYMBOL ) / asset( steem.low, STEEM_SYMBOL ); }
+#endif
 };
 
 typedef oid< bucket_object > bucket_id_type;
