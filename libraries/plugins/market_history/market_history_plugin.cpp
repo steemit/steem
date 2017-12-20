@@ -66,10 +66,8 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
                b.steem.fill( ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.open_pays.amount : op.current_pays.amount );
 #ifdef STEEM_ENABLE_SMT
                   b.symbol = ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.symbol : op.open_pays.symbol;
-                  b.sbd_smt.fill( ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.amount : op.open_pays.amount );
-#else
-                  b.sbd.fill( ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.amount : op.open_pays.amount );
 #endif
+                  b.non_steem.fill( ( op.open_pays.symbol == STEEM_SYMBOL ) ? op.current_pays.amount : op.open_pays.amount );
             });
          }
          else
@@ -84,33 +82,21 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
                   b.steem.volume += op.open_pays.amount;
                   b.steem.close = op.open_pays.amount;
 
-#ifdef STEEM_ENABLE_SMT
-                  b.sbd_smt.volume += op.current_pays.amount;
-                  b.sbd_smt.close = op.current_pays.amount;
-#else
-                  b.sbd.volume += op.current_pays.amount;
-                  b.sbd.close = op.current_pays.amount;
-#endif
+                  b.non_steem.volume += op.current_pays.amount;
+                  b.non_steem.close = op.current_pays.amount;
+
                   if( b.high() < price( op.current_pays, op.open_pays ) )
                   {
                      b.steem.high = op.open_pays.amount;
 
-#ifdef STEEM_ENABLE_SMT
-                     b.sbd_smt.high = op.current_pays.amount;
-#else
-                     b.sbd.high = op.current_pays.amount;
-#endif
+                     b.non_steem.high = op.current_pays.amount;
                   }
 
                   if( b.low() > price( op.current_pays, op.open_pays ) )
                   {
                      b.steem.low = op.open_pays.amount;
 
-#ifdef STEEM_ENABLE_SMT
-                     b.sbd_smt.low = op.current_pays.amount;
-#else
-                     b.sbd.low = op.current_pays.amount;
-#endif
+                     b.non_steem.low = op.current_pays.amount;
                   }
                }
                else
@@ -118,34 +104,21 @@ void market_history_plugin_impl::update_market_histories( const operation_notifi
                   b.steem.volume += op.current_pays.amount;
                   b.steem.close = op.current_pays.amount;
 
-#ifdef STEEM_ENABLE_SMT
-                  b.sbd_smt.volume += op.open_pays.amount;
-                  b.sbd_smt.close = op.open_pays.amount;
-#else
-                  b.sbd.volume += op.open_pays.amount;
-                  b.sbd.close = op.open_pays.amount;
-#endif
+                  b.non_steem.volume += op.open_pays.amount;
+                  b.non_steem.close = op.open_pays.amount;
 
                   if( b.high() < price( op.open_pays, op.current_pays ) )
                   {
                      b.steem.high = op.current_pays.amount;
 
-#ifdef STEEM_ENABLE_SMT
-                     b.sbd_smt.high = op.open_pays.amount;
-#else
-                     b.sbd.high = op.open_pays.amount;
-#endif
+                     b.non_steem.high = op.open_pays.amount;
                   }
 
                   if( b.low() > price( op.open_pays, op.current_pays ) )
                   {
                      b.steem.low = op.current_pays.amount;
 
-#ifdef STEEM_ENABLE_SMT
-                     b.sbd_smt.low = op.open_pays.amount;
-#else
-                     b.sbd.low = op.open_pays.amount;
-#endif
+                     b.non_steem.low = op.open_pays.amount;
                   }
                }
             });
