@@ -49,15 +49,13 @@ struct legacy_steem_asset
          return from_amount( a.amount );
       }
 
-      static legacy_steem_asset from_string( const string& from )
-      {
-         return from_asset( asset::from_string( from ) );
-      }
+      uint8_t     decimals()const;
+      void        set_decimals(uint8_t d);
+      std::string symbol_name()const;
+      int64_t     precision()const;
 
-      string to_string()const
-      {
-         return to_asset<false>().to_string();
-      }
+      string to_string()const;
+      static legacy_steem_asset from_string( const string& from );
 
       share_type                       amount;
       legacy_steem_asset_symbol_type   symbol;

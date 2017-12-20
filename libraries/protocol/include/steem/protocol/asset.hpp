@@ -18,15 +18,6 @@ namespace steem { namespace protocol {
       uint8_t     decimals()const;
       void validate()const;
 
-      void fill_from_string( const char* p );
-      static asset from_string( const string& from )
-      {
-         asset result;
-         result.fill_from_string( from.c_str() );
-         return result;
-      }
-      string       to_string()const;
-
       asset& operator += ( const asset& o )
       {
          FC_ASSERT( symbol == o.symbol );
@@ -157,8 +148,8 @@ namespace steem { namespace protocol {
 } } // steem::protocol
 
 namespace fc {
-    inline void to_variant( const steem::protocol::asset& var,  fc::variant& vo ) { vo = var.to_string(); }
-    inline void from_variant( const fc::variant& var,  steem::protocol::asset& vo ) { vo.fill_from_string( var.as_string().c_str() ); }
+    void to_variant( const steem::protocol::asset& var,  fc::variant& vo );
+    void from_variant( const fc::variant& var,  steem::protocol::asset& vo );
 }
 
 FC_REFLECT( steem::protocol::asset, (amount)(symbol) )

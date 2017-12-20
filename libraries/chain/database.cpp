@@ -4343,15 +4343,15 @@ void database::validate_smt_invariants()const
       const auto& rewards_balance_idx = get_index< account_rewards_balance_index, by_id >();
       add_from_balance_index( rewards_balance_idx, theMap );
 
-      // - Total vesting 
+      // - Total vesting
 #pragma message( "TODO: Add SMT vesting support here once it is implemented." )
-         
+
       // - Market orders
 #pragma message( "TODO: Add limit_order_object iteration here once they support SMTs." )
 
       // - Reward funds
 #pragma message( "TODO: Add reward_fund_object iteration here once they support SMTs." )
-                  
+
       // - Escrow & savings - no support of SMT is expected.
 
       // Do the verification of total balances.

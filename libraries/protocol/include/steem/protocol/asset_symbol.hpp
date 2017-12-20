@@ -8,12 +8,22 @@
 #define SMT_MIN_NAI                       1
 #define STEEM_ASSET_SYMBOL_MAX_LENGTH     10
 
-#define STEEM_ASSET_NUM_SBD \
-  (((SMT_MAX_NAI+1) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | 3)
+#define STEEM_PRECISION_STEEM (3)
+#define STEEM_PRECISION_SBD   (3)
+#define STEEM_PRECISION_VESTS (6)
+
+// One's place is used for check digit, which means NAI 0-9 all have NAI data of 0 which is invalid
+// This space is safe to use because it would alwasys result in failure to convert from NAI
+#define STEEM_NAI_STEEM (1)
+#define STEEM_NAI_SBD   (2)
+#define STEEM_NAI_VESTS (3)
+
 #define STEEM_ASSET_NUM_STEEM \
-  (((SMT_MAX_NAI+2) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | 3)
+  (((SMT_MAX_NAI + STEEM_NAI_STEEM) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_STEEM)
+#define STEEM_ASSET_NUM_SBD \
+  (((SMT_MAX_NAI + STEEM_NAI_SBD)   << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_SBD)
 #define STEEM_ASSET_NUM_VESTS \
-  (((SMT_MAX_NAI+3) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | 6)
+  (((SMT_MAX_NAI + STEEM_NAI_VESTS) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_VESTS)
 
 #ifdef IS_TEST_NET
 
@@ -53,8 +63,6 @@ class asset_symbol_type
       static asset_symbol_type from_asset_num( uint32_t asset_num )
       {   asset_symbol_type result;   result.asset_num = asset_num;   return result;   }
       static uint32_t asset_num_from_nai( uint32_t nai, uint8_t decimal_places );
-      static asset_symbol_type from_nai( uint32_t nai, uint8_t decimal_places )
-      {   return from_asset_num( asset_num_from_nai( nai, decimal_places ) );          }
 
       void to_string( char* buf )const;
       std::string to_string()const
@@ -63,7 +71,9 @@ class asset_symbol_type
          to_string( buf );
          return std::string(buf);
       }
+
       uint32_t to_nai()const;
+      void from_nai( uint32_t nai, uint8_t decimal_places );
 
       asset_symbol_space space()const;
       uint8_t decimals()const
@@ -170,12 +180,5 @@ inline void to_variant( const steem::protocol::asset_symbol_type& sym, fc::varia
 {
    v = sym.to_string();
 }
-
-/*
-inline void from_variant( const fc::variant& v,  steem::protocol::asset_symbol_type& sym )
-{
-   sym.from_string( sym.as_string().c_str(), 0 );
-}
-*/
 
 } // fc
