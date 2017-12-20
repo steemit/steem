@@ -105,34 +105,76 @@ BOOST_AUTO_TEST_CASE( smt_create_authorities )
    FC_LOG_AND_RETHROW()
 }
 
+#define OP2TX(OP,TX,KEY) \
+TX.operations.push_back( OP ); \
+TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
+TX.sign( KEY, db->get_chain_id() );
+
+#define PUSH_OP(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+}
+
+#define PUSH_OP_TWICE(OP,KEY) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   db->push_transaction( tx, 0 ); \
+   db->push_transaction( tx, database::skip_transaction_dupe_check ); \
+}
+
+#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
+{ \
+   signed_transaction tx; \
+   OP2TX(OP,tx,KEY) \
+   STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
+}
+
 BOOST_AUTO_TEST_CASE( smt_create_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       ACTORS( (alice)(bob) )
-      SMT_SYMBOL( alice, 3 );
+
+      generate_block();
 
       fund( "alice", 10 * 1000 * 1000 );
+      
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+
+      const dynamic_global_property_object& dgpo = db->get_dynamic_global_properties();
+      asset required_creation_fee = dgpo.smt_creation_fee;
+      FC_ASSERT( required_creation_fee.amount > 0, "Expected positive smt_creation_fee." );
+      unsigned int test_amount = required_creation_fee.amount.value;
+
+      SMT_SYMBOL( alice, 3 );
 
       smt_create_operation op;
-
-      op.smt_creation_fee = ASSET( "1000.000 TBD" );
       op.control_account = "alice";
       op.symbol = alice_symbol;
       op.precision = op.symbol.decimals();
 
-      signed_transaction tx;
+      // Fund with STEEM, and set fee with SBD.
+      fund( "alice", test_amount );
+      // Declare fee in SBD/TBD though alice has none.
+      op.smt_creation_fee = asset( test_amount, SBD_SYMBOL );
+      // Throw due to insufficient balance of SBD/TBD.
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
 
-      tx.operations.push_back( op );
-      tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
-      // throw due to insufficient balance
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+      // Now fund with SBD, and set fee with STEEM.
+      convert( "alice", asset( test_amount, STEEM_SYMBOL ) );
+      // Declare fee in STEEM though alice has none.
+      op.smt_creation_fee = asset( test_amount, STEEM_SYMBOL );
+      // Throw due to insufficient balance of STEEM.
+      FAIL_WITH_OP(op, alice_private_key, fc::assert_exception);
 
-      convert( "alice", ASSET( "5000.000 TESTS" ) );
-      db->push_transaction( tx, 0 );
+      // Push valid operation.
+      op.smt_creation_fee = asset( test_amount, SBD_SYMBOL );
+      PUSH_OP( op, alice_private_key );
 
       // Check the SMT cannot be created twice even with different precision.
       create_conflicting_smt(op.symbol, "alice", alice_private_key);
@@ -143,11 +185,28 @@ BOOST_AUTO_TEST_CASE( smt_create_apply )
       // Check that invalid SMT can't be created
       create_invalid_smt("alice", alice_private_key);
 
-      // TODO:
-      // - Check that 1000 TESTS throws
-      // - Check that less than 1000 TBD throws
-      // - Check that more than 1000 TBD succeeds
-      //
+      // Check fee set too low.
+      asset fee_too_low = required_creation_fee;
+      unsigned int too_low_fee_amount = required_creation_fee.amount.value-1;
+      fee_too_low.amount -= 1;
+
+      SMT_SYMBOL( bob, 0 );
+      op.control_account = "bob";
+      op.symbol = bob_symbol;
+      op.precision = op.symbol.decimals();
+
+      // Check too low fee in STEEM.
+      fund( "bob", too_low_fee_amount );
+      op.smt_creation_fee = asset( too_low_fee_amount, STEEM_SYMBOL );
+      FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
+
+      // Check too low fee in SBD.
+      convert( "bob", asset( too_low_fee_amount, STEEM_SYMBOL ) );
+      op.smt_creation_fee = asset( too_low_fee_amount, SBD_SYMBOL );
+      FAIL_WITH_OP(op, bob_private_key, fc::assert_exception);
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -278,38 +337,13 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_authorities )
    FC_LOG_AND_RETHROW()
 }
 
-#define OP2TX(OP,TX,KEY) \
-   TX.operations.push_back( OP ); \
-   TX.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION ); \
-   TX.sign( KEY, db->get_chain_id() );
-
-#define PUSH_OP(OP,KEY) \
-   { \
-      signed_transaction tx; \
-      OP2TX(OP,tx,KEY) \
-      db->push_transaction( tx, 0 ); \
-   }
-
-#define PUSH_OP_TWICE(OP,KEY) \
-   { \
-      signed_transaction tx; \
-      OP2TX(OP,tx,KEY) \
-      db->push_transaction( tx, 0 ); \
-      db->push_transaction( tx, database::skip_transaction_dupe_check ); \
-   }
-
-#define FAIL_WITH_OP(OP,KEY,EXCEPTION) \
-   { \
-      signed_transaction tx; \
-      OP2TX(OP,tx,KEY) \
-      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), EXCEPTION ); \
-   }
-
 BOOST_AUTO_TEST_CASE( setup_emissions_apply )
 {
    try
    {
       ACTORS( (alice)(bob) )
+
+      generate_block();
 
       smt_setup_emissions_operation fail_op;
       fail_op.control_account = "alice";
@@ -346,6 +380,9 @@ BOOST_AUTO_TEST_CASE( setup_emissions_apply )
          // Fail due to closed setup phase (too late).
          FAIL_WITH_OP(fail_op, alice_private_key, fc::assert_exception)
       });
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -354,12 +391,17 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       ACTORS( (dany)(eddy) )
+      
+      generate_block();
 
       fund( "dany", 5000000 );
-      convert( "dany", ASSET( "5000.000 TESTS" ) );
 
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
+      convert( "dany", ASSET( "5000.000 TESTS" ) );
+      
       smt_set_setup_parameters_operation fail_op;
       fail_op.control_account = "dany";
 
@@ -398,6 +440,9 @@ BOOST_AUTO_TEST_CASE( set_setup_parameters_apply )
          // TODO:
          // - check applying smt_set_setup_parameters_operation after setup completed
          });
+
+      db->validate_invariants();
+      db->validate_smt_invariants();   
    }
    FC_LOG_AND_RETHROW()
 }
@@ -514,9 +559,11 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
 {
    try
    {
-      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
-
       ACTORS( (alice) )
+
+      generate_block();
+
+      set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
 
       smt_set_runtime_parameters_operation op;
 
@@ -549,6 +596,9 @@ BOOST_AUTO_TEST_CASE( runtime_parameters_apply )
          op.symbol = smt3;
          PUSH_OP(op, alice_private_key);
       });
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -559,6 +609,8 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
    {
       ACTORS( (alice) )
 
+      generate_block();
+
       asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 0);
 
       transfer_operation op;
@@ -566,6 +618,9 @@ BOOST_AUTO_TEST_CASE( smt_transfer_validate )
       op.to = "bob";
       op.amount = asset(100, alice_symbol);
       op.validate();
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()
 }
@@ -578,15 +633,21 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
    {
       ACTORS( (alice)(bob) )
 
+      generate_block();
+
       // Create SMT.
       asset_symbol_type alice_symbol = create_smt("alice", alice_private_key, 0);
       asset_symbol_type bob_symbol = create_smt("bob", bob_private_key, 1);
 
       // Give some SMT to creators.
-      const account_object& alice_account = db->get_account("alice");
-      db->adjust_balance(alice_account, asset(100, alice_symbol));
-      const account_object& bob_account = db->get_account("bob");
-      db->adjust_balance(bob_account, asset(110, bob_symbol));
+      asset alice_symbol_supply( 100, alice_symbol );
+      db->adjust_supply( alice_symbol_supply );
+      const account_object& alice_account = db->get_account( "alice" );
+      db->adjust_balance( alice_account, alice_symbol_supply );
+      asset bob_symbol_supply( 110, bob_symbol );
+      db->adjust_supply( bob_symbol_supply );
+      const account_object& bob_account = db->get_account( "bob" );
+      db->adjust_balance( bob_account, bob_symbol_supply );
 
       // Check pre-tranfer amounts.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 100, "SMT balance adjusting error" );
@@ -595,14 +656,17 @@ BOOST_AUTO_TEST_CASE( smt_transfer_apply )
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 110, "SMT balance adjusting error" );
 
       // Transfer SMT.
-      transfer_smt( "alice", "bob", asset(20, alice_symbol) );
-      transfer_smt( "bob", "alice", asset(50, bob_symbol) );
+      transfer( "alice", "bob", asset(20, alice_symbol) );
+      transfer( "bob", "alice", asset(50, bob_symbol) );
 
       // Check transfer outcome.
       FC_ASSERT( db->get_balance( "alice", alice_symbol ).amount == 80, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "alice", bob_symbol ).amount == 50, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", alice_symbol ).amount == 20, "SMT transfer error" );
       FC_ASSERT( db->get_balance( "bob", bob_symbol ).amount == 60, "SMT transfer error" );
+
+      db->validate_invariants();
+      db->validate_smt_invariants();
    }
    FC_LOG_AND_RETHROW()   
 }
@@ -613,6 +677,9 @@ BOOST_AUTO_TEST_CASE( comment_votable_assers_validate )
    {
       BOOST_TEST_MESSAGE( "Test Comment Votable Assets Validate" );
       ACTORS((alice));
+
+      generate_block();
+
       std::array<asset_symbol_type, SMT_MAX_VOTABLE_ASSETS + 1> smts;
       /// Create one more than limit to test negative cases
       for(size_t i = 0; i < SMT_MAX_VOTABLE_ASSETS + 1; ++i)

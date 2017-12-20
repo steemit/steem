@@ -6,9 +6,6 @@
 #include <steem/chain/index.hpp>
 #include <steem/chain/operation_notification.hpp>
 
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
-
 #include <steem/protocol/smt_operations.hpp>
 
 namespace steem { namespace plugins { namespace smt_test {
@@ -272,8 +269,8 @@ void smt_test_plugin::plugin_initialize( const boost::program_options::variables
       ilog( "Initializing smt_test plugin" );
       chain::database& db = appbase::app().get_plugin< steem::plugins::chain::chain_plugin >().db();
 
-      db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      db.pre_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->post_operation( o ); } );
 
       // add_plugin_index< key_lookup_index >(db);
    }

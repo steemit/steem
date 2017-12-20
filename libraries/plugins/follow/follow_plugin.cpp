@@ -12,9 +12,6 @@
 #include <steem/chain/account_object.hpp>
 #include <steem/chain/comment_object.hpp>
 
-#include <graphene/schema/schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
-
 #include <fc/smart_ref_impl.hpp>
 #include <fc/thread/thread.hpp>
 
@@ -370,8 +367,8 @@ void follow_plugin::plugin_initialize( const boost::program_options::variables_m
       // Add the registry to the database so the database can delegate custom ops to the plugin
       my->_db.set_custom_operation_interpreter( name(), _custom_operation_interpreter );
 
-      my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& o ){ my->pre_operation( o ); } );
-      my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& o ){ my->post_operation( o ); } );
+      my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->pre_operation( o ); } );
+      my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& o ){ my->post_operation( o ); } );
       add_plugin_index< follow_index            >( my->_db );
       add_plugin_index< feed_index              >( my->_db );
       add_plugin_index< blog_index              >( my->_db );

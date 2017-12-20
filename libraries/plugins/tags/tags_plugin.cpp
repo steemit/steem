@@ -505,9 +505,9 @@ void tags_plugin::plugin_initialize(const boost::program_options::variables_map&
    ilog("Intializing tags plugin" );
    my = std::make_unique< detail::tags_plugin_impl >();
 
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect(  [&]( const operation_notification& note ){ my->pre_operation( note ); } );
-   my->post_apply_connection = my->_db.post_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(  note ); } );
-   my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( [this]()
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->pre_operation( note ); } );
+   my->post_apply_connection = my->_db.post_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->on_operation(  note ); } );
+   my->on_sync_connection = appbase::app().get_plugin< chain::chain_plugin >().on_sync.connect( 0, [this]()
    {
       my->_db.with_write_lock( [this]()
       {
