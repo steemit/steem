@@ -2,8 +2,6 @@ file(GLOB HEADERS "include/steem/plugins/witness/*.hpp")
 
 add_library( witness_plugin
              witness_plugin.cpp
-             witness_evaluators.cpp
-             witness_operations.cpp
              ${HEADERS}
            )
 

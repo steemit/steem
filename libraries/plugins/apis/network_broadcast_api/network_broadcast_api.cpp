@@ -18,7 +18,7 @@ namespace detail
             _chain( appbase::app().get_plugin< steem::plugins::chain::chain_plugin >() )
          {
             _on_applied_block_connection = _chain.db().applied_block.connect(
-               [&]( const signed_block& b ){ on_applied_block( b ); } );
+               0, [&]( const signed_block& b ){ on_applied_block( b ); } );
          }
 
          DECLARE_API_IMPL(

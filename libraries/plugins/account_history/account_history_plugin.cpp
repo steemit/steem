@@ -220,7 +220,7 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
 {
    my = std::make_unique< detail::account_history_plugin_impl >();
 
-   my->pre_apply_connection = my->_db.pre_apply_operation.connect( [&]( const operation_notification& note ){ my->on_operation(note); } );
+   my->pre_apply_connection = my->_db.pre_apply_operation.connect( 0, [&]( const operation_notification& note ){ my->on_operation(note); } );
 
    typedef pair< account_name_type, account_name_type > pairstring;
    STEEM_LOAD_VALUE_SET(options, "account-history-track-account-range", my->_tracked_accounts, pairstring);

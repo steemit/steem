@@ -217,7 +217,7 @@ struct database_fixture {
 
    void fund( const string& account_name, const share_type& amount = 500000 );
    void fund( const string& account_name, const asset& amount );
-   void transfer( const string& from, const string& to, const share_type& steem );
+   void transfer( const string& from, const string& to, const asset& amount );
    void convert( const string& account_name, const asset& amount );
    void vest( const string& from, const share_type& amount );
    void vest( const string& account, const asset& amount );
@@ -255,8 +255,6 @@ struct smt_database_fixture : public clean_database_fixture
 
    asset_symbol_type create_smt( signed_transaction& trx, const string& account_name, const fc::ecc::private_key& key,
       uint8_t token_decimal_places );
-
-   void transfer_smt( const string& from, const string& to, const asset& steem );
 
    /// Creates 3 different SMTs for provided control account, one with 0 precision, the other two with the same non-zero precision.
    std::array<asset_symbol_type, 3> create_smt_3(const char* control_account_name, const fc::ecc::private_key& key);

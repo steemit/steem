@@ -1,12 +1,12 @@
 
 #pragma once
 
-#include <graphene/schema/abstract_schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
+#include <steem/schema/abstract_schema.hpp>
+#include <steem/schema/schema_impl.hpp>
 
 #include <fc/static_variant.hpp>
 
-namespace graphene { namespace schema { namespace detail {
+namespace steem { namespace schema { namespace detail {
 
 //////////////////////////////////////////////
 // static_variant                           //

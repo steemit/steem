@@ -6,7 +6,7 @@
 
 #include <fc/reflect/reflect.hpp>
 
-namespace graphene { namespace schema {
+namespace steem { namespace schema {
 
 struct abstract_schema
 {
@@ -52,4 +52,4 @@ std::shared_ptr< abstract_schema > get_schema_for_type()
 
 void add_dependent_schemas( std::vector< std::shared_ptr< abstract_schema > >& schema_list );
 
-} } // graphene::schema
+} } // steem::schema

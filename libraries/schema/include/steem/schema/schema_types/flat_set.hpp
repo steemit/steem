@@ -1,32 +1,32 @@
 
 #pragma once
 
-#include <graphene/schema/abstract_schema.hpp>
-#include <graphene/schema/schema_impl.hpp>
+#include <steem/schema/abstract_schema.hpp>
+#include <steem/schema/schema_impl.hpp>
 
-#include <vector>
+#include <boost/container/flat_set.hpp>
 
-namespace graphene { namespace schema { namespace detail {
+namespace steem { namespace schema { namespace detail {
 
 //////////////////////////////////////////////
-// vector                                   //
+// flat_set                                 //
 //////////////////////////////////////////////
 
 template< typename E >
-struct schema_vector_impl
+struct schema_flat_set_impl
    : public abstract_schema
 {
-   GRAPHENE_SCHEMA_CLASS_BODY( schema_vector_impl )
+   GRAPHENE_SCHEMA_CLASS_BODY( schema_flat_set_impl )
 };
 
 template< typename E >
-void schema_vector_impl< E >::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )
+void schema_flat_set_impl< E >::get_deps( std::vector< std::shared_ptr< abstract_schema > >& deps )
 {
    deps.push_back( get_schema_for_type<E>() );
 }
 
 template< typename E >
-void schema_vector_impl< E >::get_str_schema( std::string& s )
+void schema_flat_set_impl< E >::get_str_schema( std::string& s )
 {
    if( str_schema != "" )
    {
@@ -43,7 +43,7 @@ void schema_vector_impl< E >::get_str_schema( std::string& s )
    get_name( my_name );
    fc::mutable_variant_object mvo;
    mvo("name", my_name)
-      ("type", "list")
+      ("type", "set")
       ("etype", e_name)
       ;
 
@@ -55,9 +55,9 @@ void schema_vector_impl< E >::get_str_schema( std::string& s )
 }
 
 template< typename E >
-struct schema_reflect< std::vector< E > >
+struct schema_reflect< boost::container::flat_set< E > >
 {
-   typedef detail::schema_vector_impl< E >        schema_impl_type;
+   typedef detail::schema_flat_set_impl< E >        schema_impl_type;
 };
 
 } }
