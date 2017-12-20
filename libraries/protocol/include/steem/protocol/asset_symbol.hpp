@@ -8,20 +8,20 @@
 #define SMT_MIN_NAI                       1
 #define STEEM_ASSET_SYMBOL_MAX_LENGTH     10
 
-#define STEEM_PRECISION_STEEM (3)
 #define STEEM_PRECISION_SBD   (3)
+#define STEEM_PRECISION_STEEM (3)
 #define STEEM_PRECISION_VESTS (6)
 
 // One's place is used for check digit, which means NAI 0-9 all have NAI data of 0 which is invalid
 // This space is safe to use because it would alwasys result in failure to convert from NAI
-#define STEEM_NAI_STEEM (1)
-#define STEEM_NAI_SBD   (2)
+#define STEEM_NAI_SBD   (1)
+#define STEEM_NAI_STEEM (2)
 #define STEEM_NAI_VESTS (3)
 
-#define STEEM_ASSET_NUM_STEEM \
-  (((SMT_MAX_NAI + STEEM_NAI_STEEM) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_STEEM)
 #define STEEM_ASSET_NUM_SBD \
   (((SMT_MAX_NAI + STEEM_NAI_SBD)   << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_SBD)
+#define STEEM_ASSET_NUM_STEEM \
+  (((SMT_MAX_NAI + STEEM_NAI_STEEM) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_STEEM)
 #define STEEM_ASSET_NUM_VESTS \
   (((SMT_MAX_NAI + STEEM_NAI_VESTS) << STEEM_ASSET_SYMBOL_PRECISION_BITS) | STEEM_PRECISION_VESTS)
 

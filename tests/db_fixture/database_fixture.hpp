@@ -137,7 +137,7 @@ extern uint32_t ( STEEM_TESTING_GENESIS_TIMESTAMP );
    asset_symbol_type name ## _symbol = name_to_asset_symbol( #name , decimal_places );
 
 #define ASSET( s ) \
-   asset::from_string( s )
+   legacy_asset::from_string( s ).to_asset< false >()
 
 namespace steem { namespace chain {
 

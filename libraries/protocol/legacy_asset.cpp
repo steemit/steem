@@ -2,7 +2,7 @@
 
 namespace steem { namespace protocol {
 
-uint8_t legacy_steem_asset::decimals()const
+uint8_t legacy_asset::decimals()const
 {
    auto a = (const char*)&symbol.ser;
    uint8_t result = uint8_t( a[0] );
@@ -10,21 +10,21 @@ uint8_t legacy_steem_asset::decimals()const
    return result;
 }
 
-void legacy_steem_asset::set_decimals(uint8_t d)
+void legacy_asset::set_decimals(uint8_t d)
 {
    FC_ASSERT( d < 15 );
    auto a = (char*)&symbol;
    a[0] = d;
 }
 
-std::string legacy_steem_asset::symbol_name()const
+std::string legacy_asset::symbol_name()const
 {
    auto a = (const char*)&symbol;
    FC_ASSERT( a[7] == 0 );
    return &a[1];
 }
 
-int64_t legacy_steem_asset::precision()const
+int64_t legacy_asset::precision()const
 {
    static int64_t table[] = {
                      1, 10, 100, 1000, 10000,
@@ -37,7 +37,7 @@ int64_t legacy_steem_asset::precision()const
    return table[ d ];
 }
 
-string legacy_steem_asset::to_string()const
+string legacy_asset::to_string()const
 {
    int64_t prec = precision();
    string result = fc::to_string(amount.value / prec);
@@ -53,7 +53,7 @@ string legacy_steem_asset::to_string()const
    return result + " " + symbol_name();
 }
 
-legacy_steem_asset legacy_steem_asset::from_string( const string& from )
+legacy_asset legacy_asset::from_string( const string& from )
 {
    try
    {
@@ -63,7 +63,7 @@ legacy_steem_asset legacy_steem_asset::from_string( const string& from )
 
       FC_ASSERT( space_pos != std::string::npos );
 
-      legacy_steem_asset result;
+      legacy_asset result;
       result.symbol.ser = uint64_t(0);
       auto sy = (char*)&result.symbol.ser;
 

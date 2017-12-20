@@ -809,9 +809,9 @@ public:
             {
                bid_sum += asset( orders.bids[i].sbd, SBD_SYMBOL );
                ss
-                  << ' ' << setw( spacing ) << legacy_steem_asset::from_asset( bid_sum ).to_string()
-                  << ' ' << setw( spacing ) << legacy_steem_asset::from_asset( asset( orders.bids[i].sbd, SBD_SYMBOL ) ).to_string()
-                  << ' ' << setw( spacing ) << legacy_steem_asset::from_asset( asset( orders.bids[i].steem, STEEM_SYMBOL ) ).to_string()
+                  << ' ' << setw( spacing ) << legacy_asset::from_asset( bid_sum ).to_string()
+                  << ' ' << setw( spacing ) << legacy_asset::from_asset( asset( orders.bids[i].sbd, SBD_SYMBOL ) ).to_string()
+                  << ' ' << setw( spacing ) << legacy_asset::from_asset( asset( orders.bids[i].steem, STEEM_SYMBOL ) ).to_string()
                   << ' ' << setw( spacing ) << orders.bids[i].real_price;
             }
             else
@@ -825,17 +825,17 @@ public:
             {
                ask_sum += asset( orders.asks[i].sbd, SBD_SYMBOL );
                ss << ' ' << setw( spacing ) << orders.asks[i].real_price
-                  << ' ' << setw( spacing ) << legacy_steem_asset::from_asset( asset( orders.asks[i].steem, STEEM_SYMBOL ) ).to_string()
-                  << ' ' << setw( spacing ) << legacy_steem_asset::from_asset( asset( orders.asks[i].sbd, SBD_SYMBOL ) ).to_string()
-                  << ' ' << setw( spacing ) << legacy_steem_asset::from_asset( ask_sum ).to_string();
+                  << ' ' << setw( spacing ) << legacy_asset::from_asset( asset( orders.asks[i].steem, STEEM_SYMBOL ) ).to_string()
+                  << ' ' << setw( spacing ) << legacy_asset::from_asset( asset( orders.asks[i].sbd, SBD_SYMBOL ) ).to_string()
+                  << ' ' << setw( spacing ) << legacy_asset::from_asset( ask_sum ).to_string();
             }
 
             ss << endl;
          }
 
          ss << endl
-            << "Bid Total: " << legacy_steem_asset::from_asset( bid_sum ).to_string() << endl
-            << "Ask Total: " << legacy_steem_asset::from_asset( ask_sum ).to_string() << endl;
+            << "Bid Total: " << legacy_asset::from_asset( bid_sum ).to_string() << endl
+            << "Ask Total: " << legacy_asset::from_asset( ask_sum ).to_string() << endl;
 
          return ss.str();
       };

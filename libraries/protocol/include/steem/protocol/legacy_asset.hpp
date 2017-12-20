@@ -10,10 +10,11 @@
 
 namespace steem { namespace protocol {
 
-class legacy_steem_asset_symbol_type
+class legacy_asset_symbol_type
 {
    public:
-      legacy_steem_asset_symbol_type() {}
+      legacy_asset_symbol_type() {}
+      legacy_asset_symbol_type( uint64_t _ser ) : ser( _ser ) {}
 
       bool is_canon()const
       {   return ( ser == STEEM_SYMBOL_SER );    }
@@ -21,10 +22,10 @@ class legacy_steem_asset_symbol_type
       uint64_t ser = STEEM_SYMBOL_SER;
 };
 
-struct legacy_steem_asset
+struct legacy_asset
 {
    public:
-      legacy_steem_asset() {}
+      legacy_asset() {}
 
       template< bool force_canon >
       asset to_asset()const
@@ -33,20 +34,45 @@ struct legacy_steem_asset
          {
             FC_ASSERT( symbol.is_canon(), "Must use canonical STEEM symbol serialization" );
          }
-         return asset( amount, STEEM_SYMBOL );
+
+         switch( symbol.ser )
+         {
+            case( SBD_SYMBOL_SER ):
+               return asset( amount, SBD_SYMBOL );
+            case( VESTS_SYMBOL_SER ):
+               return asset( amount, VESTS_SYMBOL );
+            case( STEEM_SYMBOL_SER ): // fallthrough
+            default:
+               return asset( amount, STEEM_SYMBOL );
+         }
       }
 
-      static legacy_steem_asset from_amount( share_type amount )
+      static legacy_asset from_amount( share_type amount )
       {
-         legacy_steem_asset leg;
+         legacy_asset leg;
          leg.amount = amount;
          return leg;
       }
 
-      static legacy_steem_asset from_asset( const asset& a )
+      static legacy_asset from_asset( const asset& a )
       {
-         FC_ASSERT( a.symbol == STEEM_SYMBOL );
-         return from_amount( a.amount );
+         auto leg = from_amount( a.amount );
+
+         switch( a.symbol.asset_num )
+         {
+            case STEEM_ASSET_NUM_STEEM:
+               leg.symbol.ser = STEEM_SYMBOL_SER;
+               break;
+            case STEEM_ASSET_NUM_SBD:
+               leg.symbol.ser = SBD_SYMBOL_SER;
+               break;
+            case STEEM_ASSET_NUM_VESTS:
+               leg.symbol.ser = VESTS_SYMBOL_SER;
+            default:
+               FC_ASSERT( false, "Unknown legacy asset symbol" );
+         }
+
+         return leg;
       }
 
       uint8_t     decimals()const;
@@ -55,10 +81,10 @@ struct legacy_steem_asset
       int64_t     precision()const;
 
       string to_string()const;
-      static legacy_steem_asset from_string( const string& from );
+      static legacy_asset from_string( const string& from );
 
       share_type                       amount;
-      legacy_steem_asset_symbol_type   symbol;
+      legacy_asset_symbol_type   symbol;
 };
 
 } }
@@ -66,7 +92,7 @@ struct legacy_steem_asset
 namespace fc { namespace raw {
 
 template< typename Stream >
-inline void pack( Stream& s, const steem::protocol::legacy_steem_asset_symbol_type& sym )
+inline void pack( Stream& s, const steem::protocol::legacy_asset_symbol_type& sym )
 {
    switch( sym.ser )
    {
@@ -85,7 +111,7 @@ inline void pack( Stream& s, const steem::protocol::legacy_steem_asset_symbol_ty
 }
 
 template< typename Stream >
-inline void unpack( Stream& s, steem::protocol::legacy_steem_asset_symbol_type& sym )
+inline void unpack( Stream& s, steem::protocol::legacy_asset_symbol_type& sym )
 {
    //  994240:        "account_creation_fee": "0.1 STEEM"
    // 1021529:        "account_creation_fee": "10.0 STEEM"
@@ -117,19 +143,19 @@ inline void unpack( Stream& s, steem::protocol::legacy_steem_asset_symbol_type& 
 
 } // fc::raw
 
-inline void to_variant( const steem::protocol::legacy_steem_asset& leg, fc::variant& v )
+inline void to_variant( const steem::protocol::legacy_asset& leg, fc::variant& v )
 {
    v = leg.to_string();
 }
 
-inline void from_variant( const fc::variant& v, steem::protocol::legacy_steem_asset& leg )
+inline void from_variant( const fc::variant& v, steem::protocol::legacy_asset& leg )
 {
-   leg = steem::protocol::legacy_steem_asset::from_string( v.as_string() );
+   leg = steem::protocol::legacy_asset::from_string( v.as_string() );
 }
 
 } // fc
 
-FC_REFLECT( steem::protocol::legacy_steem_asset,
+FC_REFLECT( steem::protocol::legacy_asset,
    (amount)
    (symbol)
    )
