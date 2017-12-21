@@ -1,0 +1,14 @@
+{
+  "id": 47,
+  "method": "call",
+  "jsonrpc": "2.0",
+  "params": [
+    "condenser_api",
+    "get_following",[
+      "jenkinrocket",
+      "smooth",
+      "blog",
+      100
+    ]
+  ]
+}

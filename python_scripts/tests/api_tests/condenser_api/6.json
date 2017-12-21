@@ -1,0 +1,14 @@
+{
+  "id": 6,
+  "method": "call",
+  "jsonrpc": "2.0",
+  "params": [
+    "condenser_api",
+    "get_following",[
+      "ned",
+      "",
+      "blog",
+      100
+    ]
+  ]
+}

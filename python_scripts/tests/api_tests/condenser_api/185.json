@@ -1,0 +1,9 @@
+{
+  "id": 185,
+  "method": "call",
+  "jsonrpc": "2.0",
+  "params": [
+    "condenser_api",
+    "get_dynamic_global_properties",[]
+  ]
+}
