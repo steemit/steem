@@ -40,6 +40,44 @@
    #define CHAINBASE_REQUIRE_WRITE_LOCK(m, t)
 #endif
 
+namespace helpers
+{
+   struct index_statistic_info
+   {
+      std::string _value_type_name;
+      size_t      _item_count = 0;
+      size_t      _item_sizeof = 0;
+      /// Additional (ie dynamic container) allocations held in stored items 
+      size_t      _item_additional_allocation = 0;
+      /// Additional memory used for container internal structures (like tree nodes).
+      size_t      _additional_container_allocation = 0;
+   };
+   
+   template <class IndexType>
+   void gather_index_static_data(const IndexType& index, index_statistic_info* info)
+   {
+      info->_value_type_name = boost::core::demangle(typeid(typename IndexType::value_type).name());
+      info->_item_count = index.size();
+      info->_item_sizeof = sizeof(typename IndexType::value_type);
+      info->_item_additional_allocation = 0;
+      size_t pureNodeSize = sizeof(typename IndexType::node_type) -
+         sizeof(typename IndexType::value_type);
+      info->_additional_container_allocation = info->_item_count*pureNodeSize;
+   }
+
+   template <class IndexType>
+   class index_statistic_provider
+   {
+   public:
+      index_statistic_info gather_statistics(const IndexType& index, bool onlyStaticInfo) const
+      {
+         index_statistic_info info;
+         gather_index_static_data(index, &info);
+         return info;
+      }
+   };
+} /// namespace helpers
+
 namespace chainbase {
 
    namespace bip = boost::interprocess;
@@ -571,6 +609,9 @@ namespace chainbase {
    class abstract_index
    {
       public:
+      
+         typedef helpers::index_statistic_info statistic_info;
+
          abstract_index( void* i ):_idx_ptr(i){}
          virtual ~abstract_index(){}
          virtual void     set_revision( int64_t revision ) = 0;
@@ -585,6 +626,8 @@ namespace chainbase {
 
          virtual void remove_object( int64_t id ) = 0;
 
+         virtual statistic_info get_statistics(bool onlyStaticInfo) const = 0;
+
          void add_index_extension( std::shared_ptr< index_extension > ext )  { _extensions.push_back( ext ); }
          const index_extensions& get_index_extensions()const  { return _extensions; }
          void* get()const { return _idx_ptr; }
@@ -596,6 +639,9 @@ namespace chainbase {
    template<typename BaseIndex>
    class index_impl : public abstract_index {
       public:
+
+         using abstract_index::statistic_info;
+
          index_impl( BaseIndex& base ):abstract_index( &base ),_base(base){}
 
          virtual unique_ptr<abstract_session> start_undo_session( bool enabled ) override {
@@ -611,6 +657,14 @@ namespace chainbase {
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
 
          virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
+
+         virtual statistic_info get_statistics(bool onlyStaticInfo) const override final
+         {
+            typedef typename BaseIndex::index_type index_type;
+            helpers::index_statistic_provider<index_type> provider;
+            return provider.gather_statistics(_base.indices(), onlyStaticInfo);
+         }
+
       private:
          BaseIndex& _base;
    };
@@ -1009,6 +1063,14 @@ namespace chainbase {
          int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
+
+      public:
+
+         typedef vector<abstract_index*> abstract_index_cntr_t;
+   
+         const abstract_index_cntr_t& get_abstract_index_cntr() const
+            { return _index_list; }
+
    };
 
    template<typename Object, typename... Args>

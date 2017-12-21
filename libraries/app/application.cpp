@@ -59,6 +59,8 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
+#include <graphene/utilities/benchmark_dumper.hpp>
+
 namespace steemit { namespace app {
 using graphene::net::item_hash_t;
 using graphene::net::item_id;
@@ -394,6 +396,21 @@ namespace detail {
 
          reset_websocket_server();
          reset_websocket_tls_server();
+
+         const auto& abstract_index_cntr = _chain_db->get_abstract_index_cntr();
+         typedef steem::utilities::benchmark_dumper::index_memory_details_cntr_t index_memory_details_cntr_t;
+         index_memory_details_cntr_t index_memory_details_cntr;
+
+         for (auto idx : abstract_index_cntr)
+         {
+            auto info = idx->get_statistics( true );
+            index_memory_details_cntr.emplace_back(std::move(info._value_type_name), info._item_count,
+               info._item_sizeof, info._item_additional_allocation, info._additional_container_allocation);
+         }
+
+         steem::utilities::benchmark_dumper dumper;
+         dumper.dump( index_memory_details_cntr );
+
       } FC_LOG_AND_RETHROW() }
 
       optional< api_access_info > get_api_access_info(const string& username)const
