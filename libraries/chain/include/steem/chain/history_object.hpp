@@ -4,6 +4,7 @@
 #include <steem/protocol/operations.hpp>
 #include <steem/protocol/steem_operations.hpp>
 
+#include <steem/chain/buffer_type.hpp>
 #include <steem/chain/steem_object_types.hpp>
 #include <steem/chain/witness_objects.hpp>
 
