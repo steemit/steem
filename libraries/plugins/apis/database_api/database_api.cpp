@@ -1362,7 +1362,7 @@ DEFINE_API_IMPL( database_api_impl, get_order_book )
 
 DEFINE_API_IMPL( database_api_impl, get_transaction_hex )
 {
-   return get_transaction_hex_return( { fc::to_hex( fc::raw::pack( args.trx ) ) } );
+   return get_transaction_hex_return( { fc::to_hex( fc::raw::pack_to_vector( args.trx ) ) } );
 }
 
 DEFINE_API_IMPL( database_api_impl, get_required_signatures )

@@ -6735,38 +6735,38 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_validate )
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting account_creation_fee with incorrect symbol" );
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TBD" ) );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_creation_fee" ] = fc::raw::pack_to_vector( ASSET( "2.000 TBD" ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting maximum_block_size below STEEM_MIN_BLOCK_SIZE_LIMIT" );
       prop_op.props.erase( "account_creation_fee" );
-      prop_op.props[ "maximum_block_size" ] = fc::raw::pack( STEEM_MIN_BLOCK_SIZE_LIMIT - 1 );
+      prop_op.props[ "maximum_block_size" ] = fc::raw::pack_to_vector( STEEM_MIN_BLOCK_SIZE_LIMIT - 1 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting sbd_interest_rate with negative number" );
       prop_op.props.erase( "maximum_block_size" );
-      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( -700 );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( -700 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting sbd_interest_rate to STEEM_100_PERCENT + 1" );
       prop_op.props[ "sbd_interest_rate" ].clear();
-      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( STEEM_100_PERCENT + 1 );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( STEEM_100_PERCENT + 1 );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting new sbd_exchange_rate with SBD / STEEM" );
       prop_op.props.erase( "sbd_interest_rate" );
-      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET( "1.000 TESTS" ), ASSET( "10.000 TBD" ) ) );
+      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( price( ASSET( "1.000 TESTS" ), ASSET( "10.000 TBD" ) ) );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting new url with length of zero" );
       prop_op.props.erase( "sbd_exchange_rate" );
-      prop_op.props[ "url" ] = fc::raw::pack( "" );
+      prop_op.props[ "url" ] = fc::raw::pack_to_vector( "" );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
       BOOST_TEST_MESSAGE( "--- failure when setting new url with non UTF-8 character" );
       prop_op.props[ "url" ].clear();
-      prop_op.props[ "url" ] = fc::raw::pack( "\xE0\x80\x80" );
+      prop_op.props[ "url" ] = fc::raw::pack_to_vector( "\xE0\x80\x80" );
       STEEM_REQUIRE_THROW( prop_op.validate(), fc::assert_exception );
 
    }
@@ -6781,7 +6781,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_authorities )
 
       witness_set_properties_operation op;
       op.owner = "alice";
-      op.props[ "key" ] = fc::raw::pack( generate_private_key( "key" ).get_public_key() );
+      op.props[ "key" ] = fc::raw::pack_to_vector( generate_private_key( "key" ).get_public_key() );
 
       flat_set< account_name_type > auths;
       flat_set< account_name_type > expected;
@@ -6852,8 +6852,8 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       const witness_object& alice_witness = db->get_witness( "alice" );
       witness_set_properties_operation prop_op;
       prop_op.owner = "alice";
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "account_creation_fee" ] = fc::raw::pack( ASSET( "2.000 TESTS" ) );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_creation_fee" ] = fc::raw::pack_to_vector( ASSET( "2.000 TESTS" ) );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6862,7 +6862,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting maximum_block_size
       prop_op.props.erase( "account_creation_fee" );
-      prop_op.props[ "maximum_block_size" ] = fc::raw::pack( STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
+      prop_op.props[ "maximum_block_size" ] = fc::raw::pack_to_vector( STEEM_MIN_BLOCK_SIZE_LIMIT + 1 );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6871,7 +6871,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting sbd_interest_rate
       prop_op.props.erase( "maximim_block_size" );
-      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack( 700 );
+      prop_op.props[ "sbd_interest_rate" ] = fc::raw::pack_to_vector( 700 );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6883,7 +6883,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       signing_key = generate_private_key( "new_key" );
       public_key_type alice_pub = signing_key.get_public_key();
       prop_op.props.erase( "sbd_interest_rate" );
-      prop_op.props[ "new_signing_key" ] = fc::raw::pack( alice_pub );
+      prop_op.props[ "new_signing_key" ] = fc::raw::pack_to_vector( alice_pub );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( old_signing_key, db->get_chain_id() );
@@ -6893,8 +6893,8 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       // Setting new sbd_exchange_rate
       prop_op.props.erase( "new_signing_key" );
       prop_op.props[ "key" ].clear();
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "sbd_exchange_rate" ] = fc::raw::pack_to_vector( price( ASSET(" 1.000 TBD" ), ASSET( "100.000 TESTS" ) ) );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6904,7 +6904,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting new url
       prop_op.props.erase( "sbd_exchange_rate" );
-      prop_op.props[ "url" ] = fc::raw::pack( "foo.bar" );
+      prop_op.props[ "url" ] = fc::raw::pack_to_vector( "foo.bar" );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6913,7 +6913,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       // Setting new extranious_property
       prop_op.props.erase( "sbd_exchange_rate" );
-      prop_op.props[ "extranious_property" ] = fc::raw::pack( "foo" );
+      prop_op.props[ "extraneous_property" ] = fc::raw::pack_to_vector( "foo" );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
@@ -6922,7 +6922,7 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
       BOOST_TEST_MESSAGE( "--- Testing failure when 'key' does not match witness signing key" );
       prop_op.props.erase( "extranious_property" );
       prop_op.props[ "key" ].clear();
-      prop_op.props[ "key" ] = fc::raw::pack( old_signing_key.get_public_key() );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( old_signing_key.get_public_key() );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( old_signing_key, db->get_chain_id() );
@@ -6930,8 +6930,8 @@ BOOST_AUTO_TEST_CASE( witness_set_properties_apply )
 
       BOOST_TEST_MESSAGE( "--- Testing setting account subsidy limit" );
       prop_op.props[ "key" ].clear();
-      prop_op.props[ "key" ] = fc::raw::pack( signing_key.get_public_key() );
-      prop_op.props[ "account_subsidy_limit" ] = fc::raw::pack( 1000 );
+      prop_op.props[ "key" ] = fc::raw::pack_to_vector( signing_key.get_public_key() );
+      prop_op.props[ "account_subsidy_limit" ] = fc::raw::pack_to_vector( 1000 );
       tx.clear();
       tx.operations.push_back( prop_op );
       tx.sign( signing_key, db->get_chain_id() );
