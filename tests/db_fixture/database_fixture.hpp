@@ -222,6 +222,7 @@ struct database_fixture {
    void vest( const string& account, const asset& amount );
    void proxy( const string& account, const string& proxy );
    void set_price_feed( const price& new_price );
+   void set_witness_props( const flat_map< string, vector< char > >& new_props );
    const asset& get_balance( const string& account_name )const;
    void sign( signed_transaction& trx, const fc::ecc::private_key& key );
 

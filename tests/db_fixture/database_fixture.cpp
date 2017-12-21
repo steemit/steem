@@ -532,27 +532,39 @@ void database_fixture::proxy( const string& account, const string& proxy )
 
 void database_fixture::set_price_feed( const price& new_price )
 {
-   try
-   {
-      for ( int i = 1; i < 8; i++ )
-      {
-         feed_publish_operation op;
-         op.publisher = STEEM_INIT_MINER_NAME + fc::to_string( i );
-         op.exchange_rate = new_price;
-         trx.operations.push_back( op );
-         trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-         db->push_transaction( trx, ~0 );
-         trx.operations.clear();
-      }
-   } FC_CAPTURE_AND_RETHROW( (new_price) )
+   flat_map< string, vector< char > > props;
+   props[ "sbd_exchange_rate" ] = fc::raw::pack( new_price );
 
-   generate_blocks( STEEM_BLOCKS_PER_HOUR );
+   set_witness_props( props );
+
    BOOST_REQUIRE(
 #ifdef IS_TEST_NET
       !db->skip_price_feed_limit_check ||
 #endif
       db->get(feed_history_id_type()).current_median_history == new_price
    );
+}
+
+void database_fixture::set_witness_props( const flat_map< string, vector< char > >& props )
+{
+   for( size_t i = 1; i < 8; i++ )
+   {
+      witness_set_properties_operation op;
+      op.owner = STEEM_INIT_MINER_NAME + fc::to_string( i );
+      op.props = props;
+
+      if( op.props.find( "key" ) == op.props.end() )
+      {
+         op.props[ "key" ] = fc::raw::pack( init_account_pub_key );
+      }
+
+      trx.operations.push_back( op );
+      trx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
+      db->push_transaction( trx, ~0 );
+      trx.operations.clear();
+   }
+
+   generate_blocks( STEEM_BLOCKS_PER_HOUR );
 }
 
 const asset& database_fixture::get_balance( const string& account_name )const
@@ -613,7 +625,7 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 
       set_price_feed( price( ASSET( "1.000 TBD" ), ASSET( "1.000 TESTS" ) ) );
       convert( account_name, ASSET( "5000.000 TESTS" ) );
-      
+
       // The list of available nais is not dependent on SMT desired precision (token_decimal_places).
       auto available_nais =  db->get_smt_next_identifier();
       FC_ASSERT( available_nais.size() > 0, "No available nai returned by get_smt_next_identifier." );
@@ -630,7 +642,7 @@ asset_symbol_type smt_database_fixture::create_smt( signed_transaction& tx, cons
 
       db->push_transaction( tx, 0 );
 
-      generate_block();      
+      generate_block();
    }
    FC_LOG_AND_RETHROW();
 
