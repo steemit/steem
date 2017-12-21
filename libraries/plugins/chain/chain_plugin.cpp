@@ -160,7 +160,7 @@ void chain_plugin::plugin_startup()
    db_open_args.stop_replay_at = my->stop_replay_at;
  
    auto benchmark_lambda = [&dumper, &get_indexes_memory_details, dump_memory_details] ( uint32_t current_block_number,
-   const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
+      const chainbase::database::abstract_index_cntr_t& abstract_index_cntr )
    {
       if( current_block_number == 0 ) // initial call
       {
@@ -219,7 +219,7 @@ void chain_plugin::plugin_startup()
    }
    else
    {
-      steem::chain::database::TBenchmark benchmark(dump_memory_details, benchmark_lambda);
+      db_open_args.benchmark = steem::chain::database::TBenchmark(dump_memory_details, benchmark_lambda);
      
       try
       {
