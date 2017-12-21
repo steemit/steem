@@ -13,7 +13,8 @@
 
 #define STEEM_INIT_PRIVATE_KEY                (fc::ecc::private_key::regenerate(fc::sha256::hash(std::string("init_key"))))
 #define STEEM_INIT_PUBLIC_KEY_STR             (std::string( steem::protocol::public_key_type(STEEM_INIT_PRIVATE_KEY.get_public_key()) ))
-#define STEEM_CHAIN_ID                        (fc::sha256::hash("testnet"))
+#define STEEM_CHAIN_ID_NAME "testnet"
+#define STEEM_CHAIN_ID (fc::sha256::hash(STEEM_CHAIN_ID_NAME))
 #define STEEM_ADDRESS_PREFIX                  "TST"
 
 #define STEEM_GENESIS_TIME                    (fc::time_point_sec(1451606400))
@@ -33,12 +34,16 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::seconds(0)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
+
+#define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
+
 #else // IS LIVE STEEM NETWORK
 
-#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 3) )
+#define STEEM_BLOCKCHAIN_VERSION              ( version(0, 19, 4) )
 
 #define STEEM_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
-#define STEEM_CHAIN_ID                        (steem::protocol::chain_id_type())
+#define STEEM_CHAIN_ID_NAME ""
+#define STEEM_CHAIN_ID fc::sha256()
 #define STEEM_ADDRESS_PREFIX                  "STM"
 
 #define STEEM_GENESIS_TIME                    (fc::time_point_sec(1458835200))
@@ -57,6 +62,8 @@
 #define STEEM_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::minutes(60)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
+
+#define STEEM_INIT_SUPPLY                     int64_t(0)
 
 #endif
 
@@ -207,8 +214,8 @@
 #define STEEM_MAX_PERMLINK_LENGTH             256
 #define STEEM_MAX_WITNESS_URL_LENGTH          2048
 
-#define STEEM_INIT_SUPPLY                     int64_t(0)
 #define STEEM_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
+#define STEEM_MAX_SATOSHIS                    int64_t(4611686018427387903ll)
 #define STEEM_MAX_SIG_CHECK_DEPTH             2
 
 #define STEEM_MIN_TRANSACTION_SIZE_LIMIT      1024
@@ -218,6 +225,7 @@
 #define STEEM_MAX_TRANSACTION_SIZE            (1024*64)
 #define STEEM_MIN_BLOCK_SIZE_LIMIT            (STEEM_MAX_TRANSACTION_SIZE)
 #define STEEM_MAX_BLOCK_SIZE                  (STEEM_MAX_TRANSACTION_SIZE*STEEM_BLOCK_INTERVAL*2000)
+#define STEEM_SOFT_MAX_BLOCK_SIZE             (2*1024*1024)
 #define STEEM_BLOCKS_PER_HOUR                 (60*60/STEEM_BLOCK_INTERVAL)
 #define STEEM_FEED_INTERVAL_BLOCKS            (STEEM_BLOCKS_PER_HOUR)
 #define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day

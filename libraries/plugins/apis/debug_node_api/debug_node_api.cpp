@@ -103,7 +103,9 @@ DEFINE_API( debug_node_api_impl, debug_push_blocks )
 
 DEFINE_API( debug_node_api_impl, debug_generate_blocks )
 {
-   return { _debug_node.debug_generate_blocks( args.debug_key, args.count, chain::database::skip_nothing, 0 ) };
+   debug_generate_blocks_return ret;
+   _debug_node.debug_generate_blocks( ret, args );
+   return ret;
 }
 
 DEFINE_API( debug_node_api_impl, debug_generate_blocks_until )

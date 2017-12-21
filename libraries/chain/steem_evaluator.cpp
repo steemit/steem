@@ -83,6 +83,12 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
       wlog( "Wrong fee symbol in block ${b}", ("b", _db.head_block_num()+1) );
    }
 
+   #pragma message( "TODO: This needs to be part of HF 20 and moved to validate if not triggered in previous blocks" )
+   if( _db.is_producing() )
+   {
+      FC_ASSERT( o.props.maximum_block_size <= STEEM_SOFT_MAX_BLOCK_SIZE, "Max block size cannot be more than 2MiB" );
+   }
+
    const auto& by_witness_name_idx = _db.get_index< witness_index >().indices().get< by_name >();
    auto wit_itr = by_witness_name_idx.find( o.owner );
    if( wit_itr != by_witness_name_idx.end() )
@@ -102,6 +108,20 @@ void witness_update_evaluator::do_apply( const witness_update_operation& o )
          w.created            = _db.head_block_time();
          copy_legacy_chain_properties< false >( w.props, o.props );
       });
+   }
+}
+
+void verify_authority_accounts_exist(
+   const database& db,
+   const authority& auth,
+   const account_name_type& auth_account,
+   authority::classification auth_class)
+{
+   for( const std::pair< account_name_type, weight_type >& aw : auth.account_auths )
+   {
+      const account_object* a = db.find_account( aw.first );
+      FC_ASSERT( a != nullptr, "New ${ac} authority on account ${aa} references non-existing account ${aref}",
+         ("aref", aw.first)("ac", auth_class)("aa", auth_account) );
    }
 }
 
@@ -130,20 +150,9 @@ void account_create_evaluator::do_apply( const account_create_operation& o )
 
    if( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) )
    {
-      for( auto& a : o.owner.account_auths )
-      {
-         _db.get_account( a.first );
-      }
-
-      for( auto& a : o.active.account_auths )
-      {
-         _db.get_account( a.first );
-      }
-
-      for( auto& a : o.posting.account_auths )
-      {
-         _db.get_account( a.first );
-      }
+      verify_authority_accounts_exist( _db, o.owner, o.new_account_name, authority::owner );
+      verify_authority_accounts_exist( _db, o.active, o.new_account_name, authority::active );
+      verify_authority_accounts_exist( _db, o.posting, o.new_account_name, authority::posting );
    }
 
    _db.modify( creator, [&]( account_object& c ){
@@ -294,32 +303,14 @@ void account_update_evaluator::do_apply( const account_update_operation& o )
 #endif
 
       if( ( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) ) )
-      {
-         for( const auto& a: o.owner->account_auths )
-         {
-            _db.get_account( a.first );
-         }
-      }
-
+         verify_authority_accounts_exist( _db, *o.owner, o.account, authority::owner );
 
       _db.update_owner_authority( account, *o.owner );
    }
-
    if( o.active && ( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) ) )
-   {
-      for( const auto& a: o.active->account_auths )
-      {
-         _db.get_account( a.first );
-      }
-   }
-
+      verify_authority_accounts_exist( _db, *o.active, o.account, authority::active );
    if( o.posting && ( _db.has_hardfork( STEEM_HARDFORK_0_15__465 ) ) )
-   {
-      for( const auto& a: o.posting->account_auths )
-      {
-         _db.get_account( a.first );
-      }
-   }
+      verify_authority_accounts_exist( _db, *o.posting, o.account, authority::posting );
 
    _db.modify( account, [&]( account_object& acc )
    {

@@ -89,7 +89,10 @@ database_impl::database_impl( database& self )
    : _self(self), _evaluator_registry(self) {}
 
 database::database()
-   : _my( new database_impl(*this) ) {}
+   : _my( new database_impl(*this) )
+{
+   set_chain_id( STEEM_CHAIN_ID_NAME );
+}
 
 database::~database()
 {
@@ -174,6 +177,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
 
       with_write_lock( [&]()
       {
+         _block_log.set_locking( false );
          auto itr = _block_log.read_block( 0 );
          auto last_block_num = _block_log.head()->block_num();
          if( stop_replay_at > 0 && stop_replay_at < last_block_num )
@@ -204,6 +208,7 @@ uint32_t database::reindex( const fc::path& data_dir, const fc::path& shared_mem
             benchmark.second( last_block_number, false /*is_initial_call*/ );
          }
          set_revision( head_block_num() );
+         _block_log.set_locking( true );
       });
 
       if( _block_log.head()->block_num() )
@@ -364,7 +369,12 @@ std::vector< block_id_type > database::get_block_ids_on_fork( block_id_type head
 
 chain_id_type database::get_chain_id() const
 {
-   return STEEM_CHAIN_ID;
+   return steem_chain_id;
+}
+
+void database::set_chain_id( const std::string& _chain_id_name )
+{
+   steem_chain_id = generate_chain_id( _chain_id_name );
 }
 
 const witness_object& database::get_witness( const account_name_type& name ) const
@@ -1467,10 +1477,10 @@ void database::adjust_total_payout( const comment_object& cur, const asset& sbd_
 {
    modify( cur, [&]( comment_object& c )
    {
-      if( c.total_payout_value.symbol == sbd_created.symbol )
-         c.total_payout_value += sbd_created;
-         c.curator_payout_value += curator_sbd_value;
-         c.beneficiary_payout_value += beneficiary_value;
+      // input assets should be in sbd
+      c.total_payout_value += sbd_created;
+      c.curator_payout_value += curator_sbd_value;
+      c.beneficiary_payout_value += beneficiary_value;
    } );
    /// TODO: potentially modify author's total payout numbers as well
 }
@@ -1696,7 +1706,7 @@ void database::process_comment_cashout()
       rf_ctx.reward_balance = itr->reward_balance;
 
       // The index is by ID, so the ID should be the current size of the vector (0, 1, 2, etc...)
-      assert( funds.size() == itr->id._id );
+      assert( funds.size() == static_cast<size_t>(itr->id._id) );
 
       funds.push_back( rf_ctx );
    }
@@ -2244,7 +2254,7 @@ void database::initialize_evaluators()
    _my->_evaluator_registry.register_evaluator< smt_setup_emissions_evaluator            >();
    _my->_evaluator_registry.register_evaluator< smt_set_setup_parameters_evaluator       >();
    _my->_evaluator_registry.register_evaluator< smt_set_runtime_parameters_evaluator     >();
-   _my->_evaluator_registry.register_evaluator< smt_elevate_account_evaluator            >();
+   _my->_evaluator_registry.register_evaluator< smt_create_evaluator                     >();
 #endif
 }
 
@@ -2622,6 +2632,43 @@ void database::_apply_block( const signed_block& next_block )
 
    uint32_t skip = get_node_properties().skip_flags;
 
+   if( BOOST_UNLIKELY( next_block_num == 1 ) )
+   {
+      // For every existing before the head_block_time (genesis time), apply the hardfork
+      // This allows the test net to launch with past hardforks and apply the next harfork when running
+
+      uint32_t n;
+      for( n=0; n<STEEM_NUM_HARDFORKS; n++ )
+      {
+         if( _hardfork_times[n+1] > next_block.timestamp )
+            break;
+      }
+
+      if( n > 0 )
+      {
+         ilog( "Processing ${n} genesis hardforks", ("n", n) );
+         set_hardfork( n, true );
+
+         const hardfork_property_object& hardfork_state = get_hardfork_property_object();
+         FC_ASSERT( hardfork_state.current_hardfork_version == _hardfork_versions[n], "Unexpected genesis hardfork state" );
+
+         const auto& witness_idx = get_index<witness_index>().indices().get<by_id>();
+         vector<witness_id_type> wit_ids_to_update;
+         for( auto it=witness_idx.begin(); it!=witness_idx.end(); ++it )
+            wit_ids_to_update.push_back(it->id);
+
+         for( witness_id_type wit_id : wit_ids_to_update )
+         {
+            modify( get( wit_id ), [&]( witness_object& wit )
+            {
+               wit.running_version = _hardfork_versions[n];
+               wit.hardfork_version_vote = _hardfork_versions[n];
+               wit.hardfork_time_vote = _hardfork_times[n];
+            } );
+         }
+      }
+   }
+
    if( !( skip & skip_merkle_check ) )
    {
       auto merkle_root = next_block.calculate_merkle_root();
@@ -2861,7 +2908,7 @@ void database::_apply_transaction(const signed_transaction& trx)
       trx.validate();
 
    auto& trx_idx = get_index<transaction_index>();
-   const chain_id_type& chain_id = STEEM_CHAIN_ID;
+   const chain_id_type& chain_id = get_chain_id();
    auto trx_id = trx.id();
    // idump((trx_id)(skip&skip_transaction_dupe_check));
    FC_ASSERT( (skip & skip_transaction_dupe_check) ||

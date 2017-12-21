@@ -12,6 +12,7 @@
 
 #include <steem/plugins/witness/witness_objects.hpp>
 
+#include <fc/macros.hpp>
 #include <fc/crypto/digest.hpp>
 
 #include "../db_fixture/database_fixture.hpp"
@@ -533,6 +534,9 @@ BOOST_AUTO_TEST_CASE( comment_apply )
       const auto& mod_sam_comment = db->get_comment( "sam", string( "dolor" ) );
       const auto& mod_bob_comment = db->get_comment( "bob", string( "ipsum" ) );
       const auto& mod_alice_comment = db->get_comment( "alice", string( "lorem" ) );
+
+      FC_UNUSED(mod_bob_comment, mod_alice_comment);
+
       fc::time_point_sec created = mod_sam_comment.created;
 
       db->modify( mod_sam_comment, [&]( comment_object& com )
@@ -899,8 +903,8 @@ BOOST_AUTO_TEST_CASE( vote_apply )
                          = ( ( uint128_t( new_sam.vesting_shares.amount.value ) * ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) ) / STEEM_100_PERCENT ).to_uint64();
 
          BOOST_REQUIRE( new_sam.voting_power == STEEM_100_PERCENT - ( ( STEEM_100_PERCENT + max_vote_denom - 1 ) / ( 2 * max_vote_denom ) ) );
-         BOOST_REQUIRE( new_bob_comment.net_rshares.value == old_abs_rshares - sam_weight );
-         BOOST_REQUIRE( new_bob_comment.abs_rshares.value == old_abs_rshares + sam_weight );
+         BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.net_rshares.value) == old_abs_rshares - sam_weight );
+         BOOST_REQUIRE( static_cast<uint64_t>(new_bob_comment.abs_rshares.value) == old_abs_rshares + sam_weight );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
          BOOST_REQUIRE( itr != vote_idx.end() );
          validate_database();
@@ -967,7 +971,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( alice_bob_vote->rshares == new_rshares );
+         BOOST_REQUIRE( static_cast<uint64_t>(alice_bob_vote->rshares) == new_rshares );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          BOOST_REQUIRE( db->get_account( "alice" ).voting_power == alice_voting_power );
@@ -997,7 +1001,7 @@ BOOST_AUTO_TEST_CASE( vote_apply )
          BOOST_REQUIRE( new_bob_comment.net_rshares == old_net_rshares - old_vote_rshares - new_rshares );
          BOOST_REQUIRE( new_bob_comment.abs_rshares == old_abs_rshares + new_rshares );
          BOOST_REQUIRE( new_bob_comment.cashout_time == new_bob_comment.created + STEEM_CASHOUT_WINDOW_SECONDS );
-         BOOST_REQUIRE( alice_bob_vote->rshares == -1 * new_rshares );
+         BOOST_REQUIRE( alice_bob_vote->rshares == -1 * static_cast<int64_t>(new_rshares) );
          BOOST_REQUIRE( alice_bob_vote->last_update == db->head_block_time() );
          BOOST_REQUIRE( alice_bob_vote->vote_percent == op.weight );
          BOOST_REQUIRE( db->get_account( "alice" ).voting_power == alice_voting_power );
@@ -1484,7 +1488,7 @@ BOOST_AUTO_TEST_CASE( withdraw_vesting_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test withdrawing more vests than available" );
-      auto old_withdraw_amount = alice.to_withdraw;
+      //auto old_withdraw_amount = alice.to_withdraw;
       tx.operations.clear();
       tx.signatures.clear();
 
@@ -2036,7 +2040,8 @@ BOOST_AUTO_TEST_CASE( account_witness_proxy_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test adding a grandchild proxy" );
-      // alice \
+      //       alice 
+      //         |
       // bob->  sam->dave
 
       tx.operations.clear();
@@ -2774,8 +2779,8 @@ BOOST_AUTO_TEST_CASE( limit_order_create_apply )
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
 
-      auto gpo = db->get_dynamic_global_properties();
-      auto start_sbd = gpo.current_sbd_supply;
+      //auto gpo = db->get_dynamic_global_properties();
+      //auto start_sbd = gpo.current_sbd_supply;
 
       op.owner = "alice";
       op.orderid = 5;
@@ -3128,8 +3133,9 @@ BOOST_AUTO_TEST_CASE( limit_order_create2_apply )
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
 
-      auto gpo = db->get_dynamic_global_properties();
-      auto start_sbd = gpo.current_sbd_supply;
+      //auto gpo = db->get_dynamic_global_properties();
+      //auto start_sbd = gpo.current_sbd_supply;
+
 
       op.owner = "alice";
       op.orderid = 5;
@@ -5946,7 +5952,7 @@ BOOST_AUTO_TEST_CASE( account_create_with_delegation_apply )
       signed_transaction tx;
       ACTORS( (alice) );
       // 150 * fee = ( 5 * STEEM ) + SP
-      auto gpo = db->get_dynamic_global_properties();
+      //auto gpo = db->get_dynamic_global_properties();
       generate_blocks(1);
       fund( "alice", ASSET("1510.000 TESTS") );
       vest( "alice", ASSET("1000.000 TESTS") );

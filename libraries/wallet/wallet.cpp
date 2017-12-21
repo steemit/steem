@@ -42,6 +42,7 @@
 #include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/stdio.hpp>
+#include <fc/macros.hpp>
 #include <fc/network/http/websocket.hpp>
 #include <fc/rpc/cli.hpp>
 #include <fc/rpc/websocket_api.hpp>
@@ -216,13 +217,14 @@ class wallet_api_impl
 
 public:
    wallet_api& self;
-   wallet_api_impl( wallet_api& s, const wallet_data& initial_data, fc::api< remote_node_api > rapi )
+   wallet_api_impl( wallet_api& s, const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi )
       : self( s ),
         _remote_api( rapi )
    {
       init_prototype_ops();
 
       _wallet.ws_server = initial_data.ws_server;
+      steem_chain_id = _steem_chain_id;
    }
    virtual ~wallet_api_impl()
    {}
@@ -513,6 +515,7 @@ public:
          {
             //_remote_api->broadcast_transaction( tx );
             auto result = _remote_api->broadcast_transaction_synchronous( tx );
+            FC_UNUSED(result);
          }
          return tx;
    } FC_CAPTURE_AND_RETHROW( (account_name)(creator_account_name)(broadcast) ) }
@@ -668,7 +671,7 @@ public:
       }
 
       auto minimal_signing_keys = tx.minimize_required_signatures(
-         STEEM_CHAIN_ID,
+         steem_chain_id,
          available_keys,
          [&]( const string& account_name ) -> const authority&
          { return (get_account_from_lut( account_name ).active); },
@@ -683,7 +686,7 @@ public:
       {
          auto it = available_private_keys.find(k);
          FC_ASSERT( it != available_private_keys.end() );
-         tx.sign( it->second, STEEM_CHAIN_ID );
+         tx.sign( it->second, steem_chain_id );
       }
 
       if( broadcast ) {
@@ -871,6 +874,7 @@ public:
 
    string                                  _wallet_filename;
    wallet_data                             _wallet;
+   steem::protocol::chain_id_type          steem_chain_id;
 
    map<public_key_type,string>             _keys;
    fc::sha512                              _checksum;
@@ -893,8 +897,8 @@ public:
 
 namespace steem { namespace wallet {
 
-wallet_api::wallet_api(const wallet_data& initial_data, fc::api< remote_node_api > rapi)
-   : my(new detail::wallet_api_impl(*this, initial_data, rapi))
+wallet_api::wallet_api(const wallet_data& initial_data, const steem::protocol::chain_id_type& _steem_chain_id, fc::api< remote_node_api > rapi)
+   : my(new detail::wallet_api_impl(*this, initial_data, _steem_chain_id, rapi))
 {}
 
 wallet_api::~wallet_api(){}

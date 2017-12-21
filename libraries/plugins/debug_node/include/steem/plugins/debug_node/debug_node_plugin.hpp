@@ -20,6 +20,20 @@ using namespace appbase;
 
 namespace detail { class debug_node_plugin_impl; }
 
+struct debug_generate_blocks_args
+{
+   std::string                               debug_key;
+   uint32_t                                  count = 0;
+   uint32_t                                  skip = steem::chain::database::skip_nothing;
+   uint32_t                                  miss_blocks = 0;
+   bool                                      edit_if_needed = true;
+};
+
+struct debug_generate_blocks_return
+{
+   uint32_t                                  blocks = 0;
+};
+
 class debug_node_plugin : public plugin< debug_node_plugin >
 {
    public:
@@ -58,6 +72,9 @@ class debug_node_plugin : public plugin< debug_node_plugin >
          db.push_block( *head_block, skip );
       }
 
+      void debug_generate_blocks(
+         debug_generate_blocks_return& ret,
+         const debug_generate_blocks_args& args );
 
       uint32_t debug_generate_blocks(
          const std::string& debug_key,
@@ -100,3 +117,14 @@ class debug_node_plugin : public plugin< debug_node_plugin >
 };
 
 } } }
+
+FC_REFLECT( steem::plugins::debug_node::debug_generate_blocks_args,
+            (debug_key)
+            (count)
+            (skip)
+            (miss_blocks)
+            (edit_if_needed)
+          )
+FC_REFLECT( steem::plugins::debug_node::debug_generate_blocks_return,
+            (blocks)
+          )

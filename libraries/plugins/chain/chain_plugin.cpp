@@ -61,6 +61,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("set-benchmark-interval", bpo::value<uint32_t>(), "Print time and memory usage every given number of blocks")
          ("check-locks", bpo::bool_switch()->default_value(false), "Check correctness of chainbase locking" )
          ("validate-database-invariants", bpo::bool_switch()->default_value(false), "Validate all supply invariants check out" )
+#ifdef IS_TEST_NET
+         ("chain-id", bpo::value< std::string >()->default_value( STEEM_CHAIN_ID_NAME ), "chain ID to connect to")
+#endif
          ;
 }
 
@@ -80,7 +83,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->replay              = options.at( "replay-blockchain").as<bool>();
    my->resync              = options.at( "resync-blockchain").as<bool>();
-   my->stop_replay_at      = 
+   my->stop_replay_at      =
       options.count( "stop-replay-at-block" ) ? options.at( "stop-replay-at-block" ).as<uint32_t>() : 0;
    my->benchmark_interval  =
       options.count( "set-benchmark-interval" ) ? options.at( "set-benchmark-interval" ).as<uint32_t>() : 0;
@@ -101,6 +104,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->loaded_checkpoints[item.first] = item.second;
       }
    }
+
+#ifdef IS_TEST_NET
+   if( options.count( "chain-id" ) )
+      my->db.set_chain_id( options.at("chain-id").as< std::string >() );
+#endif
 }
 
 #define BENCHMARK_FILE_NAME "replay_benchmark.json"
@@ -132,16 +140,14 @@ void chain_plugin::plugin_startup()
             return;
          }
 
-         const fc::variant& measure = dumper.measure(current_block_number);
-         const variant_object& vo = measure.get_object();
-         FC_ASSERT( vo.contains("real_ms") && vo.contains("cpu_ms") && vo.contains("current_mem") && vo.contains("peak_mem"),
-                    "Missing member(s) of benchmark_dumper::measurement class!");
+         const steem::utilities::benchmark_dumper::measurement& measure =
+           dumper.measure(current_block_number);
          ilog( "Performance report at block ${n}. Elapsed time: ${rt} ms (real), ${ct} ms (cpu). Memory usage: ${cm} (current), ${pm} (peak) kilobytes.",
             ("n", current_block_number)
-            ("rt", vo[ "real_ms" ])
-            ("ct", vo[ "cpu_ms" ])
-            ("cm", vo[ "current_mem" ])
-            ("pm", vo[ "peak_mem" ]) );   
+            ("rt", measure.real_ms)
+            ("ct", measure.cpu_ms)
+            ("cm", measure.current_mem)
+            ("pm", measure.peak_mem) );
       };
       steem::chain::database::TBenchmark benchmark(my->benchmark_interval, benchmark_lambda);
       last_block_number = my->db.reindex( app().data_dir() / "blockchain", my->shared_memory_dir, my->shared_memory_size,
@@ -155,7 +161,7 @@ void chain_plugin::plugin_startup()
                ("rt", total_data.real_ms)
                ("ct", total_data.cpu_ms)
                ("cm", total_data.current_mem)
-               ("pm", total_data.peak_mem) );   
+               ("pm", total_data.peak_mem) );
       }
 
       if( my->stop_replay_at > 0 && my->stop_replay_at == last_block_number )
@@ -170,7 +176,7 @@ void chain_plugin::plugin_startup()
       try
       {
          ilog("Opening shared memory from ${path}", ("path",my->shared_memory_dir.generic_string()));
-         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, my->validate_invariants );
+         my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size, my->validate_invariants );
       }
       catch( const fc::exception& e )
       {
@@ -183,7 +189,7 @@ void chain_plugin::plugin_startup()
          catch( steem::chain::block_log_exception& )
          {
             wlog( "Error opening block log. Having to resync from network..." );
-            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, 0, my->shared_memory_size, my->validate_invariants );
+            my->db.open( app().data_dir() / "blockchain", my->shared_memory_dir, STEEM_INIT_SUPPLY, my->shared_memory_size, my->validate_invariants );
          }
       }
    }

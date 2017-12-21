@@ -89,7 +89,7 @@ namespace steem { namespace chain {
           *
           * This method may be called after or instead of @ref database::open, and will rebuild the object graph by
           * replaying blockchain history. When this method exits successfully, the database will be open.
-          * 
+          *
           * @return the last replayed block number.
           */
           uint32_t reindex( const fc::path& data_dir, const fc::path& shared_mem_dir, uint64_t shared_file_size = (1024l*1024l*1024l*8l),
@@ -121,7 +121,9 @@ namespace steem { namespace chain {
          const signed_transaction   get_recent_transaction( const transaction_id_type& trx_id )const;
          std::vector<block_id_type> get_block_ids_on_fork(block_id_type head_of_fork) const;
 
-         chain_id_type             get_chain_id()const;
+         chain_id_type steem_chain_id;
+         chain_id_type get_chain_id() const;
+         void set_chain_id( const std::string& _chain_id_name );
 
 
          const witness_object&  get_witness(  const account_name_type& name )const;

@@ -105,7 +105,7 @@ DEFINE_API( follow_api_impl, get_feed_entries )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 feed entries at a time." );
 
-   auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+   auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_feed_entries_return result;
    result.feed.reserve( args.limit );
@@ -142,7 +142,7 @@ DEFINE_API( follow_api_impl, get_feed )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 feed entries at a time." );
 
-   auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+   auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_feed_return result;
    result.feed.reserve( args.limit );
@@ -178,7 +178,7 @@ DEFINE_API( follow_api_impl, get_blog_entries )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
 
-   auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+   auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_blog_entries_return result;
    result.blog.reserve( args.limit );
@@ -207,7 +207,7 @@ DEFINE_API( follow_api_impl, get_blog )
 {
    FC_ASSERT( args.limit <= 500, "Cannot retrieve more than 500 blog entries at a time." );
 
-   auto entry_id = args.start_entry_id == 0 ? args.start_entry_id : ~0;
+   auto entry_id = args.start_entry_id == 0 ? ~0 : args.start_entry_id;
 
    get_blog_return result;
    result.blog.reserve( args.limit );

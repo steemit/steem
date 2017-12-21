@@ -1,6 +1,7 @@
 #pragma once
 #include <steem/plugins/json_rpc/utility.hpp>
 #include <steem/plugins/database_api/database_api_objects.hpp>
+#include <steem/plugins/debug_node/debug_node_plugin.hpp>
 
 #include <steem/protocol/types.hpp>
 
@@ -25,14 +26,6 @@ struct debug_push_blocks_return
 {
    uint32_t                                  blocks;
 };
-
-struct debug_generate_blocks_args
-{
-   std::string                               debug_key;
-   uint32_t                                  count;
-};
-
-typedef debug_push_blocks_return debug_generate_blocks_return;
 
 struct debug_generate_blocks_until_args
 {
@@ -123,9 +116,6 @@ FC_REFLECT( steem::plugins::debug_node::debug_push_blocks_args,
 
 FC_REFLECT( steem::plugins::debug_node::debug_push_blocks_return,
             (blocks) )
-
-FC_REFLECT( steem::plugins::debug_node::debug_generate_blocks_args,
-            (debug_key)(count) )
 
 FC_REFLECT( steem::plugins::debug_node::debug_generate_blocks_until_args,
             (debug_key)(head_block_time)(generate_sparsely) )

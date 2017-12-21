@@ -85,9 +85,9 @@ struct api_comment_object
 
    comment_id_type   id;
    string            category;
-   account_name_type parent_author;
+   string            parent_author;
    string            parent_permlink;
-   account_name_type author;
+   string            author;
    string            permlink;
 
    string            title;
@@ -222,8 +222,9 @@ struct api_account_object
       posting = authority( auth.posting );
       last_owner_update = auth.last_owner_update;
 #ifdef STEEM_ENABLE_SMT
-      const auto* smt = db.find< smt_token_object, by_control_account >( name );
-      is_smt = (smt != nullptr);
+      const auto& by_control_account_index = db.get_index<smt_token_index>().indices().get<by_control_account>();
+      auto smt_obj_itr = by_control_account_index.find( name );
+      is_smt = smt_obj_itr != by_control_account_index.end();
 #endif
    }
 
@@ -458,7 +459,7 @@ struct api_witness_schedule_object
    }
 
    witness_schedule_id_type   id;
-   
+
    fc::uint128                current_virtual_time;
    uint32_t                   next_shuffle_block_num;
    vector<string>             current_shuffled_witnesses;   // fc::array<account_name_type,...> -> vector<string>

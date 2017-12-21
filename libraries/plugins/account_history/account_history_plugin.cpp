@@ -41,14 +41,15 @@ class account_history_plugin_impl
       bool                                             _filter_content = false;
       bool                                             _blacklist = false;
       flat_set< string >                               _op_list;
+      bool                                             _prune = true;
       database&                        _db;
       boost::signals2::connection      pre_apply_connection;
 };
 
 struct operation_visitor
 {
-   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, account_name_type i )
-      :_db(db), _note(note), new_obj(n), item(i) {}
+   operation_visitor( database& db, const operation_notification& note, const operation_object*& n, account_name_type i, bool prune )
+      :_db(db), _note(note), new_obj(n), item(i), _prune(prune) {}
 
    typedef void result_type;
 
@@ -56,47 +57,75 @@ struct operation_visitor
    const operation_notification& _note;
    const operation_object*& new_obj;
    account_name_type item;
+   bool _prune;
 
    template<typename Op>
    void operator()( Op&& )const
    {
-         const auto& hist_idx = _db.get_index< chain::account_history_index >().indices().get< chain::by_account >();
-         if( !new_obj )
+      const auto& hist_idx = _db.get_index< chain::account_history_index >().indices().get< chain::by_account >();
+      if( !new_obj )
+      {
+         new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
          {
-            new_obj = &_db.create<operation_object>( [&]( operation_object& obj )
-            {
-               obj.trx_id       = _note.trx_id;
-               obj.block        = _note.block;
-               obj.trx_in_block = _note.trx_in_block;
-               obj.op_in_trx    = _note.op_in_trx;
-               obj.virtual_op   = _note.virtual_op;
-               obj.timestamp    = _db.head_block_time();
-               //fc::raw::pack( obj.serialized_op , _note.op);  //call to 'pack' is ambiguous
-               auto size = fc::raw::pack_size( _note.op );
-               obj.serialized_op.resize( size );
-               fc::datastream< char* > ds( obj.serialized_op.data(), size );
-               fc::raw::pack( ds, _note.op );
-            });
+            obj.trx_id       = _note.trx_id;
+            obj.block        = _note.block;
+            obj.trx_in_block = _note.trx_in_block;
+            obj.op_in_trx    = _note.op_in_trx;
+            obj.virtual_op   = _note.virtual_op;
+            obj.timestamp    = _db.head_block_time();
+            //fc::raw::pack( obj.serialized_op , _note.op);  //call to 'pack' is ambiguous
+            auto size = fc::raw::pack_size( _note.op );
+            obj.serialized_op.resize( size );
+            fc::datastream< char* > ds( obj.serialized_op.data(), size );
+            fc::raw::pack( ds, _note.op );
+         });
+      }
+
+      auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
+      uint32_t sequence = 0;
+      if( hist_itr != hist_idx.end() && hist_itr->account == item )
+         sequence = hist_itr->sequence + 1;
+
+      _db.create< chain::account_history_object >( [&]( chain::account_history_object& ahist )
+      {
+         ahist.account  = item;
+         ahist.sequence = sequence;
+         ahist.op       = new_obj->id;
+      });
+
+      if( _prune )
+      {
+         // Clean up accounts to last 30 days or 30 items, whichever is more.
+         const auto& seq_idx = _db.get_index< chain::account_history_index, chain::by_account >();
+         auto seq_itr = seq_idx.lower_bound( boost::make_tuple( item, 0 ) );
+         vector< const chain::account_history_object* > to_remove;
+         auto now = _db.head_block_time();
+
+         if( seq_itr == seq_idx.begin() )
+            return;
+
+         --seq_itr;
+
+         while( seq_itr->account == item
+               && sequence - seq_itr->sequence > 30
+               && now - _db.get< chain::operation_object >( seq_itr->op ).timestamp > fc::days(30) )
+         {
+            to_remove.push_back( &(*seq_itr) );
+            --seq_itr;
          }
 
-         auto hist_itr = hist_idx.lower_bound( boost::make_tuple( item, uint32_t(-1) ) );
-         uint32_t sequence = 0;
-         if( hist_itr != hist_idx.end() && hist_itr->account == item )
-            sequence = hist_itr->sequence + 1;
-
-         _db.create< chain::account_history_object >( [&]( chain::account_history_object& ahist )
+         for( const auto* seq_ptr : to_remove )
          {
-            ahist.account  = item;
-            ahist.sequence = sequence;
-            ahist.op       = new_obj->id;
-         });
+            _db.remove( *seq_ptr );
+         }
+      }
    }
 };
 
 struct operation_visitor_filter : operation_visitor
 {
-   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i, const flat_set< string >& filter, bool blacklist ):
-      operation_visitor( db, note, n, i ), _filter( filter ), _blacklist( blacklist ) {}
+   operation_visitor_filter( database& db, const operation_notification& note, const operation_object*& n, account_name_type i, const flat_set< string >& filter, bool p, bool blacklist ):
+      operation_visitor( db, note, n, i, p ), _filter( filter ), _blacklist( blacklist ) {}
 
    const flat_set< string >& _filter;
    bool _blacklist;
@@ -156,11 +185,11 @@ void account_history_plugin_impl::on_operation( const operation_notification& no
       {
          if(_filter_content)
          {
-            note.op.visit( operation_visitor_filter( _db, note, new_obj, item, _op_list, _blacklist ) );
+            note.op.visit( operation_visitor_filter( _db, note, new_obj, item, _op_list, _prune, _blacklist ) );
          }
          else
          {
-            note.op.visit( operation_visitor( _db, note, new_obj, item ) );
+            note.op.visit( operation_visitor( _db, note, new_obj, item, _prune ) );
          }
       }
    }
@@ -183,6 +212,7 @@ void account_history_plugin::set_program_options(
          ("history-whitelist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly logged. Deprecated in favor of account-history-whitelist-ops.")
          ("account-history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored.")
          ("history-blacklist-ops", boost::program_options::value< vector< string > >()->composing(), "Defines a list of operations which will be explicitly ignored. Deprecated in favor of account-history-blacklist-ops.")
+         ("history-disable-pruning", boost::program_options::value< bool >()->default_value( false ), "Disables automatic account history trimming" )
          ;
 }
 
@@ -279,6 +309,11 @@ void account_history_plugin::plugin_initialize( const boost::program_options::va
       }
 
       ilog( "Account History: blacklisting ops ${o}", ("o", my->_op_list) );
+   }
+
+   if( options.count( "history-disable-pruning" ) )
+   {
+      my->_prune = !options[ "history-disable-pruning" ].as< bool >();
    }
 }
 

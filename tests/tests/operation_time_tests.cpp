@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE( comment_payout_equalize )
          db->push_transaction( tx, 0 );
       }
 
-      auto reward_steem = db->get_dynamic_global_properties().total_reward_fund_steem;
+      //auto reward_steem = db->get_dynamic_global_properties().total_reward_fund_steem;
 
       // generate a few blocks to seed the reward fund
       generate_blocks(10);
@@ -1793,7 +1793,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       auto interest_op = get_last_operations( 1 )[0].get< interest_operation >();
 
       BOOST_REQUIRE( gpo.sbd_interest_rate > 0 );
-      BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance.amount.value == alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value + ( ( ( ( uint128_t( alice_sbd.amount.value ) * ( db->head_block_time() - start_time ).to_seconds() ) / STEEM_SECONDS_PER_YEAR ) * gpo.sbd_interest_rate ) / STEEM_100_PERCENT ).to_uint64() );
+      BOOST_REQUIRE( static_cast<uint64_t>(db->get_account( "alice" ).sbd_balance.amount.value) == alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value + ( ( ( ( uint128_t( alice_sbd.amount.value ) * ( db->head_block_time() - start_time ).to_seconds() ) / STEEM_SECONDS_PER_YEAR ) * gpo.sbd_interest_rate ) / STEEM_100_PERCENT ).to_uint64() );
       BOOST_REQUIRE( interest_op.owner == "alice" );
       BOOST_REQUIRE( interest_op.interest.amount.value == db->get_account( "alice" ).sbd_balance.amount.value - ( alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value ) );
       validate_database();
@@ -1830,7 +1830,7 @@ BOOST_AUTO_TEST_CASE( sbd_interest )
       tx.sign( alice_private_key, db->get_chain_id() );
       db->push_transaction( tx, 0 );
 
-      BOOST_REQUIRE( db->get_account( "alice" ).sbd_balance.amount.value == alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value + ( ( ( ( uint128_t( alice_sbd.amount.value ) * ( db->head_block_time() - start_time ).to_seconds() + alice_coindays ) / STEEM_SECONDS_PER_YEAR ) * gpo.sbd_interest_rate ) / STEEM_100_PERCENT ).to_uint64() );
+      BOOST_REQUIRE( static_cast<uint64_t>(db->get_account( "alice" ).sbd_balance.amount.value) == alice_sbd.amount.value - ASSET( "1.000 TBD" ).amount.value + ( ( ( ( uint128_t( alice_sbd.amount.value ) * ( db->head_block_time() - start_time ).to_seconds() + alice_coindays ) / STEEM_SECONDS_PER_YEAR ) * gpo.sbd_interest_rate ) / STEEM_100_PERCENT ).to_uint64() );
       validate_database();
    }
    FC_LOG_AND_RETHROW();

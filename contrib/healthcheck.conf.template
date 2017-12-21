@@ -16,7 +16,9 @@
       proxy_buffering off;
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection "upgrade";
-      add_header 'Access-Control-Allow-Origin' '*';
+      add_header Access-Control-Allow-Origin "*";
+      add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+      add_header Access-Control-Allow-Headers "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range";
       add_header Strict-Transport-Security "max-age=31557600; includeSubDomains; preload" always;
     }
 }

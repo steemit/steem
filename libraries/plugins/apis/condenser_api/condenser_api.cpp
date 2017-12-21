@@ -172,7 +172,7 @@ namespace detail
 
                   for( const auto& reply : replies )
                   {
-                     auto reply_ref = reply.author+"/"+reply.permlink;
+                     string reply_ref = reply.author + "/" + reply.permlink;
                      _state.content[ reply_ref ] = reply;
 
                      if( _follow_api )
@@ -267,7 +267,7 @@ namespace detail
             auto account  = part[1].substr( 1 );
             auto slug     = part[2];
 
-            auto key = account + "/" + slug;
+            string key = account + "/" + slug;
             if( _tags_api )
             {
                auto dis = _tags_api->get_discussion( { account, slug } );
@@ -309,7 +309,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.trending.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -329,7 +329,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.payout.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -349,7 +349,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.payout_comments.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -369,7 +369,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author + "/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.promoted.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -389,7 +389,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.responses.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -409,7 +409,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.hot.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -429,7 +429,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.promoted.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -449,7 +449,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.votes.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -469,7 +469,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.cashout.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -489,7 +489,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.active.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -509,7 +509,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.created.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
@@ -529,7 +529,7 @@ namespace detail
                auto& didx = _state.discussion_idx[tag];
                for( const auto& d : trending_disc )
                {
-                  auto key = d.author +"/" + d.permlink;
+                  string key = d.author + "/" + d.permlink;
                   didx.created.push_back( key );
                   if( d.author.size() ) accounts.insert(d.author);
                   _state.content[key] = std::move(d);
