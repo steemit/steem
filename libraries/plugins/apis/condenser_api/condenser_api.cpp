@@ -149,7 +149,15 @@ namespace detail
       CHECK_ARG_SIZE( 2 )
       FC_ASSERT( _tags_api, "tags_api_plugin not enabled." );
 
-      return _tags_api->get_trending_tags( { args[0].as< string >(), args[1].as< uint32_t >() } ).tags;
+      auto tags = _tags_api->get_trending_tags( { args[0].as< string >(), args[1].as< uint32_t >() } ).tags;
+      vector< api_tag_object > result;
+
+      for( const auto& t : tags )
+      {
+         result.push_back( api_tag_object( t ) );
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_state )
@@ -191,7 +199,7 @@ namespace detail
 
          if( part[0].size() && part[0][0] == '@' ) {
             auto acnt = part[0].substr(1);
-            _state.accounts[acnt] = extended_account( _db.get_account( acnt ), _db );
+            _state.accounts[acnt] = extended_account( database_api::api_account_object( _db.get_account( acnt ), _db ) );
 
             if( _tags_api )
                _state.accounts[acnt].tags_usage = _tags_api->get_tags_used_by_author( { acnt } ).tags;
@@ -207,6 +215,8 @@ namespace detail
             {
                if( _account_history_api )
                {
+                  legacy_operation l_op;
+                  legacy_operation_conversion_visitor visitor( l_op );
                   auto history = _account_history_api->get_account_history( { acnt, uint64_t(-1), 1000 } ).history;
                   for( auto& item : history )
                   {
@@ -229,7 +239,10 @@ namespace detail
                         case operation::tag<fill_convert_request_operation>::value:
                         case operation::tag<fill_order_operation>::value:
                         case operation::tag<claim_reward_balance_operation>::value:
-                           eacnt.transfer_history[item.first] =  item.second;
+                           if( item.second.op.visit( visitor ) )
+                           {
+                              eacnt.transfer_history.emplace( item.first, api_operation_object( item.second, visitor.l_op ) );
+                           }
                            break;
                         case operation::tag<comment_operation>::value:
                         //   eacnt.post_history[item.first] =  item.second;
@@ -250,7 +263,10 @@ namespace detail
                         case operation::tag<custom_operation>::value:
                         case operation::tag<producer_reward_operation>::value:
                         default:
-                           eacnt.other_history[item.first] =  item.second;
+                           if( item.second.op.visit( visitor ) )
+                           {
+                              eacnt.transfer_history.emplace( item.first, api_operation_object( item.second, visitor.l_op ) );
+                           }
                      }
                   }
                }
@@ -638,7 +654,7 @@ namespace detail
                {
                   string name = t.name;
                   _state.tag_idx.trending.push_back( name );
-                  _state.tags[ name ] = t;
+                  _state.tags[ name ] = api_tag_object( t );
                }
             }
          }
@@ -649,7 +665,7 @@ namespace detail
          for( const auto& a : accounts )
          {
             _state.accounts.erase("");
-            _state.accounts[a] = extended_account( _db.get_account( a ), _db );
+            _state.accounts[a] = extended_account( database_api::api_account_object( _db.get_account( a ), _db ) );
 
             if( _follow_api )
             {
@@ -700,7 +716,21 @@ namespace detail
       FC_ASSERT( args.size() == 1 || args.size() == 2, "Expected 1-2 arguments, was ${n}", ("n", args.size()) );
       FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
 
-      return _account_history_api->get_ops_in_block( { args[0].as< uint32_t >(), args[1].as< bool >() } ).ops;
+      auto ops = _account_history_api->get_ops_in_block( { args[0].as< uint32_t >(), args[1].as< bool >() } ).ops;
+      get_ops_in_block_return result;
+
+      legacy_operation l_op;
+      legacy_operation_conversion_visitor visitor( l_op );
+
+      for( auto& op_obj : ops )
+      {
+         if( op_obj.op.visit( visitor) )
+         {
+            result.push_back( api_operation_object( op_obj, visitor.l_op ) );
+         }
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, get_config )
@@ -797,7 +827,7 @@ namespace detail
          auto itr = idx.find( name );
          if ( itr != idx.end() )
          {
-            results.emplace_back( extended_account( *itr, _db ) );
+            results.emplace_back( extended_account( database_api::api_account_object( *itr, _db ) ) );
 
             if( _follow_api )
             {
@@ -845,7 +875,7 @@ namespace detail
       CHECK_ARG_SIZE( 1 )
       vector< account_name_type > account_names = args[0].as< vector< account_name_type > >();
 
-      vector< optional< database_api::api_account_object > > result;
+      vector< optional< api_account_object > > result;
       result.reserve( account_names.size() );
 
       for( auto& name : account_names )
@@ -854,11 +884,11 @@ namespace detail
 
          if( itr )
          {
-            result.push_back( database_api::api_account_object( *itr, _db ) );
+            result.push_back( api_account_object( database_api::api_account_object( *itr, _db ) ) );
          }
          else
          {
-            result.push_back( optional< database_api::api_account_object >() );
+            result.push_back( optional< api_account_object >() );
          }
       }
 
@@ -1362,7 +1392,21 @@ namespace detail
       CHECK_ARG_SIZE( 3 )
       FC_ASSERT( _account_history_api, "account_history_api_plugin not enabled." );
 
-      return _account_history_api->get_account_history( { args[0].as< account_name_type >(), args[1].as< uint64_t >(), args[2].as< uint32_t >() } ).history;
+      auto history = _account_history_api->get_account_history( { args[0].as< account_name_type >(), args[1].as< uint64_t >(), args[2].as< uint32_t >() } ).history;
+      get_account_history_return result;
+
+      legacy_operation l_op;
+      legacy_operation_conversion_visitor visitor( l_op );
+
+      for( auto& entry : history )
+      {
+         if( entry.second.op.visit( visitor ) )
+         {
+            result.emplace( entry.first, api_operation_object( entry.second, visitor.l_op ) );
+         }
+      }
+
+      return result;
    }
 
    DEFINE_API_IMPL( condenser_api_impl, broadcast_transaction )
